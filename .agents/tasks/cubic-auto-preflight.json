@@ -1,0 +1,103 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-auto-preflight",
+  "title": "Prime default cubic class-unit context",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Default cacheable cubic class-unit computation automatically reuses the authenticated cubic scalar producer and retained continuation, with exact behavior and measured 10-field speedups",
+  "base_commit": "3a3dca8a061a7aa74e85ce0a584bd8be173e0a46",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "test/number-field-class-unit-auto-preflight.cjs",
+    "bench/class-unit-groups/cubic-auto-preflight.py"
+  ],
+  "dependencies": [],
+  "references": [
+    "/home/user/upstream/Hecke.jl pinned 0.40.0 shared ClassGrpCtx design",
+    "/home/user/upstream/pari-2.18.1.alpha/src/basemath/buch2.c clean-room Buchall context design"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact class/unit collector, presentation, hR, saturation, proof, replay, and LMFDB cubic fixture outputs",
+      "Explicit class_number followed by class_unit_group A/B control on the 10-field cubic smoke corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:native",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 821.69,
+      "started_at": "2026-08-25T16:37:37.414Z",
+      "commit": "b27c69cfab7ce132ac494164cac640afc650dc81",
+      "workspace_fingerprint": "7b0bd39184cdc1ab575e27ff466a1ad4bf76130e1089ebfdd7bea3f210305e65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.885,
+      "started_at": "2026-08-25T16:51:39.128Z",
+      "commit": "b27c69cfab7ce132ac494164cac640afc650dc81",
+      "workspace_fingerprint": "7b0bd39184cdc1ab575e27ff466a1ad4bf76130e1089ebfdd7bea3f210305e65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-auto-preflight.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.216,
+      "started_at": "2026-08-25T16:52:17.286Z",
+      "commit": "b27c69cfab7ce132ac494164cac640afc650dc81",
+      "workspace_fingerprint": "7b0bd39184cdc1ab575e27ff466a1ad4bf76130e1089ebfdd7bea3f210305e65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs --python bench/class-unit-groups/cubic-auto-preflight.py",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 71.002,
+      "started_at": "2026-08-25T16:52:43.860Z",
+      "commit": "b27c69cfab7ce132ac494164cac640afc650dc81",
+      "workspace_fingerprint": "7b0bd39184cdc1ab575e27ff466a1ad4bf76130e1089ebfdd7bea3f210305e65",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs --python bench/class-unit-groups/cubic-auto-preflight.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 137.192,
+      "started_at": "2026-08-25T16:54:27.104Z",
+      "commit": "b27c69cfab7ce132ac494164cac640afc650dc81",
+      "workspace_fingerprint": "7b0bd39184cdc1ab575e27ff466a1ad4bf76130e1089ebfdd7bea3f210305e65",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Immutable source b27c69cf primes only default cacheable degree-3 class-unit contexts through the authenticated cubic scalar producer. Focused exact tests cover complete, live-prefix, size-decline, zero-factor-base, excluded interposed policies, proof-cache upgrade, and hostile retained acceleration state. Independent review returned SAFE. The exact-SHA ten-field benchmark replay passed all twenty proof modes: automatic medians were 0.179-0.653s, aggregate old-direct ratios were 0.154 conditional and 0.068 proof, max automatic/explicit was 1.038, and FB0 remained neutral.",
+    "risks": [
+      "The required exact-SHA native run passed its correctness, lifecycle, migration, and almost all performance gates but failed the unrelated dense GF(p) construct_500 microbudget at 8.15ms versus 8.00ms; no matrix, compiler, FFI, or native source changed, and the run was not repeated.",
+      "One exact-SHA benchmark receipt stopped after a 1.054 automatic/explicit ratio for conditional 3.1.5448.1, 0.004 above the 1.05 jitter guard. The single authorized isolated replay passed all twenty rows, including 0.999 for that row; both receipts are retained."
+    ],
+    "next_steps": [
+      "Cherry-pick b27c69cf and this metadata follow-up into class-group, then satisfy the preserved pnpm test:native requirement once on the cumulative integration head.",
+      "Keep the preflight restricted to the current default cacheable cubic policy unless a separately measured experiment justifies broader routing."
+    ]
+  }
+}

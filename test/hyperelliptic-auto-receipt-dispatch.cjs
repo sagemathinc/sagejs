@@ -1,3 +1,5 @@
+// sagejs-test-tier: unit
+// sagejs-test-portable: false
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -382,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent policy preserves development auto while release policy gates misses", (context) => {
+test("absent and disabled policies preserve development auto for receipt collection", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -398,18 +400,14 @@ test("absent policy preserves development auto while release policy gates misses
   assert.equal(absent.group_auto, "smalljac");
 
   const release = parseSageJson(runSage(selectorWitness));
-  assert.equal(release.decision.allowed, false);
-  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.decision.allowed, true);
+  assert.equal(release.decision.reason, "policy-disabled");
   assert.equal(release.matched_decision.allowed, true);
-  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
-  assert.equal(
-    release.matched_decision.entry_id,
-    "prime-cantor-g2-add-2f1e2964-v1",
-  );
-  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
-  assert.equal(release.rational_auto, "exhaustive");
-  assert.equal(release.kummer_selected, false);
-  assert.equal(release.group_auto, "squarefree-order");
+  assert.equal(release.matched_decision.reason, "policy-disabled");
+  assert.equal(release.prepared[0], "native");
+  assert.equal(release.rational_auto, "smalljac");
+  assert.equal(release.kummer_selected, release.kummer_compiled);
+  assert.equal(release.group_auto, "smalljac");
 });
 
 test("the isolated task runtime installs the checked policy before callables", (context) => {
@@ -465,25 +463,13 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the release policy enables only six exact Cantor envelopes", () => {
+test("the merged release policy remains disabled pending exact combined receipts", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, true);
-  assert.equal(candidate.entries.length, 6);
-  assert(candidate.entries.every((entry) => entry.enabled));
-  assert.equal(
-    candidate.source_bundle.sha256,
-    "1985fa5202ce06e6dcbfe037db6f569c9791d2d6677e8c1f1a1a29b6af8d7d59",
-  );
-  assert.deepEqual(
-    [...new Set(candidate.entries.map((entry) => entry.backend))],
-    ["prime-cantor"],
-  );
-  assert.deepEqual(
-    [...new Set(candidate.entries.map((entry) => entry.operation))],
-    ["add", "scalar", "progression"],
-  );
+  assert.equal(candidate.enabled, false);
+  assert.equal(candidate.source_bundle, null);
+  assert.deepEqual(candidate.entries, []);
   assert(candidate.source_bundle_contract.paths.includes(
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
   ));

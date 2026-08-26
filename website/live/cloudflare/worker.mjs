@@ -13,6 +13,10 @@ const SECURITY_HEADERS = Object.freeze({
 
 const RELEASE_PATTERN = /^[a-f0-9]{64}$/;
 const IMMUTABLE_ASSET_PATTERN = /^assets\/sha256-[a-f0-9]{64}\//;
+// Increment this whenever the representation stored in Cache API changes.
+// Cache API entries survive Worker deployments, so a new Worker must never
+// inherit responses produced by an older encoding contract.
+const EDGE_CACHE_SCHEMA = "2";
 
 function secureHeaders(headers = new Headers()) {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
@@ -59,16 +63,28 @@ export function storageKey(logicalPath, release, encoding = "identity") {
 }
 
 function acceptsBrotli(request) {
-  return (request.headers.get("Accept-Encoding") ?? "")
+  const clientAcceptEncoding = request.cf?.clientAcceptEncoding;
+  const value = typeof clientAcceptEncoding === "string"
+    ? clientAcceptEncoding
+    : (request.headers.get("Accept-Encoding") ?? "");
+  return value
     .split(",")
-    .some((entry) => entry.trim().split(";", 1)[0].toLowerCase() === "br");
+    .some((entry) => {
+      const [encoding, ...parameters] = entry.split(";").map((part) => part.trim());
+      if (encoding.toLowerCase() !== "br") return false;
+      const quality = parameters.find((parameter) => parameter.toLowerCase().startsWith("q="));
+      if (quality === undefined) return true;
+      const parsed = Number(quality.slice(2));
+      return Number.isFinite(parsed) && parsed > 0;
+    });
 }
 
-function cacheRequest(request, logicalPath, release, encoding) {
+export function cacheRequest(request, logicalPath, release, encoding) {
   const url = new URL(request.url);
   url.search = "";
   url.searchParams.set("__sagejs_release", release);
   url.searchParams.set("__sagejs_encoding", encoding);
+  url.searchParams.set("__sagejs_cache", EDGE_CACHE_SCHEMA);
   url.pathname = `/${logicalPath}`;
   return new Request(url, { method: "GET" });
 }
@@ -117,17 +133,28 @@ export async function handleRequest(request, env, context = {}) {
   const preferredEncoding = acceptsBrotli(request) ? "br" : "identity";
   const immutable = IMMUTABLE_ASSET_PATTERN.test(logicalPath);
   const edgeCache = globalThis.caches?.default;
+  // Cloudflare Cache API may encode an already precompressed response while
+  // storing it, yielding two Brotli layers on the next hit. Serve Brotli
+  // objects directly from R2; the authenticated service worker provides the
+  // durable client cache. Identity objects remain safe to cache at the edge.
+  const edgeCacheable = immutable && edgeCache && preferredEncoding === "identity";
   const cacheKey = cacheRequest(request, logicalPath, env.RELEASE_ID, preferredEncoding);
 
-  if (immutable && edgeCache) {
+  if (edgeCacheable) {
     const cached = await edgeCache.match(cacheKey);
     if (cached) {
       if (request.headers.get("If-None-Match") === cached.headers.get("ETag")) {
-        return new Response(null, { status: 304, headers: cached.headers });
+        return new Response(null, {
+          status: 304,
+          headers: cached.headers,
+          encodeBody: "manual",
+        });
       }
-      return request.method === "HEAD"
-        ? new Response(null, { status: cached.status, headers: cached.headers })
-        : cached;
+      return new Response(request.method === "HEAD" ? null : cached.body, {
+        status: cached.status,
+        headers: cached.headers,
+        encodeBody: "manual",
+      });
     }
   }
 
@@ -141,13 +168,14 @@ export async function handleRequest(request, env, context = {}) {
 
   const headers = responseHeaders(object, logicalPath, env.RELEASE_ID, encoding);
   if (request.headers.get("If-None-Match") === object.httpEtag) {
-    return new Response(null, { status: 304, headers });
+    return new Response(null, { status: 304, headers, encodeBody: "manual" });
   }
   const response = new Response(request.method === "HEAD" ? null : object.body, {
     status: 200,
     headers,
+    encodeBody: "manual",
   });
-  if (immutable && edgeCache && request.method === "GET") {
+  if (edgeCacheable && request.method === "GET") {
     context.waitUntil?.(edgeCache.put(cacheKey, response.clone()));
   }
   return response;

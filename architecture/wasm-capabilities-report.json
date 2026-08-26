@@ -1,28 +1,28 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "ab671667bf9ec84acdc9a263a103db7aeb270a265c2c1ead8d3cb0a482bf4e50",
+  "source_sha256": "fabf896a6741eba67cddd76410ab3482856389c197ac4e2fa556da856e5559f5",
   "counts": {
-    "total": 998,
+    "total": 1007,
     "by_kind": {
-      "declared-ffi-function": 437,
+      "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 320,
-      "production-kernel": 43,
-      "runtime-intrinsic": 141,
-      "specialist-capability": 25
+      "production-kernel": 47,
+      "runtime-intrinsic": 142,
+      "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 43,
+      "compiled-source": 47,
       "desktop-only": 42,
-      "generated-wasm": 302,
-      "portable-fallback": 567,
-      "shared-core": 44
+      "generated-wasm": 321,
+      "portable-fallback": 552,
+      "shared-core": 45
     },
     "by_status": {
-      "available": 525,
+      "available": 550,
       "desktop-only": 42,
-      "fallback": 431
+      "fallback": 415
     }
   },
   "workflow_aliases": {
@@ -141,6 +141,15 @@
       "napi:@sagemath/sagejs-flint:zetaZeros",
       "napi:@sagemath/sagejs-flint:complexEi",
       "napi:@sagemath/sagejs-flint:complexBesselI"
+    ],
+    "numpy-vertical-slice": [
+      "specialist:numpy-ts"
+    ],
+    "partition-count-and-ranking": [
+      "ffi:flint:arith_number_of_partitions"
+    ],
+    "python-float-underscore-separators": [
+      "specialist:capability-report-api"
     ],
     "quadratic-dedekind-zeta-batch": [
       "analytic:riemann-zeta-batch",
@@ -854,6 +863,23 @@
       "explanation": "This optional desktop accelerator is intentionally absent from Wasm and retains its exact source kernel."
     },
     {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "explicit-capability-unavailable-pentagonal-recurrence",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "number_of_partitions",
+        "Partitions.cardinality"
+      ],
+      "explanation": "Large partition counts use FLINT's exact Rademacher implementation in native and WebAssembly builds. Release telemetry requires the declared FLINT route so an accidental recurrence fallback fails validation.",
+      "resource_limits": {
+        "reviewed_release_input": 1000000,
+        "boundary_crossings": 1
+      }
+    },
+    {
       "id": "ffi:flint:dirichlet_group_init",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -1132,14 +1158,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_augment",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_charpoly",
@@ -1288,14 +1314,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_is_one",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_is_zero",
@@ -1372,14 +1398,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_nonzero_count",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_nrows",
@@ -1456,14 +1482,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_scalar_mul",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_select_columns",
@@ -1516,14 +1542,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_set_block",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_set_entry",
@@ -1552,14 +1578,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_stack",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_sub",
@@ -1576,14 +1602,14 @@
     {
       "id": "ffi:flint:fmpq_matrix_submatrix",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpq_matrix_swap_columns",
@@ -2666,6 +2692,18 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fmpz_mat_lll_transform",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
       "id": "ffi:flint:fmpz_mat_mul",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -2740,14 +2778,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_augment",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_charpoly",
@@ -2848,14 +2886,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_export_mod_ui",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_format",
@@ -2872,14 +2910,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_from_fmpq_integral",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_hnf",
@@ -2908,14 +2946,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_is_one",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_is_zero",
@@ -3088,14 +3126,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_select_columns",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_select_rows",
@@ -3136,14 +3174,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_set_block",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_set_entry",
@@ -3184,14 +3222,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_stack",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_sub",
@@ -3208,14 +3246,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_submatrix",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_swap_columns",
@@ -3244,14 +3282,14 @@
     {
       "id": "ffi:flint:fmpz_matrix_trace",
       "family": "flint",
-      "disposition": "portable-fallback",
-      "status": "fallback",
-      "fallback": "ordinary-sagejs-exact-fallback",
-      "wasm_module": "optional-flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
       "public_consumers": [
         "sagejs.ffi.flint"
       ],
-      "explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
+      "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
       "id": "ffi:flint:fmpz_matrix_transpose",
@@ -4608,6 +4646,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_packed",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
     },
     {
       "id": "ffi:flint:n_is_prime",
@@ -5997,9 +6047,10 @@
       "fallback": "same-source-dynamic-python",
       "wasm_module": "kernel-gmp",
       "public_consumers": [
-        "buchmann-lenstra-row-hnf"
+        "buchmann-lenstra-row-hnf",
+        "number-field-ideal-products"
       ],
-      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
@@ -6035,7 +6086,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 15 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",
@@ -6194,7 +6245,7 @@
         "hyperelliptic-group-structure",
         "hyperelliptic-torsion-and-saturation"
       ],
-      "explanation": "All 8 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 11 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:hyperelliptic-kummer-production",
@@ -6233,6 +6284,18 @@
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:number-field-bdf-interval-production",
+      "family": "number-field-bdf-interval",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-factor-base"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:number-field-composite-analysis-production",
       "family": "number-field-composite-analysis",
       "disposition": "compiled-source",
@@ -6245,6 +6308,30 @@
       "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:number-field-cubic-norm-obstruction-production",
+      "family": "number-field-cubic-norm-obstruction",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:number-field-cubic-relation-sieve-production",
+      "family": "number-field-cubic-relation-sieve",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:number-field-discriminant-prefactor-production",
       "family": "number-field-discriminant-prefactor",
       "disposition": "compiled-source",
@@ -6253,6 +6340,18 @@
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "number-field-discriminant-prefactor"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:number-field-element-valuations-production",
+      "family": "number-field-element-valuations",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "number-field-class-group-relations"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
@@ -6290,7 +6389,7 @@
       "public_consumers": [
         "number-field-zeta-coefficients"
       ],
-      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:p1-heilbronn-production",
@@ -6459,7 +6558,7 @@
       "public_consumers": [
         "prime-ideal-candidate-materializer"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:sparse-random-matrix-production",
@@ -10467,6 +10566,18 @@
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:canonical_json_exact",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "Exact canonical proof data uses a portable JavaScript runtime traversal with an ordinary Python fallback for unsupported values."
+    },
+    {
       "id": "runtime:canonical_rational_values_to_packed_bytes",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -12138,6 +12249,18 @@
         "Matrix(GF(2))"
       ],
       "explanation": "M4RI has a generated owned-resource Wasm adapter and a same-source dynamic fallback."
+    },
+    {
+      "id": "specialist:numpy-ts",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "explicit-browser-capability-error-if-the-receipted-specialist-is-unavailable",
+      "wasm_module": "numpy-ts",
+      "public_consumers": [
+        "the initial Python-facing numpy compatibility facade"
+      ],
+      "explanation": "The documented initial NumPy compatibility slice uses the pinned numpy-ts typed-array and Zig-WebAssembly backend in browsers without adding it to ordinary application startup."
     },
     {
       "id": "specialist:rforest",

@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.browser-wasm-budget/v1",
-  "description": "Relative release gates. Populate artifact_baseline, performance_baseline, and native_ratio_baseline only from reviewed final-artifact receipts; absent baselines are reported but never fabricated.",
+  "description": "Relative release gates. Populate artifact_baseline, artifact_topology_limits, performance_baseline, and native_ratio_baseline only from reviewed final-artifact receipts; absent baselines are reported but never fabricated. Per-group limits here are packaging policy and intentionally remain outside mathematical receipt identity.",
   "thresholds": {
     "compressed_growth_fraction": 0.05,
     "startup_regression_fraction": 0.2,
@@ -11,9 +11,15 @@
   },
   "artifact_baseline": {
     "totals": {
-      "bytes": 126884016,
-      "gzip_bytes": 18835620,
-      "brotli_bytes": 11883093
+      "bytes": 141974160,
+      "gzip_bytes": 20699924,
+      "brotli_bytes": 12983150
+    }
+  },
+  "artifact_topology_limits": {
+    "eager-core": {
+      "gzip_bytes": 14100000,
+      "brotli_bytes": 7850000
     }
   },
   "performance_baseline": {
@@ -22,17 +28,22 @@
         "median": 194.63621699996293
       },
       "interrupt_latency_ms": {
-        "median": 26.14149800001178
+        "median": 26.179459999955725
       },
       "operations": {
         "exact-matrix-kernel": {
           "warm_ms": {
-            "median": 54.36156699998537
+            "median": 77.77003200000001
+          }
+        },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 23.011679000000186
           }
         },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
-            "median": 48.25460700003896
+            "median": 49.91970099997707
           }
         },
         "modular-symbols-level-1000": {
@@ -47,22 +58,22 @@
         },
         "analytic-gamma-xi-batches": {
           "warm_ms": {
-            "median": 91.9924119999996
+            "median": 92.32900900000823
           }
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 45.980045999982394
+            "median": 50.32469700003276
           }
         },
         "moebius-range-100000": {
           "warm_ms": {
-            "median": 432.16123099999913
+            "median": 434.58290199999465
           }
         },
         "graph-components-10000": {
           "warm_ms": {
-            "median": 9320.141467000009
+            "median": 9462.103383999987
           }
         },
         "graph-shortest-paths": {
@@ -77,22 +88,22 @@
         },
         "gf2-matrix-384": {
           "warm_ms": {
-            "median": 262.97098600000027
+            "median": 271.1870680000284
           }
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 108.57131999999547
+            "median": 128.36130799999228
           }
         },
         "sparse-integer-right-kernel-192": {
           "warm_ms": {
-            "median": 116.80525900000066
+            "median": 119.96219200000633
           }
         },
         "matrix-combinatorial-invariants": {
           "warm_ms": {
-            "median": 76.15791499998886
+            "median": 84.63745000000927
           }
         },
         "multivariate-resultant-packed": {
@@ -102,7 +113,7 @@
         },
         "extension-field-polynomial-5632": {
           "warm_ms": {
-            "median": 449.0238399999798
+            "median": 462.16609099996276
           }
         },
         "hyperelliptic-local-factors-100000": {
@@ -112,17 +123,17 @@
         },
         "algebraic-matrix-8": {
           "warm_ms": {
-            "median": 119.32336200005375
+            "median": 128.7189209999924
           }
         },
         "elliptic-lseries-value-batch": {
           "warm_ms": {
-            "median": 375.42779499996686
+            "median": 391.042368000024
           }
         },
         "elliptic-lseries-complex-plot-64": {
           "warm_ms": {
-            "median": 428.58073099999456
+            "median": 444.23884200002067
           }
         }
       }
@@ -138,6 +149,11 @@
         "exact-matrix-kernel": {
           "warm_ms": {
             "median": 23.025000002235174
+          }
+        },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 14.365000009536743
           }
         },
         "cubic-number-field-zeta-1000": {
@@ -239,40 +255,45 @@
     },
     "firefox": {
       "startup_ms": {
-        "median": 2109.023384
+        "median": 2542.4100630000466
       },
       "interrupt_latency_ms": {
-        "median": 0.7000000000002728
+        "median": 1.7999999999999545
       },
       "operations": {
         "exact-matrix-kernel": {
           "warm_ms": {
-            "median": 27.720000000000255
+            "median": 53.23999999999978
+          }
+        },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 35.039999999999964
           }
         },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
-            "median": 83.48000000000002
+            "median": 89.72000000000025
           }
         },
         "modular-symbols-level-1000": {
           "warm_ms": {
-            "median": 1544.2799999999997
+            "median": 1591.62
           }
         },
         "analytic-special-value-batches": {
           "warm_ms": {
-            "median": 641.1199999999999
+            "median": 765.2200000000003
           }
         },
         "analytic-gamma-xi-batches": {
           "warm_ms": {
-            "median": 356.6800000000003
+            "median": 363.5
           }
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 46.820000000000164
+            "median": 90.48000000000002
           }
         },
         "moebius-range-100000": {
@@ -282,67 +303,67 @@
         },
         "graph-components-10000": {
           "warm_ms": {
-            "median": 10022.619999999999
+            "median": 10335.580000000002
           }
         },
         "graph-shortest-paths": {
           "warm_ms": {
-            "median": 10748.14
+            "median": 10980.84
           }
         },
         "group-permutation-center": {
           "warm_ms": {
-            "median": 2405.0600000000004
+            "median": 2421.7799999999997
           }
         },
         "gf2-matrix-384": {
           "warm_ms": {
-            "median": 398.05999999999995
+            "median": 412.1999999999998
           }
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 174.01999999999998
+            "median": 317.5
           }
         },
         "sparse-integer-right-kernel-192": {
           "warm_ms": {
-            "median": 939.8800000000001
+            "median": 1167.6000000000004
           }
         },
         "matrix-combinatorial-invariants": {
           "warm_ms": {
-            "median": 97.08000000000038
+            "median": 221.1199999999999
           }
         },
         "multivariate-resultant-packed": {
           "warm_ms": {
-            "median": 689.1999999999998
+            "median": 800.44
           }
         },
         "extension-field-polynomial-5632": {
           "warm_ms": {
-            "median": 2960.12
+            "median": 3787.720000000001
           }
         },
         "hyperelliptic-local-factors-100000": {
           "warm_ms": {
-            "median": 94440.96
+            "median": 98137.42000000001
           }
         },
         "algebraic-matrix-8": {
           "warm_ms": {
-            "median": 1638.7399999999998
+            "median": 1664.8400000000001
           }
         },
         "elliptic-lseries-value-batch": {
           "warm_ms": {
-            "median": 666.3799999999997
+            "median": 727.04
           }
         },
         "elliptic-lseries-complex-plot-64": {
           "warm_ms": {
-            "median": 4809.58
+            "median": 4811.3200000000015
           }
         }
       }
@@ -357,32 +378,37 @@
       "operations": {
         "exact-matrix-kernel": {
           "warm_ms": {
-            "median": 25.800000000000182
+            "median": 32.159999999999854
+          }
+        },
+        "partition-count-1000000": {
+          "warm_ms": {
+            "median": 28.480000000000018
           }
         },
         "cubic-number-field-zeta-1000": {
           "warm_ms": {
-            "median": 84.35999999999967
+            "median": 92.07999999999993
           }
         },
         "modular-symbols-level-1000": {
           "warm_ms": {
-            "median": 2445.12
+            "median": 2787.1400000000003
           }
         },
         "analytic-special-value-batches": {
           "warm_ms": {
-            "median": 139.84000000000015
+            "median": 165.0600000000004
           }
         },
         "analytic-gamma-xi-batches": {
           "warm_ms": {
-            "median": 77.2800000000002
+            "median": 98.61999999999989
           }
         },
         "numeric-mpfr-symbolic": {
           "warm_ms": {
-            "median": 44.20000000000027
+            "median": 53.01999999999998
           }
         },
         "moebius-range-100000": {
@@ -392,12 +418,12 @@
         },
         "graph-components-10000": {
           "warm_ms": {
-            "median": 6275.039999999999
+            "median": 8895.14
           }
         },
         "graph-shortest-paths": {
           "warm_ms": {
-            "median": 6075.1
+            "median": 9147.94
           }
         },
         "group-permutation-center": {
@@ -407,47 +433,47 @@
         },
         "gf2-matrix-384": {
           "warm_ms": {
-            "median": 295.2399999999998
+            "median": 587.2899999999997
           }
         },
         "word-prime-matrix-128": {
           "warm_ms": {
-            "median": 115.73999999999978
+            "median": 209.26000000000022
           }
         },
         "sparse-integer-right-kernel-192": {
           "warm_ms": {
-            "median": 198.98000000000002
+            "median": 210.98000000000002
           }
         },
         "matrix-combinatorial-invariants": {
           "warm_ms": {
-            "median": 80
+            "median": 99.15999999999985
           }
         },
         "multivariate-resultant-packed": {
           "warm_ms": {
-            "median": 136.96000000000004
+            "median": 155.77999999999975
           }
         },
         "extension-field-polynomial-5632": {
           "warm_ms": {
-            "median": 900.6800000000003
+            "median": 4837.9800000000005
           }
         },
         "hyperelliptic-local-factors-100000": {
           "warm_ms": {
-            "median": 74794.16000000002
+            "median": 98299.68
           }
         },
         "algebraic-matrix-8": {
           "warm_ms": {
-            "median": 195.46000000000004
+            "median": 228.30000000000018
           }
         },
         "elliptic-lseries-value-batch": {
           "warm_ms": {
-            "median": 709.8800000000001
+            "median": 856.2200000000003
           }
         },
         "elliptic-lseries-complex-plot-64": {
@@ -462,125 +488,131 @@
     "chromium": {
       "operations": {
         "exact-matrix-kernel": {
-          "warm_median_ratio": 0.42355291197255907
+          "warm_median_ratio": 0.518918510151254
+        },
+        "partition-count-1000000": {
+          "warm_median_ratio": 0.624248235408491
         },
         "cubic-number-field-zeta-1000": {
-          "warm_median_ratio": 1.201232454339628
+          "warm_median_ratio": 1.3338629778949282
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 26.11850477965229
+          "warm_median_ratio": 37.24941840739017
         },
         "analytic-special-value-batches": {
-          "warm_median_ratio": 1.3103916004953697
+          "warm_median_ratio": 1.4425266193045743
         },
         "analytic-gamma-xi-batches": {
-          "warm_median_ratio": 0.8378951950755699
+          "warm_median_ratio": 0.936506732889436
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 0.8465628764434024
+          "warm_median_ratio": 0.927703641058527
         },
         "moebius-range-100000": {
-          "warm_median_ratio": 0.47312203254958657
+          "warm_median_ratio": 0.559521717457226
         },
         "graph-components-10000": {
           "warm_median_ratio": 0.8442237736261329
         },
         "graph-shortest-paths": {
-          "warm_median_ratio": 0.7639787681550593
+          "warm_median_ratio": 0.7690862011202414
         },
         "group-permutation-center": {
-          "warm_median_ratio": 0.3826705335539383
+          "warm_median_ratio": 0.44592541587630885
         },
         "gf2-matrix-384": {
-          "warm_median_ratio": 1.3958383986802843
+          "warm_median_ratio": 1.4209265983741464
         },
         "word-prime-matrix-128": {
           "warm_median_ratio": 1.063310273839379
         },
         "sparse-integer-right-kernel-192": {
-          "warm_median_ratio": 1.5482607679722038
+          "warm_median_ratio": 1.6844409538464136
         },
         "matrix-combinatorial-invariants": {
           "warm_median_ratio": 0.9368691356344939
         },
         "multivariate-resultant-packed": {
-          "warm_median_ratio": 1.1391343586579645
+          "warm_median_ratio": 1.4117978100815123
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 1.724563221411758
+          "warm_median_ratio": 4.42606499835871
         },
         "hyperelliptic-local-factors-100000": {
-          "warm_median_ratio": 1.0357828069794353
+          "warm_median_ratio": 1.111581818756322
         },
         "algebraic-matrix-8": {
           "warm_median_ratio": 1.683827849249652
         },
         "elliptic-lseries-value-batch": {
-          "warm_median_ratio": 0.9926942143493054
+          "warm_median_ratio": 1.2885364179618968
         },
         "elliptic-lseries-complex-plot-64": {
-          "warm_median_ratio": 1.546371434979543
+          "warm_median_ratio": 1.6771520203188175
         }
       }
     },
     "firefox": {
       "operations": {
         "exact-matrix-kernel": {
-          "warm_median_ratio": 0.5099190757324511
+          "warm_median_ratio": 1.354013421415033
+        },
+        "partition-count-1000000": {
+          "warm_median_ratio": 1.5227050577230667
         },
         "cubic-number-field-zeta-1000": {
-          "warm_median_ratio": 1.7299902577163797
+          "warm_median_ratio": 1.8347025813573115
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 26.875189606277594
+          "warm_median_ratio": 44.45999425959167
         },
         "analytic-special-value-batches": {
-          "warm_median_ratio": 7.047085206648839
+          "warm_median_ratio": 8.64518616992836
         },
         "analytic-gamma-xi-batches": {
-          "warm_median_ratio": 3.8772763127463366
+          "warm_median_ratio": 5.253785181574564
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 1.0182677938168676
+          "warm_median_ratio": 1.9437362463188022
         },
         "moebius-range-100000": {
-          "warm_median_ratio": 1.32756008370404
+          "warm_median_ratio": 1.3667453704708559
         },
         "graph-components-10000": {
-          "warm_median_ratio": 1.0753720890919165
+          "warm_median_ratio": 1.0923131549668994
         },
         "graph-shortest-paths": {
-          "warm_median_ratio": 0.9606306546548842
+          "warm_median_ratio": 1.2844523105206684
         },
         "group-permutation-center": {
-          "warm_median_ratio": 1.1569397780380077
+          "warm_median_ratio": 1.2252684940202208
         },
         "gf2-matrix-384": {
-          "warm_median_ratio": 1.5137031124794869
+          "warm_median_ratio": 1.6248939039191652
         },
         "word-prime-matrix-128": {
-          "warm_median_ratio": 1.6028173922911433
+          "warm_median_ratio": 2.6043373413339324
         },
         "sparse-integer-right-kernel-192": {
-          "warm_median_ratio": 8.046555506546111
+          "warm_median_ratio": 11.154137290289487
         },
         "matrix-combinatorial-invariants": {
-          "warm_median_ratio": 1.2747197714120007
+          "warm_median_ratio": 2.689307771060172
         },
         "multivariate-resultant-packed": {
-          "warm_median_ratio": 6.028498809678061
+          "warm_median_ratio": 9.064405543436358
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 6.592344851890565
+          "warm_median_ratio": 19.65579732281183
         },
         "hyperelliptic-local-factors-100000": {
-          "warm_median_ratio": 1.2594396200042188
+          "warm_median_ratio": 1.6220022668628244
         },
         "algebraic-matrix-8": {
           "warm_median_ratio": 13.733605662227834
         },
         "elliptic-lseries-value-batch": {
-          "warm_median_ratio": 1.7749884501760411
+          "warm_median_ratio": 2.135428150064098
         },
         "elliptic-lseries-complex-plot-64": {
           "warm_median_ratio": 11.222109749959946
@@ -590,64 +622,67 @@
     "webkit": {
       "operations": {
         "exact-matrix-kernel": {
-          "warm_median_ratio": 0.4746000055518474
+          "warm_median_ratio": 0.7848394850651439
+        },
+        "partition-count-1000000": {
+          "warm_median_ratio": 1.237632421345691
         },
         "cubic-number-field-zeta-1000": {
-          "warm_median_ratio": 1.748226858420618
+          "warm_median_ratio": 2.3161651709228153
         },
         "modular-symbols-level-1000": {
-          "warm_median_ratio": 42.552557573821765
+          "warm_median_ratio": 78.7316045852799
         },
         "analytic-special-value-batches": {
-          "warm_median_ratio": 1.5370981958101055
+          "warm_median_ratio": 2.1856055854546756
         },
         "analytic-gamma-xi-batches": {
-          "warm_median_ratio": 0.8400692874538449
+          "warm_median_ratio": 1.2594974402969688
         },
         "numeric-mpfr-symbolic": {
-          "warm_median_ratio": 0.9612865546071266
+          "warm_median_ratio": 1.2625552511390459
         },
         "moebius-range-100000": {
-          "warm_median_ratio": 0.3333478101833717
+          "warm_median_ratio": 0.5288924955720026
         },
         "graph-components-10000": {
-          "warm_median_ratio": 0.6732773340638815
+          "warm_median_ratio": 0.9400806183370709
         },
         "graph-shortest-paths": {
-          "warm_median_ratio": 0.5429709038116258
+          "warm_median_ratio": 0.8960543503195593
         },
         "group-permutation-center": {
-          "warm_median_ratio": 0.46892172986597
+          "warm_median_ratio": 0.5494265687171767
         },
         "gf2-matrix-384": {
-          "warm_median_ratio": 1.1227094079496645
+          "warm_median_ratio": 2.3403802181702726
         },
         "word-prime-matrix-128": {
-          "warm_median_ratio": 1.066027381816898
+          "warm_median_ratio": 1.7475258408728709
         },
         "sparse-integer-right-kernel-192": {
-          "warm_median_ratio": 1.7035191882927025
+          "warm_median_ratio": 1.979964452539736
         },
         "matrix-combinatorial-invariants": {
-          "warm_median_ratio": 1.0504489257618423
+          "warm_median_ratio": 1.30568863840769
         },
         "multivariate-resultant-packed": {
-          "warm_median_ratio": 1.198002317140899
+          "warm_median_ratio": 1.6807494262615872
         },
         "extension-field-polynomial-5632": {
-          "warm_median_ratio": 2.0058623167982366
+          "warm_median_ratio": 26.966598985513006
         },
         "hyperelliptic-local-factors-100000": {
-          "warm_median_ratio": 0.9974351007119662
+          "warm_median_ratio": 1.4081085907084967
         },
         "algebraic-matrix-8": {
-          "warm_median_ratio": 1.638069835812303
+          "warm_median_ratio": 1.846219869945711
         },
         "elliptic-lseries-value-batch": {
-          "warm_median_ratio": 1.8908562697124296
+          "warm_median_ratio": 3.20951462338134
         },
         "elliptic-lseries-complex-plot-64": {
-          "warm_median_ratio": 1.9173050502823719
+          "warm_median_ratio": 2.1111185692864054
         }
       }
     }

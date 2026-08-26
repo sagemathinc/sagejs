@@ -1,7 +1,9 @@
 # Genus-3 radius-6 height acceptance — Linux x64
 
-Source commit: `cc61779bb7c8a8c609d5c6aa724830e0486110f2`  
-Host: `cocalc-vm-51c5044ca6d3406d983e0f10` (AMD EPYC 7B13)  
+Source commit: `cc61779bb7c8a8c609d5c6aa724830e0486110f2`
+
+Host: `cocalc-vm-51c5044ca6d3406d983e0f10` (AMD EPYC 7B13)
+
 Node: `v22.22.2`
 
 The Sage.js rows all return the complete public canonical height with the exact

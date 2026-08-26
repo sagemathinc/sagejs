@@ -1,0 +1,241 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-unit-corpus-lab",
+  "title": "Class Unit Corpus Lab",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Make the class/unit benchmark lab reproducible: versioned stratified 100-field LMFDB cubic fixture with smoke/tune/held-out tiers, replay/checksums, offline validation, evidence schema, direct CAS comparator plumbing, and fail-closed exact-source/host receipts.",
+  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "claims": [
+    "bench/class-unit-groups/download-lmfdb-number-fields.cjs",
+    "bench/class-unit-groups/class-unit-evidence-schema.cjs",
+    "bench/class-unit-groups/run-class-unit-corpus.cjs",
+    "bench/class-unit-groups/run-oracles.cjs",
+    "test/fixtures/number-field-lmfdb-cubic-100.json",
+    "test/number-field-class-unit-corpus.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/competitive-class-and-unit-groups-strategy.md",
+    "https://beta.lmfdb.org/api/options",
+    "https://beta.lmfdb.org/api/stats"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "lmfdb",
+      "sage-pari",
+      "direct-gp",
+      "magma",
+      "hecke",
+      "oscar"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v3.json",
+    "node --test test/number-field-class-unit-corpus.cjs test/number-field-lmfdb-class-number-corpus.cjs",
+    "node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run --tier smoke --limit 1 --proof both --systems sagejs,sage-pari,direct-gp,magma,hecke,oscar --output /tmp/class-unit-corpus-dry-run-v3.json"
+  ],
+  "runs": [
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.633,
+      "started_at": "2026-08-25T04:38:41.099Z",
+      "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
+      "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.215,
+      "started_at": "2026-08-25T04:38:47.292Z",
+      "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
+      "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-corpus.cjs test/number-field-lmfdb-class-number-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.194,
+      "started_at": "2026-08-25T04:41:01.238Z",
+      "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
+      "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run --tier smoke --limit 1 --proof both --systems sagejs,sage-pari,direct-gp,magma,hecke,oscar --output /tmp/class-unit-corpus-dry-run.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.931,
+      "started_at": "2026-08-25T04:41:05.745Z",
+      "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
+      "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 869.706,
+      "started_at": "2026-08-25T05:01:19.332Z",
+      "commit": "2c911bc8c18c204ebf2c5ed42e7934dcacb745fe",
+      "workspace_fingerprint": "3050e201848aff673eda94434ecb9a82bb4a7bd94e1c10e071031ceda97aa919",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v2.json",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 32.866,
+      "started_at": "2026-08-25T05:32:42.814Z",
+      "commit": "d0ded13ddb37ca2ce448c71a50891f6ed75fdf86",
+      "workspace_fingerprint": "2a945bfcf717f26bd3879c34133261897e54f00a2c81fca9510e4abecab97dc0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v2.json",
+      "result": "fail",
+      "exit_code": 2,
+      "seconds": 32.1,
+      "started_at": "2026-08-25T05:33:39.955Z",
+      "commit": "0187e3426d2aa94deacba7b453dcb942f3c31318",
+      "workspace_fingerprint": "e2e7de017a7e9103f2b173ab1bf67736e6a9e2914ba93816e018eb254a08e196",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v2.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 53.037,
+      "started_at": "2026-08-25T05:34:41.638Z",
+      "commit": "97f4ea163c4654bb1e5debbe7a668f5fb5b592a0",
+      "workspace_fingerprint": "41c67aa2839590ccf69f9f5b8f59c6f8d9ba2827cbd3fc9c8834ed014ecd8a22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-corpus.cjs test/number-field-lmfdb-class-number-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.199,
+      "started_at": "2026-08-25T05:35:53.513Z",
+      "commit": "97f4ea163c4654bb1e5debbe7a668f5fb5b592a0",
+      "workspace_fingerprint": "41c67aa2839590ccf69f9f5b8f59c6f8d9ba2827cbd3fc9c8834ed014ecd8a22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.196,
+      "started_at": "2026-08-25T05:35:56.970Z",
+      "commit": "97f4ea163c4654bb1e5debbe7a668f5fb5b592a0",
+      "workspace_fingerprint": "41c67aa2839590ccf69f9f5b8f59c6f8d9ba2827cbd3fc9c8834ed014ecd8a22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run --tier smoke --limit 1 --proof both --systems sagejs,sage-pari,direct-gp,magma,hecke,oscar --output /tmp/class-unit-corpus-dry-run.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.243,
+      "started_at": "2026-08-25T05:36:35.747Z",
+      "commit": "97f4ea163c4654bb1e5debbe7a668f5fb5b592a0",
+      "workspace_fingerprint": "41c67aa2839590ccf69f9f5b8f59c6f8d9ba2827cbd3fc9c8834ed014ecd8a22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 918.577,
+      "started_at": "2026-08-25T05:38:07.351Z",
+      "commit": "97f4ea163c4654bb1e5debbe7a668f5fb5b592a0",
+      "workspace_fingerprint": "41c67aa2839590ccf69f9f5b8f59c6f8d9ba2827cbd3fc9c8834ed014ecd8a22",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --tier smoke --limit 1 --proof both --systems direct-gp --samples 5 --output /tmp/class-unit-gp-receipt-v3.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.891,
+      "started_at": "2026-08-25T06:12:31.023Z",
+      "commit": "9a400f7e677360e4bc4b9a9e7d565aa87a3e14d5",
+      "workspace_fingerprint": "cf654504cb5badab1c1c0afe734bd45be60edc2d1e6e4b65c29353b3d8cf6f29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-unit-corpus.cjs test/number-field-lmfdb-class-number-corpus.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.44,
+      "started_at": "2026-08-25T06:13:25.151Z",
+      "commit": "9a400f7e677360e4bc4b9a9e7d565aa87a3e14d5",
+      "workspace_fingerprint": "cf654504cb5badab1c1c0afe734bd45be60edc2d1e6e4b65c29353b3d8cf6f29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 32.055,
+      "started_at": "2026-08-25T06:13:34.678Z",
+      "commit": "9a400f7e677360e4bc4b9a9e7d565aa87a3e14d5",
+      "workspace_fingerprint": "cf654504cb5badab1c1c0afe734bd45be60edc2d1e6e4b65c29353b3d8cf6f29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run --tier smoke --limit 1 --proof both --systems sagejs,sage-pari,direct-gp,magma,hecke,oscar --output /tmp/class-unit-corpus-dry-run-v3.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.952,
+      "started_at": "2026-08-25T06:14:22.154Z",
+      "commit": "9a400f7e677360e4bc4b9a9e7d565aa87a3e14d5",
+      "workspace_fingerprint": "cf654504cb5badab1c1c0afe734bd45be60edc2d1e6e4b65c29353b3d8cf6f29",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 869.776,
+      "started_at": "2026-08-25T06:15:58.065Z",
+      "commit": "9a400f7e677360e4bc4b9a9e7d565aa87a3e14d5",
+      "workspace_fingerprint": "cf654504cb5badab1c1c0afe734bd45be60edc2d1e6e4b65c29353b3d8cf6f29",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Frozen a deterministic 100-field cubic LMFDB corpus with 10 smoke, 60 tuning, and 30 held-out records, exact selection/source/content hashes, pinned-label replay, and offline validation. Added a strict v3 four-boundary evidence receipt and Sage.js, Sage/PARI, and direct-GP runners. Receipts bind requested versus achieved proof semantics, a common regulator-accuracy contract, exact rounded-decimal uncertainty, every retained sample answer/proof, streamed independent-field microbatches, phase timing, explicitly scoped process peak RSS, source/host/tool identity, resolved dynamic math libraries, and generated Sage.js runtime/native artifacts. A clean exact direct-GP receipt at 9a400f7e has canonical fingerprint a1becfffa260812c65041dc5b7b25bc115be54fa4cab9ccee58df6a5d95ee72c: timing evidence is accepted, while memory evidence intentionally fails closed because persistent warm peaks are case-process upper bounds. Conditional/unconditional medians were 1.96/1.96 ms kernel-warm, 2.32/2.35 ms field-cold, and 20/20 ms for both process-cold and release-cold. The complete native suite passed at the same implementation revision in 869.776 seconds.",
+    "risks": [
+      "Magma, Hecke, and Oscar are inventoried when available, but their corpus execution adapters remain explicitly unsupported. The 2026-08-25 local dry-run found Magma 2.18-5, Hecke 0.40.0, and Oscar 1.9.0-DEV; availability is host-specific.",
+      "No packaged Sage.js release launcher is provisioned, so release-cold Sage.js remains explicitly unavailable.",
+      "Source Sage.js evidence intentionally remains unavailable until a build receipt and ignored runtime/native artifact trees exactly match the clean benchmark revision.",
+      "Persistent case-process peak RSS is explicitly memory-ineligible for Gate C; a dedicated single-operation memory run is still required.",
+      "Exact timed execution currently requires GNU time and timeout on Linux; native process/RSS supervisors remain to be implemented for Windows and macOS.",
+      "The pinned stratified snapshot covers cubic smoke/tune/holdout workloads only; higher degrees and large-discriminant stress corpora remain future laboratory work."
+    ],
+    "next_steps": [
+      "Implement direct Magma and Julia Hecke/Oscar adapters with the same proof, output, regulator, batch, RSS, and artifact-identity contract.",
+      "Build Sage.js at the exact integrated clean revision, run smoke plus tuning on this host and bench-1, freeze optimization choices, and only then observe the held-out tier.",
+      "Provision and fingerprint the packaged Sage.js release for release-cold measurements.",
+      "Add native process-group and RSS supervisors for Windows and macOS before accepting performance evidence on those hosts.",
+      "Extend pinned corpora to degrees 2 through 10 and add large-memory/verification stress tiers before claiming broad Gate performance."
+    ]
+  }
+}

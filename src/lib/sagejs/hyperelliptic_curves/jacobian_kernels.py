@@ -934,6 +934,35 @@ def _cantor_add_one(
     return branch
 
 
+def _validate_packed_model(
+    model: UInt64Buffer,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    """Check the fixed-width odd-degree model header shared by packed kernels."""
+    checked_modulus = modulus + 0
+    if checked_modulus <= 2 or (genus != 2 and genus != 3) or len(model) != 12:
+        return 0
+    index: uint64 = 0
+    while index < 12:
+        if model[index] >= checked_modulus:
+            return 0
+        index += 1
+    index = 2 * genus + 2
+    while index < 8:
+        if model[index] != 0:
+            return 0
+        index += 1
+    index = genus + 1
+    while index < 4:
+        if model[8 + index] != 0:
+            return 0
+        index += 1
+    if model[2 * genus + 1] == 0:
+        return 0
+    return 1
+
+
 def _validate_packed_row(
     rows: UInt64Buffer,
     row_offset: uint64,
@@ -1022,32 +1051,9 @@ def packed_cantor_validate_batch(
     modulus: PrimeFieldModulus,
 ) -> bool:
     """Authenticate canonical serialized rows before copying any output."""
-    checked_modulus = modulus + 0
-    if (
-        checked_modulus <= 2
-        or (genus != 2 and genus != 3)
-        or len(model) != 12
-        or len(rows) != count * 8
-        or len(output) != count * 8
-        or len(statuses) != count
-    ):
+    if len(rows) != count * 8 or len(output) != count * 8 or len(statuses) != count:
         return False
-    index: uint64 = 0
-    while index < 12:
-        if model[index] >= checked_modulus:
-            return False
-        index += 1
-    index = 2 * genus + 2
-    while index < 8:
-        if model[index] != 0:
-            return False
-        index += 1
-    index = genus + 1
-    while index < 4:
-        if model[8 + index] != 0:
-            return False
-        index += 1
-    if model[2 * genus + 1] == 0:
+    if _validate_packed_model(model, genus, modulus) == 0:
         return False
     store = prime_zeros(16 * 10)
     item: uint64 = 0
@@ -1158,6 +1164,161 @@ def packed_cantor_add_batch(
 
 
 @native
+def packed_cantor_sum_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    elements: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Reduce one packed batch to its exact group sum in a single crossing."""
+    status_count: uint64 = 0
+    if count > 0:
+        status_count = count - 1
+    if len(output) != 8 or len(statuses) != status_count or len(elements) != count * 8:
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
+        return False
+    index: uint64 = 0
+    if count == 0:
+        index = 0
+        while index < 8:
+            output[index] = 0
+            index += 1
+        output[1] = 1
+        return True
+
+    store = prime_zeros(16 * 52)
+    accumulator = prime_zeros(8)
+    temporary = prime_zeros(8)
+    packed = _unpack_row(store, 0, 16, elements, 0, genus, modulus)
+    if packed == 0:
+        return False
+    index = 0
+    while index < 8:
+        accumulator[index] = elements[index]
+        index += 1
+    item: uint64 = 1
+    while item < count:
+        status = _cantor_add_one(
+            temporary,
+            0,
+            accumulator,
+            0,
+            elements,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        statuses[item - 1] = status
+        if status == 0:
+            return False
+        index = 0
+        while index < 8:
+            accumulator[index] = temporary[index]
+            index += 1
+        item += 1
+    index = 0
+    while index < 8:
+        output[index] = accumulator[index]
+        index += 1
+    return True
+
+
+@native
+def packed_cantor_negate_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    elements: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Negate a packed batch directly, without scalar-word marshalling."""
+    if len(output) != count * 8 or len(statuses) != count or len(elements) != count * 8:
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
+        return False
+    store = prime_zeros(16 * 52)
+    item: uint64 = 0
+    while item < count:
+        statuses[item] = _cantor_negate_one(
+            output,
+            item * 8,
+            elements,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if statuses[item] == 0:
+            return False
+        item += 1
+    return True
+
+
+@native
+def packed_cantor_subtract_batch(
+    output: UInt64Buffer,
+    statuses: UInt64Buffer,
+    model: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    count: uint64,
+    genus: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    """Subtract paired packed rows through one exact Cantor crossing."""
+    if (
+        len(output) != count * 8
+        or len(statuses) != count
+        or len(left) != count * 8
+        or len(right) != count * 8
+    ):
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
+        return False
+    store = prime_zeros(16 * 52)
+    negative = prime_zeros(8)
+    item: uint64 = 0
+    while item < count:
+        inverted = _cantor_negate_one(
+            negative,
+            0,
+            right,
+            item * 8,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if inverted == 0:
+            return False
+        statuses[item] = _cantor_add_one(
+            output,
+            item * 8,
+            left,
+            item * 8,
+            negative,
+            0,
+            model,
+            genus,
+            modulus,
+            store,
+        )
+        if statuses[item] == 0:
+            return False
+        item += 1
+    return True
+
+
+@native
 def packed_cantor_progression_batch(
     output: UInt64Buffer,
     statuses: UInt64Buffer,
@@ -1256,18 +1417,56 @@ def _scalar_operation_count(
     scalar_offset: uint64,
     words_per_scalar: uint64,
 ) -> uint64:
+    # Count the signed non-adjacent chain exactly. The first nonzero digit is
+    # copied (or negated) into the accumulator and is not a group operation.
     bits = _scalar_bit_length(scalar_words, scalar_offset, words_per_scalar)
     if bits == 0:
         return 0
-    additions: uint64 = 0
+    operations: uint64 = 0
+    started: uint64 = 0
+    carry: uint64 = 0
+    position: uint64 = 0
     word_index: uint64 = 0
-    while word_index < words_per_scalar:
-        word = scalar_words[scalar_offset + word_index]
-        while word > 0:
-            additions += word % 2
+    bit_in_word: uint64 = 0
+    word = scalar_words[scalar_offset]
+    while position < bits or carry != 0:
+        original_bit: uint64 = 0
+        if position < bits:
+            original_bit = word % 2
             word //= 2
-        word_index += 1
-    return additions + bits - 1
+        next_bit: uint64 = 0
+        if position + 1 < bits:
+            if bit_in_word + 1 < 64:
+                next_bit = word % 2
+            else:
+                next_bit = scalar_words[scalar_offset + word_index + 1] % 2
+        total = original_bit + carry
+        digit: uint64 = 0
+        if total == 0:
+            carry = 0
+        elif total == 2:
+            carry = 1
+        else:
+            digit = 1
+            carry = 0
+            if next_bit != 0:
+                digit = 2
+                carry = 1
+        if digit != 0:
+            if started != 0:
+                operations += 1
+            else:
+                started = 1
+        position += 1
+        bit_in_word += 1
+        if bit_in_word == 64:
+            word_index += 1
+            bit_in_word = 0
+            if word_index < words_per_scalar:
+                word = scalar_words[scalar_offset + word_index]
+        if position < bits or carry != 0:
+            operations += 1
+    return operations
 
 
 def _cantor_scalar_one(
@@ -1287,6 +1486,17 @@ def _cantor_scalar_one(
     addend: UInt64Buffer,
     temporary: UInt64Buffer,
 ) -> uint64:
+    packed = _unpack_row(
+        store,
+        0,
+        16,
+        element,
+        element_offset,
+        genus,
+        modulus,
+    )
+    if packed == 0:
+        return 0
     index: uint64 = 0
     while index < 8:
         accumulator[index] = 0
@@ -1295,34 +1505,107 @@ def _cantor_scalar_one(
     accumulator[0] = 0
     accumulator[1] = 1
     operations: uint64 = 0
-    used_words = words_per_scalar
-    while used_words > 0 and scalar_words[scalar_offset + used_words - 1] == 0:
-        used_words -= 1
+    started: uint64 = 0
+    carry: uint64 = 0
+    bits = _scalar_bit_length(scalar_words, scalar_offset, words_per_scalar)
+    position: uint64 = 0
     word_index: uint64 = 0
-    while word_index < used_words:
-        word = scalar_words[scalar_offset + word_index]
-        bit_count: uint64 = 64
-        if word_index + 1 == used_words:
-            bit_count = 0
-            remaining = word
-            while remaining > 0:
-                bit_count += 1
-                remaining //= 2
-        bit: uint64 = 0
-        while bit < bit_count:
-            if word % 2 == 1:
-                status = _cantor_add_one(
-                    temporary,
-                    0,
-                    accumulator,
-                    0,
-                    addend,
-                    0,
-                    model,
-                    genus,
-                    modulus,
-                    store,
-                )
+    bit_in_word: uint64 = 0
+    word: uint64 = 0
+    if bits != 0:
+        word = scalar_words[scalar_offset]
+    # Generate the width-two non-adjacent form from the immutable little-endian
+    # words. `carry` can create one final digit above the original top bit.
+    while position < bits or carry != 0:
+        original_bit: uint64 = 0
+        if position < bits:
+            original_bit = word % 2
+            word //= 2
+        next_bit: uint64 = 0
+        if position + 1 < bits:
+            if bit_in_word + 1 < 64:
+                next_bit = word % 2
+            else:
+                next_bit = scalar_words[scalar_offset + word_index + 1] % 2
+        total = original_bit + carry
+        digit: uint64 = 0
+        if total == 0:
+            carry = 0
+        elif total == 2:
+            carry = 1
+        else:
+            digit = 1
+            carry = 0
+            if next_bit != 0:
+                digit = 2
+                carry = 1
+        if digit != 0:
+            if started == 0:
+                if digit == 1:
+                    index = 0
+                    while index < 8:
+                        accumulator[index] = addend[index]
+                        index += 1
+                else:
+                    if (
+                        _cantor_negate_one(
+                            accumulator,
+                            0,
+                            addend,
+                            0,
+                            model,
+                            genus,
+                            modulus,
+                            store,
+                        )
+                        == 0
+                    ):
+                        return 0
+                started = 1
+            else:
+                status: uint64 = 0
+                # Keep the two borrowed roots explicit. Native Kernel v22 does
+                # not yet prove a buffer local safely rebindable between them.
+                if digit == 1:
+                    status = _cantor_add_one(
+                        temporary,
+                        0,
+                        accumulator,
+                        0,
+                        addend,
+                        0,
+                        model,
+                        genus,
+                        modulus,
+                        store,
+                    )
+                else:
+                    if (
+                        _cantor_negate_one(
+                            output,
+                            output_offset,
+                            addend,
+                            0,
+                            model,
+                            genus,
+                            modulus,
+                            store,
+                        )
+                        == 0
+                    ):
+                        return 0
+                    status = _cantor_add_one(
+                        temporary,
+                        0,
+                        accumulator,
+                        0,
+                        output,
+                        output_offset,
+                        model,
+                        genus,
+                        modulus,
+                        store,
+                    )
                 if status == 0:
                     return 0
                 index = 0
@@ -1330,29 +1613,33 @@ def _cantor_scalar_one(
                     accumulator[index] = temporary[index]
                     index += 1
                 operations += 1
-            word //= 2
-            if bit + 1 < bit_count or word_index + 1 < used_words:
-                status = _cantor_add_one(
-                    temporary,
-                    0,
-                    addend,
-                    0,
-                    addend,
-                    0,
-                    model,
-                    genus,
-                    modulus,
-                    store,
-                )
-                if status == 0:
-                    return 0
-                index = 0
-                while index < 8:
-                    addend[index] = temporary[index]
-                    index += 1
-                operations += 1
-            bit += 1
-        word_index += 1
+        position += 1
+        bit_in_word += 1
+        if bit_in_word == 64:
+            word_index += 1
+            bit_in_word = 0
+            if word_index < words_per_scalar:
+                word = scalar_words[scalar_offset + word_index]
+        if position < bits or carry != 0:
+            status = _cantor_add_one(
+                temporary,
+                0,
+                addend,
+                0,
+                addend,
+                0,
+                model,
+                genus,
+                modulus,
+                store,
+            )
+            if status == 0:
+                return 0
+            index = 0
+            while index < 8:
+                addend[index] = temporary[index]
+                index += 1
+            operations += 1
     index = 0
     while index < 8:
         output[output_offset + index] = accumulator[index]
@@ -1390,18 +1677,16 @@ def packed_cantor_scalar_batch(
 ) -> bool:
     """Multiply a batch by signed little-endian 64-bit scalar words."""
     item: uint64 = 0
-    checked_modulus = modulus + 0
     valid = (
-        (genus == 2 or genus == 3)
-        and checked_modulus > 2
-        and len(model) == 12
-        and len(output) == count * 8
+        len(output) == count * 8
         and len(statuses) == count
         and len(elements) == count * 8
         and len(scalar_words) == count * words_per_scalar
         and len(scalar_signs) == count
     )
     if not valid:
+        return False
+    if _validate_packed_model(model, genus, modulus) == 0:
         return False
     store = prime_zeros(16 * 52)
     accumulator = prime_zeros(8)

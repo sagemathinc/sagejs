@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -22,11 +23,12 @@ info = period_cache_info()
 runs = period.diagnostics()["refinement_runs"]
 assert period.verify()["verified"]
 assert len(runs) >= 2
-assert info["topology_entries"] == 1
-assert info["topology_hits"] >= 1
+assert info["topology_entries"] == 0
+assert info["topology_hits"] == 0
 assert info["topology_replans"] == 0
-assert info["angular_path_hits"] == 1
-assert info["exhaustive_path_fallbacks"] == 0
+assert info["geometry_entries"] == 0
+assert info["complete_arb_periods"] == 1
+assert info["complete_arb_fallbacks"] == 0
 assert all(
     attempt["engine"] == "arb-acb-gauss-legendre"
     and attempt["representation_bits"] > 53

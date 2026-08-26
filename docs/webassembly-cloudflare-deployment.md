@@ -16,8 +16,9 @@ caches immutable content-addressed assets at the edge.
 The deployment workflow does not build an unreviewed bundle. It accepts the run
 ID of a successful **Sage.js WebAssembly reproducible release** workflow,
 requires both clean builds, byte reproducibility, the native oracle, and all
-three browser parity jobs to have passed, then checks out that run's exact
-commit. It downloads one of the mutually verified artifacts, validates its
+browser parity, sharded performance, security, offline, and recovery gates to
+have passed, then checks out that run's exact commit. It downloads one of the
+mutually verified artifacts, validates its
 production manifest and embedded build receipt, and stages only authenticated
 runtime files. The publication step makes deterministic identity and Brotli
 representations, validates both, and uploads them before a Worker deployment
@@ -72,10 +73,19 @@ environments.
 
 ## Preview and production procedure
 
+For quick feedback on current `main`, **Sage.js WebAssembly fast candidate**
+performs one clean build, the complete Chromium parity corpus, and one sample of
+each performance workload. Its performance check enforces only absolute safety
+ceilings because one sample is not a statistically meaningful regression
+baseline. Candidate artifacts have distinct names, contain no deployment
+credentials, and are explicitly rejected by the deployment workflow. They can
+never substitute for a release run.
+
 First run **Sage.js WebAssembly reproducible release** for the candidate
 commit. Wait for its native oracle, two clean builds, reproducibility check,
-and Chromium, Firefox, and WebKit jobs to succeed. Copy the numeric run ID from
-the Actions URL.
+complete Chromium, Firefox, and WebKit parity, all twelve browser-performance
+shards, Chromium security/offline checks, WebKit recovery checks, and workload
+route enforcement to succeed. Copy the numeric run ID from the Actions URL.
 
 Then run **Deploy the Sage.js browser application** with that run ID:
 

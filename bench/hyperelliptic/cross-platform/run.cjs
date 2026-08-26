@@ -60,6 +60,7 @@ const algorithmEnvironment = [
   "SAGEJS_NATIVE_REQUIRED",
   "SAGEJS_NATIVE_AUTOLOAD",
   "SAGEJS_NATIVE_CACHE_DIR",
+  "SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY",
   "OMP_NUM_THREADS",
   "OPENBLAS_NUM_THREADS",
   "MKL_NUM_THREADS",
@@ -922,6 +923,11 @@ function runWorker(config, mode) {
     ...process.env,
     SAGEJS_NATIVE_CACHE_DIR: config.cacheRoot,
     SAGEJS_NATIVE_MODE: mode === "native" ? "auto" : "dynamic",
+    // A release policy may only enable a backend after these receipts exist.
+    // Disable that policy inside the isolated evidence workers so the native
+    // row measures the capable implementation instead of circularly requiring
+    // its own not-yet-published receipt.
+    SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
   };
   delete environment.SAGEJS_NATIVE_DISABLE;
   delete environment.SAGEJS_NATIVE_REQUIRED;
@@ -1051,6 +1057,7 @@ async function coordinatorMain(config) {
       cantor_scalar_repeat: config.cantorScalarRepeat,
       repeat: config.repeat,
       cache_root: config.cacheRoot,
+      receipt_policy: "off-for-explicit-receipt-collection",
       algorithm_environment: Object.fromEntries(
         algorithmEnvironment.map((name) => [name, process.env[name] ?? null]),
       ),

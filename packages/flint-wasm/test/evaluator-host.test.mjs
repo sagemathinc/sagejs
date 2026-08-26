@@ -2,13 +2,41 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  createBrowserRuntimeModules,
   createBrowserEnvironment,
   instrumentEllipticFallbackPrototype,
   instantiateSageEvaluator,
   normalizeBrowserPosixPath,
 } from "../evaluator.mjs";
 
-function fakeWorkerClass(initialization) {
+test("numpy-ts is loaded only for compiled NumPy imports and then cached", async () => {
+  const backend = { array() {}, NDArray: class NDArray {} };
+  const imports = [];
+  const modules = createBrowserRuntimeModules({
+    numpy: "receipt-bound:numpy-ts",
+    async importNumpy(url) {
+      imports.push(url);
+      return backend;
+    },
+  });
+  assert.deepEqual(await modules.prepare(["math", "statistics"]), []);
+  assert.equal(modules.get("numpy-ts"), undefined);
+  assert.deepEqual(await modules.prepare(["numpy.linalg"]), [
+    "specialist:numpy-ts",
+  ]);
+  assert.equal(modules.get("numpy-ts"), backend);
+  assert.deepEqual(await modules.prepare(["numpy"]), ["specialist:numpy-ts"]);
+  assert.deepEqual(imports, ["receipt-bound:numpy-ts"]);
+});
+
+test("numpy-ts specialist validation fails closed", async () => {
+  const modules = createBrowserRuntimeModules({
+    importNumpy: async () => ({ array() {} }),
+  });
+  await assert.rejects(modules.prepare(["numpy"]), /specialist is invalid/);
+});
+
+function fakeWorkerClass(initialization, moduleImports = () => []) {
   return class FakeWorker {
     static instances = [];
 
@@ -21,7 +49,11 @@ function fakeWorkerClass(initialization) {
       queueMicrotask(() => {
         const result = message.type === "initialize"
           ? initialization
-          : { javascript: message.source, dynamicImports: [] };
+          : {
+              javascript: message.source,
+              dynamicImports: [],
+              moduleImports: moduleImports(message.source),
+            };
         this.onmessage({ data: { id: message.id, ok: true, result } });
       });
     }
@@ -183,6 +215,48 @@ test("evaluator host shares process.env and separates stdout from stderr", async
     evaluator.terminate();
   }
   assert.equal(globalThis.ρσ_modules, originalModules);
+});
+
+test("compiled module dependencies prepare receipt-bound runtime specialists", async () => {
+  const backend = {
+    marker: "numpy-loaded",
+    array() {},
+    NDArray: class NDArray {},
+  };
+  const imports = [];
+  const WorkerConstructor = fakeWorkerClass(
+    "globalThis.ρσ_modules={builtins:{}};globalThis.ρσ_repr=String;",
+    (source) => source.includes('require("numpy-ts")') ? ["numpy"] : [],
+  );
+  const evaluator = await instantiateSageEvaluator({
+    ...backendOptions,
+    WorkerConstructor,
+    numpy: "receipt-bound:numpy-ts",
+    async importNumpy(url) {
+      imports.push(url);
+      return backend;
+    },
+  });
+  try {
+    const result = await evaluator.evaluate('require("numpy-ts").marker');
+    assert.equal(result.value, "numpy-loaded");
+    assert.deepEqual(imports, ["receipt-bound:numpy-ts"]);
+    assert.deepEqual(
+      result.instrumentation.routes.find(
+        (route) => route.capability_id === "specialist:numpy-ts",
+      ),
+      {
+        capability_id: "specialist:numpy-ts",
+        selected_route: "receipt-backed-wasm-artifact",
+        execution_target: "wasm-artifact",
+        call_count: 1,
+        ingress_bytes: 0,
+        egress_bytes: 0,
+      },
+    );
+  } finally {
+    evaluator.terminate();
+  }
 });
 
 test("evaluated code cannot discover or invoke the private route recorder", async () => {

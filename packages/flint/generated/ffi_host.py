@@ -269,6 +269,7 @@ from sagejs.ffi.flint import (
     dirichlet_group_size as _ffi_dirichlet_group_size,
     dirichlet_group_num_primitive as _ffi_dirichlet_group_num_primitive,
     n_is_prime as _ffi_n_is_prime,
+    arith_number_of_partitions as _ffi_arith_number_of_partitions,
     fmpz_gcd as _ffi_fmpz_gcd,
     fmpz_mat_rank as _ffi_fmpz_mat_rank,
     fmpz_mat_mul as _ffi_fmpz_mat_mul,
@@ -277,6 +278,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_hnf as _ffi_fmpz_mat_hnf,
     fmpz_mat_hnf_modular_eldiv as _ffi_fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform as _ffi_fmpz_mat_hnf_transform,
+    fmpz_mat_lll_transform as _ffi_fmpz_mat_lll_transform,
     fmpz_mat_snf_transform as _ffi_fmpz_mat_snf_transform,
     fmpz_mat_right_kernel as _ffi_fmpz_mat_right_kernel,
     fmpq_mat_rank as _ffi_fmpq_mat_rank,
@@ -431,6 +433,7 @@ from sagejs.ffi.flint import (
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
     number_field_order_with_round2_proof_resource as _ffi_number_field_order_with_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
+    integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -2976,6 +2979,15 @@ def wordIsPrime(
 
 
 @native
+def numberOfPartitions(
+    size: uint64,
+) -> Integer:
+    return _ffi_arith_number_of_partitions(
+        size,
+    )
+
+
+@native
 def gcd(
     left: Integer,
     right: Integer,
@@ -3093,6 +3105,23 @@ def ffiFmpzMatHnfTransform(
     columns: uint64,
 ) -> bool:
     return _ffi_fmpz_mat_hnf_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def ffiFmpzMatLllTransform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return _ffi_fmpz_mat_lll_transform(
         output,
         transform,
         source,
@@ -5160,4 +5189,23 @@ def ffiNumberFieldAnalyzeResource(
         polynomial,
         scale,
         trial_bound,
+    )
+
+
+@native
+def ffiIntegerLogSqrtBallsPacked(
+    output: IntegerBuffer,
+    source: IntegerBuffer,
+    output_length: uint64,
+    count: uint64,
+    one: uint64,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_packed(
+        output,
+        source,
+        output_length,
+        count,
+        one,
+        precision,
     )

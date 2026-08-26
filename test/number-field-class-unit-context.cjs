@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -190,7 +191,8 @@ live_replay_diagnostics = square_index_certificate.workspace_diagnostics()
 assert live_replay_diagnostics["certificate_replay_calls"] == 1
 assert live_replay_diagnostics["regulator_cache_hits"] == 1
 assert live_replay_diagnostics["prime_enumeration_cache_hits"] == 1
-assert live_replay_diagnostics["splitting_cache_hits"] == 1
+assert live_replay_diagnostics["splitting_cache_hits"] == 0
+assert live_replay_diagnostics["prime_power_plan_cache_hits"] == 1
 assert live_replay_diagnostics["finite_term_cache_hits"] == 1
 detached_index_certificate = UnitSaturationIndexCertificate.from_dict(
     square_index_certificate.to_dict()

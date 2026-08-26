@@ -363,6 +363,36 @@ function createGlobalInstaller(target) {
   };
 }
 
+export function createBrowserRuntimeModules({
+  numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
+  importNumpy = (url) => import(String(url)),
+} = {}) {
+  const modules = new Map();
+  let numpyPromise;
+  const requiresNumpy = (imports) => imports.some(
+    (name) => name === "numpy" || name.startsWith("numpy."),
+  );
+  return Object.freeze({
+    async prepare(imports) {
+      if (!requiresNumpy(imports)) return [];
+      numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
+        if (module === null || typeof module !== "object" ||
+            typeof module.array !== "function" ||
+            typeof module.NDArray !== "function") {
+          throw new TypeError("browser numpy-ts specialist is invalid");
+        }
+        modules.set("numpy-ts", module);
+        return module;
+      });
+      await numpyPromise;
+      return ["specialist:numpy-ts"];
+    },
+    get(name) {
+      return modules.get(name);
+    },
+  });
+}
+
 /**
  * Create a persistent Sage.js evaluator in the current isolated worker.
  *
@@ -382,11 +412,20 @@ export async function instantiateSageEvaluator({
   nativeKernels = undefined,
   m4ri,
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
+  numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
   compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
+  foreignFrontend = new URL("./dist/foreign-frontend.mjs", import.meta.url),
   treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
   pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
   sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+  foreignGrammars = Object.freeze({
+    magma: new URL("./dist/tree-sitter-magma.wasm", import.meta.url),
+    macaulay2: new URL("./dist/tree-sitter-macaulay2.wasm", import.meta.url),
+    maple: new URL("./dist/tree-sitter-maple.wasm", import.meta.url),
+    matlab: new URL("./dist/tree-sitter-matlab.wasm", import.meta.url),
+    wolfram: new URL("./dist/tree-sitter-wolfram.wasm", import.meta.url),
+  }),
   capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
   autoReceiptPolicy = new URL(
     "./dist/hyperelliptic-auto-receipt-policy.json",
@@ -396,6 +435,7 @@ export async function instantiateSageEvaluator({
   instantiateFlint = instantiateFlintFactor,
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
+  importNumpy = (url) => import(String(url)),
   fetchLazyModules = fetchLazyModuleBundle,
   createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
@@ -414,6 +454,7 @@ export async function instantiateSageEvaluator({
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
+  const runtimeModules = createBrowserRuntimeModules({ numpy, importNumpy });
   const abort = (error) => {
     try {
       conwayDataResource?.close();
@@ -474,9 +515,13 @@ export async function instantiateSageEvaluator({
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),
         compilerFrontend: String(compilerFrontend),
+        foreignFrontend: String(foreignFrontend),
         treeSitterRuntime: String(treeSitterRuntime),
         pythonGrammar: String(pythonGrammar),
         sageGrammar: String(sageGrammar),
+        foreignGrammars: Object.fromEntries(
+          Object.entries(foreignGrammars).map(([name, url]) => [name, String(url)]),
+        ),
       }),
       fetchLazyModules(lazyModules),
       conwayDataResource.ready.then(() => true),
@@ -635,6 +680,8 @@ export async function instantiateSageEvaluator({
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;
     }
+    const runtimeModule = runtimeModules.get(name);
+    if (runtimeModule !== undefined) return runtimeModule;
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
   const browserEnvironment = createBrowserEnvironment();
@@ -896,7 +943,9 @@ export async function instantiateSageEvaluator({
       typeof compiled !== "object" ||
       typeof compiled.javascript !== "string" ||
       !Array.isArray(compiled.dynamicImports) ||
-      compiled.dynamicImports.some((name) => typeof name !== "string")
+      compiled.dynamicImports.some((name) => typeof name !== "string") ||
+      !Array.isArray(compiled.moduleImports) ||
+      compiled.moduleImports.some((name) => typeof name !== "string")
     ) {
       throw new TypeError("browser compiler returned an invalid program");
     }
@@ -919,6 +968,16 @@ export async function instantiateSageEvaluator({
       return graphic;
     };
     try {
+      const runtimeCapabilityIds = await runtimeModules.prepare(
+        compiled.moduleImports,
+      );
+      for (const capabilityId of runtimeCapabilityIds) {
+        capabilityDispatchTrace.record(
+          capabilityId,
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      }
       for (const name of compiled.dynamicImports) lazyModuleLoader(name);
       const value = globalEvaluate(compiled.javascript);
       return {

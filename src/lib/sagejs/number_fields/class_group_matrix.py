@@ -40,6 +40,13 @@ PRESENTATION_POLICY_SCHEMA = (
 PRESENTATION_DECISION_SCHEMA = (
     "sagejs.number-fields/deferred-relation-presentation-decision-v1"
 )
+MAX_PACKED_PRESENTATION_DIMENSION = 256
+MAX_PACKED_PRESENTATION_VALUES = 65_536
+MAX_PACKED_PRESENTATION_ENTRY_BITS = 16_384
+MAX_PACKED_PRESENTATION_OUTPUT_WORDS = 1_000_000
+
+_presentation_replay_kernel_override: Any = None
+_presentation_forms_kernel_override: Any = None
 
 
 class RelationMatrixError(ValueError):
@@ -1016,6 +1023,128 @@ def _determinant_exact(rows: Sequence[Sequence[int]]) -> int:
         return _determinant(rows)
 
 
+def _readable_relation_presentation_replay(
+    source: list[list[int]],
+    hnf: list[list[int]],
+    hnf_left: list[list[int]],
+    smith: list[list[int]],
+    smith_left: list[list[int]],
+    smith_right: list[list[int]],
+    smith_inverse: list[list[int]],
+) -> bool:
+    """Replay the exact matrix identities through the readable oracle."""
+    if _matrix_multiply(hnf_left, source) != hnf:
+        return False
+    if _matrix_multiply(_matrix_multiply(smith_left, source), smith_right) != smith:
+        return False
+    identity = _identity(len(smith_right))
+    if _matrix_multiply(smith_inverse, smith_right) != identity:
+        return False
+    if _matrix_multiply(smith_right, smith_inverse) != identity:
+        return False
+    if abs(_determinant_exact(hnf_left)) != 1:
+        return False
+    if abs(_determinant_exact(smith_left)) != 1:
+        return False
+    return abs(_determinant_exact(smith_right)) == 1
+
+
+def _packed_relation_presentation_replay(
+    source: list[list[int]],
+    hnf: list[list[int]],
+    hnf_left: list[list[int]],
+    smith: list[list[int]],
+    smith_left: list[list[int]],
+    smith_right: list[list[int]],
+    smith_inverse: list[list[int]],
+) -> bool | None:
+    """Use one bounded isolated FLINT call, or decline to the exact oracle."""
+    rows = len(source)
+    columns = len(source[0]) if source else 0
+    if (
+        rows < 1
+        or columns < 1
+        or rows > MAX_PACKED_PRESENTATION_DIMENSION
+        or columns > MAX_PACKED_PRESENTATION_DIMENSION
+        or rows * columns > MAX_PACKED_PRESENTATION_VALUES
+        or rows * rows > MAX_PACKED_PRESENTATION_VALUES
+        or columns * columns > MAX_PACKED_PRESENTATION_VALUES
+        or _presentation_replay_kernel_override is False
+    ):
+        return None
+    matrices = (
+        source,
+        hnf,
+        hnf_left,
+        smith,
+        smith_left,
+        smith_right,
+        smith_inverse,
+    )
+    maximum_bits = 1
+    for matrix in matrices:
+        for row in matrix:
+            for value in row:
+                maximum_bits = max(maximum_bits, abs(value).bit_length())
+    if maximum_bits > MAX_PACKED_PRESENTATION_ENTRY_BITS:
+        return None
+    largest_dimension = max(rows, columns)
+    product_bits = 3 * maximum_bits + 2 * largest_dimension.bit_length() + 3
+    determinant_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    product_words = max(8, (product_bits + 63) // 64 + 2)
+    determinant_words = max(8, (determinant_bits + 63) // 64 + 2)
+    output_words = (
+        2 * rows * columns + columns * columns
+    ) * product_words + determinant_words
+    if output_words > MAX_PACKED_PRESENTATION_OUTPUT_WORDS:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["dense_integer_flint"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = (
+            _presentation_replay_kernel_override
+            if callable(_presentation_replay_kernel_override)
+            else kernel_module.flint_relation_presentation_replay
+        )
+        packed = [
+            native_module.kernel_integer_buffer(
+                kernel, [value for row in matrix for value in row]
+            )
+            for matrix in matrices
+        ]
+        status = kernel(
+            native_module.kernel_integer_zeros(kernel, rows * columns, product_words),
+            native_module.kernel_integer_zeros(kernel, rows * columns, product_words),
+            native_module.kernel_integer_zeros(
+                kernel, columns * columns, product_words
+            ),
+            native_module.kernel_integer_zeros(kernel, 1, determinant_words),
+            *packed,
+            rows,
+            columns,
+            1,
+        )
+    except (
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        return None
+    if status == 1:
+        return True
+    if status == 0:
+        return False
+    return None
+
+
 def _invert_unimodular(rows: Sequence[Sequence[int]]) -> list[list[int]]:
     size = len(rows)
     if any(len(row) != size for row in rows):
@@ -1291,6 +1420,130 @@ def _flint_forms(
     )
 
 
+def _packed_flint_forms(
+    source: list[list[int]], columns: int
+) -> (
+    tuple[
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+        list[list[int]],
+    ]
+    | None
+):
+    """Extract FLINT transforms directly through bounded integer buffers.
+
+    The general matrix API owns cached native matrix resources and is the
+    right boundary for public matrix objects.  Relation presentations only
+    need five canonical integer arrays once, so constructing seven Matrix
+    wrappers and reading their entries back dominates FLINT on the small
+    matrices used by class-group relation collection.  This path calls the
+    same source-transparent HNF/SNF kernels directly.  Any unsupported shape,
+    output-capacity failure, or unavailable kernel falls back to `_flint_forms`.
+    """
+    rows = len(source)
+    if (
+        rows < 1
+        or columns < 1
+        or rows > MAX_PACKED_PRESENTATION_DIMENSION
+        or columns > MAX_PACKED_PRESENTATION_DIMENSION
+        or rows * columns > MAX_PACKED_PRESENTATION_VALUES
+        or rows * rows > MAX_PACKED_PRESENTATION_VALUES
+        or columns * columns > MAX_PACKED_PRESENTATION_VALUES
+        or _presentation_forms_kernel_override is False
+    ):
+        return None
+    maximum_bits = 1
+    for row in source:
+        if len(row) != columns:
+            return None
+        for value in row:
+            if isinstance(value, bool) or not isinstance(value, int):
+                return None
+            maximum_bits = max(maximum_bits, abs(value).bit_length())
+    if maximum_bits > MAX_PACKED_PRESENTATION_ENTRY_BITS:
+        return None
+    largest_dimension = max(rows, columns)
+    output_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    word_capacity = max(8, (output_bits + 63) // 64 + 2)
+    output_entries = 2 * rows * columns + 2 * rows * rows + columns * columns
+    if output_entries * word_capacity > MAX_PACKED_PRESENTATION_OUTPUT_WORDS:
+        return None
+
+    def reshape(values: Any, row_count: int, column_count: int) -> list[list[int]]:
+        materialized = list(values)
+        if len(materialized) != row_count * column_count:
+            raise ArithmeticError("packed matrix form has the wrong size")
+        return [
+            materialized[index * column_count : (index + 1) * column_count]
+            for index in range(row_count)
+        ]
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.dense_integer_flint",
+            fromlist=["dense_integer_flint"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        override = _presentation_forms_kernel_override
+        if isinstance(override, tuple) and len(override) == 2:
+            hnf_kernel, smith_kernel = override
+        else:
+            hnf_kernel = kernel_module.flint_dense_integer_matrix_hnf_transform
+            smith_kernel = kernel_module.flint_dense_integer_matrix_snf_transform
+        flat = [entry for row in source for entry in row]
+
+        hnf_source = native_module.kernel_integer_buffer(hnf_kernel, flat)
+        hnf = native_module.kernel_integer_zeros(
+            hnf_kernel, rows * columns, word_capacity
+        )
+        hnf_left = native_module.kernel_integer_zeros(
+            hnf_kernel, rows * rows, word_capacity
+        )
+        if not hnf_kernel(hnf, hnf_left, hnf_source, rows, columns):
+            return None
+
+        smith_source = native_module.kernel_integer_buffer(smith_kernel, flat)
+        smith = native_module.kernel_integer_zeros(
+            smith_kernel, rows * columns, word_capacity
+        )
+        smith_left = native_module.kernel_integer_zeros(
+            smith_kernel, rows * rows, word_capacity
+        )
+        smith_right = native_module.kernel_integer_zeros(
+            smith_kernel, columns * columns, word_capacity
+        )
+        if not smith_kernel(
+            smith,
+            smith_left,
+            smith_right,
+            smith_source,
+            rows,
+            columns,
+        ):
+            return None
+        values = native_module.integer_buffer_values
+        return (
+            reshape(values(hnf), rows, columns),
+            reshape(values(hnf_left), rows, rows),
+            reshape(values(smith), rows, columns),
+            reshape(values(smith_left), rows, rows),
+            reshape(values(smith_right), columns, columns),
+        )
+    except (
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ):
+        return None
+
+
 def _checked_matrix(
     value: Any, rows: int, columns: int, label: str
 ) -> tuple[tuple[int, ...], ...]:
@@ -1419,20 +1672,65 @@ class RelationPresentation:
         smith_left = [list(row) for row in self.smith_left_transform]
         smith_right = [list(row) for row in self.smith_right_transform]
         smith_inverse = [list(row) for row in self.smith_right_inverse]
-        if _matrix_multiply(hnf_left, source) != hnf:
+        matrix_replay = _packed_relation_presentation_replay(
+            source,
+            hnf,
+            hnf_left,
+            smith,
+            smith_left,
+            smith_right,
+            smith_inverse,
+        )
+        if matrix_replay is None:
+            matrix_replay = _readable_relation_presentation_replay(
+                source,
+                hnf,
+                hnf_left,
+                smith,
+                smith_left,
+                smith_right,
+                smith_inverse,
+            )
+        if not matrix_replay:
             return False
-        if _matrix_multiply(_matrix_multiply(smith_left, source), smith_right) != smith:
-            return False
-        identity = _identity(self.column_count)
-        if _matrix_multiply(smith_inverse, smith_right) != identity:
-            return False
-        if _matrix_multiply(smith_right, smith_inverse) != identity:
-            return False
-        if abs(_determinant_exact(hnf_left)) != 1:
-            return False
-        if abs(_determinant_exact(smith_left)) != 1:
-            return False
-        if abs(_determinant_exact(smith_right)) != 1:
+        expected_diagonal = tuple(
+            self.smith[index][index]
+            for index in range(min(self.row_count, self.column_count))
+        )
+        expected_rank = sum(1 for value in expected_diagonal if value != 0)
+        expected_diagonal = expected_diagonal[:expected_rank]
+        expected_positions = tuple(
+            index for index, value in enumerate(expected_diagonal) if value > 1
+        )
+        expected_invariants = tuple(
+            expected_diagonal[index] for index in expected_positions
+        )
+        expected_order = (
+            None if self.column_count - expected_rank else _product(expected_diagonal)
+        )
+        expected_generator_positions = expected_positions + tuple(
+            range(expected_rank, self.column_count)
+        )
+        expected_generator_transforms = tuple(
+            self.smith_right_inverse[position]
+            for position in expected_generator_positions
+        )
+        expected_dependencies = tuple(
+            self.smith_left_transform[index]
+            for index in range(expected_rank, self.row_count)
+        )
+        if (
+            self.rank != expected_rank
+            or self.diagonal != expected_diagonal
+            or self.free_rank != self.column_count - expected_rank
+            or self.invariant_positions != expected_positions
+            or self.invariants != expected_invariants
+            or self.order != expected_order
+            or self.generator_positions != expected_generator_positions
+            or self.generator_transforms != expected_generator_transforms
+            or self.dependency_transforms != expected_dependencies
+            or self.unit_transforms != expected_dependencies
+        ):
             return False
         diagonal_limit = min(self.row_count, self.column_count)
         previous = 1
@@ -1505,6 +1803,69 @@ class RelationPresentation:
         return answer
 
 
+def extend_relation_presentation_with_duplicate_rows(
+    presentation: RelationPresentation,
+    rows: Iterable[Any],
+) -> RelationPresentation:
+    """Extend exact transforms when each appended relation duplicates a row.
+
+    A new row equal to source row `j` contributes the primitive dependency
+    `new - j = 0`.  Appending that dependency to both left transforms and a
+    zero row to HNF/SNF preserves unimodularity and every invariant without
+    recomputing either normal form.  This is useful for unit witnesses: two
+    distinct principal generators with the same valuation row differ by an
+    exact unit.
+    """
+    if not isinstance(presentation, RelationPresentation):
+        raise RelationMatrixError("a duplicate-row extension needs a presentation")
+    columns = presentation.column_count
+    retained = list(presentation.relation_rows)
+    duplicate_sources: list[int] = []
+    appended: list[SparseRelationRow] = []
+    for raw_row in rows:
+        row = SparseRelationRow(columns, raw_row)
+        source = next(
+            (index for index, existing in enumerate(retained) if existing == row),
+            None,
+        )
+        if source is None:
+            raise RelationMatrixError("an appended relation is not a duplicate row")
+        duplicate_sources.append(source)
+        appended.append(row)
+        retained.append(row)
+    if not appended:
+        return presentation
+    old_count = presentation.row_count
+    new_count = len(retained)
+
+    def extend_left(transform: tuple[tuple[int, ...], ...]) -> list[list[int]]:
+        answer = [list(row) + [0] * len(appended) for row in transform]
+        for offset, source in enumerate(duplicate_sources):
+            row = [0] * new_count
+            row[source] = -1
+            row[old_count + offset] = 1
+            answer.append(row)
+        return answer
+
+    zero_rows = [[0] * columns for _row in appended]
+    answer = RelationPresentation(
+        columns,
+        retained,
+        [list(row) for row in presentation.hnf] + zero_rows,
+        extend_left(presentation.hnf_left_transform),
+        [list(row) for row in presentation.smith] + zero_rows,
+        extend_left(presentation.smith_left_transform),
+        presentation.smith_right_transform,
+        presentation.smith_right_inverse,
+        presentation.backend,
+    )
+    if not answer.verify():
+        raise RelationMatrixError(
+            "a duplicate-row presentation extension failed replay"
+        )
+    return answer
+
+
 def _product(values: Iterable[int]) -> int:
     answer = 1
     for value in values:
@@ -1551,9 +1912,10 @@ def extract_relation_presentation(
     smith_right: list[list[int]] = []
     if backend in ("auto", "flint") and source:
         try:
-            hnf, hnf_left, smith, smith_left, smith_right = _flint_forms(
-                source, columns
-            )
+            packed_forms = _packed_flint_forms(source, columns)
+            if packed_forms is None:
+                packed_forms = _flint_forms(source, columns)
+            hnf, hnf_left, smith, smith_left, smith_right = packed_forms
             selected = "flint"
         except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
             if backend == "flint":
@@ -1581,6 +1943,100 @@ def extract_relation_presentation(
     if not answer.verify():
         raise ArithmeticError("exact relation presentation failed replay verification")
     return answer
+
+
+def exact_relation_hnf_support(
+    rows: Iterable[Any], column_count: int
+) -> tuple[tuple[tuple[int, ...], ...], tuple[int, ...]]:
+    """Return the exact nonzero row-HNF basis and its source-row support.
+
+    This is the HNF-only boundary for relation proposal selection.  It avoids
+    computing an SNF, while still replaying the left transform and checking
+    that it is unimodular.  The returned support contains every source row
+    used by a nonzero canonical HNF row.
+    """
+    columns = _nonnegative_integer(column_count, "column_count")
+    source: list[list[int]] = []
+    for raw_row in rows:
+        if isinstance(raw_row, SparseRelationRow):
+            if raw_row.column_count != columns:
+                raise RelationMatrixError("relation row has the wrong column count")
+            source.append(raw_row.dense())
+            continue
+        if isinstance(raw_row, (list, tuple)):
+            row = list(raw_row)
+            if len(row) != columns or any(
+                not isinstance(value, int) or isinstance(value, bool) for value in row
+            ):
+                raise RelationMatrixError(
+                    "dense relation rows require exact integer entries"
+                )
+            source.append(row)
+            continue
+        source.append(SparseRelationRow(columns, raw_row).dense())
+    if not source:
+        return (), ()
+    native_replayed = False
+    try:
+        row_count = len(source)
+        flat = [entry for row in source for entry in row]
+        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
+        algebra_module = __import__("sagejs._baselib.algebra", fromlist=["ZZ"])
+        matrix = matrix_module.matrix(algebra_module.ZZ, row_count, columns, flat)
+        hermite, hermite_left = matrix.hermite_form(transformation=True)
+        if hermite_left * matrix != hermite:
+            raise ArithmeticError("exact relation HNF transform failed replay")
+        if abs(int(hermite_left.determinant())) != 1:
+            raise ArithmeticError("exact relation HNF transform is not unimodular")
+        rank = int(hermite.rank())
+        hnf = _sage_rows(hermite, rank, columns)
+        left = _sage_rows(hermite_left, rank, row_count)
+        native_replayed = True
+    except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
+        hnf, left = _python_hnf_transform(source, columns)
+    if not native_replayed:
+        if _matrix_multiply(left, source) != hnf:
+            raise ArithmeticError("exact relation HNF transform failed replay")
+        if abs(_determinant_exact(left)) != 1:
+            raise ArithmeticError("exact relation HNF transform is not unimodular")
+    nonzero = [index for index, row in enumerate(hnf) if any(row)]
+    basis = tuple(tuple(int(value) for value in hnf[index]) for index in nonzero)
+    support = tuple(
+        sorted(
+            {
+                source_index
+                for index in nonzero
+                for source_index, coefficient in enumerate(left[index])
+                if coefficient != 0
+            }
+        )
+    )
+    return basis, support
+
+
+def exact_relation_hnf_basis(
+    rows: Iterable[Any], column_count: int
+) -> tuple[tuple[int, ...], ...]:
+    """Return the exact nonzero row-HNF basis without computing an SNF."""
+    columns = _nonnegative_integer(column_count, "column_count")
+    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
+    source = [row.dense() for row in sparse_rows]
+    if not source:
+        return ()
+    try:
+        row_count = len(source)
+        flat = [entry for row in source for entry in row]
+        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
+        algebra_module = __import__("sagejs._baselib.algebra", fromlist=["ZZ"])
+        matrix = matrix_module.matrix(algebra_module.ZZ, row_count, columns, flat)
+        hermite = matrix.hermite_form(include_zero_rows=False)
+        return tuple(
+            tuple(int(hermite[row, column]) for column in range(columns))
+            for row in range(hermite.nrows())
+        )
+    except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
+        hnf, _left = _python_hnf_transform(source, columns)
+        return tuple(tuple(int(value) for value in row) for row in hnf if any(row))
 
 
 def modular_rank_and_pivots(
@@ -1618,6 +2074,9 @@ __all__ = [
     "RelationMatrixError",
     "RelationPresentation",
     "SparseRelationRow",
+    "exact_relation_hnf_basis",
+    "exact_relation_hnf_support",
+    "extend_relation_presentation_with_duplicate_rows",
     "extract_relation_presentation",
     "modular_rank_and_pivots",
 ]

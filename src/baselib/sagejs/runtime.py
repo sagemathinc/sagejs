@@ -21,6 +21,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_json_scalar_sequence
+# globals: ρσ_canonical_json_exact
 # globals: ρσ_integer_buffer, ρσ_integer_buffer_from_packed_bytes
 # globals: ρσ_integer_buffer_prefix
 # globals: ρσ_integer_buffer_to_packed_bytes
@@ -505,6 +506,16 @@ def json_scalar_sequence(source):
     non-finite floating-point entries are normalized to `None`.
     """
     return ρσ_json_scalar_sequence(source)
+
+
+def canonical_json_exact(source):
+    """Encode nested exact data as compact sorted-key canonical JSON.
+
+    The native representation boundary accepts only ASCII strings, string-keyed
+    dictionaries, lists/tuples, exact integers, booleans, and `None`. Return
+    `None` whenever ordinary Python JSON encoding must handle the value.
+    """
+    return ρσ_canonical_json_exact(source)
 
 
 def wall_time():

@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -327,19 +328,62 @@ generic59 = bounded_cubic_minkowski_class_number(K59)
 assert generic59.complete and generic59.order() == 1
 assert generic59.certificate.obstructions == []
 assert generic59.certificate.verify()
+assert generic59.diagnostics["relation_search"]["integral_sieve_candidates"] == 0
+assert len(generic59.relation_records) == 1
+assert generic59.relation_records[0].row == (1,)
+assert generic59.relation_records[0].provenance["algorithm"] == (
+    "packed-cubic-attached-prime-generator"
+)
 
 # The nontrivial quotient is proved exact without units, a regulator, or hR.
 K1083 = NumberField(x**3 - x**2 - 6*x - 12, "d")
-classes1083 = bounded_cubic_minkowski_class_number(K1083)
+matrix_module = __import__(
+    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+)
+presentation_from_dict = matrix_module.RelationPresentation.from_dict
+presentation_replays = [0]
+def counting_presentation_replay(value):
+    presentation_replays[0] += 1
+    return presentation_from_dict(value)
+matrix_module.RelationPresentation.from_dict = counting_presentation_replay
+engine_module = __import__(
+    "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
+)
+engine_type = engine_module.ClassUnitGroupEngine
+class ForbiddenClassUnitEngine:
+    def __init__(self, *args, **kwargs):
+        raise AssertionError("a full-rank cubic prefix constructed the general engine")
+engine_module.ClassUnitGroupEngine = ForbiddenClassUnitEngine
+try:
+    classes1083 = bounded_cubic_minkowski_class_number(K1083)
+finally:
+    engine_module.ClassUnitGroupEngine = engine_type
+matrix_module.RelationPresentation.from_dict = presentation_from_dict
+assert presentation_replays[0] == 0
 assert classes1083.complete and classes1083.order() == 3
 assert classes1083.proof_status == "exact-unconditional"
 assert classes1083.presentation.invariants == (3,)
 assert classes1083.diagnostics["quotient_order"] == 3
 assert classes1083.diagnostics["projective_lines"] == 1
 assert classes1083.diagnostics["residue_states"] <= 500000
-assert classes1083.diagnostics["relation_search"]["relation_attempts"] > 0
-assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 5
-assert len(classes1083.relation_records) == 7
+assert classes1083.diagnostics["relation_search"]["relation_attempts"] == 0
+assert classes1083.diagnostics["relation_search"]["ideals_tested"] == 0
+assert classes1083.diagnostics["relation_search"]["relation_candidates"] == 0
+assert classes1083.diagnostics["relation_search"]["integral_sieve_candidates"] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_valuation_limit"
+] == 8
+assert classes1083.diagnostics["relation_search"][
+    "integral_sieve_prefix_proved"
+] == 1
+assert classes1083.diagnostics["relation_search"]["integral_sieve_selected"] == 3
+assert classes1083.diagnostics["relation_search"]["integral_sieve_relations"] == 3
+assert classes1083.diagnostics["relation_search"]["integral_sieve_fallback"] == 0
+assert classes1083.diagnostics["relation_search"][
+    "relation_prefix_finalized_without_search"
+] == 1
+assert classes1083.diagnostics["relation_search"]["presentation_extractions"] == 1
+assert len(classes1083.relation_records) == 5
 assert set(classes1083.diagnostics["phase_timings"]) == {
     "factor_base", "relations", "norm_obstructions", "certificate_encoding", "total"
 }
@@ -348,12 +392,8 @@ assert isinstance(certificate1083, CubicMinkowskiClassNumberCertificate)
 assert len(certificate1083.obstructions) == 1
 assert certificate1083.obstructions[0]["modulus"] == 19
 assert certificate1083.verify()
-# The presentation was replayed once when the immutable certificate was
-# constructed; reading its certified order must not deserialize the SNF again.
-matrix_module = __import__(
-    "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
-)
-presentation_from_dict = matrix_module.RelationPresentation.from_dict
+# The live engine issued the immutable certificate without replaying its own
+# exact presentation; reading its certified order must not deserialize it.
 def forbidden_presentation_replay(value):
     raise AssertionError("class_number replayed its immutable presentation")
 matrix_module.RelationPresentation.from_dict = forbidden_presentation_replay

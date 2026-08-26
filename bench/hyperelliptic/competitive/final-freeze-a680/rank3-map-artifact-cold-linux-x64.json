@@ -1,0 +1,230 @@
+{
+  "schema": "sagejs.hyperelliptic.rank3-process-cold.v2",
+  "recorded_at": "2026-08-25T06:50:12.626Z",
+  "source": {
+    "commit": "a680c04d06fbffd7831a96b3d6e0791ebfc39f26",
+    "status": "clean"
+  },
+  "runtime": {
+    "node": "v22.22.2",
+    "platform": "linux",
+    "architecture": "x64"
+  },
+  "contract": {
+    "fixture": "Jacobian of y^2 + (x^2 + 1)y = x^5 + x + 1 over GF(5)",
+    "invariants": [
+      2,
+      2,
+      8
+    ],
+    "query": [
+      1,
+      1,
+      7
+    ],
+    "point_enumerations_per_map": 1,
+    "baseline_seconds": 8.103,
+    "maximum_seconds": 0.8103,
+    "process_per_sample": true,
+    "algorithm": "auto",
+    "auto_receipt_policy": "off-for-explicit-receipt-collection"
+  },
+  "exact_digest": "21d8ee6674e29fa7ba1fc685e187b6a65f9c9c327893306b20ed4d986cdb5eca",
+  "samples": [
+    {
+      "certificate": null,
+      "inverse_table_size": 32,
+      "order": "32",
+      "point_enumerations": 1,
+      "prepared_capability": {
+        "available": true,
+        "genus": 2,
+        "model_fingerprint": "5d57e859a9e79d6cf58c133e3727b859ee5cf7ea3cfa085013005b0f08c05a9f",
+        "model_kind": "odd-degree-one-infinity",
+        "multi_search_available": true,
+        "prime": 5,
+        "reason": "development-auto-policy-absent",
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "search_available": true,
+        "selected": "native",
+        "validation_available": true
+      },
+      "query": [
+        1,
+        1,
+        7
+      ],
+      "seconds": {
+        "explicit_map": 1.223506212234497,
+        "order": 1.9145054817199707,
+        "query": 0.009186506271362305,
+        "structure": 0.16193079948425293,
+        "verify": 0.062159061431884766
+      },
+      "structure": [
+        2,
+        2,
+        8
+      ],
+      "verified": true
+    },
+    {
+      "certificate": null,
+      "inverse_table_size": 32,
+      "order": "32",
+      "point_enumerations": 1,
+      "prepared_capability": {
+        "available": true,
+        "genus": 2,
+        "model_fingerprint": "5d57e859a9e79d6cf58c133e3727b859ee5cf7ea3cfa085013005b0f08c05a9f",
+        "model_kind": "odd-degree-one-infinity",
+        "multi_search_available": true,
+        "prime": 5,
+        "reason": "development-auto-policy-absent",
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "search_available": true,
+        "selected": "native",
+        "validation_available": true
+      },
+      "query": [
+        1,
+        1,
+        7
+      ],
+      "seconds": {
+        "explicit_map": 0.5499632358551025,
+        "order": 0.09152674674987793,
+        "query": 0.009328365325927734,
+        "structure": 0.1790142059326172,
+        "verify": 0.06217789649963379
+      },
+      "structure": [
+        2,
+        2,
+        8
+      ],
+      "verified": true
+    },
+    {
+      "certificate": null,
+      "inverse_table_size": 32,
+      "order": "32",
+      "point_enumerations": 1,
+      "prepared_capability": {
+        "available": true,
+        "genus": 2,
+        "model_fingerprint": "5d57e859a9e79d6cf58c133e3727b859ee5cf7ea3cfa085013005b0f08c05a9f",
+        "model_kind": "odd-degree-one-infinity",
+        "multi_search_available": true,
+        "prime": 5,
+        "reason": "development-auto-policy-absent",
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "search_available": true,
+        "selected": "native",
+        "validation_available": true
+      },
+      "query": [
+        1,
+        1,
+        7
+      ],
+      "seconds": {
+        "explicit_map": 0.5273013114929199,
+        "order": 0.08808588981628418,
+        "query": 0.009188413619995117,
+        "structure": 0.15506935119628906,
+        "verify": 0.05992531776428223
+      },
+      "structure": [
+        2,
+        2,
+        8
+      ],
+      "verified": true
+    },
+    {
+      "certificate": null,
+      "inverse_table_size": 32,
+      "order": "32",
+      "point_enumerations": 1,
+      "prepared_capability": {
+        "available": true,
+        "genus": 2,
+        "model_fingerprint": "5d57e859a9e79d6cf58c133e3727b859ee5cf7ea3cfa085013005b0f08c05a9f",
+        "model_kind": "odd-degree-one-infinity",
+        "multi_search_available": true,
+        "prime": 5,
+        "reason": "development-auto-policy-absent",
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "search_available": true,
+        "selected": "native",
+        "validation_available": true
+      },
+      "query": [
+        1,
+        1,
+        7
+      ],
+      "seconds": {
+        "explicit_map": 0.5630354881286621,
+        "order": 0.0934445858001709,
+        "query": 0.00914764404296875,
+        "structure": 0.16425180435180664,
+        "verify": 0.06093573570251465
+      },
+      "structure": [
+        2,
+        2,
+        8
+      ],
+      "verified": true
+    },
+    {
+      "certificate": null,
+      "inverse_table_size": 32,
+      "order": "32",
+      "point_enumerations": 1,
+      "prepared_capability": {
+        "available": true,
+        "genus": 2,
+        "model_fingerprint": "5d57e859a9e79d6cf58c133e3727b859ee5cf7ea3cfa085013005b0f08c05a9f",
+        "model_kind": "odd-degree-one-infinity",
+        "multi_search_available": true,
+        "prime": 5,
+        "reason": "development-auto-policy-absent",
+        "schema": "sagejs.hyperelliptic.packed-mumford.odd.v1",
+        "search_available": true,
+        "selected": "native",
+        "validation_available": true
+      },
+      "query": [
+        1,
+        1,
+        7
+      ],
+      "seconds": {
+        "explicit_map": 0.5303068161010742,
+        "order": 0.07653999328613281,
+        "query": 0.00899362564086914,
+        "structure": 0.19312834739685059,
+        "verify": 0.060018301010131836
+      },
+      "structure": [
+        2,
+        2,
+        8
+      ],
+      "verified": true
+    }
+  ],
+  "summary": {
+    "repeat": 5,
+    "explicit_map_seconds": {
+      "minimum": 0.5273013114929199,
+      "median": 0.5499632358551025,
+      "maximum": 1.223506212234497
+    },
+    "speedup_at_median": 14.733712131504873,
+    "all_samples_below_target": false
+  }
+}

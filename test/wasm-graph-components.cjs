@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -24,32 +25,12 @@ const {
 const { createSage } = require("../dist/tools/kernel.js");
 
 function discoverToolchain() {
-  const common = spawnSync("git", ["rev-parse", "--git-common-dir"], {
-    cwd: root,
-    encoding: "utf8",
-  }).stdout.trim();
-  const store = resolve(root, common, "sagejs-wasm-toolchains", "v1");
-  if (!existsSync(store)) return null;
-  for (const generation of readdirSync(store).sort().reverse()) {
-    const cowasm = join(store, generation, "cowasm");
-    const sdk = join(
-      cowasm,
-      "core/build/build/wasi-sdk/dist/wasi-sdk-next/native",
-    );
-    const toolchain = {
-      clang: join(sdk, "bin/clang"),
-      sysroot: join(sdk, "share/wasi-sysroot"),
-      gmpPrefix: join(cowasm, "sagemath/gmp/dist/wasi-sdk"),
-      flintPrefix: "unused",
-      mpfrPrefix: "unused",
-      mpcPrefix: "unused",
-    };
-    if (
-      existsSync(toolchain.clang) &&
-      existsSync(join(toolchain.gmpPrefix, "lib/libgmp.a"))
-    ) return toolchain;
+  try {
+    return require("../packages/wasm-toolchain/scripts/toolchain.cjs")
+      .wasmKernelToolchain({ root });
+  } catch {
+    return null;
   }
-  return null;
 }
 
 async function instantiate(manifest, outputRoot) {

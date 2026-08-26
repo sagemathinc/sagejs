@@ -16,6 +16,7 @@ above the requested bound.
 from __future__ import annotations
 
 import json
+import math
 from typing import Any, Iterator
 
 import sagejs.runtime as runtime
@@ -33,6 +34,7 @@ DEFAULT_MAX_BOUND = 1_000_000
 DEFAULT_MAX_RATIONAL_PRIMES = 1_000_000
 DEFAULT_MAX_PRIME_IDEALS = 1_000_000
 DEFAULT_MAX_MEMORY_BYTES = 256 * 1024 * 1024
+AUTO_MINKOWSKI_BOUND_LIMIT = 4
 MAX_INTERVAL_BITS = 512
 DYADIC_GUARD_BITS = 24
 
@@ -44,6 +46,8 @@ _gamma_cache: dict[int, _Interval] = {}
 _catalan_cache: dict[int, _Interval] = {}
 _scalar_log_two_cache: dict[int, _Interval] = {}
 _bound_cache: list[tuple[Any, str, Any]] = []
+_bdf_interval_kernel_override: Any = None
+_bdf_search_hint_override: Any = None
 
 
 def _gcd(left: int, right: int) -> int:
@@ -552,6 +556,48 @@ def _same_integer(interval: _Interval, rounding: str) -> int | None:
     return lower if lower == upper else None
 
 
+def _complex_cubic_minkowski_coarse_interval(
+    discriminant: int,
+) -> tuple[int | None, _Interval]:
+    """Evaluate the coarse complex-cubic Minkowski interval with integers.
+
+    For signature `(1, 1)` the classical coefficient is `8 / 9`.  The coarse
+    enclosure used by `minkowski_bound` is therefore
+
+    `sqrt(D) * [8/9] / [333/106, 355/113]`.
+
+    Construct its two endpoints directly from the 64-bit dyadic square-root
+    enclosure.  This is algebraically identical to the generic interval
+    product, including rational normalization, but avoids building and
+    reducing all of its intermediate rational objects.  Returning `None`
+    for the floor preserves the arbitrary-precision fallback when the coarse
+    interval straddles an integer.
+    """
+    if discriminant < 1:
+        raise ValueError("a complex-cubic discriminant must be positive")
+    bits = 64
+    scale = 1 << bits
+    root = _isqrt(discriminant)
+    if root * root == discriminant:
+        lower_numerator = root * 904
+        lower_denominator = 3195
+        upper_numerator = root * 848
+        upper_denominator = 2997
+    else:
+        dyadic_root = _isqrt(discriminant * scale * scale)
+        lower_numerator = dyadic_root * 904
+        lower_denominator = scale * 3195
+        upper_numerator = (dyadic_root + 1) * 848
+        upper_denominator = scale * 2997
+    lower_floor = lower_numerator // lower_denominator
+    upper_floor = upper_numerator // upper_denominator
+    interval = _Interval(
+        _Rational(lower_numerator, lower_denominator),
+        _Rational(upper_numerator, upper_denominator),
+    )
+    return (lower_floor if lower_floor == upper_floor else None), interval
+
+
 def _as_maximal_order(value: Any) -> Any:
     if hasattr(value, "number_field") and hasattr(value, "is_maximal"):
         if not value.is_maximal():
@@ -647,12 +693,53 @@ def minkowski_bound(value: Any) -> FactorBaseBound:
     if cached is not None:
         return cached
     _order, _field, degree, r1, r2, discriminant = _field_metadata(order)
-    coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
+    coefficient: _Rational | None = None
+    # These classical Archimedean rational bounds are intentionally coarse,
+    # but they decide the floor in nearly every small and medium field without
+    # constructing a high-height Machin enclosure of pi.  The independent
+    # arbitrary-precision path below remains authoritative whenever this
+    # interval crosses an integer.
+    coarse_bits = 64
+    if degree == 3 and r1 == 1 and r2 == 1:
+        coarse_bound, coarse_interval = _complex_cubic_minkowski_coarse_interval(
+            discriminant
+        )
+    else:
+        coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
+        coarse_pi = _Interval(_Rational(333, 106), _Rational(355, 113))
+        coarse_denominator = _Interval.exact(ONE) if r2 == 0 else coarse_pi.power(r2)
+        coarse_interval = (
+            _sqrt_rational_interval(_Rational(discriminant), coarse_bits)
+            * _Interval.exact(coefficient)
+            / coarse_denominator
+        )
+        coarse_bound = _same_integer(coarse_interval, "floor")
+    if coarse_bound is not None:
+        result = FactorBaseBound(
+            "Minkowski",
+            (),
+            coarse_bound,
+            degree,
+            (r1, r2),
+            discriminant,
+            coarse_bits,
+            coarse_interval,
+            {
+                "formula": "floor((4/pi)^r2*n!/n^n*sqrt(abs(D)))",
+                "rounding": "floor-certified-rational-interval",
+                "pi_enclosure": "333/106 < pi < 355/113",
+            },
+        )
+        _store_bound(order, "minkowski", result)
+        return result
+    if coefficient is None:
+        coefficient = _Rational((4**r2) * _factorial(degree), degree**degree)
     for bits in (64, 96, 128, 192, 256, 384, MAX_INTERVAL_BITS):
+        pi_power = _Interval.exact(ONE) if r2 == 0 else _pi_interval(bits).power(r2)
         interval = (
             _sqrt_rational_interval(_Rational(discriminant), bits)
             * _Interval.exact(coefficient)
-            / _pi_interval(bits).power(r2)
+            / pi_power
         )
         bound = _same_integer(interval, "floor")
         if bound is not None:
@@ -718,6 +805,107 @@ def bach_bound(value: Any) -> FactorBaseBound:
     return result
 
 
+def _dyadic_interval_mantissas(value: _Interval, scale: int) -> tuple[int, int] | None:
+    """Return exact mantissas when both endpoints divide one dyadic scale."""
+    if scale <= 0 or scale % value.lower.denominator or scale % value.upper.denominator:
+        return None
+    return (
+        value.lower.numerator * (scale // value.lower.denominator),
+        value.upper.numerator * (scale // value.upper.denominator),
+    )
+
+
+def _packed_bdf_interval(
+    terms: list[tuple[_Interval, _Interval, int]],
+    *,
+    log_x: _Interval,
+    pi: _Interval,
+    catalan: _Interval,
+    gamma: _Interval,
+    log_eight: _Interval,
+    log_pi: _Interval,
+    log_discriminant: _Interval,
+    degree: int,
+    real_places: int,
+    primitive_bits: int,
+) -> tuple[_Interval, _Interval] | None:
+    """Run the exact packed BDF assembly, retaining the scalar fallback."""
+    if _bdf_interval_kernel_override is False or len(terms) > 4096:
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = (
+            _bdf_interval_kernel_override
+            if callable(_bdf_interval_kernel_override)
+            else getattr(kernel_module, "packed_bdf_interval_in_place", None)
+        )
+        if not callable(kernel):
+            return None
+        scale = 1 << primitive_bits
+        constant_intervals = (
+            log_x,
+            pi,
+            catalan,
+            gamma,
+            log_eight,
+            log_pi,
+            log_discriminant,
+        )
+        constants: list[int] = []
+        for interval in constant_intervals:
+            endpoints = _dyadic_interval_mantissas(interval, scale)
+            if endpoints is None:
+                return None
+            constants.extend(endpoints)
+        packed_terms: list[int] = []
+        for logarithm, root, exponent in terms:
+            logarithm_endpoints = _dyadic_interval_mantissas(logarithm, scale)
+            root_endpoints = _dyadic_interval_mantissas(root, scale)
+            if logarithm_endpoints is None or root_endpoints is None:
+                return None
+            packed_terms.extend(logarithm_endpoints)
+            packed_terms.extend(root_endpoints)
+            packed_terms.append(int(exponent))
+        word_capacity = max(64, 4 * len(terms) + 64)
+        output = native_module.kernel_integer_zeros(kernel, 8, word_capacity)
+        if not kernel(
+            output,
+            native_module.kernel_integer_buffer(kernel, packed_terms),
+            native_module.kernel_integer_buffer(kernel, constants),
+            scale,
+            degree,
+            real_places,
+            len(terms),
+        ):
+            return None
+        values = tuple(
+            int(value) for value in native_module.integer_buffer_values(output)
+        )
+        if len(values) != 8 or any(values[index] <= 0 for index in (1, 3, 5, 7)):
+            return None
+        right = _Interval(
+            _Rational(values[0], values[1]), _Rational(values[2], values[3])
+        )
+        left = _Interval(
+            _Rational(values[4], values[5]), _Rational(values[6], values[7])
+        )
+        return right, left
+    except (
+        AttributeError,
+        ArithmeticError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
 class _BDFEvaluator:
     """Cached compact local data for the exact BDF inequality."""
 
@@ -755,7 +943,7 @@ class _BDFEvaluator:
             raise ValueError("the BDF parameter must be at least 2")
         self.scan_to(x_value)
         log_x = _log_rational_interval(_Rational(x_value), bits + 12)
-        total = _Interval.exact(ZERO)
+        terms: list[tuple[_Interval, _Interval, int]] = []
         term_count = 0
         for prime in sorted(self.records):
             if prime >= x_value:
@@ -768,30 +956,125 @@ class _BDFEvaluator:
                 power = norm
                 exponent = 1
                 while power < x_value:
-                    decay = _sqrt_rational_interval(
-                        _Rational(power), bits + 12
-                    ).reciprocal()
-                    taper = _Interval.exact(ONE) - (log_norm.scale(exponent) / log_x)
-                    total = total + log_norm * decay * taper
+                    root = _sqrt_rational_interval(_Rational(power), bits + 12)
+                    terms.append((log_norm, root, exponent))
                     term_count += 1
                     exponent += 1
                     power *= norm
         pi = _pi_interval(bits + 12)
         catalan = _catalan_interval(bits + 12)
+        gamma = _euler_gamma_interval(bits + 12)
+        log_eight = _log_rational_interval(_Rational(8), bits + 12)
+        log_pi = _log_interval(pi, bits + 12)
+        log_discriminant = _log_rational_interval(_Rational(discriminant), bits + 12)
+        accelerated = _packed_bdf_interval(
+            terms,
+            log_x=log_x,
+            pi=pi,
+            catalan=catalan,
+            gamma=gamma,
+            log_eight=log_eight,
+            log_pi=log_pi,
+            log_discriminant=log_discriminant,
+            degree=degree,
+            real_places=r1,
+            primitive_bits=bits + 12 + DYADIC_GUARD_BITS,
+        )
+        if accelerated is not None:
+            return term_count, accelerated[0], accelerated[1]
+        total = _Interval.exact(ZERO)
+        for log_norm, root, exponent in terms:
+            decay = root.reciprocal()
+            taper = _Interval.exact(ONE) - (log_norm.scale(exponent) / log_x)
+            total = total + log_norm * decay * taper
         archimedean = (
             pi.power(2).scale(degree) / _Interval.exact(TWO) + catalan.scale(4 * r1)
         ) / log_x
         right_side = total.scale(2) - archimedean
-        gamma = _euler_gamma_interval(bits + 12)
-        log_eight_pi = _log_rational_interval(_Rational(8), bits + 12) + _log_interval(
-            pi, bits + 12
-        )
+        log_eight_pi = log_eight + log_pi
         left_side = (
-            _log_rational_interval(_Rational(discriminant), bits + 12)
+            log_discriminant
             - (gamma + log_eight_pi).scale(degree)
             - pi.scale(r1) / _Interval.exact(TWO)
         )
         return term_count, right_side, left_side
+
+    def approximate_decision(
+        self,
+        x_value: int,
+        degree: int,
+        r1: int,
+        discriminant: int,
+    ) -> bool:
+        """Estimate the BDF inequality solely to choose an exact-search hint.
+
+        This binary-floating computation never supplies mathematical evidence.
+        `bdf_bound` verifies a false/true bracket with exact rational intervals
+        before it uses the ordinary monotone bisection below.
+        """
+        if x_value < 2:
+            return False
+        self.scan_to(x_value)
+        log_x = math.log(x_value)
+        total = 0.0
+        for prime in sorted(self.records):
+            if prime >= x_value:
+                break
+            for _ramification, residue_degree in self.records[prime]:
+                norm = prime**residue_degree
+                if norm >= x_value:
+                    continue
+                log_norm = math.log(norm)
+                power = norm
+                exponent = 1
+                while power < x_value:
+                    total += (
+                        log_norm
+                        / math.sqrt(power)
+                        * (1.0 - exponent * log_norm / log_x)
+                    )
+                    exponent += 1
+                    power *= norm
+        # These constants select a likely bracket only.  Exact interval
+        # enclosures for all four constants are recomputed by `inequality`.
+        euler_gamma = 0.5772156649015329
+        catalan = 0.915965594177219
+        right_side = (
+            2.0 * total
+            - (degree * math.pi * math.pi / 2.0 + 4.0 * r1 * catalan) / log_x
+        )
+        left_side = (
+            math.log(discriminant)
+            - degree * (euler_gamma + math.log(8.0 * math.pi))
+            - r1 * math.pi / 2.0
+        )
+        return right_side > left_side
+
+
+def _bdf_search_hint(
+    evaluator: _BDFEvaluator,
+    degree: int,
+    r1: int,
+    discriminant: int,
+    max_bound: int,
+) -> int:
+    """Return an untrusted numerical hint for the exact BDF search."""
+    if type(_bdf_search_hint_override) is int:
+        return max(2, min(max_bound, _bdf_search_hint_override))
+    lower = 1
+    upper = 2
+    while not evaluator.approximate_decision(upper, degree, r1, discriminant):
+        if upper >= max_bound:
+            return max_bound
+        lower = upper
+        upper = min(max_bound, 2 * upper)
+    while upper - lower > 1:
+        middle = (lower + upper) // 2
+        if evaluator.approximate_decision(middle, degree, r1, discriminant):
+            upper = middle
+        else:
+            lower = middle
+    return upper
 
 
 def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
@@ -828,13 +1111,35 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
             "BDF inequality is numerically inseparable at x=" + str(candidate)
         )
 
-    lower = 1
-    upper = 2
-    while not decision(upper):
+    try:
+        upper = _bdf_search_hint(evaluator, degree, r1, discriminant, max_bound)
+    except (ArithmeticError, TypeError, ValueError):
+        # An approximate accelerator must not narrow the exact algorithm's
+        # domain.  Candidate 2 recovers a conservative upward exact search.
+        upper = 2
+    if decision(upper):
+        if upper == 2:
+            lower = 1
+        elif not decision(upper - 1):
+            lower = upper - 1
+        else:
+            upper -= 1
+            lower = max(1, upper // 2)
+            while lower >= 2 and decision(lower):
+                upper = lower
+                if lower == 2:
+                    lower = 1
+                    break
+                lower = max(1, lower // 2)
+    else:
         lower = upper
-        if upper >= max_bound:
-            raise ValueError("BDF search exceeded max_bound=" + str(max_bound))
-        upper = min(max_bound, 2 * upper)
+        if upper < max_bound:
+            upper += 1
+        while not decision(upper):
+            lower = upper
+            if upper >= max_bound:
+                raise ValueError("BDF search exceeded max_bound=" + str(max_bound))
+            upper = min(max_bound, 2 * upper)
     while upper - lower > 1:
         middle = (lower + upper) // 2
         if decision(middle):
@@ -868,9 +1173,10 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
 def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
     """Return the smallest selected unconditional or GRH-certified bound."""
     minkowski = minkowski_bound(value)
-    if minkowski.bound <= 2:
+    if minkowski.bound <= AUTO_MINKOWSKI_BOUND_LIMIT:
         details = dict(minkowski.details)
-        details["selection"] = "unconditional-bound-at-grh-search-minimum"
+        details["selection"] = "unconditional-small-minkowski-bound"
+        details["automatic_minkowski_bound_limit"] = AUTO_MINKOWSKI_BOUND_LIMIT
         details["grh_search_minimum"] = 2
         return FactorBaseBound(
             minkowski.theorem,
@@ -1369,7 +1675,7 @@ def _selective_dedekind_kummer(
     """
     field = order.number_field()
     maximal = _prime_ideals._maximal
-    if not maximal.equation_order_is_p_maximal(field, prime):
+    if maximal.equation_order_index(order) % prime == 0:
         return None
     polynomial = maximal.integral_equation_polynomial(field)
     coefficients = tuple(int(value) for value in polynomial.list())
@@ -1377,19 +1683,28 @@ def _selective_dedekind_kummer(
     scale = runtime.integer_bigint(field._integral_equation_scale_cache)
     beta = field.gen() * scale
     selected: list[tuple[Any, Any]] = []
+    table = None
+    one = None
+    p_basis: tuple[Any, ...] = ()
     for factor in modular_factors:
         residue_degree = len(factor.polynomial) - 1
         if residue_degree not in residue_degrees:
             continue
-        second_generator = field.zero()
-        for coefficient in reversed(factor.polynomial):
-            second_generator = second_generator * beta + int(coefficient)
-        ideal = order.ideal(prime, second_generator)
-        prime_ideal = _prime_ideals._prime_from_ideal(
-            ideal,
+        if table is None:
+            table = _prime_ideals._modular_table(order, prime)
+            one = [
+                value % prime for value in _prime_ideals._order_one_coordinates(order)
+            ]
+            p_basis = tuple(order.ideal(prime).basis())
+        prime_ideal, second_generator = _prime_ideals._dedekind_kummer_prime_candidate(
+            order,
             prime,
-            int(factor.multiplicity),
-            residue_degree,
+            factor,
+            beta,
+            table,
+            one,
+            verify_candidate=True,
+            p_basis=p_basis,
         )
         selected.append((prime_ideal, second_generator))
     selected.sort(key=lambda pair: _prime_ideals._prime_sort_key(pair[0]))

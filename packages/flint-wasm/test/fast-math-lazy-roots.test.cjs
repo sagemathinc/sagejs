@@ -19,6 +19,8 @@ test("browser fast-math public modules are receipt-bound lazy roots", () => {
     "sagejs.kernels.arithmetic.moebius",
     "sagejs.kernels.matrix.combinatorial",
     "sagejs.linear_algebra.combinatorial",
+    "sagejs.number_fields.buchmann_lenstra",
+    "sagejs.number_fields.maximal_order_certification",
   ]) {
     assert.equal(roots.has(name), true, `${name} must be a lazy-module root`);
   }

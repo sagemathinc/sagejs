@@ -1,0 +1,112 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-25T08:46:06.609Z",
+  "repository": {
+    "commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8",
+    "package_smoke_overlay": {
+      "source_commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "base_test_sha256": "2a85aad10b6922600d6c97e312dfb32ee8430e197c85000c0b379c1b64a459e0",
+      "patched_test_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21",
+      "updater_sha256": "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e"
+    }
+  },
+  "host": {
+    "hostname": "cocalc-vm-e1d2fb8e3de341f781653364",
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.5.1"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "unavailable",
+    "reason": "the checked-in standalone harness currently has a POSIX static-archive linker contract; Windows native kernels remain covered separately"
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "8cc40c709513c7e0a79f3497f8702cb3f665ce57559659303deed9396842488d",
+    "artifact_id": null,
+    "pack_count": 40,
+    "load_ms": 37.257600000000025,
+    "process_rss_bytes": 90177536,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.6251000000000317,
+          "median": 2.6674000000000433,
+          "max": 4.625699999999995,
+          "mad": 0.04230000000001155
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552"
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.6140000000000327,
+          "median": 2.67470000000003,
+          "max": 3.3722000000000207,
+          "mad": 0.06069999999999709
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592"
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.6573999999999387,
+        "median": 4.167699999999968,
+        "max": 4.943399999999997,
+        "mad": 0.5086000000000013
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 338.45579999999995,
+      "stdout_sha256": "fa5315a000bd09971d0cd3f0f3e38e059b56efdf561e2c407d9ef590c228ee3c",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 3474.931,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///C:/Users/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/kernel.mjs:288:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 2056.8913000000002,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 8180.0125,
+      "stdout_sha256": "1f1295992be8233970fecff94ce43be1965960b9401f3a73e534289886dc9274",
+      "stdout": "(node:3380) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✔ authenticated production packs execute every hyperelliptic source family (2033.0766ms)\n✔ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (5816.0403ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (0.561ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 8110.3028",
+      "stderr": "",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "test_source_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21"
+    }
+  },
+  "finished_at": "2026-08-25T08:47:09.398Z",
+  "package_smoke_supplemented_at_utc": "2026-08-25T08:47:39.767Z"
+}

@@ -43,6 +43,61 @@ The receipt reports every per-case ratio, geometric mean, median, p90, p95,
 worst case, and the dominant Sage.js phase. Process startup is recorded
 separately and is not included in the prepared-field ratios.
 
+## Reproducible stratified comparator laboratory
+
+`test/fixtures/number-field-lmfdb-cubic-100.json` is the versioned laboratory
+corpus: 10 permanent smoke fields, 60 tuning fields, and 30 held-out fields.
+Its normalized selection SQL, selected-label order, source rows, and projected
+records all carry independent SHA-256 checksums. The runner validates the full
+offline fixture before detecting or launching a comparator.
+
+```bash
+# Inventory exact source, host, fixture, and comparator identities only.
+node bench/class-unit-groups/run-class-unit-corpus.cjs --dry-run \
+  --tier smoke --systems magma,hecke --proof both \
+  --output /tmp/class-unit-comparator-plan.json
+
+# A clean source tree and all four boundaries are mandatory for evidence.
+node bench/class-unit-groups/run-class-unit-corpus.cjs \
+  --tier smoke --systems magma,hecke --proof both --samples 5 \
+  --output /tmp/class-unit-comparator-evidence.json
+```
+
+The Magma adapter maps `Proof := "GRH"` to
+`exact-relations-conditional-grh` and `Proof := "Full"` to
+`exact-unconditional`. Magma performs its full proof inside `ClassGroup`, so
+that work remains honestly included in the computation phase; no separate
+verification time is invented. Its coarse `Realtime()` clock is handled by
+bounded chunks of independently prepared fields whose retained warm batch
+lasts at least 1.2 seconds. The terminal sentinel and exact payload count are
+mandatory because Magma can exit successfully after a language error.
+
+The Hecke adapter requires a pinned 0.40 project and depot. Every conditional
+sample calls the public `GRH=true` class, factored-unit, and regulator APIs. An
+unconditional sample then times the public cached `GRH=false` upgrades as a
+separate verification phase and audits Hecke's class/unit proof-state flags.
+Regulators are exported as exact outward dyadic bounds obtained from Arb by
+directed `BigFloat` conversion, not rounded machine floats. Persistent samples
+also run independent fields until the timed batch exceeds 1.2 seconds.
+
+Both adapters implement `kernel-warm`, `field-cold`, `process-cold`, and
+`release-cold`. For an installed external CAS, process-cold and release-cold
+coincide truthfully. Persistent-process RSS is labelled only as a
+`case-process-peak`; it cannot satisfy the per-operation memory gate. Cold
+one-operation processes use `single-operation-process-peak`. Tool receipts
+bind the actual Magma runtime and package tree, or the Julia system image,
+pinned clean Hecke source, Project/Manifest, loaded Hecke/Nemo package images,
+source trees, and exact FLINT/GMP libraries. Start/end identity rechecks reject
+any source, package-image, executable, or library change during a run.
+Magma runs with inherited `MAGMA_LIBRARIES` cleared, so its authenticated
+launcher selects the package-relative default libraries recorded by that
+launcher rather than an unauthenticated ambient override.
+
+Magma and Hecke are inventoried and selected only when those authenticated
+installations are available. Oscar remains inventory-only in this runner; its
+absence or unsupported status is explicit and never replaced by a different
+Julia stack.
+
 ## Run the harness
 
 The capture paths can be overridden with `SAGE_ORACLE` and `MAGMA_ORACLE` or

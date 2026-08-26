@@ -5,7 +5,6 @@ allowBuilds:
   tree-sitter-cli: true
   tree-sitter-macaulay2: false
   tree-sitter-python: false
-  wasi-js: false
   webgpu: true
   zeromq: true
 minimumReleaseAgeExclude:

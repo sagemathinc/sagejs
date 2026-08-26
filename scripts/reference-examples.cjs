@@ -190,6 +190,9 @@ function examplesForEntry(entry, sources) {
         genericgraph: "graph",
         graphgenerators: "graphs",
         digraphgenerators: "digraphs",
+        _partitionsbase: "partitions",
+        partitions_n: "partitions",
+        partitions_all: "partitions",
       }[ownerParts.at(-2).toLowerCase()] ?? ownerParts.at(-2).toLowerCase();
       return parts.length > 1 && parts.at(-2).toLowerCase() === normalizedOwner;
     });

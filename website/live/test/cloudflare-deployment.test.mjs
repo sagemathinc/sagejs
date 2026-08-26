@@ -7,6 +7,7 @@ import test from "node:test";
 import { brotliDecompress } from "node:zlib";
 import { promisify } from "node:util";
 import {
+  cacheRequest,
   handleRequest,
   logicalAssetPath,
   storageKey,
@@ -31,6 +32,14 @@ function object(body, contentType = "application/octet-stream") {
   };
 }
 
+function cloudflareRequest(url, clientAcceptEncoding) {
+  const request = new Request(url, { headers: { "Accept-Encoding": "br, gzip" } });
+  Object.defineProperty(request, "cf", {
+    value: Object.freeze({ clientAcceptEncoding }),
+  });
+  return request;
+}
+
 test("Cloudflare Worker maps immutable and release shell objects without path escape", async () => {
   assert.equal(logicalAssetPath(new Request("https://app.sagejs.org/")), "index.html");
   assert.equal(
@@ -49,6 +58,16 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
     "release shells remain immutable and independently selectable",
   );
   assert.throws(() => storageKey("index.html", "not-a-release"), /invalid release/);
+  const edgeKey = new URL(cacheRequest(
+    new Request("https://app.sagejs.org/ignored?old=value"),
+    `assets/sha256-${"b".repeat(64)}/runtime.wasm`,
+    release,
+    "br",
+  ).url);
+  assert.equal(edgeKey.searchParams.get("__sagejs_cache"), "2");
+  assert.equal(edgeKey.searchParams.get("__sagejs_release"), release);
+  assert.equal(edgeKey.searchParams.get("__sagejs_encoding"), "br");
+  assert.equal(edgeKey.searchParams.has("old"), false);
 
   const seen = [];
   const bucket = {
@@ -61,7 +80,7 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
     },
   };
   const response = await handleRequest(
-    new Request("https://app.sagejs.org/?ignored=yes", { headers: { "Accept-Encoding": "gzip, br" } }),
+    cloudflareRequest("https://app.sagejs.org/?ignored=yes", "gzip, br"),
     { ASSETS: bucket, RELEASE_ID: release },
   );
   assert.equal(response.status, 200);
@@ -76,6 +95,47 @@ test("Cloudflare Worker maps immutable and release shell objects without path es
   );
   assert.equal(unsafe.status, 400);
   assert.equal((await unsafe.text()).trim(), "Invalid asset path");
+});
+
+test("Cloudflare Worker negotiates against the original client encoding", async () => {
+  const keys = [];
+  const bucket = {
+    async get(key) {
+      keys.push(key);
+      if (key === `releases/${release}/identity/runtime-version.json`) {
+        return object('{"identity":true}\n', "application/json; charset=utf-8");
+      }
+      if (key === `releases/${release}/br/runtime-version.json`) {
+        return object("brotli bytes", "application/json; charset=utf-8");
+      }
+      return null;
+    },
+  };
+
+  const identity = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "identity"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(identity.headers.get("Content-Encoding"), null);
+  assert.equal(await identity.text(), '{"identity":true}\n');
+  assert.deepEqual(keys, [`releases/${release}/identity/runtime-version.json`]);
+
+  keys.length = 0;
+  const compressed = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "gzip, br"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(compressed.headers.get("Content-Encoding"), "br");
+  assert.equal(await compressed.text(), "brotli bytes");
+  assert.deepEqual(keys, [`releases/${release}/br/runtime-version.json`]);
+
+  keys.length = 0;
+  const refused = await handleRequest(
+    cloudflareRequest("https://app.sagejs.org/runtime-version.json", "gzip, br;q=0"),
+    { ASSETS: bucket, RELEASE_ID: release },
+  );
+  assert.equal(refused.headers.get("Content-Encoding"), null);
+  assert.deepEqual(keys, [`releases/${release}/identity/runtime-version.json`]);
 });
 
 test("Cloudflare Worker falls back to identity and fails closed", async () => {
@@ -109,6 +169,38 @@ test("Cloudflare Worker falls back to identity and fails closed", async () => {
   })).status, 503);
 });
 
+test("Cloudflare Worker never puts precompressed Brotli responses in Cache API", async () => {
+  const assetPath = `assets/sha256-${"b".repeat(64)}/runtime.wasm`;
+  const previousCaches = globalThis.caches;
+  const calls = [];
+  globalThis.caches = {
+    default: {
+      async match() { calls.push("match"); throw new Error("Brotli cache lookup is unsafe"); },
+      async put() { calls.push("put"); throw new Error("Brotli cache storage is unsafe"); },
+    },
+  };
+  try {
+    const response = await handleRequest(
+      cloudflareRequest(`https://app.sagejs.org/${assetPath}`, "gzip, br"),
+      {
+        ASSETS: {
+          async get(key) {
+            calls.push(key);
+            return object("precompressed bytes", "application/wasm");
+          },
+        },
+        RELEASE_ID: release,
+      },
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("Content-Encoding"), "br");
+    assert.deepEqual(calls, [`public/br/${assetPath}`]);
+  } finally {
+    if (previousCaches === undefined) delete globalThis.caches;
+    else globalThis.caches = previousCaches;
+  }
+});
+
 async function stagedFixture(root) {
   const site = path.join(root, "site");
   const artifact = `sha256:${"c".repeat(64)}`;
@@ -116,6 +208,7 @@ async function stagedFixture(root) {
   const contents = new Map([
     ["index.html", "<!doctype html><title>Sage.js</title>"],
     ["app.mjs", "export const answer = 42;\n"],
+    ["codemirror-license.txt", "CodeMirror license\n"],
     [`${assetDirectory}/runtime.wasm`, Buffer.from([0, 97, 115, 109, 1, 0, 0, 0])],
   ]);
   for (const [relative, value] of contents) {
@@ -166,6 +259,10 @@ test("Cloudflare release preparation produces authenticated Brotli and identity 
     assert.match(wasm.br.key, /^public\/br\/assets\/sha256-/);
     const index = deployment.records.find((record) => record.logicalPath === "index.html");
     assert.equal(index.identity.key, `releases/${release}/identity/index.html`);
+    const license = deployment.records.find(
+      (record) => record.logicalPath === "codemirror-license.txt",
+    );
+    assert.equal(license.contentType, "text/plain; charset=utf-8");
     assert.deepEqual(
       await decompressBrotli(await readFile(path.join(output, index.br.file))),
       await readFile(path.join(output, index.identity.file)),
@@ -173,6 +270,7 @@ test("Cloudflare release preparation produces authenticated Brotli and identity 
     const wrangler = JSON.parse(await readFile(path.join(output, "wrangler.json"), "utf8"));
     assert.equal(wrangler.name, "sagejs-app");
     assert.equal(wrangler.workers_dev, false);
+    assert.deepEqual(wrangler.compatibility_flags, ["brotli_content_encoding"]);
     assert.deepEqual(wrangler.routes, [{ pattern: "app.sagejs.org", custom_domain: true }]);
     assert.deepEqual(wrangler.r2_buckets, [{ binding: "ASSETS", bucket_name: "sagejs" }]);
     assert.equal(wrangler.vars.RELEASE_ID, release);

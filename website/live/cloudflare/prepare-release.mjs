@@ -33,6 +33,7 @@ const CONTENT_TYPES = new Map([
   [".png", "image/png"],
   [".svg", "image/svg+xml"],
   [".ts", "text/plain; charset=utf-8"],
+  [".txt", "text/plain; charset=utf-8"],
   [".wasm", "application/wasm"],
   [".webmanifest", "application/manifest+json; charset=utf-8"],
 ]);
@@ -233,6 +234,7 @@ export async function prepareCloudflareRelease({
     name: deployedWorkerName,
     main: "./worker.mjs",
     compatibility_date: "2026-08-22",
+    compatibility_flags: ["brotli_content_encoding"],
     workers_dev: target === "preview",
     preview_urls: target === "preview",
     r2_buckets: [{ binding: "ASSETS", bucket_name: bucketName }],

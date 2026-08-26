@@ -1,14 +1,14 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
 const {
-  existsSync,
   mkdtempSync,
   readFileSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { dirname, join } = require("node:path");
+const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
@@ -16,6 +16,10 @@ const {
   buildWasmProductionPacks,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const { classifyWasmFunction } = require("../tools/native-kernel/wasm-bridge.cjs");
+const {
+  inspectToolchain,
+  wasmKernelToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
 
 const root = join(__dirname, "..");
@@ -147,8 +151,15 @@ print(context.power_of_two_batch(points, 3))
 
 test("specialized quartic plans match the immutable Flynn oracle in CPython", () => {
   const program = String.raw`
+import hashlib
 import sys
+import types
 sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})
+# The arithmetic source is deliberately CPython-executable, while automatic
+# receipt selection is a Sage.js host concern.  Keep CPython's stdlib hashlib
+# loaded ahead of the Sage.js stdlib overlay and provide the inert runtime
+# namespace that the policy module imports but this oracle never queries.
+sys.modules["sagejs.runtime"] = types.ModuleType("sagejs.runtime")
 from sagejs.hyperelliptic_curves.jacobian_kummer_native import Genus2PrimeKummerContext
 from sagejs.hyperelliptic_curves.genus2_kummer import (
     _CLASSICAL_DELTA_1, _CLASSICAL_DELTA_2,
@@ -227,46 +238,11 @@ print(context.capability()["general_pseudo_addition"])
   assert.deepEqual(runSage(witness), ["False"]);
 });
 
-const cowasm = process.env.SAGEJS_COWASM_ROOT ?? join(dirname(root), "cowasm");
-const wasmPrefix = (name) => process.env[
-  `SAGEJS_WASM_${name.toUpperCase()}_PREFIX`
-] ?? join(cowasm, "sagemath", name, "dist", "wasi-sdk");
-const toolchain = {
-  clang: process.env.SAGEJS_WASI_CLANG ?? join(
-    cowasm,
-    "core",
-    "build",
-    "build",
-    "wasi-sdk",
-    "dist",
-    "wasi-sdk-next",
-    "native",
-    "bin",
-    "clang",
-  ),
-  sysroot: process.env.SAGEJS_WASI_SYSROOT ?? join(
-    cowasm,
-    "core",
-    "build",
-    "build",
-    "wasi-sdk",
-    "dist",
-    "wasi-sdk-next",
-    "native",
-    "share",
-    "wasi-sysroot",
-  ),
-  gmpPrefix: wasmPrefix("gmp"),
-  flintPrefix: wasmPrefix("flint"),
-  mpfrPrefix: wasmPrefix("mpfr"),
-  mpcPrefix: wasmPrefix("mpc"),
-};
-const wasmToolchainAvailable =
-  existsSync(toolchain.clang) &&
-  existsSync(toolchain.sysroot) &&
-  existsSync(join(toolchain.flintPrefix, "lib", "libflint.a")) &&
-  existsSync(join(toolchain.mpfrPrefix, "lib", "libmpfr.a")) &&
-  existsSync(join(toolchain.gmpPrefix, "lib", "libgmp.a"));
+const wasmToolchainStatus = inspectToolchain({ root });
+const toolchain = wasmToolchainStatus.ready
+  ? wasmKernelToolchain({ root })
+  : null;
+const wasmToolchainAvailable = toolchain !== null;
 
 test("the exact Kummer source executes through a production Wasm pack", {
   skip: wasmToolchainAvailable

@@ -13,11 +13,11 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 120,
-    "declared-ffi": 437,
+    "classified-native-file": 125,
+    "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 320,
-    "runtime-intrinsic": 141,
+    "runtime-intrinsic": 142,
     "wasm-export": 72
   },
   "boundaries": [
@@ -571,6 +571,17 @@
       "dynamic_package": "@sagemath/sagejs-fflas",
       "dynamic_export": "ffiFflasModularFloatRref",
       "symbol": "sagejs_fflas_modular_float_rref",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "arith_number_of_partitions",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "numberOfPartitions",
+      "symbol": "arith_number_of_partitions",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2232,6 +2243,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFmpzMatHnfTransform",
       "symbol": "sagejs_flint_fmpz_mat_hnf_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_lll_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_lll_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatLllTransform",
+      "symbol": "sagejs_flint_fmpz_mat_lll_transform",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4014,6 +4036,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiFqPolynomialSub",
       "symbol": "sagejs_fq_polynomial_sub",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_packed",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "integer_log_sqrt_balls_packed",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiIntegerLogSqrtBallsPacked",
+      "symbol": "sagejs_flint_integer_log_sqrt_balls_packed",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -8518,6 +8551,14 @@
       "lane": "hyperelliptic-curves"
     },
     {
+      "id": "native-file:bench/native-live-exact-vector-reference.c",
+      "kind": "classified-native-file",
+      "path": "bench/native-live-exact-vector-reference.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
+    },
+    {
       "id": "native-file:bench/native-p1-heilbronn-reference.c",
       "kind": "classified-native-file",
       "path": "bench/native-p1-heilbronn-reference.c",
@@ -9326,6 +9367,38 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
+      "disposition": "portability-shim",
+      "review_status": "audited",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/compiler-c.c",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/compiler-c.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/compiler-cxx.cc",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/wasm-toolchain/probes/wasi-abi.c",
+      "kind": "classified-native-file",
+      "path": "packages/wasm-toolchain/probes/wasi-abi.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
       "id": "native-file:tools/maple/src/parser.c",
       "kind": "classified-native-file",
       "path": "tools/maple/src/parser.c",
@@ -9507,6 +9580,14 @@
       "path": "tools/python/contract.ts",
       "export": "callable_instance_class",
       "symbol": "ρσ_callable_instance_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:canonical_json_exact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "canonical_json_exact",
+      "symbol": "ρσ_canonical_json_exact",
       "disposition": "runtime-primitive"
     },
     {

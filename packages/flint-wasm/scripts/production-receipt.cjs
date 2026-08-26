@@ -14,10 +14,13 @@ const { join, relative, resolve } = require("node:path");
 const {
   canonicalJson,
   toolchainReceiptIdentity,
-} = require("./wasm-toolchain.cjs");
+} = require("../../wasm-toolchain/scripts/toolchain.cjs");
 const {
   lazyModuleReceiptInputs,
 } = require("../../../scripts/lazy-module-provenance.cjs");
+const {
+  embeddedBuildPath,
+} = require("../../../tools/reproducible-generated-paths.cjs");
 
 const receiptSchema = "sagejs.wasm-build-receipt/v1";
 const artifactSchema = "sagejs.wasm-production-artifact/v1";
@@ -152,8 +155,10 @@ function sourceClosure(repositoryRoot, packageRoot, sourceInputs = []) {
     join(packageRoot, "scripts", "build.cjs"),
     join(packageRoot, "scripts", "browser-wasm-release-artifact.cjs"),
     join(packageRoot, "scripts", "production-receipt.cjs"),
-    join(packageRoot, "scripts", "wasm-toolchain.cjs"),
-    join(packageRoot, "toolchain"),
+    join(repositoryRoot, "tools", "reproducible-generated-paths.cjs"),
+    join(repositoryRoot, "packages", "wasm-toolchain"),
+    join(repositoryRoot, "tools", "source-mirror"),
+    join(packageRoot, "release", "adapter-inputs.json"),
     join(packageRoot, "release"),
     join(repositoryRoot, "package.json"),
     join(repositoryRoot, "pnpm-lock.yaml"),
@@ -454,9 +459,21 @@ function writeProductionReceipt({
   sourceInputs = [],
 }) {
   const artifact = createArtifactManifest({ packageRoot, outputDirectory });
+  for (const asset of artifact.assets) {
+    const filename = join(outputDirectory, asset.path);
+    const embedded = embeddedBuildPath(readFileSync(filename, "latin1"), [
+      repositoryRoot,
+      toolchain.root,
+    ]);
+    if (embedded !== null) {
+      throw new Error(
+        `production asset ${asset.path} embeds local build path ${embedded.root}`,
+      );
+    }
+  }
   const artifactFilename = join(outputDirectory, "production-manifest.json");
   writeFileSync(artifactFilename, `${JSON.stringify(artifact, null, 2)}\n`);
-  const adapterInputs = readFileSync(join(packageRoot, "toolchain", "adapter-inputs.json"));
+  const adapterInputs = readFileSync(join(packageRoot, "release", "adapter-inputs.json"));
   const receipt = {
     schema: receiptSchema,
     source: {

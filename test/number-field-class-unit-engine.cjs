@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -84,6 +85,105 @@ print(answer)
     `[(\'${cases[0].proof_status}\', 1, 0), ` +
       `(\'${cases[1].proof_status}\', 1, 1)]`,
   );
+});
+
+test("class/unit engine cache binds producer identity and full policy", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+limits = ClassUnitEngineLimits()
+limits_key = _class_unit_engine_limits_key(limits)
+false_key = (False, "auto", 0, limits_key)
+true_key = (True, "auto", 0, limits_key)
+
+first = class_unit_context(K, proof=False)
+cache = K._class_unit_engine_cache
+entry = cache[false_key]
+assert type(entry) is _ClassUnitEngineCacheEntry
+assert class_unit_context(K, proof=False) is first
+order = K.maximal_order()
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "auto", 0, limits_key
+) is first
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, True, "auto", 0, limits_key
+) is None
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "minkowski", 0, limits_key
+) is None
+assert _cached_class_unit_engine_result(
+    cache, false_key, K, order, False, "auto", 1, limits_key
+) is None
+other_limits = ClassUnitEngineLimits(max_relation_attempts=513)
+other_limits_key = _class_unit_engine_limits_key(other_limits)
+assert _cached_class_unit_engine_result(
+    cache,
+    false_key,
+    K,
+    order,
+    False,
+    "auto",
+    0,
+    other_limits_key,
+) is None
+
+# Sage-mode objects expose a Python-shaped dictionary even when their source
+# declares slots.  The issued entry is runtime-frozen, and lookup also derives
+# the full limit projection independently from the retained context.
+try:
+    entry.__dict__["_ClassUnitEngineCacheEntry__limits_key"] = other_limits_key
+except (AttributeError, TypeError):
+    pass
+forged_limits_key = (False, "auto", 0, other_limits_key)
+cache[forged_limits_key] = entry
+forged_limits = class_unit_context(K, proof=False, max_relation_attempts=513)
+assert forged_limits is not first
+
+# The original vulnerability was a raw conditional result injected under the
+# proof=True tuple key.  A raw value is never cache authority now.
+first.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+cache[true_key] = first
+proved = class_unit_context(K, proof=True)
+assert proved is not first
+assert proved.complete and proved.proof_status == EXACT_UNCONDITIONAL
+
+# Entries are instance-bound even for two fields with identical polynomials.
+L = NumberField(x - 1, "b")
+L._class_unit_engine_cache = {false_key: entry}
+other_field = class_unit_context(L, proof=False)
+assert other_field is not first
+assert other_field.field is L
+
+# Later mutation of either result state or its context identity invalidates the
+# typed entry and causes an ordinary producer recomputation.
+M = NumberField(x - 1, "c")
+mutated = class_unit_context(M, proof=False)
+mutated.complete = False
+recomputed = class_unit_context(M, proof=False)
+assert recomputed is not mutated and recomputed.complete
+recomputed.context = proved.context
+again = class_unit_context(M, proof=False)
+assert again is not recomputed and again.context.field is M
+
+# A valid entry moved under a different seed/limit policy also declines.
+policy_entry = M._class_unit_engine_cache[false_key]
+seed_key = (False, "auto", 1, limits_key)
+M._class_unit_engine_cache[seed_key] = policy_entry
+seeded = class_unit_context(M, proof=False, seed=1)
+assert seeded is not again
+limited_key = (
+    False,
+    "auto",
+    0,
+    other_limits_key,
+)
+M._class_unit_engine_cache[limited_key] = policy_entry
+limited = class_unit_context(M, proof=False, max_relation_attempts=513)
+assert limited is not again
+print("ok")
+`);
+  assert.equal(output, "ok");
 });
 
 test("missing general producers and cancellation remain explicitly incomplete", () => {
@@ -377,10 +477,94 @@ O = K.maximal_order()
 P2 = O.factor_rational_prime(2)[0][0]
 
 unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+unit_hash = unit.stable_hash()
+assert unit.stable_hash() == unit_hash
+assert len(unit._stable_hash_cache) == 1
+mutated_unit_payload = unit.to_dict()
+mutated_unit_payload["factors"][0]["exponent"] = 2
+assert unit.to_dict()["factors"][0]["exponent"] == 1
+assert unit.stable_hash() == unit_hash
+unit_regulator_key = unit.regulator_cache_key()
+assert unit_regulator_key == ((((2, 1),), 1),)
+unit._stable_hash_cache[0] = "0" * 64
+assert unit.regulator_cache_key() == unit_regulator_key
+unit._stable_hash_cache[0] = unit_hash
 first = unit.principal_ideal(O)
 second = unit.principal_ideal(O)
 assert first == second and first is second
 assert len(unit._principal_ideal_cache) == 1
+
+factor_workspace = factored.FactoredLogarithmWorkspace(K, maximum_entries=1)
+uncached_logs = unit.archimedean_logarithms(80)
+cached_logs = unit.archimedean_logarithms(80, workspace=factor_workspace)
+assert [ball.to_dict() for ball in cached_logs] == [
+    ball.to_dict() for ball in uncached_logs
+]
+equal_factored_unit = factored.FactoredNumberFieldElement.from_element(K, K(2))
+equal_factored_unit.archimedean_logarithms(80, workspace=factor_workspace)
+assert factor_workspace.diagnostics()["hits"] == 1
+factored.FactoredNumberFieldElement.from_element(K, K(3)).archimedean_logarithms(
+    80, workspace=factor_workspace
+)
+assert factor_workspace.diagnostics()["entries"] == 1
+assert factor_workspace.diagnostics()["evictions"] == 1
+
+S = NumberField(x**3 + 4*x - 1, "s")
+rank_one_unit = factored.FactoredNumberFieldElement.from_element(S, S.gen())
+rank_one_workspace = factored.FactoredLogarithmWorkspace(S)
+full_rank_one_logs = rank_one_unit.archimedean_logarithms(96)
+regulator_rank_one_logs = rank_one_unit.regulator_logarithms(
+    96, 1, workspace=rank_one_workspace
+)
+assert len(full_rank_one_logs) == 2
+assert len(regulator_rank_one_logs) == 1
+assert regulator_rank_one_logs[0].to_dict() == full_rank_one_logs[0].to_dict()
+assert rank_one_workspace.diagnostics()["entries"] == 1
+
+engine = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
+log_calls = [0]
+class LogProbe:
+    def __init__(self, key, values):
+        self.key = key
+        self.values = values
+    def stable_hash(self):
+        return self.key
+    def archimedean_logarithms(self, precision=53, workspace=None):
+        log_calls[0] += 1
+        return self.values
+equal_unit = LogProbe("same", (1, 2))
+different_unit = LogProbe("different", (3, 4))
+assert engine._unit_logarithms(LogProbe("same", (1, 2)), 80) == engine._unit_logarithms(equal_unit, 80)
+assert log_calls[0] == 1
+assert engine._unit_logarithms(different_unit, 80) != ()
+assert log_calls[0] == 2
+assert engine._resource_usage["unit_logarithm_requests"] == 3
+assert engine._resource_usage["unit_logarithm_cache_hits"] == 1
+
+principal_calls = [0]
+class UnitAuthorityProbe:
+    def __init__(self, key):
+        self.key = key
+    def stable_hash(self):
+        return self.key
+    def principal_ideal(self, order):
+        principal_calls[0] += 1
+        return order.ideal(1)
+trusted_unit = UnitAuthorityProbe("trusted-unit")
+engine.context._live_artifacts.authenticated_dependency_units.append(
+    (trusted_unit, "trusted-unit")
+)
+engine._verify_exact_units(
+    (
+        trusted_unit,
+        UnitAuthorityProbe("trusted-unit"),
+        UnitAuthorityProbe("cold-unit"),
+    )
+)
+assert principal_calls[0] == 2
+assert engine._resource_usage["unit_principal_authority_requests"] == 3
+assert engine._resource_usage["unit_principal_authority_hits"] == 1
+assert engine._resource_usage["unit_principal_authority_fallbacks"] == 2
 
 collector = relations.ExactRelationCollector(O, (P2,))
 admission = collector.admit_witness(
@@ -388,6 +572,15 @@ admission = collector.admit_witness(
 )
 record = admission.record
 detached = relations.RelationRecord.from_dict(record.to_dict())
+decode_record = relations.RelationRecord.from_dict(record.to_dict())
+decoded_once = engine._decode_relation_witness(decode_record)
+decoded_twice = engine._decode_relation_witness(decode_record)
+assert decoded_once is decoded_twice
+decode_record.witness = relations.FactoredPrincipalWitness.from_element(K(3)).to_dict()
+decoded_mutation = engine._decode_relation_witness(decode_record)
+assert decoded_mutation.to_dict() != decoded_once.to_dict()
+assert engine._resource_usage["relation_witness_decode_requests"] == 3
+assert engine._resource_usage["relation_witness_decode_cache_hits"] == 1
 calls = [0]
 original = relations.FactoredPrincipalWitness.principal_ideal
 def counting(self, order=None):
@@ -525,6 +718,9 @@ relation_events = [event for event in events if event["event"] == "relation-sear
 assert relation_events[0]["strategy"] == "single-prime-sweep"
 assert relation_events[0]["search_state"]["ideals_tested"] == 1
 assert engine._resource_usage["relation_attempts"] <= 4
+reconstruction = collector.reconstruction_diagnostics()
+assert reconstruction["row_hits"] > 0
+assert reconstruction["row_requests"] > reconstruction["row_misses"]
 assert all(record.verify(O, (P2,))["certified"] for record in collector.records)
 print("targeted")
 `);
@@ -647,6 +843,137 @@ assert _floating_matrix_rank(((1.0, 2.0), (2.0, 5.0))) == 2
 print("adaptive-unit-rank")
 `);
   assert.equal(output, "adaptive-unit-rank");
+});
+
+test("relation log-rank steering retains exact units only along one record prefix", () => {
+  const output = run(String.raw`
+class FakeRecord:
+    pass
+
+class FakePresentation:
+    def __init__(self, dependencies):
+        self.dependency_transforms = tuple(tuple(row) for row in dependencies)
+
+class FakeUnit:
+    def __init__(self, key, logarithms):
+        self.key = key
+        self.logarithms = logarithms
+    def stable_hash(self):
+        return self.key
+
+class SteeringProbe(ClassUnitGroupEngine):
+    def __init__(self, field):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.combinations = []
+        self.logs = []
+    def _combine(self, records, coefficients):
+        key = tuple(int(value) for value in coefficients)
+        self.combinations.append((tuple(records), key))
+        normalized = list(key)
+        while normalized and normalized[-1] == 0:
+            normalized.pop()
+        values = {
+            (1,): (1.0, 0.0, 0.0),
+            (0, 1): (2.0, 0.0, 0.0),
+            (0, 0, 1): (0.0, 1.0, 0.0),
+        }[tuple(normalized)]
+        return FakeUnit(str(tuple(normalized)), values)
+    def _unit_logarithms(self, unit, precision):
+        self.logs.append(unit.key)
+        return unit.logarithms
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x - 1, "a")
+first = FakeRecord()
+second = FakeRecord()
+third = FakeRecord()
+engine = SteeringProbe(K)
+
+rank = engine._unit_logarithmic_rank(
+    (first, second), FakePresentation(((1, 0), (0, 1))), 2
+)
+assert rank == 1
+assert len(engine.combinations) == 2
+assert len(engine.logs) == 2
+
+rank = engine._unit_logarithmic_rank(
+    (first, second, third),
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+)
+assert rank == 2
+assert len(engine.combinations) == 3
+assert len(engine.logs) == 3
+assert engine._resource_usage["relation_dependency_unit_cache_hits"] == 2
+assert engine._resource_usage["relation_independent_log_units"] == 2
+
+# Final basis selection consumes the exact unit objects constructed during
+# log-rank steering instead of decoding and combining the same live prefix.
+units, dependencies = engine._select_dependency_unit_basis(
+    (first, second, third),
+    ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    2,
+)
+assert len(units) == 2
+assert dependencies == ((1, 0, 0), (0, 0, 1))
+assert len(engine.combinations) == 3
+assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2
+assert engine._resource_usage["dependency_unit_steering_basis_hits"] == 1
+assert engine._resource_usage["dependency_unit_materializations"] == 0
+
+# A detached/restored prefix has equal mathematical-looking records but distinct
+# identities.  It must reset and recompute instead of inheriting producer state.
+detached = (FakeRecord(), FakeRecord(), FakeRecord())
+rank = engine._unit_logarithmic_rank(
+    detached,
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+)
+assert rank == 2
+assert len(engine.combinations) == 6
+assert engine._resource_usage["relation_log_steering_resets"] == 1
+
+fresh = SteeringProbe(K)
+assert fresh._unit_logarithmic_rank(
+    detached,
+    FakePresentation(((1, 0, 0), (0, 1, 0), (0, 0, 1))),
+    2,
+) == 2
+assert len(fresh.combinations) == 3
+
+# In a complex cubic the exact nontorsion test may replace steering logs, but
+# it must reject both torsion units.  The final regulator still consumes the
+# retained factored nontorsion unit through the ordinary rigorous path.
+from sagejs.number_fields.factored_elements import FactoredNumberFieldElement
+class CubicRankOneProbe(ClassUnitGroupEngine):
+    def __init__(self, field, value):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.value = value
+        self.logs = 0
+    def _combine(self, records, coefficients):
+        return FactoredNumberFieldElement.from_element(self.field, self.value)
+    def _unit_logarithms(self, unit, precision):
+        self.logs += 1
+        return (0.0, 0.0)
+
+C = NumberField(x**3 - x - 1, "c")
+cubic_record = FakeRecord()
+torsion_probe = CubicRankOneProbe(C, -C.one())
+assert torsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 0
+assert torsion_probe.logs == 1
+assert torsion_probe._resource_usage["relation_exact_rank_one_units"] == 0
+nontorsion_probe = CubicRankOneProbe(C, C.gen())
+assert nontorsion_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 1
+assert nontorsion_probe.logs == 0
+assert nontorsion_probe._resource_usage["relation_exact_rank_one_units"] == 1
+print("monotone-log-steering")
+`);
+  assert.equal(output, "monotone-log-steering");
 });
 
 test("exact presentations are deferred across safe relation batches", () => {
@@ -920,7 +1247,7 @@ class OrbitProbe(ClassUnitGroupEngine):
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "a")
+K = NumberField(x**2 - 5, "a")
 factor_base = (FakePrime(), FakePrime())
 limits = ClassUnitEngineLimits(
     max_relation_attempts=4,
@@ -944,6 +1271,26 @@ assert [record.provenance["algorithm"] for record in collector.records] == [
     "quadratic-conjugation-orbit",
 ]
 assert plan_builds == 1 and orbit_calls == 1
+
+# The production orbit planner currently supports exact quadratic
+# conjugation only. Cubic relation contexts must not pay to construct a
+# deterministic unavailable plan.
+real_relations = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
+original_planner = real_relations.plan_automorphism_orbits
+unexpected_cubic_plans = []
+def forbidden_cubic_plan(field, factors):
+    unexpected_cubic_plans.append((field, tuple(factors)))
+    raise AssertionError("a cubic field entered the quadratic orbit planner")
+real_relations.plan_automorphism_orbits = forbidden_cubic_plan
+C = NumberField(x**3 + x + 1, "c")
+cubic_engine = ClassUnitGroupEngine(C, algorithm="buchmann-hecke")
+assert cubic_engine._automorphism_plan_for_factor_base(real_relations, ()) is None
+assert unexpected_cubic_plans == []
+assert cubic_engine._resource_usage["automorphism_orbit_plans"] == 1
+real_relations.plan_automorphism_orbits = original_planner
 assert accelerated._resource_usage["automorphism_orbit_plans"] == 1
 assert accelerated._resource_usage["automorphism_orbit_relations"] == 1
 assert accelerated._relation_matrix_accumulator.row_count == 2
@@ -1053,7 +1400,9 @@ class FakeRelation:
         return {"certified": tuple(factor_base) == (prime,)}
 
 class FakeCollector:
-    def __init__(self):
+    def __init__(self, order, factor_base):
+        self.order = order
+        self.factor_base = tuple(factor_base)
         self.records = (FakeRelation(),)
         self._rows = {}
         self._row_requests = 0
@@ -1072,9 +1421,12 @@ class FakeCollector:
             "row_requests": self._row_requests,
             "row_hits": self._row_hits,
         }
+    def _all_records_live_authenticated(self, token):
+        return token is relation_module._LIVE_VERIFIED_RELATION_PREFIX_TOKEN
 
 class FakePresentation:
     order = 1
+    relation_rows = (object(),)
     def to_dict(self):
         return {"schema": "fake-presentation-v1", "order": 1}
     def verify(self):
@@ -1082,15 +1434,21 @@ class FakePresentation:
         return True
 
 class FakePlan:
-    theorem = "BDF factor-base theorem"
-    assumptions = ("GRH",)
-    bound = 17
+    def __init__(self, order):
+        self.order = order
+        self.theorem = "BDF factor-base theorem"
+        self.assumptions = ("GRH",)
+        self.bound = 17
 
+relation_module = __import__(
+    "sagejs.number_fields.class_group_relations",
+    fromlist=["class_group_relations"],
+)
 class Components:
     context = None
     factored = object()
     factor_base = FakeFactorBase
-    relations = object()
+    relations = relation_module
     matrix = object()
     analytic = object()
     def missing(self):
@@ -1102,25 +1460,78 @@ K = NumberField(x - 1, "a")
 engine = ClassUnitGroupEngine(
     K, algorithm="buchmann-hecke", components=Components()
 )
-collector = FakeCollector()
+collector = FakeCollector(engine.order, (prime,))
+plan = FakePlan(engine.order)
+presentation = FakePresentation()
+engine._bind_context_factor_base((prime,), validated=True)
+assert engine._bind_context_relations((prime,), collector, presentation)
 evidence, verifier = engine._generation_authority(
-    FakePlan(), (prime,), collector, FakePresentation(),
+    plan, (prime,), collector, presentation,
     EXACT_RELATIONS_CONDITIONAL_GRH,
 )
 assert counts == {
-    "factor_base": 1,
-    "presentation": 1,
-    "relations": 1,
+    "factor_base": 0,
+    "presentation": 0,
+    "relations": 0,
     "detached_relations": 0,
 }
-assert engine._resource_usage["generation_reconstruction_calls"] == 3
-assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
+assert engine._resource_usage["generation_reconstruction_calls"] == 0
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
+assert engine._resource_usage[
+    "generation_verification_live_authentication_hits"
+] == 1
+assert engine._resource_usage["generation_verification_full_replays"] == 0
+evidence["bound"] = 19
+assert not verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+evidence["bound"] = 17
+retained_records = collector.records
+collector.records = retained_records + (FakeRelation(),)
+assert engine._context_generation_artifact(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+) is None
+collector.records = retained_records
+evidence["factor_base"][0]["prime"] = 3
+assert not verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+evidence["factor_base"][0]["prime"] = 2
 for _index in range(2):
     assert verifier(
         K, K.maximal_order(), (), 1, evidence,
         EXACT_RELATIONS_CONDITIONAL_GRH,
     )
 assert counts == {
+    "factor_base": 0,
+    "presentation": 0,
+    "relations": 0,
+    "detached_relations": 0,
+}
+assert engine._resource_usage["generation_reconstruction_calls"] == 0
+assert engine._resource_usage["generation_reconstruction_cache_hits"] == 0
+retained_evidence, retained_verifier = engine._generation_authority(
+    plan, (prime,), collector, presentation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert retained_evidence is evidence
+assert engine._resource_usage["generation_context_artifact_reuses"] == 1
+assert engine._resource_usage["generation_verification_cache_hits"] == 2
+assert engine._resource_usage[
+    "generation_verification_live_authentication_hits"
+] == 2
+assert engine.context.live_diagnostics()["generation_verification_active"]
+assert engine.context.live_diagnostics()["generation_verification_entries"] == 1
+engine._deactivate_context_generation_verification()
+assert not engine.context.live_diagnostics()["generation_verification_active"]
+assert verifier(
+    K, K.maximal_order(), (), 1, evidence,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert counts == {
     "factor_base": 1,
     "presentation": 1,
     "relations": 1,
@@ -1128,25 +1539,11 @@ assert counts == {
 }
 assert engine._resource_usage["generation_reconstruction_calls"] == 3
 assert engine._resource_usage["generation_reconstruction_cache_hits"] == 2
-assert engine._resource_usage["generation_verification_cache_hits"] == 2
-engine._generation_verification_cache_active = False
-assert verifier(
-    K, K.maximal_order(), (), 1, evidence,
-    EXACT_RELATIONS_CONDITIONAL_GRH,
-)
-assert counts == {
-    "factor_base": 2,
-    "presentation": 2,
-    "relations": 2,
-    "detached_relations": 0,
-}
-assert engine._resource_usage["generation_reconstruction_calls"] == 6
-assert engine._resource_usage["generation_reconstruction_cache_hits"] == 5
-assert engine._resource_usage["generation_verification_full_replays"] == 2
+assert engine._resource_usage["generation_verification_full_replays"] == 1
 # The detached proof path does not inherit the live collector callback.
 assert FakeRelation().verify(K.maximal_order(), (prime,))["certified"]
 assert counts["detached_relations"] == 1
-assert engine._resource_usage["generation_reconstruction_calls"] == 6
+assert engine._resource_usage["generation_reconstruction_calls"] == 3
 print("generation-memo")
 `);
   assert.equal(output, "generation-memo");
@@ -1289,8 +1686,10 @@ forged = ClassUnitSaturationRecord(
     },
 )
 assert not forged.complete and not forged.verify()
-record.analytic_validation["lower_index"] = 2
-assert not record.verify()
+detached_validation = record.analytic_validation
+detached_validation["lower_index"] = 2
+assert detached_validation != record.analytic_validation
+assert record.verify()
 assert engine._resource_usage["saturation_rounds"] == 1
 assert engine.stages[-1].name == "saturation"
 assert engine.stages[-1].state == "complete"
@@ -1326,6 +1725,9 @@ _torsion, _regulator, initial_index = engine._analytic_index(
 )
 assert initial_index.rigorous
 assert initial_index.lower_index == 2 and initial_index.upper_index == 2
+initial_zeta = engine._context_analytic_proof()[4]
+assert initial_zeta.hr_index_absolute_error_history == ("1", "1/2")
+assert str(initial_zeta.requested_absolute_error) == "1/2"
 generation_evidence = {
     "schema": "test.engine-generation-authority.v1",
     "class_number": 1,
@@ -1338,6 +1740,213 @@ def verify_generation(field, order, units, class_number, evidence, status):
         and evidence == generation_evidence
         and status == EXACT_RELATIONS_CONDITIONAL_GRH
     )
+
+# The precomputed producer path applies the same independent limits as
+# detached replay and cannot issue a certificate that is invalid by design.
+live_proof = engine._context_analytic_proof()
+live_regulator = live_proof[3]
+live_zeta = live_proof[4]
+live_index = live_proof[5]
+forged_regulator = engine.components.analytic.RegulatorEnclosure(
+    live_regulator.ball * engine.components.analytic.RealBall(
+        "101/100", precision_bits=live_regulator.precision_bits
+    ),
+    live_regulator.unit_rank,
+    live_regulator.precision_history,
+    weighted_complex_places=True,
+    determinant_widths=live_regulator.determinant_widths,
+)
+forged_regulator_index = engine.components.analytic.validate_hr_index(
+    signature=(2, 0),
+    discriminant=int(engine.order.discriminant()),
+    class_number=1,
+    roots_of_unity=int(torsion.order),
+    regulator=forged_regulator,
+    zeta_log_residue=live_zeta,
+    precision_bits=96,
+)
+assert forged_regulator_index.unique_index is not None
+assert forged_regulator_index.unique_index == live_index.unique_index
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=forged_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=forged_regulator_index,
+    )
+    raise AssertionError("a regulator unrelated to the exact units was issued")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=1000001,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=live_index,
+    )
+    raise AssertionError("an over-cap precomputed certificate was issued")
+except engine.components.analytic.AnalyticResourceError:
+    pass
+
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=64,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=live_index,
+    )
+    raise AssertionError("an unreplayable precomputed precision was issued")
+except ValueError:
+    pass
+
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/2",
+        zeta_absolute_error_history=("1", "1/2"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=2,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=live_zeta,
+        _precomputed_index=live_index,
+    )
+    raise AssertionError("a precomputed proof beyond its prime cap was issued")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+
+# An exact-halving sequence is not enough: every nonfinal entry must have been
+# genuinely inconclusive.  Error 1/2 already decides this index, so a retained
+# 1/4 refinement cannot be admitted as the producer's adaptive history.
+overrefined_zeta = engine.components.analytic.zeta_log_residue_bound(
+    int(engine.order.discriminant()),
+    int(K.degree()),
+    engine.order.splitting_records,
+    absolute_error="1/4",
+    precision_bits=96,
+    limits=engine.components.analytic.ZetaLogResidueLimits(
+        maximum_prime_bound=20000,
+        maximum_precision_bits=256,
+    ),
+    workspace=engine._analytic_workspace,
+)
+overrefined_zeta.hr_index_absolute_error_history = ("1", "1/2", "1/4")
+overrefined_index = engine.components.analytic.validate_hr_index(
+    signature=(2, 0),
+    discriminant=int(engine.order.discriminant()),
+    class_number=1,
+    roots_of_unity=int(torsion.order),
+    regulator=live_regulator,
+    zeta_log_residue=overrefined_zeta,
+    precision_bits=96,
+)
+assert overrefined_index.unique_index == 2
+try:
+    engine.components.analytic.certify_unit_saturation_index(
+        K,
+        engine.order,
+        initial_units,
+        class_number=1,
+        roots_of_unity=int(torsion.order),
+        precision_bits=96,
+        maximum_precision_bits=256,
+        zeta_absolute_error="1/4",
+        zeta_absolute_error_history=("1", "1/2", "1/4"),
+        zeta_limits=engine.components.analytic.ZetaLogResidueLimits(
+            maximum_prime_bound=20000,
+            maximum_precision_bits=256,
+        ),
+        workspace=engine._analytic_workspace,
+        generation_evidence=generation_evidence,
+        generation_verifier=verify_generation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
+        _precomputed_regulator=live_regulator,
+        _precomputed_zeta_log_residue=overrefined_zeta,
+        _precomputed_index=overrefined_index,
+    )
+    raise AssertionError("a refinement after a decisive hR index was issued")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+
+# A cache poisoned after analytic computation but before certificate issuance
+# cannot become live semantic authority, even on the precomputed fast path.
+preseal_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
+preseal_lower = preseal_ball.lower
+preseal_ball.lower = engine.components.analytic.RationalEndpoint(999)
+try:
+    engine._unit_index_certificate(
+        initial_units,
+        torsion,
+        1,
+        generation_evidence,
+        verify_generation,
+        EXACT_RELATIONS_CONDITIONAL_GRH,
+    )
+    raise AssertionError("a pre-seal poisoned zeta cache issued a certificate")
+except engine.components.analytic.AnalyticCertificationError:
+    pass
+finally:
+    preseal_ball.lower = preseal_lower
 
 before_saturation = engine._analytic_workspace.diagnostics()
 updated, artifact, attempt = engine._try_unit_saturation(
@@ -1370,12 +1979,174 @@ detached = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
     artifact.global_index_certificate
 )
 assert detached.workspace_diagnostics() is None
-assert engine._diagnostics()["analytic_workspace"] == after_saturation
+detached_payload = detached.to_dict()
+assert detached_payload["configuration"]["zeta"]["absolute_error"] == "1/2"
+assert detached_payload["configuration"]["zeta"][
+    "absolute_error_history"
+] == ["1", "1/2"]
+assert detached_payload["analytic_proof"][
+    "zeta_absolute_error_history"
+] == ["1", "1/2"]
+assert detached.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+assert not engine.components.analytic.verify_saturation_evidence(
+    K,
+    engine.order,
+    initial_units,
+    artifact.to_dict(),
+    generation_verifier=verify_generation,
+    cancelled=lambda: True,
+)
+assert not detached.verify(
+    K,
+    engine.order,
+    initial_units,
+    generation_verifier=verify_generation,
+    cancelled=lambda: True,
+)
+
+import copy
+
+# Canonical top-level authentication still fails closed on malformed nested
+# proof structure instead of exposing lookup errors through certificate replay.
+malformed_payload = copy.deepcopy(detached_payload)
+del malformed_payload["analytic_proof"]["hr_index"]
+malformed_body = dict(malformed_payload)
+del malformed_body["content_sha256"]
+malformed_payload["content_sha256"] = engine.components.analytic._content_hash(
+    malformed_body
+)
+malformed = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    malformed_payload
+)
+assert not malformed.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# A rehashed but non-halving detached history has no mathematical authority.
+forged_payload = copy.deepcopy(detached_payload)
+forged_payload["configuration"]["zeta"]["absolute_error"] = "1/3"
+forged_payload["configuration"]["zeta"]["absolute_error_history"] = [
+    "1", "1/3",
+]
+forged_body = dict(forged_payload)
+del forged_body["content_sha256"]
+forged_payload["content_sha256"] = engine.components.analytic._content_hash(
+    forged_body
+)
+forged = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    forged_payload
+)
+assert not forged.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# Rehashing a certificate cannot make producer-selected analytic resources
+# exceed the verifier's independent cap.
+over_cap_payload = copy.deepcopy(detached_payload)
+over_cap_payload["configuration"]["zeta"]["limits"][
+    "maximum_prime_bound"
+] = 1000001
+over_cap_body = dict(over_cap_payload)
+del over_cap_body["content_sha256"]
+over_cap_payload["content_sha256"] = engine.components.analytic._content_hash(
+    over_cap_body
+)
+over_cap = engine.components.analytic.UnitSaturationIndexCertificate.from_dict(
+    over_cap_payload
+)
+assert not over_cap.verify(
+    K, engine.order, initial_units, generation_verifier=verify_generation
+)
+
+# Live cache state is only an acceleration hint.  Corrupting it makes replay
+# fail closed, and restoring it restores the authenticated proof.
+live_certificate = engine._unit_index_certificate(
+    initial_units,
+    torsion,
+    1,
+    generation_evidence,
+    verify_generation,
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+)
+assert live_certificate.verify(K, engine.order, initial_units)
+finite_ball = next(iter(engine._analytic_workspace._finite_terms.values()))[0]
+saved_lower = finite_ball.lower
+finite_ball.lower = engine.components.analytic.RationalEndpoint(999)
+assert not live_certificate.verify(K, engine.order, initial_units)
+finite_ball.lower = saved_lower
+assert live_certificate.verify(K, engine.order, initial_units)
+final_diagnostics = engine._diagnostics()["analytic_workspace"]
+assert final_diagnostics["certificate_replay_calls"] > after_saturation[
+    "certificate_replay_calls"
+]
 assert len(updated) == 1 and updated[0].evaluate()**2 == epsilon**2
 print("real-saturation-replay")
 `);
   assert.equal(output, "real-saturation-replay");
 });
+
+test(
+  "adaptive analytic completion preserves C4 and quartic exact outputs",
+  { skip: process.env.SAGEJS_SLOW_CLASS_UNIT !== "1" },
+  () => {
+    const output = run(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+cases = (
+    (
+        x**4 - x - 1,
+        (),
+        "exact-unconditional",
+    ),
+    (
+        x**5 + x**3 - x**2 + 4*x + 1,
+        (4,),
+        "exact-relations-conditional-grh",
+    ),
+)
+for polynomial, expected_invariants, expected_status in cases:
+    K = NumberField(polynomial, "a")
+    result = class_unit_context(K, proof=False)
+    assert result.complete and result.proof_status == expected_status
+    assert result.class_group().invariants() == expected_invariants
+    assert result.class_group().order() == (
+        1 if not expected_invariants else expected_invariants[0]
+    )
+    unit_group = result.unit_group()
+    assert unit_group.complete and unit_group.unit_rank == 2
+    assert unit_group.torsion.order == 2
+    regulator = result.regulator()
+    assert regulator.rigorous and regulator.precision_bits >= 100
+
+    certificate = result.saturation_record._analytic_certificate
+    configuration = certificate.configuration
+    history = configuration["zeta"]["absolute_error_history"]
+    assert history[0] == "1"
+    assert history[-1] == configuration["zeta"]["absolute_error"]
+    for previous, current in zip(history, history[1:]):
+        assert (
+            analytic._endpoint(previous, rigorous=True)
+            / analytic.RationalEndpoint(2)
+            == analytic._endpoint(current, rigorous=True)
+        )
+    detached = analytic.UnitSaturationIndexCertificate.from_dict(
+        certificate.to_dict()
+    )
+    assert detached.verify(
+        K,
+        K.maximal_order(),
+        result.saturation_original_units,
+        generation_verifier=certificate._generation_verifier,
+    )
+print("adaptive-c4-quartic-ok")
+`);
+    assert.equal(output, "adaptive-c4-quartic-ok");
+  },
+);
 
 test("missing saturation producer exhausts bounded retries honestly", () => {
   const output = run(String.raw`
@@ -1561,12 +2332,17 @@ class FakeIdeal:
         return ("quotient", self.index, representative.index)
 
 class FakeWitness:
-    def __init__(self, index):
+    def __init__(self, index, payload_index=None):
         self.index = index
+        self.payload_index = index if payload_index is None else payload_index
     def principal_ideal(self, order):
         return ("quotient", self.index, self.index)
+    def field(self):
+        return K
+    def factors(self):
+        return ((self.index, 1),)
     def to_dict(self):
-        return {"schema": "fake-witness-v1", "index": self.index}
+        return {"schema": "fake-witness-v1", "index": self.payload_index}
 
 class FakeFactored:
     @classmethod
@@ -1597,11 +2373,13 @@ class FakePlan:
     bound = 17
 
 class FakeGroup:
-    def __init__(self, calls):
+    def __init__(self, calls, forge_witness_payload=False):
         self.calls = calls
+        self.forge_witness_payload = forge_witness_payload
     def discrete_log(self, ideal):
         self.calls.append(ideal.index)
-        return (ideal.index,), FakeWitness(ideal.index)
+        payload_index = ideal.index + 1 if self.forge_witness_payload else ideal.index
+        return (ideal.index,), FakeWitness(ideal.index, payload_index)
     def representative_ideal(self, coordinates):
         return FakeIdeal(int(coordinates[0]))
 
@@ -1692,6 +2470,103 @@ assert second._proof_progress.complete
 assert second._proof_progress.bound == (17, 1)
 assert second._proof_progress.theorem == "Minkowski ideal-class theorem"
 assert second._proof_progress.dependency_hashes == dependencies
+
+class HostileController(Controller):
+    def __init__(self):
+        super().__init__()
+        self.cancel_after_next_prime = False
+        self.mutate_final_restore = True
+    def restore_minkowski_proof_progress(self, **options):
+        stored = None if self.stored is None else json.loads(json.dumps(self.stored))
+        if stored is None:
+            return None
+        progress = MinkowskiProofProgress.from_dict(
+            stored,
+            record_decoder=options.get("record_decoder"),
+            record_verifier=options.get("record_verifier"),
+        )
+        assert progress.matches_plan(
+            options["bound"],
+            options["prime_fingerprints"],
+            partition_count=options["partition_count"],
+            theorem=options["theorem"],
+            dependency_hashes=options["dependency_hashes"],
+        )
+        if (
+            self.mutate_final_restore
+            and progress is not None
+            and progress.complete
+        ):
+            progress.partitions[0].records[0].evidence["coordinates"] = (999,)
+        return progress
+
+hostile_controller = HostileController()
+hostile_calls = []
+hostile = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    checkpoint_controller=hostile_controller,
+)
+hostile._proof_dependency_hashes = dependencies
+try:
+    hostile._unconditional_proof_pass(FakeGroup(hostile_calls))
+    raise AssertionError("hostile restored progress was published")
+except ArithmeticError as error:
+    assert "incomplete" in str(error)
+hostile_controller.mutate_final_restore = False
+retried_records = hostile._unconditional_proof_pass(FakeGroup(hostile_calls))
+assert [record["index"] for record in retried_records] == [0, 1, 2, 3]
+assert hostile._proof_progress.complete
+
+# A progress observer may request cancellation without raising itself.  The
+# interposed path checks that request before terminal publication, and retry is
+# independent of the aborted in-memory progress.
+cancel_state = {"requested": False, "armed": True}
+def request_cancel(event):
+    if cancel_state["armed"] and event["event"] == "proof-prime":
+        cancel_state["requested"] = True
+progress_cancelled = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+    progress=request_cancel,
+    cancelled=lambda: cancel_state["requested"],
+)
+progress_cancelled._proof_dependency_hashes = dependencies
+try:
+    progress_cancelled._unconditional_proof_pass(FakeGroup([]))
+    raise AssertionError("progress-triggered cancellation published exact proof")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+assert not progress_cancelled._proof_progress.complete
+cancel_state["requested"] = False
+cancel_state["armed"] = False
+progress_retry = progress_cancelled._unconditional_proof_pass(FakeGroup([]))
+assert [record["index"] for record in progress_retry] == [0, 1, 2, 3]
+assert progress_cancelled._proof_progress.complete
+
+# The uninterrupted fast path binds a canonical detached witness payload back
+# to the exact live witness whose principal ideal was checked.  A witness that
+# serializes different factor semantics is rejected before bulk publication,
+# and an ordinary retry can still complete.
+bulk = ProofProbe(
+    K,
+    algorithm="buchmann-hecke",
+    components=Components(),
+    limits=limits,
+)
+bulk._proof_dependency_hashes = dependencies
+try:
+    bulk._unconditional_proof_pass(FakeGroup([], forge_witness_payload=True))
+    raise AssertionError("a changed live witness payload was published")
+except ArithmeticError as error:
+    assert "payload changed" in str(error)
+bulk_records = bulk._unconditional_proof_pass(FakeGroup([]))
+assert [record["index"] for record in bulk_records] == [0, 1, 2, 3]
+assert bulk._proof_progress.complete
 print("proof-resumed")
 `);
   assert.equal(output, "proof-resumed");
@@ -1776,6 +2651,33 @@ assert conditional_dependencies["relations"] != unconditional_dependencies["rela
 assert set(conditional_dependencies) == {
     "relations", "presentation", "generators", "saturation",
 }
+
+# Generation evidence uses component digests so the terminal proof-progress
+# hashes can reuse the already authenticated relation and presentation bytes.
+evidence = {
+    "schema": "sagejs.number-fields/class-generation-authority-v1",
+    "proof_status": EXACT_UNCONDITIONAL,
+    "theorem": "Minkowski",
+    "assumptions": [],
+    "bound": 3,
+    "factor_base": [{"prime": 2}],
+    "relations": [{"row": [1]}],
+    "presentation": {"order": 1},
+}
+evidence_digest = _generation_evidence_digests(evidence)
+assert all(len(value) == 64 for value in evidence_digest)
+changed = _component_payload(evidence)
+changed["relations"][0]["row"][0] = 2
+changed_digest = _generation_evidence_digests(changed)
+assert changed_digest[0] != evidence_digest[0]
+assert changed_digest[1] != evidence_digest[1]
+assert changed_digest[2] == evidence_digest[2]
+changed["unexpected"] = True
+try:
+    _generation_evidence_digests(changed)
+    raise AssertionError("extra generation evidence retained authority")
+except ValueError:
+    pass
 print("checkpoint-policy-bound")
 `);
   assert.equal(output, "checkpoint-policy-bound");

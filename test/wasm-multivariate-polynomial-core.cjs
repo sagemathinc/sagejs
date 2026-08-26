@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -269,7 +270,7 @@ test("public Node resultants agree with the native-disabled oracle", () => {
 });
 
 function wasmToolchain() {
-  const resolver = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
+  const resolver = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
   try {
     const current = resolver.resolveToolchain();
     return current.ready ? current.paths : null;

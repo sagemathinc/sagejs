@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -95,6 +96,12 @@ mpmath_spec.loader.exec_module(mpmath_module)
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
 runtime = types.ModuleType("sagejs.runtime")
+ffi_package = types.ModuleType("sagejs.ffi")
+ffi_flint = types.ModuleType("sagejs.ffi.flint")
+def unavailable_integer_log_sqrt_balls(*_args):
+    raise RuntimeError("declared FLINT is unavailable in the CPython oracle")
+ffi_flint.integer_log_sqrt_balls_packed = unavailable_integer_log_sqrt_balls
+ffi_package.flint = ffi_flint
 class Reflect:
     @staticmethod
     def has(value, name):
@@ -105,9 +112,12 @@ class Reflect:
 runtime.reflect = Reflect
 sagejs.number_fields = number_fields
 sagejs.runtime = runtime
+sagejs.ffi = ffi_package
 sys.modules["sagejs"] = sagejs
 sys.modules["sagejs.number_fields"] = number_fields
 sys.modules["sagejs.runtime"] = runtime
+sys.modules["sagejs.ffi"] = ffi_package
+sys.modules["sagejs.ffi.flint"] = ffi_flint
 
 for module_name, module_path in [
     ("sagejs.native", ${JSON.stringify(nativePath)}),

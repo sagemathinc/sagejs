@@ -800,8 +800,10 @@ function renderReport(receipt) {
       : "does not pass";
   return `# Genus-3 radius-6 height acceptance — Linux x64
 
-Source commit: \`${receipt.source.commit}\`  
-Host: \`${receipt.host.hostname}\` (${receipt.host.cpu})  
+Source commit: \`${receipt.source.commit}\`
+
+Host: \`${receipt.host.hostname}\` (${receipt.host.cpu})
+
 Node: \`${receipt.host.node}\`
 
 The Sage.js rows all return the complete public canonical height with the exact

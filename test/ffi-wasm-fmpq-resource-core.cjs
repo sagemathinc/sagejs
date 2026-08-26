@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -103,7 +104,7 @@ test("Fmpq Wasm surface is selected entirely from declarations", () => {
 test("generated Fmpq resources execute through real FLINT Wasm", {
   skip: hasWasmFlintToolchain()
     ? false
-    : "CoWasm FLINT toolchain is not available",
+    : "Sage.js FLINT Wasm toolchain is not available",
 }, async () => {
   const output = await mkdtemp(join(tmpdir(), "sagejs-wasm-fmpq-core-"));
   try {

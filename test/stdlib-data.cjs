@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 // Focused compatibility vectors adapted from CPython's Lib/test/test_json,
@@ -18,12 +19,22 @@ async function testDataModules() {
   try {
     const result = await session.evaluate(
       [
-        "import os, json, csv, io, base64, zlib, gzip, hashlib",
+        "import os, json, csv, io, base64, zlib, gzip, hashlib, sagejs.runtime as runtime",
         `os.chdir(${JSON.stringify(sandbox)})`,
         "value = {'big': 10**80, 'unicode': 'héllo', 'items': [True, None, 1.25]}",
         "encoded = json.dumps(value, sort_keys=True)",
         "print(json.loads(encoded) == value, json.loads(encoded)['big'] == 10**80)",
         "print(json.dumps('é'), json.dumps('é', ensure_ascii=False))",
+        "canonical = {'z': [None, True, -(10**80), 'a\\nb'], 'a': {'n': 10**80, 'quote': '\"'}}",
+        "canonical_text = json.dumps(canonical, sort_keys=True, separators=(',', ':'))",
+        "print(canonical_text)",
+        "readable_canonical_text = json.JSONEncoder(sort_keys=True, separators=(',', ':')).encode(canonical)",
+        "print(runtime.canonical_json_exact(canonical) == canonical_text == readable_canonical_text)",
+        "ascii_payload = {'ascii': ''.join(chr(code) for code in range(127))}",
+        "print(runtime.canonical_json_exact(ascii_payload) == json.JSONEncoder(sort_keys=True, separators=(',', ':')).encode(ascii_payload))",
+        "print(runtime.canonical_json_exact({'é': 1}) is None, runtime.canonical_json_exact({'x': 1.25}) is None, runtime.canonical_json_exact({1: 'x'}) is None)",
+        "cycle = []; cycle.append(cycle)",
+        "print(runtime.canonical_json_exact(cycle) is None)",
         "print(json.loads('[1, 2.5]', parse_int=lambda x: int(x)+10))",
         "print(json.loads('{\"a\":1,\"a\":2}', object_pairs_hook=list))",
         "try:",
@@ -68,6 +79,11 @@ async function testDataModules() {
       [
         "True True",
         '"\\u00e9" "é"',
+        '{"a":{"n":100000000000000000000000000000000000000000000000000000000000000000000000000000000,"quote":"\\\""},"z":[null,true,-100000000000000000000000000000000000000000000000000000000000000000000000000000000,"a\\nb"]}',
+        "True",
+        "True",
+        "True True True",
+        "True",
         "[11, 2.5]",
         "[('a', 1), ('a', 2)]",
         "JSONDecodeError 1 6",

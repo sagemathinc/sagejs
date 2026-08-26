@@ -177,9 +177,12 @@ class Cursor:
             raise TypeError("execute() argument 1 must be str")
         kind = _statement_kind(sql)
         self.connection._before_statement(kind)
-        options = _native_record(readBigInts=True, returnArrays=True)
         try:
-            statement = _call(self.connection._database, "prepare", [sql, options])
+            # Node 22 ignores prepare's newer options argument.  The statement
+            # setters are available at Sage.js's minimum supported Node version.
+            statement = _call(self.connection._database, "prepare", [sql])
+            _call(statement, "setReadBigInts", [True])
+            _call(statement, "setReturnArrays", [True])
             columns = _call(statement, "columns", [])
             call_args = _parameters(parameters)
             self._rows = []
@@ -306,8 +309,6 @@ class Connection:
     ) -> None:
         options = _native_record(
             timeout=max(0, int(float(timeout) * 1000)),
-            readBigInts=True,
-            returnArrays=True,
         )
         try:
             self._database = runtime.reflect.construct(

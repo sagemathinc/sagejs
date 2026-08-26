@@ -49,6 +49,8 @@ a { color: inherit; }
 nav { display: flex; gap: 28px; font-size: 0.92rem; font-weight: 650; }
 nav a { text-decoration: none; }
 nav a:hover { color: var(--teal); }
+.site-header nav .launch-link { margin-block: -7px; border-radius: 999px; padding: 7px 13px; color: white; background: var(--teal); }
+.site-header nav .launch-link:hover { color: var(--navy-deep); background: #71e0d2; }
 
 .hero { min-height: 610px; padding-block: 100px 84px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(340px, 0.7fr); align-items: center; gap: 80px; }
 .eyebrow { margin: 0 0 15px; color: var(--teal); font-size: 0.74rem; font-weight: 850; letter-spacing: 0.16em; text-transform: uppercase; }
@@ -88,6 +90,10 @@ h2 { margin-bottom: 20px; font-family: Georgia, "Times New Roman", serif; font-s
 .fine-print { margin-bottom: 0; font-size: .76rem; }
 .fine-print a { color: #71e0d2; }
 .install-section .alpha-note a { color: #71e0d2; }
+.browser-launch { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-top: 30px; padding: 28px; border: 1px solid rgba(113,224,210,.55); border-radius: var(--radius); background: linear-gradient(120deg, rgba(13,148,136,.2), rgba(255,255,255,.055)); }
+.browser-launch h3 { margin-bottom: 8px; font-size: 1.65rem; letter-spacing: -.02em; }
+.browser-launch p:last-child { max-width: 720px; margin-bottom: 0; color: #d9e2ec; }
+.browser-launch .download-button { flex: 0 0 auto; margin-top: 0; }
 .download-button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; margin-top: 24px; border: 1px solid #71e0d2; border-radius: 9px; padding: 0 16px; color: #061522; background: #71e0d2; font-weight: 800; text-decoration: none; }
 .download-button:hover { color: white; background: var(--teal); }
 .install-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin-top: 22px; background: rgba(255,255,255,.14); }
@@ -319,6 +325,8 @@ footer { padding-block: 38px; color: #bcccdc; background: var(--navy-deep); }
   .site-header { height: auto; min-height: 66px; gap: 12px; padding: 12px 16px; }.site-header nav { gap: 11px; font-size: .75rem; }.site-header nav a:nth-child(n+4) { display: none; }
   h1 { font-size: 3rem; }.hero { min-height: auto; padding-block: 55px; }
   .hero-actions { align-items: stretch; flex-direction: column; }
+  .browser-launch { align-items: stretch; flex-direction: column; }
+  .browser-launch .download-button { width: 100%; }
   .install-card { padding: 20px; }.command-row { display: block; }.copy { width: 100%; min-height: 38px; border-top: 1px solid rgba(255,255,255,.15); border-left: 0; }
   .capability-card { padding: 19px; }.capability-top { display: block; }.badges { justify-content: start; margin-top: 13px; }
   .example-results-heading, .coverage-expander > summary, .competitive-expander > summary, .example-expander > summary, .example-header { align-items: start; flex-direction: column; }.example-copy { width: 100%; }

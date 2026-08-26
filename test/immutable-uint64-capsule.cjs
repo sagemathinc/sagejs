@@ -1,7 +1,9 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
 const {
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -28,6 +30,23 @@ const witnessPath = join(
   "immutable_uint64_capsule_witness.py",
 );
 const witnessSource = readFileSync(witnessPath, "utf8");
+const nativeMpcLibrary = process.env.SAGEJS_FLINT_PREFIX
+  ? join(
+      resolve(process.env.SAGEJS_FLINT_PREFIX),
+      "lib",
+      process.platform === "win32" ? "mpc.lib" : "libmpc.a",
+    )
+  : join(
+      root,
+      "packages",
+      "flint",
+      ".native",
+      process.platform === "win32"
+        ? join("vcpkg-installed", "x64-windows-static-md-release")
+        : "prefix",
+      "lib",
+      process.platform === "win32" ? "mpc.lib" : "libmpc.a",
+    );
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -537,7 +556,11 @@ test("authenticated gather rolls back a reentrant destination reservation", () =
   );
 });
 
-test("authorized leases borrow read-only storage in native kernels", async () => {
+test("authorized leases borrow read-only storage in native kernels", {
+  skip: existsSync(nativeMpcLibrary)
+    ? false
+    : "prepared native MPC dependencies are unavailable",
+}, async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-immutable-u64-"));
   try {
     const compiled = await compileKernel({

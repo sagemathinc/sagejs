@@ -1,0 +1,157 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "proof-ideal-schema",
+  "title": "Replay proof-prime ideal schemas",
+  "lane": "arithmetic-algebra",
+  "status": "review",
+  "owner": "user",
+  "objective": "Unconditional class-group replay decodes authenticated prime-ideal and general-ideal payloads through the correct fail-closed schema dispatch, with a public degree-six regression",
+  "base_commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "test/number-field-class-group-maps-proof.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Existing exact degree-six class/unit proof corpus and detached mutation replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test --test-name-pattern=public.unconditional.groups test/number-field-class-group-maps-proof.cjs",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.228,
+      "started_at": "2026-08-25T04:20:31.741Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "68875a79b23ec52fa3e4b6c25c044f366fdc6f33c5ff6b581facb4af5d4b2f1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/number_fields/class_group_maps.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.534,
+      "started_at": "2026-08-25T04:20:47.244Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "68875a79b23ec52fa3e4b6c25c044f366fdc6f33c5ff6b581facb4af5d4b2f1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_maps.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.791,
+      "started_at": "2026-08-25T04:20:48.541Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "68875a79b23ec52fa3e4b6c25c044f366fdc6f33c5ff6b581facb4af5d4b2f1e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public.unconditional.groups test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.021,
+      "started_at": "2026-08-25T04:25:54.824Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "b0c50c6c972ab1160d43683a52234961f07b76d18835d969d3df320f26d45268",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.201,
+      "started_at": "2026-08-25T04:26:18.253Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "b0c50c6c972ab1160d43683a52234961f07b76d18835d969d3df320f26d45268",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public.unconditional.groups test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.093,
+      "started_at": "2026-08-25T04:27:33.178Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "83e99cc431594cce6f7be332298081bbd55ed5772236df57b75b8db13c93b215",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=public.unconditional.groups test/number-field-class-group-maps-proof.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 17.313,
+      "started_at": "2026-08-25T04:28:12.993Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "a50c6d2c4046893d9f79d0229389d202ff24d7e0df7df5c4f897f398ed2d1b8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/number_fields/class_group_maps.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.505,
+      "started_at": "2026-08-25T04:28:43.477Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "a50c6d2c4046893d9f79d0229389d202ff24d7e0df7df5c4f897f398ed2d1b8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/number_fields/class_group_maps.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.737,
+      "started_at": "2026-08-25T04:28:44.636Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "a50c6d2c4046893d9f79d0229389d202ff24d7e0df7df5c4f897f398ed2d1b8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.04,
+      "started_at": "2026-08-25T04:29:30.070Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "a50c6d2c4046893d9f79d0229389d202ff24d7e0df7df5c4f897f398ed2d1b8b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 876.396,
+      "started_at": "2026-08-25T04:30:10.993Z",
+      "commit": "411344bb35dea8ea91d9f5b0498f9df8247909bb",
+      "workspace_fingerprint": "a50c6d2c4046893d9f79d0229389d202ff24d7e0df7df5c4f897f398ed2d1b8b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Unconditional replay now dispatches the exact prime-ideal and ordinary-ideal schemas through their authenticating decoders and rejects every other schema. The public degree-six upgrade path replays after class_number(), while direct cubic Minkowski discovery rebuilds a capped independent prime stream, matches it against the retained exact factor base, verifies every quotient witness, and emits the existing authenticated proof-progress format for detached replay. Public proof=False and proof=True cubic groups, detached payload mutations, unknown schemas, and a hostile over-cap live bound are covered.",
+    "risks": [
+      "Focused arithmetic and strict Python validation ran on Linux x64; this dynamic-Python-only change still needs the integration lane's usual Linux ARM64, Windows x64, and macOS ARM64 gates.",
+      "The recorded early focused-test failure was caused by an intentionally interrupted test:changed build leaving dist artifacts incoherent; a subsequent full build and repeated focused receipts passed."
+    ],
+    "next_steps": [
+      "Integrate the lane commit, rerun the focused proof-map test on the merged class-group branch, and include it in the next cross-platform class/unit validation batch."
+    ]
+  }
+}

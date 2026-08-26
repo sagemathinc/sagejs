@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import sagejs as sage
 import sagejs.runtime as runtime
@@ -30,7 +30,12 @@ CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA = (
 AUTHENTICATED_CUBIC_CLASS_NUMBER_SCHEMA = (
     "sagejs.number-fields/authenticated-cubic-class-number-result-v1"
 )
+AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA = (
+    "sagejs.number-fields/authenticated-cubic-relation-seed-v1"
+)
 _AUTHENTICATED_CUBIC_CLASS_NUMBER_TOKEN = object()
+_AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN = object()
+_LIVE_CUBIC_CERTIFICATE_TOKEN = object()
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS = 64
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS = 128
 DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL = 64
@@ -45,6 +50,31 @@ _CUBIC_CLASS_NUMBER_REPLAY_MAX_QUOTIENT_ORDER = 1_000_000
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_PROJECTIVE_LINES = 4096
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_MODULUS = 257
 _CUBIC_CLASS_NUMBER_REPLAY_MAX_RESIDUE_STATES = 20_000_000
+_CUBIC_NORM_FORM_X_SLICE = 8
+_CUBIC_RELATION_SIEVE_BOUND = 2
+_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND = 4
+_CUBIC_RELATION_SIEVE_MAX_CANDIDATES = 128
+_CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS = 256
+# At these tiny bounds, producing the packed factors directly is cheaper than
+# first running a complete descriptor-only decomposition to decide whether the
+# live relation seed is small enough.  The LMFDB timing corpus measures the
+# crossover between the six-prime bound-15 base and the ten-prime bound-17
+# base, so larger plans retain the cheap size preflight below.
+_CUBIC_PACKED_PREMATERIALIZATION_BOUND = 16
+_CUBIC_NORM_FORM_INTERPOLATION_POINTS = (
+    (1, 0, 0),
+    (0, 1, 0),
+    (0, 0, 1),
+    (1, 1, 0),
+    (1, -1, 0),
+    (1, 0, 1),
+    (1, 0, -1),
+    (0, 1, 1),
+    (0, 1, -1),
+    (1, 1, 1),
+)
+_cubic_norm_form_kernel_override: Any = None
+_cubic_relation_sieve_kernel_override: Any = None
 
 
 def _freeze_authentication_value(value: Any) -> Any:
@@ -62,6 +92,34 @@ def _freeze_authentication_value(value: Any) -> Any:
     raise TypeError("authentication snapshots require JSON-safe values")
 
 
+def _copy_json_value(value: Any) -> Any:
+    """Detach one JSON value from producer-owned mutable containers."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_copy_json_value(item) for item in value]
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("copied JSON object keys must be strings")
+        return {key: _copy_json_value(item) for key, item in value.items()}
+    raise TypeError("copied certificate values must be JSON-safe")
+
+
+def _freeze_json_value(value: Any) -> Any:
+    """Recursively freeze producer-owned JSON without encoding it."""
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _freeze_json_value(item)
+        runtime.object.freeze(value)
+    elif isinstance(value, dict):
+        for item in value.values():
+            _freeze_json_value(item)
+        runtime.object.freeze(value)
+    elif value is not None and not isinstance(value, (bool, int, float, str)):
+        raise TypeError("frozen certificate values must be JSON-safe")
+    return value
+
+
 def _check_cubic_cancelled(cancelled: Callable[[], bool] | None) -> None:
     runtime.check_interrupt()
     if cancelled is not None and cancelled():
@@ -73,6 +131,933 @@ def _integer_rational(value: Any, name: str) -> int:
     if rational._denominator != 1:
         raise ArithmeticError(name + " is not an integer")
     return int(rational._numerator)
+
+
+def _cubic_rational_pair(value: Any) -> tuple[int, int]:
+    """Return one canonical rational pair without boxing integral payloads."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return int(value), 1
+    rational = sage.QQ(value)
+    return int(rational._numerator), int(rational._denominator)
+
+
+def _cubic_lcm(left: int, right: int) -> int:
+    a = abs(int(left))
+    b = abs(int(right))
+    product = a * b
+    while b:
+        a, b = b, a % b
+    return 0 if product == 0 else product // a
+
+
+def _is_integral_cubic_power_basis(order: Any) -> bool:
+    """Return whether the maximal-order basis is exactly `1, a, a^2`."""
+    if int(order.degree()) != 3 or len(order._basis_rows) != 3:
+        return False
+    for row_index, row in enumerate(order._basis_rows):
+        if len(row) != 3:
+            return False
+        for column_index, value in enumerate(row):
+            rational = sage.QQ(value)
+            if rational._denominator != 1 or int(rational._numerator) != int(
+                row_index == column_index
+            ):
+                return False
+    field = order.number_field()
+    scale = getattr(field, "_integral_equation_scale_cache", None)
+    return scale is not None and int(runtime.integer_bigint(scale)) == 1
+
+
+def _power_basis_cubic_element_norm(
+    order: Any, coordinates: tuple[Any, ...]
+) -> int | None:
+    """Evaluate an integral power-basis cubic norm with integer arithmetic."""
+    if len(coordinates) != 3 or not _is_integral_cubic_power_basis(order):
+        return None
+    values: list[int] = []
+    for value in coordinates:
+        rational = sage.QQ(value)
+        if rational._denominator != 1:
+            return None
+        values.append(int(rational._numerator))
+    maximal_module = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    polynomial = maximal_module.integral_equation_polynomial(order.number_field())
+    coefficients = tuple(int(value) for value in polynomial.list())
+    if len(coefficients) != 4 or coefficients[3] != 1:
+        return None
+    c0, c1, c2, _leading = coefficients
+    u, v, w = values
+    column0 = (u, v, w)
+    column1 = (-w * c0, u - w * c1, v - w * c2)
+    column2 = (
+        -v * c0 + w * c2 * c0,
+        -v * c1 + w * (-c0 + c2 * c1),
+        u - v * c2 + w * (-c1 + c2 * c2),
+    )
+    a, d, g = column0
+    b, e, h = column1
+    c, f, i = column2
+    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+
+class PackedCubicFactorRecord:
+    """One exact factor-base prime retained as HNF integers, not an ideal."""
+
+    def __init__(
+        self,
+        order: Any,
+        index: int,
+        prime: int,
+        ramification: int,
+        residue_degree: int,
+        rows: list[list[Any]],
+        subspace: list[list[int]],
+        presentation: dict[str, Any],
+        second_generator_payload: Any,
+        table: list[list[list[int]]] | None,
+        one_coordinates: list[int],
+        dedekind_kummer: bool,
+    ) -> None:
+        self.order = order
+        self.index = int(index)
+        self.prime = int(prime)
+        self.ramification = int(ramification)
+        self.residue_degree = int(residue_degree)
+        self.norm_value = self.prime**self.residue_degree
+        self.rows = tuple(tuple(value for value in row) for row in rows)
+        self.subspace = tuple(tuple(int(value) for value in row) for row in subspace)
+        self.presentation = {
+            key: list(value) if isinstance(value, (list, tuple)) else value
+            for key, value in presentation.items()
+        }
+        pairs = tuple(
+            tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+        )
+        denominator = 1
+        for row in pairs:
+            for _numerator, value_denominator in row:
+                denominator = _cubic_lcm(denominator, value_denominator)
+        numerators: list[int] = []
+        for row in pairs:
+            for numerator, value_denominator in row:
+                numerators.append(numerator * (denominator // value_denominator))
+        self.basis_numerators = tuple(numerators)
+        self.basis_denominator = denominator
+        witness_payload = second_generator_payload
+        if witness_payload is None:
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+            )
+            target = [list(row) for row in self.subspace]
+            inverse_rows = order._basis_inverse_matrix().rows()
+            for row in self.rows:
+                # The packed candidate already carries power-basis rows.  Map
+                # all three coordinates directly through the order's retained
+                # inverse instead of constructing a field element and asking
+                # the generic coordinate converter to rebuild the same row.
+                coordinate_values: list[Any] = []
+                for target_index in range(3):
+                    coordinate: Any = sage.QQ(0)
+                    for source in range(3):
+                        coordinate += row[source] * inverse_rows[source][target_index]
+                    coordinate_values.append(coordinate)
+                exact_coordinates = tuple(coordinate_values)
+                if any(value._denominator != 1 for value in exact_coordinates):
+                    continue
+                modular = [
+                    int(value._numerator) % self.prime for value in exact_coordinates
+                ]
+                if (
+                    prime_module._subspace_ideal_generated_by(
+                        [modular], 3, table, self.prime
+                    )
+                    == target
+                ):
+                    witness_payload = [
+                        [int(value._numerator), int(value._denominator)]
+                        for value in row
+                    ]
+                    break
+        normalized_witness_payload: list[tuple[int, int]] | None = None
+        if witness_payload is not None:
+            if len(witness_payload) != 3:
+                raise ValueError("a packed cubic second generator has the wrong width")
+            normalized_witness_payload = []
+            for value in witness_payload:
+                rational = sage.QQ(value[0]) / sage.QQ(value[1])
+                normalized_witness_payload.append(
+                    (int(rational._numerator), int(rational._denominator))
+                )
+        self._second_generator_payload = (
+            None
+            if normalized_witness_payload is None
+            else tuple(normalized_witness_payload)
+        )
+        self._second_generator_cache: Any = None
+        self._modular_table = (
+            None
+            if table is None
+            else tuple(
+                tuple(tuple(int(value) for value in product) for product in left)
+                for left in table
+            )
+        )
+        self.modular_one = tuple(int(value) for value in one_coordinates)
+        self.dedekind_kummer = bool(dedekind_kummer)
+        self._power_cache: tuple[tuple[tuple[int, ...], int], ...] = ()
+
+    @property
+    def modular_table(self) -> tuple[tuple[tuple[int, ...], ...], ...]:
+        """Materialize the exact modular order table only when it is consumed."""
+        if self._modular_table is None:
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+            )
+            table = prime_module._modular_table(self.order, self.prime)
+            self._modular_table = tuple(
+                tuple(tuple(int(value) for value in product) for product in left)
+                for left in table
+            )
+        return self._modular_table
+
+    def rational_prime(self) -> int:
+        return self.prime
+
+    def ring(self) -> Any:
+        return self.order
+
+    def basis_matrix(self) -> Any:
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+        )
+        return prime_module._nf_global("matrix")(
+            sage.QQ, [list(row) for row in self.rows]
+        )
+
+    def ramification_index(self) -> int:
+        return self.ramification
+
+    def residue_class_degree(self) -> int:
+        return self.residue_degree
+
+    def norm(self) -> int:
+        return self.norm_value
+
+    @property
+    def second_generator(self) -> Any:
+        """Materialize the retained exact witness only when an ideal needs it."""
+        if self._second_generator_payload is None:
+            return None
+        if self._second_generator_cache is None:
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+            )
+            coordinates = [
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in self._second_generator_payload
+            ]
+            self._second_generator_cache = prime_module._nf_element_from_row(
+                self.order.number_field(), coordinates
+            )
+        return self._second_generator_cache
+
+    def packed_power_bases(
+        self, maximum: int
+    ) -> tuple[tuple[tuple[int, ...], int], ...]:
+        count = int(maximum)
+        if len(self._power_cache) < count:
+            ideal_module = __import__(
+                "sagejs.number_fields.ideal_arithmetic",
+                fromlist=["ideal_arithmetic"],
+            )
+            powers = ideal_module.packed_ideal_power_bases_from_basis(
+                self.order.number_field(),
+                self.basis_numerators,
+                self.basis_denominator,
+                count,
+            )
+            if powers is None:
+                raise ArithmeticError("packed cubic prime powers are unavailable")
+            self._power_cache = powers
+        return self._power_cache[:count]
+
+    def to_dict(self) -> dict[str, Any]:
+        encoded_generator = None
+        if self._second_generator_payload is not None:
+            encoded_generator = {
+                "rational_prime": self.prime,
+                "second_generator": [
+                    [numerator, denominator]
+                    for numerator, denominator in self._second_generator_payload
+                ],
+            }
+        return {
+            "schema": "sagejs.number-fields/factor-base-prime-v1",
+            "index": self.index,
+            "prime": self.prime,
+            "norm": self.norm_value,
+            "e": self.ramification,
+            "f": self.residue_degree,
+            "hnf_fingerprint": [
+                [list(_cubic_rational_pair(value)) for value in row]
+                for row in self.rows
+            ],
+            "two_generator": encoded_generator,
+            "valuation_metadata": {
+                "rational_prime_valuation": self.ramification,
+                "ideal_norm_exponent": self.residue_degree,
+                "residue_modulus_degree": self.residue_degree,
+            },
+            "residue_modulus": list(self.presentation["modulus"]),
+            "automorphism_orbit": None,
+        }
+
+    def _live_authentication_snapshot(self) -> Any:
+        """Bind every compact producer field excluded from serialization."""
+        presentation = self.presentation
+        return (
+            self.index,
+            self.prime,
+            self.ramification,
+            self.residue_degree,
+            self.norm_value,
+            tuple(
+                tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+            ),
+            self.subspace,
+            tuple(int(value) for value in presentation["primitive"]),
+            tuple(
+                tuple(int(value) for value in row)
+                for row in presentation["quotient_matrix"]
+            ),
+            tuple(
+                tuple(int(value) for value in row)
+                for row in presentation["power_inverse"]
+            ),
+            tuple(int(value) for value in presentation["modulus"]),
+            self._second_generator_payload,
+            self.basis_numerators,
+            self.basis_denominator,
+            self.modular_one,
+            self.dedekind_kummer,
+        )
+
+    def _live_materialization_matches(self, record: Any, factor: Any) -> bool:
+        """Check the independently materialized prime without JSON allocation."""
+        encoded_generator: Any = None
+        if self._second_generator_payload is not None:
+            encoded_generator = (
+                self.prime,
+                self._second_generator_payload,
+            )
+        record_generator = record.two_generator
+        normalized_record_generator: Any = None
+        if record_generator is not None:
+            normalized_record_generator = (
+                int(record_generator["rational_prime"]),
+                tuple(
+                    (int(value[0]), int(value[1]))
+                    for value in record_generator["second_generator"]
+                ),
+            )
+        return bool(
+            self.order is getattr(factor, "_order", None)
+            and record.prime_ideal is factor
+            and int(record.index) == self.index
+            and int(record.rational_prime) == self.prime
+            and int(record.ramification_index) == self.ramification
+            and int(record.residue_degree) == self.residue_degree
+            and int(record.norm) == self.norm_value
+            and tuple(record.hnf_fingerprint)
+            == tuple(
+                tuple(_cubic_rational_pair(value) for value in row) for row in self.rows
+            )
+            and normalized_record_generator == encoded_generator
+            and tuple(record.residue_modulus)
+            == tuple(int(value) for value in self.presentation["modulus"])
+            and getattr(factor, "_packed_basis_cache", None)
+            == (self.basis_numerators, self.basis_denominator)
+        )
+
+
+def _packed_integral_cubic_candidate_rows(
+    subspace: list[list[int]], prime: int
+) -> list[list[int]] | None:
+    """Return one power-basis cubic ideal HNF without rational wrappers."""
+    if len(subspace) > 3 or any(len(row) != 3 for row in subspace):
+        return None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = kernel_module.packed_prime_ideal_candidate_hnf_in_place
+        row_count = 3 + len(subspace)
+        entry_count = 3 * row_count
+        output = native_module.kernel_integer_zeros(kernel, entry_count, 16)
+        source = native_module.kernel_integer_zeros(kernel, entry_count, 16)
+        if not kernel(
+            output,
+            source,
+            native_module.kernel_integer_zeros(kernel, 6, 16),
+            native_module.kernel_integer_buffer(kernel, (1, 0, 0, 0, 1, 0, 0, 0, 1)),
+            native_module.kernel_integer_buffer(
+                kernel, [value for row in subspace for value in row]
+            ),
+            prime,
+            3,
+            len(subspace),
+        ):
+            return None
+        values = native_module.integer_buffer_values(output)
+        return [
+            [int(values[row * 3 + column]) for column in range(3)] for row in range(3)
+        ]
+    except (
+        AttributeError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
+def _integral_power_basis_cubic_modular_table(
+    order: Any, prime: int
+) -> list[list[list[int]]] | None:
+    """Recompute the cubic power-basis algebra directly modulo `prime`."""
+    if not _is_integral_cubic_power_basis(order):
+        return None
+    maximal_module = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    polynomial = maximal_module.integral_equation_polynomial(order.number_field())
+    coefficients = tuple(int(value) % prime for value in polynomial.list())
+    if len(coefficients) != 4 or coefficients[3] != 1:
+        return None
+    c0, c1, c2, _leading = coefficients
+    powers = (
+        (1, 0, 0),
+        (0, 1, 0),
+        (0, 0, 1),
+        ((-c0) % prime, (-c1) % prime, (-c2) % prime),
+        (
+            (c2 * c0) % prime,
+            (-c0 + c2 * c1) % prime,
+            (-c1 + c2 * c2) % prime,
+        ),
+    )
+    return [[list(powers[left + right]) for right in range(3)] for left in range(3)]
+
+
+def _packed_power_basis_dedekind_kummer_candidates(
+    order: Any,
+    prime: int,
+    requested: set[int],
+    modular_factors: tuple[Any, ...],
+) -> list[dict[str, Any]] | None:
+    """Construct cubic power-basis Dedekind--Kummer data directly."""
+    if not requested or not _is_integral_cubic_power_basis(order):
+        return None
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in modular_factors
+        )
+        != 3
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    answer: list[dict[str, Any]] = []
+    for factor in modular_factors:
+        polynomial = tuple(int(value) % prime for value in factor.polynomial)
+        residue_degree = len(polynomial) - 1
+        if residue_degree not in requested:
+            continue
+        if residue_degree < 1 or residue_degree > 3 or polynomial[-1] != 1:
+            return None
+        if residue_degree == 1:
+            root = (-polynomial[0]) % prime
+            quotient_matrix = [[1], [root], [(root * root) % prime]]
+            subspace = prime_module._row_basis(
+                [
+                    [(-root) % prime, 1, 0],
+                    [(-(root * root)) % prime, 0, 1],
+                ],
+                3,
+                prime,
+            )
+            primitive = [1, 0, 0]
+            power_inverse = [[1]]
+            residue_modulus = [(-1) % prime, 1]
+            second_generator = [polynomial[0], polynomial[1], 0]
+        elif residue_degree == 2:
+            subspace = prime_module._row_basis(
+                [[polynomial[0], polynomial[1], 1]], 3, prime
+            )
+            quotient_matrix = [
+                [1, 0],
+                [0, 1],
+                [(-polynomial[0]) % prime, (-polynomial[1]) % prime],
+            ]
+            primitive = [0, 1, 0]
+            power_inverse = [[1, 0], [0, 1]]
+            residue_modulus = list(polynomial)
+            second_generator = [polynomial[0], polynomial[1], 1]
+        else:
+            subspace = []
+            quotient_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            primitive = [0, 1, 0]
+            power_inverse = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            residue_modulus = list(polynomial)
+            second_generator = [0, 0, 0]
+        rows = _packed_integral_cubic_candidate_rows(subspace, prime)
+        if rows is None:
+            rows = prime_module._packed_candidate_rows(order, subspace, prime)
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": residue_degree,
+                "presentation": {
+                    "primitive": primitive,
+                    "quotient_matrix": quotient_matrix,
+                    "power_inverse": power_inverse,
+                    "modulus": residue_modulus,
+                },
+                "second_generator_payload": [
+                    [coefficient, 1] for coefficient in second_generator
+                ],
+                "table": None,
+                "one": [1, 0, 0],
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in record["rows"]
+            for entry in row
+            for value in _cubic_rational_pair(entry)
+        )
+    )
+    return answer
+
+
+def packed_cubic_factor_records(
+    plan: Any,
+) -> tuple[PackedCubicFactorRecord, ...] | None:
+    """Build the exact Minkowski factor base without ordinary ideal objects."""
+    order = plan.order
+    if int(order.degree()) != 3 or int(plan.bound) < 2:
+        return ()
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    candidates: list[tuple[int, int, int, int, dict[str, Any]]] = []
+    rational_primes = tuple(
+        int(value)
+        for value in prime_module._nf_global("prime_range")(2, int(plan.bound) + 1)
+    )
+    if len(rational_primes) > int(plan.max_rational_primes):
+        raise ValueError("exact factor-base rational primes exceed the plan cap")
+    equation_polynomial = prime_module._maximal.integral_equation_polynomial(
+        order.number_field()
+    )
+    equation_coefficients = tuple(int(value) for value in equation_polynomial.list())
+    equation_order_index = prime_module._maximal.equation_order_index(order)
+    one_coordinates = prime_module._order_one_coordinates(order)
+    packed_order_basis = prime_module._packed_candidate_order_basis(order)
+    for prime in rational_primes:
+        requested = {
+            residue_degree
+            for residue_degree in range(1, 4)
+            if prime**residue_degree <= int(plan.bound)
+        }
+        modular_factors = prime_module._om.factor_cubic_mod_prime(
+            equation_coefficients, prime
+        )
+        # The discriminant/index identity decides all local maximality queries
+        # at once.  Dedekind's polynomial criterion remains the independent
+        # public decomposition route and the differential oracle in tests.
+        p_maximal = equation_order_index % prime != 0
+        if p_maximal and not any(
+            len(factor.polynomial) - 1 in requested for factor in modular_factors
+        ):
+            continue
+        local = (
+            _packed_power_basis_dedekind_kummer_candidates(
+                order, prime, requested, modular_factors
+            )
+            if p_maximal
+            else None
+        )
+        if local is None and p_maximal:
+            local = prime_module.packed_cubic_linear_dedekind_kummer_candidates(
+                order,
+                prime,
+                requested,
+                modular_factors,
+                p_maximal=True,
+                packed_order_basis=packed_order_basis,
+                one_coordinates=one_coordinates,
+            )
+        modular_table: Any = None
+        modular_one: Any = None
+        if local is None:
+            modular_table = prime_module._modular_table(order, prime)
+            modular_one = [value % prime for value in one_coordinates]
+        if local is None and p_maximal:
+            local = prime_module.packed_dedekind_kummer_candidates(
+                order,
+                prime,
+                requested,
+                modular_factors=modular_factors,
+                p_maximal=True,
+                modular_table=modular_table,
+                one_coordinates=modular_one,
+                packed_order_basis=packed_order_basis,
+            )
+        if local is None:
+            local = prime_module.packed_finite_algebra_candidates(
+                order,
+                prime,
+                prime_module.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+                requested,
+                modular_table=modular_table,
+                one_coordinates=modular_one,
+                packed_order_basis=packed_order_basis,
+            )
+        if local is None:
+            return None
+        for record in local:
+            record["dedekind_kummer"] = p_maximal
+        occurrences: dict[int, int] = {}
+        for record in local:
+            residue_degree = int(record["f"])
+            occurrence = occurrences.get(residue_degree, 0)
+            occurrences[residue_degree] = occurrence + 1
+            norm = prime**residue_degree
+            if norm <= int(plan.bound):
+                candidates.append((norm, prime, residue_degree, occurrence, record))
+    candidates.sort(key=lambda entry: entry[:4])
+    if len(candidates) > int(plan.max_prime_ideals):
+        raise ValueError("exact factor-base size exceeds max_prime_ideals")
+    answer = tuple(
+        PackedCubicFactorRecord(
+            order,
+            index,
+            prime,
+            record["e"],
+            residue_degree,
+            record["rows"],
+            record["subspace"],
+            record["presentation"],
+            record.get("second_generator_payload"),
+            record["table"],
+            record["one"],
+            record["dedekind_kummer"],
+        )
+        for index, (_norm, prime, residue_degree, _occurrence, record) in enumerate(
+            candidates
+        )
+    )
+    return answer
+
+
+def _materialize_packed_cubic_factor_records(
+    factor_records: tuple[Any, ...],
+) -> tuple[tuple[Any, ...], tuple[Any, ...]]:
+    if not factor_records or not isinstance(factor_records[0], PackedCubicFactorRecord):
+        records = factor_records
+        return records, tuple(record.prime_ideal for record in records)
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    factor_module = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["class_group_factor_base"],
+    )
+    restored: list[Any] = []
+    for packed in factor_records:
+        if not isinstance(packed, PackedCubicFactorRecord):
+            raise TypeError("a packed factor base mixed record representations")
+        # These rows and the residue presentation were produced together from
+        # the exact modular ideal.  Rebuild the canonical HNF once from that
+        # subspace through the same source-transparent candidate boundary,
+        # then require byte-for-byte equality with the retained relation
+        # lattice.  Refactoring the rational prime or replaying generic ideal
+        # closure for every factor merely rediscovers these same rows and used
+        # to dominate every coupled cubic fallback.
+        prime_ideal = prime_module._prime_candidate_from_modular_subspace(
+            packed.order,
+            [list(row) for row in packed.subspace],
+            packed.prime,
+            packed.ramification,
+            packed.residue_degree,
+            dict(packed.presentation),
+            use_packed=True,
+        )
+        if tuple(tuple(value for value in row) for row in prime_ideal._basis_rows) != (
+            packed.rows
+        ):
+            raise ArithmeticError("packed factor-base materialization changed its HNF")
+        record = factor_module.FactorBasePrimeRecord(
+            packed.index,
+            prime_ideal,
+            second_generator=packed.second_generator,
+        )
+        if record.to_dict() != packed.to_dict():
+            raise ArithmeticError("packed factor-base materialization changed evidence")
+        restored.append(record)
+    records = tuple(restored)
+    factors = tuple(record.prime_ideal for record in records)
+    return records, factors
+
+
+def materialize_verified_packed_cubic_factor_records(
+    factor_records: tuple[Any, ...],
+) -> tuple[tuple[Any, ...], tuple[Any, ...]] | None:
+    """Materialize a live packed Dedekind--Kummer base with exact checks.
+
+    The generic class/unit engine needs ordinary prime-ideal objects before
+    relation collection.  For a cubic `p`-maximal equation order, the packed
+    producer already retains the exact modular factor, HNF lattice, quotient
+    presentation, and second generator.  Replay the same independent checks
+    as `_dedekind_kummer_prime_candidate(..., verify_candidate=True)` after
+    materialization.  Index-prime finite-algebra factors deliberately return
+    `None`; their complete product/comaximality replay remains authoritative.
+    """
+    if not factor_records or any(
+        not isinstance(record, PackedCubicFactorRecord)
+        or not record.dedekind_kummer
+        or record.second_generator is None
+        for record in factor_records
+    ):
+        return None
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    factor_module = __import__(
+        "sagejs.number_fields.class_group_factor_base",
+        fromlist=["class_group_factor_base"],
+    )
+    order = factor_records[0].order
+    inverse_rows = order._basis_inverse_matrix().rows()
+    verified_modular_tables: dict[int, tuple[Any, Any]] = {}
+
+    def order_coordinates(row: Any) -> tuple[int, ...]:
+        coordinates: list[int] = []
+        for target in range(3):
+            value: Any = sage.QQ(0)
+            for source in range(3):
+                value += row[source] * inverse_rows[source][target]
+            if value._denominator != 1:
+                raise ArithmeticError(
+                    "a packed Dedekind--Kummer lattice left the maximal order"
+                )
+            coordinates.append(int(value._numerator))
+        return tuple(coordinates)
+
+    def determinant(rows: tuple[tuple[int, ...], ...]) -> int:
+        a, b, c = rows[0]
+        d, e, f = rows[1]
+        g, h, i = rows[2]
+        return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+
+    restored: list[Any] = []
+    for packed in factor_records:
+        if packed.order is not order:
+            raise TypeError("a packed factor base crossed maximal-order identities")
+        prime_ideal = prime_module.NumberFieldPrimeIdeal(
+            packed.order,
+            [[sage.QQ(value) for value in row] for row in packed.rows],
+            packed.prime,
+            packed.ramification,
+            packed.residue_degree,
+            dict(packed.presentation),
+            _candidate_token=prime_module._PACKED_CANDIDATE_TOKEN,
+        )
+        # The candidate token deliberately avoids the generic Matrix/HNF
+        # constructor.  Retain the exact integer basis which produced these
+        # rows so later valuation-power kernels need not inspect or re-clear
+        # their rational presentation.
+        prime_ideal._packed_basis_cache = (
+            packed.basis_numerators,
+            packed.basis_denominator,
+        )
+        rational_prime = packed.prime
+        modular_data = verified_modular_tables.get(rational_prime)
+        if modular_data is None:
+            table = _integral_power_basis_cubic_modular_table(order, rational_prime)
+            if table is None:
+                table = prime_module._modular_table(order, rational_prime)
+            one = [
+                int(value) % rational_prime
+                for value in prime_module._order_one_coordinates(order)
+            ]
+            modular_data = (table, one)
+            verified_modular_tables[rational_prime] = modular_data
+        table, one = modular_data
+
+        # Independently bind the retained HNF to the exact modular ideal.
+        # Mapping its power-basis rows back through the maximal-order basis
+        # must give an integral lattice whose reduction is precisely the
+        # producer's modular subspace.  Its determinant then proves that this
+        # is the full preimage, including `p*O`, without rebuilding field
+        # elements and multiplying the displayed generator by every basis
+        # element.
+        lattice_rows = tuple(order_coordinates(row) for row in packed.rows)
+        reduced_rows = prime_module._row_basis(
+            [[value % rational_prime for value in row] for row in lattice_rows],
+            3,
+            rational_prime,
+        )
+        target_subspace = [list(row) for row in packed.subspace]
+        if reduced_rows != target_subspace:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer lattice has the wrong modular image"
+            )
+        expected_norm = rational_prime**packed.residue_degree
+        if abs(determinant(lattice_rows)) != expected_norm:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal has the wrong exact norm"
+            )
+
+        witness_payload = packed._second_generator_payload
+        if witness_payload is None:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal lacks a two-generator witness"
+            )
+        witness_row = tuple(
+            sage.QQ(numerator) / sage.QQ(denominator)
+            for numerator, denominator in witness_payload
+        )
+        witness_coordinates = order_coordinates(witness_row)
+        generated_subspace = prime_module._subspace_ideal_generated_by(
+            [[value % rational_prime for value in witness_coordinates]],
+            3,
+            table,
+            rational_prime,
+        )
+        if generated_subspace != target_subspace:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer witness generates the wrong ideal"
+            )
+        presentation = packed.presentation
+        residue_degree = packed.residue_degree
+        primitive = [int(value) % rational_prime for value in presentation["primitive"]]
+        quotient_matrix = [
+            [int(value) % rational_prime for value in row]
+            for row in presentation["quotient_matrix"]
+        ]
+        power_inverse = [
+            [int(value) % rational_prime for value in row]
+            for row in presentation["power_inverse"]
+        ]
+        if (
+            len(primitive) != 3
+            or len(quotient_matrix) != 3
+            or any(len(row) != residue_degree for row in quotient_matrix)
+            or len(power_inverse) != residue_degree
+            or any(len(row) != residue_degree for row in power_inverse)
+            or prime_module._rank(quotient_matrix, residue_degree, rational_prime)
+            != residue_degree
+            or any(
+                any(
+                    prime_module._row_times_matrix(row, quotient_matrix, rational_prime)
+                )
+                for row in target_subspace
+            )
+        ):
+            raise ArithmeticError("a packed Dedekind--Kummer quotient map changed")
+        powers: list[list[int]] = []
+        power = list(one)
+        for _exponent in range(residue_degree):
+            powers.append(
+                prime_module._row_times_matrix(power, quotient_matrix, rational_prime)
+            )
+            power = prime_module._modular_product(
+                power, primitive, table, rational_prime
+            )
+        if prime_module._matrix_inverse(powers, rational_prime) != power_inverse:
+            raise ArithmeticError("a packed Dedekind--Kummer power basis changed")
+        next_image = prime_module._row_times_matrix(
+            power, quotient_matrix, rational_prime
+        )
+        coefficients = prime_module._row_times_matrix(
+            next_image, power_inverse, rational_prime
+        )
+        expected_modulus = tuple(
+            [(-value) % rational_prime for value in coefficients] + [1]
+        )
+        if (
+            tuple(int(value) % rational_prime for value in presentation["modulus"])
+            != expected_modulus
+        ):
+            raise ArithmeticError("a packed Dedekind--Kummer residue modulus changed")
+        if not prime_module._presentation_modulus_is_irreducible(
+            presentation, rational_prime, residue_degree
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal quotient is not a field"
+            )
+        prime_ideal._packed_candidate_pending_replay = False
+        prime_ideal._verified_modular_algebra = (
+            rational_prime,
+            [[list(product) for product in left] for left in table],
+            list(one),
+        )
+        record = factor_module.FactorBasePrimeRecord(
+            packed.index,
+            prime_ideal,
+            second_generator=packed.second_generator,
+        )
+        if record.to_dict() != packed.to_dict():
+            raise ArithmeticError("packed factor-base materialization changed evidence")
+        restored.append(record)
+    records = tuple(restored)
+    factors = tuple(record.prime_ideal for record in records)
+    return records, factors
+
+
+def _interpolate_cubic_norm_form(values: tuple[int, ...]) -> tuple[int, ...]:
+    """Recover ternary-cubic coefficients from the canonical ten values."""
+    if len(values) != 10:
+        raise ValueError("a cubic norm-form interpolation needs ten values")
+    c300, c030, c003 = values[:3]
+    plus01 = values[3] - c300 - c030
+    minus01 = values[4] - c300 + c030
+    plus02 = values[5] - c300 - c003
+    minus02 = values[6] - c300 + c003
+    plus12 = values[7] - c030 - c003
+    minus12 = values[8] - c030 + c003
+    if any(
+        value % 2
+        for value in (
+            plus01 + minus01,
+            plus01 - minus01,
+            plus02 + minus02,
+            plus02 - minus02,
+            plus12 + minus12,
+            plus12 - minus12,
+        )
+    ):
+        raise ArithmeticError("a cubic norm form did not interpolate integrally")
+    c210, c120 = (plus01 - minus01) // 2, (plus01 + minus01) // 2
+    c201, c102 = (plus02 - minus02) // 2, (plus02 + minus02) // 2
+    c021, c012 = (plus12 - minus12) // 2, (plus12 + minus12) // 2
+    c111 = values[9] - (c300 + c030 + c003 + c210 + c201 + c120 + c021 + c102 + c012)
+    return (c300, c030, c003, c210, c201, c120, c021, c102, c012, c111)
 
 
 def _cubic_norm_form_coefficients(ideal: Any) -> tuple[int, ...]:
@@ -87,22 +1072,20 @@ def _cubic_norm_form_coefficients(ideal: Any) -> tuple[int, ...]:
         return _integer_rational(element.norm(), "an integral element norm")
 
     b0, b1, b2 = basis
-    c300, c030, c003 = norm(b0), norm(b1), norm(b2)
-
-    def pair(left: Any, right: Any, left_cube: int, right_cube: int) -> tuple[int, int]:
-        plus = norm(left + right) - left_cube - right_cube
-        minus = norm(left - right) - left_cube + right_cube
-        if (plus + minus) % 2 or (plus - minus) % 2:
-            raise ArithmeticError("a cubic norm form did not interpolate integrally")
-        return (plus - minus) // 2, (plus + minus) // 2
-
-    c210, c120 = pair(b0, b1, c300, c030)
-    c201, c102 = pair(b0, b2, c300, c003)
-    c021, c012 = pair(b1, b2, c030, c003)
-    c111 = norm(b0 + b1 + b2) - (
-        c300 + c030 + c003 + c210 + c201 + c120 + c021 + c102 + c012
+    return _interpolate_cubic_norm_form(
+        (
+            norm(b0),
+            norm(b1),
+            norm(b2),
+            norm(b0 + b1),
+            norm(b0 - b1),
+            norm(b0 + b2),
+            norm(b0 - b2),
+            norm(b1 + b2),
+            norm(b1 - b2),
+            norm(b0 + b1 + b2),
+        )
     )
-    return (c300, c030, c003, c210, c201, c120, c021, c102, c012, c111)
 
 
 def _cubic_norm_form_value(
@@ -120,6 +1103,1047 @@ def _cubic_norm_form_value(
         + c102 * x * z * z
         + c012 * y * z * z
         + c111 * x * y * z
+    )
+
+
+def _order_cubic_norm_form_coefficients(order: Any) -> tuple[int, ...]:
+    """Return one immutable exact cubic norm form for an order basis."""
+    try:
+        cached = order._cubic_norm_form_coefficients_cache
+    except AttributeError:
+        cached = runtime.undefined
+    if isinstance(cached, tuple) and len(cached) == 10:
+        return tuple(int(value) for value in cached)
+
+    coefficients: tuple[int, ...] | None = None
+    try:
+        kernel_module = __import__(
+            "sagejs.number_fields.bl_composite_kernel",
+            fromlist=["bl_composite_kernel"],
+        )
+        coefficient_kernel = getattr(
+            kernel_module, "packed_cubic_order_norm_form_coefficients_in_place", None
+        )
+        if callable(coefficient_kernel):
+            maximal_module = __import__(
+                "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+            )
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            table = maximal_module._nf_order_multiplication_table_frozen(order)
+            packed_table = tuple(
+                _integer_rational(
+                    table[left][right][coordinate],
+                    "an order multiplication-table entry",
+                )
+                for left in range(3)
+                for right in range(3)
+                for coordinate in range(3)
+            )
+            output = native_module.kernel_integer_zeros(coefficient_kernel, 10, 16)
+            if coefficient_kernel(
+                output,
+                native_module.kernel_integer_buffer(coefficient_kernel, packed_table),
+            ):
+                values = tuple(
+                    int(value) for value in native_module.integer_buffer_values(output)
+                )
+                if len(values) == 10:
+                    coefficients = values
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        coefficients = None
+    if coefficients is None:
+        coefficients = _cubic_norm_form_coefficients(order.ideal(1))
+    order._cubic_norm_form_coefficients_cache = tuple(coefficients)
+    return tuple(coefficients)
+
+
+def _cubic_norm_form_coefficients_from_order(ideal: Any) -> tuple[int, ...] | None:
+    """Transform the cached order norm form to one integral ideal basis."""
+    if ideal.is_zero() or not ideal.is_integral() or ideal.ring().degree() != 3:
+        return None
+    order = ideal.ring()
+    relative_basis_method = getattr(ideal, "_relative_basis_matrix", None)
+    relative_basis: Any = (
+        relative_basis_method()
+        if callable(relative_basis_method)
+        else ideal.basis_matrix() * order._basis_inverse_matrix()
+    )
+    rows = relative_basis.rows()
+    if len(rows) != 3 or any(
+        len(row) != 3 or any(value._denominator != 1 for value in row) for row in rows
+    ):
+        return None
+    coordinates = tuple(tuple(int(value._numerator) for value in row) for row in rows)
+    order_coefficients = _order_cubic_norm_form_coefficients(order)
+    values: list[int] = []
+    for x, y, z in _CUBIC_NORM_FORM_INTERPOLATION_POINTS:
+        transformed = tuple(
+            x * coordinates[0][index]
+            + y * coordinates[1][index]
+            + z * coordinates[2][index]
+            for index in range(3)
+        )
+        values.append(_cubic_norm_form_value(order_coefficients, *transformed))
+    return _interpolate_cubic_norm_form(tuple(values))
+
+
+def _cubic_relative_basis_rows(
+    order: Any, rows: tuple[tuple[Any, ...], ...]
+) -> tuple[tuple[int, ...], ...] | None:
+    if len(rows) != 3 or any(len(row) != 3 for row in rows):
+        return None
+    inverse_rows = order._basis_inverse_matrix().rows()
+    answer: list[tuple[int, ...]] = []
+    for row in rows:
+        coordinates: list[Any] = []
+        for target in range(3):
+            coordinate: Any = sage.QQ(0)
+            for source in range(3):
+                coordinate += row[source] * inverse_rows[source][target]
+            coordinates.append(coordinate)
+        if any(value._denominator != 1 for value in coordinates):
+            return None
+        answer.append(tuple(int(value._numerator) for value in coordinates))
+    return tuple(answer)
+
+
+def _cubic_norm_form_coefficients_from_relative_rows(
+    order: Any, coordinates: tuple[tuple[int, ...], ...]
+) -> tuple[int, ...]:
+    """Transform the cached order norm form from precomputed integral rows."""
+    order_coefficients = _order_cubic_norm_form_coefficients(order)
+    values: list[int] = []
+    for x, y, z in _CUBIC_NORM_FORM_INTERPOLATION_POINTS:
+        transformed = tuple(
+            x * coordinates[0][index]
+            + y * coordinates[1][index]
+            + z * coordinates[2][index]
+            for index in range(3)
+        )
+        values.append(_cubic_norm_form_value(order_coefficients, *transformed))
+    return _interpolate_cubic_norm_form(tuple(values))
+
+
+def _packed_cubic_integral_ideal_payload(
+    order: Any, rows: tuple[tuple[Any, ...], ...]
+) -> dict[str, Any]:
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    ideal_module = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+    )
+    return {
+        "schema": ideal_module.SERIALIZATION_SCHEMA,
+        "field_instance": prime_module._identity_token(order.number_field()),
+        "order_instance": prime_module._identity_token(order),
+        "field_order_fingerprint": prime_module._field_order_fingerprint(order),
+        "basis": [
+            [[int(value._numerator), int(value._denominator)] for value in row]
+            for row in rows
+        ],
+    }
+
+
+def _packed_cubic_integral_basis_for_ambient_row(
+    factor_base: tuple[Any, ...], row: tuple[int, ...]
+) -> tuple[tuple[tuple[Any, ...], ...], int] | None:
+    """Clear rational denominators and multiply one packed ambient row."""
+    if len(row) != len(factor_base) or not row:
+        return None
+    factors = tuple(factor_base)
+    if any(not isinstance(factor, PackedCubicFactorRecord) for factor in factors):
+        return None
+    adjusted = [int(value) for value in row]
+    order = factors[0].order
+    degree = int(order.degree())
+    if degree != 3 or any(factor.order is not order for factor in factors):
+        return None
+    for index, exponent in enumerate(tuple(adjusted)):
+        if exponent >= 0:
+            continue
+        prime = factors[index].prime
+        local_indices = tuple(
+            position for position, factor in enumerate(factors) if factor.prime == prime
+        )
+        if (
+            sum(
+                factors[position].ramification * factors[position].residue_degree
+                for position in local_indices
+            )
+            != degree
+        ):
+            return None
+        multiplier = max(
+            (-adjusted[position] + factors[position].ramification - 1)
+            // factors[position].ramification
+            for position in local_indices
+        )
+        for position in local_indices:
+            adjusted[position] += multiplier * factors[position].ramification
+    if any(value < 0 for value in adjusted) or not any(adjusted):
+        return None
+    ideal_module = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+    )
+    packed_product: tuple[tuple[int, ...], int] | None = None
+    expected_norm = 1
+    for factor, exponent in zip(factors, adjusted, strict=True):
+        if exponent == 0:
+            continue
+        packed_powers = factor.packed_power_bases(exponent)
+        if len(packed_powers) != exponent:
+            return None
+        current = packed_powers[exponent - 1]
+        expected_norm *= factor.norm_value**exponent
+        if packed_product is None:
+            packed_product = current
+        else:
+            packed_product = ideal_module.packed_ideal_product_basis_from_bases(
+                order.number_field(),
+                packed_product[0],
+                packed_product[1],
+                current[0],
+                current[1],
+            )
+            if packed_product is None:
+                return None
+    if packed_product is None:
+        return None
+    numerators, denominator = packed_product
+    if len(numerators) != degree * degree or denominator <= 0:
+        return None
+    rows = tuple(
+        tuple(
+            sage.QQ(numerators[source * degree + target]) / sage.QQ(denominator)
+            for target in range(degree)
+        )
+        for source in range(degree)
+    )
+    return rows, expected_norm
+
+
+def _find_packed_cubic_norm_obstruction(
+    factor_base: tuple[Any, ...],
+    line: dict[str, Any],
+    *,
+    max_modulus: int,
+    remaining_states: int,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[dict[str, Any] | None, int] | None:
+    """Prove one p-line directly from a packed integral ambient-row HNF.
+
+    Negative entries are cleared only by complete rational-prime
+    decomposition rows, so the resulting integral ideal remains in the same
+    class.  The packed product kernel then handles arbitrary positive products
+    without constructing an ordinary ideal object.
+    """
+    row = tuple(int(value) for value in line["ambient_row"])
+    packed_basis = _packed_cubic_integral_basis_for_ambient_row(factor_base, row)
+    if packed_basis is None:
+        return None
+    rows, expected_norm = packed_basis
+    order = factor_base[0].order
+    coordinates = _cubic_relative_basis_rows(order, rows)
+    if coordinates is None:
+        return None
+    coefficients = _cubic_norm_form_coefficients_from_relative_rows(order, coordinates)
+    a, b, c = coordinates[0]
+    d, e, f = coordinates[1]
+    g, h, i = coordinates[2]
+    determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+    norm = abs(int(determinant))
+    if norm != expected_norm:
+        raise ArithmeticError("a packed factor-base product has the wrong exact norm")
+    if cancelled is None and _cubic_norm_form_kernel_override is None:
+        try:
+            kernel_module = __import__(
+                "sagejs.number_fields.bl_composite_kernel",
+                fromlist=["bl_composite_kernel"],
+            )
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            kernel = kernel_module.packed_cubic_norm_form_first_obstruction_in_place
+            metadata = native_module.kernel_integer_zeros(kernel, 4, 16)
+            if kernel(
+                metadata,
+                native_module.kernel_integer_buffer(kernel, coefficients),
+                norm,
+                max_modulus,
+                remaining_states,
+            ):
+                values = tuple(
+                    int(value)
+                    for value in native_module.integer_buffer_values(metadata)
+                )
+                used, modulus, states, complete = values
+                valid = bool(
+                    len(values) == 4
+                    and 0 <= used <= remaining_states
+                    and complete in (0, 1)
+                    and (
+                        (modulus == 0 and states == 0)
+                        or (
+                            complete == 1
+                            and 2 <= modulus <= max_modulus
+                            and sage.is_prime(modulus)
+                            and states == modulus**3
+                            and states <= used
+                        )
+                    )
+                )
+                if valid and modulus:
+                    return (
+                        {
+                            **line,
+                            "integral_ideal": _packed_cubic_integral_ideal_payload(
+                                order, rows
+                            ),
+                            "ideal_norm": norm,
+                            "norm_form_coefficients": list(coefficients),
+                            "modulus": modulus,
+                            "residue_states": states,
+                        },
+                        used,
+                    )
+                if valid and (complete == 1 or used < remaining_states):
+                    return (None, used)
+        except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+            pass
+    used = 0
+    for modulus in range(2, max_modulus + 1):
+        if not sage.is_prime(modulus):
+            continue
+        states = modulus**3
+        if used + states > remaining_states:
+            return (None, used)
+        represented = _cubic_norm_form_represents_targets(
+            coefficients,
+            modulus,
+            norm % modulus,
+            (-norm) % modulus,
+            cancelled=cancelled,
+        )
+        used += states
+        if not represented:
+            return (
+                {
+                    **line,
+                    "integral_ideal": _packed_cubic_integral_ideal_payload(order, rows),
+                    "ideal_norm": norm,
+                    "norm_form_coefficients": list(coefficients),
+                    "modulus": modulus,
+                    "residue_states": states,
+                },
+                used,
+            )
+    return (None, used)
+
+
+def _packed_cubic_relation_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    *,
+    maximum_candidates: int,
+    coefficient_bound: int = _CUBIC_RELATION_SIEVE_BOUND,
+    duplicate_row_norms: Iterable[int] | None = None,
+    power_factor_base: tuple[Any, ...] | None = None,
+    valuation_candidate_limit: int | None = None,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose small integral relations through two packed exact kernels.
+
+    The first kernel enumerates a canonical cubic coefficient box and retains
+    only elements whose rational norm is supported on factor-base rational
+    primes.  The second computes all prime-ideal valuations in one packed
+    lattice pass.  These rows are only proposals: the collector independently
+    proves generator containment and equal ideal norm before admission.
+    """
+    coefficient_bound = int(coefficient_bound)
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or maximum_candidates < 1
+        or coefficient_bound < 1
+        or coefficient_bound > _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+    ):
+        return None
+    power_factors = factor_base
+    if power_factor_base is not None:
+        power_factors = tuple(power_factor_base)
+        if len(power_factors) != len(factor_base):
+            return None
+        for factor, retained in zip(factor_base, power_factors, strict=True):
+            if (
+                not isinstance(retained, PackedCubicFactorRecord)
+                or retained.order is not order
+                or retained.rational_prime() != int(factor.rational_prime())
+                or retained.norm_value
+                != _integer_rational(factor.norm(), "a factor-base norm")
+            ):
+                return None
+    _check_cubic_cancelled(cancelled)
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    candidate_kernel = getattr(
+        kernel_module, "packed_cubic_norm_smooth_candidates_in_place", None
+    )
+    row_kernel = getattr(kernel_module, "packed_factor_base_rows_in_place", None)
+    if isinstance(_cubic_relation_sieve_kernel_override, tuple):
+        candidate_kernel, row_kernel = _cubic_relation_sieve_kernel_override
+    elif _cubic_relation_sieve_kernel_override is False:
+        return None
+    if not callable(candidate_kernel) or not callable(row_kernel):
+        return None
+    native_module = __import__("sagejs.native", fromlist=["native"])
+    ideal_module = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+    )
+    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, maximum_candidates)
+    rational_primes = sorted(
+        {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
+    )
+    coefficients = _order_cubic_norm_form_coefficients(order)
+    try:
+        metadata = native_module.kernel_integer_zeros(candidate_kernel, 4, 1)
+        coefficient_output = native_module.kernel_integer_zeros(
+            candidate_kernel, 3 * capacity, 16
+        )
+        norm_output = native_module.kernel_integer_zeros(candidate_kernel, capacity, 16)
+        if not candidate_kernel(
+            metadata,
+            coefficient_output,
+            norm_output,
+            native_module.kernel_integer_buffer(candidate_kernel, coefficients),
+            native_module.kernel_integer_buffer(candidate_kernel, rational_primes),
+            coefficient_bound,
+            capacity,
+        ):
+            return None
+        metadata_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata)
+        )
+        if (
+            len(metadata_values) != 4
+            or metadata_values[2] != 0
+            or metadata_values[3] != coefficient_bound
+        ):
+            return None
+        candidate_count = runtime.number(metadata_values[0])
+        if candidate_count < 1 or candidate_count > capacity:
+            return None
+        packed_coefficients = tuple(
+            int(value)
+            for value in native_module.integer_buffer_values(coefficient_output)
+        )
+        packed_norms = tuple(
+            int(value) for value in native_module.integer_buffer_values(norm_output)
+        )
+        coefficient_vectors = packed_coefficients[: 3 * candidate_count]
+        absolute_norms = packed_norms[:candidate_count]
+        if any(value <= 1 for value in absolute_norms):
+            return None
+        if duplicate_row_norms is not None:
+            selected_norms = {abs(int(value)) for value in duplicate_row_norms}
+            multiplicities: dict[int, int] = {}
+            for norm in absolute_norms:
+                multiplicities[norm] = multiplicities.get(norm, 0) + 1
+            retained = tuple(
+                index
+                for index, norm in enumerate(absolute_norms)
+                if norm in selected_norms or multiplicities[norm] > 1
+            )
+            coefficient_vectors = tuple(
+                coefficient_vectors[3 * index + offset]
+                for index in retained
+                for offset in range(3)
+            )
+            absolute_norms = tuple(absolute_norms[index] for index in retained)
+            candidate_count = len(retained)
+            if candidate_count == 0:
+                return ()
+        if valuation_candidate_limit is not None:
+            valuation_limit = max(1, int(valuation_candidate_limit))
+            if candidate_count > valuation_limit:
+                retained = tuple(
+                    sorted(
+                        range(candidate_count),
+                        key=lambda index: (
+                            absolute_norms[index],
+                            coefficient_vectors[3 * index : 3 * index + 3],
+                        ),
+                    )[:valuation_limit]
+                )
+                coefficient_vectors = tuple(
+                    coefficient_vectors[3 * index + offset]
+                    for index in retained
+                    for offset in range(3)
+                )
+                absolute_norms = tuple(absolute_norms[index] for index in retained)
+                candidate_count = len(retained)
+
+        factor_norms = tuple(
+            _integer_rational(prime_ideal.norm(), "a factor-base norm")
+            for prime_ideal in factor_base
+        )
+        maxima: list[int] = []
+        for factor_norm in factor_norms:
+            maximum = 0
+            for norm in absolute_norms:
+                current = norm
+                valuation = 0
+                while current % factor_norm == 0:
+                    current //= factor_norm
+                    valuation += 1
+                maximum = max(maximum, valuation)
+            maxima.append(maximum)
+        if sum(maxima) < 1 or sum(maxima) > _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS:
+            return None
+        pending_packed_factors = tuple(
+            (prime_ideal, maximum)
+            for prime_ideal, maximum in zip(power_factors, maxima, strict=True)
+            if isinstance(prime_ideal, PackedCubicFactorRecord)
+            and maximum > len(prime_ideal._power_cache)
+        )
+        if pending_packed_factors:
+            packed_chains = ideal_module.packed_ideal_power_basis_chains_from_bases(
+                order.number_field(),
+                tuple(
+                    (
+                        factor.basis_numerators,
+                        factor.basis_denominator,
+                        maximum,
+                    )
+                    for factor, maximum in pending_packed_factors
+                ),
+            )
+            if packed_chains is not None:
+                for (factor, _maximum), powers in zip(
+                    pending_packed_factors, packed_chains, strict=True
+                ):
+                    factor._power_cache = powers
+        offsets = [0]
+        prime_power_numerators: list[int] = []
+        prime_power_denominators: list[int] = []
+        for prime_ideal, maximum in zip(power_factors, maxima, strict=True):
+            packed_power_method = getattr(prime_ideal, "packed_power_bases", None)
+            packed_powers: Any = (
+                packed_power_method(maximum)
+                if callable(packed_power_method)
+                else ideal_module.packed_valuation_power_bases(prime_ideal, maximum)
+            )
+            for packed_basis, denominator in packed_powers:
+                prime_power_numerators.extend(packed_basis)
+                prime_power_denominators.append(int(denominator))
+            offsets.append(len(prime_power_denominators))
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+        )
+        packed_order_basis = prime_module._packed_candidate_order_basis(order)
+        if packed_order_basis is None:
+            unit_numerators, unit_denominator = ideal_module._packed_ideal_basis(
+                order.ideal(1)
+            )
+        else:
+            unit_numerators, unit_denominator = packed_order_basis
+        row_metadata = native_module.kernel_integer_zeros(row_kernel, 3, 1)
+        row_output = native_module.kernel_integer_zeros(
+            row_kernel, candidate_count * len(factor_base), 16
+        )
+        smooth_output = native_module.kernel_integer_zeros(
+            row_kernel, candidate_count, 1
+        )
+        if not row_kernel(
+            row_metadata,
+            row_output,
+            smooth_output,
+            native_module.kernel_integer_zeros(row_kernel, 6, 16),
+            native_module.kernel_integer_buffer(row_kernel, coefficient_vectors),
+            native_module.kernel_integer_buffer(row_kernel, absolute_norms),
+            native_module.kernel_integer_buffer(row_kernel, unit_numerators),
+            native_module.kernel_integer_buffer(row_kernel, prime_power_numerators),
+            native_module.kernel_integer_buffer(row_kernel, prime_power_denominators),
+            native_module.kernel_integer_buffer(row_kernel, offsets),
+            native_module.kernel_integer_buffer(row_kernel, factor_norms),
+            unit_denominator,
+            3,
+            candidate_count,
+            len(factor_base),
+            len(prime_power_denominators),
+        ):
+            return None
+        row_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(row_output)
+        )
+        smooth_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(smooth_output)
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+    answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for candidate in range(candidate_count):
+        _check_cubic_cancelled(cancelled)
+        if smooth_values[candidate] != 1:
+            continue
+        coordinates = coefficient_vectors[3 * candidate : 3 * candidate + 3]
+        offset = candidate * len(factor_base)
+        row = tuple(row_values[offset : offset + len(factor_base)])
+        answer.append((row, tuple(coordinates), absolute_norms[candidate]))
+    return tuple(answer)
+
+
+def _validated_cubic_integral_relation_batch(
+    relation_module: Any,
+    order: Any,
+    factor_base: tuple[Any, ...],
+    initial_proposals: Iterable[
+        tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]]
+    ],
+    selected_candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+) -> Any:
+    """Issue live authority only for the ordinary packed cubic producer."""
+    if _cubic_relation_sieve_kernel_override is not None:
+        return None
+    coefficients = _order_cubic_norm_form_coefficients(order)
+    factor_norms = tuple(
+        _integer_rational(prime_ideal.norm(), "a factor-base norm")
+        for prime_ideal in factor_base
+    )
+    entries: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    proposed = [
+        (coordinates, row, None) for coordinates, row, _provenance in initial_proposals
+    ] + [
+        (coordinates, row, expected_norm)
+        for row, coordinates, expected_norm in selected_candidates
+    ]
+    for coordinates, row, expected_norm in proposed:
+        if len(coordinates) != 3 or len(row) != len(factor_norms):
+            return None
+        signed_norm = _cubic_norm_form_value(coefficients, *coordinates)
+        exact_norm = abs(signed_norm)
+        row_norm = 1
+        for factor_norm, exponent in zip(factor_norms, row, strict=True):
+            if exponent < 0:
+                return None
+            row_norm *= factor_norm**exponent
+        if (
+            exact_norm <= 1
+            or row_norm != exact_norm
+            or (expected_norm is not None and int(expected_norm) != exact_norm)
+        ):
+            return None
+        entries.append((coordinates, row, exact_norm))
+    try:
+        return relation_module._ValidatedIntegralRelationBatch(
+            order,
+            factor_base,
+            entries,
+            _validated_token=(relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN),
+        )
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+
+
+def _packed_principal_factor_proposals(
+    order: Any, factor_base: tuple[Any, ...]
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]], ...]:
+    """Return tiny retained generators whose exact norms prove a prime principal."""
+    if not factor_base or not all(
+        isinstance(record, PackedCubicFactorRecord) for record in factor_base
+    ):
+        return ()
+    power_basis = _is_integral_cubic_power_basis(order)
+    inverse: Any = None
+    norm_form: tuple[int, ...] | None = None
+    answer = []
+    for index, record in enumerate(factor_base):
+        payload = record._second_generator_payload
+        coordinate_candidates: list[tuple[tuple[int, ...], str]] = []
+        if payload is not None:
+            power_coordinates = tuple(
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in payload
+            )
+            attached_coordinates: list[int] = []
+            if power_basis:
+                if all(value._denominator == 1 for value in power_coordinates):
+                    attached_coordinates = [
+                        int(value._numerator) for value in power_coordinates
+                    ]
+            else:
+                if inverse is None:
+                    inverse = order._basis_inverse_matrix().rows()
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source in range(3):
+                        value += power_coordinates[source] * inverse[source][target]
+                    if value._denominator != 1:
+                        attached_coordinates = []
+                        break
+                    attached_coordinates.append(int(value._numerator))
+            if attached_coordinates:
+                coordinate_candidates.append(
+                    (
+                        tuple(attached_coordinates),
+                        "packed-cubic-attached-prime-generator",
+                    )
+                )
+
+        # A modular generator can have a poor integral lift.  In a tiny
+        # residue ideal, enumerate all centered lifts of its complete retained
+        # subspace instead of running the general coefficient-box sieve.  The
+        # work cap is verifier-owned and independent of untrusted payloads.
+        if power_basis:
+            prime = int(record.prime)
+            subspace = tuple(
+                tuple(int(value) for value in row) for row in record.subspace
+            )
+            modular_work = prime ** len(subspace) * 8
+            if 1 <= len(subspace) <= 2 and modular_work <= 64:
+                coefficient_vectors = (
+                    ((left,) for left in range(prime))
+                    if len(subspace) == 1
+                    else (
+                        (left, right) for left in range(prime) for right in range(prime)
+                    )
+                )
+                for coefficients in coefficient_vectors:
+                    modular = tuple(
+                        sum(
+                            coefficients[row] * subspace[row][column]
+                            for row in range(len(subspace))
+                        )
+                        % prime
+                        for column in range(3)
+                    )
+                    options: list[tuple[int, ...]] = []
+                    for value in modular:
+                        centered = value if 2 * value <= prime else value - prime
+                        choices = [centered]
+                        if prime % 2 == 0 and 2 * value == prime:
+                            choices.append(centered - prime)
+                        options.append(tuple(choices))
+                    for first in options[0]:
+                        for second in options[1]:
+                            for third in options[2]:
+                                candidate = (first, second, third)
+                                if not any(candidate) or any(
+                                    retained[0] == candidate
+                                    for retained in coordinate_candidates
+                                ):
+                                    continue
+                                coordinate_candidates.append(
+                                    (
+                                        candidate,
+                                        "packed-cubic-modular-prime-generator",
+                                    )
+                                )
+
+        selected_coordinates: tuple[int, ...] | None = None
+        algorithm: str | None = None
+        for candidate, candidate_algorithm in coordinate_candidates:
+            exact_norm = _power_basis_cubic_element_norm(order, candidate)
+            if exact_norm is None:
+                if norm_form is None:
+                    norm_form = _order_cubic_norm_form_coefficients(order)
+                exact_norm = _cubic_norm_form_value(norm_form, *candidate)
+            if abs(exact_norm) == int(record.norm_value):
+                selected_coordinates = candidate
+                algorithm = candidate_algorithm
+                break
+        if selected_coordinates is None or algorithm is None:
+            continue
+        row = [0] * len(factor_base)
+        row[index] = 1
+        answer.append(
+            (
+                selected_coordinates,
+                tuple(row),
+                {
+                    "algorithm": algorithm,
+                    "factor_base_index": index,
+                    "order_basis_coordinates": list(selected_coordinates),
+                },
+            )
+        )
+    return tuple(answer)
+
+
+def _single_unit_relation_presentation(matrix_module: Any, collector: Any) -> Any:
+    """Return the canonical one-row presentation, or decline."""
+    records = tuple(collector.records)
+    if len(collector.factor_base) != 1 or len(records) != 1 or records[0].row != (1,):
+        return None
+    return matrix_module.RelationPresentation(
+        1,
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        ((1,),),
+        "python",
+    )
+
+
+def _select_cubic_relation_candidates(
+    matrix_module: Any,
+    initial_rows: tuple[tuple[int, ...], ...],
+    candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    width: int,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Select original rows supporting the exact HNF lattice basis.
+
+    The provisional packed rows are not proof evidence. We extract their
+    canonical HNF, retain every original row used by its nonzero left-transform
+    rows, and recompute the HNF from that subset. Only when the canonical
+    nonzero HNF basis is identical do the selected proposals proceed to the
+    independent ideal-containment admission boundary.
+    """
+    if not candidates:
+        return ()
+    source_rows = list(initial_rows) + [entry[0] for entry in candidates]
+    try:
+        basis, source_support = matrix_module.exact_relation_hnf_support(
+            source_rows, width
+        )
+        rank = len(basis)
+        if rank < 1:
+            return None
+        initial_count = len(initial_rows)
+        selected_indices = sorted(
+            index - initial_count for index in source_support if index >= initial_count
+        )
+        if any(index < 0 or index >= len(candidates) for index in selected_indices):
+            return None
+        target_index = (
+            abs(matrix_module._determinant_exact(basis)) if rank == width else None
+        )
+        cursor = 0
+        while cursor < len(selected_indices):
+            trial_indices = selected_indices[:cursor] + selected_indices[cursor + 1 :]
+            trial_rows = list(initial_rows) + [
+                candidates[index][0] for index in trial_indices
+            ]
+            if len(trial_rows) < rank:
+                cursor += 1
+                continue
+            if target_index is not None and len(trial_rows) == width:
+                # These rows generate a sublattice of the authenticated full
+                # source lattice.  Equal nonzero determinant gives equal
+                # index in `Z^width`, hence the same lattice, without another
+                # HNF and transform construction for every deletion trial.
+                same_lattice = (
+                    abs(matrix_module._determinant_exact(trial_rows)) == target_index
+                )
+            else:
+                trial_basis = matrix_module.exact_relation_hnf_basis(trial_rows, width)
+                same_lattice = trial_basis == basis
+            if same_lattice:
+                selected_indices = trial_indices
+            else:
+                cursor += 1
+        # `exact_relation_hnf_support()` has replayed its unimodular left
+        # transform. The HNF basis therefore lies in the lattice of these
+        # selected source rows, while those rows are a subset of the original
+        # lattice. The deletion pass keeps that basis identical while
+        # removing individually redundant proposals.
+        return tuple(candidates[index] for index in selected_indices)
+    except (ArithmeticError, TypeError, ValueError):
+        return None
+
+
+def _select_cubic_dependency_candidates(
+    selected: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    maximum: int,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...]:
+    """Retain bounded duplicate rows that can seed exact unit dependencies.
+
+    Two distinct principal elements with the same factor-base valuation row
+    have a unit quotient.  The class-number-only presentation does not need
+    such duplicate rows, but a coupled class/unit fallback does.  Keep them
+    only after the class-number proof has already failed, and let the ordinary
+    exact relation admission boundary authenticate every proposed element.  A
+    duplicate of an already-selected row costs one new relation; otherwise
+    retain a pair of new generators with the same row.
+    """
+    limit = max(0, int(maximum))
+    if limit == 0 or not selected:
+        return ()
+    normalized_selected = tuple(
+        (
+            tuple(int(value) for value in row),
+            tuple(int(value) for value in coordinates),
+            norm,
+        )
+        for row, coordinates, norm in selected
+    )
+    normalized_candidates = tuple(
+        (
+            tuple(int(value) for value in row),
+            tuple(int(value) for value in coordinates),
+            norm,
+        )
+        for row, coordinates, norm in candidates
+    )
+    retained = [(row, coordinates) for row, coordinates, _norm in normalized_selected]
+    answer: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for selected_row, _selected_coordinates, _norm in normalized_selected:
+        for candidate in normalized_candidates:
+            row, coordinates, _candidate_norm = candidate
+            if row != selected_row:
+                continue
+            if any(
+                old_row == row and old_coordinates == coordinates
+                for old_row, old_coordinates in retained
+            ):
+                continue
+            retained.append((row, coordinates))
+            answer.append(candidate)
+            break
+        if len(answer) >= limit:
+            return tuple(answer)
+    dependencies = len(answer)
+
+    # A wider fallback box can expose a useful duplicate row that was not part
+    # of the minimal class-presentation support.  Retain both generators of
+    # such a pair.  Their exact rows may enlarge the presentation lattice, but
+    # every row is independently admitted before the incomplete seed is
+    # issued, and the coupled engine recomputes the presentation from the
+    # resulting authenticated prefix.
+    selected_rows = tuple(entry[0] for entry in normalized_selected)
+    handled_rows: list[tuple[int, ...]] = []
+    for index, candidate in enumerate(normalized_candidates):
+        row, coordinates, _norm = candidate
+        if row in selected_rows or row in handled_rows:
+            continue
+        if any(
+            prior[0] == row and prior[1] == coordinates
+            for prior in normalized_candidates[:index]
+        ):
+            continue
+        second = None
+        for other in normalized_candidates[index + 1 :]:
+            if other[0] == row and other[1] != coordinates:
+                second = other
+                break
+        if second is None:
+            continue
+        answer.extend((candidate, second))
+        handled_rows.append(row)
+        dependencies += 1
+        if dependencies >= limit:
+            break
+    return tuple(answer)
+
+
+def _bounded_cubic_dependency_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    selected: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    primary: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    maximum: int,
+    maximum_candidates: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...], int]:
+    """Find bounded duplicate rows, widening the coefficient box once."""
+    dependencies = _select_cubic_dependency_candidates(selected, primary, maximum)
+    bound = _CUBIC_RELATION_SIEVE_BOUND
+    if not dependencies:
+        widened = _packed_cubic_relation_candidates(
+            order,
+            factor_base,
+            maximum_candidates=maximum_candidates,
+            coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+            duplicate_row_norms=(norm for _row, _coordinates, norm in selected),
+            cancelled=cancelled,
+        )
+        if widened is not None:
+            dependencies = _select_cubic_dependency_candidates(
+                selected, widened, maximum
+            )
+            if dependencies:
+                bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+    return dependencies, bound
+
+
+def _readable_cubic_norm_form_represents_targets(
+    coefficients: tuple[int, ...],
+    modulus: int,
+    positive_target: int,
+    negative_target: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> bool:
+    sequence = 0
+    for x in range(modulus):
+        for y in range(modulus):
+            for z in range(modulus):
+                if sequence % 256 == 0:
+                    _check_cubic_cancelled(cancelled)
+                sequence += 1
+                value = _cubic_norm_form_value(coefficients, x, y, z) % modulus
+                if value == positive_target or value == negative_target:
+                    return True
+    return False
+
+
+def _cubic_norm_form_represents_targets(
+    coefficients: tuple[int, ...],
+    modulus: int,
+    positive_target: int,
+    negative_target: int,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> bool:
+    """Use the packed exact kernel, or the same readable exhaustive search."""
+    kernel_module = __import__(
+        "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
+    )
+    kernel = (
+        kernel_module.packed_cubic_norm_form_target_slice
+        if _cubic_norm_form_kernel_override is None
+        else _cubic_norm_form_kernel_override
+    )
+    if kernel is not False:
+        try:
+            native_module = __import__("sagejs.native", fromlist=["native"])
+            packed_coefficients = native_module.kernel_integer_buffer(
+                kernel, coefficients
+            )
+            x_start = 0
+            while x_start < modulus:
+                _check_cubic_cancelled(cancelled)
+                x_stop = min(modulus, x_start + _CUBIC_NORM_FORM_X_SLICE)
+                status = int(
+                    kernel(
+                        packed_coefficients,
+                        modulus,
+                        x_start,
+                        x_stop,
+                        positive_target,
+                        negative_target,
+                    )
+                )
+                if status == 2:
+                    return True
+                if status != 1:
+                    break
+                x_start = x_stop
+            if x_start == modulus:
+                return False
+        except (OverflowError, RuntimeError, TypeError, ValueError):
+            pass
+    return _readable_cubic_norm_form_represents_targets(
+        coefficients,
+        modulus,
+        positive_target,
+        negative_target,
+        cancelled=cancelled,
     )
 
 
@@ -191,7 +2215,9 @@ def _find_cubic_norm_obstruction(
 ) -> tuple[dict[str, Any] | None, int]:
     integral = ideal.numerator()
     norm = _integer_rational(integral.norm(), "an integral ideal norm")
-    coefficients = _cubic_norm_form_coefficients(integral)
+    coefficients = _cubic_norm_form_coefficients_from_order(integral)
+    if coefficients is None:
+        coefficients = _cubic_norm_form_coefficients(integral)
     used = 0
     for modulus in range(2, max_modulus + 1):
         if not sage.is_prime(modulus):
@@ -199,25 +2225,15 @@ def _find_cubic_norm_obstruction(
         states = modulus**3
         if used + states > remaining_states:
             return None, used
-        targets = {norm % modulus, (-norm) % modulus}
-        represented = False
-        sequence = 0
-        for x in range(modulus):
-            for y in range(modulus):
-                for z in range(modulus):
-                    if sequence % 256 == 0:
-                        _check_cubic_cancelled(cancelled)
-                    sequence += 1
-                    if (
-                        _cubic_norm_form_value(coefficients, x, y, z) % modulus
-                        in targets
-                    ):
-                        represented = True
-                        break
-                if represented:
-                    break
-            if represented:
-                break
+        positive_target = norm % modulus
+        negative_target = (-norm) % modulus
+        represented = _cubic_norm_form_represents_targets(
+            coefficients,
+            modulus,
+            positive_target,
+            negative_target,
+            cancelled=cancelled,
+        )
         used += states
         if not represented:
             return (
@@ -280,20 +2296,15 @@ def _verify_cubic_norm_obstruction(
             coefficients
         ):
             return False
-        targets = {norm % modulus, (-norm) % modulus}
-        sequence = 0
-        for x in range(modulus):
-            for y in range(modulus):
-                for z in range(modulus):
-                    if sequence % 256 == 0:
-                        _check_cubic_cancelled(cancelled)
-                    sequence += 1
-                    if (
-                        _cubic_norm_form_value(coefficients, x, y, z) % modulus
-                        in targets
-                    ):
-                        return False
-        return True
+        # Detached verification deliberately keeps the readable exhaustive
+        # loop independent of the producer's compiled search boundary.
+        return not _readable_cubic_norm_form_represents_targets(
+            coefficients,
+            modulus,
+            norm % modulus,
+            (-norm) % modulus,
+            cancelled=cancelled,
+        )
     except (
         ImportError,
         AttributeError,
@@ -318,6 +2329,8 @@ class CubicMinkowskiClassNumberCertificate:
         presentation: dict[str, Any],
         obstructions: list[dict[str, Any]],
         caps: dict[str, Any],
+        _live_presentation: Any = None,
+        _live_token: object | None = None,
     ) -> None:
         if int(field.degree()) != 3:
             raise ValueError("the Minkowski class-number certificate requires a cubic")
@@ -329,98 +2342,161 @@ class CubicMinkowskiClassNumberCertificate:
             "obstructions": obstructions,
             "caps": caps,
         }
-        if not _cubic_minkowski_payload_within_caps(tree):
+        # Detached callers must pass the immutable verifier preflight before
+        # any canonicalization or matrix replay.  The private live producer
+        # reaches this constructor only after enforcing the same factor-base,
+        # relation, quotient, projective-line, modulus, residue-work, and
+        # memory caps at their individual construction boundaries.
+        if (
+            _live_token is not _LIVE_CUBIC_CERTIFICATE_TOKEN
+            and not _cubic_minkowski_payload_within_caps(tree)
+        ):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         self.field = field
-        self._plan_json = _canonical_json(plan)
-        self._factor_base_json = _canonical_json(factor_base)
-        self._relations_json = _canonical_json(relations)
-        self._presentation_json = _canonical_json(presentation)
-        self._obstructions_json = _canonical_json(obstructions)
-        self._caps_json = _canonical_json(caps)
         self.proof_status = "exact-unconditional"
         self.source = "exact Minkowski relations with modular cubic norm obstructions"
-        # Keep one canonical immutable body instead of reparsing all six
-        # component strings and serializing the resulting tree again whenever
-        # the certificate is hashed or exported.  The explicit key order below
-        # is the lexicographic order used by `_canonical_json`, so this remains
-        # byte-for-byte compatible with the detached certificate format.
-        self._body_json = (
+        if _live_token is _LIVE_CUBIC_CERTIFICATE_TOKEN:
+            if getattr(_live_presentation, "order", None) is None:
+                raise ValueError(
+                    "live cubic presentation authority does not match its payload"
+                )
+            self._raw_components = _freeze_json_value(
+                (
+                    plan,
+                    factor_base,
+                    _copy_json_value(relations),
+                    presentation,
+                    obstructions,
+                    caps,
+                )
+            )
+            self._live_semantic_identity: object | None = object()
+            self._class_number = int(_live_presentation.order)
+        else:
+            self._raw_components = None
+            encoded = tuple(
+                _canonical_json(value)
+                for value in (
+                    plan,
+                    factor_base,
+                    relations,
+                    presentation,
+                    obstructions,
+                    caps,
+                )
+            )
+            body = self._encoded_body(encoded)
+            self._detached_encoding = runtime.object.freeze(
+                encoded + (body, hashlib.sha256(body.encode("utf-8")).hexdigest())
+            )
+            self._live_semantic_identity = None
+            matrix_module = __import__(
+                "sagejs.number_fields.class_group_matrix",
+                fromlist=["class_group_matrix"],
+            )
+            presentation_replay = matrix_module.RelationPresentation.from_dict(
+                presentation
+            )
+            if presentation_replay.order is None:
+                raise ValueError(
+                    "a cubic class-number certificate must have finite order"
+                )
+            self._class_number = int(presentation_replay.order)
+        runtime.object.freeze(self)
+
+    def _encoded_body(self, encoded: tuple[str, ...]) -> str:
+        """Return the canonical body from already encoded components."""
+        return (
             '{"caps":'
-            + self._caps_json
+            + encoded[5]
             + ',"factor_base":'
-            + self._factor_base_json
+            + encoded[1]
             + ',"obstructions":'
-            + self._obstructions_json
+            + encoded[4]
             + ',"plan":'
-            + self._plan_json
+            + encoded[0]
             + ',"presentation":'
-            + self._presentation_json
+            + encoded[3]
             + ',"proof_status":'
             + _canonical_json(self.proof_status)
             + ',"relations":'
-            + self._relations_json
+            + encoded[2]
             + ',"schema":'
             + _canonical_json(CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA)
             + "}"
         )
-        self._content_sha256 = hashlib.sha256(
-            self._body_json.encode("utf-8")
-        ).hexdigest()
-        matrix_module = __import__(
-            "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
-        )
-        presentation_replay = matrix_module.RelationPresentation.from_dict(presentation)
-        if presentation_replay.order is None:
-            raise ValueError("a cubic class-number certificate must have finite order")
-        self._class_number = int(presentation_replay.order)
-        runtime.object.freeze(self)
+
+    def _encoding(self) -> tuple[str, ...]:
+        """Encode frozen live semantics or return immutable detached encoding."""
+        raw = self._raw_components
+        if isinstance(raw, tuple) and len(raw) == 6:
+            encoded = tuple(_canonical_json(value) for value in raw)
+            body = self._encoded_body(encoded)
+            return encoded + (
+                body,
+                hashlib.sha256(body.encode("utf-8")).hexdigest(),
+            )
+        if raw is not None:
+            raise ArithmeticError("a live cubic certificate lost its exact snapshot")
+        detached = self._detached_encoding
+        if not isinstance(detached, tuple) or len(detached) != 8:
+            raise ArithmeticError("a detached cubic certificate lost its encoding")
+        return detached
+
+    def _raw_component(self, index: int) -> Any:
+        raw = self._raw_components
+        if not isinstance(raw, tuple) or len(raw) != 6:
+            raise ArithmeticError("a live cubic certificate lost its exact snapshot")
+        return _copy_json_value(raw[index])
+
+    def _component(self, index: int) -> Any:
+        if isinstance(self._raw_components, tuple):
+            return self._raw_component(index)
+        return json.loads(self._encoding()[index])
 
     @property
     def plan(self) -> dict[str, Any]:
-        return json.loads(self._plan_json)
+        return self._component(0)
 
     @property
     def factor_base(self) -> list[dict[str, Any]]:
-        return json.loads(self._factor_base_json)
+        return self._component(1)
 
     @property
     def relations(self) -> list[dict[str, Any]]:
-        return json.loads(self._relations_json)
+        return self._component(2)
 
     @property
     def presentation(self) -> dict[str, Any]:
-        return json.loads(self._presentation_json)
+        return self._component(3)
 
     @property
     def obstructions(self) -> list[dict[str, Any]]:
-        return json.loads(self._obstructions_json)
+        return self._component(4)
 
     @property
     def caps(self) -> dict[str, Any]:
-        return json.loads(self._caps_json)
+        return self._component(5)
 
     @property
     def class_number(self) -> int:
         return self._class_number
 
     def _body_dict(self) -> dict[str, Any]:
-        return json.loads(self._body_json)
+        return json.loads(self._encoding()[6])
 
     def to_dict(self) -> dict[str, Any]:
         body = self._body_dict()
-        body["content_sha256"] = self._content_sha256
+        body["content_sha256"] = self._encoding()[7]
         return body
 
     def stable_hash(self) -> str:
-        return self._content_sha256
+        return self._encoding()[7]
 
     def verify(self, *, cancelled: Callable[[], bool] | None = None) -> bool:
         try:
-            if (
-                hashlib.sha256(self._body_json.encode("utf-8")).hexdigest()
-                != self._content_sha256
-            ):
+            encoding = self._encoding()
+            if hashlib.sha256(encoding[6].encode("utf-8")).hexdigest() != encoding[7]:
                 return False
             caps = self.caps
             replay_limits = {
@@ -626,6 +2702,7 @@ class CubicClassNumberResult:
         relation_records: tuple[Any, ...] = (),
         presentation: Any = None,
         diagnostics: dict[str, Any] | None = None,
+        _packed_factor_records: tuple[PackedCubicFactorRecord, ...] = (),
     ) -> None:
         if complete and certificate is None:
             raise ValueError("a complete cubic class number needs a certificate")
@@ -634,11 +2711,27 @@ class CubicClassNumberResult:
         self.reason = str(reason)
         self.minkowski_bound = int(minkowski_bound)
         self.certificate = certificate
-        self.factor_base = tuple(factor_base)
+        self._factor_base = tuple(factor_base)
+        self._packed_factor_records = tuple(_packed_factor_records)
+        if self._factor_base and self._packed_factor_records:
+            raise ValueError("a cubic result has two factor-base representations")
         self.relation_records = tuple(relation_records)
         self.presentation = presentation
         self.diagnostics = dict({} if diagnostics is None else diagnostics)
         self.proof_status = "exact-unconditional" if complete else "incomplete"
+
+    @property
+    def factor_base(self) -> tuple[Any, ...]:
+        if not self._factor_base and self._packed_factor_records:
+            _records, factors = _materialize_packed_cubic_factor_records(
+                self._packed_factor_records
+            )
+            self._factor_base = factors
+            self._packed_factor_records = ()
+        return self._factor_base
+
+    def _factor_base_size(self) -> int:
+        return len(self._factor_base) + len(self._packed_factor_records)
 
     def order(self) -> int:
         if not self.complete or self.certificate is None:
@@ -651,54 +2744,685 @@ class CubicClassNumberResult:
         return "Incomplete cubic class-number search (" + self.reason + ")"
 
 
-def _cubic_class_number_result_snapshot(result: CubicClassNumberResult) -> Any:
-    """Snapshot every mutable proof-bearing field of one live result."""
-    certificate = result.certificate
-    if type(certificate) is not CubicMinkowskiClassNumberCertificate:
-        raise TypeError("a live cubic class-number result needs the exact certificate")
-    factor_base = []
-    for ideal in result.factor_base:
-        serializer = getattr(ideal, "to_dict", None)
-        if not callable(serializer):
-            raise TypeError("a live cubic factor-base ideal is not serializable")
-        factor_base.append(serializer())
-    relations = []
-    for record in result.relation_records:
-        serializer = getattr(record, "to_dict", None)
-        if not callable(serializer):
-            raise TypeError("a live cubic relation record is not serializable")
-        relations.append(serializer())
+def _cubic_relation_seed_snapshot(seed: Any) -> Any:
+    """Snapshot every proof-bearing object in one live relation prefix."""
+    result = seed._source_result
+    plan = seed.plan
     presentation = result.presentation
-    presentation_serializer = getattr(presentation, "to_dict", None)
-    if not callable(presentation_serializer):
-        raise TypeError("a live cubic presentation is not serializable")
-    return _freeze_authentication_value(
-        {
-            "complete": result.complete,
-            "reason": result.reason,
-            "minkowski_bound": result.minkowski_bound,
-            "proof_status": result.proof_status,
-            # These strings are the certificate's canonical immutable source.
-            # Snapshotting them avoids reparsing the potentially large exact
-            # witness payload merely to compare it with itself.
-            "certificate": {
-                "plan_json": certificate._plan_json,
-                "factor_base_json": certificate._factor_base_json,
-                "relations_json": certificate._relations_json,
-                "presentation_json": certificate._presentation_json,
-                "obstructions_json": certificate._obstructions_json,
-                "caps_json": certificate._caps_json,
-                "body_json": certificate._body_json,
-                "class_number": certificate._class_number,
-                "proof_status": certificate.proof_status,
-                "source": certificate.source,
-                "content_sha256": certificate._content_sha256,
+    search_state = seed.search_state
+    diagnostics = result.diagnostics
+    collector = seed.collector
+    certificate = result.certificate
+
+    if result.complete and isinstance(
+        certificate, CubicMinkowskiClassNumberCertificate
+    ):
+        return (
+            AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
+            id(result),
+            str(result.reason),
+            int(result.minkowski_bound),
+            str(result.proof_status),
+            certificate.stable_hash(),
+            id(plan),
+            id(plan.order),
+            _canonical_json(plan.to_dict()),
+            tuple(id(record) for record in seed.factor_records),
+            _canonical_json([record.to_dict() for record in seed.factor_records]),
+            tuple(id(record) for record in collector.records),
+            _canonical_json([record.to_dict() for record in collector.records]),
+            id(presentation),
+            _canonical_json(presentation.to_dict()),
+            _canonical_json(diagnostics.get("caps")),
+            id(collector),
+            tuple(id(factor) for factor in collector.factor_base),
+            tuple(sorted(collector.rank_screen._pivots.items())),
+            tuple(sorted(collector._keys)),
+            tuple(collector._admission_receipts),
+            id(seed.relation_candidates),
+            id(seed.selected_relation_candidates),
+            id(search_state),
+            int(search_state.seed),
+            int(search_state.random_state),
+            int(search_state.candidates_tested),
+            int(search_state.ideals_tested),
+            int(search_state.relations_admitted),
+        )
+
+    bound = plan.bound_result
+
+    factor_records = []
+    for record in seed.factor_records:
+        if isinstance(record, PackedCubicFactorRecord):
+            prime_ideal = record
+            current_basis = tuple(
+                tuple((int(value._numerator), int(value._denominator)) for value in row)
+                for row in record.rows
+            )
+            residue_presentation = record.presentation
+        else:
+            prime_ideal = record.prime_ideal
+            current_basis = tuple(
+                tuple((int(value._numerator), int(value._denominator)) for value in row)
+                for row in prime_ideal._basis_rows
+            )
+            residue_presentation = prime_ideal._residue_presentation
+        factor_records.append(
+            (
+                id(record),
+                id(prime_ideal),
+                _canonical_json(record.to_dict()),
+                current_basis,
+                int(prime_ideal.rational_prime()),
+                int(prime_ideal.ramification_index()),
+                int(prime_ideal.residue_class_degree()),
+                _canonical_json(residue_presentation),
+            )
+        )
+
+    relations = tuple(
+        (id(record), record.canonical_key()) for record in result.relation_records
+    )
+    presentation_snapshot = (
+        id(presentation),
+        int(presentation.column_count),
+        tuple(row.dense() for row in presentation.relation_rows),
+        tuple(presentation.hnf),
+        tuple(presentation.hnf_left_transform),
+        tuple(presentation.smith),
+        tuple(presentation.smith_left_transform),
+        tuple(presentation.smith_right_transform),
+        tuple(presentation.smith_right_inverse),
+        str(presentation.backend),
+        int(presentation.rank),
+        tuple(presentation.invariants),
+        presentation.order,
+    )
+    collector_snapshot = (
+        id(collector),
+        tuple(id(record) for record in collector.records),
+        tuple(
+            (
+                id(admission),
+                id(admission.record),
+                bool(admission.modular_independent),
+                admission.pivot,
+            )
+            for admission in collector.admissions
+        ),
+        int(collector.rank_screen.prime),
+        tuple(sorted(collector.rank_screen._pivots.items())),
+        tuple(sorted(collector._keys)),
+        tuple(collector._admission_receipts),
+    )
+    proof_diagnostics = (
+        diagnostics.get("algorithm"),
+        diagnostics.get("factor_base_size"),
+        diagnostics.get("relations"),
+        diagnostics.get("presentation_rank"),
+        diagnostics.get("quotient_order"),
+        diagnostics.get("residue_states"),
+        _freeze_authentication_value(diagnostics.get("relation_search")),
+        _freeze_authentication_value(diagnostics.get("caps")),
+        diagnostics.get("factor_base_materialized"),
+        diagnostics.get("relation_seed_size_policy_exceeded"),
+    )
+    return (
+        AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA,
+        id(result),
+        bool(result.complete),
+        str(result.reason),
+        int(result.minkowski_bound),
+        str(result.proof_status),
+        proof_diagnostics,
+        id(plan),
+        id(plan.order),
+        str(bound.theorem),
+        tuple(bound.assumptions),
+        int(bound.bound),
+        int(bound.degree),
+        tuple(bound.signature),
+        int(bound.discriminant),
+        int(bound.precision_bits),
+        _freeze_authentication_value(bound.to_dict()["interval"]),
+        _freeze_authentication_value(bound.details),
+        int(plan.max_bound),
+        int(plan.max_rational_primes),
+        int(plan.max_prime_ideals),
+        int(plan.max_memory_bytes),
+        tuple(plan.degree_filters),
+        bool(plan.fits_caps),
+        tuple(plan.cap_failures),
+        tuple(factor_records),
+        relations,
+        presentation_snapshot,
+        collector_snapshot,
+        id(seed.relation_candidates),
+        id(seed.selected_relation_candidates),
+        id(search_state),
+        int(search_state.seed),
+        int(search_state.random_state),
+        int(search_state.candidates_tested),
+        int(search_state.ideals_tested),
+        int(search_state.relations_admitted),
+    )
+
+
+class _AuthenticatedCubicRelationSeed:
+    """Producer-issued live relation prefix for the coupled engine."""
+
+    def __init__(
+        self,
+        token: object,
+        result: CubicClassNumberResult,
+        plan: Any,
+        factor_records: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_candidates: tuple[Any, ...] = (),
+        selected_relation_candidates: tuple[Any, ...] = (),
+    ) -> None:
+        if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
+            raise TypeError("cubic relation seeds are module-issued")
+        if type(result) is not CubicClassNumberResult:
+            raise ValueError("a cubic relation seed needs a producer result")
+        self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
+        self._source_result = result
+        self.field = result.field
+        self.plan = plan
+        self.factor_records = tuple(factor_records)
+        self.factor_base = (
+            self.factor_records
+            if self.factor_records
+            and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            else tuple(result.factor_base)
+        )
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        self.relation_candidates = tuple(relation_candidates)
+        self.selected_relation_candidates = tuple(selected_relation_candidates)
+        self._snapshot = _cubic_relation_seed_snapshot(self)
+        self.__dict__["_frozen"] = True
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if self.__dict__.get("_frozen", False):
+            raise AttributeError("authenticated cubic relation seeds are immutable")
+        self.__dict__[name] = value
+
+    @property
+    def certified(self) -> bool:
+        try:
+            result = self._source_result
+            order = self.field.maximal_order()
+            packed = bool(
+                self.factor_records
+                and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            )
+            result_factors = (
+                tuple(result.__dict__.get("_packed_factor_records", ()))
+                if packed
+                else tuple(result.factor_base)
+            )
+            return bool(
+                type(result) is CubicClassNumberResult
+                and result.field is self.field
+                and self.plan.order is order
+                and not tuple(self.plan.assumptions)
+                and "Minkowski" in str(self.plan.theorem)
+                and len(result_factors) == len(self.factor_base)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        result_factors, self.factor_base, strict=True
+                    )
+                )
+                and len(self.factor_records) == len(self.factor_base)
+                and all(
+                    (record is ideal if packed else record.prime_ideal is ideal)
+                    for record, ideal in zip(
+                        self.factor_records, self.factor_base, strict=True
+                    )
+                )
+                and self.collector.order is order
+                and len(self.collector.factor_base) == len(self.factor_base)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        self.collector.factor_base, self.factor_base, strict=True
+                    )
+                )
+                and len(self.collector.records) == len(result.relation_records)
+                and all(
+                    retained is supplied
+                    for retained, supplied in zip(
+                        self.collector.records,
+                        result.relation_records,
+                        strict=True,
+                    )
+                )
+                and result.presentation is self.presentation
+                and self._snapshot == _cubic_relation_seed_snapshot(self)
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+
+class _DeferredCubicRelationSeed:
+    """Private live state whose canonical authentication is checked on demand."""
+
+    def __init__(
+        self,
+        token: object,
+        result: CubicClassNumberResult,
+        plan: Any,
+        factor_records: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_candidates: tuple[Any, ...],
+        selected_relation_candidates: tuple[Any, ...],
+    ) -> None:
+        if token is not _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN:
+            raise TypeError("deferred cubic relation seeds are module-issued")
+        if not result.complete or result.certificate is None:
+            raise ValueError("a deferred cubic seed needs a complete exact result")
+        self.result = result
+        self.plan = plan
+        self.factor_records = tuple(factor_records)
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        self.relation_candidates = tuple(relation_candidates)
+        self.selected_relation_candidates = tuple(selected_relation_candidates)
+        runtime.object.freeze(self)
+
+    def realize(self, result: CubicClassNumberResult) -> Any:
+        """Authenticate retained objects against the immutable certificate."""
+        try:
+            if result is not self.result or not result.complete:
+                return None
+            certificate = result.certificate
+            if type(certificate) is not CubicMinkowskiClassNumberCertificate:
+                return None
+            packed = bool(
+                self.factor_records
+                and isinstance(self.factor_records[0], PackedCubicFactorRecord)
+            )
+            result_factors = (
+                tuple(result.__dict__.get("_packed_factor_records", ()))
+                if packed
+                else tuple(result.factor_base)
+            )
+            if (
+                certificate.field is not result.field
+                or self.plan.order is not result.field.maximal_order()
+                or self.plan.to_dict() != certificate.plan
+                or len(result_factors) != len(self.factor_records)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        result_factors, self.factor_records, strict=True
+                    )
+                )
+                or [record.to_dict() for record in self.factor_records]
+                != certificate.factor_base
+                or len(self.collector.records) != len(result.relation_records)
+                or any(
+                    retained is not supplied
+                    for retained, supplied in zip(
+                        self.collector.records,
+                        result.relation_records,
+                        strict=True,
+                    )
+                )
+                or [record.to_dict() for record in self.collector.records]
+                != certificate.relations
+                or result.presentation is not self.presentation
+                or self.presentation.to_dict() != certificate.presentation
+            ):
+                return None
+            relation_module = __import__(
+                "sagejs.number_fields.class_group_relations",
+                fromlist=["class_group_relations"],
+            )
+            self.collector._finalize_deferred_identity_keys(
+                _validated_token=(
+                    relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                )
+            )
+            _issue_cubic_relation_seed(
+                result,
+                self.plan,
+                self.factor_records,
+                self.collector,
+                self.presentation,
+                self.search_state,
+                self.relation_candidates,
+                self.selected_relation_candidates,
+            )
+            seed = result.__dict__.get("_live_relation_seed")
+            if (
+                type(seed) is _AuthenticatedCubicRelationSeed
+                and seed._source_result is result
+                and seed.field is result.field
+            ):
+                # The constructor captured the mutation-sensitive snapshot
+                # synchronously after the exact deferred comparisons above.
+                # Treat that issuance as this call's authentication receipt;
+                # later observations still recompute `seed.certified`.
+                return seed
+            return None
+        except (AttributeError, ArithmeticError, TypeError, ValueError):
+            return None
+
+
+def _defer_cubic_relation_seed(
+    result: CubicClassNumberResult,
+    plan: Any,
+    factor_records: tuple[Any, ...],
+    collector: Any,
+    presentation: Any,
+    search_state: Any,
+    relation_candidates: tuple[Any, ...] = (),
+    selected_relation_candidates: tuple[Any, ...] = (),
+) -> CubicClassNumberResult:
+    result.__dict__["_deferred_relation_seed"] = _DeferredCubicRelationSeed(
+        _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN,
+        result,
+        plan,
+        factor_records,
+        collector,
+        presentation,
+        search_state,
+        relation_candidates,
+        selected_relation_candidates,
+    )
+    return result
+
+
+def _issue_cubic_relation_seed(
+    result: CubicClassNumberResult,
+    plan: Any,
+    factor_records: tuple[Any, ...],
+    collector: Any,
+    presentation: Any,
+    search_state: Any,
+    relation_candidates: tuple[Any, ...] = (),
+    selected_relation_candidates: tuple[Any, ...] = (),
+) -> CubicClassNumberResult:
+    seed = _AuthenticatedCubicRelationSeed(
+        _AUTHENTICATED_CUBIC_RELATION_SEED_TOKEN,
+        result,
+        plan,
+        factor_records,
+        collector,
+        presentation,
+        search_state,
+        relation_candidates,
+        selected_relation_candidates,
+    )
+    # The private constructor has just captured every proof-bearing object in
+    # one synchronous call; user code cannot interpose between construction
+    # and attachment.  Recomputing the complete snapshot here used to be the
+    # first of several identical serializations.  Every later cache read still
+    # calls `seed.certified` and rejects any intervening mutation.
+    result.__dict__["_live_relation_seed"] = seed
+    return result
+
+
+def authenticated_cubic_relation_seed(result: Any, field: Any) -> Any:
+    """Return a valid live relation prefix, or `None` for detached evidence."""
+    if type(result) is not CubicClassNumberResult or result.field is not field:
+        return None
+    seed = result.__dict__.get("_live_relation_seed")
+    if seed is None:
+        deferred = result.__dict__.get("_deferred_relation_seed")
+        if type(deferred) is _DeferredCubicRelationSeed:
+            seed = deferred.realize(result)
+        if (
+            type(seed) is _AuthenticatedCubicRelationSeed
+            and seed._source_result is result
+            and seed.field is field
+        ):
+            result.__dict__.pop("_deferred_relation_seed", None)
+            return seed
+    if (
+        type(seed) is _AuthenticatedCubicRelationSeed
+        and seed._source_result is result
+        and seed.field is field
+        and seed.certified
+    ):
+        return seed
+    return None
+
+
+class _MaterializedCubicRelationSeed:
+    """One verified packed relation prefix decoded for the coupled engine."""
+
+    def __init__(
+        self,
+        source: _AuthenticatedCubicRelationSeed,
+        factor_records: tuple[Any, ...],
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        *,
+        dependency_candidates: int = 0,
+        dependency_relations: int = 0,
+        dependency_coefficient_bound: int = 0,
+    ) -> None:
+        self.schema = AUTHENTICATED_CUBIC_RELATION_SEED_SCHEMA
+        self._source_seed = source
+        self.field = source.field
+        self.plan = source.plan
+        self.factor_records = tuple(factor_records)
+        self.factor_base = tuple(factor_base)
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = source.search_state
+        self.materialized_from_packed = True
+        self.dependency_candidates = int(dependency_candidates)
+        self.dependency_relations = int(dependency_relations)
+        self.dependency_coefficient_bound = int(dependency_coefficient_bound)
+        runtime.object.freeze(self)
+
+
+def _extend_packed_cubic_relation_seed_for_units(
+    seed: _AuthenticatedCubicRelationSeed,
+    relations: Any,
+    *,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[Any, Any, int, int, int] | None:
+    """Admit one bounded exact unit dependency into a cloned live prefix."""
+    result = seed._source_result
+    if not result.complete:
+        return None
+    caps = result.diagnostics.get("caps", {})
+    maximum_relations = caps.get("max_relations")
+    if (
+        isinstance(maximum_relations, bool)
+        or not isinstance(maximum_relations, int)
+        or maximum_relations < 1
+        or maximum_relations > 2048
+    ):
+        return None
+    remaining = maximum_relations - len(seed.collector.records)
+    if remaining < 1:
+        return None
+    primary_candidates = seed.relation_candidates
+    selected = seed.selected_relation_candidates
+    if not selected:
+        coefficients = _order_cubic_norm_form_coefficients(seed.plan.order)
+        selected = tuple(
+            (
+                row,
+                coordinates,
+                abs(_cubic_norm_form_value(coefficients, *coordinates)),
+            )
+            for coordinates, row, _provenance in (
+                _packed_principal_factor_proposals(seed.plan.order, seed.factor_base)
+            )
+        )
+    if not selected:
+        return None
+    if not primary_candidates:
+        primary_candidates = _packed_cubic_relation_candidates(
+            seed.plan.order,
+            seed.factor_base,
+            maximum_candidates=maximum_relations,
+            cancelled=cancelled,
+        )
+    if not primary_candidates:
+        return None
+    matrix_module = __import__(
+        "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+    )
+    unit_rank_bound = 1 if int(seed.plan.order.discriminant()) < 0 else 2
+    dependency_candidates, dependency_bound = _bounded_cubic_dependency_candidates(
+        seed.plan.order,
+        seed.factor_base,
+        selected,
+        primary_candidates,
+        min(remaining, unit_rank_bound),
+        maximum_relations,
+        cancelled=cancelled,
+    )
+    if not dependency_candidates or len(dependency_candidates) > remaining:
+        return None
+    collector = seed.collector.rebind_verified_factor_base(
+        seed.factor_base,
+        _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
+    )
+    proposals = tuple(
+        (
+            coordinates,
+            row,
+            {
+                "algorithm": "packed-cubic-context-unit-dependency",
+                "coefficient_bound": dependency_bound,
+                "order_basis_coordinates": list(coordinates),
             },
-            "factor_base": factor_base,
-            "relations": relations,
-            "presentation": presentation_serializer(),
-            "diagnostics": result.diagnostics,
-        }
+        )
+        for row, coordinates, _expected_norm in dependency_candidates
+    )
+    before = len(collector.records)
+    admissions = collector.admit_integral_order_basis_rows(proposals)
+    if admissions is None or len(admissions) != len(proposals):
+        return None
+    appended = tuple(record.row for record in collector.records[before:])
+    presentation = matrix_module.extend_relation_presentation_with_duplicate_rows(
+        seed.presentation, appended
+    )
+    return (
+        collector,
+        presentation,
+        len(dependency_candidates),
+        len(appended),
+        dependency_bound,
+    )
+
+
+def _materialize_validated_cubic_relation_seed(
+    seed: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
+    """Decode one already authenticated live packed prefix."""
+    if not seed.factor_records or not isinstance(
+        seed.factor_records[0], PackedCubicFactorRecord
+    ):
+        return seed
+    try:
+        relations = __import__(
+            "sagejs.number_fields.class_group_relations",
+            fromlist=["class_group_relations"],
+        )
+        packed_collector = seed.collector
+        presentation = seed.presentation
+        dependency_candidates = 0
+        dependency_relations = 0
+        dependency_coefficient_bound = 0
+        if include_unit_dependencies:
+            try:
+                extension = _extend_packed_cubic_relation_seed_for_units(
+                    seed, relations, cancelled=cancelled
+                )
+            except (AttributeError, ArithmeticError, TypeError, ValueError):
+                # This is a bounded continuation hint, never proof evidence.
+                # Retain the authenticated class prefix when no cheap unit
+                # dependency can be added under the current implementation.
+                extension = None
+            if extension is not None:
+                (
+                    packed_collector,
+                    presentation,
+                    dependency_candidates,
+                    dependency_relations,
+                    dependency_coefficient_bound,
+                ) = extension
+        factor_records, factor_base = _materialize_packed_cubic_factor_records(
+            seed.factor_records
+        )
+        collector = packed_collector.rebind_verified_factor_base(
+            factor_base,
+            _validated_token=relations._VALIDATED_FACTOR_BASE_TOKEN,
+        )
+        return _MaterializedCubicRelationSeed(
+            seed,
+            factor_records,
+            factor_base,
+            collector,
+            presentation,
+            dependency_candidates=dependency_candidates,
+            dependency_relations=dependency_relations,
+            dependency_coefficient_bound=dependency_coefficient_bound,
+        )
+    except (AttributeError, ArithmeticError, TypeError, ValueError):
+        return None
+
+
+def materialize_authenticated_cubic_relation_seed(
+    seed: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
+    """Authenticate and decode one live packed relation prefix."""
+    if (
+        type(seed) is not _AuthenticatedCubicRelationSeed
+        or seed.field is not field
+        or not seed.certified
+    ):
+        return None
+    return _materialize_validated_cubic_relation_seed(
+        seed,
+        field,
+        include_unit_dependencies=include_unit_dependencies,
+        cancelled=cancelled,
+    )
+
+
+def materialize_authenticated_cubic_relation_result(
+    result: Any,
+    field: Any,
+    *,
+    include_unit_dependencies: bool = False,
+    cancelled: Callable[[], bool] | None = None,
+) -> Any:
+    """Validate and consume a result's live relation prefix exactly once."""
+    seed = authenticated_cubic_relation_seed(result, field)
+    if seed is None:
+        return None
+    return _materialize_validated_cubic_relation_seed(
+        seed,
+        field,
+        include_unit_dependencies=include_unit_dependencies,
+        cancelled=cancelled,
     )
 
 
@@ -725,12 +3449,18 @@ class _AuthenticatedCubicClassNumberResult:
         self.class_number = int(certificate.class_number)
         self.minkowski_bound = int(result.minkowski_bound)
         self.proof_status = str(result.proof_status)
-        self.certificate_sha256 = str(certificate.stable_hash())
-        self.factor_base_size = len(result.factor_base)
+        self.certificate_authority = certificate._live_semantic_identity
+        if self.certificate_authority is None:
+            raise ValueError("a live cubic result needs producer certificate authority")
+        self.factor_base_size = result._factor_base_size()
         self.relation_count = len(result.relation_records)
         self.__dict__["_source_field"] = result.field
         self.__dict__["_source_result"] = result
-        self.__dict__["_source_snapshot"] = _cubic_class_number_result_snapshot(result)
+        self.__dict__["_source_certificate"] = certificate
+        # The complete result is checked once, synchronously, at the exact
+        # producer boundary.  Public scalar class-number reads subsequently
+        # consume this module-issued seal, not the mutable diagnostic/result
+        # wrapper.  Detached certificates still take the full replay path.
         self.__dict__["_frozen"] = True
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -742,15 +3472,19 @@ class _AuthenticatedCubicClassNumberResult:
     def certified(self) -> bool:
         try:
             source = self.__dict__.get("_source_result")
+            certificate = self.__dict__.get("_source_certificate")
             return (
                 type(source) is CubicClassNumberResult
                 and source.field is self.__dict__.get("_source_field")
-                and source.complete
+                and source.__dict__.get("_live_authentication") is self
+                and source.certificate is certificate
+                and type(certificate) is CubicMinkowskiClassNumberCertificate
+                and certificate.field is self.__dict__.get("_source_field")
+                and certificate._live_semantic_identity is self.certificate_authority
+                and certificate.class_number == self.class_number
                 and self.proof_status == "exact-unconditional"
                 and self.__dict__.get("_authentication_snapshot")
                 == _authenticated_cubic_class_number_snapshot(self)
-                and self.__dict__.get("_source_snapshot")
-                == _cubic_class_number_result_snapshot(source)
             )
         except (AttributeError, TypeError, ValueError):
             return False
@@ -765,7 +3499,7 @@ def _authenticated_cubic_class_number_snapshot(
         authentication.class_number,
         authentication.minkowski_bound,
         authentication.proof_status,
-        authentication.certificate_sha256,
+        authentication.certificate_authority,
         authentication.factor_base_size,
         authentication.relation_count,
     )
@@ -781,30 +3515,380 @@ def _issue_cubic_class_number_result(
     authentication.__dict__["_authentication_snapshot"] = (
         _authenticated_cubic_class_number_snapshot(authentication)
     )
-    if not authentication.certified:
-        raise ArithmeticError("failed to seal a live cubic class-number result")
+    # Construction binds the exact certificate, source field/result identities,
+    # and certified scalar synchronously.  Public scalar consumers need only
+    # validate this constant-size seal; they never trust the diagnostic wrapper.
     result.__dict__["_live_authentication"] = authentication
     return result
 
 
 def authenticated_cubic_class_number_result_matches(result: Any, field: Any) -> bool:
     """Check a producer-issued live result without detached arithmetic replay."""
+    return authenticated_cubic_class_number(result, field) is not None
+
+
+def authenticated_cubic_class_number(result: Any, field: Any) -> int | None:
+    """Return the sealed live class number, or `None` without exact authority."""
     if type(result) is not CubicClassNumberResult or result.field is not field:
-        return False
+        return None
     try:
         authentication = result.__dict__.get("_live_authentication")
-        certificate = result.certificate
-        return (
+        if (
             type(authentication) is _AuthenticatedCubicClassNumberResult
-            and type(certificate) is CubicMinkowskiClassNumberCertificate
             and authentication.__dict__.get("_source_result") is result
             and authentication.__dict__.get("_source_field") is field
             and authentication.certified
-            and authentication.class_number == result.order()
-            and authentication.certificate_sha256 == certificate.stable_hash()
-        )
+        ):
+            return int(authentication.class_number)
     except (AttributeError, TypeError, ValueError):
-        return False
+        pass
+    return None
+
+
+class _CompactCubicLedgerMutationError(RuntimeError):
+    """A live compact relation transaction changed across a callback."""
+
+
+def _seal_compact_json_value(value: Any) -> tuple[str, Any]:
+    """Store JSON side data in an unambiguously immutable live form."""
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return "atom", value
+    if isinstance(value, (list, tuple)):
+        return "array", tuple(_seal_compact_json_value(item) for item in value)
+    if isinstance(value, dict):
+        if not all(isinstance(key, str) for key in value):
+            raise TypeError("compact JSON object keys must be strings")
+        return "object", tuple(
+            (key, _seal_compact_json_value(value[key])) for key in sorted(value)
+        )
+    raise TypeError("compact relation metadata must be JSON-safe")
+
+
+def _unseal_compact_json_value(value: tuple[str, Any]) -> Any:
+    """Materialize one owned JSON value at the publication boundary."""
+    tag, payload = value
+    if tag == "atom":
+        return payload
+    if tag == "array":
+        return [_unseal_compact_json_value(item) for item in payload]
+    if tag == "object":
+        return {key: _unseal_compact_json_value(item) for key, item in payload}
+    raise ArithmeticError("a compact JSON seal has an unknown tag")
+
+
+def _compact_cubic_presentation_snapshot(presentation: Any) -> tuple[Any, ...]:
+    """Bind a relation presentation without allocating its detached JSON body."""
+    relation_rows = tuple(
+        (int(row.column_count), tuple(tuple(entry) for entry in row.entries))
+        for row in presentation.relation_rows
+    )
+    return (
+        int(presentation.column_count),
+        relation_rows,
+        int(presentation.row_count),
+        tuple(tuple(int(value) for value in row) for row in presentation.hnf),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.hnf_left_transform
+        ),
+        tuple(tuple(int(value) for value in row) for row in presentation.smith),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_left_transform
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_right_transform
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.smith_right_inverse
+        ),
+        str(presentation.backend),
+        int(presentation.rank),
+        tuple(int(value) for value in presentation.diagonal),
+        int(presentation.free_rank),
+        tuple(int(value) for value in presentation.invariant_positions),
+        tuple(int(value) for value in presentation.invariants),
+        None if presentation.order is None else int(presentation.order),
+        tuple(int(value) for value in presentation.generator_positions),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.generator_transforms
+        ),
+        tuple(
+            tuple(int(value) for value in row)
+            for row in presentation.dependency_transforms
+        ),
+        tuple(
+            tuple(int(value) for value in row) for row in presentation.unit_transforms
+        ),
+    )
+
+
+class _CompactCubicRelationLedger:
+    """Live-only exact rows retained until a cubic proof can finish."""
+
+    def __init__(
+        self,
+        order: Any,
+        factor_base: Iterable[Any],
+        proposals: Iterable[tuple[Iterable[int], Iterable[int], dict[str, Any] | None]],
+        authority: Any,
+        presentation: Any,
+        line_specs: Iterable[dict[str, Any]],
+        obstructions: Iterable[dict[str, Any]],
+        *,
+        maximum_relations: int,
+    ) -> None:
+        self.order = order
+        self.factor_base = tuple(factor_base)
+        if not all(
+            isinstance(record, PackedCubicFactorRecord) for record in self.factor_base
+        ):
+            raise TypeError("a compact cubic ledger needs packed factor records")
+        degree = int(order.degree())
+        width = len(self.factor_base)
+        entries = []
+        for raw_coordinates, raw_row, provenance in proposals:
+            coordinates = tuple(int(value) for value in raw_coordinates)
+            row = tuple(int(value) for value in raw_row)
+            if len(coordinates) != degree or len(row) != width:
+                raise ValueError("a compact cubic relation has the wrong width")
+            if not any(coordinates) or any(value < 0 for value in row):
+                raise ValueError("a compact cubic relation is not integral")
+            if provenance is not None and not isinstance(provenance, dict):
+                raise TypeError("compact cubic provenance must be a dictionary")
+            owned_provenance = (
+                None if provenance is None else _seal_compact_json_value(provenance)
+            )
+            entries.append((coordinates, row, owned_provenance))
+        if len(entries) > int(maximum_relations):
+            raise ValueError("a compact cubic relation ledger exceeds its row cap")
+        authority_entries = getattr(authority, "entries", None)
+        if not isinstance(authority_entries, tuple) or len(authority_entries) != len(
+            entries
+        ):
+            raise TypeError("a compact cubic ledger needs complete exact authority")
+        if any(
+            retained[:2] != authorized[:2]
+            for retained, authorized in zip(entries, authority_entries, strict=True)
+        ):
+            raise ValueError("compact cubic rows disagree with exact authority")
+        relation_rows = getattr(presentation, "relation_rows", None)
+        rows = tuple(entry[1] for entry in entries)
+        if (
+            not isinstance(relation_rows, tuple)
+            or tuple(
+                tuple(int(value) for value in row.dense()) for row in relation_rows
+            )
+            != rows
+        ):
+            raise ValueError("compact cubic rows disagree with their presentation")
+        self.entries = tuple(entries)
+        self.rows = rows
+        self.authority = authority
+        self.presentation = presentation
+        self.line_specs = tuple(
+            _seal_compact_json_value(specification) for specification in line_specs
+        )
+        self.obstructions = tuple(
+            _seal_compact_json_value(obstruction) for obstruction in obstructions
+        )
+        if len(self.line_specs) != len(self.obstructions):
+            raise ValueError("compact cubic obstruction coverage is incomplete")
+        self._order_authority = order
+        self._factor_authority = self.factor_base
+        self._batch_authority = authority
+        self._authority_entries = authority.entries
+        self._authority_factors = authority.factor_base
+        self._presentation_authority = presentation
+        self._entries_authority = self.entries
+        self._rows_authority = self.rows
+        self._line_specs_authority = self.line_specs
+        self._obstructions_authority = self.obstructions
+        self._semantic_snapshot = self._current_semantic_snapshot()
+        self._issued = False
+
+    def _current_semantic_snapshot(self) -> tuple[Any, ...]:
+        return (
+            tuple(
+                record._live_authentication_snapshot() for record in self.factor_base
+            ),
+            _compact_cubic_presentation_snapshot(self.presentation),
+        )
+
+    def validate_semantics(self) -> None:
+        """Fail closed if staged proof semantics changed across user code."""
+        try:
+            authority_factors = tuple(self.authority.factor_base)
+            identities_match = bool(
+                self.order is self._order_authority
+                and self.factor_base is self._factor_authority
+                and self.authority is self._batch_authority
+                and self.presentation is self._presentation_authority
+                and self.entries is self._entries_authority
+                and self.rows is self._rows_authority
+                and self.line_specs is self._line_specs_authority
+                and self.obstructions is self._obstructions_authority
+                and self.authority.order is self.order
+                and self.authority.entries is self._authority_entries
+                and self.authority.factor_base is self._authority_factors
+                and len(authority_factors) == len(self.factor_base)
+                and all(
+                    authorized is retained
+                    for authorized, retained in zip(
+                        authority_factors, self.factor_base, strict=True
+                    )
+                )
+            )
+            matches = identities_match and (
+                self._current_semantic_snapshot() == self._semantic_snapshot
+            )
+        except (AttributeError, ArithmeticError, TypeError, ValueError):
+            matches = False
+        if not matches:
+            raise _CompactCubicLedgerMutationError(
+                "compact cubic relation semantics changed during a callback"
+            )
+
+    def row(self, index: int) -> tuple[int, ...]:
+        return self.rows[int(index)]
+
+    def publish(
+        self, relation_module: Any
+    ) -> tuple[
+        Any,
+        tuple[Any, ...],
+        tuple[dict[str, Any], ...],
+        tuple[dict[str, Any], ...],
+    ]:
+        if self._issued:
+            raise RuntimeError("a compact cubic relation ledger was already published")
+        self.validate_semantics()
+        token = relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+        collector = relation_module.ExactRelationCollector(
+            self.order,
+            self.factor_base,
+            _validated_token=relation_module._VALIDATED_FACTOR_BASE_TOKEN,
+            _deferred_reconstructor_token=token,
+        )
+        admissions = collector._admit_validated_integral_order_basis_rows(
+            self.authority,
+            tuple(
+                (
+                    coordinates,
+                    row,
+                    (
+                        None
+                        if provenance is None
+                        else _unseal_compact_json_value(provenance)
+                    ),
+                )
+                for coordinates, row, provenance in self.entries
+            ),
+            _validated_token=token,
+            _deferred_token=token,
+        )
+        if len(admissions) != len(self.entries) or any(
+            admission.record is not record or record.row != row
+            for admission, record, row in zip(
+                admissions, collector.records, self.rows, strict=True
+            )
+        ):
+            raise ArithmeticError("compact cubic publication changed a relation")
+        line_specs = tuple(
+            _unseal_compact_json_value(value) for value in self.line_specs
+        )
+        obstructions = tuple(
+            _unseal_compact_json_value(value) for value in self.obstructions
+        )
+        self._issued = True
+        return collector, admissions, line_specs, obstructions
+
+
+def _complete_zero_width_cubic_class_number(
+    field: Any,
+    plan: Any,
+    checked_caps: dict[str, int],
+    phase_timings: dict[str, float],
+    total_started: float,
+) -> CubicClassNumberResult:
+    """Finish the canonical empty-factor-base proof without relation machinery."""
+    relation_started = time.perf_counter()
+    matrix_module = __import__(
+        "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
+    )
+    presentation = matrix_module.RelationPresentation(
+        0,
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+        (),
+        "python",
+    )
+    if presentation.rank != 0 or presentation.order != 1:
+        raise ArithmeticError("the empty relation presentation is not trivial")
+    phase_timings["relations"] = time.perf_counter() - relation_started
+    phase_timings["norm_obstructions"] = 0.0
+    encoding_started = time.perf_counter()
+    certificate = CubicMinkowskiClassNumberCertificate(
+        field,
+        plan=plan.to_dict(),
+        factor_base=[],
+        relations=[],
+        presentation=presentation.to_dict(),
+        obstructions=[],
+        caps=checked_caps,
+        _live_presentation=presentation,
+        _live_token=_LIVE_CUBIC_CERTIFICATE_TOKEN,
+    )
+    if certificate.class_number != 1:
+        raise ArithmeticError("the empty cubic relation quotient is not trivial")
+    phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started
+    phase_timings["total"] = time.perf_counter() - total_started
+    relation_metrics = {
+        "integral_sieve_candidates": 0,
+        "integral_sieve_valuation_limit": 8,
+        "integral_sieve_prefix_proved": 0,
+        "integral_sieve_selected": 0,
+        "integral_sieve_relations": 0,
+        "integral_sieve_validated_batch": 0,
+        "integral_sieve_fallback": 0,
+        "integral_sieve_dependency_candidates": 0,
+        "integral_sieve_dependency_relations": 0,
+        "relation_prefix_finalized_without_search": 1,
+        "presentation_extractions": 1,
+        "relation_attempts": 0,
+        "relation_candidates": 0,
+        "ideals_tested": 0,
+    }
+    result = CubicClassNumberResult(
+        field,
+        True,
+        certificate.source,
+        int(plan.bound),
+        certificate=certificate,
+        factor_base=(),
+        relation_records=(),
+        presentation=presentation,
+        diagnostics={
+            "algorithm": "bounded-cubic-minkowski-p-lines",
+            "phase_timings": dict(phase_timings),
+            "factor_base_size": 0,
+            "relations": 0,
+            "presentation_rank": 0,
+            "quotient_order": 1,
+            "projective_lines": 0,
+            "residue_states": 0,
+            "relation_search": relation_metrics,
+            "caps": dict(checked_caps),
+        },
+    )
+    return _issue_cubic_class_number_result(result)
 
 
 def bounded_cubic_minkowski_class_number(
@@ -821,7 +3905,9 @@ def bounded_cubic_minkowski_class_number(
     max_projective_lines: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_PROJECTIVE_LINES,
     max_modulus: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_MODULUS,
     max_residue_states: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RESIDUE_STATES,
+    max_relation_seed_prime_ideals: int | None = None,
     cancelled: Callable[[], bool] | None = None,
+    _relation_prefix_receiver: Callable[..., bool] | None = None,
 ) -> CubicClassNumberResult:
     """Prove a cubic class number without computing units or a regulator.
 
@@ -837,6 +3923,10 @@ def bounded_cubic_minkowski_class_number(
     """
     if int(field.degree()) != 3:
         raise ValueError("the bounded Minkowski class-number path requires a cubic")
+    if _relation_prefix_receiver is not None and not callable(
+        _relation_prefix_receiver
+    ):
+        raise TypeError("the internal relation-prefix receiver must be callable")
     checked_caps = {
         "max_relation_attempts": _positive_integer(
             max_relation_attempts, "maximum relation attempts"
@@ -858,16 +3948,30 @@ def bounded_cubic_minkowski_class_number(
     }
     if checked_caps["max_modulus"] < 2:
         raise ValueError("maximum modulus must be at least two")
+    relation_seed_prime_ideal_cap = (
+        None
+        if max_relation_seed_prime_ideals is None
+        else _positive_integer(
+            max_relation_seed_prime_ideals,
+            "maximum relation-seed prime ideals",
+        )
+    )
     phase_timings: dict[str, float] = {}
     relation_metrics: dict[str, int] = {}
+    live_factor_records: tuple[Any, ...] = ()
+    live_collector: Any = None
+    live_search_state: Any = None
+    live_has_partials = False
+    compact_relation_ledger: _CompactCubicRelationLedger | None = None
     total_started = time.perf_counter()
     factor_base_module = __import__(
         "sagejs.number_fields.class_group_factor_base",
         fromlist=["class_group_factor_base"],
     )
     factor_started = time.perf_counter()
+    order = field.maximal_order()
     plan = factor_base_module.factor_base_plan(
-        field.maximal_order(),
+        order,
         proof=True,
         theorem="minkowski",
         max_bound=_positive_integer(max_bound, "maximum factor-base bound"),
@@ -886,19 +3990,46 @@ def bounded_cubic_minkowski_class_number(
         presentation: Any = None,
         residue_states: int = 0,
     ) -> CubicClassNumberResult:
+        if compact_relation_ledger is not None:
+            compact_relation_ledger.validate_semantics()
+        output_factor_base = tuple(factor_base)
+        seed_factor_records = tuple(live_factor_records)
+        seed_collector = live_collector
+        if output_factor_base and isinstance(
+            output_factor_base[0], PackedCubicFactorRecord
+        ):
+            source_records = (
+                seed_factor_records if seed_factor_records else output_factor_base
+            )
+            seed_factor_records, output_factor_base = (
+                _materialize_packed_cubic_factor_records(source_records)
+            )
+            if live_collector is not None:
+                relation_replay_module = __import__(
+                    "sagejs.number_fields.class_group_relations",
+                    fromlist=["class_group_relations"],
+                )
+                # Materialization just required every ordinary record to
+                # reproduce the authenticated packed payload byte-for-byte.
+                # Transfer the already verified rank, deduplication, and live
+                # admission receipts without replaying those same records.
+                seed_collector = live_collector.rebind_verified_factor_base(
+                    output_factor_base,
+                    _validated_token=relation_replay_module._VALIDATED_FACTOR_BASE_TOKEN,
+                )
         phase_timings["total"] = time.perf_counter() - total_started
-        return CubicClassNumberResult(
+        result = CubicClassNumberResult(
             field,
             False,
             reason,
             int(plan.bound),
-            factor_base=factor_base,
+            factor_base=output_factor_base,
             relation_records=relation_records,
             presentation=presentation,
             diagnostics={
                 "algorithm": "bounded-cubic-minkowski-p-lines",
                 "phase_timings": dict(phase_timings),
-                "factor_base_size": len(factor_base),
+                "factor_base_size": len(output_factor_base),
                 "relations": len(relation_records),
                 "presentation_rank": int(getattr(presentation, "rank", 0)),
                 "quotient_order": getattr(presentation, "order", None),
@@ -907,11 +4038,61 @@ def bounded_cubic_minkowski_class_number(
                 "caps": dict(checked_caps),
             },
         )
+        if (
+            seed_collector is not None
+            and presentation is not None
+            and live_search_state is not None
+            and not live_has_partials
+        ):
+            if _relation_prefix_receiver is not None and _relation_prefix_receiver(
+                plan,
+                output_factor_base,
+                seed_collector,
+                presentation,
+                live_search_state,
+            ):
+                result.diagnostics["context_relation_prefix_bound"] = True
+                return result
+            return _issue_cubic_relation_seed(
+                result,
+                plan,
+                seed_factor_records,
+                seed_collector,
+                presentation,
+                live_search_state,
+            )
+        return result
 
     try:
         _check_cubic_cancelled(cancelled)
         plan.require_feasible()
-        factor_records = factor_base_module.build_factor_base(plan)
+        descriptor_scan = getattr(factor_base_module, "_eligible_descriptors", None)
+        if (
+            relation_seed_prime_ideal_cap is not None
+            and int(plan.bound) > _CUBIC_PACKED_PREMATERIALIZATION_BOUND
+            and callable(descriptor_scan)
+        ):
+            descriptors: Any = descriptor_scan(plan)
+            if len(descriptors) > relation_seed_prime_ideal_cap:
+                phase_timings["factor_base"] = time.perf_counter() - factor_started
+                result = incomplete(
+                    "the exact Minkowski factor base exceeds the relation-seed size policy"
+                )
+                result.diagnostics["factor_base_size"] = len(descriptors)
+                result.diagnostics["factor_base_materialized"] = False
+                result.diagnostics["relation_seed_size_policy_exceeded"] = True
+                return result
+        # Keep cubic factors in the packed producer representation even for a
+        # one-prime Minkowski base.  The fused factorization/materialization
+        # path is now cheaper than constructing and fingerprinting the generic
+        # ideal record, and the collector can retain the authenticated snapshot
+        # without changing the detached certificate boundary.
+        packed_factor_records = packed_cubic_factor_records(plan)
+        factor_records = (
+            factor_base_module.build_factor_base(plan)
+            if packed_factor_records is None
+            else packed_factor_records
+        )
     except RuntimeError:
         raise
     except ValueError as error:
@@ -920,7 +4101,27 @@ def bounded_cubic_minkowski_class_number(
             "bounded cubic Minkowski factor base is unavailable: " + str(error)
         )
     phase_timings["factor_base"] = time.perf_counter() - factor_started
-    factor_base = tuple(record.prime_ideal for record in factor_records)
+    factor_base = tuple(
+        record if isinstance(record, PackedCubicFactorRecord) else record.prime_ideal
+        for record in factor_records
+    )
+    if (
+        relation_seed_prime_ideal_cap is not None
+        and len(factor_base) > relation_seed_prime_ideal_cap
+    ):
+        result = incomplete(
+            "the exact Minkowski factor base exceeds the relation-seed size policy"
+        )
+        result.diagnostics["factor_base_size"] = len(factor_base)
+        result.diagnostics["factor_base_materialized"] = False
+        result.diagnostics["relation_seed_size_policy_exceeded"] = True
+        return result
+
+    if not factor_base:
+        _check_cubic_cancelled(cancelled)
+        return _complete_zero_width_cubic_class_number(
+            field, plan, checked_caps, phase_timings, total_started
+        )
 
     relation_module = __import__(
         "sagejs.number_fields.class_group_relations",
@@ -929,56 +4130,425 @@ def bounded_cubic_minkowski_class_number(
     matrix_module = __import__(
         "sagejs.number_fields.class_group_matrix", fromlist=["class_group_matrix"]
     )
-    engine_module = __import__(
-        "sagejs.number_fields.class_unit_groups", fromlist=["class_unit_groups"]
-    )
-
-    class _NoAnalyticComponents:
-        def __init__(self) -> None:
-            self.factor_base: Any = None
-            self.relations: Any = None
-            self.matrix: Any = None
-            self.analytic: Any = None
-            self.context: Any = None
-            self.factored: Any = None
-
-    components = _NoAnalyticComponents()
-    components.factor_base = factor_base_module
-    components.relations = relation_module
-    components.matrix = matrix_module
-    components.analytic = _NoAnalyticComponents()
-    components.context = None
-    components.factored = None
-    limits = engine_module.ClassUnitEngineLimits(
-        max_factor_base_bound=_positive_integer(max_bound, "maximum factor-base bound"),
-        max_factor_base_size=_positive_integer(
-            max_prime_ideals, "maximum prime ideals"
-        ),
-        max_relation_attempts=checked_caps["max_relation_attempts"],
-        max_relations=checked_caps["max_relations"],
-        max_candidates_per_ideal=checked_caps["max_candidates_per_ideal"],
-        max_random_terms=5,
-        max_coefficient_bound=3,
-        max_partial_relations=checked_caps["max_relations"],
-        max_memory_bytes=_positive_integer(max_memory_bytes, "maximum memory bytes"),
-    )
     relation_started = time.perf_counter()
-    engine = engine_module.ClassUnitGroupEngine(
-        field,
-        proof=True,
-        algorithm="minkowski",
-        limits=limits,
-        cancelled=cancelled,
-        components=components,
+    engine: Any = None
+    collector: Any = None
+
+    def new_relation_collector() -> Any:
+        return relation_module.ExactRelationCollector(
+            order,
+            factor_base,
+            _validated_token=(
+                relation_module._VALIDATED_FACTOR_BASE_TOKEN
+                if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
+                else None
+            ),
+        )
+
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
     )
+    one_coordinates = tuple(prime_module._order_one_coordinates(order))
+    initial_proposals: list[
+        tuple[tuple[int, ...], tuple[int, ...], dict[str, Any]]
+    ] = []
+    for sequence, rational_prime in enumerate(
+        sorted({int(ideal.rational_prime()) for ideal in factor_base})
+    ):
+        row = [0] * len(factor_base)
+        local_degree = 0
+        for index, prime_ideal in enumerate(factor_base):
+            if int(prime_ideal.rational_prime()) != rational_prime:
+                continue
+            exponent = int(prime_ideal.ramification_index())
+            residue_degree = int(prime_ideal.residue_class_degree())
+            row[index] = exponent
+            local_degree += exponent * residue_degree
+        if local_degree == int(order.degree()):
+            initial_proposals.append(
+                (
+                    tuple(rational_prime * value for value in one_coordinates),
+                    tuple(row),
+                    {
+                        "algorithm": "rational-prime-decomposition",
+                        "rational_prime": rational_prime,
+                        "sequence": sequence,
+                    },
+                )
+            )
+    for proposal in _packed_principal_factor_proposals(order, factor_base):
+        if not any(retained[1] == proposal[1] for retained in initial_proposals):
+            initial_proposals.append(proposal)
+    initial_rows = [proposal[1] for proposal in initial_proposals]
+    trivial_quotient = bool(
+        not factor_base
+        or (
+            len(initial_rows) == len(factor_base)
+            and abs(matrix_module._determinant_exact(initial_rows)) == 1
+        )
+    )
+    sieve_capacity = (
+        0
+        if trivial_quotient
+        else checked_caps["max_relations"] - len(initial_proposals)
+    )
+    sieve_candidates: Any = None
+    valuation_candidate_limit = max(8, len(factor_base) + 2)
+    if sieve_capacity > 0:
+        sieve_candidates = _packed_cubic_relation_candidates(
+            order,
+            factor_base,
+            maximum_candidates=sieve_capacity,
+            valuation_candidate_limit=valuation_candidate_limit,
+            cancelled=cancelled,
+        )
+    elif trivial_quotient:
+        sieve_candidates = ()
+    raw_sieve_count = 0 if sieve_candidates is None else len(sieve_candidates)
+    selected_sieve_candidates: Any = None
+    planned_presentation: Any = None
+    planned_line_specs: tuple[dict[str, Any], ...] | None = None
+    planned_obstructions: tuple[dict[str, Any], ...] | None = None
+    planned_residue_states = 0
+    planned_obstruction_seconds = 0.0
+    planned_validated_batch: Any = None
+    if sieve_candidates is not None:
+        selected_sieve_candidates = _select_cubic_relation_candidates(
+            matrix_module,
+            tuple(proposal[1] for proposal in initial_proposals),
+            sieve_candidates,
+            len(factor_base),
+        )
+        # Valuating every norm-smooth coefficient vector can force large
+        # prime-power ideal chains which the exact HNF selector immediately
+        # discards.  First try the deterministic low-norm prefix above.  Its
+        # rows are still only proposals: validate their exact norms and
+        # prime-ideal support before retaining the presentation and modular
+        # norm obstructions.  Only exact collector admission publishes those
+        # rows.  If the prefix cannot finish, widen before admission so the
+        # coupled class/unit fallback receives the unchanged full relation
+        # seed.
+        if selected_sieve_candidates is not None and not trivial_quotient:
+            try:
+                proposed_rows = tuple(proposal[1] for proposal in initial_proposals)
+                proposed_rows += tuple(
+                    candidate[0] for candidate in selected_sieve_candidates
+                )
+                candidate_presentation = matrix_module.extract_relation_presentation(
+                    proposed_rows,
+                    len(factor_base),
+                    require_full_rank=False,
+                )
+                if (
+                    candidate_presentation.rank == len(factor_base)
+                    and candidate_presentation.order is not None
+                    and int(candidate_presentation.order)
+                    <= checked_caps["max_quotient_order"]
+                ):
+                    candidate_validated_batch = (
+                        _validated_cubic_integral_relation_batch(
+                            relation_module,
+                            order,
+                            factor_base,
+                            initial_proposals,
+                            selected_sieve_candidates,
+                        )
+                    )
+                    if candidate_validated_batch is None:
+                        raise ValueError(
+                            "the bounded cubic relation prefix failed exact validation"
+                        )
+                    candidate_lines = _projective_line_specs(
+                        candidate_presentation,
+                        max_lines=checked_caps["max_projective_lines"],
+                    )
+                    candidate_obstructions: list[dict[str, Any]] = []
+                    candidate_states = 0
+                    obstruction_probe_started = time.perf_counter()
+                    for line in candidate_lines:
+                        packed_search = _find_packed_cubic_norm_obstruction(
+                            factor_base,
+                            line,
+                            max_modulus=checked_caps["max_modulus"],
+                            remaining_states=(
+                                checked_caps["max_residue_states"] - candidate_states
+                            ),
+                            cancelled=cancelled,
+                        )
+                        if packed_search is None or packed_search[0] is None:
+                            candidate_obstructions = []
+                            break
+                        obstruction, used = packed_search
+                        if obstruction is None:
+                            candidate_obstructions = []
+                            break
+                        candidate_states += used
+                        candidate_obstructions.append(obstruction)
+                    candidate_obstruction_seconds = (
+                        time.perf_counter() - obstruction_probe_started
+                    )
+                    if len(candidate_obstructions) == len(candidate_lines):
+                        planned_presentation = candidate_presentation
+                        planned_line_specs = tuple(candidate_lines)
+                        planned_obstructions = tuple(candidate_obstructions)
+                        planned_residue_states = candidate_states
+                        planned_obstruction_seconds = candidate_obstruction_seconds
+                        planned_validated_batch = candidate_validated_batch
+            except (ArithmeticError, TypeError, ValueError):
+                planned_presentation = None
+                planned_validated_batch = None
+        if planned_presentation is None:
+            widened_candidates = _packed_cubic_relation_candidates(
+                order,
+                factor_base,
+                maximum_candidates=sieve_capacity,
+                cancelled=cancelled,
+            )
+            if widened_candidates is not None:
+                sieve_candidates = widened_candidates
+                raw_sieve_count = len(sieve_candidates)
+                selected_sieve_candidates = _select_cubic_relation_candidates(
+                    matrix_module,
+                    tuple(proposal[1] for proposal in initial_proposals),
+                    sieve_candidates,
+                    len(factor_base),
+                )
+    sieve_admitted = 0
+    validated_sieve_batch_used = False
+    if selected_sieve_candidates is not None:
+        try:
+            proposals = tuple(
+                (
+                    coordinates,
+                    row,
+                    {
+                        "algorithm": "packed-cubic-integral-relation-sieve",
+                        "coefficient_bound": _CUBIC_RELATION_SIEVE_BOUND,
+                        "order_basis_coordinates": list(coordinates),
+                    },
+                )
+                for row, coordinates, _expected_norm in selected_sieve_candidates
+            )
+            validated_batch = (
+                planned_validated_batch
+                if planned_presentation is not None
+                else _validated_cubic_integral_relation_batch(
+                    relation_module,
+                    order,
+                    factor_base,
+                    initial_proposals,
+                    selected_sieve_candidates,
+                )
+            )
+            batch: Any = None
+            if planned_presentation is not None and validated_batch is not None:
+                ledger = _CompactCubicRelationLedger(
+                    order,
+                    factor_base,
+                    tuple(initial_proposals) + proposals,
+                    validated_batch,
+                    planned_presentation,
+                    tuple(planned_line_specs or ()),
+                    tuple(planned_obstructions or ()),
+                    maximum_relations=checked_caps["max_relations"],
+                )
+                compact_relation_ledger = ledger
+                _check_cubic_cancelled(cancelled)
+                (
+                    collector,
+                    batch,
+                    planned_line_specs,
+                    planned_obstructions,
+                ) = ledger.publish(relation_module)
+                validated_sieve_batch_used = True
+            else:
+                collector = new_relation_collector()
+                batch_admit = getattr(
+                    collector, "admit_integral_order_basis_rows", None
+                )
+                validated_admit = getattr(
+                    collector, "_admit_validated_integral_order_basis_rows", None
+                )
+                if validated_batch is not None and callable(validated_admit):
+                    batch = validated_admit(
+                        validated_batch,
+                        tuple(initial_proposals) + proposals,
+                        _validated_token=(
+                            relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                        ),
+                    )
+                    validated_sieve_batch_used = batch is not None
+                elif callable(batch_admit):
+                    batch = batch_admit(tuple(initial_proposals) + proposals)
+            if batch is None:
+                if collector is None:
+                    collector = new_relation_collector()
+                relation_module.initial_rational_prime_relations(collector)
+                for coordinates, row, provenance in proposals:
+                    # The packed norm only selected this proposal.  Integral
+                    # admission independently recomputes the exact element
+                    # norm and every required prime-power containment.
+                    collector.admit_integral_order_basis_row(
+                        coordinates,
+                        row,
+                        provenance=provenance,
+                    )
+                    sieve_admitted += 1
+            else:
+                if len(batch) != len(initial_proposals) + len(proposals):
+                    raise ArithmeticError(
+                        "a packed cubic relation batch returned the wrong row count"
+                    )
+                sieve_admitted = len(proposals)
+            expected_planned_rows = tuple(
+                row for _coordinates, row, _provenance in initial_proposals
+            ) + tuple(candidate[0] for candidate in selected_sieve_candidates)
+            if (
+                planned_presentation is not None
+                and tuple(record.row for record in collector.records)
+                != expected_planned_rows
+            ):
+                planned_presentation = None
+                planned_line_specs = None
+                planned_obstructions = None
+                planned_validated_batch = None
+        except (ArithmeticError, TypeError, ValueError):
+            # A packed proposal is never proof evidence by itself.  Discard
+            # every proposed row if its independent containment replay fails;
+            # the unchanged LLL relation search below remains authoritative.
+            collector = relation_module.ExactRelationCollector(order, factor_base)
+            relation_module.initial_rational_prime_relations(collector)
+            selected_sieve_candidates = None
+            sieve_admitted = 0
+            planned_presentation = None
+            planned_line_specs = None
+            planned_obstructions = None
+            planned_validated_batch = None
+    if collector is None:
+        collector = new_relation_collector()
+    if not collector.records:
+        initial_batch_method = getattr(
+            collector, "admit_integral_order_basis_rows", None
+        )
+        initial_batch: Any = (
+            initial_batch_method(tuple(initial_proposals))
+            if callable(initial_batch_method) and initial_proposals
+            else None
+        )
+        if initial_batch is None:
+            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord):
+                factor_records, factor_base = _materialize_packed_cubic_factor_records(
+                    tuple(factor_records)
+                )
+                collector = relation_module.ExactRelationCollector(order, factor_base)
+            relation_module.initial_rational_prime_relations(collector)
+    relation_metrics["integral_sieve_candidates"] = raw_sieve_count
+    relation_metrics["integral_sieve_valuation_limit"] = valuation_candidate_limit
+    relation_metrics["integral_sieve_prefix_proved"] = int(
+        planned_presentation is not None
+    )
+    relation_metrics["integral_sieve_selected"] = (
+        0 if selected_sieve_candidates is None else len(selected_sieve_candidates)
+    )
+    relation_metrics["integral_sieve_relations"] = sieve_admitted
+    relation_metrics["integral_sieve_validated_batch"] = int(validated_sieve_batch_used)
+    relation_metrics["integral_sieve_fallback"] = int(selected_sieve_candidates is None)
+    relation_metrics["integral_sieve_dependency_candidates"] = 0
+    relation_metrics["integral_sieve_dependency_relations"] = 0
+    relation_metrics["relation_prefix_finalized_without_search"] = 0
+    relation_search_state: Any = None
     try:
         # This class-number-only quotient needs full factor-base rank but no
         # logarithmic unit dependencies.  One exact row per searched ideal is
         # sufficient; the loop continues until the exact presentation reaches
         # full rank, and the detached certificate replays every retained row.
-        collector, presentation = engine._relations(
-            factor_base, 0, relations_per_ideal=1
+        presentation = (
+            planned_presentation
+            if planned_presentation is not None
+            else _single_unit_relation_presentation(matrix_module, collector)
         )
+        if presentation is None:
+            presentation = matrix_module.extract_relation_presentation(
+                tuple(record.row for record in collector.records),
+                len(factor_base),
+                require_full_rank=False,
+            )
+        if presentation.rank == len(factor_base):
+            # The packed rows already give an exact full-rank quotient.  A
+            # zero-attempt search state is the canonical continuation cursor:
+            # the later coupled class/unit engine rebuilds its accumulator
+            # from this authenticated prefix and resumes ordinary relation
+            # search only when logarithmic unit dependencies are required.
+            relation_search_state = relation_module.RelationSearchState(0)
+            relation_metrics["relation_prefix_finalized_without_search"] = 1
+            relation_metrics["presentation_extractions"] = 1
+        else:
+            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord):
+                factor_records, factor_base = _materialize_packed_cubic_factor_records(
+                    tuple(factor_records)
+                )
+                ordinary_collector = relation_module.ExactRelationCollector(
+                    order, factor_base
+                )
+                for retained_record in collector.records:
+                    ordinary_collector._store_verified(retained_record)
+                collector = ordinary_collector
+            engine_module = __import__(
+                "sagejs.number_fields.class_unit_groups",
+                fromlist=["class_unit_groups"],
+            )
+
+            class _NoAnalyticComponents:
+                def __init__(self) -> None:
+                    self.factor_base: Any = None
+                    self.relations: Any = None
+                    self.matrix: Any = None
+                    self.analytic: Any = None
+                    self.context: Any = None
+                    self.factored: Any = None
+
+            components = _NoAnalyticComponents()
+            components.factor_base = factor_base_module
+            components.relations = relation_module
+            components.matrix = matrix_module
+            components.analytic = _NoAnalyticComponents()
+            components.context = None
+            components.factored = None
+            limits = engine_module.ClassUnitEngineLimits(
+                max_factor_base_bound=_positive_integer(
+                    max_bound, "maximum factor-base bound"
+                ),
+                max_factor_base_size=_positive_integer(
+                    max_prime_ideals, "maximum prime ideals"
+                ),
+                max_relation_attempts=checked_caps["max_relation_attempts"],
+                max_relations=checked_caps["max_relations"],
+                max_candidates_per_ideal=checked_caps["max_candidates_per_ideal"],
+                max_random_terms=5,
+                max_coefficient_bound=3,
+                max_partial_relations=checked_caps["max_relations"],
+                max_memory_bytes=_positive_integer(
+                    max_memory_bytes, "maximum memory bytes"
+                ),
+            )
+            engine = engine_module.ClassUnitGroupEngine(
+                field,
+                proof=True,
+                algorithm="minkowski",
+                limits=limits,
+                cancelled=cancelled,
+                components=components,
+            )
+            collector, presentation = engine._relations(
+                factor_base,
+                0,
+                collector=collector,
+                presentation=presentation,
+                relations_per_ideal=1,
+                independent_relations_per_ideal=True,
+                target_missing_pivots=True,
+            )
+            relation_search_state = engine._relation_search_state
     except RuntimeError:
         raise
     except ValueError as error:
@@ -989,10 +4559,19 @@ def bounded_cubic_minkowski_class_number(
             "bounded exact relation search exhausted: " + str(error),
             factor_base=factor_base,
         )
-    phase_timings["relations"] = time.perf_counter() - relation_started
+    phase_timings["relations"] = (
+        time.perf_counter()
+        - relation_started
+        - (planned_obstruction_seconds if planned_presentation is not None else 0.0)
+    )
     relation_records = tuple(collector.records)
-    engine_diagnostics = engine._diagnostics()
-    engine_resources = engine_diagnostics.get("resources", {})
+    live_factor_records = tuple(factor_records)
+    live_collector = collector
+    live_search_state = relation_search_state
+    live_has_partials = bool(engine is not None and engine._partials)
+    engine_resources = (
+        {} if engine is None else engine._diagnostics().get("resources", {})
+    )
     for name in (
         "relation_attempts",
         "relation_candidates",
@@ -1000,8 +4579,145 @@ def bounded_cubic_minkowski_class_number(
         "presentation_extractions",
     ):
         value = engine_resources.get(name)
-        if isinstance(value, int) and not isinstance(value, bool):
+        if (
+            isinstance(value, int)
+            and not isinstance(value, bool)
+            and name not in relation_metrics
+        ):
             relation_metrics[name] = int(value)
+    for name in ("relation_attempts", "relation_candidates", "ideals_tested"):
+        relation_metrics.setdefault(name, 0)
+
+    dependency_seed_enriched = False
+
+    def enrich_incomplete_unit_seed() -> None:
+        """Add exact duplicate rows only for a coupled class/unit fallback."""
+        nonlocal dependency_seed_enriched, presentation, relation_records
+        if dependency_seed_enriched:
+            return
+        dependency_seed_enriched = True
+        if selected_sieve_candidates is None or sieve_candidates is None:
+            return
+        remaining = checked_caps["max_relations"] - len(collector.records)
+        if remaining <= 0:
+            return
+        # A cubic has unit rank one or two according to the sign of its exact
+        # discriminant.  Duplicate principal rows supply at most that many
+        # cheap unit dependencies; the coupled engine independently checks
+        # their logarithmic rank and continues its ordinary search if needed.
+        unit_rank_bound = 1 if int(order.discriminant()) < 0 else 2
+        dependency_candidates, dependency_sieve_bound = (
+            _bounded_cubic_dependency_candidates(
+                order,
+                factor_base,
+                selected_sieve_candidates,
+                sieve_candidates,
+                min(remaining, unit_rank_bound),
+                sieve_capacity,
+                cancelled=cancelled,
+            )
+        )
+        relation_metrics["integral_sieve_dependency_candidates"] = len(
+            dependency_candidates
+        )
+        if dependency_candidates:
+            relation_metrics["integral_sieve_dependency_coefficient_bound"] = (
+                dependency_sieve_bound
+            )
+        if not dependency_candidates:
+            return
+        prior_relation_count = len(collector.records)
+        started = time.perf_counter()
+        admitted = 0
+        dependency_proposals = tuple(
+            (
+                coordinates,
+                row,
+                {
+                    "algorithm": "packed-cubic-unit-dependency-seed",
+                    "coefficient_bound": dependency_sieve_bound,
+                    "order_basis_coordinates": list(coordinates),
+                },
+            )
+            for row, coordinates, _expected_norm in dependency_candidates
+        )
+        batch_admit = getattr(collector, "admit_integral_order_basis_rows", None)
+        validated_admit = getattr(
+            collector, "_admit_validated_integral_order_basis_rows", None
+        )
+        batch: Any = None
+        validated_batch = _validated_cubic_integral_relation_batch(
+            relation_module,
+            order,
+            factor_base,
+            (),
+            dependency_candidates,
+        )
+        if validated_batch is not None and callable(validated_admit):
+            try:
+                batch = validated_admit(
+                    validated_batch,
+                    dependency_proposals,
+                    _validated_token=(
+                        relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN
+                    ),
+                )
+            except (ArithmeticError, TypeError, ValueError):
+                batch = None
+        elif callable(batch_admit):
+            try:
+                batch = batch_admit(dependency_proposals)
+            except (ArithmeticError, TypeError, ValueError):
+                batch = None
+        if batch is not None:
+            admitted = len(batch)
+        else:
+            for coordinates, row, provenance in dependency_proposals:
+                _check_cubic_cancelled(cancelled)
+                try:
+                    collector.admit_integral_order_basis_row(
+                        coordinates,
+                        row,
+                        provenance=provenance,
+                    )
+                    admitted += 1
+                except (ArithmeticError, TypeError, ValueError):
+                    # A rejected packed proposal is never evidence.  Successfully
+                    # admitted earlier rows remain independently authenticated.
+                    continue
+        relation_metrics["integral_sieve_dependency_relations"] = admitted
+        relation_metrics["integral_sieve_dependency_validated_batch"] = int(
+            validated_batch is not None and batch is not None
+        )
+        if admitted:
+            relation_records = tuple(collector.records)
+            extend_duplicates = getattr(
+                matrix_module,
+                "extend_relation_presentation_with_duplicate_rows",
+                None,
+            )
+            try:
+                presentation = (
+                    extend_duplicates(
+                        presentation,
+                        tuple(
+                            record.row
+                            for record in relation_records[prior_relation_count:]
+                        ),
+                    )
+                    if callable(extend_duplicates)
+                    else None
+                )
+            except (ArithmeticError, TypeError, ValueError):
+                presentation = None
+            if presentation is None:
+                presentation = matrix_module.extract_relation_presentation(
+                    tuple(record.row for record in relation_records),
+                    len(factor_base),
+                    require_full_rank=True,
+                )
+        phase_timings["fallback-unit-seed"] = time.perf_counter() - started
+
     if presentation.rank != len(factor_base) or presentation.order is None:
         return incomplete(
             "bounded exact relation search did not reach full rank",
@@ -1011,6 +4727,7 @@ def bounded_cubic_minkowski_class_number(
         )
     quotient_order = int(presentation.order)
     if quotient_order > checked_caps["max_quotient_order"]:
+        enrich_incomplete_unit_seed()
         return incomplete(
             "relation quotient order exceeds the bounded proof cap",
             factor_base=factor_base,
@@ -1022,41 +4739,79 @@ def bounded_cubic_minkowski_class_number(
             presentation, max_lines=checked_caps["max_projective_lines"]
         )
     except ValueError:
+        enrich_incomplete_unit_seed()
         return incomplete(
             "quotient p-torsion has too many projective lines",
             factor_base=factor_base,
             relation_records=relation_records,
             presentation=presentation,
         )
-    obstruction_started = time.perf_counter()
-    obstructions: list[dict[str, Any]] = []
-    residue_states = 0
-    for line in line_specs:
-        _check_cubic_cancelled(cancelled)
-        representative = relation_module.reconstruct_factor_base_ideal(
-            field.maximal_order(), factor_base, line["ambient_row"]
-        )
-        obstruction, used = _find_cubic_norm_obstruction(
-            representative,
-            line,
-            max_modulus=checked_caps["max_modulus"],
-            remaining_states=checked_caps["max_residue_states"] - residue_states,
-            cancelled=cancelled,
-        )
-        residue_states += used
-        if obstruction is None:
-            phase_timings["norm_obstructions"] = (
-                time.perf_counter() - obstruction_started
+    _check_cubic_cancelled(cancelled)
+    if compact_relation_ledger is not None:
+        compact_relation_ledger.validate_semantics()
+    reuse_planned_obstructions = bool(
+        planned_presentation is presentation
+        and planned_line_specs == tuple(line_specs)
+        and planned_obstructions is not None
+    )
+    if reuse_planned_obstructions:
+        assert planned_obstructions is not None
+        obstructions = list(planned_obstructions)
+        residue_states = planned_residue_states
+        phase_timings["norm_obstructions"] = planned_obstruction_seconds
+    else:
+        obstruction_started = time.perf_counter()
+        obstructions = []
+        residue_states = 0
+        for line in line_specs:
+            _check_cubic_cancelled(cancelled)
+            packed_search = _find_packed_cubic_norm_obstruction(
+                factor_base,
+                line,
+                max_modulus=checked_caps["max_modulus"],
+                remaining_states=checked_caps["max_residue_states"] - residue_states,
+                cancelled=cancelled,
             )
-            return incomplete(
-                "bounded modular norm-form search found no obstruction for a p-line",
-                factor_base=factor_base,
-                relation_records=relation_records,
-                presentation=presentation,
-                residue_states=residue_states,
-            )
-        obstructions.append(obstruction)
-    phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
+            if packed_search is None:
+                _ordinary_records, ordinary_factor_base = (
+                    _materialize_packed_cubic_factor_records(tuple(factor_records))
+                )
+                representative = relation_module.reconstruct_factor_base_ideal(
+                    field.maximal_order(), ordinary_factor_base, line["ambient_row"]
+                )
+                obstruction, used = _find_cubic_norm_obstruction(
+                    representative,
+                    line,
+                    max_modulus=checked_caps["max_modulus"],
+                    remaining_states=(
+                        checked_caps["max_residue_states"] - residue_states
+                    ),
+                    cancelled=cancelled,
+                )
+            else:
+                obstruction, used = packed_search
+            residue_states += used
+            if obstruction is None:
+                phase_timings["norm_obstructions"] = (
+                    time.perf_counter() - obstruction_started
+                )
+                enrich_incomplete_unit_seed()
+                return incomplete(
+                    "bounded modular norm-form search found no obstruction for a p-line",
+                    factor_base=factor_base,
+                    relation_records=relation_records,
+                    presentation=presentation,
+                    residue_states=residue_states,
+                )
+            obstructions.append(obstruction)
+        phase_timings["norm_obstructions"] = time.perf_counter() - obstruction_started
+    if compact_relation_ledger is not None and not reuse_planned_obstructions:
+        # No proof object or deferred live seed may cross the transaction
+        # boundary after callbacks in the fresh-obstruction search changed
+        # staged producer semantics.  The planned-reuse branch has had no
+        # callback since its check immediately above.
+        compact_relation_ledger.validate_semantics()
+    encoding_started = time.perf_counter()
     certificate = CubicMinkowskiClassNumberCertificate(
         field,
         plan=plan.to_dict(),
@@ -1065,42 +4820,67 @@ def bounded_cubic_minkowski_class_number(
         presentation=presentation.to_dict(),
         obstructions=obstructions,
         caps=checked_caps,
+        _live_presentation=presentation,
+        _live_token=_LIVE_CUBIC_CERTIFICATE_TOKEN,
     )
-    encoding_started = time.perf_counter()
     if certificate.class_number != quotient_order:
         raise ArithmeticError("cubic class-number evidence changed during encoding")
     phase_timings["certificate_encoding"] = time.perf_counter() - encoding_started
     phase_timings["total"] = time.perf_counter() - total_started
-    return _issue_cubic_class_number_result(
-        CubicClassNumberResult(
-            field,
-            True,
-            certificate.source,
-            int(plan.bound),
-            certificate=certificate,
-            factor_base=factor_base,
-            relation_records=relation_records,
-            presentation=presentation,
-            diagnostics={
-                "algorithm": "bounded-cubic-minkowski-p-lines",
-                "phase_timings": dict(phase_timings),
-                "factor_base_size": len(factor_base),
-                "relations": len(relation_records),
-                "presentation_rank": int(presentation.rank),
-                "quotient_order": quotient_order,
-                "projective_lines": len(line_specs),
-                "residue_states": residue_states,
-                "relation_search": dict(relation_metrics),
-                "caps": dict(checked_caps),
-            },
-        )
+    result = CubicClassNumberResult(
+        field,
+        True,
+        certificate.source,
+        int(plan.bound),
+        certificate=certificate,
+        factor_base=(
+            ()
+            if factor_base and isinstance(factor_base[0], PackedCubicFactorRecord)
+            else factor_base
+        ),
+        relation_records=relation_records,
+        presentation=presentation,
+        diagnostics={
+            "algorithm": "bounded-cubic-minkowski-p-lines",
+            "phase_timings": dict(phase_timings),
+            "factor_base_size": len(factor_base),
+            "relations": len(relation_records),
+            "presentation_rank": int(presentation.rank),
+            "quotient_order": quotient_order,
+            "projective_lines": len(line_specs),
+            "residue_states": residue_states,
+            "relation_search": dict(relation_metrics),
+            "caps": dict(checked_caps),
+        },
+        _packed_factor_records=(
+            tuple(factor_records)
+            if factor_records and isinstance(factor_records[0], PackedCubicFactorRecord)
+            else ()
+        ),
     )
+    if relation_search_state is not None:
+        result = _defer_cubic_relation_seed(
+            result,
+            plan,
+            tuple(factor_records),
+            collector,
+            presentation,
+            relation_search_state,
+            tuple(sieve_candidates or ()),
+            tuple(selected_sieve_candidates or ()),
+        )
+    return _issue_cubic_class_number_result(result)
 
 
 __all__ = [
     "CUBIC_CLASS_NUMBER_CERTIFICATE_SCHEMA",
     "CubicClassNumberResult",
     "CubicMinkowskiClassNumberCertificate",
+    "PackedCubicFactorRecord",
+    "authenticated_cubic_class_number",
     "authenticated_cubic_class_number_result_matches",
+    "authenticated_cubic_relation_seed",
     "bounded_cubic_minkowski_class_number",
+    "materialize_verified_packed_cubic_factor_records",
+    "packed_cubic_factor_records",
 ]

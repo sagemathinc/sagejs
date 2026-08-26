@@ -1,0 +1,59 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-final-math-freeze",
+  "title": "Hyp Final Math Freeze",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Port the reviewed pending higher-genus arithmetic commits onto the accepted C1-C3 compiler foundation, validate exact behavior, and establish the final mathematical source freeze before acceptance receipts",
+  "base_commit": "2b8d0626eec79992a4596caf7aeeb1a21c3494d6",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+    "test/hyperelliptic-native-cantor.cjs",
+    "test/hyperelliptic-genus2-height-performance.cjs",
+    "bench/hyperelliptic/benchmark-cantor-signed-scalar.cjs",
+    "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs",
+    "bench/hyperelliptic/cross-platform/sanitize-cantor-core.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "accepted exact Magma/PARI fixtures and receipt digests"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Ported the eight pending Cantor and genus-2 height commits onto current origin/main and the accepted C1-C3 compiler foundation. Exact Cantor dynamic/native/CPython differentials pass 2/2; height correctness, proof, cancellation, cache, and Magma fixture tests pass 14/14; strict baselib passes with 0 errors.",
+    "risks": [
+      "Final production publication is integration-owned: the new Cantor sum, negation, and subtraction exports must be regenerated in architecture/native-kernels.json.",
+      "The measured hyperelliptic-curves-kernels source size is 257761 bytes versus the current 255000-byte budget; final integration must ratchet it to 260000 or split the package.",
+      "Any mathematical source change deliberately invalidates the checked-in hyperelliptic auto-receipt bundle until final four-platform receipts are regenerated."
+    ],
+    "next_steps": [
+      "Create a final integration lane from this tip for shared registry, Wasm coverage, package budget, build, and receipt refresh.",
+      "Keep the automatic receipt entries disabled until the exact final-source four-platform evidence is complete."
+    ]
+  }
+}

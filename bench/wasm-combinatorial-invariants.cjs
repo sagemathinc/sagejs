@@ -16,8 +16,8 @@ const {
   buildWasmProductionPacks,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
-  resolveToolchain,
-} = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
+  wasmKernelToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 
 const root = resolve(__dirname, "..");
 const functions = [
@@ -30,16 +30,7 @@ const functions = [
 ];
 
 function toolchain() {
-  const status = resolveToolchain({ root });
-  if (!status.ready) return null;
-  return {
-    clang: status.paths.clang,
-    sysroot: status.paths.sysroot,
-    gmpPrefix: status.paths.libraries.gmp.prefix,
-    flintPrefix: status.paths.libraries.flint.prefix,
-    mpfrPrefix: status.paths.libraries.mpfr.prefix,
-    mpcPrefix: status.paths.libraries.mpc.prefix,
-  };
+  return wasmKernelToolchain({ root });
 }
 
 async function instantiate(manifest, outputRoot) {

@@ -23,6 +23,7 @@ flint = Library(
     python_module="sagejs.ffi.flint",
     package="@sagemath/sagejs-flint",
     headers=[
+        "flint/arith.h",
         "flint/dirichlet.h",
         "flint/fmpz.h",
         "flint/fmpz_mat.h",
@@ -3225,7 +3226,7 @@ def fmpz_matrix_entry(
         exception=ValueError,
         message="integer matrix modular export failed",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_export_mod_ui(
     source: FmpzMatrix,
@@ -3321,7 +3322,7 @@ def fmpz_matrix_is_zero(matrix: FmpzMatrix) -> bool: ...
     abi=[in_("matrix", sagejs_fmpz_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_is_one(matrix: FmpzMatrix) -> bool: ...
 
@@ -3540,7 +3541,7 @@ def fmpz_matrix_det(source: FmpzMatrix) -> Integer: ...
         exception=ValueError,
         message="trace requires a square integer matrix",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_trace(source: FmpzMatrix) -> Integer: ...
 
@@ -3725,7 +3726,7 @@ def fmpq_matrix_from_fmpz(source: FmpzMatrix) -> FmpqMatrix: ...
         exception=ValueError,
         message="rational matrix contains a nonintegral entry",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_from_fmpq_integral(source: FmpqMatrix) -> FmpzMatrix: ...
 
@@ -3748,7 +3749,7 @@ def fmpz_matrix_from_fmpq_integral(source: FmpqMatrix) -> FmpzMatrix: ...
         exception=ValueError,
         message="integer matrix submatrix bounds are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_submatrix(
     source: FmpzMatrix,
@@ -3840,7 +3841,7 @@ def fmpz_matrix_prefix_rows(source: FmpzMatrix, count: uint64) -> FmpzMatrix: ..
         exception=ValueError,
         message="integer matrix column selection contains an invalid index",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_select_columns(
     source: FmpzMatrix,
@@ -3914,7 +3915,7 @@ def fmpz_matrix_swap_columns(
         exception=ValueError,
         message="integer matrix block bounds or aliases are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_set_block(
     target: Writable[FmpzMatrix],
@@ -3939,7 +3940,7 @@ def fmpz_matrix_set_block(
         exception=ValueError,
         message="stacked integer matrices must have the same number of columns",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_stack(
     top: FmpzMatrix,
@@ -3962,7 +3963,7 @@ def fmpz_matrix_stack(
         exception=ValueError,
         message="augmented integer matrices must have the same number of rows",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpz_matrix_augment(
     left: FmpzMatrix,
@@ -4412,7 +4413,7 @@ def fmpq_matrix_neg(source: FmpqMatrix) -> FmpqMatrix: ...
         exception=ValueError,
         message="invalid rational matrix scalar",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_scalar_mul(
     source: FmpqMatrix,
@@ -4455,7 +4456,7 @@ def fmpq_matrix_is_zero(matrix: FmpqMatrix) -> bool: ...
     abi=[in_("matrix", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_is_one(matrix: FmpqMatrix) -> bool: ...
 
@@ -4760,7 +4761,7 @@ def fmpq_matrix_trace(source: FmpqMatrix) -> FmpqValue: ...
         exception=ValueError,
         message="rational matrix submatrix bounds are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_submatrix(
     source: FmpqMatrix,
@@ -4926,7 +4927,7 @@ def fmpq_matrix_swap_columns(
         exception=ValueError,
         message="rational matrix block bounds or aliases are invalid",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_set_block(
     target: Writable[FmpqMatrix],
@@ -4951,7 +4952,7 @@ def fmpq_matrix_set_block(
         exception=ValueError,
         message="stacked rational matrices must have the same number of columns",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_stack(
     top: FmpqMatrix,
@@ -4974,7 +4975,7 @@ def fmpq_matrix_stack(
         exception=ValueError,
         message="augmented rational matrices must have the same number of rows",
     ),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_augment(
     left: FmpqMatrix,
@@ -4989,7 +4990,7 @@ def fmpq_matrix_augment(
     abi=[in_("source", sagejs_fmpq_matrix_t)],
     effects=Effects(pure=True),
     result=Direct(),
-    wasm=False,
+    wasm=True,
 )
 def fmpq_matrix_nonzero_count(source: FmpqMatrix) -> uint64: ...
 
@@ -5203,6 +5204,21 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> uint64: ...
     wasm=True,
 )
 def n_is_prime(value: uint64) -> bool: ...
+
+
+@flint.function(
+    dynamic="numberOfPartitions",
+    symbol="arith_number_of_partitions",
+    returns=void,
+    abi=[
+        out("result", fmpz_t),
+        in_("size", ulong),
+    ],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=True,
+)
+def arith_number_of_partitions(size: uint64) -> Integer: ...
 
 
 @flint.function(
@@ -5578,6 +5594,68 @@ def fmpz_mat_hnf_modular_eldiv(
     wasm=True,
 )
 def fmpz_mat_hnf_transform(
+    output: Writable[IntegerBuffer],
+    transform: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiFmpzMatLllTransform",
+    symbol="sagejs_flint_fmpz_mat_lll_transform",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        out(
+            "transform",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="transform",
+                rows="rows",
+                columns="rows",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output", "transform"],
+    ),
+    result=Status(
+        1, exception=ValueError, message="FLINT integer LLL transformation failed"
+    ),
+    wasm=True,
+)
+def fmpz_mat_lll_transform(
     output: Writable[IntegerBuffer],
     transform: Writable[IntegerBuffer],
     source: IntegerBuffer,
@@ -10689,3 +10767,57 @@ def number_field_analyze_resource(
     scale: Integer,
     trial_bound: uint64,
 ) -> NumberFieldAnalysisResource: ...
+
+
+@flint.function(
+    dynamic="ffiIntegerLogSqrtBallsPacked",
+    symbol="sagejs_flint_integer_log_sqrt_balls_packed",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "source",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="source",
+                rows="count",
+                columns="one",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT integer logarithm/square-root batch is invalid",
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_packed(
+    output: Writable[IntegerBuffer],
+    source: IntegerBuffer,
+    output_length: uint64,
+    count: uint64,
+    one: Min[uint64, 1],
+    precision: uint64,
+) -> bool: ...

@@ -1,20 +1,31 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
+const { once } = require("node:events");
 const fs = require("node:fs");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { brotliCompressSync } = require("node:zlib");
 const {
   compareArtifacts,
   enforceBudget,
+  enforceTopologyBudgets,
   inspectProductionArtifact,
   sha256,
 } = require("../packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs");
 const {
   parseHeadersFile,
+  validateDeployedOrigin,
   validateHeadersRules,
 } = require("../packages/flint-wasm/scripts/browser-wasm-deployment.cjs");
+const {
+  nativeOracleCacheIdentity,
+  nativeOracleCacheKey,
+} = require("../scripts/native-oracle-cache-key.cjs");
 
 function fixtureDirectory(answer = 42) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-wasm-release-"));
@@ -59,12 +70,65 @@ test("release artifact receipts validate hashes, Wasm magic, compression, and re
     assert.equal(report.files.length, 2);
     assert.equal(report.source_revision, "fixture");
     assert.deepEqual(compareArtifacts(report, inspectProductionArtifact(right)), []);
+    const crossPlatform = {
+      ...inspectProductionArtifact(right),
+      build_receipt_sha256: "platform-specific-receipt",
+    };
+    assert.deepEqual(
+      compareArtifacts(report, crossPlatform, { includeBuildReceipt: false }),
+      [],
+    );
+    assert.deepEqual(
+      compareArtifacts(report, crossPlatform),
+      ["build receipt bytes differ"],
+    );
     fs.appendFileSync(path.join(right, "kernel.mjs"), "// drift\n");
     assert.throws(() => inspectProductionArtifact(right), /digest/);
   } finally {
     fs.rmSync(left, { recursive: true });
     fs.rmSync(right, { recursive: true });
   }
+});
+
+test("native oracle cache identity is content-addressed by every native stage", () => {
+  const identity = nativeOracleCacheIdentity(path.join(__dirname, ".."));
+  assert.equal(identity.schema, "sagejs.native-oracle-actions-cache/v1");
+  assert.deepEqual(
+    identity.artifacts.map((item) => item.id),
+    [
+      "fflas-addon",
+      "fflas-dependencies",
+      "flint-addon",
+      "flint-dependencies",
+      "graph-addon",
+      "graph-dependencies",
+      "m4ri-addon",
+      "m4ri-dependencies",
+    ],
+  );
+  for (const artifact of identity.artifacts) {
+    assert.match(artifact.key, /^[0-9a-f]{64}$/);
+  }
+  assert.match(nativeOracleCacheKey(path.join(__dirname, "..")), /^[0-9a-f]{64}$/);
+});
+
+test("release CI shards performance and reuses only authenticated native cache entries", () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, "..", ".github", "workflows", "wasm-release.yml"),
+    "utf8",
+  );
+  assert.match(workflow, /node scripts\/native-oracle-cache-key\.cjs/);
+  assert.match(workflow, /SAGEJS_PARALLEL_NATIVE_CACHE/);
+  assert.doesNotMatch(workflow, /\$\{\{ runner\.temp \}\}/);
+  assert.match(workflow, /pnpm parallel:cache -- prepare/);
+  assert.doesNotMatch(workflow, /pnpm bootstrap/);
+  assert.match(workflow, /browser-parity:/);
+  assert.match(workflow, /browser-performance:/);
+  assert.match(workflow, /browser-security-chromium:/);
+  assert.match(workflow, /browser-webkit-recovery:/);
+  assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
+  assert.match(workflow, /--shard \$\{\{ matrix\.shard \}\}\/4/);
+  assert.match(workflow, /name: Browser release gates/);
 });
 
 test("grammar modules inherit the authenticated bounded Tree-sitter memory", () => {
@@ -170,6 +234,48 @@ test("relative payload gates reject unexplained compressed growth", () => {
   );
 });
 
+test("reviewed packaging budgets can adjust topology limits without changing artifact identity", () => {
+  const report = {
+    payload_groups: [
+      {
+        id: "eager-core",
+        compressed_delta: { gzip_bytes: 101, brotli_bytes: 91 },
+        maximum_compressed_delta: { gzip_bytes: 100, brotli_bytes: 90 },
+      },
+      {
+        id: "specialist",
+        compressed_delta: { gzip_bytes: 20, brotli_bytes: 19 },
+        maximum_compressed_delta: { gzip_bytes: 20, brotli_bytes: 20 },
+      },
+    ],
+  };
+  const budget = {
+    schema: "sagejs.browser-wasm-budget/v1",
+    artifact_topology_limits: {
+      "eager-core": { gzip_bytes: 102, brotli_bytes: 92 },
+    },
+  };
+  assert.deepEqual(enforceTopologyBudgets(report, budget), []);
+  assert.throws(
+    () => enforceTopologyBudgets(report, {
+      ...budget,
+      artifact_topology_limits: {
+        typo: { gzip_bytes: 102, brotli_bytes: 92 },
+      },
+    }),
+    /unknown group typo/,
+  );
+  assert.throws(
+    () => enforceTopologyBudgets(report, {
+      ...budget,
+      artifact_topology_limits: {
+        "eager-core": { gzip_bytes: 102 },
+      },
+    }),
+    /must contain exactly gzip_bytes and brotli_bytes/,
+  );
+});
+
 test("Cloudflare-compatible header policy is parsed and security checked", () => {
   const rules = parseHeadersFile(`/*
   Cross-Origin-Opener-Policy: same-origin
@@ -182,6 +288,99 @@ test("Cloudflare-compatible header policy is parsed and security checked", () =>
   assert.deepEqual(validateHeadersRules(rules), []);
   rules[0].headers.delete("cross-origin-opener-policy");
   assert.match(validateHeadersRules(rules).join("\n"), /cross-origin-opener-policy/);
+});
+
+async function withDeploymentOrigin({ doubleBrotli = false, doubleImmutableBrotli = false } = {}, callback) {
+  const release = "a".repeat(64);
+  const runtime = Buffer.from(`${JSON.stringify({
+    schema: "org.sagejs.web/runtime-v1",
+    revision: "fixture-revision",
+    artifactIdentity: `sha256:${"b".repeat(64)}`,
+  })}\n`);
+  const immutable = Buffer.from("export const answer = 42;\n");
+  const immutablePath = `/assets/sha256-${"b".repeat(64)}/runtime.mjs`;
+  const manifest = Buffer.from(`${JSON.stringify({
+    schema: "org.sagejs.web/assets-v2",
+    release,
+    artifactIdentity: `sha256:${"b".repeat(64)}`,
+    assets: [{
+      path: `.${immutablePath}`,
+      bytes: immutable.length,
+      sha256: createHash("sha256").update(immutable).digest("hex"),
+    }],
+  })}\n`);
+  const server = http.createServer((request, response) => {
+    response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+    response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Referrer-Policy", "no-referrer");
+    response.setHeader("X-SageJS-Release", release);
+    if (request.url === "/") {
+      response.setHeader("Content-Type", "text/html; charset=utf-8");
+      response.end("<!doctype html><title>Sage.js</title>");
+      return;
+    }
+    if (request.url === "/asset-manifest.json") {
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      response.end(manifest);
+      return;
+    }
+    if (request.url === "/runtime-version.json") {
+      response.setHeader("Content-Type", "application/json; charset=utf-8");
+      if ((request.headers["accept-encoding"] ?? "").includes("br")) {
+        response.setHeader("Content-Encoding", "br");
+        const compressed = brotliCompressSync(runtime);
+        response.end(doubleBrotli ? brotliCompressSync(compressed) : compressed);
+      } else {
+        response.end(runtime);
+      }
+      return;
+    }
+    if (request.url === immutablePath) {
+      response.setHeader("Content-Type", "text/javascript; charset=utf-8");
+      if ((request.headers["accept-encoding"] ?? "").includes("br")) {
+        response.setHeader("Content-Encoding", "br");
+        const compressed = brotliCompressSync(immutable);
+        response.end(doubleImmutableBrotli ? brotliCompressSync(compressed) : compressed);
+      } else {
+        response.end(immutable);
+      }
+      return;
+    }
+    response.statusCode = 404;
+    response.end("missing");
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address();
+    return await callback(`http://127.0.0.1:${address.port}/`, {
+      revision: "fixture-revision",
+      artifactIdentity: `sha256:${"b".repeat(64)}`,
+    });
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+}
+
+test("deployed origin validation rejects double-compressed Brotli", async () => {
+  await withDeploymentOrigin({}, async (origin, expectedRuntime) => {
+    assert.deepEqual(await validateDeployedOrigin(origin, { expectedRuntime }), []);
+  });
+  await withDeploymentOrigin({ doubleBrotli: true }, async (origin, expectedRuntime) => {
+    assert.match(
+      (await validateDeployedOrigin(origin, { expectedRuntime })).join("\n"),
+      /decode to different bytes/,
+    );
+  });
+  await withDeploymentOrigin({ doubleImmutableBrotli: true }, async (origin, expectedRuntime) => {
+    assert.match(
+      (await validateDeployedOrigin(origin, { expectedRuntime })).join("\n"),
+      /immutable responses decode to different bytes/,
+    );
+  });
 });
 
 test("release performance profile has reviewed heavyweight baselines", async () => {
@@ -307,6 +506,45 @@ test("required performance budgets reject newly added unbaselined workloads", as
     "reviewed native_ratio_baseline.chromium.operations.new-heavy-workload is absent",
   ]);
   assert.deepEqual(checkBudget(report, budget, false).failures, []);
+  const safetyOnly = checkBudget(report, {
+    ...budget,
+    thresholds: { ...budget.thresholds, maximum_interrupt_latency_ms: 4 },
+  }, false, {
+    enforceRegressionBaseline: false,
+    enforceNativeRatio: false,
+  });
+  assert.deepEqual(safetyOnly.failures, [
+    "interrupt latency exceeded its absolute safety ceiling",
+  ]);
+});
+
+test("performance workload shards are deterministic, disjoint, and complete", async () => {
+  const { selectPerformanceWorkloads } = await import(
+    "../bench/browser-wasm-performance.mjs"
+  );
+  const workloads = {
+    schema: "sagejs.browser-wasm-performance-cases/v1",
+    cases: Array.from({ length: 20 }, (_, index) => ({ id: `case-${index}` })),
+  };
+  const selected = Array.from({ length: 4 }, (_, index) =>
+    selectPerformanceWorkloads(workloads, `${index + 1}/4`));
+  assert.deepEqual(selected.map((item) => item.workloads.cases.length), [5, 5, 5, 5]);
+  assert.deepEqual(
+    selected.flatMap((item) => item.selection.case_ids).sort(),
+    workloads.cases.map((item) => item.id).sort(),
+  );
+  assert.equal(
+    new Set(selected.flatMap((item) => item.selection.case_ids)).size,
+    workloads.cases.length,
+  );
+  assert.throws(
+    () => selectPerformanceWorkloads(workloads, "0/4"),
+    /valid nonempty workload shard/,
+  );
+  assert.throws(
+    () => selectPerformanceWorkloads(workloads, "one-of-four"),
+    /INDEX\/COUNT/,
+  );
 });
 
 test("browser/native comparison requires identical workload identities", async () => {

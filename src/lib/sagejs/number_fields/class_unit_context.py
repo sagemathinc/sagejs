@@ -43,6 +43,22 @@ ALGORITHMS = (
     "buchmann-hecke",
 )
 
+_LIVE_CLASS_UNIT_CONTEXT_TOKEN = object()
+
+_CLASS_GENERATION_AUTHORITY_SCHEMA = (
+    "sagejs.number-fields/class-generation-authority-v1"
+)
+_CLASS_GENERATION_AUTHORITY_KEYS = {
+    "schema",
+    "proof_status",
+    "theorem",
+    "assumptions",
+    "bound",
+    "factor_base",
+    "relations",
+    "presentation",
+}
+
 _SEQUENCE_COMPONENTS = ("factor_base", "relations", "saturation_history")
 _SINGLE_COMPONENTS = (
     "search_state",
@@ -418,6 +434,1108 @@ def _checked_precision_history(values: Iterable[Any]) -> tuple[int, ...]:
     return tuple(answer)
 
 
+class _LiveCubicRelationPrefix:
+    """Identity-bound cubic relation state for one uninterrupted request."""
+
+    def __init__(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+    ) -> None:
+        self.plan = plan
+        self.factor_base = factor_base
+        self.collector = collector
+        self.presentation = presentation
+        self.search_state = search_state
+        runtime.object.freeze(self)
+
+
+class _LiveClassGenerationArtifact:
+    """Canonical generation state for one uninterrupted engine transaction.
+
+    The cryptographic component digests remain the portable certificate
+    identity.  This live companion additionally binds those bytes to the exact
+    plan, factor-base, collector, and presentation objects which produced
+    them.  A reusable context has no callback, cancellation, or checkpoint
+    boundary between publication and consumption, so exact live object
+    identity is sufficient there.  Detached contexts never receive this
+    object and continue through cryptographic payload replay.
+    """
+
+    def __init__(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+        evidence: Any,
+        hashes: tuple[str, str, str],
+        *,
+        producer_authenticated: bool,
+    ) -> None:
+        if (
+            not isinstance(evidence, dict)
+            or set(evidence) != _CLASS_GENERATION_AUTHORITY_KEYS
+            or evidence.get("schema") != _CLASS_GENERATION_AUTHORITY_SCHEMA
+            or str(evidence.get("proof_status")) != str(proof_status)
+            or str(evidence.get("theorem")) != str(plan.theorem)
+            or tuple(evidence.get("assumptions", ())) != tuple(plan.assumptions)
+            or int(evidence.get("bound", 0)) != int(plan.bound)
+        ):
+            raise ValueError("live class-generation evidence is inconsistent")
+        if len(hashes) != 3 or any(
+            not isinstance(value, str) or len(value) != 64 for value in hashes
+        ):
+            raise ValueError("live class-generation hashes are malformed")
+        self.plan = plan
+        self.factor_base = factor_base
+        self.collector = collector
+        self.presentation = presentation
+        self.proof_status = str(proof_status)
+        self.evidence = evidence
+        self.hashes: tuple[str, str, str] = (
+            str(hashes[0]),
+            str(hashes[1]),
+            str(hashes[2]),
+        )
+        self.producer_authenticated = bool(producer_authenticated)
+        self.live_authority_available = bool(producer_authenticated)
+        self.verification_cache: dict[str, bool] = {}
+
+    def matches_stage(
+        self,
+        plan: Any,
+        factor_base: tuple[Any, ...],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> bool:
+        return bool(
+            plan is self.plan
+            and collector is self.collector
+            and presentation is self.presentation
+            and str(proof_status) == self.proof_status
+            and len(factor_base) == len(self.factor_base)
+            and all(
+                retained is supplied
+                for retained, supplied in zip(
+                    self.factor_base, factor_base, strict=True
+                )
+            )
+        )
+
+    def consume(self, cache_key: str, evidence: Any) -> bool:
+        if not self.live_authority_available or evidence is not self.evidence:
+            return False
+        self.live_authority_available = False
+        self.verification_cache[str(cache_key)] = True
+        return True
+
+    def cached(self, cache_key: str) -> bool:
+        return self.verification_cache.get(str(cache_key)) is True
+
+    def retain(self, cache_key: str) -> None:
+        self.verification_cache[str(cache_key)] = True
+
+    def renew_authority(self) -> None:
+        if not self.producer_authenticated or self.live_authority_available:
+            raise ValueError("live class-generation authority cannot be renewed")
+        self.live_authority_available = True
+
+    def deactivate(self) -> None:
+        self.live_authority_available = False
+
+
+class _LiveClassUnitArtifacts:
+    """Producer-owned algebraic state excluded from detached checkpoints.
+
+    `ClassUnitGroupContext` remains the portable serialization boundary.  This
+    companion owns the exact in-process objects that make one computation a
+    coherent transaction: its factor base, authenticated relation prefix,
+    presentation, units, analytic workspace, saturation record, and terminal
+    group.  Nothing here is trusted after serialization; checkpoint replay
+    continues through the ordinary component decoders and verifiers.
+    """
+
+    def __init__(
+        self,
+        field: Any,
+        order: Any,
+        *,
+        reusable: bool,
+        analytic_workspace: Any = None,
+        factored_logarithm_workspace: Any = None,
+    ) -> None:
+        self.field = field
+        self.order = order
+        self.reusable = bool(reusable)
+        self.factor_base: tuple[Any, ...] = ()
+        self.factor_base_bound = False
+        self.factor_base_validation_available = False
+        self.packed_factor_base: tuple[Any, ...] = ()
+        self.factor_base_records: tuple[Any, ...] = ()
+        self.packed_factor_base_snapshots: tuple[Any, ...] = ()
+        self.collector: Any = None
+        self.relations: tuple[Any, ...] = ()
+        self.presentation: Any = None
+        self.cubic_relation_prefix: Any = None
+        self.factored_units: tuple[Any, ...] = ()
+        self.analytic_workspace = analytic_workspace
+        self.factored_logarithm_workspace = factored_logarithm_workspace
+        self.analytic_proof: tuple[Any, ...] | None = None
+        self.generation_artifact: _LiveClassGenerationArtifact | None = None
+        self.generation_verification_active = True
+        self.saturation_record: Any = None
+        self.saturation_live_authority_available = False
+        self.authenticated_dependency_units: list[tuple[Any, str]] = []
+        self.class_group: Any = None
+        self.unit_group: Any = None
+        self.terminal_proof_status: str | None = None
+        self.terminal_dependency_hashes: dict[str, str] = {}
+        self.terminal_identity_snapshot: dict[str, Any] | None = None
+        self.terminal_semantic_snapshot: dict[str, Any] | None = None
+        self.terminal_upgrade_reserved = False
+        self.terminal_upgrade_issued = False
+        self.public_class_group_projection: Any = None
+        self.public_class_group_projection_reserved = False
+        self.sealed = False
+
+    @staticmethod
+    def _exact_element_payload(value: Any) -> list[list[int]]:
+        """Detach one exact number-field element without retaining its shell."""
+        return [
+            [int(coordinate._numerator), int(coordinate._denominator)]
+            for coordinate in value.list()
+        ]
+
+    def _capture_terminal_semantics(self) -> dict[str, Any]:
+        """Capture the mutable semantic leaves needed by a proof-only fork."""
+        unit_group = self.unit_group
+        saturation = self.saturation_record
+        if unit_group is None or saturation is None:
+            raise ValueError("a terminal upgrade needs complete unit authority")
+        torsion = getattr(unit_group, "torsion", None)
+        regulator = getattr(unit_group, "regulator_enclosure", None)
+        if torsion is None or regulator is None:
+            raise ValueError("a terminal upgrade needs torsion and regulator evidence")
+        torsion_certificate = getattr(torsion, "certificate", None)
+        encode_torsion_certificate = getattr(torsion_certificate, "to_dict", None)
+        if not callable(encode_torsion_certificate):
+            raise ValueError(
+                "a terminal upgrade needs replayable roots-of-unity evidence"
+            )
+        torsion_certificate_payload = encode_torsion_certificate()
+        if not isinstance(torsion_certificate_payload, dict):
+            raise ValueError("the terminal roots-of-unity certificate is malformed")
+        if not self._same_identity_sequence(
+            self.factored_units, getattr(unit_group, "generators", ())
+        ):
+            raise ValueError("the terminal unit wrapper changed its exact generators")
+        certificate = getattr(saturation, "_analytic_certificate", None)
+        body_json = getattr(saturation, "_canonical_body_json", None)
+        body_sha256 = getattr(saturation, "content_sha256", None)
+        if (
+            not isinstance(body_json, str)
+            or not isinstance(body_sha256, str)
+            or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != body_sha256
+        ):
+            raise ValueError("a terminal saturation snapshot is malformed")
+        return canonical_component(
+            {
+                # Identity checks alone are insufficient here: prime-ideal
+                # shells retain mutable exact HNF and residue-presentation
+                # payloads.  Bind the full canonical serializations in their
+                # factor-base order before allowing the proof-only suffix.
+                # The theorem label records which generation plan the retained
+                # base was proved against.
+                "factor_base": self.factor_base,
+                "factor_base_theorem": getattr(
+                    self.class_group, "factor_base_theorem", None
+                ),
+                "unit_rank": getattr(unit_group, "unit_rank", None),
+                "unit_complete": getattr(unit_group, "complete", None),
+                "unit_reason": getattr(unit_group, "reason", None),
+                "unit_proof_status": getattr(unit_group, "proof_status", None),
+                "torsion": {
+                    "elements": [
+                        self._exact_element_payload(value)
+                        for value in getattr(torsion, "elements", ())
+                    ],
+                    "generator": self._exact_element_payload(torsion.generator),
+                    "order": getattr(torsion, "order", None),
+                    "complete": getattr(torsion, "complete", None),
+                    "reason": getattr(torsion, "reason", None),
+                    "proof_status": getattr(torsion, "proof_status", None),
+                    "certificate": torsion_certificate_payload,
+                },
+                "regulator": regulator,
+                "saturation_body_json": body_json,
+                "saturation_content_sha256": body_sha256,
+                "saturation_index_bound": getattr(saturation, "index_bound", None),
+                "saturation_required_primes": getattr(
+                    saturation, "required_primes", None
+                ),
+                "saturation_remaining_index_bound": getattr(
+                    saturation, "remaining_index_bound", None
+                ),
+                "saturation_analytic_validation": getattr(
+                    saturation, "analytic_validation", None
+                ),
+                "saturation_complete": getattr(saturation, "complete", None),
+                "saturation_rigorous": getattr(saturation, "rigorous", None),
+                "saturation_saturated": getattr(saturation, "saturated", None),
+                "saturation_reason": getattr(saturation, "reason", None),
+                "certificate_body_json": getattr(certificate, "_body_json", None),
+                "certificate_content_sha256": getattr(
+                    certificate, "_content_sha256", None
+                ),
+                "certificate_index_bound": getattr(certificate, "_index_bound", None),
+                "certificate_proof_status": getattr(certificate, "_proof_status", None),
+            }
+        )
+
+    def _capture_terminal_identity(self) -> dict[str, Any]:
+        """Capture a bounded identity shell around producer-hashed content."""
+        group = self.class_group
+        unit_group = self.unit_group
+        saturation = self.saturation_record
+        collector = self.collector
+        if (
+            group is None
+            or unit_group is None
+            or saturation is None
+            or collector is None
+            or self.presentation is None
+        ):
+            raise ValueError("a terminal upgrade needs complete exact state")
+        return {
+            "factor_base": tuple(self.factor_base),
+            "relations": tuple(self.relations),
+            "presentation": self.presentation,
+            "collector": collector,
+            "collector_factor_base": tuple(getattr(collector, "factor_base", ())),
+            "collector_relations": tuple(getattr(collector, "records", ())),
+            "factored_units": tuple(self.factored_units),
+            "saturation": saturation,
+            "saturation_original_units": tuple(
+                getattr(saturation, "original_units", ())
+            ),
+            "saturation_units": tuple(getattr(saturation, "units", ())),
+            "saturation_content_sha256": getattr(saturation, "content_sha256", None),
+            "saturation_certificate": getattr(
+                saturation, "_analytic_certificate", None
+            ),
+            "saturation_generation_verifier": getattr(
+                saturation, "_analytic_generation_verifier", None
+            ),
+            "saturation_analytic_module": getattr(saturation, "_analytic_module", None),
+            "saturation_analytic_workspace": getattr(
+                saturation, "_analytic_workspace", None
+            ),
+            "class_group": group,
+            "group_proof_status": getattr(group, "proof_status", None),
+            "group_theorem": getattr(group, "factor_base_theorem", None),
+            "group_invariants": tuple(getattr(group, "_invariants", ())),
+            "group_generator_rows": tuple(getattr(group, "_generator_rows", ())),
+            "group_generator_ideals": tuple(getattr(group, "_generator_ideals", ())),
+            "group_factor_base": tuple(getattr(group, "_factor_base", ())),
+            "group_relations": tuple(getattr(group, "_relations", ())),
+            "group_relation_reconstructor": getattr(
+                group, "_relation_reconstructor", None
+            ),
+            "group_combine_relations": getattr(group, "_combine_relations", None),
+            "group_factor_over_base": getattr(group, "_factor_over_base", None),
+            "group_reduce_over_base": getattr(group, "_reduce_over_base", None),
+            "group_combine_reduction_witness": getattr(
+                group, "_combine_reduction_witness", None
+            ),
+            "unit_group": unit_group,
+            "unit_proof_status": getattr(unit_group, "proof_status", None),
+            "unit_torsion": getattr(unit_group, "torsion", None),
+            "unit_torsion_certificate": getattr(
+                getattr(unit_group, "torsion", None), "certificate", None
+            ),
+            "unit_generators": tuple(getattr(unit_group, "generators", ())),
+            "unit_rank": getattr(unit_group, "unit_rank", None),
+            "unit_complete": getattr(unit_group, "complete", None),
+            "unit_regulator": getattr(unit_group, "regulator_enclosure", None),
+            "unit_reason": getattr(unit_group, "reason", None),
+        }
+
+    @staticmethod
+    def _same_identity_sequence(left: Any, right: Any) -> bool:
+        left_values = tuple(left)
+        right_values = tuple(right)
+        return bool(
+            len(left_values) == len(right_values)
+            and all(
+                left_value is right_value
+                for left_value, right_value in zip(
+                    left_values, right_values, strict=True
+                )
+            )
+        )
+
+    def _terminal_identity_matches(self) -> bool:
+        retained = self.terminal_identity_snapshot
+        if retained is None:
+            return False
+        try:
+            current = self._capture_terminal_identity()
+            for name in (
+                "factor_base",
+                "relations",
+                "collector_factor_base",
+                "collector_relations",
+                "factored_units",
+                "saturation_original_units",
+                "saturation_units",
+                "group_generator_ideals",
+                "group_factor_base",
+                "group_relations",
+                "unit_generators",
+            ):
+                if not self._same_identity_sequence(retained[name], current[name]):
+                    return False
+            for name in (
+                "presentation",
+                "collector",
+                "saturation",
+                "class_group",
+                "group_relation_reconstructor",
+                "group_combine_relations",
+                "group_factor_over_base",
+                "group_reduce_over_base",
+                "group_combine_reduction_witness",
+                "unit_group",
+                "unit_torsion",
+                "unit_torsion_certificate",
+                "unit_regulator",
+                "saturation_certificate",
+                "saturation_generation_verifier",
+                "saturation_analytic_module",
+                "saturation_analytic_workspace",
+            ):
+                if retained[name] is not current[name]:
+                    return False
+            return all(
+                retained[name] == current[name]
+                for name in (
+                    "saturation_content_sha256",
+                    "group_proof_status",
+                    "group_theorem",
+                    "group_invariants",
+                    "group_generator_rows",
+                    "unit_proof_status",
+                    "unit_rank",
+                    "unit_complete",
+                    "unit_reason",
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def bind_factor_base(
+        self,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
+    ) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept a factor base")
+        self.factor_base = tuple(factor_base)
+        self.factor_base_bound = True
+        self.factor_base_validation_available = bool(self.reusable and validated)
+        self.packed_factor_base = ()
+        self.factor_base_records = ()
+        self.packed_factor_base_snapshots = ()
+        producers = tuple(producer_records)
+        records = tuple(canonical_records)
+        if not producers and not records:
+            return
+        if (
+            not self.factor_base_validation_available
+            or len(producers) != len(self.factor_base)
+            or len(records) != len(self.factor_base)
+        ):
+            raise ValueError("live packed factor-base evidence is incomplete")
+        snapshots: list[Any] = []
+        for producer, record, factor in zip(
+            producers, records, self.factor_base, strict=True
+        ):
+            snapshot = getattr(producer, "_live_authentication_snapshot", None)
+            matches = getattr(producer, "_live_materialization_matches", None)
+            if (
+                getattr(producer, "order", None) is not self.order
+                or getattr(record, "prime_ideal", None) is not factor
+                or not callable(snapshot)
+                or not callable(matches)
+                or not matches(record, factor)
+            ):
+                raise ValueError("live packed factor-base evidence changed")
+            snapshots.append(snapshot())
+        self.packed_factor_base = producers
+        self.factor_base_records = records
+        self.packed_factor_base_snapshots = tuple(snapshots)
+
+    def factor_base_validated(self, factor_base: Iterable[Any]) -> bool:
+        supplied = tuple(factor_base)
+        return bool(
+            not self.sealed
+            and self.reusable
+            and self.factor_base_validation_available
+            and len(supplied) == len(self.factor_base)
+            and all(
+                retained is current
+                for retained, current in zip(self.factor_base, supplied, strict=True)
+            )
+        )
+
+    def live_packed_factor_base(
+        self, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        """Return authenticated producer records for this exact live base."""
+        supplied = tuple(factor_base)
+        if (
+            not self.factor_base_validated(supplied)
+            or not self.packed_factor_base
+            or len(self.packed_factor_base) != len(supplied)
+            or len(self.factor_base_records) != len(supplied)
+            or len(self.packed_factor_base_snapshots) != len(supplied)
+        ):
+            return None
+        try:
+            for producer, record, factor, retained_snapshot in zip(
+                self.packed_factor_base,
+                self.factor_base_records,
+                supplied,
+                self.packed_factor_base_snapshots,
+                strict=True,
+            ):
+                snapshot = getattr(producer, "_live_authentication_snapshot", None)
+                matches = getattr(producer, "_live_materialization_matches", None)
+                if (
+                    getattr(producer, "order", None) is not self.order
+                    or getattr(record, "prime_ideal", None) is not factor
+                    or not callable(snapshot)
+                    or not callable(matches)
+                    or not matches(record, factor)
+                    or snapshot() != retained_snapshot
+                ):
+                    return None
+            return self.packed_factor_base
+        except (
+            AttributeError,
+            ArithmeticError,
+            IndexError,
+            KeyError,
+            OverflowError,
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+    def bind_relations(
+        self,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if self.sealed:
+            return False
+        factors = tuple(factor_base)
+        if self.factor_base_bound and (
+            len(factors) != len(self.factor_base)
+            or any(
+                retained is not supplied
+                for retained, supplied in zip(self.factor_base, factors, strict=True)
+            )
+        ):
+            return False
+        retained_factors = tuple(getattr(collector, "factor_base", ()))
+        if getattr(collector, "order", None) is not self.order or len(
+            retained_factors
+        ) != len(factors):
+            return False
+        if any(
+            retained is not supplied
+            for retained, supplied in zip(retained_factors, factors, strict=True)
+        ):
+            return False
+        authenticate = getattr(collector, "_all_records_live_authenticated", None)
+        if not callable(authenticate) or not authenticate(
+            relation_authentication_token
+        ):
+            return False
+        records = tuple(collector.records)
+        if len(tuple(getattr(presentation, "relation_rows", ()))) != len(records):
+            return False
+        self.factor_base = factors
+        self.factor_base_bound = True
+        self.collector = collector
+        self.relations = records
+        self.presentation = presentation
+        return self.reusable
+
+    def bind_cubic_relation_prefix(
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        """Retain a synchronous cubic producer prefix without serializing it."""
+        factors = tuple(factor_base)
+        if (
+            self.sealed
+            or not self.reusable
+            or getattr(plan, "order", None) is not self.order
+            or getattr(search_state, "seed", None) is None
+            or not self.bind_relations(
+                factors,
+                collector,
+                presentation,
+                relation_authentication_token,
+            )
+        ):
+            return False
+        self.factor_base_validation_available = True
+        self.cubic_relation_prefix = _LiveCubicRelationPrefix(
+            plan,
+            factors,
+            collector,
+            presentation,
+            search_state,
+        )
+        return True
+
+    def live_cubic_relation_prefix(self) -> Any:
+        prefix = self.cubic_relation_prefix
+        if (
+            prefix is None
+            or self.sealed
+            or not self.relation_stage_authenticated(
+                prefix.collector, prefix.presentation
+            )
+        ):
+            return None
+        return prefix
+
+    def relation_stage_authenticated(self, collector: Any, presentation: Any) -> bool:
+        if (
+            self.sealed
+            or not self.reusable
+            or collector is not self.collector
+            or presentation is not self.presentation
+        ):
+            return False
+        current_factors = tuple(getattr(collector, "factor_base", ()))
+        if len(current_factors) != len(self.factor_base) or any(
+            retained is not current
+            for retained, current in zip(self.factor_base, current_factors, strict=True)
+        ):
+            return False
+        current_relations = tuple(getattr(collector, "records", ()))
+        return bool(
+            len(current_relations) == len(self.relations)
+            and all(
+                retained is current
+                for retained, current in zip(
+                    self.relations, current_relations, strict=True
+                )
+            )
+        )
+
+    def relation_payloads(
+        self, collector: Any, presentation: Any
+    ) -> tuple[dict[str, Any], ...] | None:
+        if not self.relation_stage_authenticated(collector, presentation):
+            return None
+        # `reusable` means no callback, cancellation hook, or checkpoint can
+        # interpose after `bind_relations` authenticated this exact prefix.
+        # The analytic certificate immediately captures canonical bytes.  This
+        # live-only projection therefore need not recursively clone normalized
+        # JSON trees a second time.
+        return tuple(record.to_dict() for record in self.relations)
+
+    def bind_generation_evidence(
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+        evidence: Any,
+        hashes: tuple[str, str, str],
+    ) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept evidence")
+        factors = tuple(factor_base)
+        plan_order = getattr(plan, "order", None)
+        factor_identity_matches = bool(
+            self.factor_base_bound
+            and len(factors) == len(self.factor_base)
+            and all(
+                retained is supplied
+                for retained, supplied in zip(self.factor_base, factors, strict=True)
+            )
+        )
+        producer_authenticated = bool(
+            self.reusable
+            and plan_order is self.order
+            and factor_identity_matches
+            and self.relation_stage_authenticated(collector, presentation)
+        )
+        self.generation_artifact = _LiveClassGenerationArtifact(
+            plan,
+            factors,
+            collector,
+            presentation,
+            proof_status,
+            evidence,
+            hashes,
+            producer_authenticated=producer_authenticated,
+        )
+
+    def consume_generation_authority(self, cache_key: str, evidence: Any) -> bool:
+        artifact = self.generation_artifact
+        if self.sealed or not self.generation_verification_active or artifact is None:
+            return False
+        return artifact.consume(cache_key, evidence)
+
+    def retained_generation_artifact(
+        self,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        artifact = self.generation_artifact
+        factors = tuple(factor_base)
+        if (
+            self.sealed
+            or not self.reusable
+            or not self.generation_verification_active
+            or artifact is None
+            or not artifact.producer_authenticated
+            or artifact.live_authority_available
+            or not artifact.matches_stage(
+                plan, factors, collector, presentation, proof_status
+            )
+            or not self.relation_stage_authenticated(collector, presentation)
+        ):
+            return None
+        artifact.renew_authority()
+        return artifact.evidence, artifact.hashes
+
+    def generation_verification_cached(self, cache_key: str) -> bool:
+        artifact = self.generation_artifact
+        return bool(
+            self.generation_verification_active
+            and artifact is not None
+            and artifact.cached(cache_key)
+        )
+
+    def retain_generation_verification(self, cache_key: str) -> None:
+        artifact = self.generation_artifact
+        if self.generation_verification_active and artifact is not None:
+            artifact.retain(cache_key)
+
+    def deactivate_generation_verification(self) -> None:
+        self.generation_verification_active = False
+        artifact = self.generation_artifact
+        if artifact is not None:
+            artifact.deactivate()
+
+    def bind_analytic_proof(self, proof: Iterable[Any]) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept analytic state")
+        values = tuple(proof)
+        if len(values) != 6:
+            raise ValueError("a live analytic proof must contain six exact components")
+        self.analytic_proof = values
+
+    def dependency_hashes(
+        self, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        artifact = self.generation_artifact
+        if artifact is None or not self.relation_stage_authenticated(
+            collector, presentation
+        ):
+            return None
+        return artifact.hashes[1], artifact.hashes[2]
+
+    def retain_dependency_units(
+        self,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+        unit_hashes: Iterable[str],
+    ) -> bool:
+        """Retain live units issued from this exact relation presentation."""
+        # No callback separates this exact presentation from its live units.
+        if (
+            self.sealed
+            or not self.reusable
+            or collector is not self.collector
+            or presentation is not self.presentation
+        ):
+            return False
+        relations = self.relations
+        dependency_values = tuple(
+            tuple(int(value) for value in dependency) for dependency in dependencies
+        )
+        unit_values = tuple(units)
+        hash_values = tuple(str(value) for value in unit_hashes)
+        if not (len(dependency_values) == len(unit_values) == len(hash_values)):
+            return False
+        exact_dependencies = tuple(
+            tuple(int(value) for value in dependency)
+            for dependency in getattr(presentation, "dependency_transforms", ())
+        )
+        retained: list[tuple[Any, str]] = []
+        for coefficients, unit, unit_hash in zip(
+            dependency_values, unit_values, hash_values, strict=True
+        ):
+            if (
+                len(coefficients) != len(relations)
+                or not any(coefficients)
+                or coefficients not in exact_dependencies
+                or len(unit_hash) != 64
+                or any(character not in "0123456789abcdef" for character in unit_hash)
+            ):
+                return False
+            retained.append((unit, unit_hash))
+        for unit, unit_hash in retained:
+            if any(
+                current is unit
+                for current, _hash in self.authenticated_dependency_units
+            ):
+                continue
+            if len(self.authenticated_dependency_units) >= 1024:
+                self.authenticated_dependency_units.pop(0)
+            self.authenticated_dependency_units.append((unit, unit_hash))
+        return True
+
+    def dependency_unit_authenticated(self, unit: Any) -> bool:
+        if self.sealed or not self.reusable:
+            return False
+        return any(
+            retained is unit
+            for retained, _unit_hash in self.authenticated_dependency_units
+        )
+
+    def bind_saturation_record(self, record: Any, *, authenticated: bool) -> None:
+        if self.sealed:
+            raise ValueError("a sealed class/unit context cannot accept saturation")
+        self.saturation_record = record
+        self.saturation_live_authority_available = bool(self.reusable and authenticated)
+
+    def consume_saturation_record(self, record: Any) -> bool:
+        accepted = bool(
+            not self.sealed
+            and self.saturation_live_authority_available
+            and record is self.saturation_record
+        )
+        self.saturation_live_authority_available = False
+        return accepted
+
+    def verify_class_group_construction(self, group: Any) -> bool:
+        """Authenticate a class group built from this uninterrupted live state.
+
+        The context authenticated the exact collector prefix when relations
+        were bound.  A reusable context has no progress, cancellation, or
+        checkpoint callback which could interpose between that boundary and
+        class-group construction.  Bind the resulting group back to those
+        retained objects and replay only the generator rows which the engine
+        has just materialized.  Detached contexts have no live artifacts and
+        continue through the group's independent public verifier.
+        """
+        if self.sealed or not self.reusable:
+            return False
+        try:
+            collector = self.collector
+            presentation = self.presentation
+            if (
+                collector is None
+                or presentation is None
+                or not self.relation_stage_authenticated(collector, presentation)
+                or getattr(group, "_order", None) is not self.order
+                or getattr(group, "_relation_reconstructor", None) is not collector
+                or getattr(group, "_presentation", None) is not presentation
+            ):
+                return False
+            group_factors = tuple(getattr(group, "_factor_base", ()))
+            if len(group_factors) != len(self.factor_base) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    self.factor_base, group_factors, strict=True
+                )
+            ):
+                return False
+            group_relations = tuple(getattr(group, "_relations", ()))
+            if len(group_relations) != len(self.relations) or any(
+                retained is not supplied
+                for retained, supplied in zip(
+                    self.relations, group_relations, strict=True
+                )
+            ):
+                return False
+            presentation_rows = tuple(
+                tuple(int(value) for value in row.dense())
+                for row in presentation.relation_rows
+            )
+            relation_rows = tuple(
+                tuple(int(value) for value in record.row) for record in self.relations
+            )
+            if presentation_rows != relation_rows:
+                return False
+            invariants = tuple(int(value) for value in presentation.invariants)
+            if tuple(getattr(group, "_invariants", ())) != invariants:
+                return False
+            positions = tuple(presentation.invariant_positions)
+            expected_rows = tuple(
+                tuple(
+                    int(value) for value in presentation.smith_right_inverse[position]
+                )
+                for position in positions
+            )
+            generator_rows = tuple(getattr(group, "_generator_rows", ()))
+            generator_ideals = tuple(getattr(group, "_generator_ideals", ()))
+            generators = tuple(getattr(group, "_gens", ()))
+            if (
+                generator_rows != expected_rows
+                or len(generator_ideals) != len(expected_rows)
+                or len(generators) != len(invariants)
+            ):
+                return False
+            reconstruct = getattr(collector, "reconstruct_factor_base_ideal", None)
+            if not callable(reconstruct):
+                return False
+            for index, (row, ideal) in enumerate(
+                zip(generator_rows, generator_ideals, strict=True)
+            ):
+                if reconstruct(row) != ideal:
+                    return False
+                coordinates = tuple(
+                    int(value) for value in presentation.class_coordinates(row)
+                )
+                expected_coordinates = tuple(
+                    1 if coordinate == index else 0
+                    for coordinate in range(len(invariants))
+                )
+                if coordinates != expected_coordinates:
+                    return False
+                if generators[index].order() != invariants[index]:
+                    return False
+            return True
+        except (KeyError, AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def retain_terminal(
+        self,
+        *,
+        proof_status: str | None = None,
+        proof_dependency_hashes: Any = None,
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+    ) -> None:
+        if self.sealed:
+            raise ValueError("a class/unit context is already terminal")
+        if (
+            saturation_record is not None
+            and self.saturation_record is not None
+            and saturation_record is not self.saturation_record
+        ):
+            raise ValueError("terminal saturation differs from retained live state")
+        self.factored_units = tuple(units)
+        if saturation_record is not None:
+            self.saturation_record = saturation_record
+        self.class_group = class_group
+        self.unit_group = unit_group
+        self.terminal_proof_status = None if proof_status is None else str(proof_status)
+        dependencies = (
+            {} if proof_dependency_hashes is None else dict(proof_dependency_hashes)
+        )
+        if any(
+            not isinstance(name, str) or not isinstance(value, str) or len(value) != 64
+            for name, value in dependencies.items()
+        ):
+            raise ValueError("terminal proof dependency hashes are malformed")
+        self.terminal_dependency_hashes = dependencies
+        self.deactivate_generation_verification()
+        self.saturation_live_authority_available = False
+        self.sealed = True
+        if (
+            self.reusable
+            and self.terminal_proof_status == "exact-relations-conditional-grh"
+            and class_group is not None
+            and unit_group is not None
+            and saturation_record is not None
+        ):
+            try:
+                self.terminal_identity_snapshot = self._capture_terminal_identity()
+                self.terminal_semantic_snapshot = self._capture_terminal_semantics()
+            except (AttributeError, TypeError, ValueError, ArithmeticError):
+                # Terminal publication remains valid even if a component
+                # cannot participate in the optional live proof fork.
+                self.terminal_identity_snapshot = None
+                self.terminal_semantic_snapshot = None
+
+    def terminal_upgrade_material(self, source: Any) -> dict[str, Any] | None:
+        """Issue one identity- and digest-bound conditional terminal fork."""
+        if (
+            not self.sealed
+            or not self.reusable
+            or self.terminal_upgrade_reserved
+            or self.terminal_upgrade_issued
+            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_identity_snapshot is None
+            or self.terminal_semantic_snapshot is None
+        ):
+            return None
+        if not self._terminal_source_matches(source, require_semantic_snapshot=True):
+            return None
+        self.terminal_upgrade_reserved = True
+        return {
+            "factor_base": self.factor_base,
+            "collector": self.collector,
+            "relations": self.relations,
+            "presentation": self.presentation,
+            "units": self.factored_units,
+            "saturation_record": self.saturation_record,
+            "class_group": self.class_group,
+            "unit_group": self.unit_group,
+            "terminal_semantic_snapshot": self.terminal_semantic_snapshot,
+        }
+
+    def _terminal_source_matches(
+        self, source: Any, *, require_semantic_snapshot: bool
+    ) -> bool:
+        if (
+            not self.sealed
+            or not self.reusable
+            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_identity_snapshot is None
+            or self.terminal_semantic_snapshot is None
+        ):
+            return False
+        try:
+            source_factors = tuple(getattr(source, "conditional_factor_base", ()))
+            source_relations = tuple(
+                getattr(source, "conditional_relation_records", ())
+            )
+            return bool(
+                getattr(source, "complete", None) is True
+                and getattr(source, "proof_status", None) == self.terminal_proof_status
+                and source.class_group() is self.class_group
+                and source.unit_group() is self.unit_group
+                and getattr(source, "saturation_record", None) is self.saturation_record
+                and dict(getattr(source, "proof_dependency_hashes", {}))
+                == self.terminal_dependency_hashes
+                and self._same_identity_sequence(source_factors, self.factor_base)
+                and self._same_identity_sequence(source_relations, self.relations)
+                and getattr(source, "conditional_presentation_evidence", None)
+                is self.presentation
+                and getattr(self.class_group, "_relation_reconstructor", None)
+                is self.collector
+                and self._terminal_identity_matches()
+                and (
+                    not require_semantic_snapshot
+                    or self._capture_terminal_semantics()
+                    == self.terminal_semantic_snapshot
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
+    def begin_public_class_group_projection(
+        self, source: Any
+    ) -> tuple[str, Any] | None:
+        if self.public_class_group_projection is not None:
+            if not self._terminal_source_matches(
+                source, require_semantic_snapshot=False
+            ):
+                return None
+            return "published", self.public_class_group_projection
+        if not self._terminal_source_matches(source, require_semantic_snapshot=True):
+            return None
+        if self.public_class_group_projection_reserved:
+            return None
+        self.public_class_group_projection_reserved = True
+        return "reserved", None
+
+    def finish_public_class_group_projection(
+        self, projection: Any = None, *, commit: bool
+    ) -> bool:
+        if not self.public_class_group_projection_reserved:
+            return False
+        self.public_class_group_projection_reserved = False
+        if not commit:
+            return True
+        if projection is None or self.public_class_group_projection is not None:
+            return False
+        self.public_class_group_projection = projection
+        return True
+
+    def finish_terminal_upgrade(self, *, commit: bool) -> bool:
+        """Commit or release the one synchronous terminal-upgrade lease."""
+        if not self.terminal_upgrade_reserved:
+            return False
+        self.terminal_upgrade_reserved = False
+        if commit:
+            if self.terminal_upgrade_issued:
+                return False
+            self.terminal_upgrade_issued = True
+        return True
+
+    def diagnostics(self) -> dict[str, Any]:
+        return {
+            "reusable": self.reusable,
+            "sealed": self.sealed,
+            "factor_base_size": len(self.factor_base),
+            "packed_factor_base_size": len(self.packed_factor_base),
+            "has_factor_base": self.factor_base_bound,
+            "factor_base_validation_available": (self.factor_base_validation_available),
+            "relation_count": len(self.relations),
+            "has_presentation": self.presentation is not None,
+            "unit_count": len(self.factored_units),
+            "has_analytic_workspace": self.analytic_workspace is not None,
+            "has_analytic_proof": self.analytic_proof is not None,
+            "has_generation_authority": self.generation_artifact is not None,
+            "generation_artifact_producer_authenticated": bool(
+                self.generation_artifact is not None
+                and self.generation_artifact.producer_authenticated
+            ),
+            "generation_verification_active": self.generation_verification_active,
+            "generation_verification_entries": (
+                0
+                if self.generation_artifact is None
+                else len(self.generation_artifact.verification_cache)
+            ),
+            "has_saturation_record": self.saturation_record is not None,
+            "saturation_live_authority_available": (
+                self.saturation_live_authority_available
+            ),
+            "authenticated_dependency_units": len(self.authenticated_dependency_units),
+            "has_class_group": self.class_group is not None,
+            "has_unit_group": self.unit_group is not None,
+        }
+
+
 class ClassUnitGroupContext:
     """One shared, checkpointable class-group and unit-group computation."""
 
@@ -442,6 +1560,7 @@ class ClassUnitGroupContext:
         diagnostics: Any = None,
         random_seed: int = 0,
         signature: Any = None,
+        _trusted_live_token: Any = None,
     ) -> None:
         if type(proof_state) is not ClassUnitProofState:
             raise TypeError("a class/unit context needs an immutable proof state")
@@ -482,7 +1601,391 @@ class ClassUnitGroupContext:
         self.proof_progress = proof_progress
         self.precision_history = _checked_precision_history(precision_history)
         self.diagnostics = {} if diagnostics is None else diagnostics
-        self._validate_components()
+        self._live_artifacts: _LiveClassUnitArtifacts | None = None
+        if _trusted_live_token is None:
+            self._validate_components()
+        elif _trusted_live_token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live context forks are engine-owned")
+
+    def _activate_live(
+        self,
+        token: Any,
+        *,
+        reusable: bool,
+        analytic_workspace: Any = None,
+        factored_logarithm_workspace: Any = None,
+    ) -> None:
+        """Attach the one producer-owned live state for this computation."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live class/unit contexts are engine-owned")
+        if self._live_artifacts is not None:
+            raise ValueError("the class/unit context is already live")
+        self._live_artifacts = _LiveClassUnitArtifacts(
+            self.field,
+            self.order,
+            reusable=reusable,
+            analytic_workspace=analytic_workspace,
+            factored_logarithm_workspace=factored_logarithm_workspace,
+        )
+
+    def _bind_live_relations(
+        self,
+        token: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_relations(
+                factor_base,
+                collector,
+                presentation,
+                relation_authentication_token,
+            )
+        )
+
+    def _bind_live_cubic_relation_prefix(
+        self,
+        token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        search_state: Any,
+        relation_authentication_token: Any,
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live cubic relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_cubic_relation_prefix(
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                search_state,
+                relation_authentication_token,
+            )
+        )
+
+    def _live_cubic_relation_prefix(self, token: Any) -> Any:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live cubic relation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.live_cubic_relation_prefix()
+
+    def _bind_live_factor_base(
+        self,
+        token: Any,
+        factor_base: Iterable[Any],
+        *,
+        validated: bool,
+        producer_records: Iterable[Any] = (),
+        canonical_records: Iterable[Any] = (),
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live factor-base state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_factor_base(
+                factor_base,
+                validated=validated,
+                producer_records=producer_records,
+                canonical_records=canonical_records,
+            )
+
+    def _live_factor_base_validated(
+        self, token: Any, factor_base: Iterable[Any]
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live factor-base state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.factor_base_validated(factor_base))
+
+    def _live_packed_factor_base(
+        self, token: Any, factor_base: Iterable[Any]
+    ) -> tuple[Any, ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live packed factor-base state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.live_packed_factor_base(factor_base)
+
+    def _live_relation_payloads(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> tuple[dict[str, Any], ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.relation_payloads(collector, presentation)
+
+    def _live_relation_stage_authenticated(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live relation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.relation_stage_authenticated(collector, presentation)
+        )
+
+    def _retain_live_dependency_units(
+        self,
+        token: Any,
+        collector: Any,
+        presentation: Any,
+        dependencies: Iterable[Iterable[int]],
+        units: Iterable[Any],
+        unit_hashes: Iterable[str],
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live dependency-unit state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.retain_dependency_units(
+                collector, presentation, dependencies, units, unit_hashes
+            )
+        )
+
+    def _live_dependency_unit_authenticated(self, token: Any, unit: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live dependency-unit state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.dependency_unit_authenticated(unit))
+
+    def _bind_live_generation_evidence(
+        self,
+        token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+        evidence: Any,
+        hashes: tuple[str, str, str],
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation evidence is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_generation_evidence(
+                plan,
+                factor_base,
+                collector,
+                presentation,
+                proof_status,
+                evidence,
+                hashes,
+            )
+
+    def _consume_live_generation_authority(
+        self, token: Any, cache_key: str, evidence: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation authority is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None and live.consume_generation_authority(cache_key, evidence)
+        )
+
+    def _live_generation_artifact(
+        self,
+        token: Any,
+        plan: Any,
+        factor_base: Iterable[Any],
+        collector: Any,
+        presentation: Any,
+        proof_status: str,
+    ) -> tuple[Any, tuple[str, str, str]] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation artifact is engine-owned")
+        live = self._live_artifacts
+        if live is None:
+            return None
+        return live.retained_generation_artifact(
+            plan, factor_base, collector, presentation, proof_status
+        )
+
+    def _live_generation_verification_cached(self, token: Any, cache_key: str) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.generation_verification_cached(cache_key))
+
+    def _retain_live_generation_verification(self, token: Any, cache_key: str) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.retain_generation_verification(cache_key)
+
+    def _deactivate_live_generation_verification(self, token: Any) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation verification is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.deactivate_generation_verification()
+
+    def _bind_live_analytic_proof(self, token: Any, proof: Iterable[Any]) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live analytic state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_analytic_proof(proof)
+
+    def _live_analytic_proof(self, token: Any) -> tuple[Any, ...] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live analytic state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.analytic_proof
+
+    def _live_generation_dependency_hashes(
+        self, token: Any, collector: Any, presentation: Any
+    ) -> tuple[str, str] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live generation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.dependency_hashes(collector, presentation)
+
+    def _bind_live_saturation_record(
+        self, token: Any, record: Any, *, authenticated: bool
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        if live is not None:
+            live.bind_saturation_record(record, authenticated=authenticated)
+
+    def _consume_live_saturation_record(self, token: Any, record: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.consume_saturation_record(record))
+
+    def _live_saturation_record(self, token: Any) -> Any:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live saturation state is engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.saturation_record
+
+    def _verify_live_class_group_construction(self, token: Any, group: Any) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live class-group state is engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.verify_class_group_construction(group))
+
+    def _retain_live_terminal(
+        self,
+        token: Any,
+        *,
+        proof_state: ClassUnitProofState | None = None,
+        units: Iterable[Any] = (),
+        saturation_record: Any = None,
+        class_group: Any = None,
+        unit_group: Any = None,
+        proof_progress: Any = None,
+        diagnostics: Any = None,
+    ) -> None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal live state is engine-owned")
+        if proof_state is not None:
+            if type(proof_state) is not ClassUnitProofState:
+                raise TypeError("terminal context proof state is not immutable")
+            self._proof_state = proof_state
+        live = self._live_artifacts
+        if live is not None:
+            live.retain_terminal(
+                proof_status=(None if proof_state is None else proof_state.label),
+                proof_dependency_hashes=(
+                    {}
+                    if proof_state is None
+                    else proof_state.evidence.get("proof_dependency_hashes", {})
+                ),
+                units=units,
+                saturation_record=saturation_record,
+                class_group=class_group,
+                unit_group=unit_group,
+            )
+            # Retain the exact producer objects for lazy checkpoint projection.
+            # No canonical tree walk is charged to the ordinary public result.
+            self.factor_base = live.factor_base
+            self.relations = live.relations
+            self.matrix_state = live.presentation
+        if saturation_record is not None:
+            self.saturation_history = (saturation_record,)
+            self.analytic_state = getattr(
+                saturation_record, "analytic_validation", None
+            )
+        if proof_progress is not None:
+            self.proof_progress = proof_progress
+        if diagnostics is not None:
+            self.diagnostics = diagnostics
+
+    def _fork_live_terminal_for_unconditional_proof(
+        self,
+        token: Any,
+        source: Any,
+        proof_state: ClassUnitProofState,
+    ) -> tuple[ClassUnitGroupContext, dict[str, Any]] | None:
+        """Fork a reusable conditional terminal without exporting authority."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal proof forks are engine-owned")
+        if type(proof_state) is not ClassUnitProofState:
+            raise TypeError("a terminal proof fork needs an immutable proof state")
+        live = self._live_artifacts
+        if (
+            live is None
+            or self.proof_state.label != "exact-relations-conditional-grh"
+            or self.proof_state.evidence.get("proof_dependency_hashes", {})
+            != getattr(source, "proof_dependency_hashes", {})
+        ):
+            return None
+        material = live.terminal_upgrade_material(source)
+        if material is None:
+            return None
+        return self.fork_for_proof(
+            proof_state, _live_token=_LIVE_CLASS_UNIT_CONTEXT_TOKEN
+        ), material
+
+    def _finish_live_terminal_upgrade(self, token: Any, *, commit: bool) -> bool:
+        """Finish the producer-owned terminal lease after exact publication."""
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("terminal proof forks are engine-owned")
+        live = self._live_artifacts
+        return bool(live is not None and live.finish_terminal_upgrade(commit=commit))
+
+    def _begin_live_public_class_group_projection(
+        self, token: Any, source: Any
+    ) -> tuple[str, Any] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group projections are engine-owned")
+        live = self._live_artifacts
+        return (
+            None if live is None else live.begin_public_class_group_projection(source)
+        )
+
+    def _finish_live_public_class_group_projection(
+        self, token: Any, projection: Any = None, *, commit: bool
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group projections are engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.finish_public_class_group_projection(projection, commit=commit)
+        )
+
+    def live_diagnostics(self) -> dict[str, Any]:
+        """Describe retained in-process state without exposing its authority."""
+        live = self._live_artifacts
+        return {} if live is None else live.diagnostics()
 
     @property
     def field(self) -> Any:
@@ -596,7 +2099,9 @@ class ClassUnitGroupContext:
         current[name] = canonical_component(value)
         self.diagnostics = current
 
-    def fork_for_proof(self, proof_state: ClassUnitProofState) -> ClassUnitGroupContext:
+    def fork_for_proof(
+        self, proof_state: ClassUnitProofState, *, _live_token: Any = None
+    ) -> ClassUnitGroupContext:
         """Share exact work in a new context with a separate proof cache key."""
         return ClassUnitGroupContext(
             self.field,
@@ -617,6 +2122,7 @@ class ClassUnitGroupContext:
             diagnostics=self.diagnostics,
             random_seed=self.random_seed,
             signature=self.signature,
+            _trusted_live_token=_live_token,
         )
 
     def _body_dict(self) -> dict[str, Any]:

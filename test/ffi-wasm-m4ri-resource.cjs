@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -98,7 +99,7 @@ test("complete M4RI resource surface lowers generically to Wasm", () => {
 });
 
 test("complete M4RI resources execute through real Wasm", {
-  skip: hasToolchain() ? false : "CoWasm M4RI toolchain is not available",
+  skip: hasToolchain() ? false : "Sage.js M4RI Wasm toolchain is not available",
 }, async () => {
   const output = await mkdtemp(join(tmpdir(), "sagejs-wasm-m4ri-"));
   try {

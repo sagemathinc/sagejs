@@ -184,7 +184,7 @@ async function sageRows() {
         "height_bench_rank4_batch = height_bench_rank4.height_results[0].diagnostics['batch']",
         "height_bench_rank4_stages = height_bench_rank4_batch['stage_milliseconds']",
         "height_bench_rank4_proof_stages = height_bench_rank4._diagnostics.get('cold_proof_stages_ms', {})",
-        "str(height_bench_rank4_cold)+'|'+str(height_bench_rank4_warm_ms)+'|'+str(height_bench_rank4_context.diagnostics()['height_pairing_cache_hits'])+'|'+str(height_bench_rank4_context.diagnostics()['canonical_height_cache_entries'])+'|'+str(height_bench_rank4_batch['point_count'])+'|'+str(height_bench_rank4_stages['shared_preparation'])+'|'+str(height_bench_rank4_stages['modular_recurrence'])+'|'+str(height_bench_rank4_stages['dyadic_recurrence'])+'|'+str(height_bench_rank4_stages['exact_outward_logarithms'])+'|'+str(height_bench_rank4_stages['exact_small_step_oracle'])+'|'+str(height_bench_rank4_proof_stages.get('authenticated_record_assembly', 0))+'|'+str(height_bench_rank4_proof_stages.get('direct_primitive_polarization', 0))+'|'+str(height_bench_rank4_proof_stages.get('pairwise_divisor_sums', 0))+'|'+str(height_bench_rank4_proof_stages.get('authenticated_missing_scan', 0))+'|'+str(height_bench_rank4_proof_stages.get('automatic_bound_authentication', 0))+'|'+str(height_bench_rank4_proof_stages.get('certified_local_height_batch', 0))",
+        "str(height_bench_rank4_cold)+'|'+str(height_bench_rank4_warm_ms)+'|'+str(height_bench_rank4_context.diagnostics()['height_pairing_cache_hits'])+'|'+str(height_bench_rank4_context.diagnostics()['canonical_height_cache_entries'])+'|'+str(height_bench_rank4_batch['point_count'])+'|'+str(height_bench_rank4_stages['shared_preparation'])+'|'+str(height_bench_rank4_stages['modular_recurrence'])+'|'+str(height_bench_rank4_stages['dyadic_recurrence'])+'|'+str(height_bench_rank4_stages['exact_outward_logarithms'])+'|'+str(height_bench_rank4_stages['exact_small_step_oracle'])+'|'+str(height_bench_rank4.height_results[0].diagnostics['archimedean_correction']['diagnostics']['recurrence_backend'])+'|'+str(height_bench_rank4_proof_stages.get('authenticated_record_assembly', 0))+'|'+str(height_bench_rank4_proof_stages.get('direct_primitive_polarization', 0))+'|'+str(height_bench_rank4_proof_stages.get('pairwise_divisor_sums', 0))+'|'+str(height_bench_rank4_proof_stages.get('authenticated_missing_scan', 0))+'|'+str(height_bench_rank4_proof_stages.get('automatic_bound_authentication', 0))+'|'+str(height_bench_rank4_proof_stages.get('certified_local_height_batch', 0))",
       ].join("\n"),
       { timeout: 900_000 },
     );
@@ -231,13 +231,14 @@ async function sageRows() {
           exactOutwardLogarithms: Number(rank4Fields[8]),
           exactSmallStepOracle: Number(rank4Fields[9]),
         },
+        recurrenceBackend: rank4Fields[10],
         coldProofStagesMilliseconds: {
-          authenticatedRecordAssembly: Number(rank4Fields[10]),
-          directPrimitivePolarization: Number(rank4Fields[11]),
-          pairwiseDivisorSums: Number(rank4Fields[12]),
-          authenticatedMissingScan: Number(rank4Fields[13]),
-          automaticBoundAuthentication: Number(rank4Fields[14]),
-          certifiedLocalHeightBatch: Number(rank4Fields[15]),
+          authenticatedRecordAssembly: Number(rank4Fields[11]),
+          directPrimitivePolarization: Number(rank4Fields[12]),
+          pairwiseDivisorSums: Number(rank4Fields[13]),
+          authenticatedMissingScan: Number(rank4Fields[14]),
+          automaticBoundAuthentication: Number(rank4Fields[15]),
+          certifiedLocalHeightBatch: Number(rank4Fields[16]),
         },
       },
     };
@@ -345,6 +346,10 @@ async function main() {
       targets,
       repetitions,
       modes: ["resident object cold", "resident prepared-context warm"],
+      dyadicWorkspace:
+        "one lexical 48-entry NativeIntegerVector per point; packed proof rows remain canonical",
+      exactLogRangeReduction:
+        "nearest power of two; absolute atanh argument below (sqrt(2)-1)/(sqrt(2)+1)",
     },
     sagejs: await sageRows(),
     magma: runMagma ? magmaRows() : { available: false, reason: "pass --magma" },

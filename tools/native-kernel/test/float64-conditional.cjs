@@ -21,6 +21,10 @@ const {
   classifyWasmFunction,
   generateWasmBridge,
 } = require("../wasm-bridge.cjs");
+const {
+  inspectToolchain,
+  wasmKernelToolchain,
+} = require("../../../packages/wasm-toolchain/scripts/toolchain.cjs");
 
 const root = resolve(__dirname, "../../..");
 const sagejs = join(root, "bin", "sagejs");
@@ -215,40 +219,14 @@ print("FLOAT64_BRANCH_OK")
   }
 });
 
-const cowasmCandidates = [
-  process.env.SAGEJS_COWASM_ROOT,
-  resolve(root, "..", "cowasm"),
-  resolve(root, "..", "..", "cowasm"),
-].filter(Boolean);
-const cowasm = cowasmCandidates.find(existsSync);
-const cowasmWasiSdk = cowasm === undefined ? "" : join(
-  cowasm,
-  "core",
-  "build",
-  "build",
-  "wasi-sdk",
-  "dist",
-  "wasi-sdk-next",
-  "native",
-);
-const cachedWasiSdk = join(
-  process.env.HOME ?? "/nonexistent",
-  ".cache",
-  "tree-sitter",
-  "wasi-sdk",
-);
-const wasiClang = process.env.SAGEJS_WASI_CLANG ?? [
-  join(cowasmWasiSdk, "bin", "clang"),
-  join(cachedWasiSdk, "bin", "clang"),
-].find(existsSync) ?? "";
-const wasiSysroot = process.env.SAGEJS_WASI_SYSROOT ?? [
-  join(cowasmWasiSdk, "share", "wasi-sysroot"),
-  join(cachedWasiSdk, "share", "wasi-sysroot"),
-].find(existsSync) ?? "";
-const wasiGmp = process.env.SAGEJS_WASM_GMP_PREFIX ?? (cowasm === undefined
-  ? ""
-  : join(cowasm, "sagemath", "gmp", "dist", "wasi-sdk"));
-const wasmToolchainAvailable = [wasiClang, wasiSysroot].every(existsSync);
+const wasmToolchainStatus = inspectToolchain({ root });
+const wasmToolchain = wasmToolchainStatus.ready
+  ? wasmKernelToolchain({ root })
+  : null;
+const wasiClang = wasmToolchain?.clang ?? "";
+const wasiSysroot = wasmToolchain?.sysroot ?? "";
+const wasiGmp = wasmToolchain?.gmpPrefix ?? "";
+const wasmToolchainAvailable = wasmToolchain !== null;
 
 function wasmManifest(bytes, bridge) {
   const logicalSource = "sagejs/native/float64_branch_witness.py";

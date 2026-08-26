@@ -18,7 +18,15 @@ jobs:
   node-oracle:
     name: Native Node oracle for the public browser corpus
     runs-on: ubuntu-24.04
+    environment: sagejs-source-mirror
     timeout-minutes: 180
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_NATIVE_SOURCE_MIRROR_DIR: /tmp/sagejs-native-source-mirror
+      SAGEJS_PARALLEL_NATIVE_CACHE: /tmp/sagejs-native-oracle-cache
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,12 +38,35 @@ jobs:
         with:
           node-version: 26.5.1
           cache: pnpm
-      - name: Build the current native mathematical oracle
+      - name: Fetch every pinned native source from the private R2 mirror
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_NATIVE_SOURCE_MIRROR_DIR"
+          node tools/source-mirror/scripts/source-mirror.mjs environment \
+            --input "$SAGEJS_NATIVE_SOURCE_MIRROR_DIR" >> "$GITHUB_ENV"
+      - name: Install the native build toolchain
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential cmake python3 python3-jupyter-client m4 xz-utils
+      - id: native-cache
+        name: Compute the exact native artifact cache identity
+        run: |
+          echo "identity=$(node scripts/native-oracle-cache-key.cjs)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.SAGEJS_PARALLEL_NATIVE_CACHE }}
+          key: sagejs-native-oracle-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.native-cache.outputs.identity }}
+          restore-keys: |
+            sagejs-native-oracle-v1-${{ runner.os }}-${{ runner.arch }}-
+      - name: Build the current native mathematical oracle
+        run: |
           pnpm install --frozen-lockfile
-          pnpm bootstrap
+          pnpm build
+          pnpm parallel:cache -- prepare
+          pnpm python:precompile:run
+          node scripts/build-production-native-kernels.cjs
+          node bin/sagejs --version
+          printf 'print(factor(2026))\n' | node bin/sagejs | grep -Fx '2 * 1013'
       - name: Run exactly the public browser release programs in Node
         run: |
           node packages/flint-wasm/test/browser-wasm-node-parity.cjs \
@@ -82,18 +113,25 @@ jobs:
           cache: pnpm
       - name: Fetch every pinned build source from the private R2 mirror
         run: |
-          node packages/flint-wasm/scripts/source-mirror.mjs fetch \
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
             --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
       - run: pnpm install --frozen-lockfile
       - id: toolchain
-        run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v6
         with:
           path: ${{ steps.toolchain.outputs.path }}
-          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/toolchain/lock.json') }}
-      - name: Build without an ambient CoWasm checkout
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
+      - name: Build from the Sage.js-owned direct WASI toolchain
         run: |
-          node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/probe.cjs
+          mkdir -p build
+          cp "$(node packages/wasm-toolchain/scripts/toolchain.cjs path)/receipt.json" \
+            "build/toolchain-${{ matrix.replica }}.json"
           pnpm build
           pnpm --dir packages/flint-wasm build
           node packages/flint-wasm/scripts/production-receipt.cjs validate
@@ -109,10 +147,114 @@ jobs:
           path: |
             packages/flint-wasm/dist
             build/wasm-artifact-${{ matrix.replica }}.json
+            build/toolchain-${{ matrix.replica }}.json
+          if-no-files-found: error
+
+  cross-platform-toolchain:
+    name: Direct toolchain and artifact (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    environment: sagejs-source-mirror
+    timeout-minutes: 240
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      SAGEJS_WASM_SOURCE_MIRROR_DIR: /tmp/sagejs-wasm-source-mirror-cross
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: darwin-arm64
+            runner: macos-15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - name: Fetch authenticated sources without an upstream fallback
+        run: |
+          node tools/source-mirror/scripts/source-mirror.mjs fetch \
+            --output "$SAGEJS_WASM_SOURCE_MIRROR_DIR"
+      - run: pnpm install --frozen-lockfile
+      - id: toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.toolchain.outputs.path }}
+          key: sagejs-wasm-toolchain-v2-${{ matrix.platform }}-${{ steps.toolchain.outputs.identity }}
+      - name: Prepare, probe, and link the exact artifact
+        run: |
+          mkdir -p build
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          cp "$(node packages/wasm-toolchain/scripts/toolchain.cjs path)/receipt.json" \
+            "build/toolchain-${{ matrix.platform }}.json"
+          node packages/wasm-toolchain/scripts/probe.cjs \
+            > "build/wasi-probe-${{ matrix.platform }}.json"
+          pnpm build
+          pnpm --dir packages/flint-wasm build
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node packages/flint-wasm/scripts/wasm-abi-allowlist.cjs --check
+          node --test packages/flint-wasm/test/factor.test.mjs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-cross-platform-${{ matrix.platform }}
+          path: |
+            packages/flint-wasm/dist
+            build/toolchain-${{ matrix.platform }}.json
+            build/wasi-probe-${{ matrix.platform }}.json
+          if-no-files-found: error
+
+  windows-prebuilt-artifact:
+    name: Authenticated prebuilt artifact (windows-x64)
+    needs: clean-build
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore and validate without preparing a POSIX toolchain
+        shell: pwsh
+        run: |
+          Remove-Item packages/flint-wasm/dist -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist -Recurse
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+          node packages/flint-wasm/node-cli.mjs --verify-only
+          node packages/flint-wasm/node-cli.mjs `
+            --diagnostics-file build/windows-wasm-diagnostics.json `
+            -c "print(factor(2026))"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm-windows-x64-receipt
+          path: build/windows-wasm-diagnostics.json
           if-no-files-found: error
 
   reproducibility:
-    needs: clean-build
+    needs: [clean-build, cross-platform-toolchain]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -128,12 +270,33 @@ jobs:
         with:
           name: wasm-clean-build-b
           path: build/b
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-cross-platform-linux-arm64
+          path: build/linux-arm64
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-cross-platform-darwin-arm64
+          path: build/darwin-arm64
       - name: Require byte-identical production artifacts
         run: |
+          node packages/wasm-toolchain/scripts/compare-receipts.cjs \
+            build/a/build/toolchain-a.json \
+            build/linux-arm64/build/toolchain-linux-arm64.json \
+            build/darwin-arm64/build/toolchain-darwin-arm64.json \
+            > build/reproducible-toolchains.json
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
             --dist build/a/packages/flint-wasm/dist \
             --compare build/b/packages/flint-wasm/dist \
             --output build/reproducible-artifact.json
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --dist build/a/packages/flint-wasm/dist \
+            --compare-payload build/linux-arm64/packages/flint-wasm/dist \
+            --output build/reproducible-linux-arm64.json
+          node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
+            --dist build/a/packages/flint-wasm/dist \
+            --compare-payload build/darwin-arm64/packages/flint-wasm/dist \
+            --output build/reproducible-darwin-arm64.json
           tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
             -C build/a/packages/flint-wasm -czf build/sagejs-wasm.tar.gz dist
           sha256sum build/sagejs-wasm.tar.gz > build/sagejs-wasm.tar.gz.sha256
@@ -148,9 +311,12 @@ jobs:
             build/sagejs-wasm.tar.gz
             build/sagejs-wasm.tar.gz.sha256
             build/reproducible-artifact.json
+            build/reproducible-linux-arm64.json
+            build/reproducible-darwin-arm64.json
+            build/reproducible-toolchains.json
 
-  browser-release:
-    needs: [clean-build, node-oracle]
+  browser-parity:
+    needs: clean-build
     name: Public parity (${{ matrix.engine }})
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -158,6 +324,52 @@ jobs:
       fail-fast: false
       matrix:
         engine: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore the validated artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - run: pnpm exec playwright-core install --with-deps ${{ matrix.engine }}
+      - name: Run the complete public mathematical corpus
+        run: |
+          node packages/flint-wasm/test/browser-wasm-parity.mjs \
+            --tier release \
+            --engines ${{ matrix.engine }} \
+            --require-engines ${{ matrix.engine }} \
+            --receipt build/wasm-parity-${{ matrix.engine }}.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-browser-parity-${{ matrix.engine }}-receipts
+          path: build/wasm-parity-${{ matrix.engine }}.json
+          if-no-files-found: error
+
+  browser-performance:
+    needs: [clean-build, node-oracle]
+    name: Public performance (${{ matrix.engine }}, shard ${{ matrix.shard }} of 4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -184,29 +396,85 @@ jobs:
           cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
           node packages/flint-wasm/scripts/production-receipt.cjs validate
       - run: pnpm exec playwright-core install --with-deps ${{ matrix.engine }}
-      - name: Run the complete public mathematical corpus
+      - name: Run one deterministic performance shard
         run: |
-          node packages/flint-wasm/test/browser-wasm-parity.mjs \
-            --tier release \
-            --engines ${{ matrix.engine }} \
-            --require-engines ${{ matrix.engine }} \
-            --receipt build/wasm-parity-${{ matrix.engine }}.json
           node bench/browser-wasm-performance.mjs \
             --engine ${{ matrix.engine }} --samples 3 \
+            --shard ${{ matrix.shard }}/4 \
             --native-reference build/node-reference/wasm-performance-node-native.json \
             --budget bench/browser-wasm-budget.json \
             --require-baseline \
-            --output build/wasm-performance-${{ matrix.engine }}.json
-      - name: Exercise security, interruption, offline, upgrade, and rollback
-        if: matrix.engine == 'chromium'
+            --output build/wasm-performance-${{ matrix.engine }}-shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: wasm-browser-performance-${{ matrix.engine }}-${{ matrix.shard }}-receipts
+          path: build/wasm-performance-${{ matrix.engine }}-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+
+  browser-security-chromium:
+    needs: clean-build
+    name: Chromium security, interruption, offline, upgrade, and rollback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore the validated artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - run: pnpm exec playwright-core install --with-deps chromium
+      - name: Exercise Chromium security and offline contracts
         run: |
           node --test packages/flint-wasm/test/browser-wasm-wasi-quota.test.mjs
           node packages/flint-wasm/test/browser-wasm-serialization.mjs
           node packages/flint-wasm/test/browser-wasm-security.mjs
           node packages/flint-wasm/test/browser-wasm-offline-cache.mjs
           node website/live/test/browser-cache-integrity.mjs
+
+  browser-webkit-recovery:
+    needs: clean-build
+    name: WebKit file-origin, memory pressure, and kernel recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm-clean-build-a
+          path: build/prebuilt
+      - name: Restore the validated artifact
+        run: |
+          rm -rf packages/flint-wasm/dist
+          cp -a build/prebuilt/packages/flint-wasm/dist packages/flint-wasm/dist
+          node packages/flint-wasm/scripts/production-receipt.cjs validate
+      - run: pnpm exec playwright-core install --with-deps webkit
       - name: Exercise WebKit memory pressure and kernel recovery
-        if: matrix.engine == 'webkit'
         run: |
           node packages/flint-wasm/test/browser-wasm-webkit-file-origin.mjs \
             --receipt build/wasm-file-origin-webkit.json
@@ -215,8 +483,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: wasm-browser-${{ matrix.engine }}-receipts
-          path: build/wasm-*-${{ matrix.engine }}.json
+          name: wasm-webkit-recovery-receipts
+          path: |
+            build/wasm-file-origin-webkit.json
+            build/wasm-memory-webkit.json
           if-no-files-found: error
 
   node-wasm-cli:
@@ -258,7 +528,7 @@ jobs:
 
   workload-enforcement:
     name: Reject silent portable computation
-    needs: browser-release
+    needs: [browser-parity, browser-performance]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -276,3 +546,33 @@ jobs:
           merge-multiple: true
           path: .artifacts/wasm-workload-receipts
       - run: pnpm wasm:workload-enforce
+
+  browser-release-gates:
+    name: Browser release gates
+    if: ${{ always() }}
+    needs:
+      - browser-parity
+      - browser-performance
+      - browser-security-chromium
+      - browser-webkit-recovery
+      - workload-enforcement
+    runs-on: ubuntu-24.04
+    env:
+      PARITY_RESULT: ${{ needs.browser-parity.result }}
+      PERFORMANCE_RESULT: ${{ needs.browser-performance.result }}
+      CHROMIUM_SECURITY_RESULT: ${{ needs.browser-security-chromium.result }}
+      WEBKIT_RECOVERY_RESULT: ${{ needs.browser-webkit-recovery.result }}
+      WORKLOAD_ENFORCEMENT_RESULT: ${{ needs.workload-enforcement.result }}
+    steps:
+      - name: Require every independent browser gate
+        run: |
+          set -euo pipefail
+          for result in \
+            "$PARITY_RESULT" \
+            "$PERFORMANCE_RESULT" \
+            "$CHROMIUM_SECURITY_RESULT" \
+            "$WEBKIT_RECOVERY_RESULT" \
+            "$WORKLOAD_ENFORCEMENT_RESULT"
+          do
+            test "$result" = success
+          done

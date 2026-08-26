@@ -1,0 +1,233 @@
+{
+  "schema": "sagejs.hyperelliptic-release-evidence-index/v1",
+  "source_bundle": {
+    "algorithm": "sagejs.source-bundle-sha256/v1",
+    "paths": [
+      "packages/flint-wasm/auto-receipt-policy.mjs",
+      "packages/flint-wasm/evaluator.mjs",
+      "packages/flint-wasm/release/production-layout.json",
+      "packages/flint-wasm/scripts/build.cjs",
+      "packages/flint/src/addon.h",
+      "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+      "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+      "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+      "tools/native-kernel/wasm-bridge.cjs",
+      "tools/runtime-bootstrap.ts",
+      "tools/task-evaluator.ts"
+    ],
+    "sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+    "source_commit": "b25ffdd128cb19d95c979133349fb205a40f26e4"
+  },
+  "artifacts": [
+    {
+      "id": "missing-artifact",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1.json",
+      "sha256": "a730b02cb75136f776de8e38d7a1c7b15ce4fc5f8155beee5d5ed76eef0ccc07",
+      "assertions": [
+        "forced dynamic mode reports source-transparent artifact unavailable",
+        "dynamic and native exact digests agree"
+      ]
+    },
+    {
+      "id": "cancellation",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-extras.json",
+      "sha256": "4262554201e882570b83e0e843993b26edc93d0d90eb5f1657ce8904c74c326e",
+      "assertions": [
+        "bounded evaluator cancellation exits 124",
+        "fresh evaluator recovery returns 42"
+      ]
+    },
+    {
+      "id": "memory-exhaustion",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-extras.json",
+      "sha256": "4262554201e882570b83e0e843993b26edc93d0d90eb5f1657ce8904c74c326e",
+      "assertions": [
+        "undersized bounded output is rejected",
+        "short output remains unchanged"
+      ]
+    },
+    {
+      "id": "worker-loss",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-extras.json",
+      "sha256": "4262554201e882570b83e0e843993b26edc93d0d90eb5f1657ce8904c74c326e",
+      "assertions": [
+        "timed-out worker is discarded",
+        "fresh worker recovery returns 42"
+      ]
+    },
+    {
+      "id": "missing-artifact",
+      "platform": "linux-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-arm64-b25ffdd1.json",
+      "sha256": "4bf08438fe6e9eeb062fcf30d1bbd4247fb7cf629d8d06dea84037db6858246f",
+      "assertions": [
+        "forced dynamic mode reports source-transparent artifact unavailable",
+        "dynamic and native exact digests agree"
+      ]
+    },
+    {
+      "id": "cancellation",
+      "platform": "linux-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-arm64-b25ffdd1-extras.json",
+      "sha256": "9072c16a4637c0f743423e6b622461ff23a345fc9ce9f4deda4009821a894bbc",
+      "assertions": [
+        "bounded evaluator cancellation exits 124",
+        "fresh evaluator recovery returns 42"
+      ]
+    },
+    {
+      "id": "memory-exhaustion",
+      "platform": "linux-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-arm64-b25ffdd1-extras.json",
+      "sha256": "9072c16a4637c0f743423e6b622461ff23a345fc9ce9f4deda4009821a894bbc",
+      "assertions": [
+        "undersized bounded output is rejected",
+        "short output remains unchanged"
+      ]
+    },
+    {
+      "id": "worker-loss",
+      "platform": "linux-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-arm64-b25ffdd1-extras.json",
+      "sha256": "9072c16a4637c0f743423e6b622461ff23a345fc9ce9f4deda4009821a894bbc",
+      "assertions": [
+        "timed-out worker is discarded",
+        "fresh worker recovery returns 42"
+      ]
+    },
+    {
+      "id": "missing-artifact",
+      "platform": "darwin-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/macos-arm64-b25ffdd1.json",
+      "sha256": "8124ccef437631853fd27d7e2dab8a69db1aa775ba92fd13d556285b05a53794",
+      "assertions": [
+        "forced dynamic mode reports source-transparent artifact unavailable",
+        "dynamic and native exact digests agree"
+      ]
+    },
+    {
+      "id": "cancellation",
+      "platform": "darwin-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/macos-arm64-b25ffdd1-extras.json",
+      "sha256": "cccd9b5df86acd79a2780ce564adc15fd91197154536f10d3bc2e430fe82b4d5",
+      "assertions": [
+        "bounded evaluator cancellation exits 124",
+        "fresh evaluator recovery returns 42"
+      ]
+    },
+    {
+      "id": "memory-exhaustion",
+      "platform": "darwin-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/macos-arm64-b25ffdd1-extras.json",
+      "sha256": "cccd9b5df86acd79a2780ce564adc15fd91197154536f10d3bc2e430fe82b4d5",
+      "assertions": [
+        "undersized bounded output is rejected",
+        "short output remains unchanged"
+      ]
+    },
+    {
+      "id": "worker-loss",
+      "platform": "darwin-arm64",
+      "path": "bench/hyperelliptic/cross-platform/results/macos-arm64-b25ffdd1-extras.json",
+      "sha256": "cccd9b5df86acd79a2780ce564adc15fd91197154536f10d3bc2e430fe82b4d5",
+      "assertions": [
+        "timed-out worker is discarded",
+        "fresh worker recovery returns 42"
+      ]
+    },
+    {
+      "id": "missing-artifact",
+      "platform": "win32-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/windows-x64-b25ffdd1.json",
+      "sha256": "fbee9a66446850880bcf51941d5031896dffa5601b3caa7a15478744200475c4",
+      "assertions": [
+        "forced dynamic mode reports source-transparent artifact unavailable",
+        "dynamic and native exact digests agree"
+      ]
+    },
+    {
+      "id": "cancellation",
+      "platform": "win32-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/windows-x64-b25ffdd1-extras.json",
+      "sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470",
+      "assertions": [
+        "bounded evaluator cancellation exits 124",
+        "fresh evaluator recovery returns 42"
+      ]
+    },
+    {
+      "id": "memory-exhaustion",
+      "platform": "win32-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/windows-x64-b25ffdd1-extras.json",
+      "sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470",
+      "assertions": [
+        "undersized bounded output is rejected",
+        "short output remains unchanged"
+      ]
+    },
+    {
+      "id": "worker-loss",
+      "platform": "win32-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/windows-x64-b25ffdd1-extras.json",
+      "sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470",
+      "assertions": [
+        "timed-out worker is discarded",
+        "fresh worker recovery returns 42"
+      ]
+    },
+    {
+      "id": "cache-corruption",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-cache-corruption.stdout",
+      "sha256": "c3d8b7987af2245c06e8465079adfa50e72911b4b9d914ae941b7132888f0a38",
+      "assertions": [
+        "changed production asset invalidates its authenticated receipt",
+        "artifact identity binds layout and content"
+      ]
+    },
+    {
+      "id": "address",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-cantor-sanitizers.json",
+      "sha256": "dcc8e2108782acb95b17947f72aa42fea0cc58a861babb7bb04d661c2695d6ab",
+      "assertions": [
+        "address sanitizer executes add, scalar, and progression",
+        "genus-2 and genus-3 exact digests match the standalone corpus"
+      ]
+    },
+    {
+      "id": "undefined",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-cantor-sanitizers.json",
+      "sha256": "dcc8e2108782acb95b17947f72aa42fea0cc58a861babb7bb04d661c2695d6ab",
+      "assertions": [
+        "undefined sanitizer executes add, scalar, and progression",
+        "genus-2 and genus-3 exact digests match the standalone corpus"
+      ]
+    },
+    {
+      "id": "leak",
+      "platform": "linux-x64",
+      "path": "bench/hyperelliptic/cross-platform/results/linux-x64-b25ffdd1-cantor-sanitizers.json",
+      "sha256": "dcc8e2108782acb95b17947f72aa42fea0cc58a861babb7bb04d661c2695d6ab",
+      "assertions": [
+        "leak sanitizer executes add, scalar, and progression",
+        "genus-2 and genus-3 exact digests match the standalone corpus"
+      ]
+    }
+  ]
+}

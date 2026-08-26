@@ -56,6 +56,11 @@ assrt.deepEqual(
         [1, 1, 1, 1, 1],
     ],
 )
+assrt.equal(Partitions(5).cardinality(), 7)
+assrt.equal(number_of_partitions(100), 190569292)
+assrt.equal(str(Partition([3, 1]).conjugate()), "[2, 1, 1]")
+assrt.deepEqual(Partitions(5, length=2).list(), [[4, 1], [3, 2]])
+assrt.equal(Partitions(5).rank(Partitions(5).unrank(4)), 4)
 R97 = IntegerModRing(97)
 assrt.ok(R97(33).rational_reconstruction() == QQ(2, 3))
 R = PolynomialRing(ZZ, "x")
@@ -544,6 +549,10 @@ assrt.equal(repr(r), "1.20000000000000")
 assrt.equal(repr(RR(1) / RR(3)), "0.333333333333333")
 assrt.equal(repr(RR(1) / RR(0)), "+infinity")
 assrt.equal(repr(RR(2) ** -3), "0.125000000000000")
+
+assrt.ok(parent(float(1)) is RDF)
+assrt.ok(float(1) in QQ)
+assrt.ok(float(-0.0) in QQ)
 
 z = CC(1, 2)
 assrt.equal(parent(z), CC)

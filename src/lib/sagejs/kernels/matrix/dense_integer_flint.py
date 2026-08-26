@@ -16,6 +16,7 @@ from sagejs.ffi.flint import (
     fmpz_mat_hnf,
     fmpz_mat_hnf_modular_eldiv,
     fmpz_mat_hnf_transform,
+    fmpz_mat_lll_transform,
     fmpz_mat_mul,
     fmpz_mat_rank,
     fmpz_mat_right_kernel,
@@ -55,6 +56,127 @@ def flint_dense_integer_matrix_determinant(
     one: uint64,
 ) -> bool:
     return fmpz_mat_det(output, source, size, one)
+
+
+@native
+def flint_relation_presentation_replay(
+    row_workspace_left: IntegerBuffer,
+    row_workspace_right: IntegerBuffer,
+    square_workspace: IntegerBuffer,
+    determinant_workspace: IntegerBuffer,
+    source: IntegerBuffer,
+    hnf: IntegerBuffer,
+    hnf_left: IntegerBuffer,
+    smith: IntegerBuffer,
+    smith_left: IntegerBuffer,
+    smith_right: IntegerBuffer,
+    smith_right_inverse: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+    one: uint64,
+) -> int:
+    """Replay the exact matrix identities in one isolated FLINT call.
+
+    The result is `1` for a valid replay, `0` for an exact mismatch, and `-1`
+    when the packed ABI or a declared FLINT operation is unavailable.  The
+    caller can therefore retain its ordinary exact verifier as a fallback
+    without treating a failed acceleration attempt as proof evidence.
+    """
+    maximum_dimension: uint64 = 256
+    row_entries = rows * columns
+    square_entries = columns * columns
+    valid = rows > 0 and columns > 0
+    if rows > maximum_dimension or columns > maximum_dimension:
+        valid = False
+    if len(row_workspace_left) != row_entries:
+        valid = False
+    if len(row_workspace_right) != row_entries:
+        valid = False
+    if len(square_workspace) != square_entries:
+        valid = False
+    if len(determinant_workspace) != 1:
+        valid = False
+    if len(source) != row_entries or len(hnf) != row_entries:
+        valid = False
+    if len(hnf_left) != rows * rows:
+        valid = False
+    if len(smith) != row_entries or len(smith_left) != rows * rows:
+        valid = False
+    if len(smith_right) != square_entries:
+        valid = False
+    if len(smith_right_inverse) != square_entries:
+        valid = False
+    if not valid:
+        return -1
+
+    if not fmpz_mat_mul(row_workspace_left, hnf_left, source, rows, rows, columns):
+        return -1
+    for index in range(row_entries):
+        if row_workspace_left[index] != hnf[index]:
+            return 0
+
+    if not fmpz_mat_mul(row_workspace_left, smith_left, source, rows, rows, columns):
+        return -1
+    if not fmpz_mat_mul(
+        row_workspace_right,
+        row_workspace_left,
+        smith_right,
+        rows,
+        columns,
+        columns,
+    ):
+        return -1
+    for index in range(row_entries):
+        if row_workspace_right[index] != smith[index]:
+            return 0
+
+    if not fmpz_mat_mul(
+        square_workspace,
+        smith_right_inverse,
+        smith_right,
+        columns,
+        columns,
+        columns,
+    ):
+        return -1
+    for row in range(columns):
+        for column in range(columns):
+            expected = 0
+            if row == column:
+                expected = 1
+            if square_workspace[row * columns + column] != expected:
+                return 0
+
+    if not fmpz_mat_mul(
+        square_workspace,
+        smith_right,
+        smith_right_inverse,
+        columns,
+        columns,
+        columns,
+    ):
+        return -1
+    for row in range(columns):
+        for column in range(columns):
+            expected = 0
+            if row == column:
+                expected = 1
+            if square_workspace[row * columns + column] != expected:
+                return 0
+
+    if not fmpz_mat_det(determinant_workspace, hnf_left, rows, one):
+        return -1
+    if determinant_workspace[0] != 1 and determinant_workspace[0] != -1:
+        return 0
+    if not fmpz_mat_det(determinant_workspace, smith_left, rows, one):
+        return -1
+    if determinant_workspace[0] != 1 and determinant_workspace[0] != -1:
+        return 0
+    if not fmpz_mat_det(determinant_workspace, smith_right, columns, one):
+        return -1
+    if determinant_workspace[0] != 1 and determinant_workspace[0] != -1:
+        return 0
+    return 1
 
 
 @native
@@ -116,6 +238,23 @@ def flint_dense_integer_matrix_hnf_transform(
     columns: uint64,
 ) -> bool:
     return fmpz_mat_hnf_transform(
+        output,
+        transform,
+        source,
+        rows,
+        columns,
+    )
+
+
+@native
+def flint_dense_integer_matrix_lll_transform(
+    output: IntegerBuffer,
+    transform: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    columns: uint64,
+) -> bool:
+    return fmpz_mat_lll_transform(
         output,
         transform,
         source,
@@ -355,6 +494,7 @@ __all__ = [
     "flint_dense_integer_matrix_hnf",
     "flint_dense_integer_matrix_hnf_transform",
     "flint_dense_integer_matrix_mul",
+    "flint_relation_presentation_replay",
     "flint_dense_integer_matrix_rank",
     "flint_dense_integer_matrix_right_kernel",
     "flint_dense_integer_matrix_snf_transform",

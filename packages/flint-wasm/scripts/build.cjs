@@ -15,7 +15,7 @@ const {
 } = require("../src/curves/core-source.cjs");
 const {
   resolveToolchain,
-} = require("./wasm-toolchain.cjs");
+} = require("../../wasm-toolchain/scripts/toolchain.cjs");
 const {
   runtimeHostAssets,
   verifyWasmMemoryContract,
@@ -25,12 +25,26 @@ const autoReceiptPolicyApi = require(
   "../../../tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs"
 );
 const { kernelPackExports } = require("./kernel-pack-exports.cjs");
+const wasmAbiAllowlist = path.join(__dirname, "wasm-abi-allowlist.cjs");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
 const toolchain = resolveToolchain({ root: repositoryRoot });
 const clang = toolchain.paths.clang;
 const sysroot = toolchain.paths.sysroot;
+function pathRemappingFlags(source, destination) {
+  return ["file", "debug", "macro"].map(
+    (kind) => `-f${kind}-prefix-map=${source}=${destination}`,
+  );
+}
+const targetCompileFlags = [
+  `--target=${toolchain.lock.build.target}`,
+  ...toolchain.lock.build.cFlags,
+  // The last matching map wins. The prepared toolchain can live below the Git
+  // common directory, so put its more specific mapping after the source root.
+  ...pathRemappingFlags(repositoryRoot, "/sagejs/source"),
+  ...pathRemappingFlags(toolchain.root, "/sagejs/toolchain"),
+];
 const wasmStrip = toolchain.paths.llvmStrip;
 const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
   name,
@@ -118,6 +132,16 @@ const compilerFrontendMetafile = path.join(
   outputDirectory,
   "compiler-frontend.metafile.json",
 );
+const foreignFrontendOutput = path.join(outputDirectory, "foreign-frontend.mjs");
+const foreignFrontendBuildHelper = path.join(
+  packageRoot,
+  "scripts",
+  "build-foreign-frontend.cjs",
+);
+const foreignFrontendMetafile = path.join(
+  outputDirectory,
+  "foreign-frontend.metafile.json",
+);
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const lazyModulesOutput = path.join(outputDirectory, "lazy-modules.json");
@@ -131,6 +155,12 @@ const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const symbolicBackendOutput = path.join(
   outputDirectory,
   "symbolic-backend.mjs",
+);
+const numpyBackendOutput = path.join(outputDirectory, "numpy-ts.mjs");
+const numpyBackendSource = path.resolve(
+  path.dirname(require.resolve("numpy-ts")),
+  "..",
+  "numpy-ts.browser.js",
 );
 const serializationOutput = path.join(
   outputDirectory,
@@ -211,9 +241,24 @@ const compilerResourceShim = path.join(
   "src",
   "compiler-resources.ts",
 );
+const browserMagmaEnvironmentShim = path.join(
+  packageRoot,
+  "src",
+  "browser-magma-environment.ts",
+);
+const treeSitterAssets = [
+  "web-tree-sitter.wasm",
+  "tree-sitter-python.wasm",
+  "tree-sitter-sage.wasm",
+  "tree-sitter-magma.wasm",
+  "tree-sitter-macaulay2.wasm",
+  "tree-sitter-maple.wasm",
+  "tree-sitter-matlab.wasm",
+  "tree-sitter-wolfram.wasm",
+];
 const adapterInputsFilename = path.join(
   packageRoot,
-  "toolchain",
+  "release",
   "adapter-inputs.json",
 );
 const adapterInputs = JSON.parse(fs.readFileSync(adapterInputsFilename, "utf8"));
@@ -248,7 +293,7 @@ function requirePath(description, filename) {
     throw new Error(
       `missing ${description}: ${filename}\n` +
         "Prepare the pinned toolchain with `node " +
-        "packages/flint-wasm/scripts/wasm-toolchain.cjs prepare`.",
+        "packages/wasm-toolchain/scripts/toolchain.cjs prepare`.",
     );
   }
 }
@@ -282,11 +327,8 @@ requirePath(
   "built Sage.js baselib (run `pnpm build` first)",
   baselibSource,
 );
-for (const filename of [
-  "web-tree-sitter.wasm",
-  "tree-sitter-python.wasm",
-  "tree-sitter-sage.wasm",
-]) {
+requirePath("pinned numpy-ts browser bundle", numpyBackendSource);
+for (const filename of treeSitterAssets) {
   requirePath(
     `built ${filename} (run \`pnpm build\` first)`,
     path.join(vendorDirectory, filename),
@@ -312,6 +354,12 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+// Earlier builds copied these source modules beside the bundled runtime. They
+// are no longer served or receipted; remove them explicitly when resuming a
+// package build so the physical dist directory is as clean as its manifest.
+for (const filename of ["wasi-constants.mjs", "wasi-filesystem.mjs"]) {
+  fs.rmSync(path.join(outputDirectory, filename), { force: true });
+}
 fs.copyFileSync(
   path.join(repositoryRoot, "architecture", "wasm-capability-api.mjs"),
   capabilityApiOutput,
@@ -641,7 +689,7 @@ if (reuseLinkedArtifacts) {
   kernelPackReceiptInputs = buildKernelPacks({ reuseLinkedArtifacts: true });
 } else {
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-Oz",
   ...includeArguments,
@@ -670,7 +718,7 @@ run(wasmStrip, ["--strip-all", rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
 verifyWasmMemoryContract(output, productionModules.get("flint").memory);
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-O2",
   "-isystem",
@@ -691,7 +739,7 @@ run(wasmStrip, ["--strip-all", m4riRawOutput, "-o", m4riOutput]);
 fs.rmSync(m4riRawOutput);
 verifyWasmMemoryContract(m4riOutput, productionModules.get("m4ri").memory);
 run(clang, [
-  ...toolchain.lock.build.cFlags,
+  ...targetCompileFlags,
   `--sysroot=${sysroot}`,
   "-Oz",
   ...includeArguments,
@@ -716,15 +764,6 @@ verifyWasmMemoryContract(
 );
 kernelPackReceiptInputs = buildKernelPacks();
 }
-const browserPolyfills = {
-  assert: require.resolve("assert/"),
-  buffer: require.resolve("buffer/"),
-  events: require.resolve("events/"),
-  path: require.resolve("path-browserify"),
-  process: require.resolve("process/browser"),
-  stream: require.resolve("stream-browserify"),
-  util: require.resolve("util/"),
-};
 const wasiRuntimeBuild = esbuild.buildSync({
   absWorkingDir: repositoryRoot,
   entryPoints: [path.join(packageRoot, "src", "wasi-runtime.mjs")],
@@ -733,8 +772,6 @@ const wasiRuntimeBuild = esbuild.buildSync({
   platform: "browser",
   target: ["es2022"],
   outfile: wasiRuntimeOutput,
-  inject: [path.join(packageRoot, "src", "node-globals.mjs")],
-  alias: browserPolyfills,
   metafile: true,
 });
 const symbolicBackendBuild = esbuild.buildSync({
@@ -772,13 +809,22 @@ run(process.execPath, [
 const compilerFrontendBuild = {
   metafile: JSON.parse(fs.readFileSync(compilerFrontendMetafile, "utf8")),
 };
+run(process.execPath, [
+  foreignFrontendBuildHelper,
+  path.join(packageRoot, "src", "foreign-frontend-entry.ts"),
+  foreignFrontendOutput,
+  compilerResourceShim,
+  browserMagmaEnvironmentShim,
+  require.resolve("path-browserify", { paths: [packageRoot] }),
+  foreignFrontendMetafile,
+]);
+const foreignFrontendBuild = {
+  metafile: JSON.parse(fs.readFileSync(foreignFrontendMetafile, "utf8")),
+};
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
-for (const filename of [
-  "web-tree-sitter.wasm",
-  "tree-sitter-python.wasm",
-  "tree-sitter-sage.wasm",
-]) {
+fs.copyFileSync(numpyBackendSource, numpyBackendOutput);
+for (const filename of treeSitterAssets) {
   fs.copyFileSync(
     path.join(vendorDirectory, filename),
     path.join(outputDirectory, filename),
@@ -938,6 +984,12 @@ console.log(
     `${(fs.statSync(standardLibraryOutput).size / 1024 / 1024).toFixed(2)} MiB, ` +
     `lazy ${(fs.statSync(lazyModulesOutput).size / 1024 / 1024).toFixed(2)} MiB`,
 );
+run(process.execPath, [
+  wasmAbiAllowlist,
+  "--check",
+  "--dist",
+  outputDirectory,
+]);
 const receipt = writeProductionReceipt({
   repositoryRoot,
   packageRoot,
@@ -966,12 +1018,15 @@ const receipt = writeProductionReceipt({
       symbolicBackendBuild,
       serializationBuild,
       compilerFrontendBuild,
+      foreignFrontendBuild,
     ]),
     compilerSource,
     baselibSource,
+    numpyBackendSource,
     compilerFrontendBuildHelper,
-    ...["web-tree-sitter.wasm", "tree-sitter-python.wasm", "tree-sitter-sage.wasm"]
-      .map((name) => path.join(vendorDirectory, name)),
+    foreignFrontendBuildHelper,
+    browserMagmaEnvironmentShim,
+    ...treeSitterAssets.map((name) => path.join(vendorDirectory, name)),
     ...runtimeHostClosure.map(({ source }) => source),
     autoReceiptPolicySource,
     path.join(
@@ -1005,7 +1060,7 @@ function compilerDependencyClosure(sources, arguments_) {
   const files = new Set();
   for (const source of sources) {
     const result = spawnSync(clang, [
-      ...toolchain.lock.build.cFlags.filter(
+      ...targetCompileFlags.filter(
         (flag) => !flag.startsWith("-mexec-model="),
       ),
       `--sysroot=${sysroot}`,
@@ -1171,7 +1226,7 @@ function buildKernelPacks({ reuseLinkedArtifacts = false } = {}) {
       : ["gmp", "m", "wasi-emulated-signal"];
     if (!reuseLinkedArtifacts) {
       run(clang, [
-      ...toolchain.lock.build.cFlags,
+      ...targetCompileFlags,
       // Whole generated cores intentionally retain alternate lowering helpers
       // which are not reachable from the reviewed bridge export subset.
       "-Wno-unused-function",

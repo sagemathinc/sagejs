@@ -18,6 +18,21 @@
       }
     },
     {
+      "id": "partition-count-and-ranking",
+      "family": "enumerative-combinatorics",
+      "workflow": "partition-count-and-ranking",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:arith_number_of_partitions", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "value=number_of_partitions(10^6)\nC=Partitions(100,max_part=20)\np=C.unrank(12345)\nprint(len(str(value)),value%10^12)\nprint(C.cardinality(),C.rank(p),p)\nlarge=Partitions(10000)\ntry:\n    large.unrank(1)\nexcept RuntimeError as error:\n    print(str(error),large._table is None)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1108 467104673818\n97132873 12345 [20, 20, 20, 12, 11, 5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]\npartition ranking table requires 50015001 cells, exceeding the reviewed maximum 1000000 True\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "capability-report-api",
       "family": "runtime",
       "workflow": "capability-report-api",
@@ -29,6 +44,21 @@
       "timeout_ms": 15000,
       "expect": {
         "stdout": "True True True\nimmutable\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "python-float-underscore-separators",
+      "family": "python-compatibility",
+      "workflow": "python-float-underscore-separators",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:capability-report-api", "route": "shared-runtime-js" }
+      ],
+      "source": "sagejs_capabilities('runtime')\nprint(1_000_000.0 == 1000000.0, float('1_00_00.5e5') == 10000.5e5, float(b'.1_4') == .14)\ninvalid = 0\nfor text in ['1__0', '1_.0', '1._0', '1e_1', '_inf', 'nan_']:\n    try:\n        float(text)\n    except ValueError:\n        invalid += 1\nprint(invalid)",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\n6\n",
         "repr": ""
       }
     },
@@ -281,10 +311,10 @@
         { "id": "analytic:complex-gamma", "route": "receipt-backed-wasm-artifact" },
         { "id": "analytic:riemann-xi", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(gamma_batch[0])\nprint(gamma_batch[1])\nprint(xi_batch[0],xi_batch[1])\nprint(xi_batch[2])\nprint(xi_batch[3])",
+      "source": "gamma_batch=complex_gamma_values([[\"0.5\",\"0\"],[\"1\",\"1\"]],prec=160)\nxi_batch=riemann_xi_values([[\"0\",\"0\"],[\"1\",\"0\"],[\"0.5\",\"0\"],[\"2\",\"0\"]],prec=160)\nprint(float(gamma_batch[0].real()))\nprint(float(gamma_batch[1].real()),float(gamma_batch[1].imag()))\nprint(float(xi_batch[0].real()),float(xi_batch[1].real()))\nprint(float(xi_batch[2].real()),xi_batch[2].precision())\nprint(float(xi_batch[3].real()))",
       "timeout_ms": 30000,
       "expect": {
-        "stdout": "1.7724538509055160272981674833411451827975494561\n0.49801566811835604271369111746219809195296296759 - 0.15494982830181068512495513048388660519587965208*I\n1.0000000000000000000000000000000000000000000000 1.0000000000000000000000000000000000000000000000\n0.99424155637662821982554747937079543961458721912\n1.0471975511965977461542144610931676280657231331\n",
+        "stdout": "1.772453850905516\n0.49801566811835607 -0.15494982830181067\n1.0 1.0\n0.9942415563766283 160\n1.0471975511965979\n",
         "repr": ""
       }
     },
@@ -441,6 +471,21 @@
       "timeout_ms": 60000,
       "expect": {
         "stdout": "0265c0622cb1dde8aeed6412f652395dd4bbddd633c0a545440646753b3d76cc\n7203 True True\nTrue True True\nTrue True True\nTrue True\nTrue 5 2 1\nTrue True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numpy-vertical-slice",
+      "family": "numerical",
+      "workflow": "numpy-vertical-slice",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:numpy-ts", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "import numpy as np\na = np.arange(12, dtype=np.int32).reshape(3, 4)\nview = a[:, 1:3]\nview[0, 0] = 99\nprint(type(a).__name__, a.dtype.name, a.shape)\nprint((a + 2).sum(axis=0).tolist())\nprint(round(float(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]]))), 10))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "ndarray int32 (3, 4)\n[18, 119, 24, 27]\n0.75\n",
         "repr": ""
       }
     },

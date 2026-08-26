@@ -200,6 +200,14 @@ function main() {
   const sanitizerPath = join(results, "linux-x64-2f1e2964-cantor-sanitizers.json");
   const sanitizer = readJson(sanitizerPath);
   assert.equal(sanitizer.schema, "sagejs.hyperelliptic-cantor-sanitizers/v1");
+  assert.equal(sanitizer.platform, "linux-x64");
+  assert.equal(sanitizer.source_commit, sourceCommit);
+  assert.equal(
+    sanitizer.source_sha256,
+    receipts["linux-x64"].repository.source_sha256[
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py"
+    ],
+  );
   assert.deepEqual(
     sanitizer.rows.map((row) => [row.sanitizer, row.status]),
     REQUIRED_SANITIZERS.map((name) => [name, "passed"]),

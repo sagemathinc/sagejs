@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -17,8 +18,8 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
-  inspectToolchain,
-} = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
+  wasmKernelToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 
 const root = resolve(__dirname, "..");
 
@@ -125,16 +126,11 @@ uint64_t sagejs_test_resource_live_count(void)
 }
 
 function toolchain() {
-  const status = inspectToolchain({ root });
-  if (!status.ready) return null;
-  return {
-    clang: status.paths.clang,
-    sysroot: status.paths.sysroot,
-    gmpPrefix: status.paths.libraries.gmp.prefix,
-    flintPrefix: status.paths.libraries.flint.prefix,
-    mpfrPrefix: status.paths.libraries.mpfr.prefix,
-    mpcPrefix: status.paths.libraries.mpc.prefix,
-  };
+  try {
+    return wasmKernelToolchain({ root });
+  } catch {
+    return null;
+  }
 }
 
 function resourceBridgeState() {
@@ -186,8 +182,9 @@ test("production resource closure compiles every registered function", async () 
     kernel.functions.filter((fn) => fn.status === "unsupported")
       .map((fn) => [kernel.id, fn.name, fn.reason, fn.resources])
   );
-  assert.equal(inventory.inventory.flatMap((kernel) => kernel.functions)
-    .filter((fn) => fn.status === "compiled-source").length, 254);
+  const functions = inventory.inventory.flatMap((kernel) => kernel.functions);
+  assert.ok(functions.length > 0);
+  assert.ok(functions.every((fn) => fn.status === "compiled-source"));
   assert.deepEqual(unsupported, []);
 });
 

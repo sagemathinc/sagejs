@@ -19,6 +19,9 @@ const ffiDeclarations = require("../tools/ffi/declarations.cjs");
 const ffiBoundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const ffiNativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 const {
+  descriptorSelectionReceipts,
+} = require("../tools/native-kernel/automatic-selection.cjs");
+const {
   checkGeneratedClassification,
 } = require("./check-generated-classification.cjs");
 
@@ -37,12 +40,26 @@ function repositoryPath(value, label) {
   return value;
 }
 
-function nativeFiles(root = ROOT, extensions = [".c", ".cc", ".cpp", ".cu", ".h"]) {
+function trackedNativeExtensions(root = ROOT) {
+  const manifest = readJson(join(root, "architecture", "native-code.json"));
+  const extensions = manifest.policy?.tracked_extensions;
+  if (
+    !Array.isArray(extensions) || extensions.length === 0 ||
+    extensions.some((extension) =>
+      typeof extension !== "string" || !/^\.[a-z0-9]+$/.test(extension)
+    ) || new Set(extensions).size !== extensions.length
+  ) {
+    throw new Error("native-code tracked_extensions must be unique file extensions");
+  }
+  return [...extensions];
+}
+
+function nativeFiles(root = ROOT, extensions = undefined) {
   const tracked = execFileSync("git", ["ls-files", "-z"], {
     cwd: root,
     encoding: "utf8",
   }).split("\0").filter(Boolean);
-  const allowed = new Set(extensions);
+  const allowed = new Set(extensions ?? trackedNativeExtensions(root));
   return tracked.filter((filename) => allowed.has(extname(filename))).sort();
 }
 
@@ -271,6 +288,20 @@ function validateKernelRegistry(manifest, options = {}) {
       throw new Error(`${kernel.id} references unknown benchmark ${kernel.benchmark}`);
     }
     const source = readFileSync(filename, "utf8");
+    const automaticSelections = descriptorSelectionReceipts(kernel);
+    for (const receipt of Object.values(automaticSelections)) {
+      for (const evidence of receipt.evidence) {
+        const evidencePath = repositoryPath(
+          evidence,
+          `${kernel.id}.automatic_selection.evidence`,
+        );
+        if (!existsSync(join(root, evidencePath))) {
+          throw new Error(
+            `${kernel.id} selection evidence is missing: ${evidencePath}`,
+          );
+        }
+      }
+    }
     for (const name of kernel.functions) {
       const definition = new RegExp(
         `@native\\s*(?:\\r?\\n)+def\\s+${name}\\s*\\(`,
@@ -376,6 +407,7 @@ if (require.main === module) {
 
 module.exports = {
   nativeFiles,
+  trackedNativeExtensions,
   validateNativeAudit,
   validateKernelRegistry,
   validateNativeCode,

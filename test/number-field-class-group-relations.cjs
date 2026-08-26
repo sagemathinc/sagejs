@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -18,6 +19,7 @@ const source = String.raw`
 import json
 import hashlib
 import time
+import sagejs.number_fields.class_group_relations as relation_module
 
 from sagejs.number_fields.ideal_arithmetic import (
     element_valuation,
@@ -30,6 +32,7 @@ from sagejs.number_fields.class_group_relations import (
     _integer_determinant,
     _matrix_times_rows,
     _nearest_integer,
+    _readable_exact_lll_reduce_with_transform,
     AutomorphismOrbitPlan,
     ExactRelationCollector,
     FactorBaseIdealReconstructor,
@@ -38,12 +41,15 @@ from sagejs.number_fields.class_group_relations import (
     IdealReductionResourceLimit,
     IdealReductionState,
     LLLRelationSearch,
+    MinkowskiLatticePlan,
     ModularRankScreen,
     RelationNotSmoothError,
     RelationRecord,
     RelationSearchState,
     exact_lll_reduce,
     factor_ideal_over_base,
+    factor_witness_over_base,
+    initial_rational_prime_relation_proposals,
     initial_rational_prime_relations,
     minkowski_lll_lattice,
     plan_automorphism_orbits,
@@ -85,11 +91,50 @@ for value in (K(2), K.gen() + 1, K.gen() / 2):
     )
 assert element_valuations(K(2), ()) == ()
 
+# Relation admission reuses the exact element norms already computed while
+# bounding valuations instead of taking a second determinant per factor.
+shared_norm_witness = FactoredPrincipalWitness(
+    K, ((K(2), 1), (K.gen() + 1, 2))
+)
+single_witness = FactoredPrincipalWitness.from_element(K.gen() + 1)
+assert single_witness.to_dict() == FactoredPrincipalWitness(
+    K, ((K.gen() + 1, 1),)
+).to_dict()
+assert FactoredPrincipalWitness.from_dict(K, single_witness.to_dict()).evaluate() == (
+    K.gen() + 1
+)
+shared_norm_expected = shared_norm_witness.norm()
+element_type = type(K.gen())
+original_element_norm = element_type.norm
+shared_norm_calls = 0
+def counted_element_norm(self):
+    global shared_norm_calls
+    shared_norm_calls += 1
+    return original_element_norm(self)
+element_type.norm = counted_element_norm
+try:
+    shared_norm_row, shared_norm_actual = (
+        relation_module._factor_witness_over_base_and_norm(
+            shared_norm_witness, factor_base
+        )
+    )
+finally:
+    element_type.norm = original_element_norm
+assert shared_norm_calls == len(shared_norm_witness.factors())
+assert shared_norm_actual == shared_norm_expected
+assert shared_norm_row == factor_witness_over_base(shared_norm_witness, factor_base)
+
 # The reconstruction accelerator is collector-local, bounded, and exactly
 # differential against the uncached public construction for signed rows.
 cached_reconstructor = FactorBaseIdealReconstructor(
     O, factor_base, max_rows=3, max_powers=2
 )
+# A one-prime exponent-one row is already in canonical ideal form.  Reuse the
+# immutable authenticated factor-base object instead of computing P^1 and
+# multiplying the unit ideal by it.
+assert reconstruct_factor_base_ideal(O, factor_base, (1, 0)) is factor_base[0]
+identity_reconstructor = FactorBaseIdealReconstructor(O, factor_base)
+assert identity_reconstructor.reconstruct((1, 0)) is factor_base[0]
 cache_rows = ((0, 0), (1, 0), (0, -1), (2, 1), (-1, 2))
 for cache_row in cache_rows:
     expected = reconstruct_factor_base_ideal(O, factor_base, cache_row)
@@ -111,7 +156,30 @@ class Context: pass
 context = Context()
 context.relations = []
 context.add_relation = lambda relation: context.relations.append(relation)
-collector = ExactRelationCollector(O, factor_base, context=context)
+factor_base_validation_calls = 0
+saved_validate_factor_base = relation_module._validate_factor_base
+def counted_validate_factor_base(*args, **kwargs):
+    global factor_base_validation_calls
+    factor_base_validation_calls += 1
+    return saved_validate_factor_base(*args, **kwargs)
+relation_module._validate_factor_base = counted_validate_factor_base
+try:
+    collector = ExactRelationCollector(O, factor_base, context=context)
+finally:
+    relation_module._validate_factor_base = saved_validate_factor_base
+assert factor_base_validation_calls == 1
+factor_base_validation_calls = 0
+relation_module._validate_factor_base = counted_validate_factor_base
+try:
+    sibling = collector.empty_verified_sibling()
+finally:
+    relation_module._validate_factor_base = saved_validate_factor_base
+assert factor_base_validation_calls == 0
+assert sibling.order is collector.order
+assert sibling.factor_base == collector.factor_base
+assert not sibling.records and not sibling.admissions
+assert sibling.reconstruction_diagnostics()["row_requests"] == 0
+assert sibling.admission_receipt_diagnostics()["entries"] == 0
 order_type = type(O)
 saved_factor_rational_prime = order_type.factor_rational_prime
 def forbidden_refactor(self, rational_prime, *args, **kwargs):
@@ -129,10 +197,194 @@ assert [[list(pair) for pair in item.record.sparse_row()] for item in initial] =
     [[1, 2]],
 ]
 collector_cache = collector.reconstruction_diagnostics()
-assert collector_cache["row_hits"] > 0
+assert collector_cache["row_requests"] == 0
+assert collector_cache["row_hits"] == 0
+assert collector_cache["row_misses"] == 0
 assert collector_cache["retained_ideal_objects"] <= (
     collector_cache["max_retained_ideal_objects"]
 )
+assert collector.admission_receipt_diagnostics()["integral_norm_certificates"] == len(initial)
+
+# A caller may authenticate the same complete rational-prime relations in one
+# packed batch with later integral proposals.  The coordinate proposals must
+# remain byte-for-byte equivalent to the scalar public helper.
+initial_proposals = initial_rational_prime_relation_proposals(
+    ExactRelationCollector(O, factor_base)
+)
+combined_initial_collector = ExactRelationCollector(O, factor_base)
+combined_initial = combined_initial_collector.admit_integral_order_basis_rows(
+    initial_proposals
+)
+assert combined_initial is not None
+assert [item.record.to_dict() for item in combined_initial] == [
+    item.record.to_dict() for item in initial
+]
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_calls"
+] == 1
+assert combined_initial_collector.admission_receipt_diagnostics()[
+    "integral_batch_rows"
+] == len(initial)
+
+# A live producer may transfer rows that it has already proved with exact
+# packed arithmetic.  The authority is identity-bound, nonserializable, and
+# accepts only its immutable coordinate/row pairs; every public or detached
+# record still uses the ordinary replay path.
+try:
+    relation_module._ValidatedIntegralRelationBatch(
+        O,
+        factor_base,
+        (((2, 0), initial[0].record.row, 4),),
+    )
+    raise AssertionError("an unsealed relation-batch authority was constructed")
+except TypeError:
+    pass
+validated_authority = relation_module._ValidatedIntegralRelationBatch(
+    O,
+    factor_base,
+    (((2, 0), initial[0].record.row, 4),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert not hasattr(validated_authority, "to_dict")
+validated_collector = ExactRelationCollector(O, factor_base)
+validated_batch = validated_collector._admit_validated_integral_order_basis_rows(
+    validated_authority,
+    (((2, 0), initial[0].record.row, initial[0].record.provenance),),
+    _validated_token=relation_module._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert [item.record.to_dict() for item in validated_batch] == [
+    initial[0].record.to_dict()
+]
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_calls"
+] == 1
+assert validated_collector.admission_receipt_diagnostics()[
+    "validated_batch_rows"
+] == 1
+try:
+    validated_authority.authorize(
+        O,
+        factor_base,
+        (((3, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation absent from the authority was accepted")
+except ValueError:
+    pass
+other_order = NumberField(R(case["polynomial_low_to_high"]), "b").maximal_order()
+try:
+    validated_authority.authorize(
+        other_order,
+        factor_base,
+        (((2, 0), initial[0].record.row, None),),
+    )
+    raise AssertionError("a relation authority crossed maximal-order identities")
+except TypeError:
+    pass
+
+# Exact order-basis coordinates prove integrality by construction while
+# retaining the identical relation record and detached replay payload.
+coordinate_collector = ExactRelationCollector(O, factor_base)
+saved_order_contains = order_type.__contains__
+def forbidden_order_membership(self, value):
+    raise AssertionError("order-coordinate admission repeated membership")
+order_type.__contains__ = forbidden_order_membership
+try:
+    coordinate_admission = coordinate_collector.admit_integral_order_basis_row(
+        (2, 0),
+        initial[0].record.row,
+        provenance=initial[0].record.provenance,
+    )
+finally:
+    order_type.__contains__ = saved_order_contains
+assert coordinate_admission.record.to_dict() == initial[0].record.to_dict()
+try:
+    coordinate_collector.admit_integral_order_basis_row(
+        (2,), initial[0].record.row
+    )
+    raise AssertionError("a short order-coordinate row was accepted")
+except ValueError:
+    pass
+
+# The batched admission boundary recomputes exact norms and independently
+# replays all packed prime-power containments before storing anything.  Its
+# record is identical to scalar admission, unavailable kernels return a clean
+# fallback signal, and a successful-but-corrupt kernel cannot admit a row.
+batch_collector = ExactRelationCollector(O, factor_base)
+canonical_key_calls = 0
+live_identity_calls = 0
+saved_canonical_key = RelationRecord.canonical_key
+saved_live_identity_key = RelationRecord.live_identity_key
+def counted_canonical_key(self):
+    global canonical_key_calls
+    canonical_key_calls += 1
+    return saved_canonical_key(self)
+def counted_live_identity_key(self):
+    global live_identity_calls
+    live_identity_calls += 1
+    return saved_live_identity_key(self)
+RelationRecord.canonical_key = counted_canonical_key
+RelationRecord.live_identity_key = counted_live_identity_key
+try:
+    batch = batch_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+finally:
+    RelationRecord.canonical_key = saved_canonical_key
+    RelationRecord.live_identity_key = saved_live_identity_key
+assert batch is not None and len(batch) == 1
+assert canonical_key_calls == 1
+assert live_identity_calls == 1
+assert batch[0].record.to_dict() == initial[0].record.to_dict()
+assert batch_collector.admission_receipt_diagnostics()[
+    "integral_norm_certificates"
+] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_calls"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_rows"] == 1
+assert batch_collector.admission_receipt_diagnostics()["integral_batch_fallbacks"] == 0
+
+saved_batch_kernel = relation_module._integral_relation_batch_kernel_override
+relation_module._integral_relation_batch_kernel_override = False
+try:
+    unavailable_collector = ExactRelationCollector(O, factor_base)
+    assert unavailable_collector.admit_integral_order_basis_rows((
+        ((2, 0), initial[0].record.row, initial[0].record.provenance),
+    )) is None
+    assert not unavailable_collector.records
+    assert unavailable_collector.admission_receipt_diagnostics()[
+        "integral_batch_fallbacks"
+    ] == 1
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+def corrupt_batch_kernel(metadata, rows, smooth, *arguments):
+    metadata[0] = 1
+    metadata[1] = 1
+    metadata[2] = arguments[-1]
+    smooth[0] = 1
+    return True
+relation_module._integral_relation_batch_kernel_override = corrupt_batch_kernel
+try:
+    corrupt_collector = ExactRelationCollector(O, factor_base)
+    try:
+        corrupt_collector.admit_integral_order_basis_rows((
+            ((2, 0), initial[0].record.row, initial[0].record.provenance),
+        ))
+        raise AssertionError("corrupt packed relation replay was accepted")
+    except RelationNotSmoothError:
+        pass
+    assert not corrupt_collector.records
+finally:
+    relation_module._integral_relation_batch_kernel_override = saved_batch_kernel
+
+oversized_collector = ExactRelationCollector(O, factor_base)
+try:
+    oversized_collector.admit_integral_order_basis_rows((
+        ((1 << 4096, 0), initial[0].record.row, initial[0].record.provenance),
+    ))
+    raise AssertionError("oversized packed integral coordinates were accepted")
+except ValueError:
+    pass
+assert not oversized_collector.records
 
 # Live admission receipts bind the collector's exact order and factor-base
 # objects plus the complete canonical record payload.  Public/detached replay
@@ -218,6 +470,51 @@ assert list(source_relation.record.quotient_row) == uniformizer_case["quotient_r
 assert list(source_relation.record.row) == uniformizer_case["relation_row"]
 assert source_relation.record.log_precision == 100
 assert source_relation.record.verify(O, factor_base)["certified"]
+
+# An integral search generator does not need a producer-side principal-ideal
+# rebuild: integrality, exact valuations, a nonnegative quotient row, and exact
+# norm equality rule out every omitted prime-ideal factor.  Its serialized
+# record is identical and detached replay still performs the full independent
+# ideal check.
+integral_collector = ExactRelationCollector(O, factor_base)
+integral_relation = integral_collector.admit_witness(
+    uniformizer,
+    source_ideal=ramified,
+    source_row=uniformizer_case["source_row"],
+    integral_generator=uniformizer,
+    archimedean_logs=["offline-oracle-placeholder"],
+    log_precision=100,
+    provenance={"algorithm": "prime-uniformizer"},
+)
+assert integral_relation.record.to_dict() == source_relation.record.to_dict()
+assert integral_relation.record.verify(O, factor_base)["certified"]
+integral_admission = integral_collector.admission_receipt_diagnostics()
+assert integral_admission["integral_norm_certificates"] == 1
+assert integral_admission["integral_norm_fallbacks"] == 0
+assert integral_collector.reconstruction_diagnostics()["row_requests"] == 1
+try:
+    integral_collector.admit_witness(
+        uniformizer,
+        source_ideal=ramified,
+        source_row=uniformizer_case["source_row"],
+        integral_generator=uniformizer + 1,
+    )
+    raise AssertionError("a mismatched integral generator was trusted")
+except ValueError:
+    pass
+
+# Fractional witnesses are outside the norm certificate and retain the old
+# full principal-ideal path.
+fractional_collector = ExactRelationCollector(O, factor_base)
+fractional_relation = fractional_collector.admit_witness(
+    K(1) / 2,
+    integral_generator=K(1) / 2,
+    provenance={"algorithm": "fractional-fallback"},
+)
+fractional_admission = fractional_collector.admission_receipt_diagnostics()
+assert fractional_admission["integral_norm_certificates"] == 0
+assert fractional_admission["integral_norm_fallbacks"] == 1
+assert fractional_relation.record.verify(O, factor_base)["certified"]
 
 live_reconstruction_rows = []
 def live_reconstructor(row):
@@ -313,6 +610,8 @@ def full_recompute_lll(rows):
 
 # Exact differential against the previous full-recompute path covers size
 # reductions before and after swaps, negative multiples, and large integers.
+# FLINT is free to choose another exact reduced basis in the same lattice, so
+# its contract is the exact unimodular row identity plus the LLL inequalities.
 lll_cases = (
     [[1, 1], [1, -1]],
     [[105, 821, 404], [281, 88, 197], [37, 401, 999]],
@@ -327,19 +626,48 @@ lll_cases = (
 )
 for lll_rows in lll_cases:
     expected_basis, expected_transform = full_recompute_lll(lll_rows)
+    readable_basis, readable_transform = _readable_exact_lll_reduce_with_transform(
+        lll_rows
+    )
+    assert readable_basis == expected_basis
+    assert readable_transform == expected_transform
     actual_basis, actual_transform = _exact_lll_reduce_with_transform(lll_rows)
-    assert actual_basis == expected_basis
-    assert actual_transform == expected_transform
     assert _matrix_times_rows(actual_transform, lll_rows) == actual_basis
     assert abs(_integer_determinant(actual_transform)) == 1
+    actual_mu, actual_norms = _gram_schmidt(actual_basis)
+    for row_index in range(1, len(actual_basis)):
+        for previous in range(row_index):
+            assert abs(actual_mu[row_index][previous]) <= QQ(1) / QQ(2)
+        assert actual_norms[row_index] >= (
+            QQ(3) / QQ(4) - actual_mu[row_index][row_index - 1] ** 2
+        ) * actual_norms[row_index - 1]
 
 assert exact_lll_reduce([[1, 1], [1, -1]]) == [[1, 1], [1, -1]]
-unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
+try:
+    unit_plan = minkowski_lll_lattice(O.ideal(1), precision=128)
+    lower_precision_unit_plan = minkowski_lll_lattice(O.ideal(1), precision=80)
+finally:
+    relation_module._lll_kernel_override = saved_lll_kernel_override
 assert unit_plan.verify(O.ideal(1))
 assert unit_plan.signature == (2, 0)
 assert [list(row) for row in unit_plan.transform] == case["minkowski_transform"]
 assert [list(row) for row in unit_plan.exact_rows] == case["minkowski_exact_rows"]
-assert minkowski_lll_lattice(O.ideal(1), precision=80).transform == unit_plan.transform
+assert lower_precision_unit_plan.transform == unit_plan.transform
+
+# The live plan is a candidate selector, not proof evidence.  Its exact rows
+# come directly from the ideal basis and admitted relations replay exact ideal
+# equality, so production does not redundantly call the detached verifier.
+saved_plan_verify = MinkowskiLatticePlan.verify
+def reject_producer_replay(*_args, **_kwargs):
+    raise AssertionError("producer replayed its own Minkowski selector")
+MinkowskiLatticePlan.verify = reject_producer_replay
+try:
+    unchecked_live_plan = minkowski_lll_lattice(O.ideal(1), precision=80)
+finally:
+    MinkowskiLatticePlan.verify = saved_plan_verify
+assert saved_plan_verify(unchecked_live_plan, O.ideal(1))
 
 # Differential oracle: SageMath's documented Minkowski embedding of
 # Q[x]/(x^3+2), including sqrt(2)-weighted real and imaginary coordinates.
@@ -347,6 +675,49 @@ cubic_case = fixture["nonreal_cubic_minkowski"]
 C = NumberField(R(cubic_case["polynomial_low_to_high"]), "b")
 CO = C.maximal_order()
 cubic_plan = minkowski_lll_lattice(CO.ideal(1), precision=128)
+
+def direct_qqbar_minkowski_rows(ideal, plan):
+    sqrt_two_text = (
+        "1.41421356237309504880168872420969807856967187537694807317667973799"
+        "0732478462107038850387534327641572735013846230912297024924836"
+    )
+    rows = []
+    for element in ideal.basis():
+        row = []
+        for embedding in ideal.number_field().archimedean_data().embeddings:
+            approximation = embedding.approximate(element, plan.precision).value
+            if embedding.kind == "real":
+                row.append(
+                    relation_module._scaled_real_integer(
+                        relation_module._real_part(approximation), plan.scale_bits
+                    )
+                )
+                continue
+            real_method = getattr(approximation, "real", None)
+            imag_method = getattr(approximation, "imag", None)
+            if callable(real_method) and callable(imag_method):
+                real = real_method()
+                imag = imag_method()
+            else:
+                real = approximation
+                imag = approximation.parent()(0)
+            sqrt_two = real.parent()(sqrt_two_text)
+            row.append(
+                relation_module._scaled_real_integer(
+                    sqrt_two * real, plan.scale_bits
+                )
+            )
+            row.append(
+                relation_module._scaled_real_integer(
+                    sqrt_two * imag, plan.scale_bits
+                )
+            )
+        rows.append(row)
+    return rows
+
+assert direct_qqbar_minkowski_rows(CO.ideal(1), cubic_plan) == [
+    list(row) for row in cubic_plan.source_embedded_rows
+]
 scale = float(2 ** cubic_plan.scale_bits)
 actual_embedding = [
     [float(value) / scale for value in row] for row in cubic_plan.embedded_rows
@@ -487,10 +858,51 @@ search_one = LLLRelationSearch(
 search_two = LLLRelationSearch(
     collector, seed=case["search_seed"], max_candidates_per_ideal=10
 )
-short_one = [str(value) for value in search_one.short_elements(O.ideal(1))]
-short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
+try:
+    short_one = [str(value) for value in search_one.short_elements(O.ideal(1))]
+    short_two = [str(value) for value in search_two.short_elements(O.ideal(1))]
+finally:
+    relation_module._lll_kernel_override = saved_lll_kernel_override
 assert short_one == short_two
 assert short_one[:len(case["short_element_prefix"])] == case["short_element_prefix"]
+
+# Consumers that stop after one relation must not pay to construct every
+# exact field element in the bounded coefficient stream.  Full consumption
+# remains byte-for-byte equivalent to the tuple-returning public helper.
+conversion_count = 0
+integral_lattice_count = 0
+original_conversion = relation_module._field_element_from_coefficients
+original_integral_lattice_rows = relation_module._integral_lattice_rows
+def counted_conversion(*args, **kwargs):
+    global conversion_count
+    conversion_count += 1
+    return original_conversion(*args, **kwargs)
+def counted_integral_lattice_rows(*args, **kwargs):
+    global integral_lattice_count
+    integral_lattice_count += 1
+    return original_integral_lattice_rows(*args, **kwargs)
+relation_module._field_element_from_coefficients = counted_conversion
+relation_module._integral_lattice_rows = counted_integral_lattice_rows
+saved_lll_kernel_override = relation_module._lll_kernel_override
+relation_module._lll_kernel_override = False
+try:
+    lazy_search = LLLRelationSearch(
+        collector, seed=case["search_seed"], max_candidates_per_ideal=10
+    )
+    lazy_stream = lazy_search.iter_short_elements(O.ideal(1))
+    first_lazy = next(lazy_stream)
+    conversions_after_first = conversion_count
+    lazy_values = [first_lazy] + list(lazy_stream)
+    conversions_after_full = conversion_count
+finally:
+    relation_module._field_element_from_coefficients = original_conversion
+    relation_module._integral_lattice_rows = original_integral_lattice_rows
+    relation_module._lll_kernel_override = saved_lll_kernel_override
+assert conversions_after_first < conversions_after_full
+assert integral_lattice_count == 1
+assert [str(value) for value in lazy_values] == short_one
 
 # Degenerate random settings retain the deterministic reduced-basis prefix and
 # terminate without consuming the replayable PRNG stream.
@@ -688,7 +1100,7 @@ print(json.dumps({
     "automorphism_plan": orbit_plan.to_dict(),
     "search_rows": [list(item.record.row) for item in found],
     "reconstruction_cache": cache_diagnostics,
-    "collector_reconstruction_cache": collector.reconstruction_diagnostics(),
+    "collector_reconstruction_cache": collector_cache,
     "replay_ms": replay_ms,
 }, sort_keys=True))
 `;
@@ -717,6 +1129,7 @@ test("exact class-group relations admit, replay, mutate, and search deterministi
   assert.deepEqual(report.factor_base, fixture.golden_ratio.factor_base);
   assert.equal(report.rank, fixture.golden_ratio.initial_modular_rank);
   assert.ok(report.reconstruction_cache.row_hits >= 5);
-  assert.ok(report.collector_reconstruction_cache.row_hits > 0);
+  assert.equal(report.collector_reconstruction_cache.row_requests, 0);
+  assert.equal(report.collector_reconstruction_cache.row_hits, 0);
   assert.ok(report.replay_ms < fixture.golden_ratio.replay_budget_ms);
 });

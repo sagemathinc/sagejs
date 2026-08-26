@@ -210,6 +210,8 @@
         "flint_dense_integer_matrix_hnf",
         "flint_dense_integer_matrix_hnf_modular_eldiv",
         "flint_dense_integer_matrix_hnf_transform",
+        "flint_dense_integer_matrix_lll_transform",
+        "flint_relation_presentation_replay",
         "flint_dense_integer_matrix_snf_transform",
         "flint_dense_integer_matrix_right_kernel",
         "flint_dense_integer_resource_import",
@@ -219,7 +221,7 @@
         "flint_dense_integer_resource_nonzero_count",
         "flint_dense_integer_matrix_space_random_fill"
       ],
-      "semantic_domain": "production dense ZZ FLINT algorithms and typed resource construction/traversal through generated owned FmpzMatrix declarations",
+      "semantic_domain": "production dense ZZ FLINT algorithms, batched exact relation-presentation identity replay, and typed resource construction/traversal through generated owned FmpzMatrix declarations",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
@@ -463,13 +465,16 @@
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [
         "packed_row_hnf_in_place",
+        "packed_ideal_product_hnf_in_place",
+        "packed_ideal_power_chain_hnf_in_place",
+        "packed_ideal_power_chains_hnf_in_place",
         "packed_composite_dedekind_basis_in_place",
         "packed_order_table_in_place",
         "packed_order_contains_vector_in_place",
         "packed_order_contains_vectors_in_place",
         "packed_known_overorder_contains_vectors_in_place"
       ],
-      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, composite Dedekind basis construction, order multiplication tables, exact standalone rational-vector membership, and direct triangular membership after independently authenticated equation-order containment",
+      "semantic_domain": "deterministic packed exact-integer row Hermite normal form, tensor-based number-field ideal products and individual or batched valuation-power chains, composite Dedekind basis construction, order multiplication tables, exact standalone rational-vector membership, and direct triangular membership after independently authenticated equation-order containment",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "randomized-exact-controls"],
@@ -479,12 +484,88 @@
     {
       "id": "prime-ideal-candidate-materializer-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
-      "functions": ["packed_prime_ideal_candidate_hnf_in_place"],
-      "semantic_domain": "bounded exact construction and canonical row HNF of pO plus a modular maximal-order subspace over compiler-owned IntegerBuffer storage",
+      "functions": [
+        "packed_cubic_reduced_algebra_factors_in_place",
+        "packed_prime_ideal_candidate_hnf_in_place"
+      ],
+      "semantic_domain": "bounded exact construction and canonical row HNF of pO plus a modular maximal-order subspace, together with fixed-shape reduced cubic finite-algebra factor kernels and canonical residue presentations over compiler-owned IntegerBuffer storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "pari"],
       "benchmark": "bench:number-field-prime-ideal-candidate-kernel",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-element-valuations-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_lattice_memberships_in_place"],
+      "semantic_domain": "batched exact triangular membership of one algebraic element in the prime-power HNF lattices that determine its factor-base valuations",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-element-valuations",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-bdf-interval-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": ["packed_bdf_interval_in_place"],
+      "semantic_domain": "exact rational assembly of the Belabas--Diaz y Diaz--Friedman factor-base inequality from rigorous dyadic primitive intervals",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-class-number-lmfdb",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-cubic-norm-obstruction-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": [
+        "packed_cubic_norm_form_first_obstruction_in_place",
+        "packed_cubic_norm_form_target_slice"
+      ],
+      "semantic_domain": "bounded exhaustive target search for exact ternary cubic norm forms modulo a proved rational prime",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-cubic-norm-obstruction",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "number-field-cubic-relation-sieve-production",
+      "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
+      "functions": [
+        "packed_cubic_order_norm_form_coefficients_in_place",
+        "packed_cubic_norm_smooth_candidates_in_place",
+        "packed_factor_base_rows_in_place"
+      ],
+      "semantic_domain": "exact cubic order norm-form interpolation, bounded canonical coefficient-box enumeration by rational norm support, and batched exact factor-base valuations in nested prime-power HNF lattices",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "readable-exact-controls"],
+      "benchmark": "bench:number-field-class-number-lmfdb",
+      "automatic_selection": {
+        "schema": "sagejs.native-selection-receipt/v1",
+        "receipt_id": "native-machine-model-c1-c3-relation-rows",
+        "domain": "cubic relation admission over an authenticated exact factor base",
+        "evidence": [
+          "bench/class-unit-groups/native-machine-model-c0.py",
+          "test/native-live-exact-vector.cjs",
+          "test/native-live-exact-vector-sanitizer.cjs",
+          "test/number-field-cubic-norm-kernel.cjs",
+          "test/wasm-production-native-kernels.cjs"
+        ],
+        "functions": {
+          "packed_factor_base_rows_in_place": {
+            "arguments": {
+              "degree": {"min": 1, "max": 16},
+              "candidate_count": {"min": 1, "max": 4096},
+              "factor_count": {"min": 1, "max": 4096},
+              "prime_power_count": {"min": 1, "max": 4096}
+            }
+          }
+        }
+      },
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
@@ -556,13 +637,16 @@
         "packed_cantor_validate_batch",
         "packed_cantor_copy_batch",
         "packed_cantor_add_batch",
+        "packed_cantor_sum_batch",
+        "packed_cantor_negate_batch",
+        "packed_cantor_subtract_batch",
         "packed_cantor_progression_batch",
         "packed_cantor_search_progression",
         "packed_cantor_search_progressions",
         "packed_cantor_scalar_batch",
         "packed_cantor_scalar_many_primes"
       ],
-      "semantic_domain": "bounded authenticated canonical-row validation, packed copy traversal, complete prepared generalized Cantor addition, arithmetic progressions, fused bounded single- and ordered multi-progression BSGS search, signed scalar multiplication, and fused many-prime scalar witnesses for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
+      "semantic_domain": "bounded authenticated canonical-row validation, packed copy traversal, complete prepared generalized Cantor addition, negation, subtraction, and one-crossing batch reduction, arithmetic progressions, fused bounded single- and ordered multi-progression BSGS search, signed scalar multiplication, and fused many-prime scalar witnesses for genus-2/3 odd-degree one-infinity models over odd primes at most 2^32-1",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "reference-cantor"],
@@ -630,10 +714,13 @@
       "source": "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
       "functions": [
         "assemble_bf_dyadic_finite_term",
+        "assemble_bf_dyadic_layout",
         "assemble_bf_integer_transcendental_endpoints",
+        "assemble_bf_integer_transcendental_endpoints_flint",
+        "assemble_bf_prime_power_plan_in_place",
         "assemble_zeta_coefficients_from_factors"
       ],
-      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables, batched rigorous integer logarithm and square-root endpoints, and exact outward-dyadic Belabas-Friedman finite-sum replay using arbitrary-precision integer arithmetic",
+      "semantic_domain": "exact multiplicative Dedekind-zeta coefficient assembly from validated prime-power tables, packed Belabas--Friedman prime-power planning, declared FLINT/Arb batched rigorous integer logarithm and square-root endpoints with a same-source exact fallback, packed exact endpoint layout, and exact outward-dyadic finite-sum replay using arbitrary-precision integer arithmetic",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "sage", "magma", "hecke-oscar"],

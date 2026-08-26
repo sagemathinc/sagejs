@@ -8590,6 +8590,63 @@
       },
       {
         "schema_version": 1,
+        "name": "number_of_partitions",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "number_of_partitions(size: Any) -> Any",
+        "summary": "Return the number of partitions of a nonnegative integer.",
+        "doc": "Return the number of partitions of a nonnegative integer.\n\nThe value comes from FLINT's exact Hardy-Ramanujan-Rademacher\nimplementation in production native and WebAssembly hosts.  A host that\nexplicitly lacks the declared capability retains Euler's exact pentagonal\nrecurrence; binding and execution failures are never hidden by fallback.\n\n### Input\n\n- `size` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: number_of_partitions(10)\n    42\n    sage: number_of_partitions(100)\n    190569292\n    sage: number_of_partitions(1000)\n    24061467864032622473692149727991\n    sage: number_of_partitions(4) == Partitions(4).cardinality()\n    True\n```\n\nThis API and documentation are adapted from\n`sage.combinat.partition.number_of_partitions` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT `arith_number_of_partitions`",
+            "url": "https://flintlib.org/doc/arith.html",
+            "license": "LGPL-3.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          }
+        ],
+        "limitations": [
+          "Production native and WebAssembly hosts use FLINT's exact Hardy-Ramanujan-Rademacher implementation.  Only explicit capability absence selects the pentagonal recurrence; binding or execution failures propagate.  The recurrence computes every smaller partition number and is therefore intentionally rejected by release route telemetry for large workloads.  See `bench/compare-partitions.cjs`."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "NumberField",
         "aliases": [],
         "kind": "function",
@@ -8948,6 +9005,657 @@
         "implementation": {
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition",
+        "aliases": [],
+        "kind": "class",
+        "module": "sage.combinat",
+        "signature": "Partition(entries: Any, parent: Any=None) -> None",
+        "summary": "A partition of a nonnegative integer.",
+        "doc": "A partition of a nonnegative integer.\n\nA partition is a weakly decreasing list of positive integers.  Its parts\nare ordinary Sage.js integers, so a partition interoperates with the rest\nof the library without a conversion step.\n\n### Input\n\n- `entries` -- a list or tuple of weakly decreasing positive integers\n- `parent` -- optional owning combinatorial class\n\n### Examples\n\n```sage\n    sage: Partition([3, 1])\n    [3, 1]\n    sage: Partition([3, 1]).size()\n    4\n    sage: Partition([3, 1]).conjugate()\n    [2, 1, 1]\n```\n\nParts must be weakly decreasing, exactly as in Sage; `Partition([1, 3])`\nraises `ValueError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partition` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.cells",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.cells()",
+        "summary": "Return the coordinates of the cells of the Ferrers diagram.",
+        "doc": "Return the coordinates of the cells of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([2, 1]).cells()\n    [(0, 0), (0, 1), (1, 0)]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.conjugate",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.conjugate()",
+        "summary": "Return the conjugate partition, the transpose of the Ferrers diagram.",
+        "doc": "Return the conjugate partition, the transpose of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).conjugate()\n    [3, 2, 1, 1]\n    sage: Partition([4, 2, 1]).conjugate().conjugate()\n    [4, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.dominates",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.dominates()",
+        "summary": "Return whether `self` dominates `other` in the dominance order.",
+        "doc": "Return whether `self` dominates `other` in the dominance order.\n\n### Examples\n\n```sage\n    sage: Partition([3, 1]).dominates([2, 2])\n    True\n    sage: Partition([2, 2]).dominates([3, 1])\n    False\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.ferrers_diagram",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.ferrers_diagram()",
+        "summary": "Return the Ferrers diagram as text, one row of asterisks per part.",
+        "doc": "Return the Ferrers diagram as text, one row of asterisks per part.\n\n### Examples\n\n```sage\n    sage: print(Partition([3, 1]).ferrers_diagram())\n    ***\n    *\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.hook_length",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.hook_length()",
+        "summary": "Return the hook length of the cell in the given row and column.",
+        "doc": "Return the hook length of the cell in the given row and column.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_length(0, 0)\n    5\n    sage: Partition([3, 2, 1]).hook_length(1, 1)\n    1\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.hook_lengths",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.hook_lengths()",
+        "summary": "Return the hook lengths of every cell, row by row.",
+        "doc": "Return the hook lengths of every cell, row by row.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_lengths()\n    [[5, 3, 1], [3, 1], [1]]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.length",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.length()",
+        "summary": "Return the number of parts.",
+        "doc": "Return the number of parts.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).length()\n    3\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.size",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.size()",
+        "summary": "Return the integer partitioned by `self`.",
+        "doc": "Return the integer partitioned by `self`.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).size()\n    7\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.to_exp",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.to_exp()",
+        "summary": "Return part multiplicities, where entry `i` counts the parts equal to",
+        "doc": "Return part multiplicities, where entry `i` counts the parts equal to\n`i + 1`.\n\n### Input\n\n- `minimum_length` -- pad the result to at least this length\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 2, 1]).to_exp()\n    [1, 2, 1]\n    sage: Partition([3, 2, 2, 1]).to_exp(5)\n    [1, 2, 1, 0, 0]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partition.to_list",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partition.to_list()",
+        "summary": "Return the parts as an ordinary list.",
+        "doc": "Return the parts as an ordinary list.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).to_list()\n    [4, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "Partitions(size: Any=None, **constraints: Any) -> Any",
+        "summary": "Return the combinatorial class of partitions described by the arguments.",
+        "doc": "Return the combinatorial class of partitions described by the arguments.\n\nWith no argument this is the class of all partitions of all nonnegative\nintegers.  With an integer argument it is the class of partitions of that\ninteger, optionally restricted by the supported keyword constraints.\n\n### Input\n\n- `size` -- optional nonnegative integer to partition\n- `min_part` -- smallest allowed part\n- `max_part` -- largest allowed part\n- `length` -- exact number of parts\n- `min_length` -- smallest allowed number of parts\n- `max_length` -- largest allowed number of parts\n- `parts_in` -- restrict parts to the given collection of integers\n\n### Examples\n\n```sage\n    sage: Partitions(4).list()\n    [[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n    sage: Partitions(5, max_part=3).list()\n    [[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n    sage: Partitions(5, length=2).list()\n    [[4, 1], [3, 2]]\n    sage: Partitions(5, min_part=2).list()\n    [[5], [3, 2]]\n    sage: Partitions(5, parts_in=[1, 2]).list()\n    [[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n```\n\nCounting never enumerates:\n\n```sage\n    sage: Partitions(1000).cardinality()\n    24061467864032622473692149727991\n```\n\n### Limitations\n\nThe `inner`, `outer`, `regular`, and `restricted` keyword constraints of\nSage are not implemented yet and raise `NotImplementedError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partitions` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "enumerative combinatorics",
+          "partitions",
+          "integer sequences"
+        ],
+        "backends": [
+          "Sage.js exact enumeration",
+          "FLINT"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT `arith_number_of_partitions`",
+            "url": "https://flintlib.org/doc/arith.html",
+            "license": "LGPL-3.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Counting-driven ranking, unranking, and uniform random selection over a recursively counted set"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "One bounded triangular count table over the largest remaining part serves constrained cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementations"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          },
+          {
+            "id": "kreher-stinson-combinatorial-algorithms",
+            "title": "Combinatorial Algorithms: Generation, Enumeration, and Search",
+            "type": "book",
+            "authors": [
+              "Donald L. Kreher",
+              "Douglas R. Stinson"
+            ],
+            "year": 1999
+          },
+          {
+            "id": "nijenhuis-wilf-combinatorial-algorithms",
+            "title": "Combinatorial Algorithms for Computers and Calculators",
+            "type": "book",
+            "authors": [
+              "Albert Nijenhuis",
+              "Herbert S. Wilf"
+            ],
+            "year": 1978
+          }
+        ],
+        "limitations": [
+          "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.",
+          "Production native and WebAssembly hosts use FLINT's exact Hardy-Ramanujan-Rademacher implementation.  Only explicit capability absence selects the pentagonal recurrence; binding or execution failures propagate.  The recurrence computes every smaller partition number and is therefore intentionally rejected by release route telemetry for large workloads.  See `bench/compare-partitions.cjs`.",
+          "Ranking, unranking, and random selection retain a triangular table of arbitrary-precision completion counts.  Requests above the reviewed one-million-cell persistent-work ceiling raise `RuntimeError` before allocating; cardinality and streaming enumeration remain available."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.cardinality",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.cardinality()",
+        "summary": "Return the exact number of partitions in this class.",
+        "doc": "Return the exact number of partitions in this class.\n\nThe unconstrained count uses FLINT's exact Rademacher implementation,\nso it stays fast well beyond the range where listing the partitions is\npractical.  Hosts that explicitly lack the declared operation retain\nthe exact pentagonal recurrence.\n\n### Examples\n\n```sage\n    sage: Partitions(4).cardinality()\n    5\n    sage: Partitions(100).cardinality()\n    190569292\n    sage: Partitions(5, max_part=3).cardinality()\n    5\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.first",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.first()",
+        "summary": "Return the first partition in the enumeration order.",
+        "doc": "Return the first partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).first()\n    [5]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.last",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.last()",
+        "summary": "Return the last partition in the enumeration order.",
+        "doc": "Return the last partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).last()\n    [1, 1, 1, 1, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.list",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.list()",
+        "summary": "Return every member of a finite combinatorial class.",
+        "doc": "Return every member of a finite combinatorial class.\n\n### Examples\n\n```sage\n    sage: Partitions(3).list()\n    [[3], [2, 1], [1, 1, 1]]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.random_element",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.random_element()",
+        "summary": "Return a uniformly random member of this class.",
+        "doc": "Return a uniformly random member of this class.\n\nThe part sizes are chosen one at a time with probability proportional\nto the exact number of completions, so every partition is equally\nlikely without enumerating the class.\n\n### Examples\n\n```sage\n    sage: Partitions(6).random_element() in Partitions(6)\n    True\n    sage: Partitions(6, max_part=2).random_element().to_list()[0] <= 2\n    True\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.rank",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.rank()",
+        "summary": "Return the position of `value` in the enumeration.",
+        "doc": "Return the position of `value` in the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).rank([3, 1, 1])\n    3\n    sage: Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))\n    [2, 2, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "Partitions.unrank",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.combinat",
+        "signature": "Partitions.unrank()",
+        "summary": "Return the partition at position `index` of the enumeration.",
+        "doc": "Return the partition at position `index` of the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).unrank(0)\n    [5]\n    sage: Partitions(5).unrank(3)\n    [3, 1, 1]\n```",
+        "tags": [
+          "combinatorics",
+          "partitions"
+        ],
+        "backends": [
+          "Sage.js exact enumeration"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The implemented behavior matches Sage."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.partition`",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
         "limitations": []
       },
       {
@@ -11223,9 +11931,9 @@
         "name": "animate",
         "qualified": "animate",
         "path": "src/baselib/graphics.py",
-        "line": 4054,
+        "line": 4062,
         "excerpt": {
-          "start_line": 4042,
+          "start_line": 4050,
           "text": "        \"\"\"Save an animated HTML/JSON file through the host graphics hook.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef animate(frames: Any, **options: Any) -> Animation:\n    r\"\"\"\n    Animate an iterable of Sage graphics or plottable symbolic objects.\n\n    The optional `delay` is measured in hundredths of a second, matching\n    SageMath.  `iterations=0` denotes unrestricted interactive replay.\n    \"\"\"\n    return Animation(frames, **options)\n\n\n@runtime.sequence_class\nclass GraphicsArray:\n    \"\"\"A rectangular array of independently rendered graphics objects.\"\"\""
         }
       },
@@ -11283,9 +11991,9 @@
         "name": "arc",
         "qualified": "arc",
         "path": "src/baselib/graphics.py",
-        "line": 3104,
+        "line": 3112,
         "excerpt": {
-          "start_line": 3092,
+          "start_line": 3100,
           "text": "    fill = bool(_option_pop(options, \"fill\", False))\n    if _option_has(options, \"rgbcolor\"):\n        options[\"color\"] = _option_get(options, \"rgbcolor\")\n    elif fill and _option_has(options, \"facecolor\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    elif not fill and _option_has(options, \"edgecolor\"):\n        options[\"color\"] = _option_pop(options, \"edgecolor\")\n    if fill:\n        return polygon(points[:-1], **options)\n    return line(points, **options)\n\n\ndef arc(\n    center: Any,\n    r1: Any,\n    r2: Any = None,\n    angle: Any = 0.0,\n    sector: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a circular or elliptical arc over an angular sector.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    if r2 is None:"
         }
       },
@@ -11343,9 +12051,9 @@
         "name": "arrow",
         "qualified": "arrow",
         "path": "src/baselib/graphics.py",
-        "line": 3427,
+        "line": 3435,
         "excerpt": {
-          "start_line": 3415,
+          "start_line": 3423,
           "text": "        ) / denominator_norm\n        vertices.append(\n            runtime.math_tuple(\n                [\n                    center_point[0] + center_point[1] * real_part,\n                    center_point[1] * imaginary_part,\n                ]\n            )\n        )\n    return hyperbolic_polygon(vertices, model=\"UHP\", **options)\n\n\ndef arrow(\n    tailpoint: Any,\n    headpoint: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a directed line segment from `tailpoint` to `headpoint`.\"\"\"\n    options = _copy_options(options)\n    tail = _point_pair(tailpoint)\n    head = _point_pair(headpoint)\n    defaults = {\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 2,\n        \"zorder\": 2,"
         }
       },
@@ -11499,9 +12207,9 @@
         "name": "axes",
         "qualified": "Graphics.axes",
         "path": "src/baselib/graphics.py",
-        "line": 2122,
+        "line": 2130,
         "excerpt": {
-          "start_line": 2110,
+          "start_line": 2118,
           "text": "    def set_aspect_ratio(self, ratio: Any) -> None:\n        if ratio in (\"auto\", \"automatic\"):\n            self._extra_kwds[\"aspect_ratio\"] = \"automatic\"\n            return\n        numeric_ratio = float(ratio)\n        if numeric_ratio <= 0:\n            raise ValueError(\"the aspect ratio must be positive or 'automatic'\")\n        self._extra_kwds[\"aspect_ratio\"] = numeric_ratio\n\n    def aspect_ratio(self) -> Any:\n        return _option_get(self._extra_kwds, \"aspect_ratio\", \"automatic\")\n\n    def axes(self, show: Any = runtime.undefined) -> bool:\n        if show is runtime.undefined:\n            return bool(_option_get(self._extra_kwds, \"axes\", True))\n        self._extra_kwds[\"axes\"] = bool(show)\n        return bool(show)\n\n    def _axis_bound(self, name: str, value: Any) -> Any:\n        if value is not runtime.undefined:\n            self._extra_kwds[name] = float(value)\n            return float(value)\n        if _option_has(self._extra_kwds, name):\n            return _option_get(self._extra_kwds, name)\n        axis = \"xdata\" if name[0] == \"x\" else \"ydata\""
         }
       },
@@ -11559,9 +12267,9 @@
         "name": "bar_chart",
         "qualified": "bar_chart",
         "path": "src/baselib/graphics.py",
-        "line": 3498,
+        "line": 3506,
         "excerpt": {
-          "start_line": 3486,
+          "start_line": 3494,
           "text": "        Point(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\npoints = point\n\n\ndef bar_chart(values: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a vertical bar chart.\"\"\"\n    options = _copy_options(options)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()"
         }
       },
@@ -11619,9 +12327,9 @@
         "name": "bezier_path",
         "qualified": "bezier_path",
         "path": "src/baselib/graphics.py",
-        "line": 3176,
+        "line": 3184,
         "excerpt": {
-          "start_line": 3164,
+          "start_line": 3172,
           "text": "            next_points.append(\n                (\n                    (1.0 - parameter) * points[index][0]\n                    + parameter * points[index + 1][0],\n                    (1.0 - parameter) * points[index][1]\n                    + parameter * points[index + 1][1],\n                )\n            )\n        points = next_points\n    return points[0]\n\n\ndef bezier_path(path: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Return the Bézier path described by Sage's list-of-curves format.\n\n    The first curve contains both endpoints. Each later curve inherits its\n    first endpoint from the preceding curve and supplies zero, one, or two\n    control points followed by its new endpoint.\n    \"\"\"\n    curves = [list(curve) for curve in path]\n    if len(curves) == 0 or len(curves[0]) < 2:\n        raise ValueError(\"a Bezier path needs an initial curve and endpoints\")\n    count = int(_option_pop(options, \"plot_points\", 25))\n    if count < 2:"
         }
       },
@@ -11765,9 +12473,9 @@
         "name": "circle",
         "qualified": "circle",
         "path": "src/baselib/graphics.py",
-        "line": 3012,
+        "line": 3020,
         "excerpt": {
-          "start_line": 3000,
+          "start_line": 3008,
           "text": "        \"#00ff00\",\n        \"#00ffff\",\n        \"#0000ff\",\n        \"#ff00ff\",\n        \"#ff0000\",\n    ],\n}\ncolormaps = Colormaps(_COLORMAP_VALUES)\nfor _colormap_name in _COLORMAP_VALUES:\n    colormaps[_colormap_name] = _option_get(_COLORMAP_VALUES, _colormap_name)\n\n\ndef circle(\n    center: Any,\n    radius: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a circle centered at `center` with the given radius.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    coordinates = _point_pair(center)\n    numeric_radius = float(radius)\n    if numeric_radius < 0:\n        raise ValueError(\"circle radius must be nonnegative\")"
         }
       },
@@ -11878,16 +12586,16 @@
         "name": "complex_plot",
         "qualified": "complex_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5691,
+        "line": 5699,
         "excerpt": {
-          "start_line": 5679,
+          "start_line": 5687,
           "text": "        \"interpolation\": \"catrom\",\n        \"colorbar\": False,\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef complex_plot(\n    function_value: Any,\n    x_range: Any,\n    y_range: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    cmap: Any = None,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n    **options: Any,\n) -> Graphics:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
-          "line": 5720,
+          "line": 5728,
           "source": "complex_plot(lambda z: z^5 + z - 1 + 1/z,\n             (-3, 3), (-3, 3))",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -11957,16 +12665,16 @@
         "name": "complex_to_cmap_rgb",
         "qualified": "complex_to_cmap_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 4789,
+        "line": 4797,
         "excerpt": {
-          "start_line": 4777,
+          "start_line": 4785,
           "text": "    dark_rate: float,\n) -> list[float]:\n    \"\"\"Apply Sage's smooth or HLS contour lightness adjustment.\"\"\"\n    if contoured or tiled:\n        hue_value, lightness, saturation = Color(rgb).hls()\n        lightness = max(0.0, min(1.0, lightness + float(dark_rate) * delta))\n        return list(_hls_to_rgb(hue_value, lightness, saturation))\n    if delta >= 0:\n        return [(1.0 - delta) * float(component) + delta for component in rgb]\n    return [(1.0 + delta) * float(component) for component in rgb]\n\n\ndef complex_to_cmap_rgb(\n    z_values: Any,\n    cmap: Any = \"turbo\",\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"Convert complex values to RGB using a Sage-compatible colormap.\n\n    The argument selects a point in the colormap and the magnitude controls"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#46152e6532be6dff-f73279a4a86d135a",
-          "line": 4810,
+          "line": 4818,
           "source": "complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]",
           "want": "[0.0, 0.0, 0.0]\n",
           "tags": [],
@@ -11982,7 +12690,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4d2343fcf039e18a-4e07408562bedb8b",
-          "line": 4812,
+          "line": 4820,
           "source": "len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])",
           "want": "3\n",
           "tags": [],
@@ -12051,16 +12759,16 @@
         "name": "complex_to_rgb",
         "qualified": "complex_to_rgb",
         "path": "src/baselib/graphics.py",
-        "line": 4627,
+        "line": 4635,
         "excerpt": {
-          "start_line": 4615,
+          "start_line": 4623,
           "text": "        return [\n            bottom + (hue_value - 4.0) * (top - bottom),\n            bottom,\n            top,\n        ]\n    return [\n        top,\n        bottom,\n        bottom + (6.0 - hue_value) * (top - bottom),\n    ]\n\n\ndef complex_to_rgb(\n    z_values: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n) -> list[list[list[float]]]:\n    r\"\"\"\n    Convert a rectangular grid of complex values to Sage domain colors.\n\n    Argument determines hue. Magnitude determines lightness, either smoothly"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#9289b0a4b0fd8aa0-e3b0c44298fc1c14",
-          "line": 4645,
+          "line": 4653,
           "source": "colors = complex_to_rgb([[0, 1, 10]])[0]",
           "want": "",
           "tags": [],
@@ -12076,7 +12784,7 @@
         },
         {
           "id": "src/baselib/graphics.py#890cc4163e199259-739ef7d6d304c0a4",
-          "line": 4646,
+          "line": 4654,
           "source": "len(colors), colors[0], len(colors[1])",
           "want": "(3, [0.0, 0.0, 0], 3)\n",
           "tags": [],
@@ -12144,9 +12852,9 @@
         "name": "contour_plot",
         "qualified": "contour_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5639,
+        "line": 5647,
         "excerpt": {
-          "start_line": 5627,
+          "start_line": 5635,
           "text": "        for index in range(len(primitive.xdata)):\n            theta = primitive.xdata[index]\n            radius = primitive.ydata[index]\n            points.append(\n                (radius * runtime.math.cos(theta), radius * runtime.math.sin(theta))\n            )\n        primitive_options = primitive.options()\n        answer = answer + line(points, **primitive_options)\n    answer.set_extra_kwds(radial.get_extra_kwds())\n    return answer\n\n\ndef contour_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sampled scalar function as a filled contour grid.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 50)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -12411,9 +13119,9 @@
         "name": "density_plot",
         "qualified": "density_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5665,
+        "line": 5673,
         "excerpt": {
-          "start_line": 5653,
+          "start_line": 5661,
           "text": "        \"colorbar\": True,\n        \"cmap\": \"Viridis\",\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef density_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the values of a function of two variables as a color density.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 25)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -13411,9 +14119,9 @@
         "name": "disk",
         "qualified": "disk",
         "path": "src/baselib/graphics.py",
-        "line": 3129,
+        "line": 3137,
         "excerpt": {
-          "start_line": 3117,
+          "start_line": 3125,
           "text": "        r2 = r1\n    if sector is None:\n        sector = (0.0, 2.0 * runtime.math.PI)\n    count = int(_option_pop(options, \"plot_points\", 75))\n    if count < 2:\n        raise ValueError(\"arc plot_points must be at least 2\")\n    return line(\n        _ellipse_points(center, r1, r2, angle, sector, count),\n        **options,\n    )\n\n\ndef disk(\n    center: Any,\n    radius: Any,\n    angle: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return a filled or outlined circular/elliptical sector.\"\"\"\n    options = _copy_options(options)\n    coordinates = _point_pair(center)\n    if isinstance(radius, (list, tuple)):\n        if len(radius) != 2:\n            raise ValueError(\"disk radius must be a number or a pair\")\n        r1 = radius[0]"
         }
       },
@@ -13813,9 +14521,9 @@
         "name": "ellipse",
         "qualified": "ellipse",
         "path": "src/baselib/graphics.py",
-        "line": 3077,
+        "line": 3085,
         "excerpt": {
-          "start_line": 3065,
+          "start_line": 3073,
           "text": "        parameter = start + (end - start) * index / count\n        local_x = radius1 * runtime.math.cos(parameter)\n        local_y = radius2 * runtime.math.sin(parameter)\n        points.append(\n            (\n                coordinates[0] + local_x * cosine_rotation - local_y * sine_rotation,\n                coordinates[1] + local_x * sine_rotation + local_y * cosine_rotation,\n            )\n        )\n    return points\n\n\ndef ellipse(\n    center: Any,\n    r1: Any,\n    r2: Any,\n    angle: Any = 0,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Return an optionally rotated ellipse centered at `(x, y)`.\"\"\"\n    options = _copy_options(options)\n    if not _option_has(options, \"aspect_ratio\"):\n        options[\"aspect_ratio\"] = 1.0\n    count = int(_option_pop(options, \"plot_points\", 100))\n    if count < 4:"
         }
       },
@@ -14065,9 +14773,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2606,
+        "line": 2615,
         "excerpt": {
-          "start_line": 2594,
+          "start_line": 2603,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
@@ -19342,7 +20050,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -19358,7 +20066,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -21028,12 +21736,12 @@
       ],
       "source": {
         "name": "cardinality",
-        "qualified": "VectorSubspaceParent.cardinality",
-        "path": "src/baselib/matrix.py",
-        "line": 2337,
+        "qualified": "Partitions_all.cardinality",
+        "path": "src/baselib/combinat.py",
+        "line": 597,
         "excerpt": {
-          "start_line": 2325,
-          "text": "\n    def _finite_field_order(self) -> int:\n        if getattr(self.base_ring(), \"_kind\", None) not in [\"GF\", \"GF_EXTENSION\"]:\n            raise TypeError(\"vector-space enumeration requires a finite base field\")\n        return int(_untyped(self.base_ring()).order())\n\n    def _finite_field_elements(self) -> list[Any]:\n        self._finite_field_order()\n        if self._enumeration_elements is None:\n            self._enumeration_elements = list(_untyped(self.base_ring()))\n        return self._enumeration_elements\n\n    def cardinality(self) -> int:\n        return self._finite_field_order() ** self.dimension()\n\n    order = cardinality\n\n    def __len__(self) -> int:\n        return self.cardinality()\n\n    def _finite_element(self, index: int) -> Vector:\n        if not runtime.is_exact_integer(index):\n            raise TypeError(\"vector-space indices must be integers or slices\")\n        index = int(index)\n        size = self.cardinality()"
+          "start_line": 585,
+          "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
       "examples": [
@@ -21296,9 +22004,9 @@
         "name": "close",
         "qualified": "GraphDatabase.close",
         "path": "src/baselib/graphs.py",
-        "line": 3581,
+        "line": 3588,
         "excerpt": {
-          "start_line": 3569,
+          "start_line": 3576,
           "text": "            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()\n\n    def __repr__(self) -> str:\n        return \"Sage graph database at \" + self.filename"
         }
       },
@@ -21362,9 +22070,9 @@
         "name": "count",
         "qualified": "GraphDatabase.count",
         "path": "src/baselib/graphs.py",
-        "line": 3578,
+        "line": 3585,
         "excerpt": {
-          "start_line": 3566,
+          "start_line": 3573,
           "text": "        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()"
         }
       },
@@ -21428,9 +22136,9 @@
         "name": "graphs",
         "qualified": "GraphDatabase.graphs",
         "path": "src/baselib/graphs.py",
-        "line": 3575,
+        "line": 3582,
         "excerpt": {
-          "start_line": 3563,
+          "start_line": 3570,
           "text": "        limit: int | None = None,\n        **conditions: Any,\n    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"close\"), self._database, []\n        )\n\n    def __enter__(self) -> GraphDatabase:\n        return self"
         }
       },
@@ -21496,9 +22204,9 @@
         "name": "query",
         "qualified": "GraphDatabase.query",
         "path": "src/baselib/graphs.py",
-        "line": 3559,
+        "line": 3566,
         "excerpt": {
-          "start_line": 3547,
+          "start_line": 3554,
           "text": "                    \"Sage graph database not found at \"\n                    + self.filename\n                    + \"; set SAGEJS_GRAPH_DATABASE to an installed graphs.db\"\n                )\n            database_bytes = runtime.reflect.apply(resource_hook, runtime.undefined, [])\n            self._database = runtime.reflect.construct(constructor, [\":memory:\"])\n            runtime.reflect.apply(\n                runtime.reflect.get(self._database, \"deserialize\"),\n                self._database,\n                [database_bytes],\n            )\n\n    def query(\n        self,\n        query_dict: Any = None,\n        display_cols: Any = None,\n        limit: int | None = None,\n        **conditions: Any,\n    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):"
         }
       },
@@ -21579,16 +22287,16 @@
         "name": "graphics_array",
         "qualified": "graphics_array",
         "path": "src/baselib/graphics.py",
-        "line": 4172,
+        "line": 4180,
         "excerpt": {
-          "start_line": 4160,
+          "start_line": 4168,
           "text": "        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n\ndef graphics_array(\n    graphics: Any,\n    rows: Any = None,\n    columns: Any = None,\n) -> GraphicsArray:\n    r\"\"\"\n    Arrange several two-dimensional graphics objects in a rectangular grid.\n\n    The input may already be a nested list of rows. For a flat list, specify\n    either `rows` or `columns`; omitting both creates one horizontal row.\n\n    ### Examples\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#55d251b726925a2a-e3b0c44298fc1c14",
-          "line": 4186,
+          "line": 4194,
           "source": "G = graphics_array([plot(sin(x), (x, 0, 2*pi)), circle((0, 0), 1)])",
           "want": "",
           "tags": [],
@@ -21604,7 +22312,7 @@
         },
         {
           "id": "src/baselib/graphics.py#b4bac3d2ef3ddf50-cf4dabed2ce0f4fc",
-          "line": 4187,
+          "line": 4195,
           "source": "G.nrows(), G.ncols()",
           "want": "(1, 2)\n",
           "tags": [],
@@ -21666,7 +22374,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -21682,7 +22390,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -22343,9 +23051,9 @@
         "name": "count",
         "qualified": "GraphQuery.count",
         "path": "src/baselib/graphs.py",
-        "line": 3515,
+        "line": 3522,
         "excerpt": {
-          "start_line": 3503,
+          "start_line": 3510,
           "text": "            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass GraphDatabase:\n    \"\"\"Immutable SQLite database of all unlabeled graphs through order 7.\"\"\"\n"
         }
       },
@@ -22468,10 +23176,10 @@
         "name": "list",
         "qualified": "GraphQuery.list",
         "path": "src/baselib/graphs.py",
-        "line": 3510,
+        "line": 3517,
         "excerpt": {
-          "start_line": 3498,
-          "text": "            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__"
+          "start_line": 3505,
+          "text": "            [True],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return \"Graph database query: \" + self._sql\n\n    __str__ = __repr__\n    toString = __repr__"
         }
       },
       "examples": [
@@ -22539,7 +23247,7 @@
         "line": 3492,
         "excerpt": {
           "start_line": 3480,
-          "text": "            )\n        if len(clauses):\n            sql += \"WHERE \" + \" AND \".join(clauses) + \" \"\n        sql += \"ORDER BY graph_data.graph6\"\n        if limit is not None:\n            if int(limit) < 0:\n                raise ValueError(\"query limit must be nonnegative\")\n            sql += \" LIMIT ?\"\n            parameters.append(int(limit))\n        self._sql = sql\n        self._parameters = parameters\n\n    def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:\n        del immutable\n        options = _native_record(readBigInts=True, returnArrays=True)\n        statement = runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"prepare\"),\n            self._database,\n            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, \"all\"),\n            statement,\n            self._parameters,\n        )"
+          "text": "            )\n        if len(clauses):\n            sql += \"WHERE \" + \" AND \".join(clauses) + \" \"\n        sql += \"ORDER BY graph_data.graph6\"\n        if limit is not None:\n            if int(limit) < 0:\n                raise ValueError(\"query limit must be nonnegative\")\n            sql += \" LIMIT ?\"\n            parameters.append(int(limit))\n        self._sql = sql\n        self._parameters = parameters\n\n    def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:\n        del immutable\n        # Node 22 ignores prepare's newer options argument.  Configure the\n        # statement explicitly so rows have the same shape on every supported\n        # runtime.\n        statement = runtime.reflect.apply(\n            runtime.reflect.get(self._database, \"prepare\"),\n            self._database,\n            [self._sql],\n        )\n        runtime.reflect.apply(\n            runtime.reflect.get(statement, \"setReturnArrays\"),\n            statement,"
         }
       },
       "examples": [
@@ -24480,16 +25188,16 @@
         "name": "histogram",
         "qualified": "histogram",
         "path": "src/baselib/graphics.py",
-        "line": 3516,
+        "line": 3524,
         "excerpt": {
-          "start_line": 3504,
+          "start_line": 3512,
           "text": "        \"width\": 0.8,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Bar([float(value) for value in values], defaults))\n    return graphic\n\n\ndef histogram(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"\n    Compute and draw a histogram of numerical data.\n\n    Common Sage options include `bins`, `range`, `density`, `cumulative`,\n    `color`, `edgecolor`, `alpha`, and `label`.\n\n    ### Examples\n\n    ```sage\n    sage: histogram([1, 1, 2, 3], bins=3)\n    Graphics object consisting of 1 graphics primitive\n    ```"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
-          "line": 3526,
+          "line": 3534,
           "source": "histogram([1, 1, 2, 3], bins=3)",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -24557,9 +25265,9 @@
         "name": "hue",
         "qualified": "hue",
         "path": "src/baselib/graphics.py",
-        "line": 2667,
+        "line": 2675,
         "excerpt": {
-          "start_line": 2655,
+          "start_line": 2663,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Line(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef hue(\n    value: Any,\n    saturation: Any = 1,\n    brightness: Any = 1,\n) -> tuple[float, float, float]:\n    \"\"\"Return an RGB triple from hue, saturation, and brightness.\"\"\"\n    h = float(value) % 1.0\n    s = max(0.0, min(1.0, float(saturation)))\n    v = max(0.0, min(1.0, float(brightness)))\n    scaled = h * 6.0\n    sector = int(runtime.math.floor(scaled))\n    fraction = scaled - sector\n    p = v * (1.0 - s)"
         }
       },
@@ -24617,9 +25325,9 @@
         "name": "hyperbolic_arc",
         "qualified": "hyperbolic_arc",
         "path": "src/baselib/graphics.py",
-        "line": 3302,
+        "line": 3310,
         "excerpt": {
-          "start_line": 3290,
+          "start_line": 3298,
           "text": "        angle = start_angle + delta * index / float(resolution)\n        points.append(\n            runtime.math_tuple(\n                [\n                    center_x + radius * runtime.math.cos(angle),\n                    center_y + radius * runtime.math.sin(angle),\n                ]\n            )\n        )\n    return points\n\n\ndef hyperbolic_arc(\n    a: Any,\n    b: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")"
         }
       },
@@ -24677,9 +25385,9 @@
         "name": "hyperbolic_polygon",
         "qualified": "hyperbolic_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3319,
+        "line": 3327,
         "excerpt": {
-          "start_line": 3307,
+          "start_line": 3315,
           "text": ") -> Graphics:\n    r\"\"\"Plot the hyperbolic geodesic from `a` to `b`.\"\"\"\n    options = _copy_options(options)\n    resolution = int(_option_pop(options, \"resolution\", 100))\n    points = _hyperbolic_geodesic_points(a, b, model, resolution)\n    answer = line(points, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, axes=False, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_polygon(\n    points: Any,\n    model: str = \"UHP\",\n    resolution: int = 100,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a polygon whose sides are hyperbolic geodesics.\"\"\"\n    vertices = list(points)\n    if len(vertices) == 0:\n        raise ValueError(\"cannot plot the empty polygon\")\n    if len(vertices) < 2:\n        raise ValueError(\"a hyperbolic polygon needs at least two vertices\")\n    sampled = []"
         }
       },
@@ -24737,9 +25445,9 @@
         "name": "hyperbolic_regular_polygon",
         "qualified": "hyperbolic_regular_polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3366,
+        "line": 3374,
         "excerpt": {
-          "start_line": 3354,
+          "start_line": 3362,
           "text": "\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,\n    i_angle: Any,\n    center: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a regular hyperbolic polygon in the upper-half-plane model.\"\"\"\n    count = int(sides)\n    angle = float(i_angle)\n    if count <= 2:\n        raise ValueError(\"degenerated polygons (sides<=2) are not supported\")\n    if angle <= 0 or angle >= _PI:\n        raise ValueError(\"interior angle must be in the interval (0, pi)\")"
         }
       },
@@ -24797,9 +25505,9 @@
         "name": "hyperbolic_triangle",
         "qualified": "hyperbolic_triangle",
         "path": "src/baselib/graphics.py",
-        "line": 3355,
+        "line": 3363,
         "excerpt": {
-          "start_line": 3343,
+          "start_line": 3351,
           "text": "    options = _copy_options(options)\n    fill = bool(_option_pop(options, \"fill\", False))\n    if fill:\n        answer = polygon(sampled, **options)\n    else:\n        answer = line(sampled, **options)\n    if str(model).upper() in (\"PD\", \"KM\"):\n        answer = answer + circle((0, 0), 1, color=\"black\")\n        answer.set_aspect_ratio(1)\n    return answer\n\n\ndef hyperbolic_triangle(\n    a: Any,\n    b: Any,\n    c: Any,\n    model: str = \"UHP\",\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.\"\"\"\n    return hyperbolic_polygon([a, b, c], model=model, **options)\n\n\ndef hyperbolic_regular_polygon(\n    sides: int,"
         }
       },
@@ -25005,9 +25713,9 @@
         "name": "implicit_plot",
         "qualified": "implicit_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5967,
+        "line": 5975,
         "excerpt": {
-          "start_line": 5955,
+          "start_line": 5963,
           "text": "    graphics_options[\"xmin\"] = xmin\n    graphics_options[\"xmax\"] = xmax\n    graphics_options[\"ymin\"] = ymin\n    graphics_options[\"ymax\"] = ymax\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(ComplexPlot(rgb_data, (xmin, xmax), (ymin, ymax), defaults))\n    if plot_diagnostics is not None:\n        graphic._plot_spec_diagnostics.append(plot_diagnostics)\n    return graphic\n\n\ndef implicit_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot the plane curve where a function is zero or an equality holds.\n    \"\"\"\n    if hasattr(function_value, \"_plot_zero_set_expression\"):\n        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]"
         }
       },
@@ -25306,9 +26014,9 @@
         "name": "line",
         "qualified": "line",
         "path": "src/baselib/graphics.py",
-        "line": 2638,
+        "line": 2646,
         "excerpt": {
-          "start_line": 2626,
+          "start_line": 2634,
           "text": "\ndef _graphics_options(options: dict[str, Any]) -> dict[str, Any]:\n    answer = {}\n    for name in _GRAPHICS_OPTION_NAMES:\n        if _option_has(options, name):\n            answer[name] = _option_pop(options, name)\n    for name in list(runtime.object.keys(options)):\n        if name[:7] == \"legend_\" and name not in (\"legend_label\", \"legend_color\"):\n            answer[name] = _option_pop(options, name)\n    return answer\n\n\ndef line(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing a line through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"thickness\": 1,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\",\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):"
         }
       },
@@ -25469,9 +26177,9 @@
         "name": "list_plot",
         "qualified": "list_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6313,
+        "line": 6321,
         "excerpt": {
-          "start_line": 6301,
+          "start_line": 6309,
           "text": "    returned semantic object using Plotly-compatible HTML/data, without\n    requiring a Jupyter extension.\n    \"\"\"\n\n    answer = value\n    for other in others:\n        answer = answer + other\n    if len(options) and hasattr(answer, \"set_extra_kwds\"):\n        answer.set_extra_kwds(options)\n    return answer\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
         }
       },
@@ -25529,9 +26237,9 @@
         "name": "list_plot_loglog",
         "qualified": "list_plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6387,
+        "line": 6395,
         "excerpt": {
-          "start_line": 6375,
+          "start_line": 6383,
           "text": "\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25589,9 +26297,9 @@
         "name": "list_plot_semilogx",
         "qualified": "list_plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6397,
+        "line": 6405,
         "excerpt": {
-          "start_line": 6385,
+          "start_line": 6393,
           "text": "\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -25649,9 +26357,9 @@
         "name": "list_plot_semilogy",
         "qualified": "list_plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6407,
+        "line": 6415,
         "excerpt": {
-          "start_line": 6395,
+          "start_line": 6403,
           "text": "\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\nline2d = line\narrow2d = arrow\npoint2d = point"
         }
       },
@@ -25921,16 +26629,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 8718,
+        "line": 8716,
         "excerpt": {
-          "start_line": 8706,
+          "start_line": 8704,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 8729,
+          "line": 8727,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -25946,7 +26654,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 8730,
+          "line": 8728,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -25962,7 +26670,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 8732,
+          "line": 8730,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -26030,9 +26738,9 @@
         "name": "matrix_plot",
         "qualified": "matrix_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6055,
+        "line": 6063,
         "excerpt": {
-          "start_line": 6043,
+          "start_line": 6051,
           "text": "        \"colorbar\": False,\n        \"alpha\": 1,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef matrix_plot(\n    matrix_value: Any,\n    xrange: Any = None,\n    yrange: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a matrix or rectangular array as a color-valued grid.\"\"\"\n    if hasattr(matrix_value, \"nrows\") and hasattr(matrix_value, \"ncols\"):\n        row_count = int(matrix_value.nrows())\n        column_count = int(matrix_value.ncols())\n        values = [\n            [float(matrix_value[row, column]) for column in range(column_count)]\n            for row in range(row_count)"
         }
       },
@@ -27493,16 +28201,16 @@
         "name": "multi_graphics",
         "qualified": "multi_graphics",
         "path": "src/baselib/graphics.py",
-        "line": 3792,
+        "line": 3800,
         "excerpt": {
-          "start_line": 3780,
+          "start_line": 3788,
           "text": "        \"\"\"Save through the host graphics hook when one is installed.\"\"\"\n        hook = runtime.reflect.get(\n            runtime.global_object, \"__sagejs_graphics_save_hook__\"\n        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(hook, runtime.undefined, [self, filename, options])\n        return self\n\n\ndef multi_graphics(graphics_list: Any) -> MultiGraphics:\n    r\"\"\"\n    Draw graphics at arbitrary positions on one common canvas.\n\n    Each entry is either a `Graphics` object at Sage's default full-canvas\n    position or `(graphic, (left, bottom, width, height))`, with coordinates\n    expressed as fractions of the canvas.\n\n    ### Examples\n\n    ```sage\n    sage: g1 = plot(sin(x), (x, -pi, pi))\n    sage: g2 = circle((0, 0), 1, color='red')"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#e56965e227de7acb-e3b0c44298fc1c14",
-          "line": 3803,
+          "line": 3811,
           "source": "g1 = plot(sin(x), (x, -pi, pi))",
           "want": "",
           "tags": [],
@@ -27518,7 +28226,7 @@
         },
         {
           "id": "src/baselib/graphics.py#6cdbefe97dc33336-e3b0c44298fc1c14",
-          "line": 3804,
+          "line": 3812,
           "source": "g2 = circle((0, 0), 1, color='red')",
           "want": "",
           "tags": [],
@@ -27534,7 +28242,7 @@
         },
         {
           "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
-          "line": 3805,
+          "line": 3813,
           "source": "multi_graphics([g1, (g2, (0.2, 0.55, 0.3, 0.3))])",
           "want": "Multigraphics with 2 elements\n",
           "tags": [],
@@ -27603,6 +28311,139 @@
     },
     {
       "schema_version": 1,
+      "name": "number_of_partitions",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "number_of_partitions(size: Any) -> Any",
+      "summary": "Return the number of partitions of a nonnegative integer.",
+      "doc": "Return the number of partitions of a nonnegative integer.\n\nThe value comes from FLINT's exact Hardy-Ramanujan-Rademacher\nimplementation in production native and WebAssembly hosts.  A host that\nexplicitly lacks the declared capability retains Euler's exact pentagonal\nrecurrence; binding and execution failures are never hidden by fallback.\n\n### Input\n\n- `size` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: number_of_partitions(10)\n    42\n    sage: number_of_partitions(100)\n    190569292\n    sage: number_of_partitions(1000)\n    24061467864032622473692149727991\n    sage: number_of_partitions(4) == Partitions(4).cardinality()\n    True\n```\n\nThis API and documentation are adapted from\n`sage.combinat.partition.number_of_partitions` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT `arith_number_of_partitions`",
+          "url": "https://flintlib.org/doc/arith.html",
+          "license": "LGPL-3.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        }
+      ],
+      "limitations": [
+        "Production native and WebAssembly hosts use FLINT's exact Hardy-Ramanujan-Rademacher implementation.  Only explicit capability absence selects the pentagonal recurrence; binding or execution failures propagate.  The recurrence computes every smaller partition number and is therefore intentionally rejected by release route telemetry for large workloads.  See `bench/compare-partitions.cjs`."
+      ],
+      "source": {
+        "name": "number_of_partitions",
+        "qualified": "number_of_partitions",
+        "path": "src/baselib/combinat.py",
+        "line": 1301,
+        "excerpt": {
+          "start_line": 1289,
+          "text": "            _combinat_state.partitions_by_size[key] = Partitions_n(value)\n        return _combinat_state.partitions_by_size[key]\n    return Partitions_n(\n        value,\n        min_part,\n        max_part,\n        min_length,\n        max_length,\n        parts_in,\n    )\n\n\ndef number_of_partitions(size: Any) -> Any:\n    r\"\"\"\n    Return the number of partitions of a nonnegative integer.\n\n    The value comes from FLINT's exact Hardy-Ramanujan-Rademacher\n    implementation in production native and WebAssembly hosts.  A host that\n    explicitly lacks the declared capability retains Euler's exact pentagonal\n    recurrence; binding and execution failures are never hidden by fallback.\n\n    ### Input\n\n    - `size` -- a nonnegative integer\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
+          "line": 1317,
+          "source": "number_of_partitions(10)",
+          "want": "42\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
+            "status": "pass",
+            "actual": "42\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
+          "line": 1319,
+          "source": "number_of_partitions(100)",
+          "want": "190569292\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
+            "status": "pass",
+            "actual": "190569292\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
+          "line": 1321,
+          "source": "number_of_partitions(1000)",
+          "want": "24061467864032622473692149727991\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
+            "status": "pass",
+            "actual": "24061467864032622473692149727991\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
+          "line": 1323,
+          "source": "number_of_partitions(4) == Partitions(4).cardinality()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "number_of_partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "NumberField",
       "aliases": [],
       "kind": "function",
@@ -27659,9 +28500,9 @@
         "name": "NumberField",
         "qualified": "NumberField",
         "path": "src/baselib/number_fields.py",
-        "line": 2993,
+        "line": 3019,
         "excerpt": {
-          "start_line": 2981,
+          "start_line": 3007,
           "text": "        result = _nf_quadratic_class_units_module().real_quadratic_class_number(\n            int(self.discriminant()),\n            narrow=True,\n            algorithm=routing.requested_algorithm,\n            **limits,\n        )\n        answer = int(result.order())\n        if use_cache:\n            self._real_quadratic_narrow_class_number_cache = answer\n        return answer\n\n\ndef NumberField(\n    polynomial: Any,\n    names: Any = None,\n) -> NumberFieldParent:\n    \"\"\"Construct the exact simple field `QQ[a]/(polynomial)`.\"\"\"\n    polynomial = _number_field_polynomial(polynomial)\n    if names is None:\n        name = \"a\"\n    elif runtime.array.isArray(names):\n        if len(names) != 1:\n            raise ValueError(\"a simple number field has one generator name\")\n        name = str(names[0])\n    else:"
         }
       },
@@ -27710,9 +28551,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 1746,
+        "line": 1755,
         "excerpt": {
-          "start_line": 1734,
+          "start_line": 1743,
           "text": "        for index in range(len(parameters)):\n            runtime.reflect.set(\n                substitutions,\n                _symbol_name(variables[index + 1]),\n                _expression_tree(parameters[index]),\n            )\n        function_value = Expression(\n            _call_backend(\"substitute\", [function_value._tree, substitutions])\n        )\n    return function_value._tree, _symbol_name(variables[0])\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -28073,9 +28914,9 @@
         "name": "parametric_plot",
         "qualified": "parametric_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5564,
+        "line": 5572,
         "excerpt": {
-          "start_line": 5552,
+          "start_line": 5560,
           "text": "        \"constructor\": \"plot\",\n        \"source\": {\"expressions\": [str(value) for value in functions]},\n        \"ranges\": [[xmin, xmax]],\n        \"sampling\": {} if sampling_context is None else sampling_context,\n    }\n    return answer.with_plot_spec_context(\n        provenance=provenance,\n        source_intent={\"frontend_constructor\": \"plot\"},\n        diagnostics=_curve_diagnostics(all_diagnostics),\n    )\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a two-component parametric plane curve.\"\"\"\n    components = list(functions)\n    if len(components) != 2:\n        raise ValueError(\"parametric_plot() requires exactly two components\")\n    minimum, maximum = _plot_range(range_args)\n    variable = _plot_variable(range_args)\n    count = int(_option_pop(options, \"plot_points\", 200))\n    if count < 2:"
         }
       },
@@ -28132,6 +28973,1477 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition",
+      "aliases": [],
+      "kind": "class",
+      "module": "sage.combinat",
+      "signature": "Partition(entries: Any, parent: Any=None) -> None",
+      "summary": "A partition of a nonnegative integer.",
+      "doc": "A partition of a nonnegative integer.\n\nA partition is a weakly decreasing list of positive integers.  Its parts\nare ordinary Sage.js integers, so a partition interoperates with the rest\nof the library without a conversion step.\n\n### Input\n\n- `entries` -- a list or tuple of weakly decreasing positive integers\n- `parent` -- optional owning combinatorial class\n\n### Examples\n\n```sage\n    sage: Partition([3, 1])\n    [3, 1]\n    sage: Partition([3, 1]).size()\n    4\n    sage: Partition([3, 1]).conjugate()\n    [2, 1, 1]\n```\n\nParts must be weakly decreasing, exactly as in Sage; `Partition([1, 3])`\nraises `ValueError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partition` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration."
+      ],
+      "source": {
+        "name": "partition",
+        "qualified": "SageBytes.partition",
+        "path": "src/baselib/byte_strings.py",
+        "line": 613,
+        "excerpt": {
+          "start_line": 601,
+          "text": "        return answer\n\n    def center(self, width: Any, fillbyte: Any = runtime.undefined) -> SageBytes:\n        width = _coerce_index(width)\n        fill = SageBytes([32]) if fillbyte is runtime.undefined else fillbyte\n        if not isinstance(fill, SageBytes) or len(fill) != 1:\n            raise TypeError(\"center() argument 2 must be a byte string of length 1\")\n        padding = max(width - len(self), 0)\n        left = padding // 2\n        right = padding - left\n        return fill * left + self + fill * right\n\n    def partition(self, separator: Any) -> Any:\n        if not isinstance(separator, SageBytes):\n            raise TypeError(\"a bytes-like object is required\")\n        if len(separator) == 0:\n            raise ValueError(\"empty separator\")\n        index = self.find(separator)\n        if index < 0:\n            return runtime.math_tuple([self, SageBytes([]), SageBytes([])])\n        return runtime.math_tuple(\n            [\n                self.slice(0, index),\n                separator,\n                self.slice(index + len(separator)),"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
+          "line": 269,
+          "source": "Partition([3, 1])",
+          "want": "[3, 1]\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
+            "status": "pass",
+            "actual": "[3, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
+          "line": 271,
+          "source": "Partition([3, 1]).size()",
+          "want": "4\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
+            "status": "pass",
+            "actual": "4\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
+          "line": 273,
+          "source": "Partition([3, 1]).conjugate()",
+          "want": "[2, 1, 1]\n",
+          "tags": [],
+          "owner": "Partition",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
+            "status": "pass",
+            "actual": "[2, 1, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.cells",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.cells()",
+      "summary": "Return the coordinates of the cells of the Ferrers diagram.",
+      "doc": "Return the coordinates of the cells of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([2, 1]).cells()\n    [(0, 0), (0, 1), (1, 0)]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "cells",
+        "qualified": "Partition.cells",
+        "path": "src/baselib/combinat.py",
+        "line": 415,
+        "excerpt": {
+          "start_line": 403,
+          "text": "        ```\n        \"\"\"\n        minimum = _partition_exact_integer(minimum_length, \"minimum_length\")\n        if minimum < 0:\n            raise ValueError(\"minimum_length must be nonnegative\")\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum else minimum\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
+          "line": 422,
+          "source": "Partition([2, 1]).cells()",
+          "want": "[(0, 0), (0, 1), (1, 0)]\n",
+          "tags": [],
+          "owner": "Partition.cells",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
+            "status": "pass",
+            "actual": "[(0, 0), (0, 1), (1, 0)]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.conjugate",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.conjugate()",
+      "summary": "Return the conjugate partition, the transpose of the Ferrers diagram.",
+      "doc": "Return the conjugate partition, the transpose of the Ferrers diagram.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).conjugate()\n    [3, 2, 1, 1]\n    sage: Partition([4, 2, 1]).conjugate().conjugate()\n    [4, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "conjugate",
+        "qualified": "Partition.conjugate",
+        "path": "src/baselib/combinat.py",
+        "line": 363,
+        "excerpt": {
+          "start_line": 351,
+          "text": "        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n\n    def conjugate(self) -> Partition:\n        \"\"\"\n        Return the conjugate partition, the transpose of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).conjugate()\n            [3, 2, 1, 1]\n            sage: Partition([4, 2, 1]).conjugate().conjugate()\n            [4, 2, 1]\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
+          "line": 370,
+          "source": "Partition([4, 2, 1]).conjugate()",
+          "want": "[3, 2, 1, 1]\n",
+          "tags": [],
+          "owner": "Partition.conjugate",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
+            "status": "pass",
+            "actual": "[3, 2, 1, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
+          "line": 372,
+          "source": "Partition([4, 2, 1]).conjugate().conjugate()",
+          "want": "[4, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.conjugate",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
+            "status": "pass",
+            "actual": "[4, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.dominates",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.dominates()",
+      "summary": "Return whether `self` dominates `other` in the dominance order.",
+      "doc": "Return whether `self` dominates `other` in the dominance order.\n\n### Examples\n\n```sage\n    sage: Partition([3, 1]).dominates([2, 2])\n    True\n    sage: Partition([2, 2]).dominates([3, 1])\n    False\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "dominates",
+        "qualified": "Partition.dominates",
+        "path": "src/baselib/combinat.py",
+        "line": 480,
+        "excerpt": {
+          "start_line": 468,
+          "text": "            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):\n            lengths = []\n            for column in range(self._entries[row]):\n                lengths.append(self.hook_length(row, column))\n            rows.append(lengths)\n        return rows\n\n    def dominates(self, other: Any) -> bool:\n        \"\"\"\n        Return whether `self` dominates `other` in the dominance order.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 1]).dominates([2, 2])\n            True\n            sage: Partition([2, 2]).dominates([3, 1])\n            False\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
+          "line": 487,
+          "source": "Partition([3, 1]).dominates([2, 2])",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partition.dominates",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
+          "line": 489,
+          "source": "Partition([2, 2]).dominates([3, 1])",
+          "want": "False\n",
+          "tags": [],
+          "owner": "Partition.dominates",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
+            "status": "pass",
+            "actual": "False\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.ferrers_diagram",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.ferrers_diagram()",
+      "summary": "Return the Ferrers diagram as text, one row of asterisks per part.",
+      "doc": "Return the Ferrers diagram as text, one row of asterisks per part.\n\n### Examples\n\n```sage\n    sage: print(Partition([3, 1]).ferrers_diagram())\n    ***\n    *\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "ferrers_diagram",
+        "qualified": "Partition.ferrers_diagram",
+        "path": "src/baselib/combinat.py",
+        "line": 509,
+        "excerpt": {
+          "start_line": 497,
+          "text": "            width = len(entries)\n        left = 0\n        right = 0\n        for index in range(width):\n            if index < len(self._entries):\n                left += self._entries[index]\n            if index < len(entries):\n                right += entries[index]\n            if left < right:\n                return False\n        return True\n\n    def ferrers_diagram(self) -> str:\n        \"\"\"\n        Return the Ferrers diagram as text, one row of asterisks per part.\n\n        ### Examples\n\n        ```sage\n            sage: print(Partition([3, 1]).ferrers_diagram())\n            ***\n            *\n        ```\n        \"\"\"\n        return \"\\n\".join([\"*\" * part for part in self._entries])"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
+          "line": 516,
+          "source": "print(Partition([3, 1]).ferrers_diagram())",
+          "want": "***\n*\n",
+          "tags": [],
+          "owner": "Partition.ferrers_diagram",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
+            "status": "pass",
+            "actual": "***\n*\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.hook_length",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.hook_length()",
+      "summary": "Return the hook length of the cell in the given row and column.",
+      "doc": "Return the hook length of the cell in the given row and column.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_length(0, 0)\n    5\n    sage: Partition([3, 2, 1]).hook_length(1, 1)\n    1\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "hook_length",
+        "qualified": "Partition.hook_length",
+        "path": "src/baselib/combinat.py",
+        "line": 432,
+        "excerpt": {
+          "start_line": 420,
+          "text": "\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):\n            for column in range(self._entries[row]):\n                coordinates.append(runtime.math_tuple([row, column]))\n        return coordinates\n\n    def hook_length(self, row: int, column: int) -> int:\n        \"\"\"\n        Return the hook length of the cell in the given row and column.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_length(0, 0)\n            5\n            sage: Partition([3, 2, 1]).hook_length(1, 1)\n            1\n        ```\n        \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
+          "line": 439,
+          "source": "Partition([3, 2, 1]).hook_length(0, 0)",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partition.hook_length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
+          "line": 441,
+          "source": "Partition([3, 2, 1]).hook_length(1, 1)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "Partition.hook_length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.hook_lengths",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.hook_lengths()",
+      "summary": "Return the hook lengths of every cell, row by row.",
+      "doc": "Return the hook lengths of every cell, row by row.\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 1]).hook_lengths()\n    [[5, 3, 1], [3, 1], [1]]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "hook_lengths",
+        "qualified": "Partition.hook_lengths",
+        "path": "src/baselib/combinat.py",
+        "line": 461,
+        "excerpt": {
+          "start_line": 449,
+          "text": "            or index_row >= len(self._entries)\n            or index_column < 0\n            or index_column >= self._entries[index_row]\n        ):\n            raise IndexError(\"the cell is outside the Ferrers diagram\")\n        arm = self._entries[index_row] - index_column - 1\n        leg = 0\n        for part in self._entries[index_row + 1 :]:\n            if part > index_column:\n                leg += 1\n        return arm + leg + 1\n\n    def hook_lengths(self) -> list[list[int]]:\n        \"\"\"\n        Return the hook lengths of every cell, row by row.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
+          "line": 468,
+          "source": "Partition([3, 2, 1]).hook_lengths()",
+          "want": "[[5, 3, 1], [3, 1], [1]]\n",
+          "tags": [],
+          "owner": "Partition.hook_lengths",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
+            "status": "pass",
+            "actual": "[[5, 3, 1], [3, 1], [1]]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.length",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.length()",
+      "summary": "Return the number of parts.",
+      "doc": "Return the number of parts.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).length()\n    3\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "length",
+        "qualified": "Partition.length",
+        "path": "src/baselib/combinat.py",
+        "line": 337,
+        "excerpt": {
+          "start_line": 325,
+          "text": "        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:\n            total += part\n        return total\n\n    def length(self) -> int:\n        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
+          "line": 344,
+          "source": "Partition([4, 2, 1]).length()",
+          "want": "3\n",
+          "tags": [],
+          "owner": "Partition.length",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.size",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.size()",
+      "summary": "Return the integer partitioned by `self`.",
+      "doc": "Return the integer partitioned by `self`.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).size()\n    7\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "size",
+        "qualified": "Partition.size",
+        "path": "src/baselib/combinat.py",
+        "line": 321,
+        "excerpt": {
+          "start_line": 309,
+          "text": "    def __len__(self) -> int:\n        return len(self._entries)\n\n    def __iter__(self) -> Iterator[int]:\n        return iter(self._entries)\n\n    def __getitem__(self, index: Any) -> Any:\n        return self._entries[index]\n\n    def __contains__(self, part: object) -> bool:\n        return part in self._entries\n\n    def size(self) -> int:\n        \"\"\"\n        Return the integer partitioned by `self`.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
+          "line": 328,
+          "source": "Partition([4, 2, 1]).size()",
+          "want": "7\n",
+          "tags": [],
+          "owner": "Partition.size",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
+            "status": "pass",
+            "actual": "7\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.to_exp",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.to_exp()",
+      "summary": "Return part multiplicities, where entry `i` counts the parts equal to",
+      "doc": "Return part multiplicities, where entry `i` counts the parts equal to\n`i + 1`.\n\n### Input\n\n- `minimum_length` -- pad the result to at least this length\n\n### Examples\n\n```sage\n    sage: Partition([3, 2, 2, 1]).to_exp()\n    [1, 2, 1]\n    sage: Partition([3, 2, 2, 1]).to_exp(5)\n    [1, 2, 1, 0, 0]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "to_exp",
+        "qualified": "Partition.to_exp",
+        "path": "src/baselib/combinat.py",
+        "line": 387,
+        "excerpt": {
+          "start_line": 375,
+          "text": "        \"\"\"\n        if not self._entries:\n            return Partition([], self._parent)\n        columns = []\n        for index in range(self._entries[0]):\n            height = 0\n            for part in self._entries:\n                if part > index:\n                    height += 1\n            columns.append(height)\n        return Partition(columns, self._parent)\n\n    def to_exp(self, minimum_length: int = 0) -> list[int]:\n        \"\"\"\n        Return part multiplicities, where entry `i` counts the parts equal to\n        `i + 1`.\n\n        ### Input\n\n        - `minimum_length` -- pad the result to at least this length\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 2, 1]).to_exp()"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
+          "line": 399,
+          "source": "Partition([3, 2, 2, 1]).to_exp()",
+          "want": "[1, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.to_exp",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
+            "status": "pass",
+            "actual": "[1, 2, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
+          "line": 401,
+          "source": "Partition([3, 2, 2, 1]).to_exp(5)",
+          "want": "[1, 2, 1, 0, 0]\n",
+          "tags": [],
+          "owner": "Partition.to_exp",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
+            "status": "pass",
+            "actual": "[1, 2, 1, 0, 0]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partition.to_list",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partition.to_list()",
+      "summary": "Return the parts as an ordinary list.",
+      "doc": "Return the parts as an ordinary list.\n\n### Examples\n\n```sage\n    sage: Partition([4, 2, 1]).to_list()\n    [4, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "to_list",
+        "qualified": "Partition.to_list",
+        "path": "src/baselib/combinat.py",
+        "line": 350,
+        "excerpt": {
+          "start_line": 338,
+          "text": "        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n\n    def to_list(self) -> list[int]:\n        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
+          "line": 357,
+          "source": "Partition([4, 2, 1]).to_list()",
+          "want": "[4, 2, 1]\n",
+          "tags": [],
+          "owner": "Partition.to_list",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
+            "status": "pass",
+            "actual": "[4, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "Partitions(size: Any=None, **constraints: Any) -> Any",
+      "summary": "Return the combinatorial class of partitions described by the arguments.",
+      "doc": "Return the combinatorial class of partitions described by the arguments.\n\nWith no argument this is the class of all partitions of all nonnegative\nintegers.  With an integer argument it is the class of partitions of that\ninteger, optionally restricted by the supported keyword constraints.\n\n### Input\n\n- `size` -- optional nonnegative integer to partition\n- `min_part` -- smallest allowed part\n- `max_part` -- largest allowed part\n- `length` -- exact number of parts\n- `min_length` -- smallest allowed number of parts\n- `max_length` -- largest allowed number of parts\n- `parts_in` -- restrict parts to the given collection of integers\n\n### Examples\n\n```sage\n    sage: Partitions(4).list()\n    [[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n    sage: Partitions(5, max_part=3).list()\n    [[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n    sage: Partitions(5, length=2).list()\n    [[4, 1], [3, 2]]\n    sage: Partitions(5, min_part=2).list()\n    [[5], [3, 2]]\n    sage: Partitions(5, parts_in=[1, 2]).list()\n    [[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n```\n\nCounting never enumerates:\n\n```sage\n    sage: Partitions(1000).cardinality()\n    24061467864032622473692149727991\n```\n\n### Limitations\n\nThe `inner`, `outer`, `regular`, and `restricted` keyword constraints of\nSage are not implemented yet and raise `NotImplementedError`.\n\nThis API and documentation are adapted from\n`sage.combinat.partition.Partitions` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "enumerative combinatorics",
+        "partitions",
+        "integer sequences"
+      ],
+      "backends": [
+        "Sage.js exact enumeration",
+        "FLINT"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Construction, enumeration order, exact counting, and the rank/unrank protocol match Sage.  The inner, outer, regular, and restricted constraints are not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT `arith_number_of_partitions`",
+          "url": "https://flintlib.org/doc/arith.html",
+          "license": "LGPL-3.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Euler's pentagonal number theorem recurrence for `p(n)`, the portable path when FLINT is unavailable"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Counting-driven ranking, unranking, and uniform random selection over a recursively counted set"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "One bounded triangular count table over the largest remaining part serves constrained cardinality, rank, unrank, and random_element, so the four agree by construction rather than by separate implementations"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        },
+        {
+          "id": "kreher-stinson-combinatorial-algorithms",
+          "title": "Combinatorial Algorithms: Generation, Enumeration, and Search",
+          "type": "book",
+          "authors": [
+            "Donald L. Kreher",
+            "Douglas R. Stinson"
+          ],
+          "year": 1999
+        },
+        {
+          "id": "nijenhuis-wilf-combinatorial-algorithms",
+          "title": "Combinatorial Algorithms for Computers and Calculators",
+          "type": "book",
+          "authors": [
+            "Albert Nijenhuis",
+            "Herbert S. Wilf"
+          ],
+          "year": 1978
+        }
+      ],
+      "limitations": [
+        "Enumeration is exact but explicit, so listing a class is practical only while its cardinality is small.  Counting, ranking, and uniform sampling avoid enumeration.",
+        "Production native and WebAssembly hosts use FLINT's exact Hardy-Ramanujan-Rademacher implementation.  Only explicit capability absence selects the pentagonal recurrence; binding or execution failures propagate.  The recurrence computes every smaller partition number and is therefore intentionally rejected by release route telemetry for large workloads.  See `bench/compare-partitions.cjs`.",
+        "Ranking, unranking, and random selection retain a triangular table of arbitrary-precision completion counts.  Requests above the reviewed one-million-cell persistent-work ceiling raise `RuntimeError` before allocating; cardinality and streaming enumeration remain available."
+      ],
+      "source": {
+        "name": "Partitions",
+        "qualified": "Partitions",
+        "path": "src/baselib/combinat.py",
+        "line": 1169,
+        "excerpt": {
+          "start_line": 1157,
+          "text": "    entries = []\n    if not isinstance(value, (list, tuple)):\n        raise TypeError(\"parts_in must be a list or tuple of positive integers\")\n    for part in value:\n        if not runtime.is_exact_integer(part):\n            raise TypeError(\"parts_in must contain integers\")\n        if int(part) <= 0:\n            raise ValueError(\"parts_in must contain positive integers\")\n        entries.append(int(part))\n    return entries\n\n\ndef Partitions(size: Any = None, **constraints: Any) -> Any:\n    r\"\"\"\n    Return the combinatorial class of partitions described by the arguments.\n\n    With no argument this is the class of all partitions of all nonnegative\n    integers.  With an integer argument it is the class of partitions of that\n    integer, optionally restricted by the supported keyword constraints.\n\n    ### Input\n\n    - `size` -- optional nonnegative integer to partition\n    - `min_part` -- smallest allowed part\n    - `max_part` -- largest allowed part"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
+          "line": 1190,
+          "source": "Partitions(4).list()",
+          "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
+            "status": "pass",
+            "actual": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
+          "line": 1192,
+          "source": "Partitions(5, max_part=3).list()",
+          "want": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
+            "status": "pass",
+            "actual": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
+          "line": 1194,
+          "source": "Partitions(5, length=2).list()",
+          "want": "[[4, 1], [3, 2]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
+            "status": "pass",
+            "actual": "[[4, 1], [3, 2]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
+          "line": 1196,
+          "source": "Partitions(5, min_part=2).list()",
+          "want": "[[5], [3, 2]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
+            "status": "pass",
+            "actual": "[[5], [3, 2]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
+          "line": 1198,
+          "source": "Partitions(5, parts_in=[1, 2]).list()",
+          "want": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
+            "status": "pass",
+            "actual": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
+          "line": 1205,
+          "source": "Partitions(1000).cardinality()",
+          "want": "24061467864032622473692149727991\n",
+          "tags": [],
+          "owner": "Partitions",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
+            "status": "pass",
+            "actual": "24061467864032622473692149727991\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.cardinality",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.cardinality()",
+      "summary": "Return the exact number of partitions in this class.",
+      "doc": "Return the exact number of partitions in this class.\n\nThe unconstrained count uses FLINT's exact Rademacher implementation,\nso it stays fast well beyond the range where listing the partitions is\npractical.  Hosts that explicitly lack the declared operation retain\nthe exact pentagonal recurrence.\n\n### Examples\n\n```sage\n    sage: Partitions(4).cardinality()\n    5\n    sage: Partitions(100).cardinality()\n    190569292\n    sage: Partitions(5, max_part=3).cardinality()\n    5\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "cardinality",
+        "qualified": "Partitions_all.cardinality",
+        "path": "src/baselib/combinat.py",
+        "line": 597,
+        "excerpt": {
+          "start_line": 585,
+          "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
+          "line": 922,
+          "source": "Partitions(4).cardinality()",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
+          "line": 924,
+          "source": "Partitions(100).cardinality()",
+          "want": "190569292\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
+            "status": "pass",
+            "actual": "190569292\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
+          "line": 926,
+          "source": "Partitions(5, max_part=3).cardinality()",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_n.cardinality",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.first",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.first()",
+      "summary": "Return the first partition in the enumeration order.",
+      "doc": "Return the first partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).first()\n    [5]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "first",
+        "qualified": "Partitions_all.first",
+        "path": "src/baselib/combinat.py",
+        "line": 620,
+        "excerpt": {
+          "start_line": 608,
+          "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(entries)\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
+          "line": 988,
+          "source": "Partitions(5).first()",
+          "want": "[5]\n",
+          "tags": [],
+          "owner": "Partitions_n.first",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
+            "status": "pass",
+            "actual": "[5]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.last",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.last()",
+      "summary": "Return the last partition in the enumeration order.",
+      "doc": "Return the last partition in the enumeration order.\n\n### Examples\n\n```sage\n    sage: Partitions(5).last()\n    [1, 1, 1, 1, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "last",
+        "qualified": "Partitions_n.last",
+        "path": "src/baselib/combinat.py",
+        "line": 994,
+        "excerpt": {
+          "start_line": 982,
+          "text": "        \"\"\"\n        Return the first partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).first()\n            [5]\n        ```\n        \"\"\"\n        return self.unrank(0)\n\n    def last(self) -> Partition:\n        \"\"\"\n        Return the last partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).last()\n            [1, 1, 1, 1, 1]\n        ```\n        \"\"\"\n        count = self._count(\n            self._size,"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
+          "line": 1001,
+          "source": "Partitions(5).last()",
+          "want": "[1, 1, 1, 1, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.last",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
+            "status": "pass",
+            "actual": "[1, 1, 1, 1, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.list",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.list()",
+      "summary": "Return every member of a finite combinatorial class.",
+      "doc": "Return every member of a finite combinatorial class.\n\n### Examples\n\n```sage\n    sage: Partitions(3).list()\n    [[3], [2, 1], [1, 1, 1]]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "list",
+        "qualified": "_PartitionsBase.list",
+        "path": "src/baselib/combinat.py",
+        "line": 558,
+        "excerpt": {
+          "start_line": 546,
+          "text": "    def __iter__(self) -> Iterator[Partition]:\n        raise NotImplementedError(\"enumeration is defined by each partition class\")\n\n    def __call__(self, entries: Any = None) -> Partition:\n        if entries is None:\n            raise TypeError(\"a partition is built from a list or tuple of parts\")\n        candidate = _partition_entries(entries)\n        _partition_validate(candidate)\n        if candidate not in self:\n            raise ValueError(\"the partition is not a member of \" + repr(self))\n        return self._element(candidate)\n\n    def list(self) -> list[Partition]:\n        \"\"\"\n        Return every member of a finite combinatorial class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(3).list()\n            [[3], [2, 1], [1, 1, 1]]\n        ```\n        \"\"\"\n        return [entry for entry in self]\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
+          "line": 565,
+          "source": "Partitions(3).list()",
+          "want": "[[3], [2, 1], [1, 1, 1]]\n",
+          "tags": [],
+          "owner": "_PartitionsBase.list",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
+            "status": "pass",
+            "actual": "[[3], [2, 1], [1, 1, 1]]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.random_element",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.random_element()",
+      "summary": "Return a uniformly random member of this class.",
+      "doc": "Return a uniformly random member of this class.\n\nThe part sizes are chosen one at a time with probability proportional\nto the exact number of completions, so every partition is equally\nlikely without enumerating the class.\n\n### Examples\n\n```sage\n    sage: Partitions(6).random_element() in Partitions(6)\n    True\n    sage: Partitions(6, max_part=2).random_element().to_list()[0] <= 2\n    True\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "random_element",
+        "qualified": "Partitions_n.random_element",
+        "path": "src/baselib/combinat.py",
+        "line": 1115,
+        "excerpt": {
+          "start_line": 1103,
+          "text": "                            remaining - first,\n                            first,\n                            min_length - 1,\n                            max_length - 1,\n                        ),\n                    )\n            remaining -= part\n            max_part = part\n            min_length -= 1\n            max_length -= 1\n        return runtime.normalize_integer(position)\n\n    def random_element(self) -> Partition:\n        \"\"\"\n        Return a uniformly random member of this class.\n\n        The part sizes are chosen one at a time with probability proportional\n        to the exact number of completions, so every partition is equally\n        likely without enumerating the class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(6).random_element() in Partitions(6)\n            True"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
+          "line": 1126,
+          "source": "Partitions(6).random_element() in Partitions(6)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partitions_n.random_element",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
+          "line": 1128,
+          "source": "Partitions(6, max_part=2).random_element().to_list()[0] <= 2",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Partitions_n.random_element",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.rank",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.rank()",
+      "summary": "Return the position of `value` in the enumeration.",
+      "doc": "Return the position of `value` in the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).rank([3, 1, 1])\n    3\n    sage: Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))\n    [2, 2, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "rank",
+        "qualified": "Partitions_all.rank",
+        "path": "src/baselib/combinat.py",
+        "line": 647,
+        "excerpt": {
+          "start_line": 635,
+          "text": "        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
+          "line": 654,
+          "source": "Partitions().rank([2, 1])",
+          "want": "5\n",
+          "tags": [],
+          "owner": "Partitions_all.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
+            "status": "pass",
+            "actual": "5\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
+          "line": 1082,
+          "source": "Partitions(5).rank([3, 1, 1])",
+          "want": "3\n",
+          "tags": [],
+          "owner": "Partitions_n.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
+          "line": 1084,
+          "source": "Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))",
+          "want": "[2, 2, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.rank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
+            "status": "pass",
+            "actual": "[2, 2, 1]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "Partitions.unrank",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.combinat",
+      "signature": "Partitions.unrank()",
+      "summary": "Return the partition at position `index` of the enumeration.",
+      "doc": "Return the partition at position `index` of the enumeration.\n\n### Examples\n\n```sage\n    sage: Partitions(5).unrank(0)\n    [5]\n    sage: Partitions(5).unrank(3)\n    [3, 1, 1]\n```",
+      "tags": [
+        "combinatorics",
+        "partitions"
+      ],
+      "backends": [
+        "Sage.js exact enumeration"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The implemented behavior matches Sage."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.partition`",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/partition.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "unrank",
+        "qualified": "Partitions_all.unrank",
+        "path": "src/baselib/combinat.py",
+        "line": 624,
+        "excerpt": {
+          "start_line": 612,
+          "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
+          "line": 631,
+          "source": "[Partitions().unrank(index) for index in range(5)]",
+          "want": "[[], [1], [2], [1, 1], [3]]\n",
+          "tags": [],
+          "owner": "Partitions_all.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
+            "status": "pass",
+            "actual": "[[], [1], [2], [1, 1], [3]]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
+          "line": 1054,
+          "source": "Partitions(5).unrank(0)",
+          "want": "[5]\n",
+          "tags": [],
+          "owner": "Partitions_n.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
+            "status": "pass",
+            "actual": "[5]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
+          "line": 1056,
+          "source": "Partitions(5).unrank(3)",
+          "want": "[3, 1, 1]\n",
+          "tags": [],
+          "owner": "Partitions_n.unrank",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
+            "status": "pass",
+            "actual": "[3, 1, 1]\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28289,7 +30601,7 @@
       "examples": [
         {
           "id": "src/baselib/graphics.py#e95372572f18dc14-e3b0c44298fc1c14",
-          "line": 5310,
+          "line": 5318,
           "source": "g = plot(sin(x), (x, 0, 2*pi), color='navy')",
           "want": "",
           "tags": [],
@@ -28305,7 +30617,7 @@
         },
         {
           "id": "src/baselib/graphics.py#130e66d323a7c490-6b86b273ff34fce1",
-          "line": 5311,
+          "line": 5319,
           "source": "len(g)",
           "want": "1\n",
           "tags": [],
@@ -28373,9 +30685,9 @@
         "name": "plot_loglog",
         "qualified": "plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6357,
+        "line": 6365,
         "excerpt": {
-          "start_line": 6345,
+          "start_line": 6353,
           "text": "            if index + 1 < len(points):\n                path.append((points[index + 1][0], points[index][1]))\n        return line(path, **options)\n    answer = Graphics()\n    for index in range(len(points) - 1):\n        answer = answer + line(\n            [points[index], (points[index + 1][0], points[index][1])],\n            **options,\n        )\n    return answer\n\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28433,9 +30745,9 @@
         "name": "plot_semilogx",
         "qualified": "plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6367,
+        "line": 6375,
         "excerpt": {
-          "start_line": 6355,
+          "start_line": 6363,
           "text": "\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -28493,9 +30805,9 @@
         "name": "plot_semilogy",
         "qualified": "plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6377,
+        "line": 6385,
         "excerpt": {
-          "start_line": 6365,
+          "start_line": 6373,
           "text": "\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -28553,9 +30865,9 @@
         "name": "plot_slope_field",
         "qualified": "plot_slope_field",
         "path": "src/baselib/graphics.py",
-        "line": 6148,
+        "line": 6156,
         "excerpt": {
-          "start_line": 6136,
+          "start_line": 6144,
           "text": "        PlotField(\n            sampled[0],\n            sampled[1],\n            sampled[2],\n            sampled[3],\n            sampled[4],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef plot_slope_field(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot short normalized line segments with slope `function_value`.\n    \"\"\"\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])\n    slope = _plot_callable_2d(function_value, xvariable, yvariable)\n"
         }
       },
@@ -28613,9 +30925,9 @@
         "name": "plot_step_function",
         "qualified": "plot_step_function",
         "path": "src/baselib/graphics.py",
-        "line": 6332,
+        "line": 6340,
         "excerpt": {
-          "start_line": 6320,
+          "start_line": 6328,
           "text": "    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:\n        points = [(float(index), float(values[index])) for index in range(len(values))]\n    if plotjoined:\n        return line(points, **options)\n    return point(points, **options)\n\n\ndef plot_step_function(\n    values: Any,\n    vertical_lines: bool = True,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the step function defined by a sequence of `(x, y)` pairs.\"\"\"\n    points = sorted([_point_pair(value) for value in values])\n    if len(points) <= 1:\n        return line([], **options)\n    if vertical_lines:\n        path = []\n        for index in range(len(points)):\n            path.append(points[index])"
         }
       },
@@ -28673,9 +30985,9 @@
         "name": "plot_vector_field",
         "qualified": "plot_vector_field",
         "path": "src/baselib/graphics.py",
-        "line": 6107,
+        "line": 6115,
         "excerpt": {
-          "start_line": 6095,
+          "start_line": 6103,
           "text": "        \"flip_y\": True,\n        \"ticks_integer\": True,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, _copy_options(options))\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, values, defaults))\n    return graphic\n\n\ndef plot_vector_field(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot a two-dimensional vector field on a rectangular sample grid.\n\n    The two components may be symbolic expressions or callables.  Invalid\n    values are omitted, matching Sage's masked-vector behavior.\n    \"\"\"\n    defaults = {"
         }
       },
@@ -28870,9 +31182,9 @@
         "name": "point",
         "qualified": "point",
         "path": "src/baselib/graphics.py",
-        "line": 3462,
+        "line": 3470,
         "excerpt": {
-          "start_line": 3450,
+          "start_line": 3458,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Arrow(\n            [tail[0], head[0]],\n            [tail[1], head[1]],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef point(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a graphics object containing one or more points.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"size\": 10,\n        \"faceted\": False,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"marker\": \"o\",\n        \"markeredgecolor\": None,"
         }
       },
@@ -29093,9 +31405,9 @@
         "name": "polar_plot",
         "qualified": "polar_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5610,
+        "line": 5618,
         "excerpt": {
-          "start_line": 5598,
+          "start_line": 5606,
           "text": "\n            callables.append(constant)\n    step = (maximum - minimum) / float(count - 1)\n    points = []\n    for index in range(count):\n        value = maximum if index == count - 1 else minimum + index * step\n        points.append(\n            (_finite_value(callables[0](value)), _finite_value(callables[1](value)))\n        )\n    return line(points, **options)\n\n\ndef polar_plot(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot one or more functions in polar coordinates.\n\n    The input function gives the radius `r` as a function of angle `theta`.\n    All adaptive sampling and line options accepted by `plot` are supported.\n    \"\"\"\n    radial = plot(funcs, *range_args, **options)\n    answer = Graphics()"
         }
       },
@@ -29153,9 +31465,9 @@
         "name": "polygon",
         "qualified": "polygon",
         "path": "src/baselib/graphics.py",
-        "line": 3567,
+        "line": 3575,
         "excerpt": {
-          "start_line": 3555,
+          "start_line": 3563,
           "text": "    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n\n\ndef polygon(points: Any, **options: Any) -> Graphics:\n    \"\"\"Return a filled polygon through `points`.\"\"\"\n    options = _copy_options(options)\n    normalized = _normalize_points(points)\n    defaults = {\n        \"alpha\": 1,\n        \"rgbcolor\": [0, 0, 1],\n        \"edgecolor\": None,\n        \"fill\": True,\n        \"thickness\": None,\n        \"legend_label\": None,\n        \"legend_color\": None,\n        \"linestyle\": \"-\","
         }
       },
@@ -29507,16 +31819,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6012,
+        "line": 6227,
         "excerpt": {
-          "start_line": 6000,
+          "start_line": 6215,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6023,
+          "line": 6238,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -29532,7 +31844,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6025,
+          "line": 6240,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -29548,7 +31860,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6027,
+          "line": 6242,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -29716,16 +32028,16 @@
         "name": "QuadraticField",
         "qualified": "QuadraticField",
         "path": "src/baselib/number_fields.py",
-        "line": 4115,
+        "line": 4141,
         "excerpt": {
-          "start_line": 4103,
+          "start_line": 4129,
           "text": "        # Split and ramified primes are represented by every first-quadrant\n        # solution a^2+b^2=p.  Ordered pairs give the two conjugate ideals.\n        for real in range(1, coordinate_bound + 1):\n            for imag in range(1, coordinate_bound + 1):\n                norm = real * real + imag * imag\n                if norm > limit:\n                    break\n                if runtime.flint_backend().isPrime(runtime.bigint(norm)):\n                    generators.append(GaussianInteger(self, real, imag))\n        return [GaussianPrimeIdeal(generator) for generator in generators]\n\n\ndef QuadraticField(\n    radicand: Any,\n    names: Any = None,\n) -> QuadraticField_class:\n    r\"\"\"Construct an exact imaginary quadratic field.\n\n    Negative radicands support exact field arithmetic, the maximal order,\n    integral bases, discriminants, and finite ideal class groups.\n\n    ### Examples\n\n    ```sage\n    sage: K.<a> = QuadraticField(-23)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/number_fields.py#27641fc0831ac6e7-e3b0c44298fc1c14",
-          "line": 4127,
+          "line": 4153,
           "source": "K.<a> = QuadraticField(-23)",
           "want": "",
           "tags": [],
@@ -29741,7 +32053,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#44cb607cdf73cfb4-163f9d874bf45bcc",
-          "line": 4128,
+          "line": 4154,
           "source": "K.discriminant()",
           "want": "-23\n",
           "tags": [],
@@ -29757,7 +32069,7 @@
         },
         {
           "id": "src/baselib/number_fields.py#9bdbe852abd1679f-4079e4af87d7d813",
-          "line": 4130,
+          "line": 4156,
           "source": "K.class_group().invariants()",
           "want": "(3,)\n",
           "tags": [],
@@ -29808,9 +32120,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7803,
+        "line": 7986,
         "excerpt": {
-          "start_line": 7791,
+          "start_line": 7974,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -29868,9 +32180,9 @@
         "name": "rainbow",
         "qualified": "rainbow",
         "path": "src/baselib/graphics.py",
-        "line": 2960,
+        "line": 2968,
         "excerpt": {
-          "start_line": 2948,
+          "start_line": 2956,
           "text": "        raise AttributeError(\"unknown color '\" + name + \"'\")\n\n\n_color_values = {}\nfor _color_name in _NAMED_COLORS:\n    _color_values[_color_name] = Color(_option_get(_NAMED_COLORS, _color_name))\ncolors = ColorsDict(_color_values)\nfor _color_name in _NAMED_COLORS:\n    colors[_color_name] = _option_get(_color_values, _color_name)\n    runtime.reflect.set(runtime.global_object, _color_name, colors[_color_name])\n\n\ndef rainbow(count: int, format: str = \"hex\") -> list[Any]:\n    \"\"\"Return `count` evenly spaced hues as hex strings or RGB tuples.\"\"\"\n    size = int(count)\n    values = [hue(index / float(size)) for index in range(size)]\n    if format == \"rgbtuple\":\n        return values\n    if format == \"hex\":\n        return [Color(value).html_color() for value in values]\n    raise ValueError(\"format must be 'hex' or 'rgbtuple'\")\n\n\nclass Colormaps(dict):  # pyright: ignore[reportMissingTypeArgument]\n    \"\"\"Small portable collection of common Plotly-compatible colormaps.\"\"\""
         }
       },
@@ -29935,16 +32247,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9590,
+        "line": 9588,
         "excerpt": {
-          "start_line": 9578,
+          "start_line": 9576,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9614,
+          "line": 9612,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29960,7 +32272,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9615,
+          "line": 9613,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29976,7 +32288,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9617,
+          "line": 9615,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -30044,9 +32356,9 @@
         "name": "region_plot",
         "qualified": "region_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5989,
+        "line": 5997,
         "excerpt": {
-          "start_line": 5977,
+          "start_line": 5985,
           "text": "        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]\n    options[\"colorbar\"] = False\n    if not _option_has(options, \"fill\"):\n        options[\"fill\"] = False\n    if _option_has(options, \"fillcolor\") and not _option_has(options, \"cmap\"):\n        fillcolor = _option_get(options, \"fillcolor\")\n        options[\"cmap\"] = [fillcolor, fillcolor]\n    return contour_plot(function_value, xrange, yrange, **options)\n\n\ndef region_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the region where one or more boolean functions are true.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 100)\n    xminimum, xmaximum = _plot_range([xrange])\n    yminimum, ymaximum = _plot_range([yrange])\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])"
         }
       },
@@ -30157,9 +32469,9 @@
         "name": "rgbcolor",
         "qualified": "rgbcolor",
         "path": "src/baselib/graphics.py",
-        "line": 2808,
+        "line": 2816,
         "excerpt": {
-          "start_line": 2796,
+          "start_line": 2804,
           "text": "            return minimum + (maximum - minimum) * position * 6.0\n        if position < 0.5:\n            return maximum\n        if position < 2.0 / 3.0:\n            return minimum + (maximum - minimum) * (2.0 / 3.0 - position) * 6.0\n        return minimum\n\n    return runtime.math_tuple(\n        [component(1.0 / 3.0), component(0), component(-1.0 / 3.0)]\n    )\n\n\ndef rgbcolor(value: Any, space: str = \"rgb\") -> tuple[float, float, float]:\n    \"\"\"Convert a Sage color specification to an RGB triple.\"\"\"\n    if hasattr(value, \"rgb\"):\n        return value.rgb()\n    if runtime.jstype(value) == \"string\":\n        return _html_rgb(value)\n    values = list(value)\n    if len(values) != 3:\n        raise ValueError(\"a color must contain exactly three components\")\n    components = [_color_mod_one(component) for component in values]\n    normalized_space = runtime.reflect.apply(\n        runtime.reflect.get(runtime.string_class.prototype, \"toLowerCase\"),\n        space,"
         }
       },
@@ -30323,9 +32635,9 @@
         "name": "scatter_plot",
         "qualified": "scatter_plot",
         "path": "src/baselib/graphics.py",
-        "line": 3553,
+        "line": 3561,
         "excerpt": {
-          "start_line": 3541,
+          "start_line": 3549,
           "text": "        \"bins\": 10,\n    }\n    if _option_has(options, \"color\") and not _option_has(options, \"rgbcolor\"):\n        options[\"rgbcolor\"] = _option_pop(options, \"color\")\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Histogram([float(value) for value in values], defaults))\n    return graphic\n\n\ndef scatter_plot(datalist: Any, **options: Any) -> Graphics:\n    r\"\"\"Return a Sage-compatible scatter plot of `(x, y)` points.\"\"\"\n    options = _copy_options(options)\n    if _option_has(options, \"markersize\") and not _option_has(options, \"size\"):\n        options[\"size\"] = _option_pop(options, \"markersize\")\n    if _option_has(options, \"facecolor\") and not _option_has(options, \"color\"):\n        options[\"color\"] = _option_pop(options, \"facecolor\")\n    if _option_has(options, \"edgecolor\") and not _option_has(\n        options, \"markeredgecolor\"\n    ):\n        options[\"markeredgecolor\"] = _option_pop(options, \"edgecolor\")\n    return point(datalist, **options)\n"
         }
       },
@@ -30414,9 +32726,9 @@
         "name": "show",
         "qualified": "Graphics.show",
         "path": "src/baselib/graphics.py",
-        "line": 2598,
+        "line": 2606,
         "excerpt": {
-          "start_line": 2586,
+          "start_line": 2594,
           "text": "        )\n        if hook is runtime.undefined:\n            raise NotImplementedError(\n                \"graphics file export is not available in this host\"\n            )\n        runtime.reflect.apply(\n            hook,\n            runtime.undefined,\n            [self, filename, options],\n        )\n        return self\n\n    def show(self, **options: Any) -> Graphics:\n        if len(options):\n            self.set_extra_kwds(options)\n        return self\n\n\ndef _graphics_from_plotly(figure: Any) -> Graphics:\n    \"\"\"Convert a renderer-neutral Plotly figure to composable `Graphics`.\"\"\"\n    answer = Graphics()\n    data = runtime.reflect.get(figure, \"data\")\n    if data is not runtime.undefined:\n        for trace in data:\n            answer.add_primitive(_PlotlyPrimitive(trace))"
         }
       },
@@ -30475,16 +32787,16 @@
         "name": "solve",
         "qualified": "solve",
         "path": "src/baselib/symbolic.py",
-        "line": 2481,
+        "line": 2490,
         "excerpt": {
-          "start_line": 2469,
+          "start_line": 2478,
           "text": "                    Expression(\n                        [\n                            \"Equal\",\n                            _expression_tree(variables[index]),\n                            values[index]._tree,\n                        ]\n                    )\n                )\n            answers.append(relations)\n    return answers\n\n\ndef solve(\n    equations: Any,\n    *variables: Any,\n    **options: Any,\n) -> Any:\n    r\"\"\"\n    Solve supported elementary symbolic equations.\n\n    One equation or a list of equations may be supplied, followed by one or\n    more variables. Set `solution_dict=True` for dictionary-valued\n    solutions.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 2496,
+          "line": 2505,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
@@ -30721,9 +33033,9 @@
         "name": "streamline_plot",
         "qualified": "streamline_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6178,
+        "line": 6186,
         "excerpt": {
-          "start_line": 6166,
+          "start_line": 6174,
           "text": "        current = float(slope(xvalue, yvalue))\n        return current / runtime.math.sqrt(current * current + 1.0)\n\n    slope_options = {\n        \"headaxislength\": 0,\n        \"headlength\": 1e-9,\n        \"pivot\": \"middle\",\n    }\n    _option_update(slope_options, _copy_options(options))\n    return plot_vector_field((horizontal, vertical), xrange, yrange, **slope_options)\n\n\ndef streamline_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot integral curves of a vector field or first-order slope field.\n\n    Streamlines are integrated in both directions with a deterministic\n    midpoint method.  `density` controls seed count and integration step;\n    `start_points` supplies explicit seeds.\n    \"\"\""
         }
       },
@@ -30785,16 +33097,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 8824,
+        "line": 8822,
         "excerpt": {
-          "start_line": 8812,
+          "start_line": 8810,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 8835,
+          "line": 8833,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -30810,7 +33122,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 8841,
+          "line": 8839,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -30931,9 +33243,9 @@
         "name": "text",
         "qualified": "text",
         "path": "src/baselib/graphics.py",
-        "line": 3607,
+        "line": 3615,
         "excerpt": {
-          "start_line": 3595,
+          "start_line": 3603,
           "text": "    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(\n        Polygon(\n            [value[0] for value in normalized],\n            [value[1] for value in normalized],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef text(\n    string: Any,\n    position: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Return a graphics object containing a positioned text label.\"\"\"\n    options = _copy_options(options)\n    normalized_position = _point_pair(position)\n    defaults = {\n        \"fontsize\": 10,\n        \"rgbcolor\": [0, 0, 1],\n        \"horizontal_alignment\": \"center\",\n        \"vertical_alignment\": \"center\","
         }
       },
@@ -31161,23 +33473,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 269,
-      "with_docstring": 269,
-      "with_summary": 269,
-      "with_tags": 269,
-      "with_backend": 269,
-      "with_provenance": 269,
-      "with_compatibility_notes": 269,
-      "with_references": 86,
-      "markdown_docstrings": 269,
+      "registry_entries": 289,
+      "with_docstring": 289,
+      "with_summary": 289,
+      "with_tags": 289,
+      "with_backend": 289,
+      "with_provenance": 289,
+      "with_compatibility_notes": 289,
+      "with_references": 88,
+      "markdown_docstrings": 289,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 174,
+      "entries_with_examples": 194,
       "entries_without_examples": 95,
-      "documented": 136,
-      "verified": 130,
+      "documented": 177,
+      "verified": 171,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

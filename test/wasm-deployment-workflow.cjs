@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 const assert = require("node:assert/strict");
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
@@ -5,6 +6,7 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const workflowFile = path.join(root, ".github/workflows/wasm-deploy-cloudflare.yml");
+const candidateWorkflowFile = path.join(root, ".github/workflows/wasm-candidate.yml");
 const documentationFile = path.join(root, "docs/webassembly-cloudflare-deployment.md");
 
 test("Cloudflare deployment consumes only a fully validated release artifact", async () => {
@@ -22,29 +24,66 @@ test("Cloudflare deployment consumes only a fully validated release artifact", a
     "Clean reproducibility build a",
     "Clean reproducibility build b",
     "reproducibility",
+    "Browser release gates",
     "Public parity (chromium)",
     "Public parity (firefox)",
     "Public parity (webkit)",
   ]) assert.match(workflow, new RegExp(gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 
+  assert.match(workflow, /if \[\[ "\$release_gate" == "missing" \]\]/);
+  assert.match(workflow, /elif \[\[ "\$release_gate" != "success" \]\]/);
+
   assert.match(workflow, /ref: \$\{\{ steps\.source\.outputs\.sha \}\}/);
+  assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /path: build\/deployment-control/);
+  assert.match(workflow, /\.github\/workflows\/wasm-candidate\.yml/);
   assert.match(workflow, /git merge-base --is-ancestor "\$SOURCE_SHA" origin\/main/);
   assert.match(workflow, /gh run download "\$SOURCE_RUN_ID"[\s\S]+--name wasm-clean-build-a/);
+  const install = workflow.indexOf("pnpm install --frozen-lockfile");
   const receipt = workflow.indexOf("production-receipt.cjs validate");
   const stage = workflow.indexOf("website/live/scripts/stage.mjs");
   const prepare = workflow.indexOf("prepare-release.mjs");
   const upload = workflow.indexOf("upload-r2.mjs");
   const deploy = workflow.indexOf("cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd");
   assert.ok(
-    receipt >= 0 && receipt < stage && stage < prepare && prepare < upload && upload < deploy,
-    "receipt validation, staging, preparation, and R2 upload must precede Worker activation",
+    install >= 0 &&
+      install < receipt &&
+      receipt < stage &&
+      stage < prepare &&
+      prepare < upload &&
+      upload < deploy,
+    "dependency installation, receipt validation, staging, preparation, and R2 upload must precede Worker activation",
   );
+  assert.match(workflow, /cache: pnpm/);
   assert.match(workflow, /node --test website\/live\/test\/\*\.test\.mjs/);
   assert.match(workflow, /node --test test\/wasm-deployment-workflow\.cjs/);
-  assert.match(workflow, /deploy --config build\/cloudflare-deploy\/wrangler\.json/);
+  assert.match(workflow, /website\/live\/cloudflare\n/);
+  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/prepare-release\.mjs/);
+  assert.match(workflow, /build\/deployment-control\/website\/live\/cloudflare\/upload-r2\.mjs/);
+  assert.match(workflow, /build\/deployment-control\/packages\/flint-wasm\/scripts\/browser-wasm-deployment\.cjs/);
+  assert.match(workflow, /build\/cloudflare-deploy\/deployment-control\.sha/);
+  assert.match(workflow, /build\/cloudflare-deploy\/package\.json/);
+  assert.match(workflow, /workingDirectory: build\/cloudflare-deploy/);
+  assert.match(workflow, /packageManager: npm/);
+  assert.match(workflow, /deploy --config wrangler\.json/);
   assert.doesNotMatch(workflow, /pages deploy/);
   assert.match(workflow, /website\/live\/dist\n\s+if-no-files-found: error/);
   assert.match(workflow, /build\/cloudflare-deploy\/deployment\.json/);
+});
+
+test("fast candidate artifacts are structurally non-deployable", async () => {
+  const [deployment, candidate] = await Promise.all([
+    readFile(workflowFile, "utf8"),
+    readFile(candidateWorkflowFile, "utf8"),
+  ]);
+  assert.match(candidate, /fast, non-deployable signal/);
+  assert.match(candidate, /name: wasm-candidate-build/);
+  assert.match(candidate, /--samples 1/);
+  assert.match(candidate, /--safety-ceilings-only/);
+  assert.doesNotMatch(candidate, /cloudflare\/wrangler-action/);
+  assert.match(deployment, /\.github\/workflows\/wasm-release\.yml/);
+  assert.match(deployment, /\.github\/workflows\/wasm-candidate\.yml/);
+  assert.doesNotMatch(deployment, /wasm-candidate-build/);
 });
 
 test("Cloudflare deployment fails closed and checks both remote origins", async () => {
@@ -64,6 +103,9 @@ test("Cloudflare deployment fails closed and checks both remote origins", async 
   assert.match(workflow, /environment:\n\s+name: sagejs-app-\$\{\{ inputs\.target \}\}/);
   assert.match(workflow, /browser-wasm-deployment\.cjs[\s\S]+\$DEPLOYMENT_URL/);
   assert.match(workflow, /--origin "\$SAGEJS_PUBLIC_ORIGIN"/);
+  assert.match(workflow, /--expected-runtime website\/live\/dist\/runtime-version\.json/);
+  assert.match(workflow, /for attempt in \$\(seq 1 12\)/);
+  assert.match(workflow, /retrying in 10 seconds/);
   assert.match(workflow, /\.workers\\\.dev/);
   assert.match(workflow, /website\/live\/dist\/_headers/);
   assert.doesNotMatch(

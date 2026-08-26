@@ -284,4 +284,3 @@ PID    PPID COMMAND         %CPU %MEM   RSS
 $ for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do test -r "$f" && printf '%s=' "$f" && cat "$f"; done
 
 ```
-

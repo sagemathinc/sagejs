@@ -165,6 +165,87 @@ def ρσ_json_scalar_sequence(source):
     })()"""
 
 
+def ρσ_canonical_json_exact(source):
+    """Encode the exact canonical-JSON subset in one native host traversal."""
+    return r"""%js (() => {
+        const active = new Set();
+
+        function asciiString(value) {
+            for (let index = 0; index < value.length; index += 1) {
+                if (value.charCodeAt(index) > 126) return null;
+            }
+            return JSON.stringify(value);
+        }
+
+        function encode(value, depth) {
+            if (depth > 256) return null;
+            if (value === null) return "null";
+            const kind = typeof value;
+            if (kind === "boolean") return value ? "true" : "false";
+            if (kind === "string") return asciiString(value);
+            if (kind === "bigint") return value.toString();
+            if (kind === "number") {
+                if (!Number.isSafeInteger(value) || Object.is(value, -0)) {
+                    return null;
+                }
+                return String(value);
+            }
+            if (kind !== "object") return null;
+
+            if (Array.isArray(value)) {
+                if (active.has(value)) return null;
+                active.add(value);
+                const parts = new Array(value.length);
+                for (let index = 0; index < value.length; index += 1) {
+                    const item = encode(value[index], depth + 1);
+                    if (item === null) {
+                        active.delete(value);
+                        return null;
+                    }
+                    parts[index] = item;
+                }
+                active.delete(value);
+                return "[" + parts.join(",") + "]";
+            }
+
+            if (value instanceof ρσ_dict) {
+                if (active.has(value)) return null;
+                active.add(value);
+                const entries = [];
+                for (const [key, itemValue] of value.jsmap.entries()) {
+                    if (typeof key !== "string") {
+                        active.delete(value);
+                        return null;
+                    }
+                    const encodedKey = asciiString(key);
+                    if (encodedKey === null) {
+                        active.delete(value);
+                        return null;
+                    }
+                    entries.push([key, encodedKey, itemValue]);
+                }
+                entries.sort((left, right) =>
+                    left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0
+                );
+                const parts = new Array(entries.length);
+                for (let index = 0; index < entries.length; index += 1) {
+                    const item = encode(entries[index][2], depth + 1);
+                    if (item === null) {
+                        active.delete(value);
+                        return null;
+                    }
+                    parts[index] = entries[index][1] + ":" + item;
+                }
+                active.delete(value);
+                return "{" + parts.join(",") + "}";
+            }
+            return null;
+        }
+
+        return encode(source, 0);
+    })()"""
+
+
 def ρσ_output_write(text):
     return r"""%js (
         typeof globalThis.__sagejs_output_write__ === "function"

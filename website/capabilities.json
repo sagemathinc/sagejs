@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updated": "2026-08-08",
+  "updated": "2026-08-22",
   "capabilities": [
     {
       "id": "sage-language",
@@ -210,6 +210,24 @@
       "evidence": "A source-derived gate assigns all 135 public graph-module functions and aliases to executable semantic tests and searchable typed reference entries, each with a passing CI-verified workflow. Native integration checks compact generators and exact group enumeration, the SageMath scope audit measures 78 of 411 Graph methods, and every bundled graph6 record remains available as a correctness corpus.",
       "target": "Broaden Sage graph API coverage, benchmark native frontiers on dedicated hosts, and add OGDF-class advanced routing/layout without changing public semantics.",
       "priority": "now"
+    },
+    {
+      "id": "combinatorics",
+      "area": "Discrete mathematics",
+      "feature": "Enumerative combinatorics",
+      "state": "partial",
+      "quality": "tested",
+      "coverage": {
+        "level": "foundational",
+        "label": "Integer partitions as a complete combinatorial class",
+        "summary": "Integer partitions are an ordinary Sage parent with Sage's enumeration order, exact counting that never enumerates, membership, ranking, and uniform sampling. The remaining combinatorial classes are explicit next work.",
+        "includes": ["Partition and Partitions", "Sage enumeration order", "FLINT-backed exact cardinality with a portable pentagonal recurrence", "measured against SageMath and PARI/GP", "min_part / max_part / length / min_length / max_length / parts_in", "rank, unrank, first, last", "uniform random_element without enumeration", "conjugate, hook lengths, dominance order, Ferrers diagrams", "number_of_partitions", "sage.combinat.partition import path"]
+      },
+      "summary": "Integer partitions are a complete Sage-compatible combinatorial class with FLINT-backed exact counting, ranking, and uniform sampling.",
+      "implementation": "Ordinary CPython-parseable Python. One memoized recursion over the largest remaining part serves constrained counting, ranking, and sampling. Unconstrained counting delegates to FLINT's Hardy-Ramanujan-Rademacher implementation and keeps Euler's pentagonal recurrence as the exact portable path.",
+      "evidence": "A focused regression suite cross-checks cardinality against enumeration for every class it can list, round-trips rank and unrank, confirms conjugation is an involution which permutes each class, and reproduces n! from the hook length formula through the sum of squares of standard Young tableau counts. Every partition number through p(400) agrees with PARI/GP numbpart, and bench/compare-partitions.cjs measures counting, enumeration, ranking, and sampling against SageMath and PARI/GP.",
+      "target": "Add permutations, subsets, compositions, tuples, integer vectors, and set partitions on the same protocol, then close the remaining interpreter-bound gaps in listing and uniform sampling.",
+      "priority": "next"
     },
     {
       "id": "spectral-linear-algebra",
@@ -525,14 +543,14 @@
       "quality": "tested",
       "coverage": {
         "level": "focused",
-        "label": "Practical educational NumPy slice",
-        "summary": "Supports common array-based programs and teaching examples but does not claim full NumPy API or dtype compatibility.",
-        "includes": ["ndarray", "typed numeric storage", "indexing and slicing", "common ufuncs", "basic broadcasting", "array construction", "selected linear algebra"]
+        "label": "Broad browser NumPy tier",
+        "summary": "Exposes more than 225 top-level names plus broad ndarray, random, linear-algebra, and FFT namespaces without claiming full NumPy dtype or extension compatibility.",
+        "includes": ["ndarray", "typed numeric storage", "indexing and slicing", "ufuncs", "broadcasting", "array construction", "reductions and statistics", "sorting and selection", "seeded random distributions", "matrix decompositions", "complex FFT"]
       },
-      "summary": "A practical NumPy-compatible array layer supports common numerical and educational workloads.",
-      "implementation": "Python-facing ndarray APIs over JavaScript typed arrays and numerical kernels.",
-      "evidence": "Dedicated NumPy compatibility suite.",
-      "target": "More ufuncs, broadcasting edge cases, dtype semantics, and optimized linear algebra.",
+      "summary": "A broad NumPy-compatible browser layer supports numerical, educational, linear-algebra, random, and FFT workloads.",
+      "implementation": "Python-facing ndarray APIs over numpy-ts typed storage and Zig-Wasm SIMD numerical kernels.",
+      "evidence": "CPython/NumPy differential fixtures, API-count ratchets, and browser execution tests.",
+      "target": "Broadcasting edge cases, advanced dtype semantics, set operations over 64-bit integers, and selected additional upstream corpus coverage.",
       "priority": "next"
     },
     {

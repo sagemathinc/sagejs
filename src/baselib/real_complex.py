@@ -629,7 +629,10 @@ def _python_complex_parts(
     ):
         return runtime.number(value), 0.0
     if runtime.is_exact_integer(value):
-        return runtime.number(value), 0.0
+        # Route through Python's integer-to-float conversion so rounding and
+        # overflow agree with CPython before the value enters complex binary64
+        # arithmetic.
+        return runtime.number(float(value)), 0.0
     if runtime.jstype(value) == "number":
         return value, 0.0
     float_converter = None

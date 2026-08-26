@@ -243,8 +243,11 @@ def print_await_expression(output, print_expression):
 def print_with(self, output):
     exits = []
     (
+        output.print("var "),
         output.assign("ρσ_with_exception"),
         output.print("undefined"),
+        output.comma(),
+        output.print("ρσ_with_suppress"),
         output.end_statement(),
     )
     for clause in self.clauses:

@@ -13,6 +13,17 @@ function option(name, fallback) {
   return argument === undefined ? fallback : argument.slice(prefix.length);
 }
 
+const evaluationTimeoutMilliseconds = Number(
+  option("evaluation-timeout-ms", "600000"),
+);
+if (
+  !Number.isSafeInteger(evaluationTimeoutMilliseconds) ||
+  evaluationTimeoutMilliseconds < 1_000 ||
+  evaluationTimeoutMilliseconds > 1_200_000
+) {
+  throw new Error("--evaluation-timeout-ms must be between 1000 and 1200000");
+}
+
 function median(values) {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
@@ -196,12 +207,16 @@ async function sageMeasurement(
 ) {
   let result;
   for (let index = 0; index < warmups; index += 1) {
-    result = await session.evaluate(source, { timeout: 300_000 });
+    result = await session.evaluate(source, {
+      timeout: evaluationTimeoutMilliseconds,
+    });
   }
   const timings = [];
   for (let index = 0; index < samples; index += 1) {
     const started = performance.now();
-    result = await session.evaluate(source, { timeout: 300_000 });
+    result = await session.evaluate(source, {
+      timeout: evaluationTimeoutMilliseconds,
+    });
     timings.push((performance.now() - started) / residentBatchSize);
   }
   const representation = result.repr;
@@ -254,7 +269,7 @@ quit();
     input: script,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
-    timeout: 300_000,
+    timeout: evaluationTimeoutMilliseconds,
   });
   if (completed.status !== 0) {
     return {
@@ -354,7 +369,7 @@ async function main() {
         "C.global_reduction()",
         "True",
       ].join("\n"),
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
     if (!lseriesOnly) {
       rows.push(
@@ -381,7 +396,7 @@ async function main() {
         "    bench_edges=period_module._edge_integrals_float64(bench_roots,bench_leading,3,4,16)",
         "True",
       ].join("\n"),
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
     rows.push(
       await sageMeasurement(
@@ -411,7 +426,7 @@ async function main() {
     );
     await session.evaluate(
       "clear_period_cache(); cached_period=real_period(C_period3,prec=64)",
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
       rows.push(
         await sageMeasurement(
@@ -432,7 +447,7 @@ async function main() {
     );
     await session.evaluate(
       "prepared_prefix=GlobalCoefficientPrefix(C); prepared_prefix.through(5000)",
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
     await session.evaluate(
       [
@@ -491,7 +506,7 @@ async function main() {
     );
     await session.evaluate(
       `warm_L=HyperellipticLSeries(C,prepared_prefix); warm_I=warm_L.init(prec=${precisionBits},max_order=4,algorithm='native')`,
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
     rows.push(
       await sageMeasurement(
@@ -593,7 +608,7 @@ async function main() {
     );
     await session.evaluate(
       `prepared_L3=HyperellipticLSeries(C3); prepared_L3.init(prec=16,max_order=4,algorithm='native'); prepared_prefix3=prepared_L3._coefficient_prefix`,
-      { timeout: 300_000 },
+      { timeout: evaluationTimeoutMilliseconds },
     );
     await session.evaluate(
       [
@@ -645,7 +660,7 @@ async function main() {
       ),
     );
     await session.evaluate("warm_I.values([1,1.25,1.5,1.75,2])", {
-      timeout: 300_000,
+      timeout: evaluationTimeoutMilliseconds,
     });
     rows.push(
       await sageMeasurement(

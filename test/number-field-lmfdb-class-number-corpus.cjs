@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -75,4 +76,7 @@ test("LMFDB comparison isolates conditional and proof field caches", () => {
   );
   assert.match(source, /mode = "proof" if proof else "conditional"/);
   assert.match(source, /str\(sample\) \+ "_" \+ mode/);
+  assert.match(source, /if True:\n\s+artifact = getattr/);
+  assert.match(source, /if artifact is not None and artifact\.complete:/);
+  assert.match(source, /else:\n\s+computation = field\.class_unit_group\(proof=proof\)/);
 });

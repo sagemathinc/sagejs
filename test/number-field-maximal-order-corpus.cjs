@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const crypto = require("node:crypto");

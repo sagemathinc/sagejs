@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/45 accelerated; 45 failed closed.
+Heavy workloads: 0/48 accelerated; 48 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -12,9 +12,9 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 89 | 0 |
+| `wasm-library` | 92 | 0 |
 | `wasm-compiled-source` | 14 | 0 |
-| `portable-orchestration` | 4 | 0 |
+| `portable-orchestration` | 5 | 0 |
 | `portable-computation` | 0 | 0 |
 
 ## Families
@@ -28,6 +28,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | dense-binary-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | dense-prime-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
+| enumerative-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
 | extension-fields | 3 | 3 | 0 | 3 | 0 | 0 |
 | graphs | 4 | 4 | 0 | 4 | 0 | 0 |
@@ -36,8 +37,9 @@ Trusted route receipts: 0; rejected receipts: 0.
 | modular-symbols | 2 | 1 | 0 | 1 | 0 | 1 |
 | multivariate-polynomials | 2 | 2 | 0 | 2 | 0 | 0 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
-| numerical | 4 | 4 | 0 | 4 | 0 | 0 |
+| numerical | 5 | 5 | 0 | 5 | 0 | 0 |
 | plotting | 2 | 2 | 0 | 2 | 0 | 0 |
+| python-compatibility | 1 | 0 | 0 | 0 | 0 | 1 |
 | runtime | 1 | 0 | 0 | 0 | 0 | 1 |
 | serialization | 1 | 0 | 0 | 0 | 0 | 1 |
 | sparse-exact-linear-algebra | 2 | 2 | 0 | 2 | 0 | 0 |
@@ -47,7 +49,9 @@ Trusted route receipts: 0; rejected receipts: 0.
 | Workload | Family | Heavy | Status | Route classes | Blocking issues |
 | --- | --- | --- | --- | --- | --- |
 | `parity:exact-big-integer` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
+| `parity:partition-count-and-ranking` | enumerative-combinatorics | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:capability-report-api` | runtime | no | unmeasured | `portable-orchestration` | — |
+| `parity:python-float-underscore-separators` | python-compatibility | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-matrix-and-finite-field-polynomial` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:sagepack-exact-roundtrip` | serialization | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-algebraic-roots` | algebraic-numbers | no | unmeasured | `wasm-library` | — |
@@ -73,6 +77,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:hyperelliptic-bsd-supplied-quotient` | hyperelliptic-curves | yes | failed | `portable-orchestration` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:number-field-cubic-headline` | number-fields | no | unmeasured | `wasm-library`, `wasm-compiled-source` | — |
 | `parity:number-field-ideal-certificate-sagepack` | number-fields | no | unmeasured | `portable-orchestration` | — |
+| `parity:numpy-vertical-slice` | numerical | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:riemann-zeta-batch` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:dirichlet-l-batch` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:quadratic-dedekind-zeta-batch` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
@@ -80,6 +85,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:elliptic-lseries-values` | elliptic-curves | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:elliptic-lseries-complex-plot` | plotting | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:exact-matrix-kernel` | exact-arithmetic | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `performance:partition-count-1000000` | enumerative-combinatorics | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:cubic-number-field-zeta-1000` | number-fields | yes | failed | `wasm-compiled-source`, `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:modular-symbols-level-1000` | modular-symbols | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `performance:analytic-special-value-batches` | analytic-functions | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

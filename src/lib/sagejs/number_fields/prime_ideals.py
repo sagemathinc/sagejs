@@ -30,6 +30,9 @@ _om = __import__("sagejs.number_fields.om_types", fromlist=["om_types"])
 _candidate_kernel = __import__(
     "sagejs.number_fields.bl_composite_kernel", fromlist=["bl_composite_kernel"]
 )
+_ideal_arithmetic = __import__(
+    "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+)
 
 NumberFieldIdeal = _nf.NumberFieldIdeal
 _nf_coordinates = _nf._nf_coordinates
@@ -52,6 +55,44 @@ COMPACT_FACTOR_BATCH_SIZE = 8192
 _decomposition_cache: list[tuple[Any, int, Any]] = []
 _identity_tokens: list[Any] = []
 _PACKED_CANDIDATE_TOKEN = object()
+_cubic_reduced_algebra_kernel_override: Any = None
+
+
+def _equation_order_is_p_maximal_from_factors(
+    coefficients: tuple[int, ...], prime: int, factors: tuple[Any, ...]
+) -> bool:
+    """Replay Dedekind's criterion from one exact modular factorization."""
+    modulus = int(prime)
+    radical: tuple[int, ...] = (1,)
+    quotient: tuple[int, ...] = (1,)
+    for factor in factors:
+        polynomial = _om._mod_polynomial(factor.polynomial, modulus)
+        multiplicity = int(factor.multiplicity)
+        if multiplicity < 1:
+            raise ArithmeticError("a modular factor has invalid multiplicity")
+        radical = _om._mod_polynomial(
+            _om.polynomial_multiply(radical, polynomial), modulus
+        )
+        for _index in range(multiplicity - 1):
+            quotient = _om._mod_polynomial(
+                _om.polynomial_multiply(quotient, polynomial), modulus
+            )
+    lifted_product = _om.polynomial_multiply(radical, quotient)
+    width = max(len(coefficients), len(lifted_product))
+    correction: list[int] = []
+    for index in range(width):
+        source = int(coefficients[index]) if index < len(coefficients) else 0
+        lifted = int(lifted_product[index]) if index < len(lifted_product) else 0
+        difference = source - lifted
+        if difference % modulus:
+            raise ArithmeticError("modular factors do not reconstruct the polynomial")
+        correction.append(difference // modulus)
+    obstruction = _om._modular_gcd(
+        _om._modular_gcd(radical, quotient, modulus),
+        _om._mod_polynomial(tuple(correction), modulus),
+        modulus,
+    )
+    return _om.polynomial_degree(obstruction) == 0
 
 
 def _native_factor_degree_data(
@@ -366,16 +407,35 @@ def _row_times_matrix(row: list[int], matrix: list[list[int]], prime: int) -> li
     ]
 
 
-def _quotient_map(
-    subspace: list[list[int]], degree: int, prime: int
+def _quotient_map_reference(
+    subspace: list[list[int]],
+    degree: int,
+    prime: int,
+    *,
+    cache: dict[Any, Any] | None = None,
 ) -> tuple[list[list[int]], list[list[int]]]:
     """Return a quotient-coordinate matrix and standard-coordinate lifts."""
+    key = None
+    if cache is not None:
+        key = _quotient_map_cache_key(subspace, degree, prime)
+        cached = cache.get(key)
+        if cached is not None:
+            return (
+                [list(row) for row in cached[0]],
+                [list(row) for row in cached[1]],
+            )
     basis = _row_basis(subspace, degree, prime)
     annihilator = _nullspace(basis, degree, prime)
     dimension = len(annihilator)
     coordinate_matrix = _transpose(annihilator, degree)
     if dimension == 0:
-        return coordinate_matrix, []
+        lifts: list[list[int]] = []
+        if cache is not None and key is not None and len(cache) < 4 * degree:
+            cache[key] = (
+                tuple(tuple(value for value in row) for row in coordinate_matrix),
+                (),
+            )
+        return coordinate_matrix, lifts
 
     selected: list[int] = []
     images: list[list[int]] = []
@@ -395,7 +455,113 @@ def _quotient_map(
         for index, source in enumerate(selected):
             lift[source] = inverse[coordinate][index]
         lifts.append(lift)
+    if cache is not None and key is not None and len(cache) < 4 * degree:
+        cache[key] = (
+            tuple(tuple(value for value in row) for row in coordinate_matrix),
+            tuple(tuple(value for value in row) for row in lifts),
+        )
     return coordinate_matrix, lifts
+
+
+def _quotient_map_cache_key(
+    subspace: list[list[int]], degree: int, prime: int
+) -> tuple[Any, ...]:
+    return (
+        degree,
+        prime,
+        tuple(
+            tuple(
+                (int(row[column]) if column < len(row) else 0) % prime
+                for column in range(degree)
+            )
+            for row in subspace
+        ),
+    )
+
+
+def _cubic_quotient_map(
+    subspace: list[list[int]], prime: int
+) -> tuple[list[list[int]], list[list[int]]]:
+    """Return the exact degree-three quotient map with fixed-size arithmetic."""
+    basis = _row_basis(subspace, 3, prime)
+    pivots: list[int] = []
+    for row in basis:
+        pivot = next((index for index, value in enumerate(row) if value), None)
+        if pivot is not None:
+            pivots.append(pivot)
+    free = [index for index in range(3) if index not in pivots]
+    annihilator: list[list[int]] = []
+    for free_column in free:
+        vector = [0, 0, 0]
+        vector[free_column] = 1
+        for row_index in range(len(pivots) - 1, -1, -1):
+            pivot = pivots[row_index]
+            vector[pivot] = (
+                -sum(
+                    basis[row_index][column] * vector[column]
+                    for column in range(pivot + 1, 3)
+                )
+            ) % prime
+        annihilator.append(vector)
+    dimension = len(annihilator)
+    coordinate_matrix = [
+        [annihilator[column][row] for column in range(dimension)] for row in range(3)
+    ]
+    if dimension == 0:
+        return coordinate_matrix, []
+
+    selected: list[int] = []
+    images: list[list[int]] = []
+    for index, row in enumerate(coordinate_matrix):
+        independent = False
+        if not images:
+            independent = any(row)
+        elif dimension == 2 and len(images) == 1:
+            independent = (images[0][0] * row[1] - images[0][1] * row[0]) % prime != 0
+        elif dimension == 3:
+            independent = _rank(images + [row], dimension, prime) > len(images)
+        if independent:
+            selected.append(index)
+            images.append(row)
+        if len(images) == dimension:
+            break
+    if len(images) != dimension:
+        raise ArithmeticError("failed to select cubic quotient-coordinate lifts")
+    inverse = _matrix_inverse(images, prime)
+    lifts: list[list[int]] = []
+    for coordinate in range(dimension):
+        lift = [0, 0, 0]
+        for index, source in enumerate(selected):
+            lift[source] = inverse[coordinate][index]
+        lifts.append(lift)
+    return coordinate_matrix, lifts
+
+
+def _quotient_map(
+    subspace: list[list[int]],
+    degree: int,
+    prime: int,
+    *,
+    cache: dict[Any, Any] | None = None,
+) -> tuple[list[list[int]], list[list[int]]]:
+    if degree == 3:
+        key = None
+        if cache is not None:
+            key = _quotient_map_cache_key(subspace, degree, prime)
+            cached = cache.get(key)
+            if cached is not None:
+                return (
+                    [list(row) for row in cached[0]],
+                    [list(row) for row in cached[1]],
+                )
+        coordinate_matrix, lifts = _cubic_quotient_map(subspace, prime)
+        if cache is not None and key is not None and len(cache) < 4 * degree:
+            cache[key] = (
+                tuple(tuple(value for value in row) for row in coordinate_matrix),
+                tuple(tuple(value for value in row) for row in lifts),
+            )
+        return coordinate_matrix, lifts
+    return _quotient_map_reference(subspace, degree, prime, cache=cache)
 
 
 def _modular_product(
@@ -439,11 +605,10 @@ def _modular_power(
 
 def _order_one_coordinates(order: Any) -> list[int]:
     degree = order.degree()
-    row = [sage.QQ(0)] * degree
-    row[0] = sage.QQ(1)
-    coordinates = list(
-        _nf_global("vector")(sage.QQ, row) * order.basis_matrix().inverse()
-    )
+    inverse_rows = order._basis_inverse_matrix().rows()
+    if len(inverse_rows) != degree:
+        raise ArithmeticError("the maximal-order inverse basis has the wrong height")
+    coordinates = list(inverse_rows[0])
     answer: list[int] = []
     for value in coordinates:
         if value._denominator != 1:
@@ -455,7 +620,7 @@ def _order_one_coordinates(order: Any) -> list[int]:
 
 
 def _modular_table(order: Any, prime: int) -> list[list[list[int]]]:
-    table = _maximal._nf_order_multiplication_table(order)
+    table = _maximal._nf_order_multiplication_table_frozen(order)
     return [
         [[int(value) % prime for value in product] for product in left]
         for left in table
@@ -491,15 +656,14 @@ def _encoded_vector(encoded: int, degree: int, prime: int) -> list[int]:
     return vector
 
 
-def _primitive_presentation(
+def _primitive_presentation_from_quotient(
     degree: int,
     prime: int,
     table: list[list[list[int]]],
     one: list[int],
-    kernel: list[list[int]],
+    coordinate_matrix: list[list[int]],
     max_candidates: int,
 ) -> dict[str, Any]:
-    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
     quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
     if quotient_degree < 1:
         raise ArithmeticError("the requested quotient is the zero algebra")
@@ -532,6 +696,83 @@ def _primitive_presentation(
     )
 
 
+def _primitive_presentation_reference(
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    kernel: list[list[int]],
+    max_candidates: int,
+    *,
+    coordinate_matrix: list[list[int]] | None = None,
+    quotient_cache: dict[Any, Any] | None = None,
+) -> dict[str, Any]:
+    """Return the canonical presentation through the generic exact search."""
+    if coordinate_matrix is None:
+        coordinate_matrix, _lifts = _quotient_map(
+            kernel,
+            degree,
+            prime,
+            cache=quotient_cache,
+        )
+    return _primitive_presentation_from_quotient(
+        degree,
+        prime,
+        table,
+        one,
+        coordinate_matrix,
+        max_candidates,
+    )
+
+
+def _primitive_presentation(
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    kernel: list[list[int]],
+    max_candidates: int,
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
+) -> dict[str, Any]:
+    coordinate_matrix, _lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
+    quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
+    if quotient_degree != 1:
+        return _primitive_presentation_reference(
+            degree,
+            prime,
+            table,
+            one,
+            kernel,
+            max_candidates,
+            coordinate_matrix=coordinate_matrix,
+            quotient_cache=quotient_cache,
+        )
+
+    # The generic canonical search starts with encoded vector 1.  In a
+    # one-dimensional quotient, the singleton power basis `[1]` is already
+    # full rank for every candidate.  Compute exactly the same first result
+    # without a modular product, rank reduction, or generic matrix inverse.
+    one_image = _row_times_matrix(one, coordinate_matrix, prime)
+    if len(one_image) != 1 or one_image[0] == 0:
+        raise ArithmeticError("the quotient killed the identity")
+    candidate = _encoded_vector(1, degree, prime)
+    candidate_image = _row_times_matrix(candidate, coordinate_matrix, prime)
+    inverse = _mod_inverse(one_image[0], prime)
+    coefficient = -(candidate_image[0] * inverse) % prime
+    return {
+        "primitive": tuple(candidate),
+        "quotient_matrix": tuple(tuple(row) for row in coordinate_matrix),
+        "power_inverse": ((inverse,),),
+        "modulus": (coefficient, 1),
+    }
+
+
 def _minimal_polynomial(
     value: list[int],
     degree: int,
@@ -539,9 +780,16 @@ def _minimal_polynomial(
     table: list[list[list[int]]],
     one: list[int],
     kernel: list[list[int]],
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> tuple[int, ...]:
     """Return the exact minimal polynomial in one finite quotient algebra."""
-    coordinate_matrix, _lifts = _quotient_map(kernel, degree, prime)
+    coordinate_matrix, _lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
     quotient_degree = len(coordinate_matrix[0]) if coordinate_matrix else 0
     powers: list[list[int]] = []
     power = list(one)
@@ -576,6 +824,8 @@ def _reduced_field_kernels(
     prime: int,
     table: list[list[list[int]]],
     one: list[int],
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
 ) -> list[list[list[int]]]:
     """Recursively split a reduced quotient into its field-factor kernels.
 
@@ -586,7 +836,12 @@ def _reduced_field_kernels(
     strictly smaller reduced quotient components.
     """
     kernel = _row_basis(kernel, degree, prime)
-    coordinate_matrix, lifts = _quotient_map(kernel, degree, prime)
+    coordinate_matrix, lifts = _quotient_map(
+        kernel,
+        degree,
+        prime,
+        cache=quotient_cache,
+    )
     quotient_degree = len(lifts)
     if quotient_degree < 1:
         return []
@@ -622,7 +877,15 @@ def _reduced_field_kernels(
             "the reduced algebra has no nonscalar Frobenius fixed point"
         )
     splitter = _lift_quotient_coordinates(splitter_coordinates, lifts, degree, prime)
-    minimal = _minimal_polynomial(splitter, degree, prime, table, one, kernel)
+    minimal = _minimal_polynomial(
+        splitter,
+        degree,
+        prime,
+        table,
+        one,
+        kernel,
+        quotient_cache=quotient_cache,
+    )
     factors = _om.factor_mod_prime(minimal, prime)
     if len(factors) < 2 or any(
         int(factor.multiplicity) != 1 or len(factor.polynomial) != 2
@@ -647,7 +910,97 @@ def _reduced_field_kernels(
             raise ArithmeticError(
                 "a reduced-algebra split did not make strict progress"
             )
-        answer.extend(_reduced_field_kernels(child, degree, prime, table, one))
+        answer.extend(
+            _reduced_field_kernels(
+                child,
+                degree,
+                prime,
+                table,
+                one,
+                quotient_cache=quotient_cache,
+            )
+        )
+    return answer
+
+
+def _monogenic_reduced_field_kernels(
+    radical: list[list[int]],
+    degree: int,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    max_candidates: int,
+    *,
+    quotient_cache: dict[Any, Any] | None = None,
+) -> list[list[list[int]]] | None:
+    """Split a reduced monogenic quotient through one exact factorization.
+
+    The general Frobenius recursion below also handles products such as
+    `F_2^3`, which have no primitive element.  Small residue algebras are very
+    often monogenic, however.  In that case a canonical bounded primitive
+    search presents `O/pO` modulo its nilradical as `F_p[t]/(m)`.  Each
+    irreducible factor `g` of the squarefree `m` generates the maximal ideal
+    whose quotient is `F_p[t]/(g)`, so one factorization produces every field
+    kernel directly.
+
+    Any failure to obtain or authenticate that presentation returns `None`;
+    callers retain the complete recursive algorithm as the fail-closed path.
+    """
+    # This is only a fast-path probe.  In a nonmonogenic algebra every encoded
+    # vector must fail, so never spend the caller's potentially much larger
+    # primitive-element budget before entering the complete recursion.  There
+    # are only `p^degree - 1` nonzero encoded vectors in any case.
+    direct_candidates = min(
+        max_candidates,
+        2 * degree + 2,
+        prime**degree - 1,
+    )
+    if direct_candidates < 1:
+        return None
+    try:
+        presentation = _primitive_presentation_reference(
+            degree,
+            prime,
+            table,
+            one,
+            radical,
+            direct_candidates,
+            quotient_cache=quotient_cache,
+        )
+        quotient_degree = len(presentation["modulus"]) - 1
+        factors = _om.factor_mod_prime(presentation["modulus"], prime)
+    except (ArithmeticError, NotImplementedError, ValueError):
+        return None
+    if (
+        quotient_degree < 1
+        or not factors
+        or any(
+            int(factor.multiplicity) != 1 or len(factor.polynomial) < 2
+            for factor in factors
+        )
+        or sum(len(factor.polynomial) - 1 for factor in factors) != quotient_degree
+    ):
+        return None
+    if len(factors) == 1:
+        return [_row_basis(radical, degree, prime)]
+
+    primitive = [int(value) % prime for value in presentation["primitive"]]
+    answer: list[list[list[int]]] = []
+    for factor in factors:
+        factor_degree = len(factor.polynomial) - 1
+        factor_value = _evaluate_polynomial(
+            tuple(int(entry) for entry in factor.polynomial),
+            primitive,
+            one,
+            table,
+            prime,
+        )
+        child = _subspace_ideal_generated_by(
+            radical + [factor_value], degree, table, prime
+        )
+        if degree - len(child) != factor_degree:
+            return None
+        answer.append(child)
     return answer
 
 
@@ -710,13 +1063,9 @@ def _ideal_from_modular_subspace(
     return NumberFieldIdeal(order, rows)
 
 
-def _packed_candidate_rows(
-    order: Any, subspace: list[list[int]], prime: int
-) -> list[list[Any]] | None:
-    """Return canonical HNF rows through the bounded candidate kernel."""
+def _packed_candidate_order_basis(order: Any) -> tuple[tuple[int, ...], int] | None:
+    """Pack one exact maximal-order basis for repeated candidate kernels."""
     degree = order.degree()
-    if len(subspace) > degree or any(len(row) != degree for row in subspace):
-        return None
     denominator = runtime.bigint(1)
     for row in order._basis_rows:
         for value in row:
@@ -730,6 +1079,41 @@ def _packed_candidate_rows(
             if scaled._denominator != 1:
                 return None
             basis_numerators.append(int(scaled._numerator))
+    if len(basis_numerators) != degree * degree:
+        return None
+    return tuple(basis_numerators), int(denominator)
+
+
+def _packed_candidate_rows(
+    order: Any,
+    subspace: list[list[int]],
+    prime: int,
+    *,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+) -> list[list[Any]] | None:
+    """Return canonical HNF rows through the bounded candidate kernel."""
+    degree = order.degree()
+    if len(subspace) > degree or any(len(row) != degree for row in subspace):
+        return None
+    selected_basis = (
+        _packed_candidate_order_basis(order)
+        if packed_order_basis is None
+        else packed_order_basis
+    )
+    if selected_basis is None:
+        return None
+    basis_numerators, denominator = selected_basis
+    if (
+        len(basis_numerators) != degree * degree
+        or isinstance(denominator, bool)
+        or not isinstance(denominator, int)
+        or denominator <= 0
+        or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in basis_numerators
+        )
+    ):
+        return None
     modular = [int(value) for row in subspace for value in row]
     maximum_bits = max(
         [
@@ -809,7 +1193,17 @@ def _prime_candidate_from_modular_subspace(
 
 def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
     order = ideal.ring()
-    inverse = order.basis_matrix().inverse()
+    try:
+        cache = ideal._mod_p_subspace_cache
+    except AttributeError:
+        # A source checkout may temporarily reuse a runtime bootstrap built
+        # before this immutable cache slot was introduced.
+        cache = {}
+        ideal._mod_p_subspace_cache = cache
+    if prime in cache:
+        cached = cache[prime]
+        return [list(row) for row in cached]
+    inverse = order._basis_inverse_matrix()
     rows: list[list[int]] = []
     for row in ideal._basis_rows:
         coordinates = list(_nf_global("vector")(sage.QQ, row) * inverse)
@@ -819,7 +1213,12 @@ def _ideal_mod_p_subspace(ideal: Any, prime: int) -> list[list[int]]:
                 raise ValueError("the ideal is not integral at the requested prime")
             modular.append(int(value._numerator) % prime)
         rows.append(modular)
-    return _row_basis(rows, order.degree(), prime)
+    answer = _row_basis(rows, order.degree(), prime)
+    frozen = tuple(tuple(value for value in row) for row in answer)
+    if len(cache) >= 8:
+        del cache[next(iter(cache))]
+    cache[prime] = frozen
+    return [list(row) for row in frozen]
 
 
 def canonical_two_generator_witness(
@@ -849,7 +1248,7 @@ def canonical_two_generator_witness(
 def _field_element_order_coordinates(order: Any, value: Any) -> list[Any]:
     element = order.number_field()(value)
     row = _nf_coordinates(element, order.degree())
-    return list(_nf_global("vector")(sage.QQ, row) * order.basis_matrix().inverse())
+    return list(_nf_global("vector")(sage.QQ, row) * order._basis_inverse_matrix())
 
 
 def _polynomial_remainder(
@@ -890,6 +1289,9 @@ class NumberFieldPrimeIdeal(NumberFieldIdeal):
             self._field = order.number_field()
             self._basis_rows = rows
             self._membership_inverse_cache = runtime.undefined
+            self._is_integral_cache = runtime.undefined
+            self._norm_cache = runtime.undefined
+            self._packed_basis_cache = runtime.undefined
         elif _candidate_token is not None:
             raise ValueError("invalid canonical prime-ideal candidate token")
         else:
@@ -1109,43 +1511,796 @@ def _residue_presentation_for_prime(
     )
 
 
-def _prime_from_ideal(
-    ideal: Any, prime: int, ramification: int, residue_degree: int
-) -> NumberFieldPrimeIdeal:
-    result = NumberFieldPrimeIdeal(
-        ideal.ring(),
-        ideal._basis_rows,
-        prime,
-        ramification,
-        residue_degree,
+def _ideal_basis_maps_to_zero(
+    prime_ideal: NumberFieldPrimeIdeal,
+    presentation: dict[str, Any],
+) -> bool:
+    """Check the exact HNF lattice against its claimed residue quotient map."""
+    prime = prime_ideal._rational_prime
+    quotient_matrix = [list(row) for row in presentation["quotient_matrix"]]
+    # `_ideal_mod_p_subspace` converts the immutable exact HNF basis rows to
+    # maximal-order coordinates.  Testing its row space is equivalent to
+    # reducing every ideal basis element, without constructing field elements
+    # or passing through the polynomial residue presentation.
+    return all(
+        not any(_row_times_matrix(row, quotient_matrix, prime))
+        for row in _ideal_mod_p_subspace(prime_ideal, prime)
     )
-    result._residue_presentation = _residue_presentation_for_prime(result)
-    return result
+
+
+def _presentation_modulus_is_irreducible(
+    presentation: dict[str, Any], prime: int, residue_degree: int
+) -> bool:
+    """Replay irreducibility of one canonical residue presentation."""
+    modulus = tuple(int(value) % prime for value in presentation["modulus"])
+    if residue_degree == 1:
+        # Every nonconstant linear polynomial over a field is irreducible.
+        # Avoid entering the generic modular factorization engine for the
+        # overwhelmingly common residue-degree-one prime ideals.
+        return len(modulus) == 2 and modulus[1] != 0
+    if residue_degree == 2:
+        if len(modulus) != 3 or modulus[2] == 0:
+            return False
+        # Normalize the quadratic before applying its exact discriminant
+        # criterion.  In characteristic two, the two possible roots are
+        # cheaper and clearer to test directly.
+        leading_inverse = _mod_inverse(modulus[2], prime)
+        constant = modulus[0] * leading_inverse % prime
+        linear = modulus[1] * leading_inverse % prime
+        if prime == 2:
+            return constant != 0 and (1 + linear + constant) % 2 != 0
+        discriminant = (linear * linear - 4 * constant) % prime
+        return pow(discriminant, (prime - 1) // 2, prime) == prime - 1
+    modular_factors = (
+        _om.factor_cubic_mod_prime(modulus, prime)
+        if residue_degree == 3
+        else _om.factor_mod_prime(modulus, prime)
+    )
+    return bool(
+        len(modular_factors) == 1
+        and int(modular_factors[0].multiplicity) == 1
+        and len(modular_factors[0].polynomial) - 1 == residue_degree
+    )
+
+
+def packed_dedekind_kummer_candidates(
+    order: Any,
+    prime: int,
+    residue_degrees: set[int] | None = None,
+    *,
+    modular_factors: tuple[Any, ...] | None = None,
+    p_maximal: bool | None = None,
+    modular_table: list[list[list[int]]] | None = None,
+    one_coordinates: list[int] | None = None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Return exact Dedekind--Kummer data without constructing ideal objects.
+
+    Each record retains the canonical modular ideal, residue presentation, HNF
+    rows, and exact second generator.  The equation order is first certified
+    `p`-maximal, so these data name precisely the prime ideals attached to the
+    irreducible modular factors.  Consumers that need ordinary public ideals
+    may materialize them later; packed relation producers can keep the data in
+    integer buffers and avoid that object boundary entirely.
+    """
+    field = order.number_field()
+    polynomial = _maximal.integral_equation_polynomial(field)
+    coefficients = tuple(int(value) for value in polynomial.list())
+    factors = (
+        _om.factor_mod_prime(coefficients, prime)
+        if modular_factors is None
+        else modular_factors
+    )
+    if p_maximal is None:
+        maximal = (
+            _maximal.equation_order_is_p_maximal(field, prime)
+            if modular_factors is None
+            else _equation_order_is_p_maximal_from_factors(
+                coefficients, prime, tuple(factors)
+            )
+        )
+    else:
+        maximal = bool(p_maximal)
+    if not maximal:
+        return None
+    scale = int(runtime.integer_bigint(field._integral_equation_scale_cache))
+    degree = order.degree()
+    defining = tuple(field._defining_coefficients)
+    if len(defining) != degree + 1:
+        raise ArithmeticError("a defining polynomial has the wrong degree")
+    leading = sage.QQ(defining[degree])
+    inverse_rows = order._basis_inverse_matrix().rows()
+    table = _modular_table(order, prime) if modular_table is None else modular_table
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in factors
+        )
+        != degree
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    answer: list[dict[str, Any]] = []
+    for factor in factors:
+        residue_degree = len(factor.polynomial) - 1
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        power_coordinates = [sage.QQ(0)] * degree
+        for index, coefficient in enumerate(factor.polynomial):
+            scaled = sage.QQ(int(coefficient) * scale**index)
+            if index < degree:
+                power_coordinates[index] += scaled
+                continue
+            if index != degree:
+                raise ArithmeticError(
+                    "a Dedekind--Kummer generator exceeds the field degree"
+                )
+            for target in range(degree):
+                power_coordinates[target] -= (
+                    scaled * sage.QQ(defining[target]) / leading
+                )
+        exact_coordinates: list[Any] = []
+        for target in range(degree):
+            coordinate: Any = sage.QQ(0)
+            for source in range(degree):
+                coordinate += power_coordinates[source] * inverse_rows[source][target]
+            exact_coordinates.append(coordinate)
+        if any(value._denominator != 1 for value in exact_coordinates):
+            raise ArithmeticError("a Dedekind--Kummer generator is not integral")
+        modular_coordinates = [
+            int(value._numerator) % prime for value in exact_coordinates
+        ]
+        subspace = _subspace_ideal_generated_by(
+            [modular_coordinates], degree, table, prime
+        )
+        presentation = _primitive_presentation(
+            degree,
+            prime,
+            table,
+            one,
+            subspace,
+            DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        )
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
+        if rows is None:
+            # This helper is an optimization boundary.  The readable public
+            # decomposition remains the authoritative fallback when the
+            # fixed-shape HNF kernel declines the input.
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": residue_degree,
+                "presentation": presentation,
+                "second_generator_payload": [
+                    [int(value._numerator), int(value._denominator)]
+                    for value in power_coordinates
+                ],
+                "table": table,
+                "one": one,
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
+def packed_cubic_linear_dedekind_kummer_candidates(
+    order: Any,
+    prime: int,
+    residue_degrees: set[int],
+    modular_factors: tuple[Any, ...],
+    *,
+    p_maximal: bool,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+    one_coordinates: list[int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Build requested linear cubic factors from their evaluation maps.
+
+    When the equation order is `p`-maximal, a linear factor gives an exact
+    homomorphism from `O/pO` to `F_p`: evaluate the retained maximal-order
+    basis at its root.  Its kernel is the corresponding prime ideal.  The
+    generic Dedekind--Kummer path rediscovers this kernel by closing a
+    generator under a full multiplication table; the fixed cubic formula
+    produces the identical canonical subspace and residue presentation
+    without constructing that table.
+
+    The helper declines unless every requested factor is linear.  Higher
+    residue degrees and noninvertible basis scales continue through the
+    complete generic implementation.
+    """
+    if order.degree() != 3 or p_maximal is not True or 1 not in residue_degrees:
+        return None
+    if (
+        sum(
+            int(factor.multiplicity) * (len(factor.polynomial) - 1)
+            for factor in modular_factors
+        )
+        != 3
+    ):
+        raise ArithmeticError("Dedekind--Kummer factors have the wrong local degree")
+    eligible = tuple(
+        factor
+        for factor in modular_factors
+        if len(factor.polynomial) - 1 in residue_degrees
+    )
+    if any(len(factor.polynomial) - 1 != 1 for factor in eligible):
+        return None
+    selected = eligible
+    if not selected:
+        return []
+    packed_basis = (
+        _packed_candidate_order_basis(order)
+        if packed_order_basis is None
+        else packed_order_basis
+    )
+    if packed_basis is None:
+        return None
+    basis_numerators, basis_denominator = packed_basis
+    field = order.number_field()
+    scale = int(runtime.integer_bigint(field._integral_equation_scale_cache))
+    if (
+        len(basis_numerators) != 9
+        or basis_denominator <= 0
+        or scale % prime == 0
+        or basis_denominator % prime == 0
+    ):
+        return None
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
+    if len(one) != 3:
+        return None
+    denominator_inverse = _mod_inverse(basis_denominator % prime, prime)
+    scale_inverse = _mod_inverse(scale % prime, prime)
+    answer: list[dict[str, Any]] = []
+    for factor in selected:
+        polynomial = tuple(int(value) % prime for value in factor.polynomial)
+        if len(polynomial) != 2 or polynomial[1] == 0:
+            return None
+        root = -polynomial[0] * _mod_inverse(polynomial[1], prime) % prime
+        generator_image = root * scale_inverse % prime
+        powers = (1, generator_image, generator_image * generator_image % prime)
+        quotient_column = [
+            sum(
+                basis_numerators[row * 3 + column] * powers[column]
+                for column in range(3)
+            )
+            * denominator_inverse
+            % prime
+            for row in range(3)
+        ]
+        free_column = 2
+        while free_column >= 0 and quotient_column[free_column] == 0:
+            free_column -= 1
+        if free_column < 0:
+            return None
+        normalization = _mod_inverse(quotient_column[free_column], prime)
+        quotient_column = [value * normalization % prime for value in quotient_column]
+        subspace: list[list[int]] = []
+        for pivot in range(3):
+            if pivot == free_column:
+                continue
+            row = [0, 0, 0]
+            row[pivot] = 1
+            row[free_column] = -quotient_column[pivot] % prime
+            subspace.append(row)
+        one_image = (
+            sum(one[index] * quotient_column[index] for index in range(3)) % prime
+        )
+        if one_image == 0:
+            return None
+        power_inverse = _mod_inverse(one_image, prime)
+        presentation = {
+            "primitive": (1, 0, 0),
+            "quotient_matrix": tuple((value,) for value in quotient_column),
+            "power_inverse": ((power_inverse,),),
+            "modulus": (-quotient_column[0] * power_inverse % prime, 1),
+        }
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_basis,
+        )
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": int(factor.multiplicity),
+                "f": 1,
+                "presentation": presentation,
+                "second_generator_payload": [
+                    [polynomial[0], 1],
+                    [polynomial[1] * scale, 1],
+                    [0, 1],
+                ],
+                "table": None,
+                "one": one,
+            }
+        )
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
+def packed_finite_algebra_candidates(
+    order: Any,
+    prime: int,
+    max_candidates: int,
+    residue_degrees: set[int] | None = None,
+    *,
+    modular_table: list[list[list[int]]] | None = None,
+    one_coordinates: list[int] | None = None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Return exact finite-algebra prime data without ordinary ideal objects."""
+    degree = order.degree()
+    table = _modular_table(order, prime) if modular_table is None else modular_table
+    one = (
+        [value % prime for value in _order_one_coordinates(order)]
+        if one_coordinates is None
+        else [int(value) % prime for value in one_coordinates]
+    )
+    if degree == 3:
+        packed = _packed_cubic_reduced_algebra_candidates(
+            order,
+            prime,
+            table,
+            one,
+            residue_degrees=residue_degrees,
+            packed_order_basis=packed_order_basis,
+        )
+        if packed is not None:
+            _attach_packed_second_generators(order, prime, table, packed)
+            return packed
+    radical = _nilradical(degree, prime, one, table)
+    quotient_cache: dict[Any, Any] = {}
+    field_kernels = _monogenic_reduced_field_kernels(
+        radical,
+        degree,
+        prime,
+        table,
+        one,
+        max_candidates,
+        quotient_cache=quotient_cache,
+    )
+    if field_kernels is None:
+        field_kernels = _reduced_field_kernels(
+            radical,
+            degree,
+            prime,
+            table,
+            one,
+            quotient_cache=quotient_cache,
+        )
+    answer: list[dict[str, Any]] = []
+    local_degree_sum = 0
+    for maximal_subspace in field_kernels:
+        presentation = _primitive_presentation(
+            degree,
+            prime,
+            table,
+            one,
+            maximal_subspace,
+            max_candidates,
+            quotient_cache=quotient_cache,
+        )
+        residue_degree = len(presentation["modulus"]) - 1
+        power = maximal_subspace
+        for _exponent in range(degree + 1):
+            next_power = _subspace_product(
+                power, maximal_subspace, degree, table, prime
+            )
+            if next_power == power:
+                break
+            power = next_power
+        else:
+            raise ArithmeticError("a local maximal-ideal power did not stabilize")
+        local_dimension = degree - len(power)
+        if local_dimension < 1 or local_dimension % residue_degree:
+            raise ArithmeticError("a local algebra has inconsistent e/f dimensions")
+        ramification = local_dimension // residue_degree
+        local_degree_sum += ramification * residue_degree
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        rows = _packed_candidate_rows(
+            order,
+            maximal_subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": maximal_subspace,
+                "e": ramification,
+                "f": residue_degree,
+                "presentation": presentation,
+                "table": table,
+                "one": one,
+            }
+        )
+    if local_degree_sum != degree:
+        raise ArithmeticError("finite-algebra factors have the wrong local degree")
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    _attach_packed_second_generators(order, prime, table, answer)
+    return answer
+
+
+def _attach_packed_second_generators(
+    order: Any,
+    prime: int,
+    table: list[list[list[int]]],
+    records: list[dict[str, Any]],
+) -> None:
+    """Attach canonical HNF witnesses with one shared order inverse."""
+    inverse_rows = order._basis_inverse_matrix().rows()
+    degree = int(order.degree())
+    if len(inverse_rows) != degree:
+        raise ArithmeticError("the maximal-order inverse basis has the wrong height")
+    p = int(prime)
+    for record in records:
+        target = [list(row) for row in record["subspace"]]
+        for row in record["rows"]:
+            coordinates: list[Any] = []
+            for target_index in range(degree):
+                coordinate: Any = sage.QQ(0)
+                for source in range(degree):
+                    coordinate += row[source] * inverse_rows[source][target_index]
+                coordinates.append(coordinate)
+            if any(value._denominator != 1 for value in coordinates):
+                continue
+            modular = [int(value._numerator) % p for value in coordinates]
+            if _subspace_ideal_generated_by([modular], degree, table, p) == target:
+                record["second_generator_payload"] = [
+                    [int(value._numerator), int(value._denominator)] for value in row
+                ]
+                record["table"] = None
+                break
+
+
+def _packed_cubic_reduced_algebra_candidates(
+    order: Any,
+    prime: int,
+    table: list[list[list[int]]],
+    one: list[int],
+    *,
+    residue_degrees: set[int] | None,
+    packed_order_basis: tuple[tuple[int, ...], int] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Use the fixed-shape reduced cubic kernel, or decline cleanly.
+
+    The packed producer is checked as algebraic data before retention: every
+    row space is a canonical ideal, its quotient map has the claimed kernel,
+    the primitive power basis and inverse replay exactly, the modulus vanishes
+    and is irreducible, and the distinct residue degrees sum to three.  The
+    complete readable nilradical/decomposition path remains the fallback.
+    """
+    if _cubic_reduced_algebra_kernel_override is False:
+        return None
+    kernel = (
+        _cubic_reduced_algebra_kernel_override
+        if callable(_cubic_reduced_algebra_kernel_override)
+        else getattr(
+            _candidate_kernel,
+            "packed_cubic_reduced_algebra_factors_in_place",
+            None,
+        )
+    )
+    if not callable(kernel):
+        return None
+    try:
+        metadata = kernel_integer_zeros(kernel, 7, 16)
+        kernels = kernel_integer_zeros(kernel, 27, 16)
+        presentations = kernel_integer_zeros(kernel, 75, 16)
+        if not kernel(
+            metadata,
+            kernels,
+            presentations,
+            kernel_integer_zeros(kernel, 128, 16),
+            kernel_integer_buffer(
+                kernel,
+                [value for left in table for right in left for value in right],
+            ),
+            kernel_integer_buffer(kernel, one),
+            prime,
+        ):
+            return None
+        metadata_values = tuple(int(value) for value in integer_buffer_values(metadata))
+        kernel_values = tuple(int(value) for value in integer_buffer_values(kernels))
+        presentation_values = tuple(
+            int(value) for value in integer_buffer_values(presentations)
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+    factor_count = metadata_values[0] if len(metadata_values) == 7 else 0
+    if (
+        factor_count < 1
+        or factor_count > 3
+        or len(kernel_values) != 27
+        or len(presentation_values) != 75
+    ):
+        return None
+    answer: list[dict[str, Any]] = []
+    seen_subspaces: set[tuple[tuple[int, ...], ...]] = set()
+    local_degree_sum = 0
+    for factor_index in range(factor_count):
+        row_count = metadata_values[1 + 2 * factor_index]
+        residue_degree = metadata_values[2 + 2 * factor_index]
+        if (
+            row_count < 0
+            or row_count > 2
+            or residue_degree < 1
+            or residue_degree > 3
+            or row_count + residue_degree != 3
+        ):
+            return None
+        kernel_offset = 9 * factor_index
+        subspace = [
+            [
+                kernel_values[kernel_offset + row * 3 + column] % prime
+                for column in range(3)
+            ]
+            for row in range(row_count)
+        ]
+        frozen_subspace = tuple(tuple(row) for row in subspace)
+        if (
+            frozen_subspace in seen_subspaces
+            or _row_basis(subspace, 3, prime) != subspace
+            or _subspace_ideal_generated_by(subspace, 3, table, prime) != subspace
+        ):
+            return None
+        seen_subspaces.add(frozen_subspace)
+        presentation_offset = 25 * factor_index
+        primitive = tuple(
+            presentation_values[presentation_offset + coordinate] % prime
+            for coordinate in range(3)
+        )
+        quotient_offset = presentation_offset + 3
+        quotient_matrix = [
+            [
+                presentation_values[quotient_offset + row * 3 + column] % prime
+                for column in range(residue_degree)
+            ]
+            for row in range(3)
+        ]
+        canonical_quotient_matrix, _canonical_lifts = _quotient_map(subspace, 3, prime)
+        inverse_offset = presentation_offset + 12
+        power_inverse = [
+            [
+                presentation_values[inverse_offset + row * 3 + column] % prime
+                for column in range(residue_degree)
+            ]
+            for row in range(residue_degree)
+        ]
+        modulus_offset = presentation_offset + 21
+        modulus = tuple(
+            presentation_values[modulus_offset + index] % prime
+            for index in range(residue_degree + 1)
+        )
+        if (
+            quotient_matrix != canonical_quotient_matrix
+            or _rank(quotient_matrix, residue_degree, prime) != residue_degree
+            or any(
+                any(_row_times_matrix(row, quotient_matrix, prime)) for row in subspace
+            )
+        ):
+            return None
+        powers: list[list[int]] = []
+        power = list(one)
+        for _exponent in range(residue_degree):
+            powers.append(_row_times_matrix(power, quotient_matrix, prime))
+            power = _modular_product(power, list(primitive), table, prime)
+        try:
+            if _matrix_inverse(powers, prime) != power_inverse:
+                return None
+        except ArithmeticError:
+            return None
+        encoded_primitive = sum(
+            primitive[coordinate] * prime**coordinate for coordinate in range(3)
+        )
+        if encoded_primitive < 1 or encoded_primitive > min(8, prime**3 - 1):
+            return None
+        for earlier_code in range(1, encoded_primitive):
+            earlier = _encoded_vector(earlier_code, 3, prime)
+            earlier_powers: list[list[int]] = []
+            earlier_power = list(one)
+            for _exponent in range(residue_degree):
+                earlier_powers.append(
+                    _row_times_matrix(earlier_power, quotient_matrix, prime)
+                )
+                earlier_power = _modular_product(earlier_power, earlier, table, prime)
+            if _rank(earlier_powers, residue_degree, prime) == residue_degree:
+                return None
+        next_image = _row_times_matrix(power, quotient_matrix, prime)
+        coefficients = _row_times_matrix(next_image, power_inverse, prime)
+        expected_modulus = tuple([(-value) % prime for value in coefficients] + [1])
+        presentation = {
+            "primitive": primitive,
+            "quotient_matrix": tuple(tuple(row) for row in quotient_matrix),
+            "power_inverse": tuple(tuple(row) for row in power_inverse),
+            "modulus": modulus,
+        }
+        if modulus != expected_modulus or not _presentation_modulus_is_irreducible(
+            presentation, prime, residue_degree
+        ):
+            return None
+        local_degree_sum += residue_degree
+        if residue_degrees is not None and residue_degree not in residue_degrees:
+            continue
+        rows = _packed_candidate_rows(
+            order,
+            subspace,
+            prime,
+            packed_order_basis=packed_order_basis,
+        )
+        if rows is None:
+            return None
+        answer.append(
+            {
+                "rows": rows,
+                "subspace": subspace,
+                "e": 1,
+                "f": residue_degree,
+                "presentation": presentation,
+                "second_generator": None,
+                "table": table,
+                "one": one,
+            }
+        )
+    if local_degree_sum != 3:
+        return None
+    answer.sort(
+        key=lambda record: tuple(
+            value
+            for row in _encode_rows(record["rows"])
+            for pair in row
+            for value in pair
+        )
+    )
+    return answer
+
+
+def _dedekind_kummer_prime_candidate(
+    order: Any,
+    prime: int,
+    factor: Any,
+    beta: Any,
+    table: list[list[list[int]]],
+    one: list[int],
+    *,
+    verify_candidate: bool,
+    p_basis: tuple[Any, ...] = (),
+) -> tuple[NumberFieldPrimeIdeal, Any]:
+    """Materialize one Dedekind--Kummer prime from its modular ideal.
+
+    The generic `(p, g(beta))` ideal constructor first builds an exact ideal
+    lattice and then rediscovers the same modular subspace to construct the
+    residue presentation.  Here the irreducible modular factor already gives
+    that subspace.  Materialize its canonical HNF directly through the
+    source-transparent candidate kernel (with its readable fallback).
+
+    A selective factor-base caller does not subsequently replay the complete
+    rational-prime decomposition, so `verify_candidate=True` independently
+    binds the packed lattice to `(p, g(beta))`: it must contain `p*O` and the
+    exact second generator, have norm `p^f`, and retain a field quotient.  By
+    Dedekind--Kummer at a certified `p`-maximal equation order these checks
+    force equality with the intended prime ideal.  The full decomposition
+    producer instead leaves the candidate pending for its stronger ordinary
+    replay in `verify_prime_decomposition`.
+    """
+    residue_degree = len(factor.polynomial) - 1
+    second_generator = order.number_field().zero()
+    for coefficient in reversed(factor.polynomial):
+        second_generator = second_generator * beta + int(coefficient)
+    exact_coordinates = _field_element_order_coordinates(order, second_generator)
+    if any(value._denominator != 1 for value in exact_coordinates):
+        raise ArithmeticError("a Dedekind--Kummer generator is not integral")
+    modular_coordinates = [int(value._numerator) % prime for value in exact_coordinates]
+    degree = order.degree()
+    subspace = _subspace_ideal_generated_by([modular_coordinates], degree, table, prime)
+    presentation = _primitive_presentation(
+        degree,
+        prime,
+        table,
+        one,
+        subspace,
+        DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+    )
+    candidate = _prime_candidate_from_modular_subspace(
+        order,
+        subspace,
+        prime,
+        int(factor.multiplicity),
+        residue_degree,
+        presentation,
+        use_packed=True,
+    )
+    if verify_candidate:
+        if not p_basis:
+            p_basis = tuple(order.ideal(prime).basis())
+        if not _ideal_arithmetic.ideal_contains_elements(
+            candidate, p_basis + (second_generator,)
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal omits p*O or its exact generator"
+            )
+        expected_norm = runtime.bigint(prime) ** runtime.bigint(residue_degree)
+        if candidate.norm() != expected_norm:
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal has the wrong exact norm"
+            )
+        if not _presentation_modulus_is_irreducible(
+            presentation, prime, residue_degree
+        ):
+            raise ArithmeticError(
+                "a packed Dedekind--Kummer ideal quotient is not a field"
+            )
+        candidate._packed_candidate_pending_replay = False
+        candidate._verified_modular_algebra = (prime, table, one)
+    return candidate, second_generator
 
 
 def _dedekind_kummer(order: Any, prime: int) -> list[NumberFieldPrimeIdeal] | None:
     field = order.number_field()
-    if not _maximal.equation_order_is_p_maximal(field, prime):
+    if _maximal.equation_order_index(order) % prime == 0:
         return None
     polynomial = _maximal.integral_equation_polynomial(field)
     coefficients = tuple(int(value) for value in polynomial.list())
     factors = _om.factor_mod_prime(coefficients, prime)
     scale = runtime.integer_bigint(field._integral_equation_scale_cache)
     beta = field.gen() * scale
+    table = _modular_table(order, prime)
+    one = [value % prime for value in _order_one_coordinates(order)]
     answer: list[NumberFieldPrimeIdeal] = []
     for factor in factors:
-        value = field.zero()
-        for coefficient in reversed(factor.polynomial):
-            value = value * beta + int(coefficient)
-        ideal = order.ideal(prime, value)
-        answer.append(
-            _prime_from_ideal(
-                ideal,
-                prime,
-                int(factor.multiplicity),
-                len(factor.polynomial) - 1,
-            )
+        candidate, _second_generator = _dedekind_kummer_prime_candidate(
+            order,
+            prime,
+            factor,
+            beta,
+            table,
+            one,
+            verify_candidate=False,
         )
+        answer.append(candidate)
     return answer
 
 
@@ -1156,11 +2311,46 @@ def _finite_algebra_fallback(
     *,
     use_packed_candidates: bool = False,
 ) -> list[NumberFieldPrimeIdeal]:
+    if use_packed_candidates:
+        packed = packed_finite_algebra_candidates(order, prime, max_candidates)
+        if packed is not None:
+            answer: list[NumberFieldPrimeIdeal] = []
+            for record in packed:
+                candidate = NumberFieldPrimeIdeal(
+                    order,
+                    record["rows"],
+                    prime,
+                    record["e"],
+                    record["f"],
+                    record["presentation"],
+                    _candidate_token=_PACKED_CANDIDATE_TOKEN,
+                )
+                candidate._packed_candidate_pending_replay = True
+                answer.append(candidate)
+            return answer
     degree = order.degree()
     table = _modular_table(order, prime)
     one = [value % prime for value in _order_one_coordinates(order)]
     radical = _nilradical(degree, prime, one, table)
-    field_kernels = _reduced_field_kernels(radical, degree, prime, table, one)
+    quotient_cache: dict[Any, Any] = {}
+    field_kernels = _monogenic_reduced_field_kernels(
+        radical,
+        degree,
+        prime,
+        table,
+        one,
+        max_candidates,
+        quotient_cache=quotient_cache,
+    )
+    if field_kernels is None:
+        field_kernels = _reduced_field_kernels(
+            radical,
+            degree,
+            prime,
+            table,
+            one,
+            quotient_cache=quotient_cache,
+        )
     answer: list[NumberFieldPrimeIdeal] = []
     for maximal_subspace in field_kernels:
         # This bounded presentation search now runs only in one finite field,
@@ -1172,6 +2362,7 @@ def _finite_algebra_fallback(
             one,
             maximal_subspace,
             max_candidates,
+            quotient_cache=quotient_cache,
         )
         residue_degree = len(presentation["modulus"]) - 1
         power = maximal_subspace
@@ -1283,52 +2474,10 @@ def primes_above(order: Any, prime: Any) -> tuple[NumberFieldPrimeIdeal, ...]:
     return factor_rational_prime(order, prime).prime_ideals()
 
 
-def _quotient_is_field(
-    order: Any,
-    ideal: NumberFieldPrimeIdeal,
-    prime: int,
-    residue_degree: int,
-    *,
-    table: list[list[list[int]]] | None = None,
-    one: list[int] | None = None,
-) -> bool:
-    degree = order.degree()
-    subspace = _ideal_mod_p_subspace(ideal, prime)
-    coordinate_matrix, lifts = _quotient_map(subspace, degree, prime)
-    if len(lifts) != residue_degree:
-        return False
-    if table is None:
-        table = _modular_table(order, prime)
-    if one is None:
-        one = [value % prime for value in _order_one_coordinates(order)]
-    frobenius_rows = [
-        _row_times_matrix(
-            _modular_power(lift, prime, one, table, prime),
-            coordinate_matrix,
-            prime,
-        )
-        for lift in lifts
-    ]
-    if _rank(frobenius_rows, residue_degree, prime) != residue_degree:
-        return False
-    fixed = [
-        [
-            (frobenius_rows[row][column] - (1 if row == column else 0)) % prime
-            for column in range(residue_degree)
-        ]
-        for row in range(residue_degree)
-    ]
-    # Left fixed vectors form the nullspace of the transpose.
-    fixed_dimension = len(
-        _nullspace(_transpose(fixed, residue_degree), residue_degree, prime)
-    )
-    return fixed_dimension == 1
-
-
 def verify_prime_decomposition(
     order: Any, prime: Any, decomposition: Any
 ) -> dict[str, Any]:
-    """Independently verify quotient fields and exact lattice reconstruction."""
+    """Independently verify residue presentations and exact lattices."""
     failures: list[str] = []
     try:
         p = _normalize_prime(prime)
@@ -1336,9 +2485,10 @@ def verify_prime_decomposition(
         return {"certified": False, "failures": [str(error)]}
     if not order.is_maximal():
         failures.append("the order is not independently certified maximal")
-    # This table is recomputed at the verifier boundary and is never accepted
-    # from the producer.  Reusing that independent exact input within one
-    # replay avoids rebuilding the same maximal-order products four times.
+    # This modular table is recomputed at the verifier boundary and is never
+    # accepted from the producer.  Its integer multiplication tensor may come
+    # from the maximal order's immutable identity-keyed cache; every caller
+    # receives a fresh nested list before reducing it modulo p.
     replay_table: list[list[list[int]]] | None = None
     replay_one: list[int] | None = None
     try:
@@ -1350,7 +2500,7 @@ def verify_prime_decomposition(
     if not factors:
         failures.append("the decomposition has no prime factors")
     p_ideal = order.ideal(p)
-    product = order.ideal(1)
+    product = None
     degree_sum = 0
     seen: list[Any] = []
     for pair in factors:
@@ -1371,7 +2521,7 @@ def verify_prime_decomposition(
         residue_degree = ideal.residue_class_degree()
         if residue_degree < 1:
             failures.append("a residue degree is not positive")
-        if not all(element in ideal for element in p_ideal.basis()):
+        if not _ideal_arithmetic.ideal_contains(ideal, p_ideal):
             failures.append("a prime lattice does not contain p*O")
         if not ideal.is_integral():
             failures.append("a prime lattice is not integral")
@@ -1379,15 +2529,6 @@ def verify_prime_decomposition(
         if ideal.norm() != expected_norm:
             failures.append("a prime lattice has the wrong exact norm")
         try:
-            if not _quotient_is_field(
-                order,
-                ideal,
-                p,
-                residue_degree,
-                table=replay_table,
-                one=replay_one,
-            ):
-                failures.append("a prime quotient is not a field")
             presentation = ideal._require_residue_presentation()
             recomputed_presentation = _residue_presentation_for_prime(
                 ideal,
@@ -1407,19 +2548,12 @@ def verify_prime_decomposition(
                         "a residue presentation differs from its canonical recomputation"
                     )
                     break
-            modular_factors = _om.factor_mod_prime(
-                tuple(int(value) for value in presentation["modulus"]), p
-            )
-            if (
-                len(modular_factors) != 1
-                or int(modular_factors[0].multiplicity) != 1
-                or len(modular_factors[0].polynomial) - 1 != residue_degree
+            if not _presentation_modulus_is_irreducible(
+                presentation, p, residue_degree
             ):
                 failures.append("a residue presentation modulus is not irreducible")
-            for basis_element in ideal.basis():
-                if any(ideal.residue_coordinates(basis_element)):
-                    failures.append("a residue-map kernel omits a prime-ideal basis")
-                    break
+            if not _ideal_basis_maps_to_zero(ideal, presentation):
+                failures.append("a residue-map kernel omits a prime-ideal basis")
         except Exception as error:
             failures.append("residue verification failed: " + str(error))
         for previous in seen:
@@ -1428,9 +2562,10 @@ def verify_prime_decomposition(
             if ideal + previous != order.ideal(1):
                 failures.append("two prime ideals are not comaximal")
         seen.append(ideal)
-        product = product * (ideal**exponent)
+        power = ideal if exponent == 1 else ideal**exponent
+        product = power if product is None else product * power
         degree_sum += exponent * residue_degree
-    if product != p_ideal:
+    if product is None or product != p_ideal:
         failures.append("the exact product lattice is not p*O")
     if degree_sum != order.degree():
         failures.append("the sum of e*f does not equal the field degree")
@@ -1624,6 +2759,8 @@ __all__ = [
     "NumberFieldPrimeIdeal",
     "PrimeIdealDecomposition",
     "factor_rational_prime",
+    "packed_dedekind_kummer_candidates",
+    "packed_finite_algebra_candidates",
     "prime_ideal_from_dict",
     "primes_above",
     "serialize_prime_ideal",

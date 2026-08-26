@@ -156,17 +156,15 @@ for case_index in range(len(records)):
             started = time.perf_counter_ns()
             answer = int(field.class_number(proof=proof))
             timings.append((time.perf_counter_ns() - started) / 1000000000)
-            artifact = getattr(field, "_bounded_cubic_class_number_artifact", None)
-            if artifact is not None:
-                last_diagnostics = artifact.diagnostics
-                last_proof_status = artifact.proof_status
-            else:
-                engine_cache = getattr(field, "_class_unit_engine_cache", None)
-                if engine_cache:
-                    computations = list(engine_cache.values())
-                    if computations:
-                        last_diagnostics = computations[-1].diagnostics
-                        last_proof_status = computations[-1].proof_status
+            if ${sage ? "False" : "True"}:
+                artifact = getattr(field, "_bounded_cubic_class_number_artifact", None)
+                if artifact is not None and artifact.complete:
+                    last_diagnostics = artifact.diagnostics
+                    last_proof_status = artifact.proof_status
+                else:
+                    computation = field.class_unit_group(proof=proof)
+                    last_diagnostics = computation.diagnostics
+                    last_proof_status = computation.proof_status
         answers.append({
             "label": record["label"],
             "proof": proof,

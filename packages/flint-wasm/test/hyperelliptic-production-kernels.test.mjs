@@ -196,7 +196,7 @@ dyadic_result = dyadic_kummer_height_recurrence(
     z(dyadic_kummer_height_recurrence, height_coefficients),
     u(dyadic_kummer_height_recurrence, height_exponents),
     u(dyadic_kummer_height_recurrence, height_counts),
-    zz(dyadic_kummer_height_recurrence, 48), scale, 1,
+    6144, scale, 1,
 )
 
 period_output = kernel_float64_zeros(_period_edge_batch_float64, 2)
@@ -344,7 +344,7 @@ test("authenticated production packs execute every hyperelliptic source family",
   const expectedFunctions = new Map([
     ["genus2-kummer-height-production", 6],
     ["genus3-weil-candidate-production", 3],
-    ["hyperelliptic-cantor-production", 8],
+    ["hyperelliptic-cantor-production", 11],
     ["hyperelliptic-kummer-production", 3],
     ["hyperelliptic-period-edge-batch-production", 3],
   ]);

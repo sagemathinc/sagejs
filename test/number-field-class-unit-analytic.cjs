@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -32,9 +33,18 @@ import types
 
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
+ffi_package = types.ModuleType("sagejs.ffi")
+ffi_flint = types.ModuleType("sagejs.ffi.flint")
+def unavailable_integer_log_sqrt_balls(*_args):
+    raise RuntimeError("declared FLINT is unavailable in the CPython oracle")
+ffi_flint.integer_log_sqrt_balls_packed = unavailable_integer_log_sqrt_balls
+ffi_package.flint = ffi_flint
 sagejs.number_fields = number_fields
+sagejs.ffi = ffi_package
 sys.modules["sagejs"] = sagejs
 sys.modules["sagejs.number_fields"] = number_fields
+sys.modules["sagejs.ffi"] = ffi_package
+sys.modules["sagejs.ffi.flint"] = ffi_flint
 for dependency_name, dependency_path in [
     ("sagejs.native", ${JSON.stringify(nativePath)}),
     ("sagejs.number_fields.zeta_coefficient_kernel", ${JSON.stringify(zetaKernelPath)}),
@@ -62,6 +72,22 @@ fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
     encoding: "utf8",
     timeout,
   });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  return result.stdout.trim();
+}
+
+function runSagejs(witness, timeout = 120_000) {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin/sagejs"), "--python", "-"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: witness,
+      timeout,
+    },
+  );
   if (result.error) throw result.error;
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   return result.stdout.trim();
@@ -357,9 +383,21 @@ assert kernel_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 0
 assert len(new_finite.source) < 512
 assert "exact outward integer transcendental rounding" in new_finite.source
 assert kernel_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+module._shared_integer_log_endpoints.clear()
+module._shared_integer_sqrt_endpoints.clear()
+module._shared_bf_packed_layouts.clear()
+zeta_kernel_module = sys.modules[
+    "sagejs.number_fields.zeta_coefficient_kernel"
+]
+zeta_kernel_module.assemble_bf_integer_transcendental_endpoints_flint = None
+fallback_field = IntervalBallField(128)
+fallback_finite = module._bf_finite_term(new_plan, fallback_field)
+assert fallback_field.diagnostics()["bf_flint_transcendental_calls"] == 0
+assert fallback_field.diagnostics()["bf_transcendental_kernel_successes"] == 1
+assert fallback_finite.to_dict() == scalar_finite.to_dict()
 repeat_field = IntervalBallField(128)
 repeat_finite = module._bf_finite_term(new_plan, repeat_field)
-assert repeat_finite.to_dict() == new_finite.to_dict()
+assert repeat_finite.to_dict() == fallback_finite.to_dict()
 repeat_diagnostics = repeat_field.diagnostics()
 assert repeat_diagnostics["bf_packed_layout_cache_hits"] == 1
 assert repeat_diagnostics["bf_transcendental_kernel_calls"] == 0
@@ -393,15 +431,36 @@ assert fallback.to_dict() == scalar_finite.to_dict()
 assert fallback_field.diagnostics()["bf_dyadic_kernel_calls"] == 0
 assert fallback_field.diagnostics()["bf_dyadic_kernel_fallbacks"] == 1
 
+owned_generation = {"generation": "focused-provenance-test"}
 certificate = UnitSaturationIndexCertificate(
     {"field": "focused-provenance-test"},
     [],
     {},
     1,
     {"finite_term": new_finite.to_dict()},
-    {"generation": "focused-provenance-test"},
+    owned_generation,
     "exact-relations-conditional-grh",
 )
+assert certificate._authenticated_body_matches()
+assert certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
+live_certificate = UnitSaturationIndexCertificate(
+    {"field": "focused-live-parent-test"},
+    [],
+    {},
+    1,
+    {"finite_term": new_finite.to_dict()},
+    {"generation": "focused-live-parent-test"},
+    "exact-relations-conditional-grh",
+    _live_parent_token=module._LIVE_UNIT_INDEX_PARENT_TOKEN,
+)
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) == live_certificate.to_dict()
+assert live_certificate._consume_live_parent_payload(
+    module._LIVE_UNIT_INDEX_PARENT_TOKEN
+) is None
 original_certificate_payload = certificate.to_dict()
 mutated = certificate.to_dict()
 mutated["analytic_proof"]["finite_term"]["source"] = "forged-provenance"
@@ -410,6 +469,10 @@ assert certificate.to_dict() == original_certificate_payload
 exposed_generation = certificate.generation_evidence
 exposed_generation["generation"] = "another-forgery"
 assert certificate.to_dict() == original_certificate_payload
+owned_generation["generation"] = "mutated-after-construction"
+assert not certificate._authenticated_body_matches()
+owned_generation["generation"] = "focused-provenance-test"
+assert certificate._authenticated_body_matches()
 try:
     UnitSaturationIndexCertificate.from_dict(mutated)
     raise AssertionError("a finite-term provenance mutation retained authority")
@@ -572,6 +635,68 @@ def quadratic_provider(discriminant):
         return records
     return provider
 
+# The maximal-order provider may expose the same exact local factors in the
+# private packed shape used by zeta-coefficient construction.  The analytic
+# workspace must validate that shape without touching the nested-record
+# fallback, and reject even a one-prime reordering.
+class PackedProvider:
+    def __init__(self):
+        self.public_calls = 0
+        self.packed_calls = 0
+        self.primes = [2, 3, 5]
+    def splitting_records(self, _start, _stop):
+        self.public_calls += 1
+        raise AssertionError("the packed splitting path fell back")
+    def _zeta_factor_degree_data(self, start, stop):
+        self.packed_calls += 1
+        return {
+            "degree": 2,
+            "intervalStart": start,
+            "intervalStop": stop,
+            "completePrimeInterval": True,
+            "primes": list(self.primes),
+            "factorCounts": [1, 2, 1],
+            "exponents": [1, 0, 1, 1, 2, 0],
+            "degrees": [2, 0, 1, 1, 1, 0],
+        }
+
+packed_provider = PackedProvider()
+packed_workspace = ZetaLogResidueWorkspace(
+    5, 2, packed_provider.splitting_records
+)
+assert packed_workspace.splitting_types([2, 3, 5], 4096) == {
+    2: ((1, 2),),
+    3: ((1, 1), (1, 1)),
+    5: ((2, 1),),
+}
+assert packed_provider.packed_calls == 1
+assert packed_provider.public_calls == 0
+packed_provider.primes = [2, 5, 3]
+try:
+    module._packed_splitting_block(
+        packed_provider.splitting_records, 2, 6, [2, 3, 5], 2
+    )
+    raise AssertionError("reordered packed splitting data was accepted")
+except AnalyticCertificationError:
+    pass
+
+# Floating-point cutoff location is only a proposal: the accelerated search
+# must reproduce the exact minimal threshold and its outward interval, while
+# using exactly two certified evaluations on representative quadratic and
+# cubic discriminants.
+for discriminant, degree, maximum in ((5, 2, 20000), (283, 3, 1000000), (1083, 3, 1000000)):
+    target = RationalEndpoint(1, 16)
+    accelerated_model = module._BFErrorModel(
+        discriminant, degree, IntervalBallField(96)
+    )
+    exact_model = module._BFErrorModel(discriminant, degree, IntervalBallField(96))
+    accelerated = module._bf_threshold(accelerated_model, target, maximum)
+    exact = module._bf_threshold_exact(exact_model, target, maximum)
+    assert accelerated[0] == exact[0]
+    assert accelerated[1].to_dict() == exact[1].to_dict()
+    assert accelerated_model.evaluations == 2
+    assert exact_model.evaluations > accelerated_model.evaluations
+
 for field in fixture["fields"][:2]:
     enclosure = zeta_log_residue_bound(
         field["discriminant"],
@@ -606,11 +731,11 @@ zeta = zeta_log_residue_bound(
     5,
     2,
     counted_provider,
-    absolute_error="0.125",
     precision_bits=96,
     limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
     workspace=workspace,
 )
+assert str(zeta.requested_absolute_error) == "1/8"
 calls_after_cold = len(provider_calls)
 warm_zeta = zeta_log_residue_bound(
     5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
@@ -619,7 +744,7 @@ warm_zeta = zeta_log_residue_bound(
 )
 assert len(provider_calls) == calls_after_cold
 assert warm_zeta.diagnostics["provider_calls"] == 0
-assert warm_zeta.diagnostics["splitting_cache_hits"] == 1
+assert warm_zeta.diagnostics["splitting_cache_hits"] == 0
 assert warm_zeta.diagnostics["prime_enumeration_cache_hits"] == 1
 assert warm_zeta.diagnostics["prime_power_plan_cache_hits"] == 1
 assert warm_zeta.diagnostics["threshold_cache_hits"] == 1
@@ -632,6 +757,144 @@ assert warm_zeta.ball.contains(quadratic["logResidue"])
 assert warm_zeta.ball.to_dict() == zeta.ball.to_dict()
 assert workspace.diagnostics()["zeta_residue_calls"] == 2
 assert workspace.diagnostics()["splitting_nanoseconds"] >= 0
+
+# Every mutable acceleration cache has separate canonical authority.  Poisoning
+# any dependency before a proof-producing call must fail closed, including a
+# record cache that an already-built plan would otherwise bypass.
+def assert_cache_tamper_rejected(label):
+    try:
+        zeta_log_residue_bound(
+            5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+            limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+            workspace=workspace,
+        )
+    except AnalyticCertificationError:
+        return
+    raise AssertionError(label + " cache mutation was accepted")
+
+saved_covered_stop = workspace.covered_stop
+workspace.covered_stop = saved_covered_stop + 1
+assert_cache_tamper_rejected("splitting coverage")
+workspace.covered_stop = saved_covered_stop
+
+record_key = next(iter(workspace._records))
+saved_record = workspace._records[record_key]
+issued_authority = workspace._proof_cache_authority
+workspace._records[record_key] = ()
+try:
+    issued_authority.payload = workspace._proof_cache_snapshot()
+    raise AssertionError("a paired cache/authority mutation was accepted")
+except AttributeError:
+    pass
+assert not hasattr(issued_authority, "__dict__")
+try:
+    object.__setattr__(
+        issued_authority, "payload", workspace._proof_cache_snapshot()
+    )
+    raise AssertionError("object.__setattr__ mutated a cache authority")
+except (AttributeError, TypeError):
+    pass
+assert_cache_tamper_rejected("splitting record")
+workspace._records[record_key] = saved_record
+
+prime_key = next(iter(workspace._primes))
+saved_primes = workspace._primes[prime_key]
+workspace._primes[prime_key] = ()
+assert_cache_tamper_rejected("rational prime")
+workspace._primes[prime_key] = saved_primes
+
+plan_key = next(iter(workspace._plans))
+saved_raw_terms = workspace._plans[plan_key].raw_terms
+workspace._plans[plan_key].raw_terms = saved_raw_terms + 1
+assert_cache_tamper_rejected("prime-power plan")
+workspace._plans[plan_key].raw_terms = saved_raw_terms
+
+threshold_key = next(iter(workspace._thresholds))
+saved_threshold = workspace._thresholds[threshold_key]
+workspace._thresholds[threshold_key] = (
+    saved_threshold[0], RealBall(-99, 99, precision_bits=96), saved_threshold[2]
+)
+assert_cache_tamper_rejected("threshold")
+workspace._thresholds[threshold_key] = saved_threshold
+
+finite_key = next(iter(workspace._finite_terms))
+saved_finite = workspace._finite_terms[finite_key]
+workspace._finite_terms[finite_key] = (
+    saved_finite[0] - IntervalBallField(96).log_integer(2), saved_finite[1]
+)
+for attempted_token in (None, object()):
+    try:
+        if attempted_token is None:
+            workspace._issue_proof_cache_authority()
+        else:
+            workspace._issue_proof_cache_authority(attempted_token)
+        raise AssertionError("a caller reissued authority for a forged finite term")
+    except TypeError:
+        pass
+assert_cache_tamper_rejected("finite term")
+workspace._finite_terms[finite_key] = saved_finite
+
+# Restoring the mutable views preserves the authenticated warm result.
+assert zeta_log_residue_bound(
+    5, 2, counted_provider, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace,
+).ball.to_dict() == zeta.ball.to_dict()
+
+# A splitting callback cannot re-enter the workspace and bless its own cache
+# mutation before the provider result is admitted.
+hostile_holder = {}
+def hostile_provider(start, stop):
+    hostile_workspace = hostile_holder["workspace"]
+    hostile_workspace._records[99991] = ((1, 2),)
+    try:
+        hostile_workspace._issue_proof_cache_authority(object())
+        raise AssertionError("a callback reissued zeta cache authority")
+    except TypeError:
+        pass
+    return base_provider(start, stop)
+hostile_workspace = ZetaLogResidueWorkspace(5, 2, hostile_provider)
+hostile_holder["workspace"] = hostile_workspace
+try:
+    zeta_log_residue_bound(
+        5, 2, hostile_provider, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=hostile_workspace,
+    )
+    raise AssertionError("a reentrant callback mutation entered the proof cache")
+except AnalyticCertificationError:
+    pass
+
+# A frozen authority is identity-bound to its workspace.  Transplanting a
+# complete, internally consistent cache from another field cannot relabel its
+# zeta interval with this field's discriminant.
+provider_5 = quadratic_provider(5)
+provider_13 = quadratic_provider(13)
+workspace_5 = ZetaLogResidueWorkspace(5, 2, provider_5)
+workspace_13 = ZetaLogResidueWorkspace(13, 2, provider_13)
+clean_5 = zeta_log_residue_bound(
+    5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_5,
+)
+clean_13 = zeta_log_residue_bound(
+    13, 2, provider_13, absolute_error="0.125", precision_bits=96,
+    limits=ZetaLogResidueLimits(maximum_prime_bound=20000), workspace=workspace_13,
+)
+assert clean_5.ball.to_dict() != clean_13.ball.to_dict()
+workspace_5.covered_stop = workspace_13.covered_stop
+for cache_name in (
+    "_records", "_plans", "_primes", "_thresholds", "_finite_terms",
+):
+    setattr(workspace_5, cache_name, getattr(workspace_13, cache_name))
+workspace_5._proof_cache_authority = workspace_13._proof_cache_authority
+try:
+    zeta_log_residue_bound(
+        5, 2, provider_5, absolute_error="0.125", precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=20000),
+        workspace=workspace_5,
+    )
+    raise AssertionError("a foreign workspace authority was transplanted")
+except AnalyticCertificationError:
+    pass
 
 class FakeCoordinate:
     def __init__(self, numerator, denominator=1):
@@ -667,6 +930,49 @@ assert cached_regulator.to_dict() == warm_regulator.to_dict()
 assert counted_unit.calls == [96]
 assert workspace.diagnostics()["regulator_calls"] == 2
 assert workspace.diagnostics()["regulator_cache_hits"] == 1
+
+# Replacing both a cached regulator and its caller-visible JSON sibling cannot
+# bless a different hR value: the owner-bound authority retains the admitted
+# canonical regulator payload independently.
+regulator_key = next(iter(workspace._regulators))
+saved_regulator_entry = workspace._regulators[regulator_key]
+forged_regulator = RegulatorEnclosure(
+    warm_regulator.ball * RealBall(2, precision_bits=96),
+    1,
+    [96],
+    weighted_complex_places=True,
+)
+workspace._regulators[regulator_key] = (
+    forged_regulator, module._canonical_json(forged_regulator.to_dict())
+)
+try:
+    workspace.regulator_from_factored_units(
+        [counted_unit], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a paired cached-regulator replacement was accepted")
+except AnalyticCertificationError:
+    pass
+workspace._regulators[regulator_key] = saved_regulator_entry
+
+class ReentrantFactoredUnit(CountedFactoredUnit):
+    def archimedean_logarithms(self, precision):
+        workspace._regulators[regulator_key] = (
+            forged_regulator, module._canonical_json(forged_regulator.to_dict())
+        )
+        return [RealBall("1", precision_bits=precision)]
+
+try:
+    workspace.regulator_from_factored_units(
+        [ReentrantFactoredUnit(2)], unit_rank=1, precision_bits=96,
+        absolute_tolerance_bits=60, maximum_precision_bits=192,
+    )
+    raise AssertionError("a reentrant regulator callback mutation was admitted")
+except AnalyticCertificationError:
+    pass
+finally:
+    workspace._regulators[regulator_key] = saved_regulator_entry
+
 try:
     workspace.regulator_from_factored_units(
         [counted_unit], unit_rank=1, precision_bits=96,
@@ -720,11 +1026,106 @@ validation = validate_hr_index(
 assert validation.rigorous and validation.index_one
 assert validation.lower_index == validation.upper_index == 1
 
+# The fused exact endpoint sum must reproduce the former scalar formula's
+# final hR index ball.  The scalar expression remains an independent readable
+# oracle for both the true and deliberately inflated tentative class numbers.
+def scalar_hr_index(class_number):
+    precision = 128
+    field = IntervalBallField(precision)
+    log_two = field.log_integer(2)
+    log_prefactor = (
+        RealBall(2, precision_bits=precision) * log_two
+        - field.log_integer(2)
+        - field.log_integer(5) / RealBall(2, precision_bits=precision)
+    )
+    algebraic = (
+        log_prefactor
+        + field.log_integer(class_number)
+        + field.log(regulator.ball)
+    )
+    log_index = algebraic - zeta.ball
+    return field.exp(log_index)
+
+scalar_validation = scalar_hr_index(1)
+assert validation.index_ball.lower == scalar_validation.lower
+assert validation.index_ball.upper == scalar_validation.upper
+
 forged = validate_hr_index(
     signature=(2, 0), discriminant=5, class_number=2, roots_of_unity=2,
     regulator=regulator, zeta_log_residue=zeta, precision_bits=128,
 )
 assert forged.rigorous and forged.unique_index == 2 and not forged.index_one
+scalar_forged = scalar_hr_index(2)
+assert forged.index_ball.lower == scalar_forged.lower
+assert forged.index_ball.upper == scalar_forged.upper
+
+# The policy layer starts coarse, treats an empty integer intersection as an
+# inconclusive decision, and halves the exact requested error deterministically.
+# Synthetic zeta balls isolate that control-flow contract from the BF kernel;
+# the ordinary hR validator still performs every mathematical decision.
+seed_validation = validate_hr_index(
+    signature=(0, 1), discriminant=-4, class_number=1, roots_of_unity=4,
+    regulator=RealBall(1, precision_bits=128),
+    zeta_log_residue=RealBall(-20, 20, precision_bits=128),
+    precision_bits=128,
+)
+decision_field = IntervalBallField(128)
+coarse_residue = seed_validation.algebraic_log_hr - decision_field.log(
+    RealBall("3/2", precision_bits=128)
+)
+fine_residue = seed_validation.algebraic_log_hr
+adaptive_calls = []
+original_zeta_bound = module.zeta_log_residue_bound
+def synthetic_zeta_bound(*args, **options):
+    requested = str(module._endpoint(options["absolute_error"], rigorous=True))
+    adaptive_calls.append(requested)
+    return coarse_residue if requested == "1" else fine_residue
+module.zeta_log_residue_bound = synthetic_zeta_bound
+try:
+    selected_zeta, selected_index, selected_history = adaptive_hr_index(
+        signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+        roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+        splitting_provider=lambda start, stop: (), precision_bits=128,
+    )
+    assert selected_index.rigorous and selected_index.unique_index == 1
+    assert selected_zeta is fine_residue
+    assert selected_history == ("1", "1/2")
+    assert adaptive_calls == ["1", "1/2"]
+
+    cancellation_checks = []
+    adaptive_calls.clear()
+    def cancelled_after_first_attempt():
+        cancellation_checks.append(True)
+        return len(cancellation_checks) > 1
+    try:
+        adaptive_hr_index(
+            signature=(0, 1), discriminant=-4, degree=2, class_number=1,
+            roots_of_unity=4, regulator=RealBall(1, precision_bits=128),
+            splitting_provider=lambda start, stop: (), precision_bits=128,
+            cancelled=cancelled_after_first_attempt,
+        )
+        raise AssertionError("adaptive hR refinement ignored cancellation")
+    except AnalyticResourceError as error:
+        assert "cancelled" in str(error)
+    assert adaptive_calls == ["1"]
+finally:
+    module.zeta_log_residue_bound = original_zeta_bound
+
+resource_provider_calls = []
+def resource_provider(start, stop):
+    resource_provider_calls.append((start, stop))
+    return ()
+try:
+    adaptive_hr_index(
+        signature=(2, 0), discriminant=5, degree=2, class_number=1,
+        roots_of_unity=2, regulator=regulator,
+        splitting_provider=resource_provider, precision_bits=96,
+        limits=ZetaLogResidueLimits(maximum_prime_bound=72),
+    )
+    raise AssertionError("adaptive hR refinement exceeded its prime cap")
+except AnalyticResourceError as error:
+    assert "maximum_prime_bound" in str(error)
+assert resource_provider_calls == []
 
 try:
     zeta_log_residue_bound(
@@ -737,4 +1138,88 @@ except AnalyticCertificationError:
 print("analytic-index-ok")
 `, 180_000);
   assert.equal(output, "analytic-index-ok");
+});
+
+test("declared FLINT integer balls agree with independent rigorous endpoints", () => {
+  const output = runSagejs(String.raw`
+import sagejs.native as native_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
+import sagejs.number_fields.zeta_coefficient_kernel as kernel_module
+from sagejs.number_fields.class_unit_analytic import (
+    IntervalBallField,
+    _dyadic_mantissas,
+    _primes_below,
+)
+
+assert _primes_below(30) == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+
+splitting = {
+    2: ((1, 1), (1, 2)),
+    3: ((3, 1),),
+    5: ((1, 3),),
+    7: ((1, 1), (1, 1), (1, 1)),
+}
+readable_plan = analytic_module._build_bf_plan_readable(99, splitting)
+packed_plan = analytic_module._build_bf_plan_kernel(99, splitting)
+assert packed_plan is not None
+assert packed_plan.terms == readable_plan.terms
+assert packed_plan.raw_terms == readable_plan.raw_terms
+plan_kernel = kernel_module.assemble_bf_prime_power_plan_in_place
+assert native_module.is_compiled(plan_kernel)
+
+saved_plan_override = analytic_module._bf_prime_power_plan_kernel_override
+analytic_module._bf_prime_power_plan_kernel_override = False
+try:
+    fallback_plan = analytic_module._build_bf_plan(99, splitting)
+finally:
+    analytic_module._bf_prime_power_plan_kernel_override = saved_plan_override
+assert fallback_plan.terms == readable_plan.terms
+assert fallback_plan.raw_terms == readable_plan.raw_terms
+
+flint_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints_flint
+source_kernel = kernel_module.assemble_bf_integer_transcendental_endpoints
+assert native_module.is_compiled(flint_kernel)
+assert native_module.is_compiled(source_kernel)
+values = list(range(1, 34)) + [1009, 4093, 8191, 24039, 999983]
+for precision in [64, 96, 128, 160, 256]:
+    packed_values = native_module.kernel_integer_buffer(flint_kernel, values)
+    flint_output = native_module.kernel_integer_zeros(
+        flint_kernel, 4 * len(values), 8
+    )
+    source_output = native_module.kernel_integer_zeros(
+        source_kernel, 4 * len(values), 8
+    )
+    assert flint_kernel(flint_output, packed_values, precision)
+    source_values = native_module.kernel_integer_buffer(source_kernel, values)
+    assert source_kernel(source_output, source_values, precision)
+    flint_endpoints = native_module.integer_buffer_values(flint_output)
+    source_endpoints = native_module.integer_buffer_values(source_output)
+    field = IntervalBallField(precision)
+    for index, value in enumerate(values):
+        offset = 4 * index
+        log_lower, log_upper = _dyadic_mantissas(
+            field.log_integer(value), precision
+        )
+        sqrt_lower, sqrt_upper = _dyadic_mantissas(
+            field.sqrt_integer(value), precision
+        )
+        assert flint_endpoints[offset] <= log_upper
+        assert log_lower <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= sqrt_upper
+        assert sqrt_lower <= flint_endpoints[offset + 3]
+        assert flint_endpoints[offset] <= source_endpoints[offset + 1]
+        assert source_endpoints[offset] <= flint_endpoints[offset + 1]
+        assert flint_endpoints[offset + 2] <= source_endpoints[offset + 3]
+        assert source_endpoints[offset + 2] <= flint_endpoints[offset + 3]
+
+bad_values = native_module.kernel_integer_buffer(flint_kernel, [0])
+bad_output = native_module.kernel_integer_zeros(flint_kernel, 4, 8)
+try:
+    flint_kernel(bad_output, bad_values, 128)
+    raise AssertionError("FLINT accepted a nonpositive integer")
+except ValueError:
+    pass
+print("ok")
+`);
+  assert.equal(output, "ok");
 });

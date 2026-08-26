@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -198,55 +199,16 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy is valid, immutable, and narrow", () => {
+test("the checked-in release policy fails closed after the combined source merge", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  const policy = verifyPolicy(raw, {
-    root: ROOT,
-    sourceCommit: raw.source_bundle.source_commit,
-  });
-  assert.equal(policy.enabled, true);
-  assert.equal(policy.entries.length, 6);
-  assert.equal(policy.verified_receipts.length, 24);
-  assert.equal(
-    policy.source_bundle.sha256,
-    "1985fa5202ce06e6dcbfe037db6f569c9791d2d6677e8c1f1a1a29b6af8d7d59",
-  );
+  const policy = verifyPolicy(raw, { root: ROOT });
+  assert.equal(policy.enabled, false);
+  assert.equal(policy.source_bundle, null);
+  assert.equal(policy.entries.length, 0);
+  assert.equal(policy.verified_receipts.length, 0);
   assert(Object.isFrozen(policy));
-  assert.equal(
-    queryAutoReceiptPolicy(policy, {
-      platform: "linux-x64",
-      backend: "prime-cantor",
-      operation: "add",
-      source_bundle_sha256: policy.source_bundle.sha256,
-      model: {
-        kind: "exact-fingerprint",
-        fingerprint:
-          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
-      },
-      workload: {
-        prime: 1009,
-        interval_start: 1009,
-        interval_stop: 1009,
-        batch_items: 1000,
-        scalar_bits: 0,
-        resource_bytes: 200096,
-      },
-    }).selected,
-    true,
-  );
-  assert.deepEqual(
-    policy.entries.map((entry) => [entry.backend, entry.operation]),
-    [
-      ["prime-cantor", "add"],
-      ["prime-cantor", "scalar"],
-      ["prime-cantor", "progression"],
-      ["prime-cantor", "add"],
-      ["prime-cantor", "scalar"],
-      ["prime-cantor", "progression"],
-    ],
-  );
 });
 
 test("source bundles are deterministic, framed, and path safe", (context) => {

@@ -1,3 +1,5 @@
+// sagejs-test-tier: integration
+// sagejs-test-smoke: true
 "use strict";
 
 const assert = require("node:assert/strict");

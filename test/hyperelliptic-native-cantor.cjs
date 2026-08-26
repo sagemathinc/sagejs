@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -74,10 +75,13 @@ import pickle
 from sagejs.hyperelliptic_curves.jacobian_kernels import (
     packed_cantor_add_batch,
     packed_cantor_copy_batch,
+    packed_cantor_negate_batch,
     packed_cantor_progression_batch,
     packed_cantor_search_progression,
     packed_cantor_search_progressions,
     packed_cantor_scalar_batch,
+    packed_cantor_subtract_batch,
+    packed_cantor_sum_batch,
     packed_cantor_validate_batch,
 )
 from sagejs.hyperelliptic_curves.jacobian_native import PreparedDivisorBatch
@@ -86,28 +90,52 @@ compiled = is_compiled(packed_cantor_add_batch)
 capsule_factory = runtime.immutable_uint64_capsule
 assert compiled == is_compiled(packed_cantor_scalar_batch)
 assert compiled == is_compiled(packed_cantor_copy_batch)
+assert compiled == is_compiled(packed_cantor_negate_batch)
 assert compiled == is_compiled(packed_cantor_progression_batch)
 assert compiled == is_compiled(packed_cantor_search_progression)
 assert compiled == is_compiled(packed_cantor_search_progressions)
+assert compiled == is_compiled(packed_cantor_subtract_batch)
+assert compiled == is_compiled(packed_cantor_sum_batch)
 assert compiled == is_compiled(packed_cantor_validate_batch)
 selected = "native" if compiled else "reference"
 
 
 def scalar_operations(scalar):
     magnitude = abs(scalar)
-    bits = 0
-    ones = 0
+    operations = 0
+    started = False
     while magnitude:
-        bits += 1
-        ones += magnitude % 2
+        if magnitude % 2:
+            digit = 1 if magnitude == 1 else 2 - magnitude % 4
+            magnitude -= digit
+            if started:
+                operations += 1
+            else:
+                started = True
         magnitude //= 2
-    return ones + max(0, bits - 1)
+        if magnitude:
+            operations += 1
+    return operations
+
+
+assert tuple(scalar_operations(value) for value in (0, 1, 2, 3, 17, 31)) == (
+    0,
+    0,
+    1,
+    3,
+    5,
+    6,
+)
+assert scalar_operations(2**64 - 1) == 65
 
 
 def check_curve(curve, exhaustive):
     J = curve.jacobian()
-    context = J.prepared_arithmetic()
-    assert context is J.prepared_arithmetic()
+    # This differential explicitly exercises the compiled and source paths.
+    # Do not route its unreceipted GF(3) fixtures through release auto, which
+    # correctly fails closed outside the authenticated GF(1009) envelopes.
+    context = J.prepared_arithmetic(algorithm=selected)
+    assert context is J.prepared_arithmetic(algorithm=selected)
     capability = context.capability()
     assert capability.schema == "sagejs.hyperelliptic.packed-mumford.odd.v1"
     assert capability.model_kind == "odd-degree-one-infinity"
@@ -244,6 +272,45 @@ def check_curve(curve, exhaustive):
     negated_reference = tuple(point._negate_reference() for point in sample)
     assert negated == negated_reference
     assert negate_diagnostics.operation == "negate"
+    if compiled:
+        assert len(negate_diagnostics.statuses) == len(sample)
+    else:
+        raw_negated = [0] * (8 * len(sample))
+        raw_negate_statuses = [0] * len(sample)
+        assert packed_cantor_negate_batch(
+            raw_negated,
+            raw_negate_statuses,
+            list(context.model_coefficients),
+            [word for point in sample for word in context.pack(point)],
+            len(sample),
+            context.genus,
+            context.prime,
+        )
+        assert tuple(
+            context.unpack(raw_negated[8 * index:8 * index + 8])
+            for index in range(len(sample))
+        ) == negated_reference
+    invalid_negate_row = list(context.pack(sample[0]))
+    invalid_negate_row[1] = context.prime
+    rejected_negate_output = kernel_uint64_buffer(
+        packed_cantor_negate_batch, [92] * 8
+    )
+    rejected_negate_status = kernel_uint64_buffer(
+        packed_cantor_negate_batch, [7]
+    )
+    assert not packed_cantor_negate_batch(
+        rejected_negate_output,
+        rejected_negate_status,
+        kernel_uint64_buffer(
+            packed_cantor_negate_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(packed_cantor_negate_batch, invalid_negate_row),
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_negate_output) == (92,) * 8
+    assert tuple(int(value) for value in rejected_negate_status) == (0,)
     shifted = tuple(sample[(index + 1) % len(sample)] for index in range(len(sample)))
     differences, subtract_diagnostics = context.subtract_batch(
         sample, shifted, algorithm=selected, diagnostics=True
@@ -255,6 +322,49 @@ def check_curve(curve, exhaustive):
     )
     assert differences == difference_reference
     assert subtract_diagnostics.operation == "subtract"
+    if compiled:
+        assert len(subtract_diagnostics.statuses) == len(sample)
+    else:
+        raw_differences = [0] * (8 * len(sample))
+        raw_subtract_statuses = [0] * len(sample)
+        assert packed_cantor_subtract_batch(
+            raw_differences,
+            raw_subtract_statuses,
+            list(context.model_coefficients),
+            [word for point in sample for word in context.pack(point)],
+            [word for point in shifted for word in context.pack(point)],
+            len(sample),
+            context.genus,
+            context.prime,
+        )
+        assert tuple(
+            context.unpack(raw_differences[8 * index:8 * index + 8])
+            for index in range(len(sample))
+        ) == difference_reference
+    invalid_subtract_row = list(context.pack(sample[0]))
+    invalid_subtract_row[1] = context.prime
+    rejected_subtract_output = kernel_uint64_buffer(
+        packed_cantor_subtract_batch, [93] * 8
+    )
+    rejected_subtract_status = kernel_uint64_buffer(
+        packed_cantor_subtract_batch, [7]
+    )
+    assert not packed_cantor_subtract_batch(
+        rejected_subtract_output,
+        rejected_subtract_status,
+        kernel_uint64_buffer(
+            packed_cantor_subtract_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(packed_cantor_subtract_batch, invalid_subtract_row),
+        kernel_uint64_buffer(
+            packed_cantor_subtract_batch, context.pack(sample[1])
+        ),
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_subtract_output) == (93,) * 8
+    assert tuple(int(value) for value in rejected_subtract_status) == (0,)
     if compiled:
         assert isinstance(negated, PreparedDivisorBatch)
         assert isinstance(differences, PreparedDivisorBatch)
@@ -276,6 +386,58 @@ def check_curve(curve, exhaustive):
         assert packed_total == reference_total
         assert prepared_sample.published_count == 0
         assert sum_diagnostics.operation == "sum"
+        assert len(sum_diagnostics.statuses) == len(prepared_sample) - 1
+    for sum_count in (0, 1, 2, 3, 7, min(16, len(sample))):
+        sum_values = sample[:sum_count]
+        sum_answer, sum_record = context.sum(
+            sum_values,
+            algorithm=selected,
+            diagnostics=True,
+        )
+        sum_reference = context.sum(sum_values, algorithm="reference")
+        assert sum_answer == sum_reference
+        if compiled and sum_count > 0:
+            assert len(sum_record.statuses) == sum_count - 1
+    if not compiled:
+        raw_sum_values = sample[:min(16, len(sample))]
+        raw_sum_output = [0] * 8
+        raw_sum_statuses = [0] * max(0, len(raw_sum_values) - 1)
+        assert packed_cantor_sum_batch(
+            raw_sum_output,
+            raw_sum_statuses,
+            list(context.model_coefficients),
+            [word for point in raw_sum_values for word in context.pack(point)],
+            len(raw_sum_values),
+            context.genus,
+            context.prime,
+        )
+        assert context.unpack(raw_sum_output) == context.sum(
+            raw_sum_values, algorithm="reference"
+        )
+    invalid_sum_row = list(context.pack(sample[0]))
+    invalid_sum_row[1] = context.prime
+    rejected_sum_output = kernel_uint64_buffer(
+        packed_cantor_sum_batch, [91] * 8
+    )
+    rejected_sum_status = kernel_uint64_buffer(
+        packed_cantor_sum_batch, [7]
+    )
+    assert not packed_cantor_sum_batch(
+        rejected_sum_output,
+        rejected_sum_status,
+        kernel_uint64_buffer(
+            packed_cantor_sum_batch, context.model_coefficients
+        ),
+        kernel_uint64_buffer(
+            packed_cantor_sum_batch,
+            list(context.pack(sample[0])) + invalid_sum_row,
+        ),
+        2,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_sum_output) == (91,) * 8
+    assert tuple(int(value) for value in rejected_sum_status) == (0,)
     assert sample[1].negate(algorithm=selected) == negated_reference[1]
     assert sample[1].subtract(sample[2], algorithm=selected) == difference_reference[1]
 
@@ -310,7 +472,18 @@ def check_curve(curve, exhaustive):
         assert source_progression == progression_reference
 
     scalars = [
-        -(2**130 + 17), -257, -1, 0, 1, 2, 17, 2**128 + 12345
+        -(2**130 + 17),
+        -257,
+        -1,
+        0,
+        1,
+        2,
+        17,
+        31,
+        2**64 - 1,
+        2**64 + 3,
+        2**128 + 12345,
+        2**192 - 1,
     ]
     scalar_points = [sample[index % len(sample)] for index in range(len(scalars))]
     products, scalar_diagnostics = context.scalar_batch(
@@ -325,6 +498,67 @@ def check_curve(curve, exhaustive):
     )
     if compiled:
         assert scalar_diagnostics.statuses == operation_statuses
+    identity_products = context.scalar_batch(
+        (J.zero(),) * len(scalars), scalars, algorithm=selected
+    )
+    assert all(product.is_zero() for product in identity_products)
+
+    # Scalar zero and the first nonzero NAF digit do not invoke Cantor
+    # addition.  They must nevertheless validate direct packed ingress,
+    # and a rejected row or model must not change caller-owned output.
+    valid_scalar_row = list(context.pack(scalar_points[0]))
+    invalid_scalar_row = list(valid_scalar_row)
+    invalid_scalar_row[1] = context.prime
+    scalar_model = kernel_uint64_buffer(
+        packed_cantor_scalar_batch, context.model_coefficients
+    )
+    for first_scalar in (0, 1):
+        rejected_output = kernel_uint64_buffer(
+            packed_cantor_scalar_batch, [99] * 8
+        )
+        rejected_status = kernel_uint64_buffer(
+            packed_cantor_scalar_batch, [7]
+        )
+        assert not packed_cantor_scalar_batch(
+            rejected_output,
+            rejected_status,
+            scalar_model,
+            kernel_uint64_buffer(
+                packed_cantor_scalar_batch, invalid_scalar_row
+            ),
+            kernel_uint64_buffer(
+                packed_cantor_scalar_batch, [first_scalar]
+            ),
+            kernel_uint64_buffer(packed_cantor_scalar_batch, [0]),
+            1,
+            1,
+            context.genus,
+            context.prime,
+        )
+        assert tuple(int(value) for value in rejected_output) == (99,) * 8
+        assert tuple(int(value) for value in rejected_status) == (0,)
+    invalid_scalar_model = list(context.model_coefficients)
+    invalid_scalar_model[2 * context.genus + 1] = 0
+    rejected_output = kernel_uint64_buffer(
+        packed_cantor_scalar_batch, [88] * 8
+    )
+    rejected_status = kernel_uint64_buffer(packed_cantor_scalar_batch, [6])
+    assert not packed_cantor_scalar_batch(
+        rejected_output,
+        rejected_status,
+        kernel_uint64_buffer(
+            packed_cantor_scalar_batch, invalid_scalar_model
+        ),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, valid_scalar_row),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, [1]),
+        kernel_uint64_buffer(packed_cantor_scalar_batch, [0]),
+        1,
+        1,
+        context.genus,
+        context.prime,
+    )
+    assert tuple(int(value) for value in rejected_output) == (88,) * 8
+    assert tuple(int(value) for value in rejected_status) == (6,)
     if not compiled:
         maximum_bits = max(abs(value).bit_length() for value in scalars)
         words_per_scalar = max(1, (maximum_bits + 63) // 64)
@@ -356,6 +590,27 @@ def check_curve(curve, exhaustive):
         )
         assert source_products == reference_products
         assert tuple(raw_status) == operation_statuses
+
+    small_scalars = tuple(range(-80, 81))
+    small_points = tuple(
+        sample[index % len(sample)] for index in range(len(small_scalars))
+    )
+    small_products, small_diagnostics = context.scalar_batch(
+        small_points,
+        small_scalars,
+        algorithm=selected,
+        diagnostics=True,
+    )
+    small_reference = J.prepared_arithmetic(algorithm="reference").scalar_batch(
+        small_points,
+        small_scalars,
+        algorithm="reference",
+    )
+    assert small_products == small_reference
+    if compiled:
+        assert small_diagnostics.statuses == tuple(
+            scalar_operations(scalar) + 1 for scalar in small_scalars
+        )
 
     search_point = sample[1]
     search_order = search_point.order(multiple=J.order(), algorithm="reference")
@@ -541,6 +796,28 @@ def check_curve(curve, exhaustive):
         pass
     else:
         raise AssertionError("scalar operation resource limit was ignored")
+    dense_scalar = 2**128 - 1
+    dense_operations = scalar_operations(dense_scalar)
+    dense_product, dense_diagnostics = context.scalar_batch(
+        sample[:1],
+        [dense_scalar],
+        algorithm=selected,
+        diagnostics=True,
+        max_group_operations=dense_operations,
+    )
+    assert dense_product[0] == context._reference_scalar(sample[0], dense_scalar)
+    if compiled:
+        assert dense_diagnostics.statuses == (dense_operations + 1,)
+    try:
+        context.scalar_batch(
+            sample[:1],
+            [dense_scalar],
+            max_group_operations=dense_operations - 1,
+        )
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("signed scalar operation bound was ignored")
     try:
         context.progression_batch(
             sample[0], sample[1], 4, max_group_operations=2
@@ -896,6 +1173,34 @@ test("prepared packed Cantor arithmetic is exact in dynamic and native modes", (
     assert.doesNotMatch(
       multiSearchBody,
       /native__row_|native__multi_search_record|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const sumBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_sum_batch(",
+    );
+    assert.match(sumBody, /sagejs_kernel__cantor_add_one/);
+    assert.doesNotMatch(
+      sumBody,
+      /native__cantor_add_one|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const negateBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_negate_batch(",
+    );
+    assert.match(negateBody, /sagejs_kernel__cantor_negate_one/);
+    assert.doesNotMatch(
+      negateBody,
+      /native__cantor_negate_one|mpz_|SAGEJS_WORD_PROMOTE/,
+    );
+    const subtractBody = cFunction(
+      core,
+      "int sagejs_kernel_packed_cantor_subtract_batch(",
+    );
+    assert.match(subtractBody, /sagejs_kernel__cantor_negate_one/);
+    assert.match(subtractBody, /sagejs_kernel__cantor_add_one/);
+    assert.doesNotMatch(
+      subtractBody,
+      /native__cantor_(?:negate|add)_one|mpz_|SAGEJS_WORD_PROMOTE/,
     );
     const dynamic = run(process.execPath, [sagejs, program], {
       env: {

@@ -595,10 +595,20 @@ class MumfordDivisor(sage.Element):
             return self._negate_reference()._scalar_multiple_reference(-scalar)
         result = self._parent.zero()
         addend = self
+        started = False
         while scalar:
             if scalar % 2:
-                u, v = self._parent._compose(result[0], result[1], addend[0], addend[1])
-                result = self._parent._element(u, v, False)
+                digit = 1 if scalar == 1 else 2 - scalar % 4
+                selected = addend if digit == 1 else addend._negate_reference()
+                if started:
+                    u, v = self._parent._compose(
+                        result[0], result[1], selected[0], selected[1]
+                    )
+                    result = self._parent._element(u, v, False)
+                else:
+                    result = selected
+                    started = True
+                scalar -= digit
             scalar //= 2
             if scalar:
                 u, v = self._parent._compose(addend[0], addend[1], addend[0], addend[1])

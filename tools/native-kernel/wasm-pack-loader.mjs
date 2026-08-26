@@ -10,6 +10,22 @@ function equalStrings(left, right) {
     left.every((value, index) => value === right[index]);
 }
 
+function equalJson(left, right) {
+  return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {});
+}
+
+function frozenJsonCopy(value) {
+  const copy = JSON.parse(JSON.stringify(value));
+  const freeze = (item) => {
+    if (item !== null && typeof item === "object" && !Object.isFrozen(item)) {
+      for (const nested of Object.values(item)) freeze(nested);
+      Object.freeze(item);
+    }
+    return item;
+  };
+  return freeze(copy);
+}
+
 function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
   const packs = new Map();
   for (const pack of manifest.packs) {
@@ -45,6 +61,10 @@ function authenticatedCapabilityIndex(manifest, authenticatedDomains) {
         identityModule.coreHash !== kernel.coreHash ||
         identityModule.oracleIdentity !== kernel.oracleIdentity ||
         !equalStrings(identityModule.functions, identityFunctions) ||
+        !equalJson(
+          identityModule.automaticSelections,
+          kernel.automaticSelections,
+        ) ||
         !pack.modules.includes(kernel.identityHash)) {
       throw new Error(
         `source-kernel route metadata differs from authenticated ${kernel.domain} pack`,
@@ -529,7 +549,7 @@ function callable(instance, kernel, fn, resourceBridge) {
   if (typeof target !== "function") {
     throw new Error(`Wasm pack omitted declared export ${bridge.export}`);
   }
-  const result = (...arguments_) => {
+  const invoke = (...arguments_) => {
     if (arguments_.length !== bridge.parameters.length) {
       throw new TypeError(
         `${fn.name} takes ${bridge.parameters.length} arguments, ` +
@@ -562,7 +582,33 @@ function callable(instance, kernel, fn, resourceBridge) {
     }
     return answer;
   };
-  Object.defineProperties(result, {
+  const originalReceipt = kernel.automaticSelections?.[fn.name];
+  const receipt = originalReceipt === undefined
+    ? undefined
+    : frozenJsonCopy(originalReceipt);
+  const automaticSelectionAccepted = receipt === undefined
+    ? null
+    : (...arguments_) => {
+      const positions = new Map(
+        bridge.parameters.map((parameter, index) => [parameter.name, index]),
+      );
+      for (const [name, bounds] of Object.entries(
+        receipt.workload.arguments,
+      )) {
+        const index = positions.get(name);
+        if (index === undefined) return false;
+        const value = arguments_[index];
+        if (!(typeof value === "bigint" || Number.isSafeInteger(value))) {
+          return false;
+        }
+        const exact = BigInt(value);
+        if (exact < BigInt(bounds.min) || exact > BigInt(bounds.max)) {
+          return false;
+        }
+      }
+      return true;
+    };
+  const properties = {
     nativeAvailable: { value: true },
     sourceTransparent: { value: true },
     executionTarget: { value: "wasm" },
@@ -571,7 +617,24 @@ function callable(instance, kernel, fn, resourceBridge) {
     abiHash: { value: kernel.abiHash },
     declarationHash: { value: fn.declarationHash },
     oracleIdentity: { value: kernel.oracleIdentity },
-  });
+    automaticSelection: { value: receipt ?? null },
+    automaticSelectionAccepted: { value: automaticSelectionAccepted },
+  };
+  let result = invoke;
+  if (automaticSelectionAccepted !== null) {
+    const bindFallback = (fallback) => {
+      if (typeof fallback !== "function") {
+        throw new TypeError("Wasm automatic selection fallback must be callable");
+      }
+      const selected = (...arguments_) => automaticSelectionAccepted(...arguments_)
+        ? invoke(...arguments_)
+        : Reflect.apply(fallback, undefined, arguments_);
+      Object.defineProperties(selected, properties);
+      return selected;
+    };
+    properties.__sagejs_native_bind_fallback__ = { value: bindFallback };
+  }
+  Object.defineProperties(result, properties);
   return result;
 }
 

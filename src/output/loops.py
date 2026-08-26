@@ -584,6 +584,18 @@ def print_list_comprehension(self, output):
                 body_out.assign("")
                 body_out.print(result_obj)
 
+            # A tuple target assigns the shared ρσ_unpack temporary in the
+            # comprehension body.  Declare it in the same scope: an undeclared
+            # assignment reaches for a global, which throws in the strict-mode
+            # wrapper the compiler emits for a program file.
+            unpacks_tuple = False
+            for clause in clauses:
+                if is_node_type(clause.init, AST_Array):
+                    unpacks_tuple = True
+            if unpacks_tuple:
+                body_out.comma()
+                body_out.print("ρσ_unpack")
+
             # make sure to locally scope loop variables
             def print_declaration_target(target):
                 previous_assignment_target = body_out.assignment_target

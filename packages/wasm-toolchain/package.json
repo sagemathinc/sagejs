@@ -1,0 +1,13 @@
+{
+  "name": "@sagemath/sagejs-wasm-toolchain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "toolchain:prepare": "node scripts/toolchain.cjs prepare",
+    "receipts:compare": "node scripts/compare-receipts.cjs",
+    "probe": "node scripts/probe.cjs",
+    "status": "node scripts/toolchain.cjs status",
+    "test": "node --test test/*.test.cjs"
+  }
+}

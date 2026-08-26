@@ -1,3 +1,5 @@
+// sagejs-test-tier: unit
+// sagejs-test-platform: true
 "use strict";
 
 const assert = require("node:assert/strict");
