@@ -149,8 +149,9 @@ assert diagnostics["bound"] == 160
 assert diagnostics["extensions"] == 2
 assert diagnostics["local_prime_bound"] == 160
 assert diagnostics["cached_euler_factors"] >= 37
+assert diagnostics["backend_counts"]["smalljac"] >= 30
 True
-`);
+`, { timeout: 150_000 });
       assert.equal(result.repr, "True");
     } finally {
       await session.close();

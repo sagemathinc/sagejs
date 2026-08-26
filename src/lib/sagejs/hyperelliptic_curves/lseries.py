@@ -136,7 +136,14 @@ def central_weight_cache_info() -> dict[str, int]:
 
 
 class GlobalCoefficientPrefix:
-    """One extendable exact global Dirichlet-coefficient prefix."""
+    """One extendable exact global Dirichlet-coefficient prefix.
+
+    Genus-2 analytic computations explicitly use smalljac as their exact
+    local-factor supplier when that capability is present.  The public
+    `algorithm="auto"` local-factor API remains receipt-gated; an analytic
+    coefficient stream is a distinct consumer which requires many consecutive
+    factors and must not silently degrade to exhaustive point counting.
+    """
 
     def __init__(self, curve: Any) -> None:
         self.curve = curve
@@ -195,12 +202,39 @@ class GlobalCoefficientPrefix:
                 frobenius, "rational_local_coefficient_chunks", None
             )
             if packed_function is not None:
-                packed_chunks = packed_function(
-                    self.curve,
-                    start,
-                    cutoff,
-                    algorithm="auto",
+                smalljac_supported = getattr(
+                    frobenius, "_rational_smalljac_supported", None
                 )
+                use_smalljac = (
+                    cutoff >= 3
+                    and callable(smalljac_supported)
+                    and smalljac_supported(self.curve, max(3, start), cutoff)
+                )
+                if use_smalljac:
+
+                    def smalljac_chunks() -> Any:
+                        if start <= 2:
+                            yield from packed_function(
+                                self.curve,
+                                2,
+                                2,
+                                algorithm="exhaustive",
+                            )
+                        yield from packed_function(
+                            self.curve,
+                            max(3, start),
+                            cutoff,
+                            algorithm="smalljac",
+                        )
+
+                    packed_chunks = smalljac_chunks()
+                else:
+                    packed_chunks = packed_function(
+                        self.curve,
+                        start,
+                        cutoff,
+                        algorithm="auto",
+                    )
         except NotImplementedError:
             packed_chunks = None
         if packed_chunks is not None:
