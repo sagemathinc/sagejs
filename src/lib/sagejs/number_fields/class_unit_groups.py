@@ -6489,6 +6489,9 @@ _STANDARD_PUBLIC_CLASS_GROUP_SEALER = (
 _STANDARD_PUBLIC_CLASS_GROUP_VIEW = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.public_class_group_projection_view
 )
+_STANDARD_PUBLIC_CLASS_GROUP_ADAPT_AND_SEAL = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.adapt_and_seal_public_class_group_projection
+)
 
 
 def class_group(
@@ -6536,6 +6539,8 @@ def class_group(
             is _STANDARD_PUBLIC_CLASS_GROUP_SEALER
             and maps.public_class_group_projection_view
             is _STANDARD_PUBLIC_CLASS_GROUP_VIEW
+            and maps.adapt_and_seal_public_class_group_projection
+            is _STANDARD_PUBLIC_CLASS_GROUP_ADAPT_AND_SEAL
         )
         context_module = __import__(
             "sagejs.number_fields.class_unit_context",
@@ -6557,7 +6562,6 @@ def class_group(
             if callable(begin)
             and callable(finish)
             and live_token is not None
-            and proof_value is False
             and helpers_are_standard
             else None
         )
@@ -6568,8 +6572,7 @@ def class_group(
                 raise ArithmeticError("the public projection lost its transaction")
             try:
                 # The adapter publishes only after its independent `verify()` replay.
-                adapted = adapter(result)
-                projection = maps.seal_public_class_group_projection(adapted)
+                projection = maps.adapt_and_seal_public_class_group_projection(result)
                 # Constructing the first view performs the exact projection-type
                 # check before the context can publish anything.  A replaced
                 # helper therefore owns only this reservation and retry remains

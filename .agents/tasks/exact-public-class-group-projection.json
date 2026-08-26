@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "exact-public-class-group-projection",
+  "title": "Exact Public Class Group Projection",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend context-owned sealed public class-group repeat projections to exact direct-Minkowski and cubic results while preserving ordinary first-publication verification, detached replay, transactional isolation, and measured zero-repeat algebra",
+  "base_commit": "e7ab7c9d0d6be76c5b06371959bd08895839cf11",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_unit_context.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "test/number-field-class-unit-exact-public-projection.cjs",
+    "test/number-field-class-unit-exact-public-projection.py",
+    "bench/class-unit-groups/exact-public-class-group-projection.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Ordinary independently verified IdealClassGroup adapter and byte-equivalent conditional/unconditional proof payloads",
+      "LMFDB 3.1.588.1, 3.1.5448.1, and 3.1.4027.2 proof=False/True exact invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/number-field-class-unit-exact-public-projection.cjs",
+    "pnpm test:baselib:strict",
+    "pnpm architecture:check",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [
+      "Repository-wide status still lists inherited stale overlaps from older active class-group contracts; this lane starts at reviewed e7ab7c9d with a new exact claim set, passes its own contract, and does not edit those old contracts.",
+      "The reviewed base had only 186 bytes of number-field package-budget headroom; any required ratchet belongs to integration and this lane does not edit the shared package manifest."
+    ],
+    "next_steps": []
+  }
+}

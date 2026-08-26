@@ -1497,8 +1497,11 @@ class _IdealClassGroupProjectionView:
             for payload in self._generator_payloads
         )
 
-    def proof_record(self) -> ConditionalGRHProofRecord:
-        return ConditionalGRHProofRecord.from_dict(self.proof_payload())
+    def proof_record(self) -> Any:
+        payload = self.proof_payload()
+        if payload.get("schema") == "sagejs.number-fields.class-group.grh-proof.v1":
+            return ConditionalGRHProofRecord.from_dict(payload)
+        return _decode_unconditional_proof_record(self._metadata[0], payload)
 
     def proof_payload(self) -> dict[str, Any]:
         return json.loads(self._proof_payload_json)
@@ -1559,7 +1562,7 @@ class _IdealClassGroupProjectionView:
         presentation = matrix_module.RelationPresentation.from_dict(
             json.loads(self._presentation_json)
         )
-        context = _detached_conditional_replay_context(
+        context, proof_record = _detached_public_replay_context(
             order,
             invariants,
             ideals,
@@ -1577,7 +1580,7 @@ class _IdealClassGroupProjectionView:
             factor_base_theorem=theorem,
             factor_base_bound=bound,
             presentation_evidence=presentation,
-            proof_record=self.proof_record(),
+            proof_record=proof_record,
             proof_context=context,
             relation_count=count,
         )
@@ -1650,10 +1653,18 @@ class _SealedIdealClassGroupProjection:
     def __init__(self, source: IdealClassGroup) -> None:
         if type(source) is not IdealClassGroup:
             raise TypeError("a public projection needs an ordinary exact group")
-        if not isinstance(source._proof_record, ConditionalGRHProofRecord):
-            raise TypeError("only conditional public projections are reusable")
         if IdealClassGroup.verify(source) is not True:
             raise ArithmeticError("a public projection source failed exact replay")
+        self._initialize(source)
+
+    def _initialize(self, source: IdealClassGroup) -> None:
+        if type(source) is not IdealClassGroup:
+            raise TypeError("a public projection needs an ordinary exact group")
+        if not isinstance(
+            source._proof_record,
+            (ConditionalGRHProofRecord, UnconditionalMinkowskiProofRecord),
+        ):
+            raise TypeError("a public projection needs a replayable proof record")
         context = source._proof_context
         if type(context) is not _EngineProofReplayContext:
             raise TypeError("a public projection needs the standard replay context")
@@ -1707,6 +1718,13 @@ class _SealedIdealClassGroupProjection:
         object.__setattr__(self, "_ideal_log", source._ideal_log)
         object.__setattr__(self, "_generation_verifier", generation_verifier)
         object.__setattr__(self, "_sealed", True)
+
+    @classmethod
+    def from_engine_result(cls, result: Any) -> _SealedIdealClassGroupProjection:
+        source = class_group_from_engine_result(result)
+        answer = cls.__new__(cls)
+        answer._initialize(source)
+        return answer
 
     def __setattr__(self, name: str, value: Any) -> None:
         if getattr(self, "_sealed", False):
@@ -2458,7 +2476,7 @@ class _EngineProofReplayContext:
         )
 
 
-class _DetachedConditionalStage:
+class _DetachedReplayStage:
     __slots__ = ("details", "name", "state")
 
     def __init__(self, name: str, state: str, details: dict[str, Any]) -> None:
@@ -2467,7 +2485,7 @@ class _DetachedConditionalStage:
         self.details = dict(details)
 
 
-class _DetachedConditionalEngineGroup:
+class _DetachedReplayEngineGroup:
     __slots__ = (
         "_generator_ideals",
         "_invariants",
@@ -2480,11 +2498,12 @@ class _DetachedConditionalEngineGroup:
         invariants: tuple[int, ...],
         generator_ideals: tuple[Any, ...],
         theorem: str,
+        proof_status: str,
     ) -> None:
         self._invariants = tuple(invariants)
         self._generator_ideals = tuple(generator_ideals)
         self.factor_base_theorem = theorem
-        self.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+        self.proof_status = proof_status
 
     def invariants(self) -> tuple[int, ...]:
         return self._invariants
@@ -2499,7 +2518,7 @@ class _DetachedConditionalEngineGroup:
         return self._generator_ideals
 
 
-class _DetachedConditionalResult:
+class _DetachedReplayResult:
     __slots__ = (
         "complete",
         "diagnostics",
@@ -2513,11 +2532,12 @@ class _DetachedConditionalResult:
         self,
         saturation_record: Any,
         *,
+        proof_status: str,
         bound: int,
         relation_count: int,
     ) -> None:
         self.complete = True
-        self.proof_status = EXACT_RELATIONS_CONDITIONAL_GRH
+        self.proof_status = proof_status
         self.saturation_record = saturation_record
         self.saturation_original_units = tuple(saturation_record.original_units)
         self.diagnostics = {
@@ -2525,10 +2545,10 @@ class _DetachedConditionalResult:
             "relations": relation_count,
         }
         self.stages = (
-            _DetachedConditionalStage(
+            _DetachedReplayStage(
                 "proof",
                 "complete",
-                {"proof_status": EXACT_RELATIONS_CONDITIONAL_GRH},
+                {"proof_status": proof_status},
             ),
         )
 
@@ -2609,7 +2629,7 @@ def _detached_conditional_replay_context(
     generator_ideals: tuple[Any, ...],
     proof_payload_json: str,
     generation_verifier: Any,
-) -> _EngineProofReplayContext:
+) -> tuple[_EngineProofReplayContext, ConditionalGRHProofRecord]:
     payload = json.loads(proof_payload_json)
     if not _conditional_payload_within_caps(payload):
         raise ArithmeticError("detached conditional proof exceeds replay caps")
@@ -2623,15 +2643,19 @@ def _detached_conditional_replay_context(
         _canonical_payload(saturation_payload, "detached saturation evidence"),
         generation_verifier,
     )
-    engine_group = _DetachedConditionalEngineGroup(
-        tuple(invariants), tuple(generator_ideals), record.theorem
+    engine_group = _DetachedReplayEngineGroup(
+        tuple(invariants),
+        tuple(generator_ideals),
+        record.theorem,
+        EXACT_RELATIONS_CONDITIONAL_GRH,
     )
-    result = _DetachedConditionalResult(
+    result = _DetachedReplayResult(
         saturation,
+        proof_status=EXACT_RELATIONS_CONDITIONAL_GRH,
         bound=_integer(record.bound[0], "detached conditional bound"),
         relation_count=record.relation_count,
     )
-    return _EngineProofReplayContext(
+    replay = _EngineProofReplayContext(
         result,
         engine_group,
         order,
@@ -2643,6 +2667,122 @@ def _detached_conditional_replay_context(
             evidence, "detached conditional evidence"
         ),
     )
+    return replay, record
+
+
+def _decode_unconditional_proof_record(
+    order: Any, payload: dict[str, Any]
+) -> UnconditionalMinkowskiProofRecord:
+    field = order.number_field()
+
+    def decode_ideal(value: dict[str, Any]) -> Any:
+        if not isinstance(value, dict):
+            raise TypeError("a serialized proof ideal must be a dictionary")
+        if value.get("schema") == "sagejs.number-fields.prime-ideal.v1":
+            prime_module = __import__(
+                "sagejs.number_fields.prime_ideals",
+                fromlist=["prime_ideal_from_dict"],
+            )
+            return prime_module.prime_ideal_from_dict(order, value)
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_from_dict"]
+        )
+        return ideal_module.ideal_from_dict(order, value)
+
+    def decode_generator(value: dict[str, Any]) -> Any:
+        return _decode_factored_generator(field, value)
+
+    def decode_witness(value: dict[str, Any], _ideal: Any) -> PrincipalIdealWitness:
+        return PrincipalIdealWitness.from_dict(value, decode_ideal, decode_generator)
+
+    def decode_prime(value: dict[str, Any]) -> MinkowskiPrimeClassRecord:
+        return MinkowskiPrimeClassRecord.from_dict(value, decode_ideal, decode_witness)
+
+    return UnconditionalMinkowskiProofRecord.from_dict(payload, decode_prime)
+
+
+def _detached_unconditional_replay_context(
+    order: Any,
+    invariants: tuple[int, ...],
+    generator_ideals: tuple[Any, ...],
+    proof_payload_json: str,
+    generation_verifier: Any,
+) -> tuple[_EngineProofReplayContext, UnconditionalMinkowskiProofRecord]:
+    payload = json.loads(proof_payload_json)
+    if not _conditional_payload_within_caps(payload):
+        raise ArithmeticError("detached Minkowski proof exceeds replay caps")
+    record = _decode_unconditional_proof_record(order, payload)
+    saturation_payload = record.saturation.evidence
+    progress_payload = payload.get("proof_progress")
+    if not isinstance(saturation_payload, dict) or not isinstance(
+        progress_payload, dict
+    ):
+        raise TypeError("detached Minkowski proof lost exact evidence")
+    dependencies = progress_payload.get("dependency_hashes")
+    if not isinstance(dependencies, dict):
+        raise TypeError("detached Minkowski proof lost dependency hashes")
+    canonical_saturation = _canonical_payload(
+        saturation_payload, "detached saturation evidence"
+    )
+    canonical_progress = _canonical_payload(
+        progress_payload, "detached Minkowski proof progress"
+    )
+    saturation = _clone_detached_conditional_saturation(
+        order, canonical_saturation, generation_verifier
+    )
+    engine_group = _DetachedReplayEngineGroup(
+        tuple(invariants),
+        tuple(generator_ideals),
+        str(payload.get("theorem")),
+        EXACT_UNCONDITIONAL,
+    )
+    bound = _integer(record.bound[0], "detached Minkowski bound")
+    result = _DetachedReplayResult(
+        saturation,
+        proof_status=EXACT_UNCONDITIONAL,
+        bound=bound,
+        relation_count=0,
+    )
+    replay = _EngineProofReplayContext(
+        result,
+        engine_group,
+        order,
+        record.saturation,
+        saturation,
+        canonical_saturation,
+        bound,
+        canonical_progress,
+        canonical_progress,
+        dict(dependencies),
+    )
+    return replay, record
+
+
+def _detached_public_replay_context(
+    order: Any,
+    invariants: tuple[int, ...],
+    generator_ideals: tuple[Any, ...],
+    proof_payload_json: str,
+    generation_verifier: Any,
+) -> tuple[_EngineProofReplayContext, Any]:
+    payload = json.loads(proof_payload_json)
+    if payload.get("schema") == "sagejs.number-fields.class-group.grh-proof.v1":
+        return _detached_conditional_replay_context(
+            order,
+            invariants,
+            generator_ideals,
+            proof_payload_json,
+            generation_verifier,
+        )
+    if payload.get("schema") == "sagejs.number-fields.class-group.minkowski-proof.v1":
+        return _detached_unconditional_replay_context(
+            order,
+            invariants,
+            generator_ideals,
+            proof_payload_json,
+            generation_verifier,
+        )
+    raise ValueError("unsupported projected class-group proof schema")
 
 
 def _engine_unconditional_records(
@@ -3018,6 +3158,13 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
     return answer
 
 
+def adapt_and_seal_public_class_group_projection(
+    result: Any,
+) -> _SealedIdealClassGroupProjection:
+    """Run the standard verified adapter and seal its local result atomically."""
+    return _SealedIdealClassGroupProjection.from_engine_result(result)
+
+
 __all__ = [
     "IdealClassDiscreteLog",
     "IdealClassElement",
@@ -3025,6 +3172,7 @@ __all__ = [
     "IdealClassMap",
     "PrincipalIdealWitness",
     "PrincipalityResult",
+    "adapt_and_seal_public_class_group_projection",
     "class_group_from_engine_result",
     "class_group_from_context",
     "public_class_group_projection_view",
