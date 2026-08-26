@@ -7,6 +7,7 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 function runCPython(source) {
@@ -15,7 +16,7 @@ function runCPython(source) {
     `sys.path.append(${JSON.stringify(join(root, "src", "lib"))})`,
     "from sagejs.number_fields.local_parallel import *",
   ].join("\n");
-  const result = spawnSync("python3", ["-c", `${setup}\n${source}`], {
+  const result = spawnSync(pythonExecutable(), ["-c", `${setup}\n${source}`], {
     cwd: root,
     encoding: "utf8",
   });

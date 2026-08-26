@@ -27,6 +27,7 @@ const {
 const {
   wasmKernelToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
 const {
   PRECOMPILED_MODULE_FILENAME,
@@ -295,7 +296,7 @@ test("heavy public shortest paths expose the exact installed route", async () =>
 });
 
 test("CPython fallback differentials cover directed, disconnected, and bounds", () => {
-  const result = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import random
 import sys
 sys.path.insert(0, "src/lib")

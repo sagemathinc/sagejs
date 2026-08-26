@@ -24,6 +24,7 @@ const {
   wasmKernelToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const functions = [
   "packed_integer_matrix_permanent",
@@ -193,7 +194,7 @@ test("public heavy exact workflows retain an explicit portable route", async () 
 });
 
 test("packed combinatorial fallbacks reject malformed complete shapes", () => {
-  const result = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import sys
 sys.path.insert(0, "src/lib")
 from sagejs.kernels.matrix.combinatorial import (

@@ -10,6 +10,7 @@ const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
 const flint = require("../packages/flint");
 const { removeLoadedNativeCache } = require("./helpers/native-cache-cleanup.cjs");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 const sagejs = join(root, "bin", "sagejs");
@@ -352,7 +353,7 @@ for prime_index, prime in enumerate(primes):
     assert coefficients[offset:offset+degree+1] == output[:degree+1]
 print('cpython-ok')
 `;
-    const python = spawnSync("python3", ["-c", pythonProgram], {
+    const python = spawnSync(pythonExecutable(), ["-c", pythonProgram], {
       cwd: root,
       encoding: "utf8",
       timeout: 60_000,

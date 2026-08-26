@@ -23,6 +23,7 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 function discoverToolchain() {
   try {
@@ -162,7 +163,7 @@ test("the public Graph and DiGraph workflows report the installed packed route",
 });
 
 test("CPython fallback preserves the packed traversal contract", () => {
-  const oracle = spawnSync("python3", ["-c", String.raw`
+  const oracle = spawnSync(pythonExecutable(), ["-c", String.raw`
 import json
 import sys
 sys.path.insert(0, "src/lib")
