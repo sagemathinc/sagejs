@@ -6974,6 +6974,40 @@
       },
       {
         "schema_version": 1,
+        "name": "Jacobian",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.schemes.hyperelliptic_curves.jacobian_generic",
+        "signature": "Jacobian(curve: Any) -> Any",
+        "summary": "Return the Jacobian parent of a supported hyperelliptic curve.",
+        "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind()\n'even-degree-split-two-infinity'\n```",
+        "tags": [
+          "hyperelliptic curves",
+          "Jacobians",
+          "divisor arithmetic"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Genus-2 and genus-3 odd-degree models and split even-degree models over odd prime fields."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath hyperelliptic Jacobians API",
+            "url": "https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Split even-degree arithmetic currently requires an odd prime field and uses the exact reference implementation."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "line",
         "aliases": [],
         "kind": "function",
@@ -25964,6 +25998,127 @@
     },
     {
       "schema_version": 1,
+      "name": "Jacobian",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.schemes.hyperelliptic_curves.jacobian_generic",
+      "signature": "Jacobian(curve: Any) -> Any",
+      "summary": "Return the Jacobian parent of a supported hyperelliptic curve.",
+      "doc": "Return the Jacobian parent of a supported hyperelliptic curve.\n\nThis is the conventional Sage spelling and is exactly equivalent to\n`curve.jacobian()`.\n\n```sage\nsage: R.<x> = GF(101)[]\nsage: H = HyperellipticCurve(x^8 + x + 1)\nsage: J = Jacobian(H)\nsage: J.curve() is H\nTrue\nsage: J.model_kind()\n'even-degree-split-two-infinity'\n```",
+      "tags": [
+        "hyperelliptic curves",
+        "Jacobians",
+        "divisor arithmetic"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Genus-2 and genus-3 odd-degree models and split even-degree models over odd prime fields."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath hyperelliptic Jacobians API",
+          "url": "https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Split even-degree arithmetic currently requires an odd prime field and uses the exact reference implementation."
+      ],
+      "source": {
+        "name": "Jacobian",
+        "qualified": "Jacobian",
+        "path": "src/baselib/hyperelliptic_curves.py",
+        "line": 49,
+        "excerpt": {
+          "start_line": 37,
+          "text": "\n    ```sage\n    sage: R.<x> = PolynomialRing(GF(5))\n    sage: C = HyperellipticCurve(x^5 + x + 1)\n    sage: C.genus()\n    2\n    ```\n    \"\"\"\n    module = _hyperelliptic_module()\n    return module.HyperellipticCurve(f, h, names, check_squarefree)\n\n\ndef Jacobian(curve: Any) -> Any:\n    \"\"\"Return the Jacobian parent of a supported hyperelliptic curve.\n\n    This is the conventional Sage spelling and is exactly equivalent to\n    `curve.jacobian()`.\n\n    ```sage\n    sage: R.<x> = GF(101)[]\n    sage: H = HyperellipticCurve(x^8 + x + 1)\n    sage: J = Jacobian(H)\n    sage: J.curve() is H\n    True\n    sage: J.model_kind()"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#b0ba7464f1ad3eef-e3b0c44298fc1c14",
+          "line": 56,
+          "source": "R.<x> = GF(101)[]",
+          "want": "",
+          "tags": [],
+          "owner": "Jacobian",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#99eda4a1ade22001-e3b0c44298fc1c14",
+          "line": 57,
+          "source": "H = HyperellipticCurve(x^8 + x + 1)",
+          "want": "",
+          "tags": [],
+          "owner": "Jacobian",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#611ac9d6272f6e2e-e3b0c44298fc1c14",
+          "line": 58,
+          "source": "J = Jacobian(H)",
+          "want": "",
+          "tags": [],
+          "owner": "Jacobian",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#7237ee8d7489d0f8-3cbc87c7681f34db",
+          "line": 59,
+          "source": "J.curve() is H",
+          "want": "True\n",
+          "tags": [],
+          "owner": "Jacobian",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        },
+        {
+          "id": "src/baselib/hyperelliptic_curves.py#7ffe81d1b028fb2f-a0e4d7a913c3c39f",
+          "line": 61,
+          "source": "J.model_kind()",
+          "want": "'even-degree-split-two-infinity'\n",
+          "tags": [],
+          "owner": "Jacobian",
+          "path": "src/baselib/hyperelliptic_curves.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "line",
       "aliases": [],
       "kind": "function",
@@ -33473,27 +33628,27 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 289,
-      "with_docstring": 289,
-      "with_summary": 289,
-      "with_tags": 289,
-      "with_backend": 289,
-      "with_provenance": 289,
-      "with_compatibility_notes": 289,
+      "registry_entries": 290,
+      "with_docstring": 290,
+      "with_summary": 290,
+      "with_tags": 290,
+      "with_backend": 290,
+      "with_provenance": 290,
+      "with_compatibility_notes": 290,
       "with_references": 88,
-      "markdown_docstrings": 289,
+      "markdown_docstrings": 290,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 194,
+      "entries_with_examples": 195,
       "entries_without_examples": 95,
-      "documented": 177,
+      "documented": 182,
       "verified": 171,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 0,
+      "unverified": 5,
       "random_seed": "sagejs-reference-0"
     }
   }
