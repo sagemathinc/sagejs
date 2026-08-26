@@ -1428,7 +1428,8 @@ class _LiveClassUnitArtifacts:
         if (
             not self.sealed
             or not self.reusable
-            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_proof_status
+            not in ("exact-relations-conditional-grh", "exact-unconditional")
             or self.terminal_identity_snapshot is None
             or self.terminal_semantic_snapshot is None
         ):
@@ -1471,6 +1472,18 @@ class _LiveClassUnitArtifacts:
             ):
                 return None
             return "published", self.public_class_group_projection
+        if (
+            self.terminal_proof_status == "exact-unconditional"
+            and self.terminal_identity_snapshot is None
+            and self.terminal_semantic_snapshot is None
+        ):
+            try:
+                self.terminal_identity_snapshot = self._capture_terminal_identity()
+                self.terminal_semantic_snapshot = self._capture_terminal_semantics()
+            except (AttributeError, TypeError, ValueError, ArithmeticError):
+                self.terminal_identity_snapshot = None
+                self.terminal_semantic_snapshot = None
+                return None
         if not self._terminal_source_matches(source, require_semantic_snapshot=True):
             return None
         if self.public_class_group_projection_reserved:
