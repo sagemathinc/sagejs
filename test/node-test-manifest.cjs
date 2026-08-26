@@ -89,6 +89,7 @@ const integration = [
   "test/number-field-class-unit-public.cjs",
   "test/number-field-class-unit-public-projection.cjs",
   "test/number-field-class-unit-terminal-reuse.cjs",
+  "test/number-field-class-unit-zero-factor-preflight.cjs",
   "test/number-field-cubic-compact-relation-ledger.cjs",
   "test/number-field-cubic-norm-kernel.cjs",
   "test/number-field-lmfdb-class-number-corpus.cjs",
