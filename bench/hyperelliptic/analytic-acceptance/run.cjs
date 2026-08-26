@@ -25,6 +25,7 @@ const { performance } = require("node:perf_hooks");
 
 const { inspectBuildReceipt } = require("../../../scripts/build-receipt.cjs");
 const {
+  FAILURE_SCHEMA,
   IMPLEMENTATION_BASE,
   PINNED_GP,
   PINNED_PARi_SOURCE_SHA256,
@@ -351,29 +352,83 @@ async function run(options) {
   return receipt;
 }
 
+function failureReceipt(options, error, started) {
+  const sourceStatus = git("status", "--short");
+  const sourceCommit = git("rev-parse", "HEAD");
+  const implementationBaseIsAncestor =
+    command("git", ["merge-base", "--is-ancestor", IMPLEMENTATION_BASE, sourceCommit])
+      .status === 0;
+  const message = String(error?.message ?? error);
+  return {
+    schema: FAILURE_SCHEMA,
+    status: "failed",
+    mode: options.mode,
+    recorded_at_utc: new Date().toISOString(),
+    source: {
+      commit: sourceCommit,
+      status: sourceStatus,
+      implementation_base_commit: IMPLEMENTATION_BASE,
+      implementation_base_is_ancestor: implementationBaseIsAncestor,
+      build_receipt_preflight: inspectBuildReceipt(ROOT),
+      inputs: sourceIdentity(ROOT),
+    },
+    host: hostSnapshot(options.declaredHost, options.maximumLoad),
+    provisioning: { pari: gpProvisioning(options.gp) },
+    configuration: {
+      samples: options.samples,
+      precision_bits: options.precisionBits,
+      lseries_only: true,
+      maximum_wall_seconds: options.maximumWallSeconds,
+      sagejs_threads: 1,
+      pari_threads: 1,
+    },
+    failure: {
+      stage: message.includes("analytic competitive benchmark")
+        ? "analytic-competitive-benchmark"
+        : "phase9-acceptance-harness",
+      name: String(error?.name ?? "Error"),
+      message,
+      stack: String(error?.stack ?? error),
+    },
+    harness_wall_ms: Number((performance.now() - started).toFixed(3)),
+  };
+}
+
 async function main() {
   const options = parseArguments();
-  const receipt = await run(options);
-  const relativeOutput = relative(ROOT, options.output) || options.output;
-  process.stdout.write(
-    `${receipt.validation.passed ? "PASS" : "FAIL"} ${receipt.schema} ` +
-      `${receipt.mode} ${relativeOutput} ${receipt.harness_wall_ms}ms\n`,
-  );
-  if (options.mode === "acceptance" && !receipt.validation.passed) {
-    for (const failure of receipt.validation.failures) process.stderr.write(`- ${failure}\n`);
-    process.exitCode = 2;
+  const started = performance.now();
+  try {
+    const receipt = await run(options);
+    const relativeOutput = relative(ROOT, options.output) || options.output;
+    process.stdout.write(
+      `${receipt.validation.passed ? "PASS" : "FAIL"} ${receipt.schema} ` +
+        `${receipt.mode} ${relativeOutput} ${receipt.harness_wall_ms}ms\n`,
+    );
+    if (options.mode === "acceptance" && !receipt.validation.passed) {
+      for (const failure of receipt.validation.failures) {
+        process.stderr.write(`- ${failure}\n`);
+      }
+      process.exitCode = 2;
+    }
+  } catch (error) {
+    const receipt = failureReceipt(options, error, started);
+    atomicWrite(options.output, receipt);
+    const relativeOutput = relative(ROOT, options.output) || options.output;
+    process.stderr.write(
+      `FAIL ${receipt.schema} ${receipt.mode} ${relativeOutput} ` +
+        `${receipt.harness_wall_ms}ms\n${receipt.failure.stack}\n`,
+    );
+    process.exitCode = 1;
   }
 }
 
 if (require.main === module) {
-  main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+  main();
 }
 
 module.exports = {
   atomicWrite,
+  failureReceipt,
   hostSnapshot,
   parseArguments,
   run,

@@ -5,12 +5,14 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const {
+  FAILURE_SCHEMA,
   IMPLEMENTATION_BASE,
   ROOT,
   SCHEMA,
   acceptanceGates,
   bracketedPariRows,
   sourceIdentity,
+  validateFailureReceipt,
   validateReceipt,
 } = require("../bench/hyperelliptic/analytic-acceptance/contract.cjs");
 
@@ -165,4 +167,49 @@ test("diagnostic receipts cannot masquerade as five-sample bench-1 acceptance", 
   receipt.mode = "diagnostic";
   result = validateReceipt(receipt);
   assert.equal(result.passed, true);
+});
+
+test("a timed-out formal run remains a structurally valid failed receipt", () => {
+  const receipt = {
+    schema: FAILURE_SCHEMA,
+    status: "failed",
+    mode: "acceptance",
+    source: {
+      commit: "f".repeat(40),
+      status: "",
+      implementation_base_commit: IMPLEMENTATION_BASE,
+      implementation_base_is_ancestor: true,
+      build_receipt_preflight: { current: true },
+      inputs: sourceIdentity(ROOT),
+    },
+    host: {
+      declared_host: "bench-1",
+      platform: "linux",
+      architecture: "x64",
+      node: "v22.22.2",
+      noise_policy: { passed: true },
+    },
+    provisioning: { pari: { version: "2.18.1 (alpha)" } },
+    configuration: {
+      samples: 5,
+      precision_bits: 64,
+      lseries_only: true,
+      maximum_wall_seconds: 1200,
+    },
+    failure: {
+      stage: "analytic-competitive-benchmark",
+      name: "Error",
+      message: "Sage.js evaluation timed out after 600000 ms",
+      stack: "Error: Sage.js evaluation timed out after 600000 ms",
+    },
+    harness_wall_ms: 600123,
+  };
+  assert.deepEqual(
+    validateFailureReceipt(receipt, { currentSources: sourceIdentity(ROOT) }),
+    { passed: true, failures: [] },
+  );
+  receipt.failure.stack = "";
+  const invalid = validateFailureReceipt(receipt);
+  assert.equal(invalid.passed, false);
+  assert.ok(invalid.failures.some((value) => value.includes("stack")));
 });
