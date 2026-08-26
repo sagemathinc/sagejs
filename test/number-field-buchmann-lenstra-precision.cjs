@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const corpus = JSON.parse(
@@ -198,7 +199,11 @@ test("2772-bit BL construction and independent replay agree exactly", () => {
     "-c",
     `import decimal\n${source}`,
   ]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  const [sagejsCommand, sagejsArguments] = sagejsInvocation(
+    root,
+    ["--python", "-"],
+  );
+  const sagejs = run(sagejsCommand, sagejsArguments, {
     SAGEJS_NATIVE_DISABLE: "1",
   });
 

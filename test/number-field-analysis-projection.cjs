@@ -6,18 +6,17 @@ const assert = require("node:assert/strict");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
-const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = resolve(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
 const source = join(
   root,
   "src/lib/sagejs/number_fields/field_analysis_resource.py",
 );
 
 function run(args, options = {}) {
-  const result = spawnSync(args[0], args.slice(1), {
+  const result = spawnSagejsSync(root, args, {
     cwd: root,
     encoding: "utf8",
     timeout: 180_000,
@@ -27,14 +26,13 @@ function run(args, options = {}) {
   assert.equal(
     result.status,
     0,
-    `${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`,
+    `sagejs ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`,
   );
   return result.stdout.trim();
 }
 
 test("packed analysis projection has one isolated crossing", () => {
   const explanation = run([
-    sagejs,
     "native",
     "explain",
     source,
@@ -51,7 +49,7 @@ test("compiled and dynamic projections agree with the generic proof oracle", () 
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-nf-projection-test-"));
   try {
     const cache = join(temporary, "native-cache");
-    run([sagejs, "native", "compile", source, "--cache-root", cache]);
+    run(["native", "compile", source, "--cache-root", cache]);
     const script = join(temporary, "projection.py");
     writeFileSync(script, String.raw`
 import json
@@ -138,11 +136,11 @@ print(json.dumps({
 }))
 `);
     const compiled = JSON.parse(
-      run([sagejs, script], { env: { SAGEJS_NATIVE_CACHE_DIR: cache } })
+      run([script], { env: { SAGEJS_NATIVE_CACHE_DIR: cache } })
         .split(/\r?\n/).at(-1),
     );
     const dynamic = JSON.parse(
-      run([sagejs, script], { env: { SAGEJS_NATIVE_MODE: "dynamic" } })
+      run([script], { env: { SAGEJS_NATIVE_MODE: "dynamic" } })
         .split(/\r?\n/).at(-1),
     );
     assert.equal(compiled.compiled, true);

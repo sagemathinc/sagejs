@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const fixturePath = join(
@@ -211,7 +212,11 @@ function run(command, args, environment = {}) {
 
 test("Buchmann--Lenstra composite steps agree in CPython and Sage.js", () => {
   const python = run(pythonExecutable(), ["-c", source]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  const [sagejsCommand, sagejsArguments] = sagejsInvocation(
+    root,
+    ["--python", "-"],
+  );
+  const sagejs = run(sagejsCommand, sagejsArguments, {
     SAGEJS_NATIVE_DISABLE: "1",
   });
   delete python.elapsed_ns;

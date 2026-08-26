@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const fixture = JSON.parse(
@@ -368,7 +369,11 @@ test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
   // CPython 3.14 lazily imports decimal for very large integer division. Load
   // the stdlib module before the test adds Sage.js' source tree to sys.path.
   const python = run(pythonExecutable(), ["-c", `import decimal\n${source}`]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  const [sagejsCommand, sagejsArguments] = sagejsInvocation(
+    root,
+    ["--python", "-"],
+  );
+  const sagejs = run(sagejsCommand, sagejsArguments, {
     SAGEJS_NATIVE_DISABLE: "1",
   });
   for (const result of Object.values(python.prime_results)) {
