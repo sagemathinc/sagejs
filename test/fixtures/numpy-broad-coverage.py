@@ -7,9 +7,12 @@ def rounded(value, digits=8):
     if isinstance(value, (list, tuple)):
         return [rounded(item, digits) for item in value]
     if isinstance(value, complex):
-        return [round(value.real, digits), round(value.imag, digits)]
+        return [rounded(value.real, digits), rounded(value.imag, digits)]
     if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return round(float(value), digits)
+        answer = round(float(value), digits)
+        # This is an eight-digit numerical differential, not a signed-zero
+        # conformance test. FFT implementations may choose either zero sign.
+        return 0.0 if answer == 0 else answer
     return value
 
 
