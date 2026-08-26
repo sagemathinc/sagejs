@@ -9,6 +9,7 @@ const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
+const sourceLibraryLiteral = JSON.stringify(join(root, "src/lib"));
 const corpus = JSON.parse(
   readFileSync(
     join(root, "test/fixtures/number-field-maximal-order-corpus.json"),
@@ -25,7 +26,7 @@ const oracleDenominator = vector.basis.denominator;
 const common = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${sourceLibraryLiteral})
 
 from sagejs.number_fields.om_maxmin import (
     TriangularBasisElement,

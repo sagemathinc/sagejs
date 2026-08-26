@@ -127,7 +127,7 @@ test("compiled, JavaScript, tagged, GMP, and CPython paths agree", async () => {
       env: { ...process.env, PYTHONPATH: "" },
     });
     assert.equal(python.status, 0, python.stderr);
-    assert.deepEqual(python.stdout.trim().split("\n"), [
+    assert.deepEqual(python.stdout.trim().split(/\r?\n/), [
       "18 18", "1273372977659915 1273372977659915",
     ]);
 
