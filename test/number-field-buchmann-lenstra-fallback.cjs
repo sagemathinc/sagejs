@@ -49,6 +49,7 @@ const tailCase = {
 
 const source = String.raw`
 import json
+import math
 import sys
 import time
 
@@ -367,7 +368,7 @@ function run(command, args, environment = {}) {
 
 test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
   // CPython 3.14 lazily imports decimal for very large integer division. Load
-  // the stdlib module before the test adds Sage.js' source tree to sys.path.
+  // it before the test adds Sage.js' source tree to sys.path.
   const python = run(pythonExecutable(), ["-c", `import decimal\n${source}`]);
   const [sagejsCommand, sagejsArguments] = sagejsInvocation(
     root,

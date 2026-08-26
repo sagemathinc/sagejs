@@ -23,6 +23,7 @@ assert.ok(precisionCase);
 
 const source = String.raw`
 import json
+import math
 import sys
 import time
 

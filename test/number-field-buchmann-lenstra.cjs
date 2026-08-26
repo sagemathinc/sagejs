@@ -20,6 +20,7 @@ const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
 
 const source = String.raw`
 import json
+import math
 import sys
 import time
 
