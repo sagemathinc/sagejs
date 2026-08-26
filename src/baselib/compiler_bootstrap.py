@@ -295,6 +295,47 @@ def ρσ_fast_closed_binary(left, right, operation, missing):
     })()"""
 
 
+def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
+    return r"""%js (() => {
+        if (!Number.isSafeInteger(count) || count < 0 ||
+            accumulator === null || multiplier === null || increment === null ||
+            typeof accumulator !== "object" ||
+            typeof multiplier !== "object" || typeof increment !== "object") {
+            return null;
+        }
+        const parent = accumulator._parent;
+        const prototype = parent?._closedScalarElementPrototype;
+        if (parent === undefined || parent !== multiplier._parent ||
+            parent !== increment._parent || parent._machineResidues !== true ||
+            parent._closedScalarArithmetic !== true ||
+            Object.getPrototypeOf(accumulator) !== prototype ||
+            Object.getPrototypeOf(multiplier) !== prototype ||
+            Object.getPrototypeOf(increment) !== prototype ||
+            prototype?._mul_ !== parent._closedScalarMul ||
+            prototype?._add_ !== parent._closedScalarAdd ||
+            prototype?._new_reduced !== parent._closedScalarNewReduced) {
+            return null;
+        }
+        const modulus = parent._residueModulus;
+        let value = accumulator._value;
+        const factor = multiplier._value;
+        const addend = increment._value;
+        if (!Number.isSafeInteger(modulus) || modulus <= 1 ||
+            !Number.isInteger(value) || value < 0 || value >= modulus ||
+            !Number.isInteger(factor) || factor < 0 || factor >= modulus ||
+            !Number.isInteger(addend) || addend < 0 || addend >= modulus) {
+            return null;
+        }
+        for (let index = 0; index < count; index++) {
+            value = (value * factor + addend) % modulus;
+        }
+        const result = Object.create(prototype);
+        result._parent = parent;
+        result._value = value;
+        return result;
+    })()"""
+
+
 def ρσ_flint_backend():
     raise TypeError("FLINT backend is unavailable inside compiler")
 

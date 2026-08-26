@@ -301,6 +301,83 @@
       "checksum": 19598
     },
     "systems": {
+      "sagejs_guarded_compiler_recurrence": {
+        "version": "0.4.0 / Node 26.7.0",
+        "samples_seconds": [
+          0.053844451904296875,
+          0.053236961364746094,
+          0.053231000900268555,
+          0.0532994270324707,
+          0.05319476127624512,
+          0.05312204360961914,
+          0.05309295654296875,
+          0.05319356918334961,
+          0.053136348724365234
+        ],
+        "median_ns_per_step": 5.319356918334961
+      },
+      "sagejs_native_uint64_recurrence": {
+        "version": "0.4.0 / Node 26.7.0",
+        "compile_milliseconds": 715.4773120000001,
+        "load_milliseconds": 1.8316610000000537,
+        "cold_call_milliseconds": 47.02521200000001,
+        "selected_backend": "tagged",
+        "samples_milliseconds": [
+          46.603571999999986,
+          46.595781999999986,
+          46.62439200000006,
+          46.57514200000003,
+          46.623242000000005,
+          46.57410200000004,
+          46.57959099999994,
+          46.569001999999955,
+          46.63986299999988
+        ],
+        "median_ns_per_step": 4.659578199999999,
+        "portable_javascript_ir_median_ns_per_step": 28.633538300000012
+      },
+      "julia_raw_integer": {
+        "version": "1.12.7",
+        "cold_seconds": 0.039085032,
+        "samples_seconds": [
+          0.039002702,
+          0.039037181,
+          0.039103512,
+          0.039068542,
+          0.039090172,
+          0.039149201,
+          0.039060061
+        ],
+        "median_ns_per_step": 3.9068542
+      },
+      "julia_parametric_modp": {
+        "version": "1.12.7",
+        "cold_seconds": 0.128825986,
+        "samples_seconds": [
+          0.128936616,
+          0.128939726,
+          0.128823446,
+          0.129597766,
+          0.129871795,
+          0.129327596,
+          0.129106736
+        ],
+        "median_ns_per_step": 12.9106736
+      },
+      "julia_parametric_modp_fused": {
+        "version": "1.12.7",
+        "cold_seconds": 0.071783913,
+        "samples_seconds": [
+          0.071774494,
+          0.071826483,
+          0.071793383,
+          0.071850694,
+          0.071898884,
+          0.072071913,
+          0.072010483
+        ],
+        "median_ns_per_step": 7.1850694
+      },
       "magma_field": {
         "version": "2.18",
         "samples_seconds": [0.89, 0.87, 0.89, 0.9, 0.88, 0.88, 0.88],

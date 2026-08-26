@@ -37,7 +37,10 @@
         "differential": true,
         "paths": [
           "bench/finite-field-boundary/benchmark-js.mjs",
+          "bench/finite-field-boundary/benchmark-compiler-recurrence.cjs",
+          "bench/finite-field-boundary/benchmark-native-recurrence.cjs",
           "bench/finite-field-boundary/results-2026-08-26.json",
+          "packages/flint-wasm/test/finite-field-compiler-browser.mjs",
           "test/finite-field-machine-residues.cjs"
         ]
       },
@@ -18719,6 +18722,26 @@
       "reviewed": true,
       "review_note": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback.",
       "public_explanation": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback."
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed GF(p) and Zmod(n) recurrences"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The compiler emits this guarded scalar-loop primitive only for an enumerated non-aliasing recurrence shape. Runtime parent, representation, prototype, method-stability, residue, and count guards retain the original dispatched source loop for every rejected case.",
+      "public_explanation": "A compiler-proven small modular recurrence can stay in V8 Number locals for the complete loop and materialize one exact public element afterward; all other cases run the original source loop."
     },
     {
       "id": "runtime:ffi_call",

@@ -64,21 +64,43 @@ remainder operation. Every row produced checksum `19598`.
 
 | System and representation | Version | Median ns/step |
 | --- | --- | ---: |
+| Julia typed `Int` recurrence | 1.12.7 | **3.907** |
+| Sage.js `@native` typed `uint64` recurrence | 0.4.0 / Node 26.7.0 | **4.660** |
+| Sage.js guarded compiler recurrence | 0.4.0 / Node 26.7.0 | **5.319** |
+| Julia immutable `ModP`, explicit fused `muladd` | 1.12.7 | 7.185 |
+| Julia immutable `ModP`, ordinary overloaded `*`/`+` | 1.12.7 | 12.911 |
 | Magma `GF(65521)` | 2.18 | 88.0 |
-| Sage.js `GF(65521)` | 0.4.0 / Node 26.7.0 | 107.625 |
+| Sage.js public object path before loop specialization | 0.4.0 / Node 26.7.0 | 107.625 |
 | PARI/GP `Mod(1, 65521)` | 2.17.2 | 154.0 |
 | Magma integer `mod` | 2.18 | 102.0 |
 | PARI/GP integer `%` | 2.17.2 | 130.6 |
 | Sage.js exact integer `%` | 0.4.0 / Node 26.7.0 | 432.002 |
 
-The public Sage.js field loop is only about 22% slower than Magma's highly
-tuned finite-field interpreter path and about 30% faster than PARI/GP's
-`Mod` path on this workload. That is strong evidence that the new public
-representation is viable, but it also exposes the more consequential compiler
-opportunity: the exact-integer source loop is about 86 times slower than the
-same recurrence after it becomes a proven Number loop in V8. The next target
-is therefore guarded representation-aware lowering, not another scalar
-foreign-function call.
+The machine-residue object path is only about 22% slower than Magma's highly
+tuned finite-field interpreter path and about 30% faster than PARI/GP's `Mod`
+path. Once the compiler proves the loop is a closed recurrence, the same public
+Sage source runs at about 5.32 ns/step: within 7% of the separately measured
+raw V8 loop, about 14% behind the matched `@native` machine-code loop, about
+16.5 times faster than Magma, and about 29 times faster than PARI/GP here. The
+generated code retains the original dispatched loop behind a representation
+and method-stability guard, so this result does not weaken coercion or
+exactness semantics.
+
+The actual Sage.js `@native` pipeline supplies the closest control. Its
+source-transparent typed `uint64` loop selected the compiled tagged-scalar ABI
+and measured 4.66 ns/step. Compilation took about 715 ms, addon loading 1.8 ms,
+and the first ten-million-step call 47.0 ms. The same native compiler's
+portable JavaScript IR fallback took 28.6 ns/step, so the row above is not an
+accidental fallback measurement.
+
+Julia supplies a second compiler control. Its warmed, type-stable raw `Int`
+loop is about 18% faster than the Sage.js native loop, but ordinary overloaded
+arithmetic on an immutable parametric `ModP{65521}` costs about 12.9 ns/step.
+Even an explicit fused modular `muladd` measured about 7.2 ns. Sage.js is not
+beating LLVM at integer arithmetic; it is proving enough about the complete
+source loop to remove all intermediate public values. Fresh-process Julia
+first calls took about 39–129 ms including compilation and the ten-million-step
+execution, whereas the warmed numbers above exclude compilation.
 
 ## Consequences for Sage.js
 

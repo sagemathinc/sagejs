@@ -17,7 +17,7 @@
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 325,
-    "runtime-intrinsic": 143,
+    "runtime-intrinsic": 144,
     "wasm-export": 72
   },
   "boundaries": [
@@ -9806,6 +9806,14 @@
       "path": "tools/python/contract.ts",
       "export": "fast_closed_binary",
       "symbol": "ρσ_fast_closed_binary",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "fast_machine_residue_recurrence",
+      "symbol": "ρσ_fast_machine_residue_recurrence",
       "disposition": "runtime-primitive"
     },
     {

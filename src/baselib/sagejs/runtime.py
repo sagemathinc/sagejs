@@ -19,6 +19,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
+# globals: ρσ_fast_machine_residue_recurrence
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_json_scalar_sequence
 # globals: ρσ_canonical_json_exact
@@ -462,6 +463,11 @@ def fast_closed_binary(left, right, operation, missing):
         }
         return missing;
     })()"""
+
+
+def fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
+    """Run a compiler-proven closed machine-residue recurrence."""
+    return ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count)
 
 
 def integer_buffer_prefix(source, length):

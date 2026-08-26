@@ -280,6 +280,13 @@ def init_es6_itervar(output, itervar):
 
 
 def print_for_in(self, output):
+    if (
+        self.machine_residue_recurrence
+        and self.builtin_range is not False
+        and is_simple_for(self)
+        and self.object.args.length is 1
+    ):
+        return print_machine_residue_recurrence(self, output)
     prepare_loop_else(self, output)
 
     def write_object():
@@ -395,6 +402,79 @@ def print_for_in(self, output):
     output.space()
     self._do_print_body(output)
     print_loop_else(self, output)
+
+
+def print_machine_residue_recurrence(self, output):
+    """Emit a guarded scalar V8 loop and the untouched generic fallback."""
+    recurrence = self.machine_residue_recurrence
+    suffix = output.index_counter
+    output.index_counter += 1
+    count_name = "ρσ_ResidueCount" + suffix
+    result_name = "ρσ_ResidueResult" + suffix
+    index_name = "ρσ_ResidueIndex" + suffix
+
+    output.print("var")
+    output.space()
+    output.assign(count_name)
+    self.object.args[0].print(output)
+    output.end_statement()
+    output.indent()
+    output.print("var")
+    output.space()
+    output.assign(result_name)
+    output.print("ρσ_fast_machine_residue_recurrence(")
+    recurrence.accumulator.print(output)
+    output.comma()
+    recurrence.multiplier.print(output)
+    output.comma()
+    recurrence.increment.print(output)
+    output.comma()
+    output.print(count_name)
+    output.print(")")
+    output.end_statement()
+    output.indent()
+    output.print("if")
+    output.space()
+    output.with_parens(lambda: output.spaced(result_name, "!==", "null"))
+    output.space()
+
+    def fast_body():
+        output.indent()
+        output.assign(recurrence.accumulator)
+        output.print(result_name)
+        output.end_statement()
+        output.indent()
+        output.print("if (" + count_name + " > 0) ")
+        output.assign(self.init)
+        output.print(count_name + " - 1")
+        output.end_statement()
+
+    output.with_block(fast_body)
+    output.space()
+    output.print("else")
+    output.space()
+
+    def generic_body():
+        output.indent()
+        output.print("for")
+        output.space()
+
+        def condition():
+            output.spaced("var", index_name, "=", "0")
+            output.semicolon()
+            output.space()
+            output.spaced(index_name, "<", count_name)
+            output.semicolon()
+            output.space()
+            output.print(index_name + "++")
+
+        output.with_parens(condition)
+        output.space()
+        self.simple_for_index = index_name
+        self._do_print_body(output)
+        output.newline()
+
+    output.with_block(generic_body)
 
 
 def print_async_for(self, output):
