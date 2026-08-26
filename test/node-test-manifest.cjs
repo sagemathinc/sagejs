@@ -96,6 +96,7 @@ const integration = [
   "test/number-field-quadratic-class-units.cjs",
   "test/number-field-quadratic-compact-composition.cjs",
   "test/number-field-quadratic-narrow-relations.cjs",
+  "test/number-field-quartic-class-number-projection.cjs",
   "test/number-field-quartic-minkowski-class-number.cjs",
   "test/number-field-quartic-minkowski-continuation.cjs",
   "test/number-field-quartic-minkowski-public-class-group.cjs",

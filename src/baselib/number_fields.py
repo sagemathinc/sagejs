@@ -2817,7 +2817,29 @@ class NumberFieldParent(sage.Parent):
         del names
         general_algorithm = algorithm
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
-            bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
+            class_units = _nf_class_unit_groups_module()
+            if class_units.quartic_class_number_projection_pending(self, proof=proof):
+                bounded_projection = (
+                    class_units.quartic_class_number_one_projection_result(
+                        self, proof=proof
+                    )
+                )
+                if bounded_projection is not None:
+                    return (
+                        _nf_class_group_maps_module().class_group_from_minkowski_result(
+                            bounded_projection
+                        )
+                    )
+                return class_units.class_group(self, proof=proof, algorithm="auto")
+            bounded = self._global_class_group_cache
+            if (
+                bounded is runtime.undefined
+                or getattr(bounded, "field", None) is not self
+                or not bool(getattr(bounded, "complete", False))
+            ):
+                bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(
+                    self
+                )
             if bounded.field is not self:
                 raise ArithmeticError("the quartic class-group search changed fields")
             if bounded.complete:
@@ -2941,15 +2963,11 @@ class NumberFieldParent(sage.Parent):
             return _nf_class_unit_groups_module().cubic_class_number_projection(
                 self, proof=proof
             )
-        general_algorithm = algorithm
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
-            bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
-            if bounded.field is not self:
-                raise ArithmeticError("the quartic class-number search changed fields")
-            if bounded.complete:
-                return int(bounded.order())
-            if bounded.minkowski_factor_base_complete:
-                general_algorithm = "minkowski"
+            return _nf_class_unit_groups_module().quartic_class_number_projection(
+                self, proof=proof
+            )
+        general_algorithm = algorithm
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":

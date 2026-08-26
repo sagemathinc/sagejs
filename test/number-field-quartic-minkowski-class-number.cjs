@@ -166,22 +166,21 @@ assert not limited.complete and limited.certificate is None
 assert "principal-generator search exhausted" in limited.reason
 
 # This totally complex quartic has class number two.  The class-number-one
-# producer declines and the unchanged general engine supplies the answer.
+# producer declines and the retained exact Minkowski state enters the general
+# engine directly, without rebuilding through the legacy scalar adapter.
 nontrivial = NumberField(x**4 - 3*x**3 + 4*x + 4, "n")
 declined = bounded_minkowski_class_number_one(nontrivial)
 assert not declined.complete and declined.certificate is None
 fallback_calls = [0]
 original_class_number = class_unit_module.class_number
-def expected_fallback(field, **kwargs):
-    assert field is nontrivial
-    assert kwargs["algorithm"] == "minkowski"
-    assert kwargs["proof"] is False
+def forbidden_legacy_fallback(*args, **kwargs):
+    del args, kwargs
     fallback_calls[0] += 1
-    return 2
-class_unit_module.class_number = expected_fallback
+    raise AssertionError("the retained quartic state entered the legacy fallback")
+class_unit_module.class_number = forbidden_legacy_fallback
 try:
     assert nontrivial.class_number(proof=False) == 2
-    assert fallback_calls == [1]
+    assert fallback_calls == [0]
 finally:
     class_unit_module.class_number = original_class_number
 
