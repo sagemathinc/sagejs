@@ -1724,6 +1724,7 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_relations": 0,
             "cubic_integral_sieve_dependency_relations": 0,
             "cubic_integral_sieve_validated_batch_uses": 0,
+            "cubic_specialized_empty_factor_base_skips": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -2205,16 +2206,43 @@ class ClassUnitGroupEngine:
                 "relation_seed_size_policy_exceeded", False
             )
         )
+        cubic_empty_factor_base = False
+        if self.field.degree() == 3 and cubic_artifact is not None:
+            try:
+                cubic_module = __import__(
+                    "sagejs.number_fields.cubic_class_number",
+                    fromlist=["cubic_class_number"],
+                )
+                authenticate = getattr(
+                    cubic_module, "authenticated_cubic_class_number", None
+                )
+                live_authority = cubic_artifact.__dict__.get("_live_authentication")
+                factor_base_size = getattr(live_authority, "factor_base_size", None)
+                cubic_empty_factor_base = bool(
+                    callable(authenticate)
+                    and authenticate(cubic_artifact, self.field) is not None
+                    and type(factor_base_size) is int
+                    and factor_base_size == 0
+                )
+            except (AttributeError, ImportError, TypeError, ValueError):
+                cubic_empty_factor_base = False
         if self.field.degree() == 3 and (
-            self._authenticated_cubic_relation_seed() is not None or cubic_size_decline
+            self._authenticated_cubic_relation_seed() is not None
+            or cubic_size_decline
+            or cubic_empty_factor_base
         ):
             # The public bounded cubic producer has already completed the
             # same small-field decision and either retained an exact relation
-            # prefix or proved that its unconditional factor base exceeds the
-            # conditional reuse policy.  Re-running the unrelated bounded
-            # class enumeration and 125-term unit box cannot complete this
-            # field and only delays the general relation engine.
-            self._resource_usage["cubic_specialized_seed_skips"] += 1
+            # prefix, proved that its unconditional factor base exceeds the
+            # conditional reuse policy, or certified an empty class factor
+            # base.  In the last case the ordinary engine still discovers and
+            # certifies the unit; the producer result is only a routing hint.
+            # Re-running the unrelated bounded class enumeration and 125-term
+            # unit box cannot add authority and only delays that exact engine.
+            if cubic_empty_factor_base:
+                self._resource_usage["cubic_specialized_empty_factor_base_skips"] += 1
+            else:
+                self._resource_usage["cubic_specialized_seed_skips"] += 1
             return None
         started = self._phase_start()
         classes_module = _optional_module("sagejs.number_fields.class_groups")
