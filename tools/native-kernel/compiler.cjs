@@ -270,6 +270,7 @@ function uniquePaths(paths) {
 function writeDiscoveryIndex(
   cacheRoot,
   sourcePath,
+  sourceAliases,
   sourceHash,
   cacheKey,
   moduleIdentity,
@@ -305,7 +306,7 @@ function writeDiscoveryIndex(
     nativeAbi: compatibility.nativeAbi,
     foreignDeclarations: compatibility.foreignDeclarations,
   };
-  index.sources[sourcePath] = record;
+  for (const alias of sourceAliases) index.sources[alias] = record;
   if (sourceKey !== undefined) {
     if (
       typeof sourceKey !== "string" ||
@@ -790,7 +791,9 @@ function bindingGyp(
 }
 
 async function compileKernel(options) {
-  const sourcePath = realpathSync(resolve(options.sourcePath));
+  const requestedSourcePath = resolve(options.sourcePath);
+  const sourcePath = realpathSync(requestedSourcePath);
+  const sourceAliases = uniquePaths([sourcePath, requestedSourcePath]);
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);
@@ -870,6 +873,7 @@ async function compileKernel(options) {
     writeDiscoveryIndex(
       cacheRoot,
       sourcePath,
+      sourceAliases,
       sourceHash,
       cacheKey,
       moduleIdentity,
@@ -993,6 +997,7 @@ async function compileKernel(options) {
   writeDiscoveryIndex(
     cacheRoot,
     sourcePath,
+    sourceAliases,
     sourceHash,
     cacheKey,
     moduleIdentity,

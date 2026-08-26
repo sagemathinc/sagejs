@@ -254,6 +254,10 @@ test("native and disabled-native paths use the same declared pivot calls", async
     }
     const witnessPath = join(workingDirectory, "pivot_witness.py");
     writeFileSync(witnessPath, nativeWitness);
+    const nativeRunnerPath = join(workingDirectory, "native_runner.py");
+    const dynamicRunnerPath = join(workingDirectory, "dynamic_runner.py");
+    writeFileSync(nativeRunnerPath, sageWitness(true));
+    writeFileSync(dynamicRunnerPath, sageWitness(false));
     const compiled = await compile({ sourcePath: witnessPath });
     const core = readFileSync(compiled.coreSourcePath, "utf8");
     assert.match(core, /sagejs_fmpz_matrix_echelon_pivots/);
@@ -272,18 +276,16 @@ test("native and disabled-native paths use the same declared pivot calls", async
       SAGEJS_FORBID_QQ_MATRIX_NAPI: "1",
     };
     assert.equal(
-      run(process.execPath, [sagejs, "--python"], {
-        cwd: workingDirectory,
+      run(process.execPath, [sagejs, "--python", nativeRunnerPath], {
+        cwd: root,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_REQUIRED: "1" },
-        input: sageWitness(true),
       }),
       "exact-matrix-pivot-kernel-ok",
     );
     assert.equal(
-      run(process.execPath, [sagejs, "--python"], {
-        cwd: workingDirectory,
+      run(process.execPath, [sagejs, "--python", dynamicRunnerPath], {
+        cwd: root,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_DISABLE: "1" },
-        input: sageWitness(false),
       }),
       "exact-matrix-pivot-kernel-ok",
     );
