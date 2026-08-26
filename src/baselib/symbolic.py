@@ -33,6 +33,9 @@ _CONSTANT_NAMES = {
 }
 
 
+_RELATION_HEADS = ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]
+
+
 def _backend() -> Any:
     backend = _backend_state["value"]
     if backend is None:
@@ -186,7 +189,7 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             + _format_expression(operands[1])
             + ")"
         )
-    elif head in ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]:
+    elif head in _RELATION_HEADS:
         precedence = 20
         operators = {
             "Equal": " == ",
@@ -529,10 +532,22 @@ class Expression(sage.Element):
         return self._relation("Equal", right)
 
     def __bool__(self) -> bool:
+        """
+        Decide truth by what this is: a relation is a claim, true once proved,
+        and anything else is a value, false only when it is zero.
+        """
         evaluated = _call_backend("evaluate", [self._tree])
         if evaluated is True:
             return True
-        return False
+        if evaluated is False:
+            return False
+        if (
+            runtime.array.isArray(self._tree)
+            and len(self._tree) > 0
+            and self._tree[0] in _RELATION_HEADS
+        ):
+            return _relation_holds(self._tree)
+        return not bool(_call_backend("same", [self._tree, _expression_tree(0)]))
 
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))
@@ -1023,6 +1038,34 @@ class NumericalApproximation:
         if runtime.jstype(self._value) != "number":
             raise TypeError("numerical approximation is not real")
         return self._value
+
+
+def _relation_holds(tree: Any) -> bool:
+    """
+    Decide an ordering the backend left standing, by the sign of the difference
+    between its sides.  One that is not a number, as it is not while a variable
+    remains, leaves the claim unproved and so false, as Sage reports it.
+    """
+    if len(tree) != 3:
+        return False
+    head = tree[0]
+    if head == "Equal":
+        return False
+    try:
+        difference = float(
+            Expression(_call_backend("canonical", [["Subtract", tree[1], tree[2]]]))
+        )
+    except Exception:
+        return False
+    if difference != difference:
+        return False
+    if head == "Less":
+        return difference < 0
+    if head == "LessEqual":
+        return difference <= 0
+    if head == "Greater":
+        return difference > 0
+    return difference >= 0
 
 
 def _to_symbolic(value: Any) -> Expression:
