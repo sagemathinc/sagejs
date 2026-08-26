@@ -6,6 +6,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("../../test/helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const prefix = resolve(
@@ -111,6 +115,9 @@ if (process.platform === "win32") {
   process.exit(0);
 }
 
+const graphLifecycleRounds = sanitizerRounds(4000);
+const rationalLifecycleRounds = sanitizerRounds(500);
+
 const source = String.raw`
 #include <stdint.h>
 #include <stdio.h>
@@ -126,7 +133,7 @@ int main(void)
 {
     uint64_t random_state = UINT64_C(0x5a17c0de);
     uint64_t aggregate = 0;
-    for (unsigned round = 0; round < 4000; round++) {
+    for (unsigned round = 0; round < ${graphLifecycleRounds}; round++) {
         sagejs_igraph_graph_t graph;
         sagejs_igraph_edges_view_t first;
         sagejs_igraph_edges_view_t second;
@@ -167,7 +174,8 @@ int main(void)
             }
         }
     }
-    printf("rounds=4000 aggregate=%llu\n", (unsigned long long) aggregate);
+    printf("rounds=${graphLifecycleRounds} aggregate=%llu\n",
+        (unsigned long long) aggregate);
     return 0;
 }
 `;
@@ -180,7 +188,7 @@ const rationalSource = String.raw`
 
 int main(void)
 {
-    for (slong round = 0; round < 500; round++) {
+    for (slong round = 0; round < ${rationalLifecycleRounds}; round++) {
         fmpz_mat_t left_num, left_den, right_num, right_den;
         fmpz_mat_t output_num, output_den, scalar_num, scalar_den;
         fmpz_mat_t polynomial_num, polynomial_den, rank;
@@ -367,10 +375,7 @@ try {
   ];
   run(compiler, args);
   const output = run(executable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   }).trim();
   const rationalSourcePath = join(temporary, "rational-lifecycle.c");
   const rationalExecutable = join(temporary, "rational-lifecycle");
@@ -386,10 +391,7 @@ try {
     "-o", rationalExecutable,
   ]);
   run(rationalExecutable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   });
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/lifecycle-fuzz-v1",
@@ -398,7 +400,7 @@ try {
     compiler,
     dynamic: dynamicResult,
     result: output,
-    rationalResult: "rounds=500",
+    rationalResult: `rounds=${rationalLifecycleRounds}`,
   }, null, 2) + "\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

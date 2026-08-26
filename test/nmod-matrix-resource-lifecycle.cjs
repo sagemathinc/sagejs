@@ -7,7 +7,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -17,6 +20,7 @@ const generatedDirectory = join(root, "packages", "flint", "build", "generated-f
 const manifest = require(join(generatedDirectory, "manifest.json"));
 const flint = require(join(generatedDirectory, manifest.addon));
 const accounted = flint.__sagejsFfiResourceExternalMemory;
+const lifecycleRounds = sanitizerRounds(500);
 
 for (let round = 0; round < 200; round += 1) {
   const source = flint.ffiNmodMatrixRandom(7n, 9n, 65537n, BigInt(round + 1), 19n);
@@ -55,7 +59,7 @@ const source = String.raw`
 
 int main(void)
 {
-    for (uint64_t round = 0; round < 500; round++) {
+    for (uint64_t round = 0; round < ${lifecycleRounds}; round++) {
         sagejs_nmod_matrix_t source, rows, columns, stacked, augmented, failed;
         const uint64_t row_indices[4] = {6, 0, 3, 6};
         const uint64_t column_indices[4] = {8, 1, 8, 0};
@@ -121,7 +125,7 @@ try {
     schema: "sagejs.ffi/nmod-matrix-lifecycle-v1",
     supported: true,
     dynamicRounds: 200,
-    sanitizerRounds: 500,
+    sanitizerRounds: lifecycleRounds,
   }) + "\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

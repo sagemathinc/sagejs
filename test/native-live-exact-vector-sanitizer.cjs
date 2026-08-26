@@ -15,7 +15,10 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerEnvironment,
+  sanitizerRounds,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const sourcePath = resolve(root, "bench/native_live_exact_vector.py");
@@ -43,7 +46,7 @@ int main(void)
     mpz_neg(right, right);
     mpz_add_ui(right, right, 3);
 
-    for (unsigned round = 0; round < 500; round += 1)
+    for (unsigned round = 0; round < ${sanitizerRounds(500)}; round += 1)
     {
         assert(sagejs_kernel_live_addmul(
             &status, result, 1, 4096, seed, left, right, 19));
