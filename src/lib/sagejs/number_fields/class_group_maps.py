@@ -1288,6 +1288,14 @@ class IdealClassGroup:
             return projection.proof_payload()
         if self._proof_record is None:
             raise ValueError("the class group has no attached completeness proof")
+        class_groups = __import__(
+            "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+        )
+        if (
+            type(self._proof_record)
+            is class_groups.MinkowskiPrincipalFactorBaseCertificate
+        ):
+            return self._proof_record.to_dict()
         if isinstance(self._proof_record, ConditionalGRHProofRecord):
             payload = self._proof_record.to_dict()
             evidence = getattr(
@@ -1319,6 +1327,25 @@ class IdealClassGroup:
             if _cancelled(cancelled):
                 return False
             schema = payload.get("schema")
+            class_groups = __import__(
+                "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+            )
+            if (
+                schema
+                == class_groups.MINKOWSKI_PRINCIPAL_FACTOR_BASE_CERTIFICATE_SCHEMA
+            ):
+                if (
+                    type(self._proof_record)
+                    is not class_groups.MinkowskiPrincipalFactorBaseCertificate
+                ):
+                    return False
+                record = class_groups.MinkowskiPrincipalFactorBaseCertificate.from_dict(
+                    self._order.number_field(),
+                    payload,
+                    group=self,
+                    cancelled=cancelled,
+                )
+                return record.to_dict() == payload
             if schema == "sagejs.number-fields.class-group.grh-proof.v1":
                 expected_fields = {
                     "schema",
@@ -1764,6 +1791,57 @@ def public_class_group_projection_view(projection: Any) -> IdealClassGroup:
 def class_group_from_context(context: Any) -> IdealClassGroup:
     """Public functional constructor for context-producing orchestration code."""
     return IdealClassGroup.from_context(context)
+
+
+def class_group_from_minkowski_result(result: Any) -> IdealClassGroup:
+    """Build a public group proved by a bounded Minkowski result."""
+    class_groups = __import__(
+        "sagejs.number_fields.class_groups", fromlist=["class_groups"]
+    )
+    if type(result) is not class_groups.ClassGroupSearchResult or not result.complete:
+        raise TypeError("a complete bounded class-group result is required")
+    certificate = result.certificate
+    if type(certificate) is not class_groups.ClassGroupCertificate:
+        raise TypeError("the bounded result has the wrong certificate type")
+    arithmetic = certificate.arithmetic_certificate
+    if type(arithmetic) is not class_groups.MinkowskiPrincipalFactorBaseCertificate:
+        raise TypeError("the bounded result has no Minkowski principal-factor proof")
+    if (
+        result.group is not certificate.group
+        or result.field is not arithmetic.field
+        or result.order() != 1
+        or result.invariants() != ()
+        or certificate.invariants != ()
+        or certificate.enumerated_order != 1
+    ):
+        raise ArithmeticError(
+            "the bounded trivial class group changed before adaptation"
+        )
+    order = result.field.maximal_order()
+    relations = __import__(
+        "sagejs.number_fields.class_group_relations",
+        fromlist=["class_group_relations"],
+    )
+
+    def ideal_log(ideal: Any) -> Any:
+        return relations.reduce_ideal_over_base(ideal, ())
+
+    answer = IdealClassGroup(
+        order,
+        (),
+        (),
+        (),
+        ideal_log,
+        proof_status=EXACT_UNCONDITIONAL,
+        algorithm="minkowski-principal-factor-base",
+        factor_base_theorem="Minkowski ideal-class theorem",
+        factor_base_bound=(int(result.minkowski_bound), 1),
+        proof_record=arithmetic,
+        relation_count=len(arithmetic.factor_base),
+    )
+    if answer.verify() is not True:
+        raise ArithmeticError("the bounded public class group failed exact replay")
+    return answer
 
 
 class _EngineProofReplayContext:
@@ -3249,6 +3327,7 @@ __all__ = [
     "adapt_and_seal_public_class_group_projection",
     "class_group_from_engine_result",
     "class_group_from_context",
+    "class_group_from_minkowski_result",
     "public_class_group_projection_view",
     "seal_public_class_group_projection",
 ]
