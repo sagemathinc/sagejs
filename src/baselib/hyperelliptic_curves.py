@@ -124,5 +124,22 @@ runtime.register_doc(
                 "models over odd prime fields."
             ),
         },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath hyperelliptic Jacobians API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/"
+                    "arithmetic_curves/sage/schemes/hyperelliptic_curves/"
+                ),
+                "license": "GPL-2.0-or-later",
+            }
+        ],
+        "limitations": [
+            (
+                "Split even-degree arithmetic currently requires an odd prime "
+                "field and uses the exact reference implementation."
+            )
+        ],
     },
 )
