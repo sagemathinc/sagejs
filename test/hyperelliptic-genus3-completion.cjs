@@ -5,16 +5,24 @@ const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
 const test = require("node:test");
 const { join } = require("node:path");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = join(__dirname, "..");
 
 function python(source) {
   return JSON.parse(
-    execFileSync("python3", ["-c", `import json, sys\nsys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${source}`], {
-      cwd: root,
-      encoding: "utf8",
-      env: process.env,
-    }),
+    execFileSync(
+      pythonExecutable(),
+      [
+        "-c",
+        `import json, sys\nsys.path.append(${JSON.stringify(join(root, "src", "lib"))})\n${source}`,
+      ],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: process.env,
+      },
+    ),
   );
 }
 
