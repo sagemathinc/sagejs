@@ -2960,10 +2960,16 @@ def _direct_minkowski_evidence(
 
     records: list[MinkowskiPrimeClassRecord] = []
     progress_records: list[dict[str, Any]] = []
+    direct_log: Any = getattr(engine_group, "_factor_base_discrete_log", None)
+    if not callable(direct_log):
+        raise TypeError("a direct Minkowski group has no factor-base logarithm")
     for index, (prime, fingerprint) in enumerate(
         zip(rebuilt_primes, rebuilt_fingerprints, strict=True)
     ):
-        coordinates, generator = engine_group.discrete_log(prime)
+        resolved = direct_log(index, prime)
+        if not isinstance(resolved, tuple) or len(resolved) != 2:
+            raise TypeError("a direct factor-base logarithm has invalid evidence")
+        coordinates, generator = resolved
         checked_coordinates = tuple(
             _integer(value, "a direct Minkowski proof coordinate")
             for value in coordinates
@@ -3064,6 +3070,19 @@ def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClas
         raise TypeError("the engine class group has no exact presentation material")
     invariants = tuple(int(value) for value in engine_group.invariants())
     generator_ideals = tuple(engine_group.gens_ideals())
+    generic_ideal_log = engine_group.discrete_log
+    direct_factor_base_log: Any = getattr(
+        engine_group, "_factor_base_discrete_log", None
+    )
+    retained_factor_base = tuple(getattr(engine_group, "_factor_base", ()))
+
+    def public_ideal_log(ideal: Any) -> Any:
+        if callable(direct_factor_base_log):
+            for position, prime in enumerate(retained_factor_base):
+                if ideal == prime:
+                    return direct_factor_base_log(position, prime)
+        return generic_ideal_log(ideal)
+
     relation_witnesses = []
     for invariant, ideal in zip(invariants, generator_ideals, strict=False):
         relation_ideal = _ideal_power(ideal, invariant)
@@ -3223,7 +3242,7 @@ def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClas
         invariants,
         generator_ideals,
         tuple(relation_witnesses),
-        engine_group.discrete_log,
+        public_ideal_log,
         proof_status=proof_status,
         algorithm=str(result.algorithm),
         factor_base_theorem=theorem,

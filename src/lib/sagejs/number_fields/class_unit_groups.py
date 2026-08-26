@@ -920,6 +920,32 @@ class _EngineClassGroup:
             raise ArithmeticError("an ideal quotient has a nonzero free class")
         return tuple(coefficients)
 
+    def _discrete_log_from_factor_base_row(
+        self, row: Sequence[int], reduction_witness: Any = None
+    ) -> tuple[tuple[int, ...], Any]:
+        coordinates = tuple(self._presentation.class_coordinates(row))
+        reduced = tuple(self._presentation.lift_class_coordinates(coordinates))
+        delta = tuple(int(row[index]) - reduced[index] for index in range(len(row)))
+        witness = self._combine_relations(self._relation_coefficients(delta))
+        if reduction_witness is not None:
+            witness = self._combine_reduction_witness(witness, reduction_witness)
+        return coordinates, witness
+
+    def _factor_base_discrete_log(
+        self, position: int, ideal: Any
+    ) -> tuple[tuple[int, ...], Any]:
+        """Resolve a retained factor-base prime without factoring it again."""
+        if (
+            position < 0
+            or position >= len(self._factor_base)
+            or self._factor_base[position] != ideal
+        ):
+            raise ArithmeticError("a direct factor-base logarithm changed its prime")
+        row = tuple(
+            1 if index == position else 0 for index in range(len(self._factor_base))
+        )
+        return self._discrete_log_from_factor_base_row(row)
+
     def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
         reduction_witness = None
         try:
@@ -931,16 +957,7 @@ class _EngineClassGroup:
                 ideal, self._factor_base
             )
             row = tuple(-int(value) for value in quotient_row)
-        coordinates = tuple(self._presentation.class_coordinates(row))
-        reduced = tuple(self._presentation.lift_class_coordinates(coordinates))
-        delta_values = []
-        for index in range(len(row)):
-            delta_values.append(row[index] - reduced[index])
-        delta = tuple(delta_values)
-        witness = self._combine_relations(self._relation_coefficients(delta))
-        if reduction_witness is not None:
-            witness = self._combine_reduction_witness(witness, reduction_witness)
-        return coordinates, witness
+        return self._discrete_log_from_factor_base_row(row, reduction_witness)
 
     def __call__(self, ideal: Any) -> _EngineClassElement:
         if isinstance(ideal, _EngineClassElement):
