@@ -276,6 +276,17 @@ test("reviewed packaging budgets can adjust topology limits without changing art
   );
 });
 
+test("release reproducibility uses the reviewed packaging budget", () => {
+  const workflow = fs.readFileSync(
+    path.join(__dirname, "..", ".github", "workflows", "wasm-release.yml"),
+    "utf8",
+  );
+  assert.match(
+    workflow,
+    /browser-wasm-release-artifact\.cjs \\\n\s+--dist build\/a\/packages\/flint-wasm\/dist \\\n\s+--budget bench\/browser-wasm-budget\.json \\\n\s+--require-baseline \\\n\s+--compare build\/b\/packages\/flint-wasm\/dist/,
+  );
+});
+
 test("Cloudflare-compatible header policy is parsed and security checked", () => {
   const rules = parseHeadersFile(`/*
   Cross-Origin-Opener-Policy: same-origin

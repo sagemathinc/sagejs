@@ -287,6 +287,8 @@ jobs:
             > build/reproducible-toolchains.json
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
             --dist build/a/packages/flint-wasm/dist \
+            --budget bench/browser-wasm-budget.json \
+            --require-baseline \
             --compare build/b/packages/flint-wasm/dist \
             --output build/reproducible-artifact.json
           node packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs \
