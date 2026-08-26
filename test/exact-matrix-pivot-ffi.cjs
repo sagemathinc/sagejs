@@ -5,8 +5,10 @@
 const assert = require("node:assert/strict");
 const {
   mkdtempSync,
+  mkdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -242,7 +244,15 @@ print("exact-matrix-pivot-kernel-ok")
 test("native and disabled-native paths use the same declared pivot calls", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-exact-matrix-pivots-"));
   try {
-    const witnessPath = join(temporary, "pivot_witness.py");
+    const sourceDirectory = join(temporary, "source");
+    mkdirSync(sourceDirectory);
+    const workingDirectory = process.platform === "win32"
+      ? sourceDirectory
+      : join(temporary, "source-alias");
+    if (process.platform !== "win32") {
+      symlinkSync(sourceDirectory, workingDirectory, "dir");
+    }
+    const witnessPath = join(workingDirectory, "pivot_witness.py");
     writeFileSync(witnessPath, nativeWitness);
     const compiled = await compile({ sourcePath: witnessPath });
     const core = readFileSync(compiled.coreSourcePath, "utf8");
@@ -263,7 +273,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
     };
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporary,
+        cwd: workingDirectory,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_REQUIRED: "1" },
         input: sageWitness(true),
       }),
@@ -271,7 +281,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
     );
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporary,
+        cwd: workingDirectory,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_DISABLE: "1" },
         input: sageWitness(false),
       }),

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertDisplayWithinLimit, boundedTimeout, OutputCollector, utf8Size } from "../resource-policy.mjs";
+import {
+  assertDisplayWithinLimit,
+  boundedTimeout,
+  formatExecutionError,
+  OutputCollector,
+  utf8Size,
+} from "../resource-policy.mjs";
 import { requestCredentials } from "../runtime-api.mjs";
 
 test("credentialed project previews are explicit and production stays credentialless", () => {
@@ -26,6 +32,28 @@ test("timeouts are positive and capped by policy", () => {
   assert.equal(boundedTimeout("15000"), 15_000);
   assert.throws(() => boundedTimeout(0), /positive/);
   assert.throws(() => boundedTimeout(Number.NaN), /positive/);
+});
+
+test("execution errors retain their headline when WebKit stacks omit it", () => {
+  const error = new ReferenceError("name 'partitions' is not defined");
+  error.stack = [
+    "eval code@",
+    "eval@[native code]",
+    "evaluateNow@https://app.sagejs.org/evaluator.mjs:959:35",
+  ].join("\n");
+  assert.equal(
+    formatExecutionError(error),
+    [
+      "ReferenceError: name 'partitions' is not defined",
+      error.stack,
+    ].join("\n"),
+  );
+});
+
+test("execution errors do not duplicate a headline already in the stack", () => {
+  const error = new TypeError("bad input");
+  error.stack = "TypeError: bad input\n    at evaluateNow (evaluator.mjs:959:35)";
+  assert.equal(formatExecutionError(error), error.stack);
 });
 
 test("structured plot payloads are bounded before rendering", () => {

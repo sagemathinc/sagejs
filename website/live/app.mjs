@@ -7,6 +7,7 @@ import {
   assertDisplayWithinLimit,
   boundedTimeout,
   DEFAULT_LIMITS,
+  formatExecutionError,
   OutputCollector,
   utf8Size,
 } from "./resource-policy.mjs";
@@ -107,7 +108,7 @@ function createSession() {
     (error) => {
       setStatus("error", "Kernel failed to load");
       setLive(`Kernel failed to load: ${error.message}`);
-      renderMessage("error", "Kernel initialization failed", error.stack ?? error.message);
+      renderMessage("error", "Kernel initialization failed", formatExecutionError(error));
     },
   );
   return promise;
@@ -285,7 +286,7 @@ async function run(mode) {
       pre.textContent = `${collector.text}\n[Interrupted; variables were cleared.]`.trim();
       setLive("Interrupted. The kernel restarted with a clean session.");
     } else {
-      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${error.stack ?? error.message}`;
+      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${formatExecutionError(error)}`;
       setLive(`Run ${currentRun} failed: ${error.message}`);
     }
   } finally {

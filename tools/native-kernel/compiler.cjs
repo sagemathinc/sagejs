@@ -790,7 +790,7 @@ function bindingGyp(
 }
 
 async function compileKernel(options) {
-  const sourcePath = resolve(options.sourcePath);
+  const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);

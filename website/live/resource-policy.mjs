@@ -21,6 +21,18 @@ export function boundedTimeout(value, limits = DEFAULT_LIMITS) {
   return Math.min(Math.trunc(timeout), limits.maximumTimeoutMs);
 }
 
+export function formatExecutionError(error) {
+  const message = error?.message ?? String(error);
+  const name = typeof error?.name === "string" && error.name
+    ? error.name
+    : "Error";
+  const headline = `${name}: ${message}`;
+  const stack = typeof error?.stack === "string" ? error.stack.trim() : "";
+  if (!stack) return headline;
+  if (stack.includes(message)) return stack;
+  return `${headline}\n${stack}`;
+}
+
 export class OutputCollector {
   constructor(limit = DEFAULT_LIMITS.outputBytes) {
     if (!Number.isSafeInteger(limit) || limit <= 0) {
