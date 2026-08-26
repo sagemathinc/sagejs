@@ -203,6 +203,14 @@ jobs:
           pnpm test:installer
           pnpm test:release
 
+      - name: Run calibrated native performance sentinels
+        env:
+          SAGEJS_DENSE_MATRIX_BUDGET_SCALE: "1.25"
+          SAGEJS_INTEGER_MATRIX_BUDGET_SCALE: "1.25"
+          SAGEJS_RATIONAL_MATRIX_BUDGET_SCALE: "1.25"
+          SAGEJS_POLYNOMIAL_BUDGET_SCALE: "1.25"
+        run: pnpm test:native:performance
+
       - name: Verify generated reference and imported Sage examples
         run: |
           pnpm docs:verify

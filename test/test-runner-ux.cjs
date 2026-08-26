@@ -60,6 +60,8 @@ test("routine validation is bounded and full validation remains exhaustive", () 
   assert.equal(plans.ci[0][1], "merge:check");
   assert.equal(fullScripts.includes("test:integration"), true);
   assert.equal(fullScripts.includes("test:native"), true);
+  assert.equal(fullScripts.includes("test:native:performance"), true);
+  assert.doesNotMatch(packageScripts["test:native"], /performance/);
   assert.ok(plans.routine.length < plans.full.length);
   assert.equal(routineScripts.includes("build:check"), true);
   assert.equal(plans.ci.map((phase) => phase[1]).includes("build:check"), false);

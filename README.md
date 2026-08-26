@@ -167,7 +167,8 @@ build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
 pnpm test:startup                  # enforce the 350 ms development startup budget
-pnpm test:native                   # FLINT, igraph, and native integration tests
+pnpm test:native                   # FLINT, igraph, and native correctness tests
+pnpm test:native:performance       # calibrated native performance sentinels
 pnpm test:tutorial                 # complete Sage tutorial compatibility
 pnpm test:sea                      # rebuild and relocation-test both SEAs
 pnpm test                          # full compiler, CLI, upstream, and CoWasm suite

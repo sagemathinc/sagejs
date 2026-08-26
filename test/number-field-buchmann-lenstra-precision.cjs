@@ -191,7 +191,18 @@ function run(command, args, environment = {}) {
     timeout: 120_000,
     maxBuffer: 50 * 1024 * 1024,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  if (result.error) {
+    throw new Error(
+      `failed to run ${JSON.stringify(command)}: ${result.error.message}`,
+      { cause: result.error },
+    );
+  }
+  assert.equal(
+    result.status,
+    0,
+    result.stderr || result.stdout ||
+      `${JSON.stringify(command)} exited with status ${result.status}`,
+  );
   return JSON.parse(result.stdout.trim());
 }
 
