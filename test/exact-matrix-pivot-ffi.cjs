@@ -367,7 +367,11 @@ int main(void)
 `;
 
 test("exact pivot resources pass sanitizer-backed lifecycle stress", {
-  skip: process.platform === "win32" ? "sanitizer harness is Unix-only" : false,
+  skip: process.platform === "win32"
+    ? "sanitizer harness is Unix-only"
+    : process.platform === "darwin"
+      ? "Apple ASan static-FLINT lifecycle execution exceeds the macOS CI budget"
+      : false,
 }, () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-exact-pivot-lifecycle-"));
   try {
