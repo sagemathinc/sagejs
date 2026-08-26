@@ -398,7 +398,16 @@ class CyclotomicFieldParent(sage.Parent):
         return runtime.normalize_integer(self._degree)
 
     def zeta_order(self) -> Any:
-        return runtime.normalize_integer(self._order)
+        """
+        Return how many roots of unity the field holds.
+
+        For odd `n` the field also holds `-zeta_n`, whose order is `2n`, so it
+        holds twice as many roots of unity as its name suggests.
+        """
+        order = runtime.integer_bigint(self._order)
+        if runtime.native_mod(order, runtime.bigint(2)) != runtime.bigint(0):
+            order = runtime.native_mul(order, runtime.bigint(2))
+        return runtime.normalize_integer(order)
 
 
 _cyclotomic_fields = runtime.map()

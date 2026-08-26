@@ -2532,13 +2532,44 @@ _BUILTINS_MAX_SAFE_INTEGER = runtime.bigint(runtime.number.MAX_SAFE_INTEGER)
 _BUILTINS_MIN_SAFE_INTEGER = runtime.bigint(runtime.number.MIN_SAFE_INTEGER)
 
 
-def ρσ_integer_literal(text: _Str) -> Any:
+_BUILTINS_BASE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+
+def _builtins_integer_in_base(text: _Str, base: _Int) -> Any:
+    """Read an integer from the digits of the base it is written in."""
+    if base < 2 or base > 36:
+        raise ValueError("base must be between 2 and 36")
+    body = text.strip()
+    negative = False
+    if body[0:1] == "-" or body[0:1] == "+":
+        negative = body[0:1] == "-"
+        body = body[1:]
+    if len(body) == 0:
+        raise TypeError("unable to convert " + repr(text) + " to an integer")
+    value = runtime.bigint(0)
+    radix = runtime.bigint(base)
+    for character in body.lower():
+        digit = _BUILTINS_BASE_DIGITS.find(character)
+        if digit < 0 or digit >= base:
+            raise TypeError("unable to convert " + repr(text) + " to an integer")
+        value = runtime.native_add(
+            runtime.native_mul(value, radix), runtime.bigint(digit)
+        )
+    if negative:
+        return -value
+    return value
+
+
+def ρσ_integer_literal(text: _Str, base: Any = runtime.undefined) -> Any:
     text = runtime.reflect.apply(
         runtime.string_class.prototype.replace,
         text,
         [runtime.regexp("_", "g"), ""],
     )
-    value = runtime.bigint(text)
+    if base is not runtime.undefined and base is not None:
+        value = _builtins_integer_in_base(text, int(base))
+    else:
+        value = runtime.bigint(text)
     if _BUILTINS_MIN_SAFE_INTEGER <= value <= _BUILTINS_MAX_SAFE_INTEGER:
         return runtime.number(value)
     return value
@@ -6484,10 +6515,9 @@ def euler_phi(value: Any) -> Any:
     if not runtime.is_exact_integer(value):
         raise TypeError("euler_phi() requires an integer")
     integer = runtime.integer_bigint(value)
-    if integer == 0:
+    if integer <= 0:
+        # Sage counts the units below a nonpositive bound as none at all.
         return 0
-    if integer < 0:
-        integer = -integer
     answer = integer
     for prime, _exponent in ρσ_factor(integer):
         prime_integer = runtime.integer_bigint(prime)

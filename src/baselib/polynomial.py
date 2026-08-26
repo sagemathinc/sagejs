@@ -5407,13 +5407,20 @@ def PolynomialRing(
     ):
         names = variable.names
         variable = None
+    counted = False
     if names is not None:
         if runtime.is_exact_integer(variable):
+            counted = True
             variable = _polynomial_variable_names(int(_untyped(variable)), names)
+        elif runtime.is_exact_integer(names):
+            # Sage writes the count on either side of the name, and a count
+            # given at all asks for a multivariate ring even when it is one.
+            counted = True
+            variable = _polynomial_variable_names(int(_untyped(names)), variable)
         else:
             variable = names
     variable_names = _polynomial_variable_names(runtime.undefined, variable)
-    if len(variable_names) > 1:
+    if len(variable_names) > 1 or counted:
         return _multivariate_polynomial_ring(base, variable_names, order)
     variable = variable_names[0]
     if (
