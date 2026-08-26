@@ -1,6 +1,11 @@
 // sagejs-test-tier: integration
 "use strict";
 
+// Research-tool arithmetic and certificate semantics are independent of the
+// release receipt allowlist. Its fail-closed selection behavior is exercised
+// by the dedicated auto-receipt dispatch suite.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const { mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -66,11 +71,8 @@ except ArithmeticError:
     pass
 assert D.scalar_multiple(2**129 + 1, algorithm="auto") == \
     D.scalar_multiple(2**129 + 1, algorithm="reference")
-try:
-    D.scalar_multiple(2**129 + 1, algorithm="native")
-    assert False
-except NotImplementedError:
-    pass
+assert D.scalar_multiple(2**129 + 1, algorithm="native") == \
+    D.scalar_multiple(2**129 + 1, algorithm="reference")
 True`,
       { timeout: 120_000 },
     );
@@ -108,10 +110,10 @@ Jlimited = HyperellipticJacobian(ResearchTestCurve(
     frobenius=T**4 + 10*T**2 + 25,
 ))
 try:
-    Jlimited.abelian_group(max_random_elements=1, seed=1)
+    Jlimited.abelian_group(max_group_operations=1, seed=1)
     assert False
 except JacobianResourceLimitError as error:
-    assert error.diagnostics["samples"] <= 1
+    assert error.diagnostics["group_operations"] <= 1
 True`,
       { timeout: 120_000 },
     );

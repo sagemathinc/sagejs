@@ -75,10 +75,10 @@ def _remote_exception(remote_name, remote_message):
         exception_class = ImportError
     elif remote_name == "NameError":
         exception_class = NameError
-    else:
+    elif remote_name == "RuntimeError":
         exception_class = RuntimeError
-    if exception_class is RuntimeError and remote_name != "RuntimeError":
-        remote_message = remote_name + ": " + remote_message
+    else:
+        return RuntimeError(remote_name + ": " + remote_message)
     return exception_class(remote_message)
 
 
