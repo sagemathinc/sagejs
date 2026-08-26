@@ -15,6 +15,9 @@ const {
   validateFailureReceipt,
   validateReceipt,
 } = require("../bench/hyperelliptic/analytic-acceptance/contract.cjs");
+const {
+  failureReceipt,
+} = require("../bench/hyperelliptic/analytic-acceptance/run.cjs");
 
 function differential(genus) {
   return {
@@ -123,6 +126,10 @@ function fixture() {
       node: "v22.22.2",
       noise_policy: { passed: true },
     },
+    postflight: {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
     provisioning: { pari: { version: "2.18.1 (alpha)" } },
     pari_bracket: { order: "PARI-Sage.js-PARI", rows: bracketed },
     competitive,
@@ -189,6 +196,10 @@ test("a timed-out formal run remains a structurally valid failed receipt", () =>
       node: "v22.22.2",
       noise_policy: { passed: true },
     },
+    postflight: {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
     provisioning: { pari: { version: "2.18.1 (alpha)" } },
     configuration: {
       samples: 5,
@@ -212,4 +223,53 @@ test("a timed-out formal run remains a structurally valid failed receipt", () =>
   const invalid = validateFailureReceipt(receipt);
   assert.equal(invalid.passed, false);
   assert.ok(invalid.failures.some((value) => value.includes("stack")));
+});
+
+test("failed runs preserve accepted preflight separately from noisy postflight", () => {
+  const source = {
+    commit: "f".repeat(40),
+    status: "",
+    implementation_base_commit: IMPLEMENTATION_BASE,
+    implementation_base_is_ancestor: true,
+    build_receipt_preflight: { current: true },
+    inputs: sourceIdentity(ROOT),
+  };
+  const host = {
+    declared_host: "bench-1",
+    platform: "linux",
+    architecture: "x64",
+    node: "v22.22.2",
+    noise_policy: { passed: true },
+  };
+  const error = new Error("analytic competitive benchmark timed out");
+  Object.defineProperty(error, "phase9FailureContext", {
+    value: {
+      source,
+      host,
+      provisioning: { pari: { version: "2.18.1 (alpha)" } },
+    },
+  });
+  const receipt = failureReceipt(
+    {
+      mode: "acceptance",
+      declaredHost: "bench-1",
+      maximumLoad: 0.5,
+      maximumWallSeconds: 1200,
+      precisionBits: 64,
+      samples: 5,
+    },
+    error,
+    0,
+    {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
+  );
+  assert.equal(receipt.host, host);
+  assert.equal(receipt.host.noise_policy.passed, true);
+  assert.equal(receipt.postflight.noise_policy.passed, false);
+  assert.deepEqual(
+    validateFailureReceipt(receipt, { currentSources: sourceIdentity(ROOT) }),
+    { passed: true, failures: [] },
+  );
 });

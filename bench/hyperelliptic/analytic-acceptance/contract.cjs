@@ -381,6 +381,11 @@ function validateFailureReceipt(receipt, { currentSources = null } = {}) {
     "failure receipt host did not satisfy the noise policy",
   );
   requireValue(
+    typeof receipt?.postflight?.captured_at_utc === "string" &&
+      typeof receipt?.postflight?.noise_policy?.passed === "boolean",
+    "failure receipt postflight snapshot is missing",
+  );
+  requireValue(
     receipt?.provisioning?.pari?.version === "2.18.1 (alpha)",
     "failure receipt did not use pinned PARI 2.18.1-alpha",
   );
