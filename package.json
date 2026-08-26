@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",

@@ -20,7 +20,7 @@ last so its exact optional dependencies are already available.
   `SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64` and
   `SAGEJS_WINDOWS_CERTIFICATE_PASSWORD` with an exportable Authenticode code
   signing certificate.
-- During the 0.3 early-alpha series only, leave
+- During pre-1.0 early-alpha releases, leave
   `SAGEJS_WINDOWS_SIGNING_MODE` unset or set it to `unsigned` to publish an
   explicitly reported unsigned Windows artifact. This is not the production
   signing policy.
@@ -57,7 +57,7 @@ macOS runner itself is discarded after the job.
    registration, and Gatekeeper/SmartScreen behavior on real target machines.
 
 The tag workflow intentionally fails when macOS signing/notarization or npm
-credentials are absent. Windows unsigned mode is an explicit 0.3 early-alpha
+credentials are absent. Windows unsigned mode is an explicit early-alpha
 exception and is recorded in the Actions job summary; it is never silently
 selected in place of a requested Azure or PFX mode.
 

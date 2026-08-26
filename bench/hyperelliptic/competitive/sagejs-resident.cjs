@@ -362,7 +362,7 @@ for _case in _cases:
     _rows.append(_run_case(_case))
 print("SAGEJS_COMPETITIVE_JSON=" + json.dumps({
     "schema": "sagejs.hyperelliptic-competitive-backend.v1",
-    "backend": {"id": "sagejs", "version": "0.3.0"},
+    "backend": {"id": "sagejs", "version": "0.4.0"},
     "rows": _rows,
 }, sort_keys=True))
 True
@@ -396,7 +396,7 @@ async function handle(session, request) {
   const usage = process.resourceUsage();
   return {
     schema: "sagejs.hyperelliptic-competitive-backend.v1",
-    backend: { id: "sagejs", version: "0.3.0", node: process.version },
+    backend: { id: "sagejs", version: "0.4.0", node: process.version },
     resources: { peak_rss_kib: usage.maxRSS, user_seconds: usage.userCPUTime / 1e6, system_seconds: usage.systemCPUTime / 1e6, scope: "resident Sage.js process" },
     rows,
     corpus_sha256: digest(corpus),

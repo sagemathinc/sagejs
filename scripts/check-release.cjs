@@ -47,9 +47,12 @@ for (const directory of nativePackages) {
   names.push(manifest.name);
 }
 assert.deepEqual(
-  Object.keys(rootPackage.optionalDependencies).sort(),
+  Object.entries(rootPackage.optionalDependencies)
+    .filter(([, requirement]) => requirement === "workspace:*")
+    .map(([name]) => name)
+    .sort(),
   names.sort(),
-  "native optional dependencies must exactly match platform packages",
+  "workspace-backed optional dependencies must exactly match platform packages",
 );
 for (const name of names) {
   assert.equal(rootPackage.optionalDependencies[name], "workspace:*");
