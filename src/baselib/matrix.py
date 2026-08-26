@@ -82,6 +82,9 @@ class _FmpzMatrixResourceStorage:
 
     @property
     def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
         if self._resource is runtime.undefined:
             ffi = _flint_ffi_module()
             region = ffi.FlintByteRegion.from_bytes(self._snapshot)
@@ -94,7 +97,7 @@ class _FmpzMatrixResourceStorage:
         return self._resource
 
     def _spill(self) -> None:
-        if self._resource is runtime.undefined:
+        if self._resource is runtime.undefined or self._resource.closed:
             return
         ffi = _flint_ffi_module()
         self._snapshot = ffi.fmpz_matrix_serialize(self._resource).take_bytes()
@@ -126,6 +129,9 @@ class _FmpqMatrixResourceStorage:
 
     @property
     def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
         if self._resource is runtime.undefined:
             ffi = _flint_ffi_module()
             region = ffi.FlintByteRegion.from_bytes(self._snapshot)
@@ -142,7 +148,7 @@ class _FmpqMatrixResourceStorage:
         return self._resource
 
     def _spill(self) -> None:
-        if self._resource is runtime.undefined:
+        if self._resource is runtime.undefined or self._resource.closed:
             return
         ffi = _flint_ffi_module()
         self._rows = int(ffi.fmpq_matrix_nrows(self._resource))
@@ -177,6 +183,9 @@ class _M4riMatrixResourceStorage:
 
     @property
     def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
         if self._resource is runtime.undefined:
             ffi = _m4ri_ffi_module()
             region = ffi.M4riByteRegion.from_bytes(self._snapshot)
@@ -193,7 +202,7 @@ class _M4riMatrixResourceStorage:
         return self._resource
 
     def _spill(self) -> None:
-        if self._resource is runtime.undefined:
+        if self._resource is runtime.undefined or self._resource.closed:
             return
         ffi = _m4ri_ffi_module()
         self._rows = int(ffi.matrix_nrows(self._resource))
@@ -221,6 +230,9 @@ class _NmodMatrixResourceStorage:
 
     @property
     def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
         if self._resource is runtime.undefined:
             ffi = _flint_ffi_module()
             residues = runtime.uint64_unpack_le(
@@ -240,7 +252,7 @@ class _NmodMatrixResourceStorage:
         return self._resource
 
     def _spill(self) -> None:
-        if self._resource is runtime.undefined:
+        if self._resource is runtime.undefined or self._resource.closed:
             return
         ffi = _flint_ffi_module()
         self._rows = int(ffi.nmod_matrix_nrows(self._resource))
@@ -2981,6 +2993,21 @@ class Matrix(sage.Element):
             raise TypeError("rational matrix does not own a FLINT resource")
         return self._rational_storage_cache.resource
 
+    def _discard_private_resource(self) -> None:
+        """Release and detach one private temporary matrix resource."""
+        if self._has_fmpz_matrix_resource():
+            _discard_matrix_resource(self._integer_storage_cache)
+            self._integer_storage_cache = runtime.undefined
+        elif self._has_fmpq_matrix_resource():
+            _discard_matrix_resource(self._rational_storage_cache)
+            self._rational_storage_cache = runtime.undefined
+        elif self._has_m4ri_matrix_resource():
+            _discard_matrix_resource(self._m4ri_storage_cache)
+            self._m4ri_storage_cache = runtime.undefined
+        elif self._has_nmod_matrix_resource():
+            _discard_matrix_resource(self._nmod_storage_cache)
+            self._nmod_storage_cache = runtime.undefined
+
     def _materialize_rational_compatibility_buffers(self) -> None:
         """Decode a variable-size export only for legacy packed algorithms."""
         if not self._has_fmpq_matrix_resource():
@@ -3881,14 +3908,7 @@ class Matrix(sage.Element):
             self._set_same_base_block(row, column, block)
         finally:
             if temporary is not runtime.undefined:
-                if temporary._has_fmpz_matrix_resource():
-                    _discard_matrix_resource(temporary._integer_storage_cache)
-                elif temporary._has_fmpq_matrix_resource():
-                    _discard_matrix_resource(temporary._rational_storage_cache)
-                elif temporary._has_m4ri_matrix_resource():
-                    _discard_matrix_resource(temporary._m4ri_storage_cache)
-                elif temporary._has_nmod_matrix_resource():
-                    _discard_matrix_resource(temporary._nmod_storage_cache)
+                temporary._discard_private_resource()
 
     def _set_same_base_block(self, row: int, column: int, block: Matrix) -> None:
         """Set a same-base block whose temporary ownership is external."""

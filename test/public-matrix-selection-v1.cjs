@@ -149,9 +149,13 @@ for base in [ZZ, QQ, GF(2), GF(97)]:
     target.set_column(3, (target[row, 0] for row in range(target.nrows())))
     assert target.column(3) == target.column(0)
     if base is ZZ:
-        assert all(block._integer_resource().closed for block in temporary_blocks)
+        assert all(
+            not block._has_fmpz_matrix_resource() for block in temporary_blocks
+        )
     elif base is QQ:
-        assert all(block._rational_resource().closed for block in temporary_blocks)
+        assert all(
+            not block._has_fmpq_matrix_resource() for block in temporary_blocks
+        )
     if base is ZZ or base is QQ:
         target.set_block = original_set_block
     before_self_block = target.__copy__()
@@ -219,9 +223,9 @@ for base in [ZZ, QQ]:
     ]
     assert len(intermediate) == 1
     if base is ZZ:
-        assert intermediate[0]._integer_resource().closed
+        assert not intermediate[0]._has_fmpz_matrix_resource()
     else:
-        assert intermediate[0]._rational_resource().closed
+        assert not intermediate[0]._has_fmpq_matrix_resource()
 
 # Cross-ring block coercion closes only its converted temporary, on successful
 # mutation and on a later bounds failure.  The caller's original stays usable.
@@ -247,7 +251,7 @@ for target_row in [0, 2]:
             "matrix window index out of range",
         )
     assert len(converted_blocks) == 1
-    assert converted_blocks[0]._rational_resource().closed
+    assert not converted_blocks[0]._has_fmpq_matrix_resource()
     assert not integer_block._integer_resource().closed
     assert integer_block[0, 0] == ZZ(17)
 
