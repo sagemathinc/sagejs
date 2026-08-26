@@ -65,6 +65,7 @@ test("generalized odd models normalize while even models fall back exactly", asy
             "E = HyperellipticCurve(x^8+x+1)",
             "from sagejs.hyperelliptic_curves.certified_genus3 import (",
             "    complete_genus3_residues_with_jacobian, rforest_genus3_local_factor)",
+            "from sagejs.hyperelliptic_curves.group_structure import JacobianResourceLimitError",
             "generalized = complete_genus3_residues_with_jacobian(",
             "    C, 5, (3,4,2),",
             "    exact_fallback=lambda _curve,_p:(1,3,9,17,45,75,125),",
@@ -78,11 +79,13 @@ test("generalized odd models normalize while even models fall back exactly", asy
             "    max_x_values=5, max_elements=1)",
             "at_two = rforest_genus3_local_factor(",
             "    C, 2, exact_fallback=lambda _curve,_p:(1,0,0,0,0,0,8))",
+            "def exhausted_provider(_J,_D,_b,_s,_c,_k,_r):",
+            "    raise JacobianResourceLimitError('test certificate budget exhausted')",
             "limited = complete_genus3_residues_with_jacobian(",
             "    C, 5, (3,4,2),",
             "    exact_fallback=lambda _curve,_p:(1,3,9,17,45,75,125),",
-            "    order_certificate_provider=lambda _J,_D,_b,_s,_c,_k,_r:None,",
-            "    max_x_values=5, max_elements=1, max_trial_divisions=1)",
+            "    order_certificate_provider=exhausted_provider,",
+            "    max_x_values=5, max_elements=1)",
             "[(generalized['status'], generalized['coefficients']),",
             " (even['status'], even['diagnostics']['fallback_reason'],",
             "  even['coefficients'], fallback_calls),",
@@ -190,7 +193,7 @@ test("an interval uses one residue traversal and falls back per row", async () =
   }
 });
 
-test("auto selects only the measured complete odd-degree genus-3 pipeline", async () => {
+test("auto requires both the measured genus-3 pipeline and a release receipt", async () => {
   const session = await createSage();
   try {
     assert.equal(
@@ -201,7 +204,8 @@ test("auto selects only the measured complete odd-degree genus-3 pipeline", asyn
             "x = R.gen()",
             "C = HyperellipticCurve(x^7+x+1)",
             "E = HyperellipticCurve(x^8+x+1)",
-            "from sagejs.hyperelliptic_curves.frobenius import _select_rational_algorithm",
+            "from sagejs.hyperelliptic_curves.frobenius import (",
+            "    _local_factor_receipt_decision, _select_rational_algorithm)",
             "import sagejs.hyperelliptic_curves.certified_genus3 as certified",
             "selected = (_select_rational_algorithm(C,'auto',5,5),",
             "            _select_rational_algorithm(C,'auto',2,101),",
@@ -213,17 +217,20 @@ test("auto selects only the measured complete odd-degree genus-3 pipeline", asyn
             "explicit = C.local_lpolynomial(5, algorithm='rforest')",
             "sorted_factors = C.local_lpolynomial(2833, algorithm='rforest')",
             "verification = C._local_lpolynomial_cache[('rforest',5)]",
+            "receipt = _local_factor_receipt_decision(",
+            "    C,'auto','rforest',5,5,batch_items=1,resource_bytes=256)",
             "candidate_capability = certified.genus3_candidate_kernel_available",
             "certified.genus3_candidate_kernel_available = lambda: False",
             "disabled = certified.rforest_genus3_auto_supported(C,5,5)",
             "certified.genus3_candidate_kernel_available = candidate_capability",
-            "(selected, disabled, auto == explicit, tuple(verification), sorted_factors)",
+            "(selected, receipt.reason, disabled, auto == explicit,",
+            " tuple(verification), sorted_factors)",
           ].join("\n"),
           { timeout: 120_000 },
         )
       ).repr,
-      "(('rforest', 'rforest', 'rforest', 'exhaustive', 'exhaustive', " +
-        "'exhaustive'), " +
+      "(('exhaustive', 'exhaustive', 'exhaustive', 'exhaustive', " +
+        "'exhaustive', 'exhaustive'), 'unreceipted-fallback', " +
         "False, True, (1, 3, 9, 17, 45, 75, 125), " +
         "22737343537*T^6 - 441423895*T^5 + 14230159*T^4 - " +
         "205077*T^3 + 5023*T^2 - 55*T + 1)",
