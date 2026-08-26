@@ -13994,16 +13994,16 @@
         "name": "DirichletGroup",
         "qualified": "DirichletGroup",
         "path": "src/baselib/dirichlet.py",
-        "line": 1105,
+        "line": 1114,
         "excerpt": {
-          "start_line": 1093,
+          "start_line": 1102,
           "text": "                DirichletGroup_class(\n                    prime_power,\n                    self._value_field,\n                    self._value_order,\n                )\n            )\n        return result\n\n\n_dirichlet_groups = runtime.map()\n\n\ndef DirichletGroup(\n    modulus: Any,\n    base_ring: Any = None,\n    zeta: Any = None,\n) -> DirichletGroup_class:\n    r\"\"\"\n    Return the group of Dirichlet characters modulo `modulus`.\n\n    Characters are exact, iterable, multiplicative, and valued in a\n    cyclotomic field.  FLINT supplies the unit-group decomposition and native\n    character arithmetic.\n\n    ### Examples"
         }
       },
       "examples": [
         {
           "id": "src/baselib/dirichlet.py#3f56e6f86d7f60ed-e3b0c44298fc1c14",
-          "line": 1120,
+          "line": 1129,
           "source": "G = DirichletGroup(20)",
           "want": "",
           "tags": [],
@@ -14019,7 +14019,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#15464eeb758d5890-3fc1d2b4a592f59b",
-          "line": 1121,
+          "line": 1130,
           "source": "G.order(), G.modulus()",
           "want": "(8, 20)\n",
           "tags": [],
@@ -14035,7 +14035,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#84ab25664e504489-e3b0c44298fc1c14",
-          "line": 1123,
+          "line": 1132,
           "source": "eps = G.gen(0)",
           "want": "",
           "tags": [],
@@ -14051,7 +14051,7 @@
         },
         {
           "id": "src/baselib/dirichlet.py#47ae783339cc5cbe-3cbc87c7681f34db",
-          "line": 1124,
+          "line": 1133,
           "source": "eps(3) * eps(7) == eps(21)",
           "want": "True\n",
           "tags": [],
@@ -21738,9 +21738,9 @@
         "name": "cardinality",
         "qualified": "Partitions_all.cardinality",
         "path": "src/baselib/combinat.py",
-        "line": 597,
+        "line": 605,
         "excerpt": {
-          "start_line": 585,
+          "start_line": 593,
           "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
@@ -26629,16 +26629,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 8716,
+        "line": 8717,
         "excerpt": {
-          "start_line": 8704,
+          "start_line": 8705,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 8727,
+          "line": 8728,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -26654,7 +26654,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 8728,
+          "line": 8729,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -26670,7 +26670,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 8730,
+          "line": 8731,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -28369,16 +28369,16 @@
         "name": "number_of_partitions",
         "qualified": "number_of_partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1301,
+        "line": 1310,
         "excerpt": {
-          "start_line": 1289,
+          "start_line": 1298,
           "text": "            _combinat_state.partitions_by_size[key] = Partitions_n(value)\n        return _combinat_state.partitions_by_size[key]\n    return Partitions_n(\n        value,\n        min_part,\n        max_part,\n        min_length,\n        max_length,\n        parts_in,\n    )\n\n\ndef number_of_partitions(size: Any) -> Any:\n    r\"\"\"\n    Return the number of partitions of a nonnegative integer.\n\n    The value comes from FLINT's exact Hardy-Ramanujan-Rademacher\n    implementation in production native and WebAssembly hosts.  A host that\n    explicitly lacks the declared capability retains Euler's exact pentagonal\n    recurrence; binding and execution failures are never hidden by fallback.\n\n    ### Input\n\n    - `size` -- a nonnegative integer\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
-          "line": 1317,
+          "line": 1326,
           "source": "number_of_partitions(10)",
           "want": "42\n",
           "tags": [],
@@ -28394,7 +28394,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
-          "line": 1319,
+          "line": 1328,
           "source": "number_of_partitions(100)",
           "want": "190569292\n",
           "tags": [],
@@ -28410,7 +28410,7 @@
         },
         {
           "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
-          "line": 1321,
+          "line": 1330,
           "source": "number_of_partitions(1000)",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -28426,7 +28426,7 @@
         },
         {
           "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
-          "line": 1323,
+          "line": 1332,
           "source": "number_of_partitions(4) == Partitions(4).cardinality()",
           "want": "True\n",
           "tags": [],
@@ -29023,7 +29023,7 @@
       "examples": [
         {
           "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
-          "line": 269,
+          "line": 277,
           "source": "Partition([3, 1])",
           "want": "[3, 1]\n",
           "tags": [],
@@ -29039,7 +29039,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
-          "line": 271,
+          "line": 279,
           "source": "Partition([3, 1]).size()",
           "want": "4\n",
           "tags": [],
@@ -29055,7 +29055,7 @@
         },
         {
           "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
-          "line": 273,
+          "line": 281,
           "source": "Partition([3, 1]).conjugate()",
           "want": "[2, 1, 1]\n",
           "tags": [],
@@ -29105,16 +29105,16 @@
         "name": "cells",
         "qualified": "Partition.cells",
         "path": "src/baselib/combinat.py",
-        "line": 415,
+        "line": 423,
         "excerpt": {
-          "start_line": 403,
+          "start_line": 411,
           "text": "        ```\n        \"\"\"\n        minimum = _partition_exact_integer(minimum_length, \"minimum_length\")\n        if minimum < 0:\n            raise ValueError(\"minimum_length must be nonnegative\")\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum else minimum\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
-          "line": 422,
+          "line": 430,
           "source": "Partition([2, 1]).cells()",
           "want": "[(0, 0), (0, 1), (1, 0)]\n",
           "tags": [],
@@ -29164,16 +29164,16 @@
         "name": "conjugate",
         "qualified": "Partition.conjugate",
         "path": "src/baselib/combinat.py",
-        "line": 363,
+        "line": 371,
         "excerpt": {
-          "start_line": 351,
+          "start_line": 359,
           "text": "        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n\n    def conjugate(self) -> Partition:\n        \"\"\"\n        Return the conjugate partition, the transpose of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).conjugate()\n            [3, 2, 1, 1]\n            sage: Partition([4, 2, 1]).conjugate().conjugate()\n            [4, 2, 1]\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
-          "line": 370,
+          "line": 378,
           "source": "Partition([4, 2, 1]).conjugate()",
           "want": "[3, 2, 1, 1]\n",
           "tags": [],
@@ -29189,7 +29189,7 @@
         },
         {
           "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
-          "line": 372,
+          "line": 380,
           "source": "Partition([4, 2, 1]).conjugate().conjugate()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -29239,16 +29239,16 @@
         "name": "dominates",
         "qualified": "Partition.dominates",
         "path": "src/baselib/combinat.py",
-        "line": 480,
+        "line": 488,
         "excerpt": {
-          "start_line": 468,
+          "start_line": 476,
           "text": "            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):\n            lengths = []\n            for column in range(self._entries[row]):\n                lengths.append(self.hook_length(row, column))\n            rows.append(lengths)\n        return rows\n\n    def dominates(self, other: Any) -> bool:\n        \"\"\"\n        Return whether `self` dominates `other` in the dominance order.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 1]).dominates([2, 2])\n            True\n            sage: Partition([2, 2]).dominates([3, 1])\n            False\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
-          "line": 487,
+          "line": 495,
           "source": "Partition([3, 1]).dominates([2, 2])",
           "want": "True\n",
           "tags": [],
@@ -29264,7 +29264,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
-          "line": 489,
+          "line": 497,
           "source": "Partition([2, 2]).dominates([3, 1])",
           "want": "False\n",
           "tags": [],
@@ -29314,16 +29314,16 @@
         "name": "ferrers_diagram",
         "qualified": "Partition.ferrers_diagram",
         "path": "src/baselib/combinat.py",
-        "line": 509,
+        "line": 517,
         "excerpt": {
-          "start_line": 497,
+          "start_line": 505,
           "text": "            width = len(entries)\n        left = 0\n        right = 0\n        for index in range(width):\n            if index < len(self._entries):\n                left += self._entries[index]\n            if index < len(entries):\n                right += entries[index]\n            if left < right:\n                return False\n        return True\n\n    def ferrers_diagram(self) -> str:\n        \"\"\"\n        Return the Ferrers diagram as text, one row of asterisks per part.\n\n        ### Examples\n\n        ```sage\n            sage: print(Partition([3, 1]).ferrers_diagram())\n            ***\n            *\n        ```\n        \"\"\"\n        return \"\\n\".join([\"*\" * part for part in self._entries])"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
-          "line": 516,
+          "line": 524,
           "source": "print(Partition([3, 1]).ferrers_diagram())",
           "want": "***\n*\n",
           "tags": [],
@@ -29373,16 +29373,16 @@
         "name": "hook_length",
         "qualified": "Partition.hook_length",
         "path": "src/baselib/combinat.py",
-        "line": 432,
+        "line": 440,
         "excerpt": {
-          "start_line": 420,
+          "start_line": 428,
           "text": "\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):\n            for column in range(self._entries[row]):\n                coordinates.append(runtime.math_tuple([row, column]))\n        return coordinates\n\n    def hook_length(self, row: int, column: int) -> int:\n        \"\"\"\n        Return the hook length of the cell in the given row and column.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_length(0, 0)\n            5\n            sage: Partition([3, 2, 1]).hook_length(1, 1)\n            1\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
-          "line": 439,
+          "line": 447,
           "source": "Partition([3, 2, 1]).hook_length(0, 0)",
           "want": "5\n",
           "tags": [],
@@ -29398,7 +29398,7 @@
         },
         {
           "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
-          "line": 441,
+          "line": 449,
           "source": "Partition([3, 2, 1]).hook_length(1, 1)",
           "want": "1\n",
           "tags": [],
@@ -29448,16 +29448,16 @@
         "name": "hook_lengths",
         "qualified": "Partition.hook_lengths",
         "path": "src/baselib/combinat.py",
-        "line": 461,
+        "line": 469,
         "excerpt": {
-          "start_line": 449,
+          "start_line": 457,
           "text": "            or index_row >= len(self._entries)\n            or index_column < 0\n            or index_column >= self._entries[index_row]\n        ):\n            raise IndexError(\"the cell is outside the Ferrers diagram\")\n        arm = self._entries[index_row] - index_column - 1\n        leg = 0\n        for part in self._entries[index_row + 1 :]:\n            if part > index_column:\n                leg += 1\n        return arm + leg + 1\n\n    def hook_lengths(self) -> list[list[int]]:\n        \"\"\"\n        Return the hook lengths of every cell, row by row.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
-          "line": 468,
+          "line": 476,
           "source": "Partition([3, 2, 1]).hook_lengths()",
           "want": "[[5, 3, 1], [3, 1], [1]]\n",
           "tags": [],
@@ -29507,16 +29507,16 @@
         "name": "length",
         "qualified": "Partition.length",
         "path": "src/baselib/combinat.py",
-        "line": 337,
+        "line": 345,
         "excerpt": {
-          "start_line": 325,
+          "start_line": 333,
           "text": "        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:\n            total += part\n        return total\n\n    def length(self) -> int:\n        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
-          "line": 344,
+          "line": 352,
           "source": "Partition([4, 2, 1]).length()",
           "want": "3\n",
           "tags": [],
@@ -29566,16 +29566,16 @@
         "name": "size",
         "qualified": "Partition.size",
         "path": "src/baselib/combinat.py",
-        "line": 321,
+        "line": 329,
         "excerpt": {
-          "start_line": 309,
+          "start_line": 317,
           "text": "    def __len__(self) -> int:\n        return len(self._entries)\n\n    def __iter__(self) -> Iterator[int]:\n        return iter(self._entries)\n\n    def __getitem__(self, index: Any) -> Any:\n        return self._entries[index]\n\n    def __contains__(self, part: object) -> bool:\n        return part in self._entries\n\n    def size(self) -> int:\n        \"\"\"\n        Return the integer partitioned by `self`.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
-          "line": 328,
+          "line": 336,
           "source": "Partition([4, 2, 1]).size()",
           "want": "7\n",
           "tags": [],
@@ -29625,16 +29625,16 @@
         "name": "to_exp",
         "qualified": "Partition.to_exp",
         "path": "src/baselib/combinat.py",
-        "line": 387,
+        "line": 395,
         "excerpt": {
-          "start_line": 375,
+          "start_line": 383,
           "text": "        \"\"\"\n        if not self._entries:\n            return Partition([], self._parent)\n        columns = []\n        for index in range(self._entries[0]):\n            height = 0\n            for part in self._entries:\n                if part > index:\n                    height += 1\n            columns.append(height)\n        return Partition(columns, self._parent)\n\n    def to_exp(self, minimum_length: int = 0) -> list[int]:\n        \"\"\"\n        Return part multiplicities, where entry `i` counts the parts equal to\n        `i + 1`.\n\n        ### Input\n\n        - `minimum_length` -- pad the result to at least this length\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 2, 1]).to_exp()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
-          "line": 399,
+          "line": 407,
           "source": "Partition([3, 2, 2, 1]).to_exp()",
           "want": "[1, 2, 1]\n",
           "tags": [],
@@ -29650,7 +29650,7 @@
         },
         {
           "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
-          "line": 401,
+          "line": 409,
           "source": "Partition([3, 2, 2, 1]).to_exp(5)",
           "want": "[1, 2, 1, 0, 0]\n",
           "tags": [],
@@ -29700,16 +29700,16 @@
         "name": "to_list",
         "qualified": "Partition.to_list",
         "path": "src/baselib/combinat.py",
-        "line": 350,
+        "line": 358,
         "excerpt": {
-          "start_line": 338,
+          "start_line": 346,
           "text": "        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n\n    def to_list(self) -> list[int]:\n        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
-          "line": 357,
+          "line": 365,
           "source": "Partition([4, 2, 1]).to_list()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -29815,16 +29815,16 @@
         "name": "Partitions",
         "qualified": "Partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1169,
+        "line": 1178,
         "excerpt": {
-          "start_line": 1157,
+          "start_line": 1166,
           "text": "    entries = []\n    if not isinstance(value, (list, tuple)):\n        raise TypeError(\"parts_in must be a list or tuple of positive integers\")\n    for part in value:\n        if not runtime.is_exact_integer(part):\n            raise TypeError(\"parts_in must contain integers\")\n        if int(part) <= 0:\n            raise ValueError(\"parts_in must contain positive integers\")\n        entries.append(int(part))\n    return entries\n\n\ndef Partitions(size: Any = None, **constraints: Any) -> Any:\n    r\"\"\"\n    Return the combinatorial class of partitions described by the arguments.\n\n    With no argument this is the class of all partitions of all nonnegative\n    integers.  With an integer argument it is the class of partitions of that\n    integer, optionally restricted by the supported keyword constraints.\n\n    ### Input\n\n    - `size` -- optional nonnegative integer to partition\n    - `min_part` -- smallest allowed part\n    - `max_part` -- largest allowed part"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
-          "line": 1190,
+          "line": 1199,
           "source": "Partitions(4).list()",
           "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
           "tags": [],
@@ -29840,7 +29840,7 @@
         },
         {
           "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
-          "line": 1192,
+          "line": 1201,
           "source": "Partitions(5, max_part=3).list()",
           "want": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -29856,7 +29856,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
-          "line": 1194,
+          "line": 1203,
           "source": "Partitions(5, length=2).list()",
           "want": "[[4, 1], [3, 2]]\n",
           "tags": [],
@@ -29872,7 +29872,7 @@
         },
         {
           "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
-          "line": 1196,
+          "line": 1205,
           "source": "Partitions(5, min_part=2).list()",
           "want": "[[5], [3, 2]]\n",
           "tags": [],
@@ -29888,7 +29888,7 @@
         },
         {
           "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
-          "line": 1198,
+          "line": 1207,
           "source": "Partitions(5, parts_in=[1, 2]).list()",
           "want": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -29904,7 +29904,7 @@
         },
         {
           "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
-          "line": 1205,
+          "line": 1214,
           "source": "Partitions(1000).cardinality()",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -29954,16 +29954,16 @@
         "name": "cardinality",
         "qualified": "Partitions_all.cardinality",
         "path": "src/baselib/combinat.py",
-        "line": 597,
+        "line": 605,
         "excerpt": {
-          "start_line": 585,
+          "start_line": 593,
           "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
-          "line": 922,
+          "line": 930,
           "source": "Partitions(4).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -29979,7 +29979,7 @@
         },
         {
           "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
-          "line": 924,
+          "line": 932,
           "source": "Partitions(100).cardinality()",
           "want": "190569292\n",
           "tags": [],
@@ -29995,7 +29995,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
-          "line": 926,
+          "line": 934,
           "source": "Partitions(5, max_part=3).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -30045,16 +30045,16 @@
         "name": "first",
         "qualified": "Partitions_all.first",
         "path": "src/baselib/combinat.py",
-        "line": 620,
+        "line": 628,
         "excerpt": {
-          "start_line": 608,
-          "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(entries)\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
+          "start_line": 616,
+          "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(_partition_strip_zeros(entries))\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
-          "line": 988,
+          "line": 997,
           "source": "Partitions(5).first()",
           "want": "[5]\n",
           "tags": [],
@@ -30104,16 +30104,16 @@
         "name": "last",
         "qualified": "Partitions_n.last",
         "path": "src/baselib/combinat.py",
-        "line": 994,
+        "line": 1003,
         "excerpt": {
-          "start_line": 982,
+          "start_line": 991,
           "text": "        \"\"\"\n        Return the first partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).first()\n            [5]\n        ```\n        \"\"\"\n        return self.unrank(0)\n\n    def last(self) -> Partition:\n        \"\"\"\n        Return the last partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).last()\n            [1, 1, 1, 1, 1]\n        ```\n        \"\"\"\n        count = self._count(\n            self._size,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
-          "line": 1001,
+          "line": 1010,
           "source": "Partitions(5).last()",
           "want": "[1, 1, 1, 1, 1]\n",
           "tags": [],
@@ -30163,16 +30163,16 @@
         "name": "list",
         "qualified": "_PartitionsBase.list",
         "path": "src/baselib/combinat.py",
-        "line": 558,
+        "line": 566,
         "excerpt": {
-          "start_line": 546,
+          "start_line": 554,
           "text": "    def __iter__(self) -> Iterator[Partition]:\n        raise NotImplementedError(\"enumeration is defined by each partition class\")\n\n    def __call__(self, entries: Any = None) -> Partition:\n        if entries is None:\n            raise TypeError(\"a partition is built from a list or tuple of parts\")\n        candidate = _partition_entries(entries)\n        _partition_validate(candidate)\n        if candidate not in self:\n            raise ValueError(\"the partition is not a member of \" + repr(self))\n        return self._element(candidate)\n\n    def list(self) -> list[Partition]:\n        \"\"\"\n        Return every member of a finite combinatorial class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(3).list()\n            [[3], [2, 1], [1, 1, 1]]\n        ```\n        \"\"\"\n        return [entry for entry in self]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
-          "line": 565,
+          "line": 573,
           "source": "Partitions(3).list()",
           "want": "[[3], [2, 1], [1, 1, 1]]\n",
           "tags": [],
@@ -30222,16 +30222,16 @@
         "name": "random_element",
         "qualified": "Partitions_n.random_element",
         "path": "src/baselib/combinat.py",
-        "line": 1115,
+        "line": 1124,
         "excerpt": {
-          "start_line": 1103,
+          "start_line": 1112,
           "text": "                            remaining - first,\n                            first,\n                            min_length - 1,\n                            max_length - 1,\n                        ),\n                    )\n            remaining -= part\n            max_part = part\n            min_length -= 1\n            max_length -= 1\n        return runtime.normalize_integer(position)\n\n    def random_element(self) -> Partition:\n        \"\"\"\n        Return a uniformly random member of this class.\n\n        The part sizes are chosen one at a time with probability proportional\n        to the exact number of completions, so every partition is equally\n        likely without enumerating the class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(6).random_element() in Partitions(6)\n            True"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
-          "line": 1126,
+          "line": 1135,
           "source": "Partitions(6).random_element() in Partitions(6)",
           "want": "True\n",
           "tags": [],
@@ -30247,7 +30247,7 @@
         },
         {
           "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
-          "line": 1128,
+          "line": 1137,
           "source": "Partitions(6, max_part=2).random_element().to_list()[0] <= 2",
           "want": "True\n",
           "tags": [],
@@ -30297,16 +30297,16 @@
         "name": "rank",
         "qualified": "Partitions_all.rank",
         "path": "src/baselib/combinat.py",
-        "line": 647,
+        "line": 655,
         "excerpt": {
-          "start_line": 635,
+          "start_line": 643,
           "text": "        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
-          "line": 654,
+          "line": 662,
           "source": "Partitions().rank([2, 1])",
           "want": "5\n",
           "tags": [],
@@ -30322,7 +30322,7 @@
         },
         {
           "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
-          "line": 1082,
+          "line": 1091,
           "source": "Partitions(5).rank([3, 1, 1])",
           "want": "3\n",
           "tags": [],
@@ -30338,7 +30338,7 @@
         },
         {
           "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
-          "line": 1084,
+          "line": 1093,
           "source": "Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))",
           "want": "[2, 2, 1]\n",
           "tags": [],
@@ -30388,16 +30388,16 @@
         "name": "unrank",
         "qualified": "Partitions_all.unrank",
         "path": "src/baselib/combinat.py",
-        "line": 624,
+        "line": 632,
         "excerpt": {
-          "start_line": 612,
+          "start_line": 620,
           "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
-          "line": 631,
+          "line": 639,
           "source": "[Partitions().unrank(index) for index in range(5)]",
           "want": "[[], [1], [2], [1, 1], [3]]\n",
           "tags": [],
@@ -30413,7 +30413,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
-          "line": 1054,
+          "line": 1063,
           "source": "Partitions(5).unrank(0)",
           "want": "[5]\n",
           "tags": [],
@@ -30429,7 +30429,7 @@
         },
         {
           "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
-          "line": 1056,
+          "line": 1065,
           "source": "Partitions(5).unrank(3)",
           "want": "[3, 1, 1]\n",
           "tags": [],
@@ -31819,16 +31819,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6227,
+        "line": 6258,
         "excerpt": {
-          "start_line": 6215,
+          "start_line": 6246,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6238,
+          "line": 6269,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -31844,7 +31844,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6240,
+          "line": 6271,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -31860,7 +31860,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6242,
+          "line": 6273,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -32120,9 +32120,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 7986,
+        "line": 8016,
         "excerpt": {
-          "start_line": 7974,
+          "start_line": 8004,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -32247,16 +32247,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9588,
+        "line": 9589,
         "excerpt": {
-          "start_line": 9576,
+          "start_line": 9577,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9612,
+          "line": 9613,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -32272,7 +32272,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9613,
+          "line": 9614,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -32288,7 +32288,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9615,
+          "line": 9616,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -33097,16 +33097,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 8822,
+        "line": 8823,
         "excerpt": {
-          "start_line": 8810,
+          "start_line": 8811,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 8833,
+          "line": 8834,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -33122,7 +33122,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 8839,
+          "line": 8840,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
