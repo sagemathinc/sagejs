@@ -21,25 +21,25 @@ from sagejs.number_fields.embeddings import (
 )
 from sagejs.number_fields.units import UnitSubgroupResult
 
-CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA = (
-    "sagejs.number-fields/cubic-minkowski-principal-factor-base-v1"
+MINKOWSKI_PRINCIPAL_FACTOR_BASE_CERTIFICATE_SCHEMA = (
+    "sagejs.number-fields/minkowski-principal-factor-base-v2"
 )
-DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND = 64
-DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES = 64
-DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS = 64
-DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES = 16 * 1024 * 1024
-DEFAULT_CUBIC_MINKOWSKI_MAX_REDUCTION_CANDIDATES = 16
-_CUBIC_MINKOWSKI_REPLAY_MAX_BOUND = 4096
-_CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES = 4096
-_CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS = 4096
-_CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES = 64 * 1024 * 1024
-_CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES = 65536
-_CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE = 4096
-_CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH = 64
-_CUBIC_MINKOWSKI_REPLAY_MAX_NODES = 100000
-_CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES = 65536
-_CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES = 16 * 1024 * 1024
-_CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS = 16384
+DEFAULT_MINKOWSKI_MAX_BOUND = 64
+DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES = 64
+DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS = 64
+DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES = 16 * 1024 * 1024
+DEFAULT_MINKOWSKI_MAX_REDUCTION_CANDIDATES = 16
+_MINKOWSKI_REPLAY_MAX_BOUND = 4096
+_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES = 4096
+_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS = 4096
+_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES = 64 * 1024 * 1024
+_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES = 65536
+_MINKOWSKI_REPLAY_MAX_EVIDENCE = 4096
+_MINKOWSKI_REPLAY_MAX_DEPTH = 64
+_MINKOWSKI_REPLAY_MAX_NODES = 100000
+_MINKOWSKI_REPLAY_MAX_STRING_BYTES = 65536
+_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES = 16 * 1024 * 1024
+_MINKOWSKI_REPLAY_MAX_INTEGER_BITS = 16384
 
 
 def _canonical_json(value: Any) -> str:
@@ -59,21 +59,21 @@ def _positive_integer(value: Any, name: str) -> int:
     return answer
 
 
-def _cubic_minkowski_payload_within_caps(value: Any) -> bool:
+def _minkowski_payload_within_caps(value: Any) -> bool:
     state = {"nodes": 0, "string_bytes": 0}
 
     def visit(node: Any, depth: int) -> bool:
-        if depth > _CUBIC_MINKOWSKI_REPLAY_MAX_DEPTH:
+        if depth > _MINKOWSKI_REPLAY_MAX_DEPTH:
             return False
         state["nodes"] += 1
-        if state["nodes"] > _CUBIC_MINKOWSKI_REPLAY_MAX_NODES:
+        if state["nodes"] > _MINKOWSKI_REPLAY_MAX_NODES:
             return False
         if node is None or isinstance(node, bool):
             return True
         if isinstance(node, int):
-            return abs(node).bit_length() <= _CUBIC_MINKOWSKI_REPLAY_MAX_INTEGER_BITS
+            return abs(node).bit_length() <= _MINKOWSKI_REPLAY_MAX_INTEGER_BITS
         if isinstance(node, str):
-            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+            if len(node) > _MINKOWSKI_REPLAY_MAX_STRING_BYTES:
                 return False
             try:
                 if any(0xD800 <= ord(character) <= 0xDFFF for character in node):
@@ -81,18 +81,16 @@ def _cubic_minkowski_payload_within_caps(value: Any) -> bool:
                 size = len(node.encode("utf-8"))
             except (TypeError, ValueError, UnicodeError):
                 return False
-            if size > _CUBIC_MINKOWSKI_REPLAY_MAX_STRING_BYTES:
+            if size > _MINKOWSKI_REPLAY_MAX_STRING_BYTES:
                 return False
             state["string_bytes"] += size
-            return (
-                state["string_bytes"] <= _CUBIC_MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES
-            )
+            return state["string_bytes"] <= _MINKOWSKI_REPLAY_MAX_TOTAL_STRING_BYTES
         if isinstance(node, list):
-            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+            if len(node) > _MINKOWSKI_REPLAY_MAX_EVIDENCE:
                 return False
             return all(visit(item, depth + 1) for item in node)
         if isinstance(node, dict):
-            if len(node) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE:
+            if len(node) > _MINKOWSKI_REPLAY_MAX_EVIDENCE:
                 return False
             for key, item in node.items():
                 if not isinstance(key, str) or not visit(key, depth + 1):
@@ -105,7 +103,7 @@ def _cubic_minkowski_payload_within_caps(value: Any) -> bool:
     return visit(value, 0)
 
 
-def _validate_cubic_minkowski_replay_limits(
+def _validate_minkowski_replay_limits(
     plan: Any,
     factor_base: Any,
     witnesses: Any,
@@ -120,23 +118,23 @@ def _validate_cubic_minkowski_replay_limits(
     ):
         raise TypeError("Minkowski certificate evidence must use lists")
     if any(
-        len(value) > _CUBIC_MINKOWSKI_REPLAY_MAX_EVIDENCE
+        len(value) > _MINKOWSKI_REPLAY_MAX_EVIDENCE
         for value in (factor_base, witnesses, candidates_checked)
     ):
         raise ValueError("Minkowski certificate evidence exceeds replay limits")
     reduction_cap = _positive_integer(
         maximum_reduction_candidates, "maximum reduction candidates"
     )
-    if reduction_cap > _CUBIC_MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES:
+    if reduction_cap > _MINKOWSKI_REPLAY_MAX_REDUCTION_CANDIDATES:
         raise ValueError("Minkowski reduction cap exceeds the replay limit")
     caps = plan.get("caps")
     if not isinstance(caps, dict):
         raise TypeError("a Minkowski certificate plan must contain exact caps")
     replay_caps = (
-        ("max_bound", _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND),
-        ("max_rational_primes", _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES),
-        ("max_prime_ideals", _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
-        ("max_memory_bytes", _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
+        ("max_bound", _MINKOWSKI_REPLAY_MAX_BOUND),
+        ("max_rational_primes", _MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES),
+        ("max_prime_ideals", _MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
+        ("max_memory_bytes", _MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
     )
     for name, limit in replay_caps:
         if _positive_integer(caps.get(name), name.replace("_", " ")) > limit:
@@ -148,7 +146,7 @@ def _validate_cubic_minkowski_replay_limits(
         "candidates_checked": candidates_checked,
         "maximum_reduction_candidates": maximum_reduction_candidates,
     }
-    if not _cubic_minkowski_payload_within_caps(tree):
+    if not _minkowski_payload_within_caps(tree):
         raise ValueError("Minkowski certificate payload exceeds replay limits")
 
 
@@ -296,9 +294,11 @@ class MinkowskiPrincipalFactorBaseCertificate:
         candidates_checked: list[int],
         maximum_reduction_candidates: int,
     ) -> None:
-        if field.degree() != 3:
-            raise ValueError("the bounded Minkowski certificate requires a cubic")
-        _validate_cubic_minkowski_replay_limits(
+        if field.degree() not in (3, 4):
+            raise ValueError(
+                "the bounded Minkowski certificate requires degree three or four"
+            )
+        _validate_minkowski_replay_limits(
             plan,
             factor_base,
             witnesses,
@@ -358,7 +358,7 @@ class MinkowskiPrincipalFactorBaseCertificate:
 
     def _body_dict(self) -> dict[str, Any]:
         return {
-            "schema": CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA,
+            "schema": MINKOWSKI_PRINCIPAL_FACTOR_BASE_CERTIFICATE_SCHEMA,
             "plan": self.plan,
             "factor_base": self.factor_base,
             "witnesses": self.witnesses,
@@ -431,7 +431,7 @@ class MinkowskiPrincipalFactorBaseCertificate:
     ) -> MinkowskiPrincipalFactorBaseCertificate:
         if not isinstance(payload, dict):
             raise TypeError("a Minkowski certificate must be a dictionary")
-        if not _cubic_minkowski_payload_within_caps(payload):
+        if not _minkowski_payload_within_caps(payload):
             raise ValueError("Minkowski certificate payload exceeds replay limits")
         expected_keys = {
             "schema",
@@ -445,8 +445,8 @@ class MinkowskiPrincipalFactorBaseCertificate:
         }
         if set(payload) != expected_keys:
             raise ValueError("a Minkowski certificate has unexpected fields")
-        if payload.get("schema") != CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA:
-            raise ValueError("unsupported cubic Minkowski certificate schema")
+        if payload.get("schema") != MINKOWSKI_PRINCIPAL_FACTOR_BASE_CERTIFICATE_SCHEMA:
+            raise ValueError("unsupported Minkowski certificate schema")
         content_hash = payload.get("content_sha256")
         if (
             not isinstance(content_hash, str)
@@ -725,25 +725,28 @@ class ClassGroupSearchResult:
         return "Incomplete class-group search (" + self.reason + ")"
 
 
-def bounded_cubic_minkowski_class_number_one(
+def bounded_minkowski_class_number_one(
     field: Any,
     *,
-    max_bound: int = DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
-    max_rational_primes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
-    max_prime_ideals: int = DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
-    max_memory_bytes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
-    max_reduction_candidates: int = (DEFAULT_CUBIC_MINKOWSKI_MAX_REDUCTION_CANDIDATES),
+    max_bound: int = DEFAULT_MINKOWSKI_MAX_BOUND,
+    max_rational_primes: int = DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    max_prime_ideals: int = DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    max_memory_bytes: int = DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
+    max_reduction_candidates: int = DEFAULT_MINKOWSKI_MAX_REDUCTION_CANDIDATES,
 ) -> ClassGroupSearchResult:
-    """Prove a cubic class number is one within explicit exact work caps.
+    """Prove a cubic or quartic class number is one within exact work caps.
 
-    This producer never recognizes a defining polynomial.  It constructs the
-    complete unconditional Minkowski factor base, then asks the resumable
-    exact ideal reducer for a principal generator of every prime in that base.
-    Failing to find a generator within the bound is an incomplete result, not
-    evidence that a prime or class is nonprincipal.
+    This producer is selected by degree and resource band, never by defining
+    polynomial.  It constructs the complete unconditional Minkowski factor
+    base, then asks the resumable exact ideal reducer for a principal generator
+    of every prime in that base.  Failing to find a generator within the bound
+    is an incomplete result, not evidence that a prime or class is
+    nonprincipal.
     """
-    if field.degree() != 3:
-        raise ValueError("the bounded Minkowski fast path requires a cubic field")
+    if field.degree() not in (3, 4):
+        raise ValueError(
+            "the bounded Minkowski fast path requires degree three or four"
+        )
     max_bound = _positive_integer(max_bound, "maximum factor-base bound")
     max_rational_primes = _positive_integer(
         max_rational_primes, "maximum rational primes"
@@ -773,7 +776,7 @@ def bounded_cubic_minkowski_class_number_one(
         return ClassGroupSearchResult(
             field,
             False,
-            "bounded cubic Minkowski factor base is unavailable: " + str(error),
+            "bounded Minkowski factor base is unavailable: " + str(error),
             int(plan.bound),
         )
     relations = __import__(
@@ -806,9 +809,7 @@ def bounded_cubic_minkowski_class_number_one(
             row != ()
             or witness.principal_ideal(field.maximal_order()) != record.prime_ideal
         ):
-            raise ArithmeticError(
-                "a cubic Minkowski principal witness failed exact replay"
-            )
+            raise ArithmeticError("a Minkowski principal witness failed exact replay")
         witness_payloads.append(witness.to_dict())
         candidates_checked.append(checked[0])
     arithmetic = MinkowskiPrincipalFactorBaseCertificate(
@@ -819,8 +820,6 @@ def bounded_cubic_minkowski_class_number_one(
         candidates_checked=candidates_checked,
         maximum_reduction_candidates=max_reduction_candidates,
     )
-    if not arithmetic.verify():
-        raise ArithmeticError("cubic Minkowski certificate replay failed")
     group = _TrivialClassGroup()
     certificate = ClassGroupCertificate(
         group,
@@ -831,8 +830,12 @@ def bounded_cubic_minkowski_class_number_one(
         "minkowski-principal-factor-base",
         arithmetic,
     )
+    # This is the single independent issuance replay.  ClassGroupCertificate
+    # verifies the complete arithmetic certificate before checking the trivial
+    # presentation; replaying `arithmetic` separately immediately beforehand
+    # would reconstruct the same factor base and principal ideals twice.
     if not certificate.verify(max_elements=1):
-        raise ArithmeticError("cubic class-number-one proof replay failed")
+        raise ArithmeticError("class-number-one proof replay failed")
     return ClassGroupSearchResult(
         field,
         True,
@@ -840,6 +843,28 @@ def bounded_cubic_minkowski_class_number_one(
         int(plan.bound),
         group,
         certificate,
+    )
+
+
+def bounded_cubic_minkowski_class_number_one(
+    field: Any,
+    *,
+    max_bound: int = DEFAULT_MINKOWSKI_MAX_BOUND,
+    max_rational_primes: int = DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    max_prime_ideals: int = DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    max_memory_bytes: int = DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
+    max_reduction_candidates: int = DEFAULT_MINKOWSKI_MAX_REDUCTION_CANDIDATES,
+) -> ClassGroupSearchResult:
+    """Prove a cubic class number is one within explicit exact work caps."""
+    if field.degree() != 3:
+        raise ValueError("the bounded cubic Minkowski path requires a cubic field")
+    return bounded_minkowski_class_number_one(
+        field,
+        max_bound=max_bound,
+        max_rational_primes=max_rational_primes,
+        max_prime_ideals=max_prime_ideals,
+        max_memory_bytes=max_memory_bytes,
+        max_reduction_candidates=max_reduction_candidates,
     )
 
 
@@ -953,6 +978,8 @@ def bounded_class_group(
             group,
             certificate,
         )
+    if field.degree() == 4:
+        return bounded_minkowski_class_number_one(field)
     if field.degree() == 3:
         key = tuple(
             (int(value._numerator), int(value._denominator))
@@ -1085,14 +1112,15 @@ def analytic_class_number_formula_report(
 
 __all__ = [
     "AnalyticClassNumberFormulaReport",
-    "CUBIC_MINKOWSKI_CERTIFICATE_SCHEMA",
     "ClassGroupCertificate",
     "ClassGroupSearchResult",
+    "MINKOWSKI_PRINCIPAL_FACTOR_BASE_CERTIFICATE_SCHEMA",
     "MinkowskiClassNumberOneCertificate",
     "MinkowskiPrincipalFactorBaseCertificate",
     "PrincipalIdealWitness",
     "analytic_class_number_formula_report",
     "bounded_class_group",
     "bounded_cubic_minkowski_class_number_one",
+    "bounded_minkowski_class_number_one",
     "certified_small_cubic_class_group",
 ]

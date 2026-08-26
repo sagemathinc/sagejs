@@ -10,17 +10,17 @@ from typing import Any, Callable, Iterable
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.number_fields.class_groups import (
-    _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS,
-    _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
-    DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    _MINKOWSKI_REPLAY_MAX_BOUND,
+    _MINKOWSKI_REPLAY_MAX_MEMORY_BYTES,
+    _MINKOWSKI_REPLAY_MAX_PRIME_IDEALS,
+    _MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
+    DEFAULT_MINKOWSKI_MAX_BOUND,
+    DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
+    DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
     _canonical_json,
     _content_hash,
-    _cubic_minkowski_payload_within_caps,
+    _minkowski_payload_within_caps,
     _positive_integer,
 )
 
@@ -2349,7 +2349,7 @@ class CubicMinkowskiClassNumberCertificate:
         # memory caps at their individual construction boundaries.
         if (
             _live_token is not _LIVE_CUBIC_CERTIFICATE_TOKEN
-            and not _cubic_minkowski_payload_within_caps(tree)
+            and not _minkowski_payload_within_caps(tree)
         ):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         self.field = field
@@ -2518,13 +2518,13 @@ class CubicMinkowskiClassNumberCertificate:
             stored_plan = self.plan
             plan_caps = stored_plan["caps"]
             for name, limit in (
-                ("max_bound", _CUBIC_MINKOWSKI_REPLAY_MAX_BOUND),
+                ("max_bound", _MINKOWSKI_REPLAY_MAX_BOUND),
                 (
                     "max_rational_primes",
-                    _CUBIC_MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
+                    _MINKOWSKI_REPLAY_MAX_RATIONAL_PRIMES,
                 ),
-                ("max_prime_ideals", _CUBIC_MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
-                ("max_memory_bytes", _CUBIC_MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
+                ("max_prime_ideals", _MINKOWSKI_REPLAY_MAX_PRIME_IDEALS),
+                ("max_memory_bytes", _MINKOWSKI_REPLAY_MAX_MEMORY_BYTES),
             ):
                 if _positive_integer(plan_caps[name], name.replace("_", " ")) > limit:
                     return False
@@ -2641,7 +2641,7 @@ class CubicMinkowskiClassNumberCertificate:
     ) -> CubicMinkowskiClassNumberCertificate:
         if not isinstance(payload, dict):
             raise TypeError("a cubic class-number certificate must be a dictionary")
-        if not _cubic_minkowski_payload_within_caps(payload):
+        if not _minkowski_payload_within_caps(payload):
             raise ValueError("cubic class-number evidence exceeds replay limits")
         expected = {
             "schema",
@@ -3894,10 +3894,10 @@ def _complete_zero_width_cubic_class_number(
 def bounded_cubic_minkowski_class_number(
     field: Any,
     *,
-    max_bound: int = DEFAULT_CUBIC_MINKOWSKI_MAX_BOUND,
-    max_rational_primes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_RATIONAL_PRIMES,
-    max_prime_ideals: int = DEFAULT_CUBIC_MINKOWSKI_MAX_PRIME_IDEALS,
-    max_memory_bytes: int = DEFAULT_CUBIC_MINKOWSKI_MAX_MEMORY_BYTES,
+    max_bound: int = DEFAULT_MINKOWSKI_MAX_BOUND,
+    max_rational_primes: int = DEFAULT_MINKOWSKI_MAX_RATIONAL_PRIMES,
+    max_prime_ideals: int = DEFAULT_MINKOWSKI_MAX_PRIME_IDEALS,
+    max_memory_bytes: int = DEFAULT_MINKOWSKI_MAX_MEMORY_BYTES,
     max_relation_attempts: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATION_ATTEMPTS,
     max_relations: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_RELATIONS,
     max_candidates_per_ideal: int = DEFAULT_CUBIC_CLASS_NUMBER_MAX_CANDIDATES_PER_IDEAL,
