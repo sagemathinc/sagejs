@@ -250,17 +250,34 @@ export function createAlgebraicBackend(instance, {
     wasm.sagejs_wasm_algebraic_root_multiplicities() >>> 0;
   const matrixEntryHandlesPointer =
     wasm.sagejs_wasm_algebraic_matrix_entry_handles() >>> 0;
-  const liveObjects = new WeakSet();
-  const liveMatrices = new WeakSet();
+  // A synchronous Python evaluation can abandon arbitrarily many immutable
+  // QQbar values and matrices before JavaScript is allowed to run finalizers.
+  // Preserve exact serialized values in the host and bound reactor handles by
+  // deterministic LRU eviction.  Finalizers remain only a last-resort cleanup
+  // path for handles still present in the cache.
+  const maximumCachedValues = 256;
+  const maximumCachedMatrices = 32;
+  const liveObjects = new WeakMap();
+  const liveMatrices = new WeakMap();
+  const activeValues = new Set();
+  const activeMatrices = new Set();
   const finalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
-    : new FinalizationRegistry((handle) => {
-        wasm.sagejs_wasm_algebraic_close(handle);
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          wasm.sagejs_wasm_algebraic_close(state.handle);
+          activeValues.delete(state);
+          state.handle = 0;
+        }
       });
   const matrixFinalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
-    : new FinalizationRegistry((handle) => {
-        wasm.sagejs_wasm_algebraic_matrix_close(handle);
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          wasm.sagejs_wasm_algebraic_matrix_close(state.handle);
+          activeMatrices.delete(state);
+          state.handle = 0;
+        }
       });
 
   function check(status, operation) {
@@ -284,39 +301,212 @@ export function createAlgebraicBackend(instance, {
     );
   }
 
+  function touch(active, state) {
+    active.delete(state);
+    active.add(state);
+  }
+
+  function closeValueHandle(state, operation = "qqbar cache eviction") {
+    if (state.handle === 0) return;
+    check(wasm.sagejs_wasm_algebraic_close(state.handle), operation);
+    activeValues.delete(state);
+    state.handle = 0;
+  }
+
+  function snapshotValue(state) {
+    if (state.handle === 0) return;
+    check(
+      wasm.sagejs_wasm_algebraic_serialize(state.handle),
+      "qqbar cache snapshot",
+    );
+    state.snapshot = outputBytes();
+    closeValueHandle(state);
+  }
+
+  function pruneValues(protectedStates = new Set()) {
+    while (activeValues.size > maximumCachedValues) {
+      let victim;
+      for (const candidate of activeValues) {
+        if (!protectedStates.has(candidate)) {
+          victim = candidate;
+          break;
+        }
+      }
+      if (victim === undefined) {
+        return;
+      }
+      snapshotValue(victim);
+    }
+  }
+
+  function hydrateValue(state, protectedStates) {
+    if (state.handle !== 0) {
+      touch(activeValues, state);
+      return;
+    }
+    if (!(state.snapshot instanceof Uint8Array)) {
+      throw new TypeError("expected a live Wasm algebraic number");
+    }
+    const length = writeInput(state.snapshot, "qqbar cache restore");
+    check(
+      wasm.sagejs_wasm_algebraic_deserialize(length),
+      "qqbar cache restore",
+    );
+    state.handle = wasm.sagejs_wasm_algebraic_result_handle() >>> 0;
+    activeValues.add(state);
+    pruneValues(protectedStates);
+  }
+
   function native(handle) {
     const object = Object.create(null);
-    Object.defineProperty(object, "handle", { value: handle >>> 0 });
-    liveObjects.add(object);
-    finalizer?.register(object, handle >>> 0, object);
+    const state = { handle: handle >>> 0, snapshot: undefined };
+    liveObjects.set(object, state);
+    activeValues.add(state);
+    finalizer?.register(object, state, object);
+    pruneValues(new Set([state]));
     return Object.freeze(object);
   }
 
-  function handleOf(value) {
-    if (!value || !liveObjects.has(value)) {
+  function statesOf(values) {
+    const states = values.map((value) => liveObjects.get(value));
+    if (states.some((state) => state === undefined)) {
       throw new TypeError("expected a live Wasm algebraic number");
     }
-    return value.handle;
+    const protectedStates = new Set(states);
+    for (const state of states) hydrateValue(state, protectedStates);
+    return states;
+  }
+
+  function handleOf(value) {
+    return statesOf([value])[0].handle;
   }
 
   function nativeMatrix(handle, rows, columns, realOnly) {
     const object = Object.create(null);
     Object.defineProperties(object, {
-      handle: { value: handle >>> 0 },
       rows: { value: rows },
       columns: { value: columns },
       realOnly: { value: realOnly },
     });
-    liveMatrices.add(object);
-    matrixFinalizer?.register(object, handle >>> 0, object);
+    const state = {
+      handle: handle >>> 0,
+      rows,
+      columns,
+      realOnly,
+      snapshot: undefined,
+    };
+    liveMatrices.set(object, state);
+    activeMatrices.add(state);
+    matrixFinalizer?.register(object, state, object);
+    pruneMatrices(new Set([state]));
     return Object.freeze(object);
   }
 
   function matrixHandleOf(value) {
-    if (!value || !liveMatrices.has(value)) {
+    const state = liveMatrices.get(value);
+    if (state === undefined) {
       throw new TypeError("expected a live Wasm algebraic matrix");
     }
-    return value.handle;
+    hydrateMatrix(state, new Set([state]));
+    return state.handle;
+  }
+
+  function closeMatrixHandle(state, operation = "qqbar matrix cache eviction") {
+    if (state.handle === 0) return;
+    check(wasm.sagejs_wasm_algebraic_matrix_close(state.handle), operation);
+    activeMatrices.delete(state);
+    state.handle = 0;
+  }
+
+  function snapshotMatrix(state) {
+    if (state.handle === 0) return;
+    const entries = [];
+    for (let row = 0; row < state.rows; row += 1) {
+      for (let column = 0; column < state.columns; column += 1) {
+        check(
+          wasm.sagejs_wasm_algebraic_matrix_entry(
+            state.handle, row, column,
+          ),
+          "qqbar matrix cache entry",
+        );
+        const entryHandle = wasm.sagejs_wasm_algebraic_result_handle() >>> 0;
+        try {
+          check(
+            wasm.sagejs_wasm_algebraic_serialize(entryHandle),
+            "qqbar matrix cache snapshot",
+          );
+          entries.push(outputBytes());
+        } finally {
+          check(
+            wasm.sagejs_wasm_algebraic_close(entryHandle),
+            "qqbar matrix cache entry close",
+          );
+        }
+      }
+    }
+    state.snapshot = Object.freeze(entries);
+    closeMatrixHandle(state);
+  }
+
+  function pruneMatrices(protectedStates = new Set()) {
+    while (activeMatrices.size > maximumCachedMatrices) {
+      let victim;
+      for (const candidate of activeMatrices) {
+        if (!protectedStates.has(candidate)) {
+          victim = candidate;
+          break;
+        }
+      }
+      if (victim === undefined) {
+        return;
+      }
+      snapshotMatrix(victim);
+    }
+  }
+
+  function hydrateMatrix(state, protectedStates) {
+    if (state.handle !== 0) {
+      touch(activeMatrices, state);
+      return;
+    }
+    if (!Array.isArray(state.snapshot)) {
+      throw new TypeError("expected a live Wasm algebraic matrix");
+    }
+    const handles = [];
+    try {
+      for (const entry of state.snapshot) {
+        const length = writeInput(entry, "qqbar matrix cache restore");
+        check(
+          wasm.sagejs_wasm_algebraic_deserialize(length),
+          "qqbar matrix cache restore",
+        );
+        handles.push(wasm.sagejs_wasm_algebraic_result_handle() >>> 0);
+      }
+      new Uint32Array(
+        memory.buffer,
+        matrixEntryHandlesPointer,
+        handles.length,
+      ).set(handles);
+      check(
+        wasm.sagejs_wasm_algebraic_matrix_create(
+          state.rows,
+          state.columns,
+          handles.length,
+          state.realOnly ? 1 : 0,
+        ),
+        "qqbar matrix cache restore",
+      );
+      state.handle = wasm.sagejs_wasm_algebraic_result_handle() >>> 0;
+    } finally {
+      for (const handle of handles.reverse()) {
+        check(
+          wasm.sagejs_wasm_algebraic_close(handle),
+          "qqbar matrix cache restore entry close",
+        );
+      }
+    }
+    activeMatrices.add(state);
+    pruneMatrices(protectedStates);
   }
 
   function fallbackMatrix(name, arguments_) {
@@ -587,29 +777,34 @@ export function createAlgebraicBackend(instance, {
       columns = Number(columns);
       if (!Number.isInteger(rows) || !Number.isInteger(columns) ||
           rows < 0 || columns < 0 || rows > 128 || columns > 128 ||
-          rows * columns > 4096) {
+          rows * columns > 4095) {
         throw new RangeError("algebraic matrix dimensions exceed browser limits");
       }
       if (!Array.isArray(entries) || entries.length !== rows * columns) {
         throw new RangeError("algebraic matrix entry count does not match dimensions");
       }
-      const handles = entries.map(handleOf);
-      new Uint32Array(
-        memory.buffer,
-        matrixEntryHandlesPointer,
-        handles.length,
-      ).set(handles);
-      const status = wasm.sagejs_wasm_algebraic_matrix_create(
-        rows, columns, handles.length, realOnly ? 1 : 0,
-      );
-      check(status, "qqbar matrix construction");
-      recordMatrix("construct", handles.length * 4);
-      return nativeMatrix(
-        wasm.sagejs_wasm_algebraic_result_handle() >>> 0,
-        rows,
-        columns,
-        Boolean(realOnly),
-      );
+      const states = statesOf(entries);
+      const handles = states.map((state) => state.handle);
+      try {
+        new Uint32Array(
+          memory.buffer,
+          matrixEntryHandlesPointer,
+          handles.length,
+        ).set(handles);
+        const status = wasm.sagejs_wasm_algebraic_matrix_create(
+          rows, columns, handles.length, realOnly ? 1 : 0,
+        );
+        check(status, "qqbar matrix construction");
+        recordMatrix("construct", handles.length * 4);
+        return nativeMatrix(
+          wasm.sagejs_wasm_algebraic_result_handle() >>> 0,
+          rows,
+          columns,
+          Boolean(realOnly),
+        );
+      } finally {
+        pruneValues();
+      }
     },
     matrixAdd(left, right) { return matrixBinary("add", left, right); },
     matrixSub(left, right) { return matrixBinary("sub", left, right); },
@@ -706,18 +901,20 @@ export function createAlgebraicBackend(instance, {
         return matrixBinary("mul", inverse, right);
       } finally {
         matrixFinalizer?.unregister(inverse);
+        const state = liveMatrices.get(inverse);
         liveMatrices.delete(inverse);
-        check(
-          wasm.sagejs_wasm_algebraic_matrix_close(inverse.handle),
-          "qqbar matrix temporary close",
-        );
+        closeMatrixHandle(state, "qqbar matrix temporary close");
       }
     },
     qqbarClose(value) {
-      const handle = handleOf(value);
+      const state = liveObjects.get(value);
+      if (state === undefined) {
+        throw new TypeError("expected a live Wasm algebraic number");
+      }
       finalizer?.unregister(value);
       liveObjects.delete(value);
-      check(wasm.sagejs_wasm_algebraic_close(handle), "qqbar close");
+      closeValueHandle(state, "qqbar close");
+      state.snapshot = undefined;
     },
     complexPrecision(value) {
       if (!value?.__sagejsAlgebraicApprox) throw new TypeError("expected approximation");
@@ -766,14 +963,22 @@ export function createAlgebraicBackend(instance, {
       return wasm.sagejs_wasm_algebraic_matrix_live_count() >>> 0;
     },
     __sagejs_algebraic_matrix_close__(value) {
-      const handle = matrixHandleOf(value);
+      const state = liveMatrices.get(value);
+      if (state === undefined) {
+        throw new TypeError("expected a live Wasm algebraic matrix");
+      }
       matrixFinalizer?.unregister(value);
       liveMatrices.delete(value);
-      check(wasm.sagejs_wasm_algebraic_matrix_close(handle), "qqbar matrix close");
+      closeMatrixHandle(state, "qqbar matrix close");
+      state.snapshot = undefined;
     },
     closeAlgebraicContext() {
       wasm.sagejs_wasm_algebraic_clear();
     },
+    algebraicHandleCacheLimits: Object.freeze({
+      values: maximumCachedValues,
+      matrices: maximumCachedMatrices,
+    }),
   };
   return Object.freeze(backend);
 }
@@ -784,5 +989,5 @@ export const algebraicResourceLimits = Object.freeze({
   maximumPackedBytes: 1_048_576,
   maximumMatrices: 255,
   maximumMatrixDimension: 128,
-  maximumMatrixEntries: 4096,
+  maximumMatrixEntries: 4095,
 });

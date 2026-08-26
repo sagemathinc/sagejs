@@ -11,6 +11,13 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _close_numeric_resource(value: Any) -> None:
+    """Close a backend numeric value when it owns a Wasm handle."""
+    close = getattr(runtime.flint_backend(), "closeNumericResource", None)
+    if close is not None:
+        close(value)
+
+
 def _field_precision(precision: Any = runtime.undefined) -> int:
     if precision is runtime.undefined:
         precision = 53
@@ -492,11 +499,23 @@ def _complex_field_element(
         imag = 1
         value = 0
     real_part = real_field(value)
-    imag_part = real_field(0 if imag is runtime.undefined else imag)
-    return ComplexNumberElement(
-        field,
-        backend.complexFromReals(real_part._native, imag_part._native),
-    )
+    owns_real_part = real_part is not value
+    try:
+        imaginary_input = 0 if imag is runtime.undefined else imag
+        imag_part = real_field(imaginary_input)
+        owns_imag_part = imag_part is not imaginary_input
+        try:
+            native_value = backend.complexFromReals(
+                real_part._native,
+                imag_part._native,
+            )
+        finally:
+            if owns_imag_part:
+                _close_numeric_resource(imag_part._native)
+    finally:
+        if owns_real_part:
+            _close_numeric_resource(real_part._native)
+    return ComplexNumberElement(field, native_value)
 
 
 def _complex_coercion(
@@ -572,18 +591,54 @@ def zeta_zeros(
 
 
 def Ei(value: Any) -> ComplexNumberElement:
-    complex_value = value if isinstance(value, ComplexNumberElement) else CC(value)
-    return complex_value._parent._fromNative(
-        runtime.flint_backend().complexEi(complex_value._native)
-    )
+    owns_complex_value = not isinstance(value, ComplexNumberElement)
+    complex_value = CC(value) if owns_complex_value else value
+    try:
+        native_value = runtime.flint_backend().complexEi(complex_value._native)
+    finally:
+        if owns_complex_value:
+            _close_numeric_resource(complex_value._native)
+    try:
+        return complex_value._parent._fromNative(native_value)
+    except Exception:
+        _close_numeric_resource(native_value)
+        raise
+
+
+def li(value: Any) -> float:
+    """Numerically evaluate the unoffset logarithmic integral `li(value)`."""
+    real_value = float(value)
+    if real_value <= 0:
+        raise ValueError("li() currently requires a positive real argument")
+    argument = CDF(runtime.math.log(real_value))
+    try:
+        result = Ei(argument)
+        try:
+            return result.real()
+        finally:
+            _close_numeric_resource(result._native)
+    finally:
+        _close_numeric_resource(argument._native)
 
 
 def Li(value: Any) -> float:
-    """Numerically evaluate the logarithmic integral `li(value)`."""
+    """Numerically evaluate Sage's offset logarithmic integral `Li(value)`.
+
+    The offset logarithmic integral has lower limit `2`:
+
+    ```
+    Li(x) = integral from 2 to x of dt / log(t) = li(x) - li(2)
+    ```
+
+    This is distinct from both the unoffset logarithmic integral `li` and the
+    polylogarithm, which is also conventionally written as `Li`.
+    """
     real_value = float(value)
     if real_value <= 0:
         raise ValueError("Li() currently requires a positive real argument")
-    return Ei(CDF(runtime.math.log(real_value))).real()
+    if real_value == 2:
+        return 0.0
+    return li(real_value) - 1.0451637801174927
 
 
 def ComplexNumber(
