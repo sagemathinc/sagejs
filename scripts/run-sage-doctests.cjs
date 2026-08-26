@@ -186,6 +186,27 @@ async function worker() {
     readline.emit("line", "");
     await repl.drain();
     results.push({ id: example.id, actual: output });
+    // A doctest that intentionally raises (an example demonstrating a
+    // documented exception via a `Traceback` block) is a normal, expected
+    // outcome here -- `matchesExpected` above is what judges it, not the
+    // process exit code. The REPL this worker reuses across every example
+    // in the group was built for one-shot CLI/script execution, though,
+    // where an uncaught exception during non-interactive input is treated
+    // as a real failure and marks `process.exitCode = 1` (see
+    // `markUncaughtInputFailure` in `tools/repl.ts`). Left in place, that
+    // mark would persist for the rest of this worker process and fail the
+    // whole group in `runGroup` above regardless of whether every example
+    // actually matched -- observed on `graphs.RandomGNP`'s upstream
+    // "invalid algorithm" doctest, whose expected Traceback poisoned the
+    // exit code for the rest of its group. Clearing it after each example
+    // keeps the exit code meaningful only for a genuine worker crash.
+    //
+    // This is part 1 (the exit status) of sagemathinc/sagejs#29, which
+    // also reports part 2: an uncaught exception here prints a raw V8
+    // stack instead of Sage's `Traceback (most recent call last): ...`
+    // block. That formatting concern belongs in the REPL, not this
+    // worker, and remains open.
+    process.exitCode = undefined;
   }
   stdoutWrite(JSON.stringify(results));
 }

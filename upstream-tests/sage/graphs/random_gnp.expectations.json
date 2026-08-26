@@ -1,9 +1,7 @@
 {
   "schema": "sagejs.sage-doctest-expectations/v1",
   "fixture": "random_gnp.doctests.json",
-  "skip": {
-    "src/sage/graphs/generators/random.py:95": "Expects a `Traceback (most recent call last): ... ValueError: ...` transcript; the doctest worker does not parse that upstream Sage convention as an expected-exception match and raises instead of comparing, unrelated to RandomGNP's own behavior"
-  },
+  "skip": {},
   "xfail": {
     "src/sage/graphs/generators/random.py:68": "Sage.js uses a portable deterministic random stream rather than Sage's GMP randstate, so seeded samples are distribution-compatible but not bit-for-bit identical",
     "src/sage/graphs/generators/random.py:100": "Sage.js uses a portable deterministic random stream rather than Sage's GMP randstate, so seeded samples are distribution-compatible but not bit-for-bit identical"
