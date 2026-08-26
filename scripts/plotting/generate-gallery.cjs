@@ -11,6 +11,7 @@ const {
 const { execFileSync, spawnSync } = require("node:child_process");
 const { join, resolve } = require("node:path");
 const { performance } = require("node:perf_hooks");
+const { pythonExecutable } = require("../../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "../..");
 const galleryDirectory = join(
@@ -243,9 +244,7 @@ for base, dimension, name, title in (
 
 print(json.dumps(records, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 `;
-  const executable = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
-  const result = spawnSync(executable, ["-I", "-c", source], {
+  const result = spawnSync(pythonExecutable(), ["-I", "-c", source], {
     cwd: root,
     encoding: "utf8",
     timeout: 30_000,
