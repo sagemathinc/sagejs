@@ -1,0 +1,76 @@
+{
+  "schema": "sagejs.hyperelliptic-prime-cantor-domain-corpus/v1",
+  "domain": {
+    "kind": "domain-envelope",
+    "domain_id": "prime-cantor-odd-v1",
+    "constraints": {
+      "genus": [2, 3],
+      "field_kind": ["prime-field"],
+      "model_kind": ["odd-degree-one-infinity"],
+      "h_kind": ["zero", "nonzero"]
+    }
+  },
+  "envelopes": {
+    "add": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 1000,
+      "scalar_bits_max": 0,
+      "resource_bytes_max": 200096
+    },
+    "scalar": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 64,
+      "scalar_bits_max": 256,
+      "resource_bytes_max": 11360
+    },
+    "progression": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 1000,
+      "scalar_bits_max": 0,
+      "resource_bytes_max": 72224
+    }
+  },
+  "small_workload": {
+    "add_items": 1,
+    "scalar_items": 1,
+    "scalar_bits": 256,
+    "progression_items": 8
+  },
+  "cases": [
+    {"id":"p5-g2-h0","prime":5,"genus":2,"h_kind":"zero","f":[1,3,0,0,0,1],"h":[0],"maximum_operations":["add","progression"]},
+    {"id":"p5-g2-h1","prime":5,"genus":2,"h_kind":"nonzero","f":[1,3,2,0,0,1],"h":[1,1,1],"maximum_operations":[]},
+    {"id":"p5-g3-h0","prime":5,"genus":3,"h_kind":"zero","f":[1,4,0,0,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p5-g3-h1","prime":5,"genus":3,"h_kind":"nonzero","f":[1,3,2,0,0,0,0,1],"h":[1,1,0,1],"maximum_operations":[]},
+    {"id":"p13-g2-h0","prime":13,"genus":2,"h_kind":"zero","f":[1,3,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p13-g2-h1","prime":13,"genus":2,"h_kind":"nonzero","f":[1,3,2,0,0,1],"h":[1,1,1],"maximum_operations":[]},
+    {"id":"p13-g3-h0","prime":13,"genus":3,"h_kind":"zero","f":[1,4,0,0,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p13-g3-h1","prime":13,"genus":3,"h_kind":"nonzero","f":[1,3,2,0,0,0,0,1],"h":[1,1,0,1],"maximum_operations":["scalar"]},
+    {"id":"p101-g2-h0","prime":101,"genus":2,"h_kind":"zero","f":[1,3,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p101-g2-h1","prime":101,"genus":2,"h_kind":"nonzero","f":[1,3,2,0,0,1],"h":[1,1,1],"maximum_operations":[]},
+    {"id":"p101-g3-h0","prime":101,"genus":3,"h_kind":"zero","f":[1,4,0,0,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p101-g3-h1","prime":101,"genus":3,"h_kind":"nonzero","f":[1,3,2,0,0,0,0,1],"h":[1,1,0,1],"maximum_operations":[]},
+    {"id":"p1009-g2-h0","prime":1009,"genus":2,"h_kind":"zero","f":[1,3,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p1009-g2-h1","prime":1009,"genus":2,"h_kind":"nonzero","f":[1,3,2,0,0,1],"h":[1,1,1],"maximum_operations":["scalar"]},
+    {"id":"p1009-g3-h0","prime":1009,"genus":3,"h_kind":"zero","f":[1,4,0,0,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p1009-g3-h1","prime":1009,"genus":3,"h_kind":"nonzero","f":[1,3,2,0,0,0,0,1],"h":[1,1,0,1],"maximum_operations":[]},
+    {"id":"p65521-g2-h0","prime":65521,"genus":2,"h_kind":"zero","f":[1,3,0,0,0,1],"h":[0],"maximum_operations":[]},
+    {"id":"p65521-g2-h1","prime":65521,"genus":2,"h_kind":"nonzero","f":[1,3,2,0,0,1],"h":[1,1,1],"maximum_operations":[]},
+    {"id":"p65521-g3-h0","prime":65521,"genus":3,"h_kind":"zero","f":[1,4,0,0,0,0,0,1],"h":[0],"maximum_operations":["add","progression"]},
+    {"id":"p65521-g3-h1","prime":65521,"genus":3,"h_kind":"nonzero","f":[1,3,2,0,0,0,0,1],"h":[1,1,0,1],"maximum_operations":[]}
+  ]
+}
