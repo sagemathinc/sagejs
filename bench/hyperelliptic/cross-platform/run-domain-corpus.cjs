@@ -309,11 +309,26 @@ function runWorker(config, mode) {
 }
 
 function preflight() {
+  const processCommand = platform() === "win32"
+    ? [
+        "powershell",
+        [
+          "-NoProfile",
+          "-Command",
+          "Get-Process | Sort-Object CPU -Descending | Select-Object -First 25 Id,CPU,WorkingSet,ProcessName",
+        ],
+      ]
+    : ["ps", ["-eo", "pid,pcpu,pmem,comm", "--sort=-pcpu"]];
+  const result = command(processCommand[0], processCommand[1], { timeout: 30_000 });
   return {
     load_average: loadavg(),
-    processes: command(platform() === "win32" ? "powershell" : "ps", platform() === "win32"
-      ? ["-NoProfile", "-Command", "Get-Process | Sort-Object CPU -Descending | Select-Object -First 25 Id,CPU,WorkingSet,ProcessName"]
-      : ["-Ao", "pid,pcpu,pmem,comm", "-r"], { timeout: 30_000 }).stdout,
+    processes: {
+      command: [processCommand[0], ...processCommand[1]],
+      status: result.status,
+      error: result.error?.message ?? null,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    },
   };
 }
 
