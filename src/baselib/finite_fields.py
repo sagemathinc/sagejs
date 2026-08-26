@@ -765,6 +765,16 @@ class FiniteField_prime_modn(sage.Parent):
         self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
         self._residueModulus = runtime.number(order) if self._machineResidues else order
         self._closedScalarArithmetic = True
+        self._closedScalarElementPrototype = _finite_field_element_prototype
+        self._closedScalarMul = runtime.reflect.get(
+            _finite_field_element_prototype, "_mul_"
+        )
+        self._closedScalarAdd = runtime.reflect.get(
+            _finite_field_element_prototype, "_add_"
+        )
+        self._closedScalarNewReduced = runtime.reflect.get(
+            _finite_field_element_prototype, "_new_reduced"
+        )
         self._order = order
         self._generator = generator
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
@@ -874,6 +884,16 @@ class IntegerModRing(sage.Parent):
         self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
         self._residueModulus = runtime.number(order) if self._machineResidues else order
         self._closedScalarArithmetic = True
+        self._closedScalarElementPrototype = _integer_mod_element_prototype
+        self._closedScalarMul = runtime.reflect.get(
+            _integer_mod_element_prototype, "_mul_"
+        )
+        self._closedScalarAdd = runtime.reflect.get(
+            _integer_mod_element_prototype, "_add_"
+        )
+        self._closedScalarNewReduced = runtime.reflect.get(
+            _integer_mod_element_prototype, "_new_reduced"
+        )
         self._order = order
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
 

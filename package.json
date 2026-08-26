@@ -249,6 +249,8 @@
     "bench:serialization": "node bench/compare-serialization.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:finite-field-boundary": "node bench/finite-field-boundary/benchmark-js.mjs",
+    "bench:finite-field-compiler": "node bench/finite-field-boundary/benchmark-compiler-recurrence.cjs",
+    "bench:finite-field-native": "node bench/finite-field-boundary/benchmark-native-recurrence.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",

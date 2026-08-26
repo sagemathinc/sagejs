@@ -57,6 +57,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   function_class: "Function",
   factor_pair: "ρσ_factor_pair",
   fast_closed_binary: "ρσ_fast_closed_binary",
+  fast_machine_residue_recurrence: "ρσ_fast_machine_residue_recurrence",
   finalization_registry_class: "FinalizationRegistry",
   ffi_call: "ρσ_ffi_call",
   ffi_resource_borrow: "ρσ_ffi_resource_borrow",

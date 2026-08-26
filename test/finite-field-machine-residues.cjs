@@ -110,6 +110,73 @@ assert Zmod(35)(12).is_unit()
 assert not Zmod(35)(14).is_unit()
 assert Zmod(101)(51).rational_reconstruction() == QQ(1, 2)
 
+
+def closed_recurrence(count, parent):
+    value = parent(1)
+    multiplier = parent(12345)
+    increment = parent(6789)
+    index = 777
+    for index in range(count):
+        value = value * multiplier + increment
+    return int(value), index
+
+
+# Ten million iterations are intentionally large enough that accidentally
+# taking the object/coercion path becomes an obvious performance regression.
+assert closed_recurrence(10000000, field) == (19598, 9999999)
+assert closed_recurrence(10000000, Zmod(65521)) == (19598, 9999999)
+assert closed_recurrence(0, field) == (1, 777)
+
+# Unsafe moduli and unrelated Python objects must execute the retained source
+# loop, not a numerically convenient approximation.
+fallback_field = GF(94906297)
+expected = 1
+for _index in range(29):
+    expected = (expected * 12345 + 6789) % 94906297
+assert closed_recurrence(29, fallback_field) == (expected, 28)
+
+
+class RecurrenceBox:
+    def __init__(self, value):
+        self.value = value
+
+    def __mul__(self, other):
+        return RecurrenceBox(self.value * other.value)
+
+    def __add__(self, other):
+        return RecurrenceBox(self.value + other.value)
+
+
+def generic_recurrence(count):
+    value = RecurrenceBox(1)
+    multiplier = RecurrenceBox(3)
+    increment = RecurrenceBox(2)
+    for index in range(count):
+        value = value * multiplier + increment
+    return value.value
+
+
+assert generic_recurrence(8) == 13121
+
+# The runtime guard must reject a parent whose element implementation changed
+# after construction. The generic loop then observes the patched method once
+# per iteration, and restoring the method makes the scalar path eligible again.
+original_mul = FiniteFieldElement._mul_
+patched_calls = [0]
+
+
+def patched_mul(self, other):
+    patched_calls[0] += 1
+    return original_mul(self, other)
+
+
+FiniteFieldElement._mul_ = patched_mul
+assert closed_recurrence(8, field)[0] == 52059
+assert patched_calls == [8]
+FiniteFieldElement._mul_ = original_mul
+assert closed_recurrence(8, field)[0] == 52059
+assert patched_calls == [8]
+
 keyed = {field(17): "seventeen"}
 assert keyed[field(17)] == "seventeen"
 print("FINITE_FIELD_MACHINE_RESIDUES_OK")
@@ -135,4 +202,18 @@ test("closed-scalar compiler guards stay native and branch directly", () => {
     assert.match(body, new RegExp(`left\\._${operation}_\\(right\\)`));
   }
   assert.doesNotMatch(body, /ρσ_bool|Reflect\.get|ρσ_resolve_callable/);
+
+  const recurrenceStart = generated.indexOf(
+    "function ρσ_fast_machine_residue_recurrence(",
+  );
+  assert.notEqual(recurrenceStart, -1);
+  const recurrenceStop = generated.indexOf("\n};", recurrenceStart);
+  assert.notEqual(recurrenceStop, -1);
+  const recurrence = generated.slice(recurrenceStart, recurrenceStop);
+  assert.match(recurrence, /Number\.isSafeInteger\(count\)/);
+  assert.match(recurrence, /parent\._machineResidues !== true/);
+  assert.match(recurrence, /prototype\?\._mul_ !== parent\._closedScalarMul/);
+  assert.match(recurrence, /value \* factor \+ addend/);
+  assert.match(recurrence, /Object\.create\(prototype\)/);
+  assert.doesNotMatch(recurrence, /ρσ_operator|ρσ_resolve_callable/);
 });

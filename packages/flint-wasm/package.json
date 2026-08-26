@@ -108,6 +108,7 @@
     "test": "pnpm run build && node --expose-gc --test test/*.test.mjs test/*.test.cjs",
     "test:browser": "pnpm run build && node test/browser-smoke.mjs",
     "test:browser:partitions": "node test/partition-count-browser.mjs",
+    "test:browser:finite-field-compiler": "node test/finite-field-compiler-browser.mjs",
     "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
     "test:browser:webkit-memory": "node test/browser-wasm-webkit-memory.mjs",
     "test:browser-dynamic-code": "pnpm run build && node test/browser-dynamic-code.mjs",
