@@ -39,13 +39,46 @@
     "pnpm architecture:check",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node --test test/number-field-class-unit-exact-public-projection.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 244.997,
+      "started_at": "2026-08-26T01:26:07.185Z",
+      "commit": "30c5a889d034971656bb406c030257aeeb255ad8",
+      "workspace_fingerprint": "58851e25283dbca7b4a02175543849dfc5b64887b34293c7cafe209b5f110bf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.17,
+      "started_at": "2026-08-26T01:30:34.099Z",
+      "commit": "30c5a889d034971656bb406c030257aeeb255ad8",
+      "workspace_fingerprint": "58851e25283dbca7b4a02175543849dfc5b64887b34293c7cafe209b5f110bf0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:native",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 880.142,
+      "started_at": "2026-08-26T02:17:31.057Z",
+      "commit": "40318f39d95e4818748a39adf0d08c87afde68ee",
+      "workspace_fingerprint": "5cac80f77600745603f85b3c824014f17f9976dddbf1575b5c76ba2dfc7b81ae",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
+    "summary": "Frozen implementation 40318f39d95e4818748a39adf0d08c87afde68ee extends context-owned sealed repeat projections to exact direct-Minkowski and cubic class groups for 3.1.588.1, 3.1.5448.1, and 3.1.4027.2 with proof=False/True. The first publication uses a closure-bound ordinary adapter and exact verifier, then seals the same local result through closure-bound projection type, initializer, allocator, and proof encoder; seven authority fields are checked before and after proof serialization and after sealing. Repeats return fresh immutable view capsules, preserve exact proof-payload parity, and perform zero discrete logs, representative reconstructions, principal-ideal builds, witness verification, and proof-record rebuilds. Six repeat medians are 9.757-10.783ms; class_unit_group ratios are 0.964-1.025x and first-publication ratios are 0.747-0.893x versus exact e7ab7c9d. A stabilized 1,000-view ownership run measured 2,977 RSS bytes and 10,518 heap bytes per retained view; after release and 1,000 discarded views RSS fell below the plateau and heap was only 133,608 bytes above the released checkpoint. Explicit verify remains full and measured 7.134s. Independent exact-SHA re-review returned SAFE after a fresh isolated focused pass in 364.3s; the local strengthened six-row focused pass took 246.85s, strict reported zero errors across 221 modules, and the recorded full native suite passed in 880.14s.",
     "risks": [
       "Repository-wide status still lists inherited stale overlaps from older active class-group contracts; this lane starts at reviewed e7ab7c9d with a new exact claim set, passes its own contract, and does not edit those old contracts.",
-      "The reviewed base had only 186 bytes of number-field package-budget headroom; any required ratchet belongs to integration and this lane does not edit the shared package manifest."
+      "The measured number-field-global-arithmetic package is 1,573,524 bytes against a 1,565,000-byte budget. Independent exact-SHA review is SAFE and the integration lane authorized a ratchet to 1,580,000; this lane leaves the shared package manifest untouched, so pnpm architecture:check remains integration-pending rather than weakened locally."
     ],
-    "next_steps": []
+    "next_steps": [
+      "Have the integration lane apply the authorized 1,580,000-byte package-budget ratchet, record pnpm architecture:check, and move the contract to review."
+    ]
   }
 }
