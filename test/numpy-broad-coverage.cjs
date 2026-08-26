@@ -34,8 +34,10 @@ if (available.status === 0) {
     "the broad numpy-ts facade must agree with CPython/NumPy",
   );
 } else {
-  assert.ok(sagejs.stdout.includes("[[7, 7, 7], [7, 7, 7]]"));
-  assert.ok(sagejs.stdout.includes("[5.0, 0.0]"));
+  // `rounded` intentionally normalizes numeric values through `float`, so
+  // even the explicitly integral `full` fixture prints floating-point rows.
+  assert.ok(sagejs.stdout.includes("[[7.0, 7.0, 7.0], [7.0, 7.0, 7.0]]"));
+  assert.ok(sagejs.stdout.includes("[0.6, -0.2]"));
 }
 
 const inventory = run(python, [
