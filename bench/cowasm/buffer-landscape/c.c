@@ -6,15 +6,30 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
+
 static const double expected_nbody = -0.16908926275527303;
 static const double expected_matrix = 166742891853.24692;
 
 static uint64_t now_ns(void)
 {
+#ifdef _WIN32
+    LARGE_INTEGER frequency, value;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&value);
+    return (uint64_t) (value.QuadPart / frequency.QuadPart) *
+            UINT64_C(1000000000) +
+        (uint64_t) (value.QuadPart % frequency.QuadPart) *
+            UINT64_C(1000000000) / (uint64_t) frequency.QuadPart;
+#else
     struct timespec value;
     clock_gettime(CLOCK_MONOTONIC, &value);
     return (uint64_t) value.tv_sec * UINT64_C(1000000000) +
         (uint64_t) value.tv_nsec;
+#endif
 }
 
 static int environment_integer(const char *name, int fallback)

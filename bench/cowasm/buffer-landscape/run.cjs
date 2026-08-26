@@ -2,7 +2,13 @@
 
 const { createHash } = require("node:crypto");
 const { spawnSync } = require("node:child_process");
-const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { cpus, freemem, hostname, loadavg, platform, release, totalmem } =
   require("node:os");
 const { tmpdir } = require("node:os");
@@ -78,6 +84,99 @@ function version(command, args) {
   if (result.error || result.status !== 0) return null;
   return (String(result.stdout || "") + String(result.stderr || ""))
     .trim().split("\n")[0];
+}
+
+function visualStudioEnvironment() {
+  const candidates = [];
+  if (process.env.VSINSTALLDIR) {
+    candidates.push(join(
+      process.env.VSINSTALLDIR,
+      "VC", "Auxiliary", "Build", "vcvars64.bat",
+    ));
+  }
+  candidates.push("C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat");
+  const programFilesX86 = process.env["ProgramFiles(x86)"];
+  if (programFilesX86) {
+    const vswhere = join(
+      programFilesX86,
+      "Microsoft Visual Studio", "Installer", "vswhere.exe",
+    );
+    if (existsSync(vswhere)) {
+      const installation = spawnSync(vswhere, [
+        "-latest", "-products", "*",
+        "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-property", "installationPath",
+      ], { encoding: "utf8", windowsHide: true });
+      if (installation.status === 0 && installation.stdout.trim()) {
+        candidates.push(join(
+          installation.stdout.trim(),
+          "VC", "Auxiliary", "Build", "vcvars64.bat",
+        ));
+      }
+    }
+  }
+  return candidates.find((candidate) => existsSync(candidate)) || null;
+}
+
+function compileC(source, executable) {
+  if (platform() !== "win32") {
+    const compiler = process.env.CC || "cc";
+    return {
+      compiler,
+      compilerVersion: version(compiler, ["--version"]),
+      result: spawnSync(
+        compiler,
+        ["-O3", "-std=c11", source, "-lm", "-o", executable],
+        { cwd: root, encoding: "utf8" },
+      ),
+    };
+  }
+  const compiler = process.env.CC || "clang-cl.exe";
+  const vcvars = visualStudioEnvironment();
+  if (vcvars === null) {
+    return {
+      compiler,
+      compilerVersion: null,
+      result: {
+        status: null,
+        error: new Error("Visual Studio C++ tools are unavailable"),
+        stdout: "",
+        stderr: "",
+      },
+    };
+  }
+  const quote = (value) => `"${value.replaceAll('"', '""')}"`;
+  const prefix = `call "${vcvars}" >nul && ${quote(compiler)}`;
+  const result = spawnSync(
+    process.env.ComSpec || "cmd.exe",
+    [
+      "/d", "/s", "/c",
+      `${prefix} /nologo /O2 /std:c11 ${quote(source)} /Fe:${quote(executable)}`,
+    ],
+    {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      windowsVerbatimArguments: true,
+    },
+  );
+  const identity = spawnSync(
+    process.env.ComSpec || "cmd.exe",
+    ["/d", "/s", "/c", `${prefix} --version`],
+    {
+      cwd: root,
+      encoding: "utf8",
+      windowsHide: true,
+      windowsVerbatimArguments: true,
+    },
+  );
+  return {
+    compiler,
+    compilerVersion: identity.status === 0
+      ? (identity.stdout + identity.stderr).trim().split("\n")[0]
+      : null,
+    result,
+  };
 }
 
 function median(values) {
@@ -189,15 +288,17 @@ function main() {
   }
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-buffer-landscape-"));
   try {
-    const executable = join(temporary, "buffers-c");
-    const compiler = process.env.CC || "cc";
-    const compiled = spawnSync(
-      compiler,
-      ["-O3", "-std=c11", join(directory, "c.c"), "-lm", "-o", executable],
-      { cwd: root, encoding: "utf8" },
+    const executable = join(
+      temporary,
+      platform() === "win32" ? "buffers-c.exe" : "buffers-c",
     );
+    const compilation = compileC(join(directory, "c.c"), executable);
+    const { compiler, compilerVersion, result: compiled } = compilation;
     if (compiled.error || compiled.status !== 0) {
-      throw new Error("C compilation failed\n" + compiled.stderr);
+      throw new Error(
+        "C compilation failed\n" + (compiled.error?.message || "") + "\n" +
+          (compiled.stdout || "") + "\n" + (compiled.stderr || ""),
+      );
     }
     const node = process.execPath;
     const python = process.env.SAGEJS_COWASM_PYTHON || "python3";
@@ -231,7 +332,7 @@ function main() {
       },
       {
         key: "c", label: "C -O3", command: executable,
-        args: [], env: {}, version: version(compiler, ["--version"]),
+        args: [], env: {}, version: compilerVersion,
       },
     ];
     const requested = new Set(options.runtimes);
