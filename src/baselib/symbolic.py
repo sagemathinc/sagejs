@@ -880,13 +880,44 @@ class Expression(sage.Element):
             order_parts = _exact_complex_parts_from_tree(self._tree[1])
             argument_parts = _exact_complex_parts_from_tree(self._tree[2])
             order = field(order_parts[0], order_parts[1])
-            argument = field(argument_parts[0], argument_parts[1])
-            value = field._fromNative(
-                runtime.flint_backend().complexBesselI(order._native, argument._native)
-            )
-            imaginary = value.imag()
-            if imaginary == 0:
-                return value.real()
+            backend = runtime.flint_backend()
+            close = getattr(backend, "closeNumericResource", None)
+            try:
+                argument = field(argument_parts[0], argument_parts[1])
+                try:
+                    native_value = backend.complexBesselI(
+                        order._native,
+                        argument._native,
+                    )
+                finally:
+                    if close is not None:
+                        close(argument._native)
+            finally:
+                if close is not None:
+                    close(order._native)
+            try:
+                value = field._fromNative(native_value)
+            except Exception:
+                if close is not None:
+                    close(native_value)
+                raise
+            try:
+                imaginary = value.imag()
+                try:
+                    is_real = float(imaginary) == 0
+                finally:
+                    if close is not None:
+                        close(imaginary._native)
+            except Exception:
+                if close is not None:
+                    close(value._native)
+                raise
+            if is_real:
+                try:
+                    return value.real()
+                finally:
+                    if close is not None:
+                        close(value._native)
             return value
         result = _call_backend("numeric", [self._tree, decimal_digits])
         return NumericalApproximation(
