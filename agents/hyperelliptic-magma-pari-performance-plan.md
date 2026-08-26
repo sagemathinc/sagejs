@@ -23,18 +23,6 @@ Linux x64, Linux ARM64, macOS ARM64, and Windows x64 native/dynamic/Wasm
 receipts and 24 normalized policy receipts beside it. The framed mathematical
 bundle remains `36495206...73e1`.
 
-The combined release-candidate source freeze after the 2026-08-26 upstream
-runtime merge is `d255b35f`. This is a local Linux x64 quality freeze, not a
-replacement for the four-platform performance receipts above. On that exact
-source, the full integration tier passes 315/315 files, the unit tier passes
-76/76 files, the portable tier passes 65/65 files, the strict Python library
-passes 242 modules with zero errors, and the architecture and WebAssembly
-resource-lifetime audits pass. The production FLINT Wasm package rebuilds all
-273 registered functions with zero unsupported functions; focused public
-analytic tests pass in both Node and Chromium. The source-current Phase-9
-receipt still validates as a 600-second timeout, so this quality freeze does
-not convert the open PARI initialization gate into a pass.
-
 The final release assembly was then republished with the verified allowlist and
 273-function Wasm coverage document included. Its local production artifact is
 `54dde110...9cfce`; all 273 functions compile, no production function is
