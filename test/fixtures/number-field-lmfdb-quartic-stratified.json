@@ -1,0 +1,2007 @@
+{
+  "schema": "sagejs.number-fields/lmfdb-quartic-stratified-corpus-v1",
+  "description": "Versioned higher-discriminant quartic class-number corpus with signature, discriminant, class-shape, and held-out strata.",
+  "source": {
+    "table": "nf_fields",
+    "api_options": "https://beta.lmfdb.org/api/options",
+    "api_stats": "https://beta.lmfdb.org/api/stats",
+    "license": "CC-BY-SA-4.0",
+    "columns": [
+      "label",
+      "degree",
+      "coeffs",
+      "r2",
+      "disc_sign",
+      "disc_abs",
+      "disc_rad",
+      "index",
+      "monogenic",
+      "galt",
+      "galois_label",
+      "num_ram",
+      "class_number",
+      "class_group",
+      "regulator",
+      "torsion_order",
+      "used_grh",
+      "narrow_class_number",
+      "narrow_class_group",
+      "unit_signature_rank"
+    ]
+  },
+  "oracle": {
+    "proof": "unconditional",
+    "sage": "10.9.post1",
+    "pari": "(2, 17, 1)"
+  },
+  "snapshot": {
+    "captured_at": "2026-08-26T21:59:58.597Z",
+    "selection_seed": ":sagejs-quartic-36-v1",
+    "selection_sql": "COPY (\nWITH base AS (\n  SELECT f.label, f.r2,\n         CASE WHEN f.disc_abs <= 1000000 THEN 0\n              WHEN f.disc_abs <= 10000000 THEN 1\n              ELSE 2 END AS discriminant_band_index,\n         CASE WHEN f.disc_abs <= 1000000 THEN 'd0-1e5-1e6'\n              WHEN f.disc_abs <= 10000000 THEN 'd1-1e6-1e7'\n              ELSE 'd2-1e7-1e8' END AS discriminant_band,\n         CASE WHEN f.class_number = 1 THEN 0\n              WHEN jsonb_array_length(f.class_group) > 1 THEN 3\n              WHEN f.class_number <= 4 THEN 1\n              ELSE 2 END AS class_band_index,\n         CASE WHEN f.class_number = 1 THEN 'h0-trivial'\n              WHEN jsonb_array_length(f.class_group) > 1 THEN 'h3-noncyclic'\n              WHEN f.class_number <= 4 THEN 'h1-cyclic-small'\n              ELSE 'h2-cyclic-large' END AS class_band\n    FROM nf_fields f\n   WHERE f.degree = 4\n     AND f.disc_abs > 100000\n     AND f.disc_abs <= 100000000\n     AND f.class_number IS NOT NULL\n     AND f.class_group IS NOT NULL\n), ranked AS (\n  SELECT base.*,\n         row_number() OVER (\n           PARTITION BY r2, discriminant_band_index, class_band_index\n           ORDER BY md5(label || ':sagejs-quartic-36-v1'), label\n         ) AS selection_rank\n    FROM base\n), selected AS (\n  SELECT label, r2, discriminant_band_index, discriminant_band,\n         class_band_index, class_band, selection_rank,\n         CASE mod(r2 + discriminant_band_index + class_band_index, 3)\n           WHEN 0 THEN 'smoke'\n           WHEN 1 THEN 'tune'\n           ELSE 'holdout' END AS role\n    FROM ranked\n   WHERE selection_rank = 1\n), records AS (\n  SELECT json_build_object(\n           'role', selected.role,\n           'stratum', 'r2-' || selected.r2::text || ':' ||\n             selected.discriminant_band || ':' || selected.class_band,\n           'selection_rank', selected.selection_rank::integer,\n           'discriminant_band_index', selected.discriminant_band_index,\n           'class_band_index', selected.class_band_index\n         ) AS selection,\n         f.label, f.degree,\n         ARRAY(SELECT coefficient::text FROM unnest(f.coeffs) coefficient)\n           AS coefficients,\n         f.disc_sign,\n         f.disc_abs::text AS discriminant_absolute,\n         f.r2,\n         (f.degree - 2 * f.r2)::integer AS r1,\n         (f.degree - f.r2 - 1)::integer AS unit_rank,\n         f.disc_rad::text AS discriminant_radical,\n         f.index::text AS equation_order_index,\n         f.monogenic,\n         f.galt AS galois_transitive_group,\n         f.galois_label,\n         f.num_ram AS ramified_prime_count,\n         f.class_number::text AS class_number,\n         ARRAY(SELECT invariant FROM jsonb_array_elements_text(f.class_group) invariant)\n           AS class_group,\n         f.regulator::text AS regulator,\n         f.torsion_order,\n         f.used_grh,\n         f.narrow_class_number::text AS narrow_class_number,\n         CASE WHEN f.narrow_class_group IS NULL THEN NULL ELSE\n           ARRAY(SELECT invariant::text FROM unnest(f.narrow_class_group) invariant)\n         END AS narrow_class_group,\n         f.unit_signature_rank\n    FROM selected\n    JOIN nf_fields f USING (label)\n   ORDER BY f.degree, f.disc_abs, f.label\n)\nSELECT row_to_json(records) FROM records\n) TO STDOUT;\n",
+    "canonical_ordering": [
+      "degree",
+      "disc_abs",
+      "label"
+    ],
+    "discriminant_absolute_minimum_exclusive": "100000",
+    "discriminant_absolute_maximum": "100000000"
+  },
+  "tiers": {
+    "smoke": 12,
+    "tune": 12,
+    "holdout": 12,
+    "policy": "Develop on smoke, freeze policy after smoke+tune, and inspect holdout only afterward."
+  },
+  "checksums": {
+    "labels_sha256": "a2d615eeac14366a11b3caabdaf7e3c707dff544d8721eb7c79448bd69c9a1dc",
+    "source_records_sha256": "b909515125f8a08b92bf03782ec42a61b4ba0098096692fca3a1a46afe5086b8",
+    "oracle_records_sha256": "527f3eac0e6f914800add2725529e1488220e644b8560f9c072000f141515c05",
+    "records_sha256": "85e15f1a4eb6e05f87d8859d115fcc8d63cfaca6bc7fa30da359b20a18bfd086",
+    "selection_sql_sha256": "741b71fc94d1a6e8f5db1a7c9781b792163588e3a42807637c2d2d6f03fe374d",
+    "source_columns_sha256": "d7f6b695c0bca4e45956791605f9240f602eba6a08351e30e2732d1958ca8f50"
+  },
+  "records": [
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-2:d0-1e5-1e6:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 0
+      },
+      "label": "4.0.125945.1",
+      "degree": 4,
+      "coefficients": [
+        "12",
+        "2",
+        "1",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "125945",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "125945",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "24.4417432176",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "125945",
+        "label": "4.0.125945.1",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-0:d0-1e5-1e6:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 0
+      },
+      "label": "4.4.225816.1",
+      "degree": 4,
+      "coefficients": [
+        "6",
+        "0",
+        "-11",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "225816",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "582",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "58.1107751426",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 3,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "225816",
+        "label": "4.4.225816.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-1e5-1e6:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 0
+      },
+      "label": "4.2.338607.1",
+      "degree": 4,
+      "coefficients": [
+        "-68",
+        "5",
+        "0",
+        "-1",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "338607",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "37623",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "79.8672305919",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "-338607",
+        "label": "4.2.338607.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-2:d0-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 1
+      },
+      "label": "4.0.421621.2",
+      "degree": 4,
+      "coefficients": [
+        "56",
+        "-16",
+        "8",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "421621",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "421621",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 1,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "36.4222280612",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "421621",
+        "label": "4.0.421621.2",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d0-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 1
+      },
+      "label": "4.4.526336.1",
+      "degree": 4,
+      "coefficients": [
+        "514",
+        "0",
+        "-52",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "526336",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "514",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "32.8571414649",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 3,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "526336",
+        "label": "4.4.526336.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d0-1e5-1e6:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 1
+      },
+      "label": "4.2.602316.2",
+      "degree": 4,
+      "coefficients": [
+        "16",
+        "34",
+        "6",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "602316",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "858",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 4,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "77.6298402576",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "-602316",
+        "label": "4.2.602316.2",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d0-1e5-1e6:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 3
+      },
+      "label": "4.2.638000.2",
+      "degree": 4,
+      "coefficients": [
+        "-1595",
+        "0",
+        "-10",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "638000",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "3190",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "6.33768011792",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "-638000",
+        "label": "4.2.638000.2",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-1:d0-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 2
+      },
+      "label": "4.2.778975.1",
+      "degree": 4,
+      "coefficients": [
+        "-1951",
+        "14",
+        "-13",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "778975",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "155795",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "7",
+      "class_group": [
+        "7"
+      ],
+      "regulator": "4.65224380115",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "7",
+      "narrow_class_group": [
+        "7"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "7"
+        ],
+        "class_number": "7",
+        "field_discriminant": "-778975",
+        "label": "4.2.778975.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d0-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 2
+      },
+      "label": "4.4.804005.1",
+      "degree": 4,
+      "coefficients": [
+        "10",
+        "21",
+        "-20",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "804005",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "2005",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "47.1464387947",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 4,
+      "oracle": {
+        "class_group": [
+          "5"
+        ],
+        "class_number": "5",
+        "field_discriminant": "804005",
+        "label": "4.4.804005.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-2:d0-1e5-1e6:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 2
+      },
+      "label": "4.0.816704.1",
+      "degree": 4,
+      "coefficients": [
+        "839",
+        "-54",
+        "57",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "816704",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "25522",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "8",
+      "class_group": [
+        "8"
+      ],
+      "regulator": "1.76274717404",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "8"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "8"
+        ],
+        "class_number": "8",
+        "field_discriminant": "816704",
+        "label": "4.0.816704.1",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-2:d0-1e5-1e6:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 3
+      },
+      "label": "4.0.862400.7",
+      "degree": 4,
+      "coefficients": [
+        "1100",
+        "0",
+        "40",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "862400",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "770",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "16.2852969749",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "862400",
+        "label": "4.0.862400.7",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-0:d0-1e5-1e6:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 0,
+        "class_band_index": 3
+      },
+      "label": "4.4.882000.1",
+      "degree": 4,
+      "coefficients": [
+        "2205",
+        "0",
+        "-105",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "882000",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "210",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 1,
+      "galois_label": "4T1",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "15.7995117617",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 3,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "882000",
+        "label": "4.4.882000.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e6-1e7:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 0
+      },
+      "label": "4.4.2038000.1",
+      "degree": 4,
+      "coefficients": [
+        "5095",
+        "0",
+        "-155",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2038000",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "10190",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "91.0268305747",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "2038000",
+        "label": "4.4.2038000.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-0:d1-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 2
+      },
+      "label": "4.4.2083088.2",
+      "degree": 4,
+      "coefficients": [
+        "589",
+        "-58",
+        "-74",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2083088",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "37198",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "89.7743289738",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "20",
+      "narrow_class_group": [
+        "2",
+        "10"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "5"
+        ],
+        "class_number": "5",
+        "field_discriminant": "2083088",
+        "label": "4.4.2083088.2",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-2:d1-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 2
+      },
+      "label": "4.0.2256741.2",
+      "degree": 4,
+      "coefficients": [
+        "233",
+        "58",
+        "-18",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2256741",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "27861",
+      "equation_order_index": "1",
+      "monogenic": 1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 3,
+      "class_number": "5",
+      "class_group": [
+        "5"
+      ],
+      "regulator": "14.3709066131",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "5",
+      "narrow_class_group": [
+        "5"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "5"
+        ],
+        "class_number": "5",
+        "field_discriminant": "2256741",
+        "label": "4.0.2256741.2",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e6-1e7:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 0
+      },
+      "label": "4.2.2434816.1",
+      "degree": 4,
+      "coefficients": [
+        "-2386",
+        "-140",
+        "-18",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "2434816",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "19022",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "51.2036960605",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "-2434816",
+        "label": "4.2.2434816.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-2:d1-1e6-1e7:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 0
+      },
+      "label": "4.0.2931545.1",
+      "degree": 4,
+      "coefficients": [
+        "66",
+        "41",
+        "13",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "2931545",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "2931545",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "243.405156343",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "2931545",
+        "label": "4.0.2931545.1",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-1:d1-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 1
+      },
+      "label": "4.2.3324000.1",
+      "degree": 4,
+      "coefficients": [
+        "-190",
+        "-70",
+        "5",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "3324000",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "8310",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 4,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "168.301842269",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "-3324000",
+        "label": "4.2.3324000.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-2:d1-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 1
+      },
+      "label": "4.0.3589625.2",
+      "degree": 4,
+      "coefficients": [
+        "191",
+        "129",
+        "36",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "3589625",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "3055",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "4"
+      ],
+      "regulator": "13.1900016868",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "4"
+        ],
+        "class_number": "4",
+        "field_discriminant": "3589625",
+        "label": "4.0.3589625.2",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d1-1e6-1e7:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 3
+      },
+      "label": "4.4.4809024.1",
+      "degree": 4,
+      "coefficients": [
+        "2038",
+        "-32",
+        "-132",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "4809024",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "1518",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "45.5693144348",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "16",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "4809024",
+        "label": "4.4.4809024.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-2:d1-1e6-1e7:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 3
+      },
+      "label": "4.0.6757569.8",
+      "degree": 4,
+      "coefficients": [
+        "47028",
+        "-402",
+        "403",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "6757569",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "2252523",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 5,
+      "class_number": "28",
+      "class_group": [
+        "2",
+        "14"
+      ],
+      "regulator": "19.1159973163",
+      "torsion_order": 6,
+      "used_grh": false,
+      "narrow_class_number": "28",
+      "narrow_class_group": [
+        "2",
+        "14"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "2",
+          "14"
+        ],
+        "class_number": "28",
+        "field_discriminant": "6757569",
+        "label": "4.0.6757569.8",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d1-1e6-1e7:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 1
+      },
+      "label": "4.4.8211600.3",
+      "degree": 4,
+      "coefficients": [
+        "3454",
+        "-150",
+        "-149",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "8211600",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "68430",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "462.719794942",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "8211600",
+        "label": "4.4.8211600.3",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d1-1e6-1e7:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 2
+      },
+      "label": "4.2.8314191.2",
+      "degree": 4,
+      "coefficients": [
+        "-164",
+        "16",
+        "-15",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "8314191",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "48621",
+      "equation_order_index": "4",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "10",
+      "class_group": [
+        "10"
+      ],
+      "regulator": "140.969626915",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "20",
+      "narrow_class_group": [
+        "2",
+        "10"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "10"
+        ],
+        "class_number": "10",
+        "field_discriminant": "-8314191",
+        "label": "4.2.8314191.2",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d1-1e6-1e7:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 1,
+        "class_band_index": 3
+      },
+      "label": "4.2.9540800.2",
+      "degree": 4,
+      "coefficients": [
+        "-476",
+        "156",
+        "5",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "9540800",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "59630",
+      "equation_order_index": "1",
+      "monogenic": 0,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "98.67593501772654",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "-9540800",
+        "label": "4.2.9540800.2",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-1:d2-1e7-1e8:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 2
+      },
+      "label": "4.2.10035136.1",
+      "degree": 4,
+      "coefficients": [
+        "-9800",
+        "0",
+        "1",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "10035136",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "313598",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "13",
+      "class_group": [
+        "13"
+      ],
+      "regulator": "34.5610017108",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "13",
+      "narrow_class_group": [
+        "13"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "13"
+        ],
+        "class_number": "13",
+        "field_discriminant": "-10035136",
+        "label": "4.2.10035136.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-2:d2-1e7-1e8:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 1
+      },
+      "label": "4.0.10717821.1",
+      "degree": 4,
+      "coefficients": [
+        "74293",
+        "545",
+        "-544",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "10717821",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "3572607",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "4"
+      ],
+      "regulator": "38.8886049836",
+      "torsion_order": 6,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "4"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "4"
+        ],
+        "class_number": "4",
+        "field_discriminant": "10717821",
+        "label": "4.0.10717821.1",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-2:d2-1e7-1e8:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 0
+      },
+      "label": "4.0.10899008.2",
+      "degree": 4,
+      "coefficients": [
+        "10774",
+        "-16",
+        "-161",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "10899008",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "340594",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "455.331436405",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "10899008",
+        "label": "4.0.10899008.2",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-1:d2-1e7-1e8:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 1
+      },
+      "label": "4.2.16836800.1",
+      "degree": 4,
+      "coefficients": [
+        "-36",
+        "-40",
+        "14",
+        "0",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "16836800",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "105230",
+      "equation_order_index": "1",
+      "monogenic": 0,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 4,
+      "class_number": "2",
+      "class_group": [
+        "2"
+      ],
+      "regulator": "78.68603563963273",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "4",
+      "narrow_class_group": [
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "2"
+        ],
+        "class_number": "2",
+        "field_discriminant": "-16836800",
+        "label": "4.2.16836800.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-0:d2-1e7-1e8:h1-cyclic-small",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 1
+      },
+      "label": "4.4.22414400.2",
+      "degree": 4,
+      "coefficients": [
+        "7460",
+        "20",
+        "-189",
+        "-2",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "22414400",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "140090",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "4",
+      "class_group": [
+        "4"
+      ],
+      "regulator": "466.959147435",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "8",
+      "narrow_class_group": [
+        "8"
+      ],
+      "unit_signature_rank": 3,
+      "oracle": {
+        "class_group": [
+          "4"
+        ],
+        "class_number": "4",
+        "field_discriminant": "22414400",
+        "label": "4.4.22414400.2",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-1:d2-1e7-1e8:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 0
+      },
+      "label": "4.2.31647788.1",
+      "degree": 4,
+      "coefficients": [
+        "-192",
+        "-134",
+        "-16",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "31647788",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "104794",
+      "equation_order_index": "1",
+      "monogenic": 0,
+      "galois_transitive_group": 5,
+      "galois_label": "4T5",
+      "ramified_prime_count": 3,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "724.5691927700705",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "2",
+      "narrow_class_group": [
+        "2"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "-31647788",
+        "label": "4.2.31647788.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-1:d2-1e7-1e8:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 3
+      },
+      "label": "4.2.32230080.1",
+      "degree": 4,
+      "coefficients": [
+        "-303",
+        "-150",
+        "-20",
+        "-2",
+        "1"
+      ],
+      "disc_sign": -1,
+      "discriminant_absolute": "32230080",
+      "r2": 1,
+      "r1": 2,
+      "unit_rank": 2,
+      "discriminant_radical": "17670",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 5,
+      "class_number": "8",
+      "class_group": [
+        "2",
+        "2",
+        "2"
+      ],
+      "regulator": "71.04600205982022",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "16",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2",
+        "2"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2",
+          "2"
+        ],
+        "class_number": "8",
+        "field_discriminant": "-32230080",
+        "label": "4.2.32230080.1",
+        "proof": "unconditional",
+        "signature": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e7-1e8:h0-trivial",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 0
+      },
+      "label": "4.4.42688433.1",
+      "degree": 4,
+      "coefficients": [
+        "1412",
+        "148",
+        "-105",
+        "-1",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "42688433",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "391637",
+      "equation_order_index": "2",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 2,
+      "class_number": "1",
+      "class_group": [],
+      "regulator": "1038.51639656",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "1",
+      "narrow_class_group": [],
+      "unit_signature_rank": 4,
+      "oracle": {
+        "class_group": [],
+        "class_number": "1",
+        "field_discriminant": "42688433",
+        "label": "4.4.42688433.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-2:d2-1e7-1e8:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 3
+      },
+      "label": "4.0.43243776.3",
+      "degree": 4,
+      "coefficients": [
+        "18769",
+        "0",
+        "548",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "43243776",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "822",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 2,
+      "galois_label": "4T2",
+      "ramified_prime_count": 3,
+      "class_number": "120",
+      "class_group": [
+        "2",
+        "60"
+      ],
+      "regulator": "2.63391579385",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "120",
+      "narrow_class_group": [
+        "2",
+        "60"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "2",
+          "60"
+        ],
+        "class_number": "120",
+        "field_discriminant": "43243776",
+        "label": "4.0.43243776.3",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "holdout",
+        "stratum": "r2-0:d2-1e7-1e8:h3-noncyclic",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 3
+      },
+      "label": "4.4.77048928.1",
+      "degree": 4,
+      "coefficients": [
+        "4422",
+        "0",
+        "-165",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "77048928",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "4422",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "4",
+      "class_group": [
+        "2",
+        "2"
+      ],
+      "regulator": "260.650313296",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "32",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "2",
+        "4"
+      ],
+      "unit_signature_rank": 1,
+      "oracle": {
+        "class_group": [
+          "2",
+          "2"
+        ],
+        "class_number": "4",
+        "field_discriminant": "77048928",
+        "label": "4.4.77048928.1",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "tune",
+        "stratum": "r2-0:d2-1e7-1e8:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 2
+      },
+      "label": "4.4.77128000.2",
+      "degree": 4,
+      "coefficients": [
+        "192820",
+        "0",
+        "-900",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "77128000",
+      "r2": 0,
+      "r1": 4,
+      "unit_rank": 3,
+      "discriminant_radical": "96410",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 4,
+      "class_number": "6",
+      "class_group": [
+        "6"
+      ],
+      "regulator": "83.0135347111",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "24",
+      "narrow_class_group": [
+        "2",
+        "2",
+        "6"
+      ],
+      "unit_signature_rank": 2,
+      "oracle": {
+        "class_group": [
+          "6"
+        ],
+        "class_number": "6",
+        "field_discriminant": "77128000",
+        "label": "4.4.77128000.2",
+        "proof": "unconditional",
+        "signature": [
+          4,
+          0
+        ]
+      }
+    },
+    {
+      "selection": {
+        "role": "smoke",
+        "stratum": "r2-2:d2-1e7-1e8:h2-cyclic-large",
+        "selection_rank": 1,
+        "discriminant_band_index": 2,
+        "class_band_index": 2
+      },
+      "label": "4.0.92109152.1",
+      "degree": 4,
+      "coefficients": [
+        "4568",
+        "0",
+        "66",
+        "0",
+        "1"
+      ],
+      "disc_sign": 1,
+      "discriminant_absolute": "92109152",
+      "r2": 2,
+      "r1": 0,
+      "unit_rank": 1,
+      "discriminant_radical": "81082",
+      "equation_order_index": "1",
+      "monogenic": -1,
+      "galois_transitive_group": 3,
+      "galois_label": "4T3",
+      "ramified_prime_count": 3,
+      "class_number": "14",
+      "class_group": [
+        "14"
+      ],
+      "regulator": "109.23009736690874",
+      "torsion_order": 2,
+      "used_grh": false,
+      "narrow_class_number": "14",
+      "narrow_class_group": [
+        "14"
+      ],
+      "unit_signature_rank": 0,
+      "oracle": {
+        "class_group": [
+          "14"
+        ],
+        "class_number": "14",
+        "field_discriminant": "92109152",
+        "label": "4.0.92109152.1",
+        "proof": "unconditional",
+        "signature": [
+          0,
+          2
+        ]
+      }
+    }
+  ]
+}
