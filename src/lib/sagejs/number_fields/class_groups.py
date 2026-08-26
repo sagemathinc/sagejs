@@ -719,6 +719,8 @@ class ClassGroupSearchResult:
         minkowski_bound: int,
         group: Any = None,
         certificate: ClassGroupCertificate | None = None,
+        *,
+        minkowski_factor_base_complete: bool = False,
     ) -> None:
         self.field = field
         self.complete = complete
@@ -726,6 +728,7 @@ class ClassGroupSearchResult:
         self.minkowski_bound = minkowski_bound
         self.group = group
         self.certificate = certificate
+        self.minkowski_factor_base_complete = bool(minkowski_factor_base_complete)
         self.proof_status = (
             "exact-" + certificate.evidence_kind
             if complete and certificate is not None
@@ -832,6 +835,7 @@ def bounded_minkowski_class_number_one(
                 False,
                 "bounded principal-generator search exhausted for a Minkowski prime",
                 int(plan.bound),
+                minkowski_factor_base_complete=True,
             )
         if (
             row != ()
@@ -871,6 +875,7 @@ def bounded_minkowski_class_number_one(
         int(plan.bound),
         group,
         certificate,
+        minkowski_factor_base_complete=True,
     )
 
 

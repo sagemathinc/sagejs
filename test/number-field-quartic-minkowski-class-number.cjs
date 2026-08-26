@@ -173,8 +173,9 @@ assert not declined.complete and declined.certificate is None
 fallback_calls = [0]
 original_class_number = class_unit_module.class_number
 def expected_fallback(field, **kwargs):
-    del kwargs
     assert field is nontrivial
+    assert kwargs["algorithm"] == "minkowski"
+    assert kwargs["proof"] is False
     fallback_calls[0] += 1
     return 2
 class_unit_module.class_number = expected_fallback

@@ -134,12 +134,13 @@ try:
 finally:
     class_groups_module.bounded_minkowski_class_number_one = original_producer
 
-# A nontrivial quartic and custom policy both retain the unchanged general
-# engine route after the bounded producer declines or is not selected.
+# A feasible nontrivial Minkowski base continues through the exact general
+# engine.  Custom resource policy remains on its explicitly requested route.
 sentinel = object()
-fallback_calls = [0]
-def expected_fallback(*args, **kwargs):
-    fallback_calls[0] += 1
+fallback_algorithms = []
+def expected_fallback(field, **kwargs):
+    del field
+    fallback_algorithms.append(kwargs["algorithm"])
     return sentinel
 class_unit_module.class_group = expected_fallback
 try:
@@ -147,7 +148,7 @@ try:
     assert nontrivial.class_group(proof=False) is sentinel
     custom = NumberField(x**4 + 2, "c")
     assert custom.class_group(proof=False, max_relation_attempts=1) is sentinel
-    assert fallback_calls == [2]
+    assert fallback_algorithms == ["minkowski", "auto"]
 finally:
     class_unit_module.class_group = original_class_group
 

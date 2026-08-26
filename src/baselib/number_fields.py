@@ -2815,16 +2815,17 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        general_algorithm = algorithm
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
             bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
+            if bounded.field is not self:
+                raise ArithmeticError("the quartic class-group search changed fields")
             if bounded.complete:
-                if bounded.field is not self:
-                    raise ArithmeticError(
-                        "the quartic class-group proof changed fields"
-                    )
                 return _nf_class_group_maps_module().class_group_from_minkowski_result(
                     bounded
                 )
+            if bounded.minkowski_factor_base_complete:
+                general_algorithm = "minkowski"
         use_cache = proof is None and algorithm == "auto" and len(limits) == 0
         if use_cache and self._class_group_cache is not runtime.undefined:
             return self._class_group_cache
@@ -2869,7 +2870,7 @@ class NumberFieldParent(sage.Parent):
                 result = NumberFieldClassGroup(self, backend)
         else:
             result = _nf_class_unit_groups_module().class_group(
-                self, proof=proof, algorithm=algorithm, **limits
+                self, proof=proof, algorithm=general_algorithm, **limits
             )
         if use_cache:
             self._class_group_cache = result
@@ -2940,14 +2941,15 @@ class NumberFieldParent(sage.Parent):
             return _nf_class_unit_groups_module().cubic_class_number_projection(
                 self, proof=proof
             )
+        general_algorithm = algorithm
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
             bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
+            if bounded.field is not self:
+                raise ArithmeticError("the quartic class-number search changed fields")
             if bounded.complete:
-                if bounded.field is not self:
-                    raise ArithmeticError(
-                        "the quartic class-number proof changed fields"
-                    )
                 return int(bounded.order())
+            if bounded.minkowski_factor_base_complete:
+                general_algorithm = "minkowski"
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":
@@ -2988,7 +2990,7 @@ class NumberFieldParent(sage.Parent):
                 )
             return int(self._quadratic_backend()[0].class_number())
         return _nf_class_unit_groups_module().class_number(
-            self, proof=proof, algorithm=algorithm, **limits
+            self, proof=proof, algorithm=general_algorithm, **limits
         )
 
     def narrow_class_number(
