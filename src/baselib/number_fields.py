@@ -106,6 +106,13 @@ def _nf_class_groups_module() -> Any:
     )
 
 
+def _nf_class_group_maps_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_class_group_maps_module__",
+        "sagejs.number_fields.class_group_maps",
+    )
+
+
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -2808,6 +2815,16 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
+            bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
+            if bounded.complete:
+                if bounded.field is not self:
+                    raise ArithmeticError(
+                        "the quartic class-group proof changed fields"
+                    )
+                return _nf_class_group_maps_module().class_group_from_minkowski_result(
+                    bounded
+                )
         use_cache = proof is None and algorithm == "auto" and len(limits) == 0
         if use_cache and self._class_group_cache is not runtime.undefined:
             return self._class_group_cache
@@ -2926,6 +2943,10 @@ class NumberFieldParent(sage.Parent):
         if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
             bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(self)
             if bounded.complete:
+                if bounded.field is not self:
+                    raise ArithmeticError(
+                        "the quartic class-number proof changed fields"
+                    )
                 return int(bounded.order())
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)

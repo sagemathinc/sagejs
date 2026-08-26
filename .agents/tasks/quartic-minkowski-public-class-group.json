@@ -1,0 +1,45 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "quartic-minkowski-public-class-group",
+  "title": "Quartic Minkowski public class groups",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Return a complete exact public IdealClassGroup directly from a successful bounded quartic Minkowski certificate, with independent proof replay and safe fallback",
+  "base_commit": "185db40d68d62e824e57d8dab8ca0a1d71fa9038",
+  "claims": [
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/class_groups.py",
+    "src/lib/sagejs/number_fields/class_group_maps.py",
+    "test/number-field-quartic-minkowski-public-class-group.cjs",
+    "bench/class-unit-groups/quartic-minkowski-public-class-group.py"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "existing complete class/unit IdealClassGroup",
+      "PARI/GP bnfinit and bnfcertify"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

@@ -375,9 +375,26 @@ class MinkowskiPrincipalFactorBaseCertificate:
     def stable_hash(self) -> str:
         return self._content_sha256
 
-    def verify(self) -> bool:
+    def verify(
+        self,
+        group: Any = None,
+        context: Any = None,
+        *,
+        cancelled: Any = None,
+    ) -> bool:
+        del context
         try:
+            if cancelled is not None and not callable(cancelled):
+                return False
+            if cancelled is not None and bool(cancelled()):
+                return False
             if _content_hash(self._body_dict()) != self._content_sha256:
+                return False
+            if group is not None and (
+                group.ideal_order() is not self.field.maximal_order()
+                or tuple(group.invariants()) != ()
+                or int(group.order()) != 1
+            ):
                 return False
             factor_base_module = __import__(
                 "sagejs.number_fields.class_group_factor_base",
@@ -402,6 +419,8 @@ class MinkowskiPrincipalFactorBaseCertificate:
             )
             if plan.to_dict() != stored_plan or tuple(plan.assumptions):
                 return False
+            if cancelled is not None and bool(cancelled()):
+                return False
             records = factor_base_module.build_factor_base(plan)
             if [record.to_dict() for record in records] != self.factor_base:
                 return False
@@ -415,7 +434,11 @@ class MinkowskiPrincipalFactorBaseCertificate:
                 fromlist=["class_group_relations"],
             )
             order = self.field.maximal_order()
-            for record, payload in zip(records, witness_payloads, strict=True):
+            for index, (record, payload) in enumerate(
+                zip(records, witness_payloads, strict=True)
+            ):
+                if index % 16 == 0 and cancelled is not None and bool(cancelled()):
+                    return False
                 witness = relations.FactoredPrincipalWitness.from_dict(
                     self.field, payload
                 )
@@ -427,7 +450,12 @@ class MinkowskiPrincipalFactorBaseCertificate:
 
     @classmethod
     def from_dict(
-        cls, field: Any, payload: dict[str, Any]
+        cls,
+        field: Any,
+        payload: dict[str, Any],
+        *,
+        group: Any = None,
+        cancelled: Any = None,
     ) -> MinkowskiPrincipalFactorBaseCertificate:
         if not isinstance(payload, dict):
             raise TypeError("a Minkowski certificate must be a dictionary")
@@ -475,7 +503,7 @@ class MinkowskiPrincipalFactorBaseCertificate:
             candidates_checked=payload["candidates_checked"],
             maximum_reduction_candidates=payload["maximum_reduction_candidates"],
         )
-        if answer.to_dict() != payload or not answer.verify():
+        if answer.to_dict() != payload or not answer.verify(group, cancelled=cancelled):
             raise ValueError("Minkowski certificate exact replay failed")
         return answer
 
