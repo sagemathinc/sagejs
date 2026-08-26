@@ -258,6 +258,14 @@ def check_curve(curve):
     assert raw_workspace.closed
     values = tuple(P._scalar_multiple_reference(index) for index in range(-4, 8))
     rights = tuple(values[(5 * index + 3) % len(values)] for index in range(len(values)))
+    # Prepared contexts must retain the polynomial owners rather than stale
+    # raw handles: force the bounded exact-polynomial cache to spill the model
+    # and divisor resources before exercising every native batch operation.
+    eviction_witnesses = tuple(
+        J.polynomial_ring()([index, 1]) for index in range(70)
+    )
+    for polynomial in eviction_witnesses:
+        polynomial._exact_polynomial_resource()
     expected = reference.add_batch(values, rights, algorithm="reference")
     actual, diagnostics = context.add_batch(values, rights, diagnostics=True)
     assert actual == expected

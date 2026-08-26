@@ -1010,11 +1010,16 @@ class PreparedRationalJacobianArithmetic:
         self._workspace = fmpq_polynomial_workspace(_WORKSPACE_SLOTS)
         self._closed = False
         self._busy = False
-        self._f_resource = _resource(jacobian.f())
-        self._h_resource = _resource(jacobian.h())
+        # Polynomial resources are reconstructible cache entries.  Keep the
+        # owning public polynomials, not raw FFI handles that can be closed by
+        # the bounded polynomial-resource cache during a long batch.
+        self._f_polynomial = jacobian.f()
+        self._h_polynomial = jacobian.h()
+        f_resource = _resource(self._f_polynomial)
+        h_resource = _resource(self._h_polynomial)
         if not fmpq_polynomial_workspace_load(
-            self._workspace, 0, self._f_resource
-        ) or not fmpq_polynomial_workspace_load(self._workspace, 1, self._h_resource):
+            self._workspace, 0, f_resource
+        ) or not fmpq_polynomial_workspace_load(self._workspace, 1, h_resource):
             self._workspace.close()
             raise ArithmeticError("failed to prepare the rational Jacobian model")
         self._add_output = kernel_integer_zeros(
@@ -1023,7 +1028,11 @@ class PreparedRationalJacobianArithmetic:
         self._scalar_output = kernel_integer_zeros(
             rational_cantor_scalar, _OUTPUT_WORDS, word_capacity
         )
-        model = (genus, _polynomial_data(jacobian.f()), _polynomial_data(jacobian.h()))
+        model = (
+            genus,
+            _polynomial_data(self._f_polynomial),
+            _polynomial_data(self._h_polynomial),
+        )
         self.model_fingerprint = hashlib.sha256(repr(model).encode("ascii")).hexdigest()
         compiled = (
             is_compiled(rational_cantor_add)
@@ -1169,8 +1178,8 @@ class PreparedRationalJacobianArithmetic:
         if not rational_cantor_add(
             self._add_output,
             self._workspace,
-            self._f_resource,
-            self._h_resource,
+            _resource(self._f_polynomial),
+            _resource(self._h_polynomial),
             _resource(u1),
             _resource(v1),
             _resource(u2),
@@ -1185,8 +1194,8 @@ class PreparedRationalJacobianArithmetic:
         if not rational_cantor_scalar(
             self._scalar_output,
             self._workspace,
-            self._f_resource,
-            self._h_resource,
+            _resource(self._f_polynomial),
+            _resource(self._h_polynomial),
             _resource(u),
             _resource(v),
             scalar,
@@ -1902,8 +1911,8 @@ def _install_retained_rational_mumford_state(context_type: Any) -> None:
         try:
             answer = scalar_result_function(
                 context._workspace,
-                context._f_resource,
-                context._h_resource,
+                polynomial_resource_function(context._f_polynomial),
+                polynomial_resource_function(context._h_polynomial),
                 result,
                 scalar,
                 context._genus,
