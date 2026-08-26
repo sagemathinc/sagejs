@@ -380,7 +380,7 @@
       "id": "combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 60000,
+      "max_source_bytes": 100000,
       "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
       "files": [
         "src/baselib/combinat.py"

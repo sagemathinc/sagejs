@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 171,
+    "pass": 214,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -26,6 +26,21 @@
       "actual": "(x, y)\n"
     },
     {
+      "id": "src/baselib/combinat.py#2823204a98155fe5-13480a753067340d",
+      "status": "pass",
+      "actual": "[1, 1, 2, 5, 15, 52, 203, 877]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#ec862cdd62911bfc-3c9f7fb81726c240",
+      "status": "pass",
+      "actual": "185724268771078270438257767181908917499221852770\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#bffb4b674867e000-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
       "id": "src/baselib/graphics3d.py#dd36051673d700fc-e3b0c44298fc1c14",
       "status": "pass",
       "actual": ""
@@ -34,6 +49,26 @@
       "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#a50322a4b887b0df-73b89f3670f36e20",
+      "status": "pass",
+      "actual": "[1, 1, 2, 5, 14, 42, 132]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#5e74a5c74b823966-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#71abe9810850c28b-3770c920858255fa",
+      "status": "pass",
+      "actual": "1583850964596120042686772779038896\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#1d83cd0bec19cca7-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
@@ -169,6 +204,66 @@
       "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
       "status": "pass",
       "actual": "(161/16 : -2065/64 : 1)\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#552a855fb1606657-ecbb96575b243e1c",
+      "status": "pass",
+      "actual": "[1, 0, -1, 0, 5, 0, -61, 0, 1385]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#7686d3036fbaa3b1-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#40121058e723917e-39fa9ec190eee7b6",
+      "status": "pass",
+      "actual": "60\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#50b0892ec8bd99e4-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#dfe8e38ad61e1335-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#e14e920b56692980-7a44134739184167",
+      "status": "pass",
+      "actual": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#eeddde96b56de479-4649dd61b76b6ffb",
+      "status": "pass",
+      "actual": "[1, -1, 2, -3, 5]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#9130ebec9fb93ce8-94ec0682569a1850",
+      "status": "pass",
+      "actual": "280571172992510140037611932413038677189525\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#dc686b60fe1b02a5-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#958759ccfe2ec7c4-9f14025af0065b30",
+      "status": "pass",
+      "actual": "35\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#6030131c10bf260a-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#d67538f1aa03aa22-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
     },
     {
       "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",
@@ -562,6 +657,21 @@
       "reason": "optional features unavailable: networkx"
     },
     {
+      "id": "src/baselib/combinat.py#954188db87f926f5-d6daad65d661ca05",
+      "status": "pass",
+      "actual": "137/60\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#7b454a2e59b6a00e-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#d20de53444e81d46-87b229db53d55af2",
+      "status": "pass",
+      "actual": "5269/3600\n"
+    },
+    {
       "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
       "status": "pass",
       "actual": "Graphics object consisting of 1 graphics primitive\n"
@@ -605,6 +715,31 @@
       "id": "src/baselib/graphics3d.py#47b1824ff9234cae-6671064d959f5283",
       "status": "pass",
       "actual": "[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#e3762bc5e9da1868-8c70135866c9c3ad",
+      "status": "pass",
+      "actual": "[0, 1, 1, 2, 3, 5, 8, 13]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#17a7741a864a51c0-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#74a1d51e00cbd533-4a44dc15364204a8",
+      "status": "pass",
+      "actual": "10\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#37409c398da37d5f-fe389897a2cb166d",
+      "status": "pass",
+      "actual": "[2, 1, 3, 4, 7, 11, 18, 29]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#4a586284c6c5da6a-4fc82b26aecb47d2",
+      "status": "pass",
+      "actual": "11\n"
     },
     {
       "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
@@ -745,6 +880,41 @@
       "id": "src/baselib/graphics.py#4b2c03786228dcdb-5568d4645dfaeadc",
       "status": "pass",
       "actual": "Multigraphics with 2 elements\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#9340d17d1f9b2c90-9c19f29d0e6fefa2",
+      "status": "pass",
+      "actual": "1260\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#fe706ed79e7e1f0e-9c19f29d0e6fefa2",
+      "status": "pass",
+      "actual": "1260\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#4efa60f3567bdec7-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#bee477e6b9864712-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#0c901ab7483a3756-ce7a258d149aaeac",
+      "status": "pass",
+      "actual": "[1, 0, 1, 2, 9, 44, 265]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#49d84352c419e8a6-608604a562bc8699",
+      "status": "pass",
+      "actual": "895014631192902121\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#32efbd1acfb627da-768b84ef05f655d5",
+      "status": "pass",
+      "actual": "265\n"
     },
     {
       "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
@@ -1067,6 +1237,21 @@
       "actual": "True\n"
     },
     {
+      "id": "src/baselib/combinat.py#472516f6fd5ab5ea-d29d53701d3c859e",
+      "status": "pass",
+      "actual": "210\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#e88027d6eecf18ae-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#2ad52422a2be9d46-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
       "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
       "status": "pass",
       "actual": "[x == -2, x == 2]\n"
@@ -1075,6 +1260,36 @@
       "id": "src/baselib/groups.py#0abcda1883011fff-eba3ff5a3fd19728",
       "status": "pass",
       "actual": "276595200\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#b0c0f312d932fefa-5a10f13a0da926cd",
+      "status": "pass",
+      "actual": "[0, 24, 50, 35, 10, 1]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#0e30bf1c026e29c0-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#3dc1d7b023f30317-5feceb66ffc86f38",
+      "status": "pass",
+      "actual": "0\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#73534a4c2cba0f1a-489b52f04b496202",
+      "status": "pass",
+      "actual": "[0, 1, 15, 25, 10, 1]\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#89420bc859a542d0-6b86b273ff34fce1",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "src/baselib/combinat.py#15f2297759f7dd3d-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",

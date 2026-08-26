@@ -220,6 +220,59 @@ Return a graphics object containing a vertical bar chart.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `bell_number`
+
+```sage
+bell_number(n: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Bell number, the number of partitions of an `n`-set.
+
+The value comes from the Bell triangle (also called Aitken's array or
+the Peirce triangle): each row starts with the last entry of the row
+before it, and each further entry is the running sum of that start with
+the entries of the previous row; the first entry of row `n` is `B(n)`.
+
+### Input
+
+- `n` -- a nonnegative integer
+
+### Examples
+
+```sage
+    sage: [bell_number(n) for n in range(8)]
+    [1, 1, 2, 5, 15, 52, 203, 877]
+    sage: bell_number(50)
+    185724268771078270438257767181908917499221852770
+    sage: bell_number(6) == sum(stirling_number2(6, k) for k in range(7))
+    True
+```
+
+### Limitations
+
+The Wolfram Language's two-argument `BellB[n, x]` Bell polynomials are
+not implemented; a second argument raises `NotImplementedError` rather
+than being silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.bell_number` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, set partitions
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage for every nonnegative `n`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Gian-Carlo Rota, The Number of Partitions of a Set (American Mathematical Monthly 71:5, 498-504) (1964).
+
 ## `bezier_path`
 
 ```sage
@@ -284,6 +337,62 @@ Graphics3d Object
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `catalan_number`
+
+```sage
+catalan_number(n: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.
+
+Matching Sage, `catalan_number` returns `0` for every negative `n`; this
+is a convenient convention rather than the value of an analytic
+continuation, and it disagrees with the Wolfram Language, whose
+`CatalanNumber` continues the sequence through the Gamma function and is
+generally nonzero at negative integers.
+
+### Input
+
+- `n` -- an integer
+
+### Examples
+
+```sage
+    sage: [catalan_number(n) for n in range(7)]
+    [1, 1, 2, 5, 14, 42, 132]
+    sage: catalan_number(-3)
+    0
+    sage: catalan_number(60)
+    1583850964596120042686772779038896
+    sage: catalan_number(5) == binomial(10, 5) // 6
+    True
+```
+
+### Limitations
+
+A second positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.catalan_number` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Catalan numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage for every integer `n`, including negative `n`.
+- Limitations: `catalan_number` returns `0` for every negative `n`, matching Sage's convention.  This is not the value of the Wolfram Language's analytic continuation of `CatalanNumber` through the Gamma function, which is generally nonzero at negative integers and is not reproduced here.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Richard P. Stanley, Catalan Numbers (2015).
 
 ## `circle`
 
@@ -1170,6 +1279,56 @@ sage: 10 * E([0,0])
 
 - `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
 
+## `euler_number`
+
+```sage
+euler_number(n: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Euler number (the secant/zigzag number `E_n`).
+
+`E_n` is `0` for odd `n`, and the even-indexed values alternate in
+sign: `E_0 = 1`, `E_2 = -1`, `E_4 = 5`, `E_6 = -61`, matching both
+Sage's `euler_number` and the Wolfram Language's `EulerE`.
+
+### Input
+
+- `n` -- a nonnegative integer
+
+### Examples
+
+```sage
+    sage: [euler_number(n) for n in range(9)]
+    [1, 0, -1, 0, 5, 0, -61, 0, 1385]
+    sage: euler_number(11)
+    0
+```
+
+### Limitations
+
+The Wolfram Language's two-argument `EulerE[n, x]` Euler polynomials are
+not implemented; a second argument raises `NotImplementedError` rather
+than being silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.euler_number` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Euler numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage, and the Wolfram Language's `EulerE`, for every nonnegative `n`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Louis Comtet, Advanced Combinatorics: The Art of Finite and Infinite Expansions (1974).
+
 ## `exit`
 
 ```sage
@@ -1235,6 +1394,62 @@ automatically use `BigInt` when necessary.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `falling_factorial`
+
+```sage
+falling_factorial(x: Any, a: Any, *extra: Any) -> Any
+```
+
+Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.
+
+`a` counts the factors and must be a nonnegative integer; `x` may be
+any Sage.js number that supports subtraction and multiplication, so the
+result stays exact for exact `x` (an integer or a `Rational`) and is
+otherwise whatever `x`'s own arithmetic produces.
+
+### Input
+
+- `x` -- the starting value
+- `a` -- a nonnegative integer, the number of descending factors
+
+### Examples
+
+```sage
+    sage: falling_factorial(5, 3)
+    60
+    sage: falling_factorial(5, 0)
+    1
+    sage: falling_factorial(10, 10) == factorial(10)
+    True
+```
+
+### Limitations
+
+Sage extends `a` to negative integers through `1 / rising_factorial`;
+that extension is not implemented here and raises `NotImplementedError`.
+A third positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.arith.misc.falling_factorial` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, factorial powers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for a nonnegative integer factor count `a`.
+- Limitations: The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.arith.misc`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
+
 ## `fast_callable`
 
 ```sage
@@ -1261,6 +1476,62 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 ### References
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
+
+## `fibonacci`
+
+```sage
+fibonacci(n: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Fibonacci number, for any integer `n`.
+
+`F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)`.  Negative indices
+use the standard extension `F(-n) = (-1)^(n+1) F(n)`.
+
+The value comes from Dijkstra's fast-doubling identities
+`F(2k) = F(k) (2 F(k+1) - F(k))` and `F(2k+1) = F(k)^2 + F(k+1)^2`,
+which halve the index at every step, so the cost is `O(log n)`
+big-integer multiplications rather than `O(n)` additions.
+
+### Input
+
+- `n` -- an integer, positive, negative, or zero
+
+### Examples
+
+```sage
+    sage: [fibonacci(n) for n in range(10)]
+    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+    sage: [fibonacci(-n) for n in range(1, 6)]
+    [1, -1, 2, -3, 5]
+    sage: fibonacci(200)
+    280571172992510140037611932413038677189525
+```
+
+### Limitations
+
+Sage's two-argument `fibonacci(n, algorithm=...)` form and the Wolfram
+Language `Fibonacci[n, x]` Fibonacci polynomials are not implemented.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.fibonacci` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Fibonacci numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — The one-argument form matches Sage for every integer `n`.
+- Limitations: Sage's `algorithm` keyword is not implemented, and the Wolfram Language's two-argument `Fibonacci[n, x]` Fibonacci polynomials are a different function that is not implemented; a second positional argument raises `TypeError` rather than being silently ignored.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Edsger W. Dijkstra, In Honour of Fibonacci (EWD654) (1978).
 
 ## `frame_labels`
 
@@ -1305,6 +1576,70 @@ Draw the twelve edges of an axis-aligned three-dimensional frame.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `gaussian_binomial`
+
+```sage
+q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any
+```
+
+Return the Gaussian binomial coefficient `binom(n, k)_q`.
+
+`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional
+vector space over a field with `q` elements when `q` is a prime power,
+and is the natural q-analogue of `binomial(n, k)` for every `q`:
+`binom(n, k)_1 = binomial(n, k)`.
+
+`q` may be an exact integer, in which case the result is an exact
+integer, or a polynomial-ring indeterminate, in which case the result
+is the Gaussian polynomial itself.
+
+### Input
+
+- `n`, `k` -- nonnegative integers
+- `q` -- an exact integer or a polynomial-ring element
+
+### Examples
+
+```sage
+    sage: q_binomial(4, 2, 1) == binomial(4, 2)
+    True
+    sage: q_binomial(4, 2, 2)
+    35
+    sage: q_binomial(5, 0, 3)
+    1
+    sage: q_binomial(5, 7, 3)
+    0
+```
+
+### Limitations
+
+Unlike Sage, `q` must be supplied explicitly: Sage.js does not
+auto-construct a default polynomial ring and indeterminate when `q` is
+omitted, so `q_binomial(n, k)` is not implemented.  A fourth positional
+argument raises `TypeError` rather than being silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`
+is Sage's own alias for the same function.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Aliases: `q_binomial`
+- Tags: combinatorics, binomial coefficients, q-analogues
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Sage's own alias for `q_binomial`, documented under the same name.
+- Limitations: `q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.q_analogues`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- George E. Andrews, The Theory of Partitions (1976).
 
 ## `GF`
 
@@ -4612,6 +4947,59 @@ This entry is implemented and exercised by the Sage.js graph semantic corpus. Th
 
 - `sage-derived` — [SageMath `src/sage/graphs/generators/families.py`:3651](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/families.py#L3651); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
 
+## `harmonic_number`
+
+```sage
+harmonic_number(n: Any, m: Any=1, *extra: Any) -> Any
+```
+
+Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.
+
+The ordinary harmonic number is `m = 1`.  The result is an exact
+`Rational`, never a float, so it stays exact past any floating-point
+precision.
+
+### Input
+
+- `n` -- a nonnegative integer
+- `m` -- a nonnegative integer power, default `1`
+
+### Examples
+
+```sage
+    sage: harmonic_number(5)
+    137/60
+    sage: harmonic_number(0)
+    0
+    sage: harmonic_number(5, 2)
+    5269/3600
+```
+
+### Limitations
+
+A third positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.functions.other.harmonic_number` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, harmonic numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for nonnegative integer `n` and `m`.
+- Limitations: `n` and `m` must both be nonnegative integers, so `harmonic_number` always returns an exact `Rational`.  Sage's symbolic evaluation for non-integer or symbolic `n` is not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.functions.other`](https://doc.sagemath.org/html/en/reference/functions/sage/functions/other.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
+
 ## `help`
 
 ```sage
@@ -5220,6 +5608,114 @@ sage: float(log2)
 ### Provenance
 
 - `sage-derived` — [SageMath symbolic constants API](https://doc.sagemath.org/html/en/reference/functions/sage/functions/constants.html); license GPL-2.0-or-later
+
+## `lucas_number1`
+
+```sage
+lucas_number1(n: Any, P: Any, Q: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.
+
+Defined by `U_0 = 0`, `U_1 = 1`, and `U_k = P U_{k-1} - Q U_{k-2}`.  The
+ordinary Fibonacci numbers are `U_n(1, -1)`.
+
+### Input
+
+- `n` -- a nonnegative integer index
+- `P`, `Q` -- integer sequence parameters
+
+### Examples
+
+```sage
+    sage: [lucas_number1(n, 1, -1) for n in range(8)]
+    [0, 1, 1, 2, 3, 5, 8, 13]
+    sage: lucas_number1(5, 1, -1) == fibonacci(5)
+    True
+    sage: lucas_number1(10, 2, 1)
+    10
+```
+
+### Limitations
+
+Only nonnegative `n` and integer `P`, `Q` are implemented; Sage also
+accepts symbolic or algebraic `P`, `Q`, and PARI's `lucas` extension to
+negative `n`, neither of which is implemented here.  A fourth
+positional argument raises `TypeError` rather than being silently
+ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.lucas_number1` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Lucas sequences
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for nonnegative `n` and integer `P`, `Q`.
+- Limitations: Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Richard Crandall, Carl Pomerance, Prime Numbers: A Computational Perspective (2005).
+
+## `lucas_number2`
+
+```sage
+lucas_number2(n: Any, P: Any, Q: Any, *extra: Any) -> Any
+```
+
+Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.
+
+Defined by `V_0 = 2`, `V_1 = P`, and `V_k = P V_{k-1} - Q V_{k-2}`.  The
+ordinary Lucas numbers are `V_n(1, -1)`.
+
+### Input
+
+- `n` -- a nonnegative integer index
+- `P`, `Q` -- integer sequence parameters
+
+### Examples
+
+```sage
+    sage: [lucas_number2(n, 1, -1) for n in range(8)]
+    [2, 1, 3, 4, 7, 11, 18, 29]
+    sage: lucas_number2(5, 1, -1)
+    11
+```
+
+### Limitations
+
+Only nonnegative `n` and integer `P`, `Q` are implemented, matching
+`lucas_number1`.  A fourth positional argument raises `TypeError`
+rather than being silently ignored; the Wolfram Language's two-term
+`LucasL[n, x]` polynomial form is handled by the `_wolfram` wrapper,
+not here.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.lucas_number2` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Lucas sequences
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for nonnegative `n` and integer `P`, `Q`.
+- Limitations: Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Richard Crandall, Carl Pomerance, Prime Numbers: A Computational Perspective (2005).
 
 ## `ManinPresentation`
 
@@ -5891,6 +6387,60 @@ Multigraphics with 2 elements
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `multinomial`
+
+```sage
+multinomial(*args: Any) -> Any
+```
+
+Return the multinomial coefficient of the given nonnegative integers.
+
+`multinomial(k_1, ..., k_m) = (k_1 + ... + k_m)! / (k_1! ... k_m!)`,
+the number of ways to split a labeled set of that total size into
+labeled blocks of those sizes.  As in Sage, the entries may be passed
+either as separate arguments or as one list or tuple.
+
+### Input
+
+- `args` -- nonnegative integers, or a single list/tuple of them
+
+### Examples
+
+```sage
+    sage: multinomial(2, 3, 4)
+    1260
+    sage: multinomial([2, 3, 4])
+    1260
+    sage: multinomial(5, 0)
+    1
+    sage: multinomial() == 1
+    True
+```
+
+Unlike the other counting functions in this module, `multinomial` has
+no fixed arity to guard: every positional argument is significant
+data, not an optional or unsupported extension point, so there is no
+"extra" argument to reject.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.multinomial` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, binomial coefficients
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Accepts both the variadic and single-list calling forms, as Sage does.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
+
 ## `next_prime`
 
 ```sage
@@ -5916,6 +6466,57 @@ Return the smallest prime strictly greater than `value` using FLINT.
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `number_of_derangements`
+
+```sage
+number_of_derangements(n: Any, *extra: Any) -> Any
+```
+
+Return the number of derangements of `n` elements, the subfactorial `!n`.
+
+A derangement is a permutation with no fixed point.  The value comes
+from the linear recurrence `D(0) = 1`, `D(1) = 0`,
+`D(n) = (n - 1) (D(n-1) + D(n-2))`.
+
+### Input
+
+- `n` -- a nonnegative integer
+
+### Examples
+
+```sage
+    sage: [number_of_derangements(n) for n in range(7)]
+    [1, 0, 1, 2, 9, 44, 265]
+    sage: number_of_derangements(20)
+    895014631192902121
+    sage: sum((-1)^k * binomial(6, k) * factorial(6 - k) for k in range(7))
+    265
+```
+
+### Limitations
+
+A second positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.derangements.number_of_derangements` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, derangements
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage for every nonnegative `n`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.derangements`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/derangements.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Louis Comtet, Advanced Combinatorics: The Art of Finite and Infinite Expansions (1974).
 
 ## `number_of_partitions`
 
@@ -7446,6 +8047,70 @@ sage: prime_range(10, 20)
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `q_binomial`
+
+```sage
+q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any
+```
+
+Return the Gaussian binomial coefficient `binom(n, k)_q`.
+
+`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional
+vector space over a field with `q` elements when `q` is a prime power,
+and is the natural q-analogue of `binomial(n, k)` for every `q`:
+`binom(n, k)_1 = binomial(n, k)`.
+
+`q` may be an exact integer, in which case the result is an exact
+integer, or a polynomial-ring indeterminate, in which case the result
+is the Gaussian polynomial itself.
+
+### Input
+
+- `n`, `k` -- nonnegative integers
+- `q` -- an exact integer or a polynomial-ring element
+
+### Examples
+
+```sage
+    sage: q_binomial(4, 2, 1) == binomial(4, 2)
+    True
+    sage: q_binomial(4, 2, 2)
+    35
+    sage: q_binomial(5, 0, 3)
+    1
+    sage: q_binomial(5, 7, 3)
+    0
+```
+
+### Limitations
+
+Unlike Sage, `q` must be supplied explicitly: Sage.js does not
+auto-construct a default polynomial ring and indeterminate when `q` is
+omitted, so `q_binomial(n, k)` is not implemented.  A fourth positional
+argument raises `TypeError` rather than being silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`
+is Sage's own alias for the same function.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Aliases: `gaussian_binomial`
+- Tags: combinatorics, binomial coefficients, q-analogues
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for an explicit integer or polynomial-ring `q`; the zero-argument polynomial-ring default is not implemented.
+- Limitations: `q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.q_analogues`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- George E. Andrews, The Theory of Partitions (1976).
+
 ## `Qp`
 
 ```sage
@@ -7676,6 +8341,61 @@ Convert a Sage color specification to an RGB triple.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `rising_factorial`
+
+```sage
+rising_factorial(x: Any, a: Any, *extra: Any) -> Any
+```
+
+Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.
+
+Also called the Pochhammer symbol.  `a` counts the factors and must be
+a nonnegative integer; `x` may be any Sage.js number that supports
+addition and multiplication.
+
+### Input
+
+- `x` -- the starting value
+- `a` -- a nonnegative integer, the number of ascending factors
+
+### Examples
+
+```sage
+    sage: rising_factorial(5, 3)
+    210
+    sage: rising_factorial(5, 0)
+    1
+    sage: rising_factorial(1, 10) == factorial(10)
+    True
+```
+
+### Limitations
+
+Sage extends `a` to negative integers through `1 / falling_factorial`;
+that extension is not implemented here and raises `NotImplementedError`.
+A third positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.arith.misc.rising_factorial` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, factorial powers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Matches Sage for a nonnegative integer factor count `a`.
+- Limitations: The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.arith.misc`](https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
 
 ## `ruler`
 
@@ -7929,6 +8649,109 @@ Plot a radial function in spherical coordinates.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `stirling_number1`
+
+```sage
+stirling_number1(n: Any, k: Any, *extra: Any) -> Any
+```
+
+Return the unsigned Stirling number of the first kind, `c(n, k)`.
+
+`c(n, k)` counts the permutations of `n` elements with exactly `k`
+cycles.  **This is the unsigned convention**: Sage's `stirling_number1`
+always returns a nonnegative integer, unlike the Wolfram Language's
+`StirlingS1`, which is signed as `(-1)^(n - k) c(n, k)`.
+
+### Input
+
+- `n`, `k` -- nonnegative integers
+
+### Examples
+
+```sage
+    sage: [stirling_number1(5, k) for k in range(6)]
+    [0, 24, 50, 35, 10, 1]
+    sage: stirling_number1(0, 0)
+    1
+    sage: stirling_number1(6, 8)
+    0
+```
+
+### Limitations
+
+A third positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.stirling_number1` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Stirling numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage's unsigned convention for nonnegative `n`, `k`.
+- Limitations: `stirling_number1` is the UNSIGNED Stirling number of the first kind, matching Sage's own convention.  It is not the signed convention used by the Wolfram Language's `StirlingS1`; the `_wolfram.StirlingS1` wrapper applies the `(-1)^(n-k)` sign explicitly.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
+
+## `stirling_number2`
+
+```sage
+stirling_number2(n: Any, k: Any, *extra: Any) -> Any
+```
+
+Return the Stirling number of the second kind, `S(n, k)`.
+
+`S(n, k)` counts the ways to partition an `n`-set into exactly `k`
+nonempty, unlabeled blocks.
+
+### Input
+
+- `n`, `k` -- nonnegative integers
+
+### Examples
+
+```sage
+    sage: [stirling_number2(5, k) for k in range(6)]
+    [0, 1, 15, 25, 10, 1]
+    sage: stirling_number2(0, 0)
+    1
+    sage: sum(stirling_number2(6, k) for k in range(7)) == bell_number(6)
+    True
+```
+
+### Limitations
+
+A third positional argument raises `TypeError` rather than being
+silently ignored.
+
+This API and documentation are adapted from
+`sage.combinat.combinat.stirling_number2` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.combinat`
+- Tags: combinatorics, integer sequences, Stirling numbers
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: compatible — Matches Sage for nonnegative `n`, `k`.
+
+### Provenance
+
+- `sage-derived` — [SageMath `sage.combinat.combinat`](https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html); revision SageMath 10.9; license GPL-2.0-or-later
+
+### References
+
+- Ronald L. Graham, Donald E. Knuth, Oren Patashnik, Concrete Mathematics: A Foundation for Computer Science (1994).
 
 ## `streamline_plot`
 

@@ -217,7 +217,71 @@ class SageLowerer {
     Sin: "sin",
     Sqrt: "sqrt",
     Tan: "tan",
+    // Exact 1:1 name-and-argument-order matches with a Sage.js counting
+    // function.  A second positional argument that Wolfram documents as a
+    // different function (e.g. `Fibonacci[n, x]` Fibonacci polynomials)
+    // reaches the Sage.js function directly and fails there with a clear
+    // arity error rather than being silently ignored.
+    BellB: "bell_number",
+    CatalanNumber: "catalan_number",
+    EulerE: "euler_number",
+    FactorialPower: "falling_factorial",
+    Fibonacci: "fibonacci",
+    HarmonicNumber: "harmonic_number",
+    Multinomial: "multinomial",
+    Pochhammer: "rising_factorial",
+    QBinomial: "q_binomial",
+    StirlingS2: "stirling_number2",
+    Subfactorial: "number_of_derangements",
   };
+
+  // Wolfram semantics differ from the Sage.js function of the same shape
+  // (a sign flip, fixed sequence parameters, a different negative-argument
+  // convention, or a different result shape), so these heads lower to a
+  // `_wolfram.<Head>` wrapper in `src/lib/wolfram.py` instead of a direct
+  // call.  `RUNTIME_HEADS` is the minimal named replacement for the
+  // hardcoded array this module used to dispatch through; the sibling
+  // Wolfram-frontend branches (`arith/integer-methods`,
+  // `arith/number-theory-globals`) each introduce their own same-named
+  // constant with their own heads, so merging is expected to conflict here
+  // and take the union of all three head lists.
+  private static readonly RUNTIME_HEADS = [
+    "Dimensions",
+    "FactorInteger",
+    "Head",
+    "IntegerPartitions",
+    "Length",
+    "LucasL",
+    "PartitionsP",
+    "Prime",
+    "Range",
+    "StirlingS1",
+  ];
+
+  // Counting heads whose Wolfram options surface is not implemented yet:
+  // any `Rule`/`RuleDelayed` argument is refused by name instead of being
+  // silently lowered as a positional argument.  PR #35
+  // (`origin/numerics/wolfram-options`) owns lowering `Option -> value`
+  // into keyword arguments; expanding this list to accept real options
+  // later means adding a spec table per head family there, not new
+  // machinery here.
+  private static readonly COUNTING_HEADS = new Set([
+    "BellB",
+    "CatalanNumber",
+    "EulerE",
+    "FactorialPower",
+    "Fibonacci",
+    "HarmonicNumber",
+    "IntegerPartitions",
+    "LucasL",
+    "Multinomial",
+    "PartitionsP",
+    "Pochhammer",
+    "QBinomial",
+    "StirlingS1",
+    "StirlingS2",
+    "Subfactorial",
+  ]);
 
   constructor(
     private readonly source: string,
@@ -408,11 +472,24 @@ class SageLowerer {
     }
     const direct = this.directHeads[head];
     const target = direct ?? (
-      ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
-        .includes(head)
+      SageLowerer.RUNTIME_HEADS.includes(head)
         ? `_wolfram.${head}`
         : this.name(head)
     );
+    if (SageLowerer.COUNTING_HEADS.has(head)) {
+      for (const argument of expression.arguments) {
+        if (
+          argument.kind === "binary" &&
+          ["->", ":>"].includes(argument.operator)
+        ) {
+          throw new WolframSyntaxError(
+            `${head} options are not supported yet: Rule expressions do ` +
+              "not lower to keyword arguments outside plot options",
+            expression.span,
+          );
+        }
+      }
+    }
     return `${target}(${
       expression.arguments.map((argument) => this.expression(argument))
         .join(", ")

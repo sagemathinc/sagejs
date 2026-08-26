@@ -119,6 +119,61 @@ Range = wolfram_range
 Table = table
 
 
+# These four counting names are not part of the closed `import sagejs as
+# sage` compiler-intrinsic surface (see `tools/python/contract.ts`), so they
+# are looked up the same way `src/lib/sage/combinat/__init__.py` re-exports
+# the partition names: a direct read off the shared global object.
+_stirling_number1 = runtime.reflect.get(runtime.global_object, "stirling_number1")
+_lucas_number2 = runtime.reflect.get(runtime.global_object, "lucas_number2")
+_number_of_partitions = runtime.reflect.get(
+    runtime.global_object, "number_of_partitions"
+)
+_partitions = runtime.reflect.get(runtime.global_object, "Partitions")
+
+
+def stirling_s1(n: Any, k: Any) -> Any:
+    """`StirlingS1` is signed; Sage's `stirling_number1` is unsigned."""
+    value = _stirling_number1(n, k)
+    sign = 1 if (int(n) - int(k)) % 2 == 0 else -1
+    return sign * value
+
+
+def lucas_l(n: Any, x: Any = None) -> Any:
+    """`LucasL[n]` is `V_n(1, -1)`; `LucasL[n, x]` (Lucas polynomials) is not
+    implemented."""
+    if x is not None:
+        raise NotImplementedError(
+            "LucasL(n, x) (Lucas polynomials) is not implemented; only the "
+            "one-argument LucasL(n) form is supported"
+        )
+    return _lucas_number2(n, 1, -1)
+
+
+def partitions_p(n: Any) -> Any:
+    """`PartitionsP[n]` is `0` for negative `n`; Sage's `number_of_partitions`
+    raises instead."""
+    if runtime.is_exact_integer(n) and int(n) < 0:
+        return 0
+    return _number_of_partitions(n)
+
+
+def integer_partitions(n: Any, *rest: Any) -> Any:
+    """`IntegerPartitions[n]` in Sage's own reverse-lexicographic order,
+    which already matches the Wolfram Language's documented order."""
+    if rest:
+        raise NotImplementedError(
+            "IntegerPartitions(n, ...) restrictions on length or parts are "
+            "not implemented yet; only the one-argument form is supported"
+        )
+    return _partitions(n).list()
+
+
+StirlingS1 = stirling_s1
+LucasL = lucas_l
+PartitionsP = partitions_p
+IntegerPartitions = integer_partitions
+
+
 class _GraphicsDirective:
     def __init__(self, options: dict[str, Any]) -> None:
         self.options = options

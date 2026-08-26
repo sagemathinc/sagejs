@@ -375,6 +375,49 @@
       },
       {
         "schema_version": 1,
+        "name": "bell_number",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "bell_number(n: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Bell number, the number of partitions of an `n`-set.",
+        "doc": "Return the `n`-th Bell number, the number of partitions of an `n`-set.\n\nThe value comes from the Bell triangle (also called Aitken's array or\nthe Peirce triangle): each row starts with the last entry of the row\nbefore it, and each further entry is the running sum of that start with\nthe entries of the previous row; the first entry of row `n` is `B(n)`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [bell_number(n) for n in range(8)]\n    [1, 1, 2, 5, 15, 52, 203, 877]\n    sage: bell_number(50)\n    185724268771078270438257767181908917499221852770\n    sage: bell_number(6) == sum(stirling_number2(6, k) for k in range(7))\n    True\n```\n\n### Limitations\n\nThe Wolfram Language's two-argument `BellB[n, x]` Bell polynomials are\nnot implemented; a second argument raises `NotImplementedError` rather\nthan being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.bell_number` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "set partitions"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage for every nonnegative `n`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "rota-number-of-partitions-of-a-set",
+            "title": "The Number of Partitions of a Set (American Mathematical Monthly 71:5, 498-504)",
+            "type": "article",
+            "authors": [
+              "Gian-Carlo Rota"
+            ],
+            "year": 1964
+          }
+        ],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "bezier_path",
         "aliases": [],
         "kind": "function",
@@ -463,6 +506,51 @@
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
         "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "catalan_number",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "catalan_number(n: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.",
+        "doc": "Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.\n\nMatching Sage, `catalan_number` returns `0` for every negative `n`; this\nis a convenient convention rather than the value of an analytic\ncontinuation, and it disagrees with the Wolfram Language, whose\n`CatalanNumber` continues the sequence through the Gamma function and is\ngenerally nonzero at negative integers.\n\n### Input\n\n- `n` -- an integer\n\n### Examples\n\n```sage\n    sage: [catalan_number(n) for n in range(7)]\n    [1, 1, 2, 5, 14, 42, 132]\n    sage: catalan_number(-3)\n    0\n    sage: catalan_number(60)\n    1583850964596120042686772779038896\n    sage: catalan_number(5) == binomial(10, 5) // 6\n    True\n```\n\n### Limitations\n\nA second positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.catalan_number` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Catalan numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage for every integer `n`, including negative `n`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "stanley-catalan-numbers",
+            "title": "Catalan Numbers",
+            "type": "book",
+            "authors": [
+              "Richard P. Stanley"
+            ],
+            "year": 2015
+          }
+        ],
+        "limitations": [
+          "`catalan_number` returns `0` for every negative `n`, matching Sage's convention.  This is not the value of the Wolfram Language's analytic continuation of `CatalanNumber` through the Gamma function, which is generally nonzero at negative integers and is not reproduced here."
+        ]
       },
       {
         "schema_version": 1,
@@ -1778,6 +1866,49 @@
       },
       {
         "schema_version": 1,
+        "name": "euler_number",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "euler_number(n: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Euler number (the secant/zigzag number `E_n`).",
+        "doc": "Return the `n`-th Euler number (the secant/zigzag number `E_n`).\n\n`E_n` is `0` for odd `n`, and the even-indexed values alternate in\nsign: `E_0 = 1`, `E_2 = -1`, `E_4 = 5`, `E_6 = -61`, matching both\nSage's `euler_number` and the Wolfram Language's `EulerE`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [euler_number(n) for n in range(9)]\n    [1, 0, -1, 0, 5, 0, -61, 0, 1385]\n    sage: euler_number(11)\n    0\n```\n\n### Limitations\n\nThe Wolfram Language's two-argument `EulerE[n, x]` Euler polynomials are\nnot implemented; a second argument raises `NotImplementedError` rather\nthan being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.euler_number` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Euler numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage, and the Wolfram Language's `EulerE`, for every nonnegative `n`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "comtet-advanced-combinatorics",
+            "title": "Advanced Combinatorics: The Art of Finite and Infinite Expansions",
+            "type": "book",
+            "authors": [
+              "Louis Comtet"
+            ],
+            "year": 1974
+          }
+        ],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "exit",
         "aliases": [],
         "kind": "function",
@@ -1859,6 +1990,52 @@
       },
       {
         "schema_version": 1,
+        "name": "falling_factorial",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "falling_factorial(x: Any, a: Any, *extra: Any) -> Any",
+        "summary": "Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.",
+        "doc": "Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.\n\n`a` counts the factors and must be a nonnegative integer; `x` may be\nany Sage.js number that supports subtraction and multiplication, so the\nresult stays exact for exact `x` (an integer or a `Rational`) and is\notherwise whatever `x`'s own arithmetic produces.\n\n### Input\n\n- `x` -- the starting value\n- `a` -- a nonnegative integer, the number of descending factors\n\n### Examples\n\n```sage\n    sage: falling_factorial(5, 3)\n    60\n    sage: falling_factorial(5, 0)\n    1\n    sage: falling_factorial(10, 10) == factorial(10)\n    True\n```\n\n### Limitations\n\nSage extends `a` to negative integers through `1 / rising_factorial`;\nthat extension is not implemented here and raises `NotImplementedError`.\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.arith.misc.falling_factorial` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "factorial powers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for a nonnegative integer factor count `a`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.arith.misc`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
+        "limitations": [
+          "The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "fast_callable",
         "aliases": [],
         "kind": "function",
@@ -1904,6 +2081,50 @@
         },
         "limitations": [
           "The current compiler targets JavaScript numeric evaluation."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "fibonacci",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "fibonacci(n: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Fibonacci number, for any integer `n`.",
+        "doc": "Return the `n`-th Fibonacci number, for any integer `n`.\n\n`F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)`.  Negative indices\nuse the standard extension `F(-n) = (-1)^(n+1) F(n)`.\n\nThe value comes from Dijkstra's fast-doubling identities\n`F(2k) = F(k) (2 F(k+1) - F(k))` and `F(2k+1) = F(k)^2 + F(k+1)^2`,\nwhich halve the index at every step, so the cost is `O(log n)`\nbig-integer multiplications rather than `O(n)` additions.\n\n### Input\n\n- `n` -- an integer, positive, negative, or zero\n\n### Examples\n\n```sage\n    sage: [fibonacci(n) for n in range(10)]\n    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n    sage: [fibonacci(-n) for n in range(1, 6)]\n    [1, -1, 2, -3, 5]\n    sage: fibonacci(200)\n    280571172992510140037611932413038677189525\n```\n\n### Limitations\n\nSage's two-argument `fibonacci(n, algorithm=...)` form and the Wolfram\nLanguage `Fibonacci[n, x]` Fibonacci polynomials are not implemented.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.fibonacci` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Fibonacci numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "The one-argument form matches Sage for every integer `n`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "dijkstra-in-honour-of-fibonacci",
+            "title": "In Honour of Fibonacci (EWD654)",
+            "authors": [
+              "Edsger W. Dijkstra"
+            ],
+            "year": 1978
+          }
+        ],
+        "limitations": [
+          "Sage's `algorithm` keyword is not implemented, and the Wolfram Language's two-argument `Fibonacci[n, x]` Fibonacci polynomials are a different function that is not implemented; a second positional argument raises `TypeError` rather than being silently ignored."
         ]
       },
       {
@@ -1988,6 +2209,53 @@
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
         "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "gaussian_binomial",
+        "aliases": [
+          "q_binomial"
+        ],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any",
+        "summary": "Return the Gaussian binomial coefficient `binom(n, k)_q`.",
+        "doc": "Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\nvector space over a field with `q` elements when `q` is a prime power,\nand is the natural q-analogue of `binomial(n, k)` for every `q`:\n`binom(n, k)_1 = binomial(n, k)`.\n\n`q` may be an exact integer, in which case the result is an exact\ninteger, or a polynomial-ring indeterminate, in which case the result\nis the Gaussian polynomial itself.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n- `q` -- an exact integer or a polynomial-ring element\n\n### Examples\n\n```sage\n    sage: q_binomial(4, 2, 1) == binomial(4, 2)\n    True\n    sage: q_binomial(4, 2, 2)\n    35\n    sage: q_binomial(5, 0, 3)\n    1\n    sage: q_binomial(5, 7, 3)\n    0\n```\n\n### Limitations\n\nUnlike Sage, `q` must be supplied explicitly: Sage.js does not\nauto-construct a default polynomial ring and indeterminate when `q` is\nomitted, so `q_binomial(n, k)` is not implemented.  A fourth positional\nargument raises `TypeError` rather than being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`\nis Sage's own alias for the same function.",
+        "tags": [
+          "combinatorics",
+          "binomial coefficients",
+          "q-analogues"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Sage's own alias for `q_binomial`, documented under the same name."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.q_analogues`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          }
+        ],
+        "limitations": [
+          "`q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented."
+        ]
       },
       {
         "schema_version": 1,
@@ -6382,6 +6650,52 @@
       },
       {
         "schema_version": 1,
+        "name": "harmonic_number",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "harmonic_number(n: Any, m: Any=1, *extra: Any) -> Any",
+        "summary": "Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.",
+        "doc": "Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.\n\nThe ordinary harmonic number is `m = 1`.  The result is an exact\n`Rational`, never a float, so it stays exact past any floating-point\nprecision.\n\n### Input\n\n- `n` -- a nonnegative integer\n- `m` -- a nonnegative integer power, default `1`\n\n### Examples\n\n```sage\n    sage: harmonic_number(5)\n    137/60\n    sage: harmonic_number(0)\n    0\n    sage: harmonic_number(5, 2)\n    5269/3600\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.functions.other.harmonic_number` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "harmonic numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for nonnegative integer `n` and `m`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.functions.other`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/functions/sage/functions/other.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
+        "limitations": [
+          "`n` and `m` must both be nonnegative integers, so `harmonic_number` always returns an exact `Rational`.  Sage's symbolic evaluation for non-integer or symbolic `n` is not implemented."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "help",
         "aliases": [],
         "kind": "function",
@@ -7380,6 +7694,98 @@
         ],
         "references": [],
         "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "lucas_number1",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "lucas_number1(n: Any, P: Any, Q: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.",
+        "doc": "Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.\n\nDefined by `U_0 = 0`, `U_1 = 1`, and `U_k = P U_{k-1} - Q U_{k-2}`.  The\nordinary Fibonacci numbers are `U_n(1, -1)`.\n\n### Input\n\n- `n` -- a nonnegative integer index\n- `P`, `Q` -- integer sequence parameters\n\n### Examples\n\n```sage\n    sage: [lucas_number1(n, 1, -1) for n in range(8)]\n    [0, 1, 1, 2, 3, 5, 8, 13]\n    sage: lucas_number1(5, 1, -1) == fibonacci(5)\n    True\n    sage: lucas_number1(10, 2, 1)\n    10\n```\n\n### Limitations\n\nOnly nonnegative `n` and integer `P`, `Q` are implemented; Sage also\naccepts symbolic or algebraic `P`, `Q`, and PARI's `lucas` extension to\nnegative `n`, neither of which is implemented here.  A fourth\npositional argument raises `TypeError` rather than being silently\nignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.lucas_number1` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Lucas sequences"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for nonnegative `n` and integer `P`, `Q`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "crandall-pomerance-prime-numbers",
+            "title": "Prime Numbers: A Computational Perspective",
+            "type": "book",
+            "authors": [
+              "Richard Crandall",
+              "Carl Pomerance"
+            ],
+            "year": 2005
+          }
+        ],
+        "limitations": [
+          "Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "lucas_number2",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "lucas_number2(n: Any, P: Any, Q: Any, *extra: Any) -> Any",
+        "summary": "Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.",
+        "doc": "Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.\n\nDefined by `V_0 = 2`, `V_1 = P`, and `V_k = P V_{k-1} - Q V_{k-2}`.  The\nordinary Lucas numbers are `V_n(1, -1)`.\n\n### Input\n\n- `n` -- a nonnegative integer index\n- `P`, `Q` -- integer sequence parameters\n\n### Examples\n\n```sage\n    sage: [lucas_number2(n, 1, -1) for n in range(8)]\n    [2, 1, 3, 4, 7, 11, 18, 29]\n    sage: lucas_number2(5, 1, -1)\n    11\n```\n\n### Limitations\n\nOnly nonnegative `n` and integer `P`, `Q` are implemented, matching\n`lucas_number1`.  A fourth positional argument raises `TypeError`\nrather than being silently ignored; the Wolfram Language's two-term\n`LucasL[n, x]` polynomial form is handled by the `_wolfram` wrapper,\nnot here.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.lucas_number2` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Lucas sequences"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for nonnegative `n` and integer `P`, `Q`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "crandall-pomerance-prime-numbers",
+            "title": "Prime Numbers: A Computational Perspective",
+            "type": "book",
+            "authors": [
+              "Richard Crandall",
+              "Carl Pomerance"
+            ],
+            "year": 2005
+          }
+        ],
+        "limitations": [
+          "Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here."
+        ]
       },
       {
         "schema_version": 1,
@@ -8541,6 +8947,50 @@
       },
       {
         "schema_version": 1,
+        "name": "multinomial",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "multinomial(*args: Any) -> Any",
+        "summary": "Return the multinomial coefficient of the given nonnegative integers.",
+        "doc": "Return the multinomial coefficient of the given nonnegative integers.\n\n`multinomial(k_1, ..., k_m) = (k_1 + ... + k_m)! / (k_1! ... k_m!)`,\nthe number of ways to split a labeled set of that total size into\nlabeled blocks of those sizes.  As in Sage, the entries may be passed\neither as separate arguments or as one list or tuple.\n\n### Input\n\n- `args` -- nonnegative integers, or a single list/tuple of them\n\n### Examples\n\n```sage\n    sage: multinomial(2, 3, 4)\n    1260\n    sage: multinomial([2, 3, 4])\n    1260\n    sage: multinomial(5, 0)\n    1\n    sage: multinomial() == 1\n    True\n```\n\nUnlike the other counting functions in this module, `multinomial` has\nno fixed arity to guard: every positional argument is significant\ndata, not an optional or unsupported extension point, so there is no\n\"extra\" argument to reject.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.multinomial` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "binomial coefficients"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Accepts both the variadic and single-list calling forms, as Sage does."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "next_prime",
         "aliases": [],
         "kind": "function",
@@ -8586,6 +9036,49 @@
         "implementation": {
           "algorithm": "FLINT next-prime search"
         },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "number_of_derangements",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "number_of_derangements(n: Any, *extra: Any) -> Any",
+        "summary": "Return the number of derangements of `n` elements, the subfactorial `!n`.",
+        "doc": "Return the number of derangements of `n` elements, the subfactorial `!n`.\n\nA derangement is a permutation with no fixed point.  The value comes\nfrom the linear recurrence `D(0) = 1`, `D(1) = 0`,\n`D(n) = (n - 1) (D(n-1) + D(n-2))`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [number_of_derangements(n) for n in range(7)]\n    [1, 0, 1, 2, 9, 44, 265]\n    sage: number_of_derangements(20)\n    895014631192902121\n    sage: sum((-1)^k * binomial(6, k) * factorial(6 - k) for k in range(7))\n    265\n```\n\n### Limitations\n\nA second positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.derangements.number_of_derangements` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "derangements"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage for every nonnegative `n`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.derangements`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/derangements.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "comtet-advanced-combinatorics",
+            "title": "Advanced Combinatorics: The Art of Finite and Infinite Expansions",
+            "type": "book",
+            "authors": [
+              "Louis Comtet"
+            ],
+            "year": 1974
+          }
+        ],
         "limitations": []
       },
       {
@@ -10699,6 +11192,53 @@
       },
       {
         "schema_version": 1,
+        "name": "q_binomial",
+        "aliases": [
+          "gaussian_binomial"
+        ],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any",
+        "summary": "Return the Gaussian binomial coefficient `binom(n, k)_q`.",
+        "doc": "Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\nvector space over a field with `q` elements when `q` is a prime power,\nand is the natural q-analogue of `binomial(n, k)` for every `q`:\n`binom(n, k)_1 = binomial(n, k)`.\n\n`q` may be an exact integer, in which case the result is an exact\ninteger, or a polynomial-ring indeterminate, in which case the result\nis the Gaussian polynomial itself.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n- `q` -- an exact integer or a polynomial-ring element\n\n### Examples\n\n```sage\n    sage: q_binomial(4, 2, 1) == binomial(4, 2)\n    True\n    sage: q_binomial(4, 2, 2)\n    35\n    sage: q_binomial(5, 0, 3)\n    1\n    sage: q_binomial(5, 7, 3)\n    0\n```\n\n### Limitations\n\nUnlike Sage, `q` must be supplied explicitly: Sage.js does not\nauto-construct a default polynomial ring and indeterminate when `q` is\nomitted, so `q_binomial(n, k)` is not implemented.  A fourth positional\nargument raises `TypeError` rather than being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`\nis Sage's own alias for the same function.",
+        "tags": [
+          "combinatorics",
+          "binomial coefficients",
+          "q-analogues"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for an explicit integer or polynomial-ring `q`; the zero-argument polynomial-ring default is not implemented."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.q_analogues`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "andrews-theory-of-partitions",
+            "title": "The Theory of Partitions",
+            "type": "book",
+            "authors": [
+              "George E. Andrews"
+            ],
+            "year": 1976
+          }
+        ],
+        "limitations": [
+          "`q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "Qp",
         "aliases": [
           "Zp"
@@ -11059,6 +11599,52 @@
           "algorithm": "Sage-compatible semantic graphics with Plotly rendering"
         },
         "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "rising_factorial",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "rising_factorial(x: Any, a: Any, *extra: Any) -> Any",
+        "summary": "Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.",
+        "doc": "Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.\n\nAlso called the Pochhammer symbol.  `a` counts the factors and must be\na nonnegative integer; `x` may be any Sage.js number that supports\naddition and multiplication.\n\n### Input\n\n- `x` -- the starting value\n- `a` -- a nonnegative integer, the number of ascending factors\n\n### Examples\n\n```sage\n    sage: rising_factorial(5, 3)\n    210\n    sage: rising_factorial(5, 0)\n    1\n    sage: rising_factorial(1, 10) == factorial(10)\n    True\n```\n\n### Limitations\n\nSage extends `a` to negative integers through `1 / falling_factorial`;\nthat extension is not implemented here and raises `NotImplementedError`.\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.arith.misc.rising_factorial` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "factorial powers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "partial",
+          "notes": "Matches Sage for a nonnegative integer factor count `a`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.arith.misc`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
+        "limitations": [
+          "The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`."
+        ]
       },
       {
         "schema_version": 1,
@@ -11437,6 +12023,98 @@
         "implementation": {
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "stirling_number1",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "stirling_number1(n: Any, k: Any, *extra: Any) -> Any",
+        "summary": "Return the unsigned Stirling number of the first kind, `c(n, k)`.",
+        "doc": "Return the unsigned Stirling number of the first kind, `c(n, k)`.\n\n`c(n, k)` counts the permutations of `n` elements with exactly `k`\ncycles.  **This is the unsigned convention**: Sage's `stirling_number1`\nalways returns a nonnegative integer, unlike the Wolfram Language's\n`StirlingS1`, which is signed as `(-1)^(n - k) c(n, k)`.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n\n### Examples\n\n```sage\n    sage: [stirling_number1(5, k) for k in range(6)]\n    [0, 24, 50, 35, 10, 1]\n    sage: stirling_number1(0, 0)\n    1\n    sage: stirling_number1(6, 8)\n    0\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.stirling_number1` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Stirling numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage's unsigned convention for nonnegative `n`, `k`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
+        "limitations": [
+          "`stirling_number1` is the UNSIGNED Stirling number of the first kind, matching Sage's own convention.  It is not the signed convention used by the Wolfram Language's `StirlingS1`; the `_wolfram.StirlingS1` wrapper applies the `(-1)^(n-k)` sign explicitly."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "stirling_number2",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.combinat",
+        "signature": "stirling_number2(n: Any, k: Any, *extra: Any) -> Any",
+        "summary": "Return the Stirling number of the second kind, `S(n, k)`.",
+        "doc": "Return the Stirling number of the second kind, `S(n, k)`.\n\n`S(n, k)` counts the ways to partition an `n`-set into exactly `k`\nnonempty, unlabeled blocks.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n\n### Examples\n\n```sage\n    sage: [stirling_number2(5, k) for k in range(6)]\n    [0, 1, 15, 25, 10, 1]\n    sage: stirling_number2(0, 0)\n    1\n    sage: sum(stirling_number2(6, k) for k in range(7)) == bell_number(6)\n    True\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.stirling_number2` (GPL-2.0-or-later).",
+        "tags": [
+          "combinatorics",
+          "integer sequences",
+          "Stirling numbers"
+        ],
+        "backends": [
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Matches Sage for nonnegative `n`, `k`."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath `sage.combinat.combinat`",
+            "revision": "SageMath 10.9",
+            "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+            "license": "GPL-2.0-or-later"
+          }
+        ],
+        "references": [
+          {
+            "id": "graham-knuth-patashnik-concrete-mathematics",
+            "title": "Concrete Mathematics: A Foundation for Computer Science",
+            "type": "book",
+            "authors": [
+              "Ronald L. Graham",
+              "Donald E. Knuth",
+              "Oren Patashnik"
+            ],
+            "year": 1994
+          }
+        ],
         "limitations": []
       },
       {
@@ -12277,6 +12955,109 @@
     },
     {
       "schema_version": 1,
+      "name": "bell_number",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "bell_number(n: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Bell number, the number of partitions of an `n`-set.",
+      "doc": "Return the `n`-th Bell number, the number of partitions of an `n`-set.\n\nThe value comes from the Bell triangle (also called Aitken's array or\nthe Peirce triangle): each row starts with the last entry of the row\nbefore it, and each further entry is the running sum of that start with\nthe entries of the previous row; the first entry of row `n` is `B(n)`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [bell_number(n) for n in range(8)]\n    [1, 1, 2, 5, 15, 52, 203, 877]\n    sage: bell_number(50)\n    185724268771078270438257767181908917499221852770\n    sage: bell_number(6) == sum(stirling_number2(6, k) for k in range(7))\n    True\n```\n\n### Limitations\n\nThe Wolfram Language's two-argument `BellB[n, x]` Bell polynomials are\nnot implemented; a second argument raises `NotImplementedError` rather\nthan being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.bell_number` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "set partitions"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage for every nonnegative `n`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "rota-number-of-partitions-of-a-set",
+          "title": "The Number of Partitions of a Set (American Mathematical Monthly 71:5, 498-504)",
+          "type": "article",
+          "authors": [
+            "Gian-Carlo Rota"
+          ],
+          "year": 1964
+        }
+      ],
+      "limitations": [],
+      "source": {
+        "name": "bell_number",
+        "qualified": "bell_number",
+        "path": "src/baselib/combinat.py",
+        "line": 1621,
+        "excerpt": {
+          "start_line": 1609,
+          "text": "        raise TypeError(\n            \"catalan_number() takes exactly one argument; an extra \"\n            \"positional argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    if value < 0:\n        return 0\n    result = _combinat_choose(2 * value, value)\n    result = runtime.native_div(result, runtime.bigint(value + 1))\n    return runtime.normalize_integer(result)\n\n\ndef bell_number(n: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Bell number, the number of partitions of an `n`-set.\n\n    The value comes from the Bell triangle (also called Aitken's array or\n    the Peirce triangle): each row starts with the last entry of the row\n    before it, and each further entry is the running sum of that start with\n    the entries of the previous row; the first entry of row `n` is `B(n)`.\n\n    ### Input\n\n    - `n` -- a nonnegative integer\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#2823204a98155fe5-13480a753067340d",
+          "line": 1637,
+          "source": "[bell_number(n) for n in range(8)]",
+          "want": "[1, 1, 2, 5, 15, 52, 203, 877]\n",
+          "tags": [],
+          "owner": "bell_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#2823204a98155fe5-13480a753067340d",
+            "status": "pass",
+            "actual": "[1, 1, 2, 5, 15, 52, 203, 877]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#ec862cdd62911bfc-3c9f7fb81726c240",
+          "line": 1639,
+          "source": "bell_number(50)",
+          "want": "185724268771078270438257767181908917499221852770\n",
+          "tags": [],
+          "owner": "bell_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#ec862cdd62911bfc-3c9f7fb81726c240",
+            "status": "pass",
+            "actual": "185724268771078270438257767181908917499221852770\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#bffb4b674867e000-3cbc87c7681f34db",
+          "line": 1641,
+          "source": "bell_number(6) == sum(stirling_number2(6, k) for k in range(7))",
+          "want": "True\n",
+          "tags": [],
+          "owner": "bell_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#bffb4b674867e000-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "bezier_path",
       "aliases": [],
       "kind": "function",
@@ -12417,6 +13198,127 @@
             "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
             "status": "pass",
             "actual": "Graphics3d Object\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "catalan_number",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "catalan_number(n: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.",
+      "doc": "Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.\n\nMatching Sage, `catalan_number` returns `0` for every negative `n`; this\nis a convenient convention rather than the value of an analytic\ncontinuation, and it disagrees with the Wolfram Language, whose\n`CatalanNumber` continues the sequence through the Gamma function and is\ngenerally nonzero at negative integers.\n\n### Input\n\n- `n` -- an integer\n\n### Examples\n\n```sage\n    sage: [catalan_number(n) for n in range(7)]\n    [1, 1, 2, 5, 14, 42, 132]\n    sage: catalan_number(-3)\n    0\n    sage: catalan_number(60)\n    1583850964596120042686772779038896\n    sage: catalan_number(5) == binomial(10, 5) // 6\n    True\n```\n\n### Limitations\n\nA second positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.catalan_number` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Catalan numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage for every integer `n`, including negative `n`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "stanley-catalan-numbers",
+          "title": "Catalan Numbers",
+          "type": "book",
+          "authors": [
+            "Richard P. Stanley"
+          ],
+          "year": 2015
+        }
+      ],
+      "limitations": [
+        "`catalan_number` returns `0` for every negative `n`, matching Sage's convention.  This is not the value of the Wolfram Language's analytic continuation of `CatalanNumber` through the Gamma function, which is generally nonzero at negative integers and is not reproduced here."
+      ],
+      "source": {
+        "name": "catalan_number",
+        "qualified": "catalan_number",
+        "path": "src/baselib/combinat.py",
+        "line": 1573,
+        "excerpt": {
+          "start_line": 1561,
+          "text": "        raise TypeError(\n            \"lucas_number2() takes exactly three arguments; an extra \"\n            \"positional argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    p_value = _combinat_exact_integer(P, \"P\")\n    q_value = _combinat_exact_integer(Q, \"Q\")\n    if value < 0:\n        raise ValueError(\"lucas_number2() requires a nonnegative index\")\n    return _lucas_sequence(value, p_value, q_value, 2, p_value)\n\n\ndef catalan_number(n: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.\n\n    Matching Sage, `catalan_number` returns `0` for every negative `n`; this\n    is a convenient convention rather than the value of an analytic\n    continuation, and it disagrees with the Wolfram Language, whose\n    `CatalanNumber` continues the sequence through the Gamma function and is\n    generally nonzero at negative integers.\n\n    ### Input\n\n    - `n` -- an integer"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#a50322a4b887b0df-73b89f3670f36e20",
+          "line": 1590,
+          "source": "[catalan_number(n) for n in range(7)]",
+          "want": "[1, 1, 2, 5, 14, 42, 132]\n",
+          "tags": [],
+          "owner": "catalan_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#a50322a4b887b0df-73b89f3670f36e20",
+            "status": "pass",
+            "actual": "[1, 1, 2, 5, 14, 42, 132]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#5e74a5c74b823966-5feceb66ffc86f38",
+          "line": 1592,
+          "source": "catalan_number(-3)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "catalan_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#5e74a5c74b823966-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#71abe9810850c28b-3770c920858255fa",
+          "line": 1594,
+          "source": "catalan_number(60)",
+          "want": "1583850964596120042686772779038896\n",
+          "tags": [],
+          "owner": "catalan_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#71abe9810850c28b-3770c920858255fa",
+            "status": "pass",
+            "actual": "1583850964596120042686772779038896\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#1d83cd0bec19cca7-3cbc87c7681f34db",
+          "line": 1596,
+          "source": "catalan_number(5) == binomial(10, 5) // 6",
+          "want": "True\n",
+          "tags": [],
+          "owner": "catalan_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#1d83cd0bec19cca7-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -14629,6 +15531,93 @@
     },
     {
       "schema_version": 1,
+      "name": "euler_number",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "euler_number(n: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Euler number (the secant/zigzag number `E_n`).",
+      "doc": "Return the `n`-th Euler number (the secant/zigzag number `E_n`).\n\n`E_n` is `0` for odd `n`, and the even-indexed values alternate in\nsign: `E_0 = 1`, `E_2 = -1`, `E_4 = 5`, `E_6 = -61`, matching both\nSage's `euler_number` and the Wolfram Language's `EulerE`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [euler_number(n) for n in range(9)]\n    [1, 0, -1, 0, 5, 0, -61, 0, 1385]\n    sage: euler_number(11)\n    0\n```\n\n### Limitations\n\nThe Wolfram Language's two-argument `EulerE[n, x]` Euler polynomials are\nnot implemented; a second argument raises `NotImplementedError` rather\nthan being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.euler_number` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Euler numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage, and the Wolfram Language's `EulerE`, for every nonnegative `n`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "comtet-advanced-combinatorics",
+          "title": "Advanced Combinatorics: The Art of Finite and Infinite Expansions",
+          "type": "book",
+          "authors": [
+            "Louis Comtet"
+          ],
+          "year": 1974
+        }
+      ],
+      "limitations": [],
+      "source": {
+        "name": "euler_number",
+        "qualified": "euler_number",
+        "path": "src/baselib/combinat.py",
+        "line": 2031,
+        "excerpt": {
+          "start_line": 2019,
+          "text": "    which is solved for the newest term at each step.\n    \"\"\"\n    even_values = [runtime.bigint(1)]\n    for k in range(1, half + 1):\n        total = runtime.bigint(0)\n        for j in range(k):\n            term = runtime.native_mul(_combinat_choose(2 * k, 2 * j), even_values[j])\n            total = runtime.native_add(total, term)\n        even_values.append(runtime.native_neg(total))\n    return even_values[half]\n\n\ndef euler_number(n: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Euler number (the secant/zigzag number `E_n`).\n\n    `E_n` is `0` for odd `n`, and the even-indexed values alternate in\n    sign: `E_0 = 1`, `E_2 = -1`, `E_4 = 5`, `E_6 = -61`, matching both\n    Sage's `euler_number` and the Wolfram Language's `EulerE`.\n\n    ### Input\n\n    - `n` -- a nonnegative integer\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#552a855fb1606657-ecbb96575b243e1c",
+          "line": 2046,
+          "source": "[euler_number(n) for n in range(9)]",
+          "want": "[1, 0, -1, 0, 5, 0, -61, 0, 1385]\n",
+          "tags": [],
+          "owner": "euler_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#552a855fb1606657-ecbb96575b243e1c",
+            "status": "pass",
+            "actual": "[1, 0, -1, 0, 5, 0, -61, 0, 1385]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#7686d3036fbaa3b1-5feceb66ffc86f38",
+          "line": 2048,
+          "source": "euler_number(11)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "euler_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#7686d3036fbaa3b1-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "exit",
       "aliases": [],
       "kind": "function",
@@ -14723,6 +15712,112 @@
     },
     {
       "schema_version": 1,
+      "name": "falling_factorial",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "falling_factorial(x: Any, a: Any, *extra: Any) -> Any",
+      "summary": "Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.",
+      "doc": "Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.\n\n`a` counts the factors and must be a nonnegative integer; `x` may be\nany Sage.js number that supports subtraction and multiplication, so the\nresult stays exact for exact `x` (an integer or a `Rational`) and is\notherwise whatever `x`'s own arithmetic produces.\n\n### Input\n\n- `x` -- the starting value\n- `a` -- a nonnegative integer, the number of descending factors\n\n### Examples\n\n```sage\n    sage: falling_factorial(5, 3)\n    60\n    sage: falling_factorial(5, 0)\n    1\n    sage: falling_factorial(10, 10) == factorial(10)\n    True\n```\n\n### Limitations\n\nSage extends `a` to negative integers through `1 / rising_factorial`;\nthat extension is not implemented here and raises `NotImplementedError`.\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.arith.misc.falling_factorial` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "factorial powers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for a nonnegative integer factor count `a`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.arith.misc`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [
+        "The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`."
+      ],
+      "source": {
+        "name": "falling_factorial",
+        "qualified": "falling_factorial",
+        "path": "src/baselib/combinat.py",
+        "line": 1850,
+        "excerpt": {
+          "start_line": 1838,
+          "text": "\n\ndef _combinat_factor_count(value: Any, name: str) -> int:\n    \"\"\"Return a nonnegative factor count, or reject a non-integer or negative one.\"\"\"\n    count = _combinat_exact_integer(value, name)\n    if count < 0:\n        raise NotImplementedError(\n            name + \" must be a nonnegative integer; negative counts are not implemented\"\n        )\n    return count\n\n\ndef falling_factorial(x: Any, a: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.\n\n    `a` counts the factors and must be a nonnegative integer; `x` may be\n    any Sage.js number that supports subtraction and multiplication, so the\n    result stays exact for exact `x` (an integer or a `Rational`) and is\n    otherwise whatever `x`'s own arithmetic produces.\n\n    ### Input\n\n    - `x` -- the starting value\n    - `a` -- a nonnegative integer, the number of descending factors"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#40121058e723917e-39fa9ec190eee7b6",
+          "line": 1867,
+          "source": "falling_factorial(5, 3)",
+          "want": "60\n",
+          "tags": [],
+          "owner": "falling_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#40121058e723917e-39fa9ec190eee7b6",
+            "status": "pass",
+            "actual": "60\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#50b0892ec8bd99e4-6b86b273ff34fce1",
+          "line": 1869,
+          "source": "falling_factorial(5, 0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "falling_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#50b0892ec8bd99e4-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#dfe8e38ad61e1335-3cbc87c7681f34db",
+          "line": 1871,
+          "source": "falling_factorial(10, 10) == factorial(10)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "falling_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#dfe8e38ad61e1335-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "fast_callable",
       "aliases": [],
       "kind": "function",
@@ -14780,6 +15875,110 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "fibonacci",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "fibonacci(n: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Fibonacci number, for any integer `n`.",
+      "doc": "Return the `n`-th Fibonacci number, for any integer `n`.\n\n`F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)`.  Negative indices\nuse the standard extension `F(-n) = (-1)^(n+1) F(n)`.\n\nThe value comes from Dijkstra's fast-doubling identities\n`F(2k) = F(k) (2 F(k+1) - F(k))` and `F(2k+1) = F(k)^2 + F(k+1)^2`,\nwhich halve the index at every step, so the cost is `O(log n)`\nbig-integer multiplications rather than `O(n)` additions.\n\n### Input\n\n- `n` -- an integer, positive, negative, or zero\n\n### Examples\n\n```sage\n    sage: [fibonacci(n) for n in range(10)]\n    [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n    sage: [fibonacci(-n) for n in range(1, 6)]\n    [1, -1, 2, -3, 5]\n    sage: fibonacci(200)\n    280571172992510140037611932413038677189525\n```\n\n### Limitations\n\nSage's two-argument `fibonacci(n, algorithm=...)` form and the Wolfram\nLanguage `Fibonacci[n, x]` Fibonacci polynomials are not implemented.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.fibonacci` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Fibonacci numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "The one-argument form matches Sage for every integer `n`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "dijkstra-in-honour-of-fibonacci",
+          "title": "In Honour of Fibonacci (EWD654)",
+          "authors": [
+            "Edsger W. Dijkstra"
+          ],
+          "year": 1978
+        }
+      ],
+      "limitations": [
+        "Sage's `algorithm` keyword is not implemented, and the Wolfram Language's two-argument `Fibonacci[n, x]` Fibonacci polynomials are a different function that is not implemented; a second positional argument raises `TypeError` rather than being silently ignored."
+      ],
+      "source": {
+        "name": "fibonacci",
+        "qualified": "fibonacci",
+        "path": "src/baselib/combinat.py",
+        "line": 1416,
+        "excerpt": {
+          "start_line": 1404,
+          "text": "        return runtime.bigint(0), runtime.bigint(1)\n    low, high = _fibonacci_pair(n // 2)\n    doubled = runtime.native_sub(runtime.native_mul(runtime.bigint(2), high), low)\n    even_term = runtime.native_mul(low, doubled)\n    odd_term = runtime.native_add(\n        runtime.native_mul(low, low), runtime.native_mul(high, high)\n    )\n    if n % 2 == 0:\n        return even_term, odd_term\n    return odd_term, runtime.native_add(even_term, odd_term)\n\n\ndef fibonacci(n: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Fibonacci number, for any integer `n`.\n\n    `F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)`.  Negative indices\n    use the standard extension `F(-n) = (-1)^(n+1) F(n)`.\n\n    The value comes from Dijkstra's fast-doubling identities\n    `F(2k) = F(k) (2 F(k+1) - F(k))` and `F(2k+1) = F(k)^2 + F(k+1)^2`,\n    which halve the index at every step, so the cost is `O(log n)`\n    big-integer multiplications rather than `O(n)` additions.\n\n    ### Input"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#e14e920b56692980-7a44134739184167",
+          "line": 1435,
+          "source": "[fibonacci(n) for n in range(10)]",
+          "want": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n",
+          "tags": [],
+          "owner": "fibonacci",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#e14e920b56692980-7a44134739184167",
+            "status": "pass",
+            "actual": "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#eeddde96b56de479-4649dd61b76b6ffb",
+          "line": 1437,
+          "source": "[fibonacci(-n) for n in range(1, 6)]",
+          "want": "[1, -1, 2, -3, 5]\n",
+          "tags": [],
+          "owner": "fibonacci",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#eeddde96b56de479-4649dd61b76b6ffb",
+            "status": "pass",
+            "actual": "[1, -1, 2, -3, 5]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#9130ebec9fb93ce8-94ec0682569a1850",
+          "line": 1439,
+          "source": "fibonacci(200)",
+          "want": "280571172992510140037611932413038677189525\n",
+          "tags": [],
+          "owner": "fibonacci",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9130ebec9fb93ce8-94ec0682569a1850",
+            "status": "pass",
+            "actual": "280571172992510140037611932413038677189525\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -14885,6 +16084,129 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "gaussian_binomial",
+      "aliases": [
+        "q_binomial"
+      ],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any",
+      "summary": "Return the Gaussian binomial coefficient `binom(n, k)_q`.",
+      "doc": "Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\nvector space over a field with `q` elements when `q` is a prime power,\nand is the natural q-analogue of `binomial(n, k)` for every `q`:\n`binom(n, k)_1 = binomial(n, k)`.\n\n`q` may be an exact integer, in which case the result is an exact\ninteger, or a polynomial-ring indeterminate, in which case the result\nis the Gaussian polynomial itself.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n- `q` -- an exact integer or a polynomial-ring element\n\n### Examples\n\n```sage\n    sage: q_binomial(4, 2, 1) == binomial(4, 2)\n    True\n    sage: q_binomial(4, 2, 2)\n    35\n    sage: q_binomial(5, 0, 3)\n    1\n    sage: q_binomial(5, 7, 3)\n    0\n```\n\n### Limitations\n\nUnlike Sage, `q` must be supplied explicitly: Sage.js does not\nauto-construct a default polynomial ring and indeterminate when `q` is\nomitted, so `q_binomial(n, k)` is not implemented.  A fourth positional\nargument raises `TypeError` rather than being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`\nis Sage's own alias for the same function.",
+      "tags": [
+        "combinatorics",
+        "binomial coefficients",
+        "q-analogues"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Sage's own alias for `q_binomial`, documented under the same name."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.q_analogues`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        }
+      ],
+      "limitations": [
+        "`q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented."
+      ],
+      "source": {
+        "name": "q_binomial",
+        "qualified": "q_binomial",
+        "path": "src/baselib/combinat.py",
+        "line": 2151,
+        "excerpt": {
+          "start_line": 2139,
+          "text": "            if j == 0 or j == i:\n                table[(i, j)] = one\n                continue\n            if integer_mode:\n                power = runtime.native_pow(q_value, runtime.bigint(j))\n                term = runtime.native_mul(power, table[(i - 1, j)])\n                table[(i, j)] = runtime.native_add(table[(i - 1, j - 1)], term)\n            else:\n                table[(i, j)] = table[(i - 1, j - 1)] + q_value**j * table[(i - 1, j)]\n    return table[(n, k)]\n\n\ndef q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n    `binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\n    vector space over a field with `q` elements when `q` is a prime power,\n    and is the natural q-analogue of `binomial(n, k)` for every `q`:\n    `binom(n, k)_1 = binomial(n, k)`.\n\n    `q` may be an exact integer, in which case the result is an exact\n    integer, or a polynomial-ring indeterminate, in which case the result\n    is the Gaussian polynomial itself.\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#dc686b60fe1b02a5-3cbc87c7681f34db",
+          "line": 2172,
+          "source": "q_binomial(4, 2, 1) == binomial(4, 2)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#dc686b60fe1b02a5-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#958759ccfe2ec7c4-9f14025af0065b30",
+          "line": 2174,
+          "source": "q_binomial(4, 2, 2)",
+          "want": "35\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#958759ccfe2ec7c4-9f14025af0065b30",
+            "status": "pass",
+            "actual": "35\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#6030131c10bf260a-6b86b273ff34fce1",
+          "line": 2176,
+          "source": "q_binomial(5, 0, 3)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6030131c10bf260a-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#d67538f1aa03aa22-5feceb66ffc86f38",
+          "line": 2178,
+          "source": "q_binomial(5, 7, 3)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#d67538f1aa03aa22-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -21738,9 +23060,9 @@
         "name": "cardinality",
         "qualified": "Partitions_all.cardinality",
         "path": "src/baselib/combinat.py",
-        "line": 597,
+        "line": 637,
         "excerpt": {
-          "start_line": 585,
+          "start_line": 625,
           "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
@@ -25108,6 +26430,112 @@
     },
     {
       "schema_version": 1,
+      "name": "harmonic_number",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "harmonic_number(n: Any, m: Any=1, *extra: Any) -> Any",
+      "summary": "Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.",
+      "doc": "Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.\n\nThe ordinary harmonic number is `m = 1`.  The result is an exact\n`Rational`, never a float, so it stays exact past any floating-point\nprecision.\n\n### Input\n\n- `n` -- a nonnegative integer\n- `m` -- a nonnegative integer power, default `1`\n\n### Examples\n\n```sage\n    sage: harmonic_number(5)\n    137/60\n    sage: harmonic_number(0)\n    0\n    sage: harmonic_number(5, 2)\n    5269/3600\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.functions.other.harmonic_number` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "harmonic numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for nonnegative integer `n` and `m`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.functions.other`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/functions/sage/functions/other.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [
+        "`n` and `m` must both be nonnegative integers, so `harmonic_number` always returns an exact `Rational`.  Sage's symbolic evaluation for non-integer or symbolic `n` is not implemented."
+      ],
+      "source": {
+        "name": "harmonic_number",
+        "qualified": "harmonic_number",
+        "path": "src/baselib/combinat.py",
+        "line": 2075,
+        "excerpt": {
+          "start_line": 2063,
+          "text": "            \"euler_number(n, x, ...) is not implemented; the Wolfram \"\n            \"Language's Euler polynomials are out of scope, and a second \"\n            \"argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    if value < 0:\n        raise ValueError(\"euler_number() requires a nonnegative integer\")\n    if value % 2 == 1:\n        return 0\n    return runtime.normalize_integer(_euler_number_even(value // 2))\n\n\ndef harmonic_number(n: Any, m: Any = 1, *extra: Any) -> Any:\n    r\"\"\"\n    Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.\n\n    The ordinary harmonic number is `m = 1`.  The result is an exact\n    `Rational`, never a float, so it stays exact past any floating-point\n    precision.\n\n    ### Input\n\n    - `n` -- a nonnegative integer\n    - `m` -- a nonnegative integer power, default `1`\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#954188db87f926f5-d6daad65d661ca05",
+          "line": 2091,
+          "source": "harmonic_number(5)",
+          "want": "137/60\n",
+          "tags": [],
+          "owner": "harmonic_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#954188db87f926f5-d6daad65d661ca05",
+            "status": "pass",
+            "actual": "137/60\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#7b454a2e59b6a00e-5feceb66ffc86f38",
+          "line": 2093,
+          "source": "harmonic_number(0)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "harmonic_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#7b454a2e59b6a00e-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#d20de53444e81d46-87b229db53d55af2",
+          "line": 2095,
+          "source": "harmonic_number(5, 2)",
+          "want": "5269/3600\n",
+          "tags": [],
+          "owner": "harmonic_number",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#d20de53444e81d46-87b229db53d55af2",
+            "status": "pass",
+            "actual": "5269/3600\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "help",
       "aliases": [],
       "kind": "function",
@@ -26451,6 +27879,202 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "lucas_number1",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "lucas_number1(n: Any, P: Any, Q: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.",
+      "doc": "Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.\n\nDefined by `U_0 = 0`, `U_1 = 1`, and `U_k = P U_{k-1} - Q U_{k-2}`.  The\nordinary Fibonacci numbers are `U_n(1, -1)`.\n\n### Input\n\n- `n` -- a nonnegative integer index\n- `P`, `Q` -- integer sequence parameters\n\n### Examples\n\n```sage\n    sage: [lucas_number1(n, 1, -1) for n in range(8)]\n    [0, 1, 1, 2, 3, 5, 8, 13]\n    sage: lucas_number1(5, 1, -1) == fibonacci(5)\n    True\n    sage: lucas_number1(10, 2, 1)\n    10\n```\n\n### Limitations\n\nOnly nonnegative `n` and integer `P`, `Q` are implemented; Sage also\naccepts symbolic or algebraic `P`, `Q`, and PARI's `lucas` extension to\nnegative `n`, neither of which is implemented here.  A fourth\npositional argument raises `TypeError` rather than being silently\nignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.lucas_number1` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Lucas sequences"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for nonnegative `n` and integer `P`, `Q`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "crandall-pomerance-prime-numbers",
+          "title": "Prime Numbers: A Computational Perspective",
+          "type": "book",
+          "authors": [
+            "Richard Crandall",
+            "Carl Pomerance"
+          ],
+          "year": 2005
+        }
+      ],
+      "limitations": [
+        "Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here."
+      ],
+      "source": {
+        "name": "lucas_number1",
+        "qualified": "lucas_number1",
+        "path": "src/baselib/combinat.py",
+        "line": 1481,
+        "excerpt": {
+          "start_line": 1469,
+          "text": "    low = runtime.bigint(u0)\n    high = runtime.bigint(u1)\n    for _index in range(count):\n        low, high = (\n            high,\n            runtime.native_sub(\n                runtime.native_mul(p_value, high), runtime.native_mul(q_value, low)\n            ),\n        )\n    return runtime.normalize_integer(low)\n\n\ndef lucas_number1(n: Any, P: Any, Q: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.\n\n    Defined by `U_0 = 0`, `U_1 = 1`, and `U_k = P U_{k-1} - Q U_{k-2}`.  The\n    ordinary Fibonacci numbers are `U_n(1, -1)`.\n\n    ### Input\n\n    - `n` -- a nonnegative integer index\n    - `P`, `Q` -- integer sequence parameters\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#e3762bc5e9da1868-8c70135866c9c3ad",
+          "line": 1496,
+          "source": "[lucas_number1(n, 1, -1) for n in range(8)]",
+          "want": "[0, 1, 1, 2, 3, 5, 8, 13]\n",
+          "tags": [],
+          "owner": "lucas_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#e3762bc5e9da1868-8c70135866c9c3ad",
+            "status": "pass",
+            "actual": "[0, 1, 1, 2, 3, 5, 8, 13]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#17a7741a864a51c0-3cbc87c7681f34db",
+          "line": 1498,
+          "source": "lucas_number1(5, 1, -1) == fibonacci(5)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "lucas_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#17a7741a864a51c0-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#74a1d51e00cbd533-4a44dc15364204a8",
+          "line": 1500,
+          "source": "lucas_number1(10, 2, 1)",
+          "want": "10\n",
+          "tags": [],
+          "owner": "lucas_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#74a1d51e00cbd533-4a44dc15364204a8",
+            "status": "pass",
+            "actual": "10\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "lucas_number2",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "lucas_number2(n: Any, P: Any, Q: Any, *extra: Any) -> Any",
+      "summary": "Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.",
+      "doc": "Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.\n\nDefined by `V_0 = 2`, `V_1 = P`, and `V_k = P V_{k-1} - Q V_{k-2}`.  The\nordinary Lucas numbers are `V_n(1, -1)`.\n\n### Input\n\n- `n` -- a nonnegative integer index\n- `P`, `Q` -- integer sequence parameters\n\n### Examples\n\n```sage\n    sage: [lucas_number2(n, 1, -1) for n in range(8)]\n    [2, 1, 3, 4, 7, 11, 18, 29]\n    sage: lucas_number2(5, 1, -1)\n    11\n```\n\n### Limitations\n\nOnly nonnegative `n` and integer `P`, `Q` are implemented, matching\n`lucas_number1`.  A fourth positional argument raises `TypeError`\nrather than being silently ignored; the Wolfram Language's two-term\n`LucasL[n, x]` polynomial form is handled by the `_wolfram` wrapper,\nnot here.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.lucas_number2` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Lucas sequences"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for nonnegative `n` and integer `P`, `Q`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "crandall-pomerance-prime-numbers",
+          "title": "Prime Numbers: A Computational Perspective",
+          "type": "book",
+          "authors": [
+            "Richard Crandall",
+            "Carl Pomerance"
+          ],
+          "year": 2005
+        }
+      ],
+      "limitations": [
+        "Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also accepts symbolic or algebraic `P`, `Q`, and PARI's extension to negative `n`; neither is implemented here."
+      ],
+      "source": {
+        "name": "lucas_number2",
+        "qualified": "lucas_number2",
+        "path": "src/baselib/combinat.py",
+        "line": 1528,
+        "excerpt": {
+          "start_line": 1516,
+          "text": "        raise TypeError(\n            \"lucas_number1() takes exactly three arguments; an extra \"\n            \"positional argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    p_value = _combinat_exact_integer(P, \"P\")\n    q_value = _combinat_exact_integer(Q, \"Q\")\n    if value < 0:\n        raise ValueError(\"lucas_number1() requires a nonnegative index\")\n    return _lucas_sequence(value, p_value, q_value, 0, 1)\n\n\ndef lucas_number2(n: Any, P: Any, Q: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.\n\n    Defined by `V_0 = 2`, `V_1 = P`, and `V_k = P V_{k-1} - Q V_{k-2}`.  The\n    ordinary Lucas numbers are `V_n(1, -1)`.\n\n    ### Input\n\n    - `n` -- a nonnegative integer index\n    - `P`, `Q` -- integer sequence parameters\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#37409c398da37d5f-fe389897a2cb166d",
+          "line": 1543,
+          "source": "[lucas_number2(n, 1, -1) for n in range(8)]",
+          "want": "[2, 1, 3, 4, 7, 11, 18, 29]\n",
+          "tags": [],
+          "owner": "lucas_number2",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#37409c398da37d5f-fe389897a2cb166d",
+            "status": "pass",
+            "actual": "[2, 1, 3, 4, 7, 11, 18, 29]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#4a586284c6c5da6a-4fc82b26aecb47d2",
+          "line": 1545,
+          "source": "lucas_number2(5, 1, -1)",
+          "want": "11\n",
+          "tags": [],
+          "owner": "lucas_number2",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#4a586284c6c5da6a-4fc82b26aecb47d2",
+            "status": "pass",
+            "actual": "11\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28260,6 +29884,126 @@
     },
     {
       "schema_version": 1,
+      "name": "multinomial",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "multinomial(*args: Any) -> Any",
+      "summary": "Return the multinomial coefficient of the given nonnegative integers.",
+      "doc": "Return the multinomial coefficient of the given nonnegative integers.\n\n`multinomial(k_1, ..., k_m) = (k_1 + ... + k_m)! / (k_1! ... k_m!)`,\nthe number of ways to split a labeled set of that total size into\nlabeled blocks of those sizes.  As in Sage, the entries may be passed\neither as separate arguments or as one list or tuple.\n\n### Input\n\n- `args` -- nonnegative integers, or a single list/tuple of them\n\n### Examples\n\n```sage\n    sage: multinomial(2, 3, 4)\n    1260\n    sage: multinomial([2, 3, 4])\n    1260\n    sage: multinomial(5, 0)\n    1\n    sage: multinomial() == 1\n    True\n```\n\nUnlike the other counting functions in this module, `multinomial` has\nno fixed arity to guard: every positional argument is significant\ndata, not an optional or unsupported extension point, so there is no\n\"extra\" argument to reject.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.multinomial` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "binomial coefficients"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Accepts both the variadic and single-list calling forms, as Sage does."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [],
+      "source": {
+        "name": "multinomial",
+        "qualified": "multinomial",
+        "path": "src/baselib/combinat.py",
+        "line": 1786,
+        "excerpt": {
+          "start_line": 1774,
+          "text": "            \"stirling_number2() takes exactly two arguments; an extra \"\n            \"positional argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    index = _combinat_exact_integer(k, \"k\")\n    if value < 0:\n        raise ValueError(\"stirling_number2() requires a nonnegative n\")\n    if index < 0:\n        raise ValueError(\"stirling_number2() requires a nonnegative k\")\n    return runtime.normalize_integer(_stirling_table(value, index, True))\n\n\ndef multinomial(*args: Any) -> Any:\n    r\"\"\"\n    Return the multinomial coefficient of the given nonnegative integers.\n\n    `multinomial(k_1, ..., k_m) = (k_1 + ... + k_m)! / (k_1! ... k_m!)`,\n    the number of ways to split a labeled set of that total size into\n    labeled blocks of those sizes.  As in Sage, the entries may be passed\n    either as separate arguments or as one list or tuple.\n\n    ### Input\n\n    - `args` -- nonnegative integers, or a single list/tuple of them\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#9340d17d1f9b2c90-9c19f29d0e6fefa2",
+          "line": 1802,
+          "source": "multinomial(2, 3, 4)",
+          "want": "1260\n",
+          "tags": [],
+          "owner": "multinomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#9340d17d1f9b2c90-9c19f29d0e6fefa2",
+            "status": "pass",
+            "actual": "1260\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#fe706ed79e7e1f0e-9c19f29d0e6fefa2",
+          "line": 1804,
+          "source": "multinomial([2, 3, 4])",
+          "want": "1260\n",
+          "tags": [],
+          "owner": "multinomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#fe706ed79e7e1f0e-9c19f29d0e6fefa2",
+            "status": "pass",
+            "actual": "1260\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#4efa60f3567bdec7-6b86b273ff34fce1",
+          "line": 1806,
+          "source": "multinomial(5, 0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "multinomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#4efa60f3567bdec7-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#bee477e6b9864712-3cbc87c7681f34db",
+          "line": 1808,
+          "source": "multinomial() == 1",
+          "want": "True\n",
+          "tags": [],
+          "owner": "multinomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#bee477e6b9864712-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "next_prime",
       "aliases": [],
       "kind": "function",
@@ -28308,6 +30052,109 @@
       "limitations": [],
       "source": null,
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "number_of_derangements",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "number_of_derangements(n: Any, *extra: Any) -> Any",
+      "summary": "Return the number of derangements of `n` elements, the subfactorial `!n`.",
+      "doc": "Return the number of derangements of `n` elements, the subfactorial `!n`.\n\nA derangement is a permutation with no fixed point.  The value comes\nfrom the linear recurrence `D(0) = 1`, `D(1) = 0`,\n`D(n) = (n - 1) (D(n-1) + D(n-2))`.\n\n### Input\n\n- `n` -- a nonnegative integer\n\n### Examples\n\n```sage\n    sage: [number_of_derangements(n) for n in range(7)]\n    [1, 0, 1, 2, 9, 44, 265]\n    sage: number_of_derangements(20)\n    895014631192902121\n    sage: sum((-1)^k * binomial(6, k) * factorial(6 - k) for k in range(7))\n    265\n```\n\n### Limitations\n\nA second positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.derangements.number_of_derangements` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "derangements"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage for every nonnegative `n`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.derangements`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/derangements.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "comtet-advanced-combinatorics",
+          "title": "Advanced Combinatorics: The Art of Finite and Infinite Expansions",
+          "type": "book",
+          "authors": [
+            "Louis Comtet"
+          ],
+          "year": 1974
+        }
+      ],
+      "limitations": [],
+      "source": {
+        "name": "number_of_derangements",
+        "qualified": "number_of_derangements",
+        "path": "src/baselib/combinat.py",
+        "line": 1959,
+        "excerpt": {
+          "start_line": 1947,
+          "text": "        result = runtime.bigint(1)\n        for index in range(count):\n            result = runtime.native_mul(\n                result, runtime.native_add(base, runtime.bigint(index))\n            )\n        return runtime.normalize_integer(result)\n    result = 1\n    for index in range(count):\n        result = result * (x + index)\n    return result\n\n\ndef number_of_derangements(n: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the number of derangements of `n` elements, the subfactorial `!n`.\n\n    A derangement is a permutation with no fixed point.  The value comes\n    from the linear recurrence `D(0) = 1`, `D(1) = 0`,\n    `D(n) = (n - 1) (D(n-1) + D(n-2))`.\n\n    ### Input\n\n    - `n` -- a nonnegative integer\n\n    ### Examples"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#0c901ab7483a3756-ce7a258d149aaeac",
+          "line": 1974,
+          "source": "[number_of_derangements(n) for n in range(7)]",
+          "want": "[1, 0, 1, 2, 9, 44, 265]\n",
+          "tags": [],
+          "owner": "number_of_derangements",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#0c901ab7483a3756-ce7a258d149aaeac",
+            "status": "pass",
+            "actual": "[1, 0, 1, 2, 9, 44, 265]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#49d84352c419e8a6-608604a562bc8699",
+          "line": 1976,
+          "source": "number_of_derangements(20)",
+          "want": "895014631192902121\n",
+          "tags": [],
+          "owner": "number_of_derangements",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#49d84352c419e8a6-608604a562bc8699",
+            "status": "pass",
+            "actual": "895014631192902121\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#32efbd1acfb627da-768b84ef05f655d5",
+          "line": 1978,
+          "source": "sum((-1)^k * binomial(6, k) * factorial(6 - k) for k in range(7))",
+          "want": "265\n",
+          "tags": [],
+          "owner": "number_of_derangements",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#32efbd1acfb627da-768b84ef05f655d5",
+            "status": "pass",
+            "actual": "265\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -28369,16 +30216,16 @@
         "name": "number_of_partitions",
         "qualified": "number_of_partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1301,
+        "line": 1341,
         "excerpt": {
-          "start_line": 1289,
+          "start_line": 1329,
           "text": "            _combinat_state.partitions_by_size[key] = Partitions_n(value)\n        return _combinat_state.partitions_by_size[key]\n    return Partitions_n(\n        value,\n        min_part,\n        max_part,\n        min_length,\n        max_length,\n        parts_in,\n    )\n\n\ndef number_of_partitions(size: Any) -> Any:\n    r\"\"\"\n    Return the number of partitions of a nonnegative integer.\n\n    The value comes from FLINT's exact Hardy-Ramanujan-Rademacher\n    implementation in production native and WebAssembly hosts.  A host that\n    explicitly lacks the declared capability retains Euler's exact pentagonal\n    recurrence; binding and execution failures are never hidden by fallback.\n\n    ### Input\n\n    - `size` -- a nonnegative integer\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
-          "line": 1317,
+          "line": 1357,
           "source": "number_of_partitions(10)",
           "want": "42\n",
           "tags": [],
@@ -28394,7 +30241,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
-          "line": 1319,
+          "line": 1359,
           "source": "number_of_partitions(100)",
           "want": "190569292\n",
           "tags": [],
@@ -28410,7 +30257,7 @@
         },
         {
           "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
-          "line": 1321,
+          "line": 1361,
           "source": "number_of_partitions(1000)",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -28426,7 +30273,7 @@
         },
         {
           "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
-          "line": 1323,
+          "line": 1363,
           "source": "number_of_partitions(4) == Partitions(4).cardinality()",
           "want": "True\n",
           "tags": [],
@@ -29023,7 +30870,7 @@
       "examples": [
         {
           "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
-          "line": 269,
+          "line": 309,
           "source": "Partition([3, 1])",
           "want": "[3, 1]\n",
           "tags": [],
@@ -29039,7 +30886,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
-          "line": 271,
+          "line": 311,
           "source": "Partition([3, 1]).size()",
           "want": "4\n",
           "tags": [],
@@ -29055,7 +30902,7 @@
         },
         {
           "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
-          "line": 273,
+          "line": 313,
           "source": "Partition([3, 1]).conjugate()",
           "want": "[2, 1, 1]\n",
           "tags": [],
@@ -29105,16 +30952,16 @@
         "name": "cells",
         "qualified": "Partition.cells",
         "path": "src/baselib/combinat.py",
-        "line": 415,
+        "line": 455,
         "excerpt": {
-          "start_line": 403,
-          "text": "        ```\n        \"\"\"\n        minimum = _partition_exact_integer(minimum_length, \"minimum_length\")\n        if minimum < 0:\n            raise ValueError(\"minimum_length must be nonnegative\")\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum else minimum\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
+          "start_line": 443,
+          "text": "        ```\n        \"\"\"\n        minimum = _combinat_exact_integer(minimum_length, \"minimum_length\")\n        if minimum < 0:\n            raise ValueError(\"minimum_length must be nonnegative\")\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum else minimum\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
-          "line": 422,
+          "line": 462,
           "source": "Partition([2, 1]).cells()",
           "want": "[(0, 0), (0, 1), (1, 0)]\n",
           "tags": [],
@@ -29164,16 +31011,16 @@
         "name": "conjugate",
         "qualified": "Partition.conjugate",
         "path": "src/baselib/combinat.py",
-        "line": 363,
+        "line": 403,
         "excerpt": {
-          "start_line": 351,
+          "start_line": 391,
           "text": "        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n\n    def conjugate(self) -> Partition:\n        \"\"\"\n        Return the conjugate partition, the transpose of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).conjugate()\n            [3, 2, 1, 1]\n            sage: Partition([4, 2, 1]).conjugate().conjugate()\n            [4, 2, 1]\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
-          "line": 370,
+          "line": 410,
           "source": "Partition([4, 2, 1]).conjugate()",
           "want": "[3, 2, 1, 1]\n",
           "tags": [],
@@ -29189,7 +31036,7 @@
         },
         {
           "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
-          "line": 372,
+          "line": 412,
           "source": "Partition([4, 2, 1]).conjugate().conjugate()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -29239,16 +31086,16 @@
         "name": "dominates",
         "qualified": "Partition.dominates",
         "path": "src/baselib/combinat.py",
-        "line": 480,
+        "line": 520,
         "excerpt": {
-          "start_line": 468,
+          "start_line": 508,
           "text": "            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):\n            lengths = []\n            for column in range(self._entries[row]):\n                lengths.append(self.hook_length(row, column))\n            rows.append(lengths)\n        return rows\n\n    def dominates(self, other: Any) -> bool:\n        \"\"\"\n        Return whether `self` dominates `other` in the dominance order.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 1]).dominates([2, 2])\n            True\n            sage: Partition([2, 2]).dominates([3, 1])\n            False\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
-          "line": 487,
+          "line": 527,
           "source": "Partition([3, 1]).dominates([2, 2])",
           "want": "True\n",
           "tags": [],
@@ -29264,7 +31111,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
-          "line": 489,
+          "line": 529,
           "source": "Partition([2, 2]).dominates([3, 1])",
           "want": "False\n",
           "tags": [],
@@ -29314,16 +31161,16 @@
         "name": "ferrers_diagram",
         "qualified": "Partition.ferrers_diagram",
         "path": "src/baselib/combinat.py",
-        "line": 509,
+        "line": 549,
         "excerpt": {
-          "start_line": 497,
+          "start_line": 537,
           "text": "            width = len(entries)\n        left = 0\n        right = 0\n        for index in range(width):\n            if index < len(self._entries):\n                left += self._entries[index]\n            if index < len(entries):\n                right += entries[index]\n            if left < right:\n                return False\n        return True\n\n    def ferrers_diagram(self) -> str:\n        \"\"\"\n        Return the Ferrers diagram as text, one row of asterisks per part.\n\n        ### Examples\n\n        ```sage\n            sage: print(Partition([3, 1]).ferrers_diagram())\n            ***\n            *\n        ```\n        \"\"\"\n        return \"\\n\".join([\"*\" * part for part in self._entries])"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
-          "line": 516,
+          "line": 556,
           "source": "print(Partition([3, 1]).ferrers_diagram())",
           "want": "***\n*\n",
           "tags": [],
@@ -29373,16 +31220,16 @@
         "name": "hook_length",
         "qualified": "Partition.hook_length",
         "path": "src/baselib/combinat.py",
-        "line": 432,
+        "line": 472,
         "excerpt": {
-          "start_line": 420,
+          "start_line": 460,
           "text": "\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):\n            for column in range(self._entries[row]):\n                coordinates.append(runtime.math_tuple([row, column]))\n        return coordinates\n\n    def hook_length(self, row: int, column: int) -> int:\n        \"\"\"\n        Return the hook length of the cell in the given row and column.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_length(0, 0)\n            5\n            sage: Partition([3, 2, 1]).hook_length(1, 1)\n            1\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
-          "line": 439,
+          "line": 479,
           "source": "Partition([3, 2, 1]).hook_length(0, 0)",
           "want": "5\n",
           "tags": [],
@@ -29398,7 +31245,7 @@
         },
         {
           "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
-          "line": 441,
+          "line": 481,
           "source": "Partition([3, 2, 1]).hook_length(1, 1)",
           "want": "1\n",
           "tags": [],
@@ -29448,16 +31295,16 @@
         "name": "hook_lengths",
         "qualified": "Partition.hook_lengths",
         "path": "src/baselib/combinat.py",
-        "line": 461,
+        "line": 501,
         "excerpt": {
-          "start_line": 449,
+          "start_line": 489,
           "text": "            or index_row >= len(self._entries)\n            or index_column < 0\n            or index_column >= self._entries[index_row]\n        ):\n            raise IndexError(\"the cell is outside the Ferrers diagram\")\n        arm = self._entries[index_row] - index_column - 1\n        leg = 0\n        for part in self._entries[index_row + 1 :]:\n            if part > index_column:\n                leg += 1\n        return arm + leg + 1\n\n    def hook_lengths(self) -> list[list[int]]:\n        \"\"\"\n        Return the hook lengths of every cell, row by row.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
-          "line": 468,
+          "line": 508,
           "source": "Partition([3, 2, 1]).hook_lengths()",
           "want": "[[5, 3, 1], [3, 1], [1]]\n",
           "tags": [],
@@ -29507,16 +31354,16 @@
         "name": "length",
         "qualified": "Partition.length",
         "path": "src/baselib/combinat.py",
-        "line": 337,
+        "line": 377,
         "excerpt": {
-          "start_line": 325,
+          "start_line": 365,
           "text": "        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:\n            total += part\n        return total\n\n    def length(self) -> int:\n        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
-          "line": 344,
+          "line": 384,
           "source": "Partition([4, 2, 1]).length()",
           "want": "3\n",
           "tags": [],
@@ -29566,16 +31413,16 @@
         "name": "size",
         "qualified": "Partition.size",
         "path": "src/baselib/combinat.py",
-        "line": 321,
+        "line": 361,
         "excerpt": {
-          "start_line": 309,
+          "start_line": 349,
           "text": "    def __len__(self) -> int:\n        return len(self._entries)\n\n    def __iter__(self) -> Iterator[int]:\n        return iter(self._entries)\n\n    def __getitem__(self, index: Any) -> Any:\n        return self._entries[index]\n\n    def __contains__(self, part: object) -> bool:\n        return part in self._entries\n\n    def size(self) -> int:\n        \"\"\"\n        Return the integer partitioned by `self`.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
-          "line": 328,
+          "line": 368,
           "source": "Partition([4, 2, 1]).size()",
           "want": "7\n",
           "tags": [],
@@ -29625,16 +31472,16 @@
         "name": "to_exp",
         "qualified": "Partition.to_exp",
         "path": "src/baselib/combinat.py",
-        "line": 387,
+        "line": 427,
         "excerpt": {
-          "start_line": 375,
+          "start_line": 415,
           "text": "        \"\"\"\n        if not self._entries:\n            return Partition([], self._parent)\n        columns = []\n        for index in range(self._entries[0]):\n            height = 0\n            for part in self._entries:\n                if part > index:\n                    height += 1\n            columns.append(height)\n        return Partition(columns, self._parent)\n\n    def to_exp(self, minimum_length: int = 0) -> list[int]:\n        \"\"\"\n        Return part multiplicities, where entry `i` counts the parts equal to\n        `i + 1`.\n\n        ### Input\n\n        - `minimum_length` -- pad the result to at least this length\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 2, 1]).to_exp()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
-          "line": 399,
+          "line": 439,
           "source": "Partition([3, 2, 2, 1]).to_exp()",
           "want": "[1, 2, 1]\n",
           "tags": [],
@@ -29650,7 +31497,7 @@
         },
         {
           "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
-          "line": 401,
+          "line": 441,
           "source": "Partition([3, 2, 2, 1]).to_exp(5)",
           "want": "[1, 2, 1, 0, 0]\n",
           "tags": [],
@@ -29700,16 +31547,16 @@
         "name": "to_list",
         "qualified": "Partition.to_list",
         "path": "src/baselib/combinat.py",
-        "line": 350,
+        "line": 390,
         "excerpt": {
-          "start_line": 338,
+          "start_line": 378,
           "text": "        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n\n    def to_list(self) -> list[int]:\n        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
-          "line": 357,
+          "line": 397,
           "source": "Partition([4, 2, 1]).to_list()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -29815,16 +31662,16 @@
         "name": "Partitions",
         "qualified": "Partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1169,
+        "line": 1209,
         "excerpt": {
-          "start_line": 1157,
+          "start_line": 1197,
           "text": "    entries = []\n    if not isinstance(value, (list, tuple)):\n        raise TypeError(\"parts_in must be a list or tuple of positive integers\")\n    for part in value:\n        if not runtime.is_exact_integer(part):\n            raise TypeError(\"parts_in must contain integers\")\n        if int(part) <= 0:\n            raise ValueError(\"parts_in must contain positive integers\")\n        entries.append(int(part))\n    return entries\n\n\ndef Partitions(size: Any = None, **constraints: Any) -> Any:\n    r\"\"\"\n    Return the combinatorial class of partitions described by the arguments.\n\n    With no argument this is the class of all partitions of all nonnegative\n    integers.  With an integer argument it is the class of partitions of that\n    integer, optionally restricted by the supported keyword constraints.\n\n    ### Input\n\n    - `size` -- optional nonnegative integer to partition\n    - `min_part` -- smallest allowed part\n    - `max_part` -- largest allowed part"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
-          "line": 1190,
+          "line": 1230,
           "source": "Partitions(4).list()",
           "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
           "tags": [],
@@ -29840,7 +31687,7 @@
         },
         {
           "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
-          "line": 1192,
+          "line": 1232,
           "source": "Partitions(5, max_part=3).list()",
           "want": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -29856,7 +31703,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
-          "line": 1194,
+          "line": 1234,
           "source": "Partitions(5, length=2).list()",
           "want": "[[4, 1], [3, 2]]\n",
           "tags": [],
@@ -29872,7 +31719,7 @@
         },
         {
           "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
-          "line": 1196,
+          "line": 1236,
           "source": "Partitions(5, min_part=2).list()",
           "want": "[[5], [3, 2]]\n",
           "tags": [],
@@ -29888,7 +31735,7 @@
         },
         {
           "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
-          "line": 1198,
+          "line": 1238,
           "source": "Partitions(5, parts_in=[1, 2]).list()",
           "want": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -29904,7 +31751,7 @@
         },
         {
           "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
-          "line": 1205,
+          "line": 1245,
           "source": "Partitions(1000).cardinality()",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -29954,16 +31801,16 @@
         "name": "cardinality",
         "qualified": "Partitions_all.cardinality",
         "path": "src/baselib/combinat.py",
-        "line": 597,
+        "line": 637,
         "excerpt": {
-          "start_line": 585,
+          "start_line": 625,
           "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
-          "line": 922,
+          "line": 962,
           "source": "Partitions(4).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -29979,7 +31826,7 @@
         },
         {
           "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
-          "line": 924,
+          "line": 964,
           "source": "Partitions(100).cardinality()",
           "want": "190569292\n",
           "tags": [],
@@ -29995,7 +31842,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
-          "line": 926,
+          "line": 966,
           "source": "Partitions(5, max_part=3).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -30045,16 +31892,16 @@
         "name": "first",
         "qualified": "Partitions_all.first",
         "path": "src/baselib/combinat.py",
-        "line": 620,
+        "line": 660,
         "excerpt": {
-          "start_line": 608,
+          "start_line": 648,
           "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(entries)\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
-          "line": 988,
+          "line": 1028,
           "source": "Partitions(5).first()",
           "want": "[5]\n",
           "tags": [],
@@ -30104,16 +31951,16 @@
         "name": "last",
         "qualified": "Partitions_n.last",
         "path": "src/baselib/combinat.py",
-        "line": 994,
+        "line": 1034,
         "excerpt": {
-          "start_line": 982,
+          "start_line": 1022,
           "text": "        \"\"\"\n        Return the first partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).first()\n            [5]\n        ```\n        \"\"\"\n        return self.unrank(0)\n\n    def last(self) -> Partition:\n        \"\"\"\n        Return the last partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).last()\n            [1, 1, 1, 1, 1]\n        ```\n        \"\"\"\n        count = self._count(\n            self._size,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
-          "line": 1001,
+          "line": 1041,
           "source": "Partitions(5).last()",
           "want": "[1, 1, 1, 1, 1]\n",
           "tags": [],
@@ -30163,16 +32010,16 @@
         "name": "list",
         "qualified": "_PartitionsBase.list",
         "path": "src/baselib/combinat.py",
-        "line": 558,
+        "line": 598,
         "excerpt": {
-          "start_line": 546,
+          "start_line": 586,
           "text": "    def __iter__(self) -> Iterator[Partition]:\n        raise NotImplementedError(\"enumeration is defined by each partition class\")\n\n    def __call__(self, entries: Any = None) -> Partition:\n        if entries is None:\n            raise TypeError(\"a partition is built from a list or tuple of parts\")\n        candidate = _partition_entries(entries)\n        _partition_validate(candidate)\n        if candidate not in self:\n            raise ValueError(\"the partition is not a member of \" + repr(self))\n        return self._element(candidate)\n\n    def list(self) -> list[Partition]:\n        \"\"\"\n        Return every member of a finite combinatorial class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(3).list()\n            [[3], [2, 1], [1, 1, 1]]\n        ```\n        \"\"\"\n        return [entry for entry in self]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
-          "line": 565,
+          "line": 605,
           "source": "Partitions(3).list()",
           "want": "[[3], [2, 1], [1, 1, 1]]\n",
           "tags": [],
@@ -30222,16 +32069,16 @@
         "name": "random_element",
         "qualified": "Partitions_n.random_element",
         "path": "src/baselib/combinat.py",
-        "line": 1115,
+        "line": 1155,
         "excerpt": {
-          "start_line": 1103,
+          "start_line": 1143,
           "text": "                            remaining - first,\n                            first,\n                            min_length - 1,\n                            max_length - 1,\n                        ),\n                    )\n            remaining -= part\n            max_part = part\n            min_length -= 1\n            max_length -= 1\n        return runtime.normalize_integer(position)\n\n    def random_element(self) -> Partition:\n        \"\"\"\n        Return a uniformly random member of this class.\n\n        The part sizes are chosen one at a time with probability proportional\n        to the exact number of completions, so every partition is equally\n        likely without enumerating the class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(6).random_element() in Partitions(6)\n            True"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
-          "line": 1126,
+          "line": 1166,
           "source": "Partitions(6).random_element() in Partitions(6)",
           "want": "True\n",
           "tags": [],
@@ -30247,7 +32094,7 @@
         },
         {
           "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
-          "line": 1128,
+          "line": 1168,
           "source": "Partitions(6, max_part=2).random_element().to_list()[0] <= 2",
           "want": "True\n",
           "tags": [],
@@ -30297,16 +32144,16 @@
         "name": "rank",
         "qualified": "Partitions_all.rank",
         "path": "src/baselib/combinat.py",
-        "line": 647,
+        "line": 687,
         "excerpt": {
-          "start_line": 635,
-          "text": "        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
+          "start_line": 675,
+          "text": "        position = _combinat_exact_integer(index, \"a rank\")\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
-          "line": 654,
+          "line": 694,
           "source": "Partitions().rank([2, 1])",
           "want": "5\n",
           "tags": [],
@@ -30322,7 +32169,7 @@
         },
         {
           "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
-          "line": 1082,
+          "line": 1122,
           "source": "Partitions(5).rank([3, 1, 1])",
           "want": "3\n",
           "tags": [],
@@ -30338,7 +32185,7 @@
         },
         {
           "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
-          "line": 1084,
+          "line": 1124,
           "source": "Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))",
           "want": "[2, 2, 1]\n",
           "tags": [],
@@ -30388,16 +32235,16 @@
         "name": "unrank",
         "qualified": "Partitions_all.unrank",
         "path": "src/baselib/combinat.py",
-        "line": 624,
+        "line": 664,
         "excerpt": {
-          "start_line": 612,
-          "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:"
+          "start_line": 652,
+          "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = _combinat_exact_integer(index, \"a rank\")\n        if position < 0:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
-          "line": 631,
+          "line": 671,
           "source": "[Partitions().unrank(index) for index in range(5)]",
           "want": "[[], [1], [2], [1, 1], [3]]\n",
           "tags": [],
@@ -30413,7 +32260,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
-          "line": 1054,
+          "line": 1094,
           "source": "Partitions(5).unrank(0)",
           "want": "[5]\n",
           "tags": [],
@@ -30429,7 +32276,7 @@
         },
         {
           "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
-          "line": 1056,
+          "line": 1096,
           "source": "Partitions(5).unrank(3)",
           "want": "[3, 1, 1]\n",
           "tags": [],
@@ -31930,6 +33777,129 @@
     },
     {
       "schema_version": 1,
+      "name": "q_binomial",
+      "aliases": [
+        "gaussian_binomial"
+      ],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any",
+      "summary": "Return the Gaussian binomial coefficient `binom(n, k)_q`.",
+      "doc": "Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n`binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\nvector space over a field with `q` elements when `q` is a prime power,\nand is the natural q-analogue of `binomial(n, k)` for every `q`:\n`binom(n, k)_1 = binomial(n, k)`.\n\n`q` may be an exact integer, in which case the result is an exact\ninteger, or a polynomial-ring indeterminate, in which case the result\nis the Gaussian polynomial itself.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n- `q` -- an exact integer or a polynomial-ring element\n\n### Examples\n\n```sage\n    sage: q_binomial(4, 2, 1) == binomial(4, 2)\n    True\n    sage: q_binomial(4, 2, 2)\n    35\n    sage: q_binomial(5, 0, 3)\n    1\n    sage: q_binomial(5, 7, 3)\n    0\n```\n\n### Limitations\n\nUnlike Sage, `q` must be supplied explicitly: Sage.js does not\nauto-construct a default polynomial ring and indeterminate when `q` is\nomitted, so `q_binomial(n, k)` is not implemented.  A fourth positional\nargument raises `TypeError` rather than being silently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`\nis Sage's own alias for the same function.",
+      "tags": [
+        "combinatorics",
+        "binomial coefficients",
+        "q-analogues"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for an explicit integer or polynomial-ring `q`; the zero-argument polynomial-ring default is not implemented."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.q_analogues`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/q_analogues.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "andrews-theory-of-partitions",
+          "title": "The Theory of Partitions",
+          "type": "book",
+          "authors": [
+            "George E. Andrews"
+          ],
+          "year": 1976
+        }
+      ],
+      "limitations": [
+        "`q` must be supplied explicitly.  Sage defaults `q` to the generator of a freshly constructed `ZZ['q']` polynomial ring when omitted; Sage.js does not auto-construct that ring, so `q_binomial(n, k)` without a `q` is not implemented."
+      ],
+      "source": {
+        "name": "q_binomial",
+        "qualified": "q_binomial",
+        "path": "src/baselib/combinat.py",
+        "line": 2151,
+        "excerpt": {
+          "start_line": 2139,
+          "text": "            if j == 0 or j == i:\n                table[(i, j)] = one\n                continue\n            if integer_mode:\n                power = runtime.native_pow(q_value, runtime.bigint(j))\n                term = runtime.native_mul(power, table[(i - 1, j)])\n                table[(i, j)] = runtime.native_add(table[(i - 1, j - 1)], term)\n            else:\n                table[(i, j)] = table[(i - 1, j - 1)] + q_value**j * table[(i - 1, j)]\n    return table[(n, k)]\n\n\ndef q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the Gaussian binomial coefficient `binom(n, k)_q`.\n\n    `binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional\n    vector space over a field with `q` elements when `q` is a prime power,\n    and is the natural q-analogue of `binomial(n, k)` for every `q`:\n    `binom(n, k)_1 = binomial(n, k)`.\n\n    `q` may be an exact integer, in which case the result is an exact\n    integer, or a polynomial-ring indeterminate, in which case the result\n    is the Gaussian polynomial itself.\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#dc686b60fe1b02a5-3cbc87c7681f34db",
+          "line": 2172,
+          "source": "q_binomial(4, 2, 1) == binomial(4, 2)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#dc686b60fe1b02a5-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#958759ccfe2ec7c4-9f14025af0065b30",
+          "line": 2174,
+          "source": "q_binomial(4, 2, 2)",
+          "want": "35\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#958759ccfe2ec7c4-9f14025af0065b30",
+            "status": "pass",
+            "actual": "35\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#6030131c10bf260a-6b86b273ff34fce1",
+          "line": 2176,
+          "source": "q_binomial(5, 0, 3)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#6030131c10bf260a-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#d67538f1aa03aa22-5feceb66ffc86f38",
+          "line": 2178,
+          "source": "q_binomial(5, 7, 3)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "q_binomial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#d67538f1aa03aa22-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "Qp",
       "aliases": [
         "Zp"
@@ -32479,6 +34449,112 @@
     },
     {
       "schema_version": 1,
+      "name": "rising_factorial",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "rising_factorial(x: Any, a: Any, *extra: Any) -> Any",
+      "summary": "Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.",
+      "doc": "Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.\n\nAlso called the Pochhammer symbol.  `a` counts the factors and must be\na nonnegative integer; `x` may be any Sage.js number that supports\naddition and multiplication.\n\n### Input\n\n- `x` -- the starting value\n- `a` -- a nonnegative integer, the number of ascending factors\n\n### Examples\n\n```sage\n    sage: rising_factorial(5, 3)\n    210\n    sage: rising_factorial(5, 0)\n    1\n    sage: rising_factorial(1, 10) == factorial(10)\n    True\n```\n\n### Limitations\n\nSage extends `a` to negative integers through `1 / falling_factorial`;\nthat extension is not implemented here and raises `NotImplementedError`.\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.arith.misc.rising_factorial` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "factorial powers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "partial",
+        "notes": "Matches Sage for a nonnegative integer factor count `a`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.arith.misc`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [
+        "The factor count `a` must be a nonnegative integer.  Sage extends `a` to negative integers through the reciprocal identity `falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that extension is not implemented and raises `NotImplementedError`."
+      ],
+      "source": {
+        "name": "rising_factorial",
+        "qualified": "rising_factorial",
+        "path": "src/baselib/combinat.py",
+        "line": 1905,
+        "excerpt": {
+          "start_line": 1893,
+          "text": "        result = runtime.bigint(1)\n        for index in range(count):\n            result = runtime.native_mul(\n                result, runtime.native_sub(base, runtime.bigint(index))\n            )\n        return runtime.normalize_integer(result)\n    result = 1\n    for index in range(count):\n        result = result * (x - index)\n    return result\n\n\ndef rising_factorial(x: Any, a: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.\n\n    Also called the Pochhammer symbol.  `a` counts the factors and must be\n    a nonnegative integer; `x` may be any Sage.js number that supports\n    addition and multiplication.\n\n    ### Input\n\n    - `x` -- the starting value\n    - `a` -- a nonnegative integer, the number of ascending factors\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#472516f6fd5ab5ea-d29d53701d3c859e",
+          "line": 1921,
+          "source": "rising_factorial(5, 3)",
+          "want": "210\n",
+          "tags": [],
+          "owner": "rising_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#472516f6fd5ab5ea-d29d53701d3c859e",
+            "status": "pass",
+            "actual": "210\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#e88027d6eecf18ae-6b86b273ff34fce1",
+          "line": 1923,
+          "source": "rising_factorial(5, 0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "rising_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#e88027d6eecf18ae-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#2ad52422a2be9d46-3cbc87c7681f34db",
+          "line": 1925,
+          "source": "rising_factorial(1, 10) == factorial(10)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "rising_factorial",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#2ad52422a2be9d46-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "ruler",
       "aliases": [],
       "kind": "function",
@@ -32982,6 +35058,218 @@
     },
     {
       "schema_version": 1,
+      "name": "stirling_number1",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "stirling_number1(n: Any, k: Any, *extra: Any) -> Any",
+      "summary": "Return the unsigned Stirling number of the first kind, `c(n, k)`.",
+      "doc": "Return the unsigned Stirling number of the first kind, `c(n, k)`.\n\n`c(n, k)` counts the permutations of `n` elements with exactly `k`\ncycles.  **This is the unsigned convention**: Sage's `stirling_number1`\nalways returns a nonnegative integer, unlike the Wolfram Language's\n`StirlingS1`, which is signed as `(-1)^(n - k) c(n, k)`.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n\n### Examples\n\n```sage\n    sage: [stirling_number1(5, k) for k in range(6)]\n    [0, 24, 50, 35, 10, 1]\n    sage: stirling_number1(0, 0)\n    1\n    sage: stirling_number1(6, 8)\n    0\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.stirling_number1` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Stirling numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage's unsigned convention for nonnegative `n`, `k`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [
+        "`stirling_number1` is the UNSIGNED Stirling number of the first kind, matching Sage's own convention.  It is not the signed convention used by the Wolfram Language's `StirlingS1`; the `_wolfram.StirlingS1` wrapper applies the `(-1)^(n-k)` sign explicitly."
+      ],
+      "source": {
+        "name": "stirling_number1",
+        "qualified": "stirling_number1",
+        "path": "src/baselib/combinat.py",
+        "line": 1696,
+        "excerpt": {
+          "start_line": 1684,
+          "text": "    for i in range(1, n + 1):\n        new_row = [runtime.bigint(0)] * (k + 1)\n        upper = i if i < k else k\n        multiplier = runtime.bigint(i if second_kind else i - 1)\n        for j in range(1, upper + 1):\n            column_multiplier = runtime.bigint(j) if second_kind else multiplier\n            term = runtime.native_mul(column_multiplier, row[j])\n            new_row[j] = runtime.native_add(term, row[j - 1])\n        row = new_row\n    return row[k]\n\n\ndef stirling_number1(n: Any, k: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the unsigned Stirling number of the first kind, `c(n, k)`.\n\n    `c(n, k)` counts the permutations of `n` elements with exactly `k`\n    cycles.  **This is the unsigned convention**: Sage's `stirling_number1`\n    always returns a nonnegative integer, unlike the Wolfram Language's\n    `StirlingS1`, which is signed as `(-1)^(n - k) c(n, k)`.\n\n    ### Input\n\n    - `n`, `k` -- nonnegative integers\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#b0c0f312d932fefa-5a10f13a0da926cd",
+          "line": 1712,
+          "source": "[stirling_number1(5, k) for k in range(6)]",
+          "want": "[0, 24, 50, 35, 10, 1]\n",
+          "tags": [],
+          "owner": "stirling_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#b0c0f312d932fefa-5a10f13a0da926cd",
+            "status": "pass",
+            "actual": "[0, 24, 50, 35, 10, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#0e30bf1c026e29c0-6b86b273ff34fce1",
+          "line": 1714,
+          "source": "stirling_number1(0, 0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "stirling_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#0e30bf1c026e29c0-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#3dc1d7b023f30317-5feceb66ffc86f38",
+          "line": 1716,
+          "source": "stirling_number1(6, 8)",
+          "want": "0\n",
+          "tags": [],
+          "owner": "stirling_number1",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#3dc1d7b023f30317-5feceb66ffc86f38",
+            "status": "pass",
+            "actual": "0\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "stirling_number2",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.combinat",
+      "signature": "stirling_number2(n: Any, k: Any, *extra: Any) -> Any",
+      "summary": "Return the Stirling number of the second kind, `S(n, k)`.",
+      "doc": "Return the Stirling number of the second kind, `S(n, k)`.\n\n`S(n, k)` counts the ways to partition an `n`-set into exactly `k`\nnonempty, unlabeled blocks.\n\n### Input\n\n- `n`, `k` -- nonnegative integers\n\n### Examples\n\n```sage\n    sage: [stirling_number2(5, k) for k in range(6)]\n    [0, 1, 15, 25, 10, 1]\n    sage: stirling_number2(0, 0)\n    1\n    sage: sum(stirling_number2(6, k) for k in range(7)) == bell_number(6)\n    True\n```\n\n### Limitations\n\nA third positional argument raises `TypeError` rather than being\nsilently ignored.\n\nThis API and documentation are adapted from\n`sage.combinat.combinat.stirling_number2` (GPL-2.0-or-later).",
+      "tags": [
+        "combinatorics",
+        "integer sequences",
+        "Stirling numbers"
+      ],
+      "backends": [
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Matches Sage for nonnegative `n`, `k`."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath `sage.combinat.combinat`",
+          "revision": "SageMath 10.9",
+          "url": "https://doc.sagemath.org/html/en/reference/combinat/sage/combinat/combinat.html",
+          "license": "GPL-2.0-or-later"
+        }
+      ],
+      "references": [
+        {
+          "id": "graham-knuth-patashnik-concrete-mathematics",
+          "title": "Concrete Mathematics: A Foundation for Computer Science",
+          "type": "book",
+          "authors": [
+            "Ronald L. Graham",
+            "Donald E. Knuth",
+            "Oren Patashnik"
+          ],
+          "year": 1994
+        }
+      ],
+      "limitations": [],
+      "source": {
+        "name": "stirling_number2",
+        "qualified": "stirling_number2",
+        "path": "src/baselib/combinat.py",
+        "line": 1742,
+        "excerpt": {
+          "start_line": 1730,
+          "text": "            \"stirling_number1() takes exactly two arguments; an extra \"\n            \"positional argument is never silently ignored\"\n        )\n    value = _combinat_exact_integer(n, \"n\")\n    index = _combinat_exact_integer(k, \"k\")\n    if value < 0:\n        raise ValueError(\"stirling_number1() requires a nonnegative n\")\n    if index < 0:\n        raise ValueError(\"stirling_number1() requires a nonnegative k\")\n    return runtime.normalize_integer(_stirling_table(value, index, False))\n\n\ndef stirling_number2(n: Any, k: Any, *extra: Any) -> Any:\n    r\"\"\"\n    Return the Stirling number of the second kind, `S(n, k)`.\n\n    `S(n, k)` counts the ways to partition an `n`-set into exactly `k`\n    nonempty, unlabeled blocks.\n\n    ### Input\n\n    - `n`, `k` -- nonnegative integers\n\n    ### Examples\n"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/combinat.py#73534a4c2cba0f1a-489b52f04b496202",
+          "line": 1756,
+          "source": "[stirling_number2(5, k) for k in range(6)]",
+          "want": "[0, 1, 15, 25, 10, 1]\n",
+          "tags": [],
+          "owner": "stirling_number2",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#73534a4c2cba0f1a-489b52f04b496202",
+            "status": "pass",
+            "actual": "[0, 1, 15, 25, 10, 1]\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#89420bc859a542d0-6b86b273ff34fce1",
+          "line": 1758,
+          "source": "stirling_number2(0, 0)",
+          "want": "1\n",
+          "tags": [],
+          "owner": "stirling_number2",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#89420bc859a542d0-6b86b273ff34fce1",
+            "status": "pass",
+            "actual": "1\n"
+          }
+        },
+        {
+          "id": "src/baselib/combinat.py#15f2297759f7dd3d-3cbc87c7681f34db",
+          "line": 1760,
+          "source": "sum(stirling_number2(6, k) for k in range(7)) == bell_number(6)",
+          "want": "True\n",
+          "tags": [],
+          "owner": "stirling_number2",
+          "path": "src/baselib/combinat.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/combinat.py#15f2297759f7dd3d-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "streamline_plot",
       "aliases": [],
       "kind": "function",
@@ -33473,23 +35761,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 289,
-      "with_docstring": 289,
-      "with_summary": 289,
-      "with_tags": 289,
-      "with_backend": 289,
-      "with_provenance": 289,
-      "with_compatibility_notes": 289,
-      "with_references": 88,
-      "markdown_docstrings": 289,
+      "registry_entries": 304,
+      "with_docstring": 304,
+      "with_summary": 304,
+      "with_tags": 304,
+      "with_backend": 304,
+      "with_provenance": 304,
+      "with_compatibility_notes": 304,
+      "with_references": 103,
+      "markdown_docstrings": 304,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 194,
+      "entries_with_examples": 209,
       "entries_without_examples": 95,
-      "documented": 177,
-      "verified": 171,
+      "documented": 220,
+      "verified": 214,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

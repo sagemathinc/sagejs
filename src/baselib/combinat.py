@@ -5,18 +5,29 @@ enumerated set is an ordinary parent, its members are ordinary elements, and
 every count is exact.  A combinatorial class therefore answers `cardinality`
 without materializing its members, iterates in Sage's documented order, and
 supports the `rank`/`unrank` pair so a member can be addressed by position.
+Alongside the partition classes, this module also provides Sage's classical
+counting functions -- `fibonacci`, the Lucas sequences, `catalan_number`,
+`bell_number`, the two kinds of Stirling numbers, `multinomial`, the falling
+and rising factorials, `number_of_derangements`, `euler_number`,
+`harmonic_number`, and `q_binomial` -- as exact scalar functions rather than
+combinatorial classes.
 
 Constrained counting and addressing share one bounded dynamic-programming
 table, so `cardinality`, `unrank`, `rank`, and `random_element` all agree by
 construction.  Unconstrained counts use FLINT's Rademacher implementation;
 Euler's pentagonal recurrence remains an explicit exact capability fallback.
+The scalar counting functions instead fill a small triangular table (Stirling
+numbers, Bell numbers, Euler numbers) or an `O(log n)`/`O(n)` linear
+recurrence (Fibonacci, Lucas sequences, derangements) with the same
+bigint-safe accumulation pattern.
 
 ### Provenance
 
 The public API, the enumeration order, and the documentation prose follow
-SageMath's `sage.combinat.partition`, checked against SageMath 10.9.  No
-SageMath source was transliterated: the algorithms are implemented from their
-published descriptions, recorded per name in the documentation registry.
+SageMath's `sage.combinat.partition` and `sage.combinat.combinat`, checked
+against SageMath 10.9.  No SageMath source was transliterated: the algorithms
+are implemented from their published descriptions, recorded per name in the
+documentation registry.
 
 - Counting `p(n)` uses the recurrence from Euler's pentagonal number theorem
   (Andrews, *The Theory of Partitions*, 1976).
@@ -26,9 +37,27 @@ published descriptions, recorded per name in the documentation registry.
 - `random_element` selects a uniform index and descends the same count table
   (the classical technique described by Nijenhuis and Wilf, *Combinatorial
   Algorithms for Computers and Calculators*, 1978).
+- `fibonacci` uses Dijkstra's fast-doubling identities (*In Honour of
+  Fibonacci*, EWD654, 1978).
+- `lucas_number1` and `lucas_number2` use the linear Lucas-sequence
+  recurrences (Crandall and Pomerance, *Prime Numbers: A Computational
+  Perspective*, 2005).
+- `catalan_number` uses the closed form `binomial(2n, n) / (n + 1)` (Stanley,
+  *Catalan Numbers*, 2015).
+- `bell_number` uses the Bell triangle (Rota, *The Number of Partitions of a
+  Set*, 1964).
+- `stirling_number1`, `stirling_number2`, `multinomial`, the falling and
+  rising factorials, and `harmonic_number` use the classical triangular
+  recurrences and notation of Graham, Knuth, and Patashnik, *Concrete
+  Mathematics*, 1994.
+- `number_of_derangements` and `euler_number` follow Comtet, *Advanced
+  Combinatorics*, 1974.
+- `q_binomial` (`gaussian_binomial`) uses the q-Pascal recurrence for
+  Gaussian binomial coefficients (Andrews, *The Theory of Partitions*, 1976,
+  Chapter 3).
 
-Sharing a single memo across all four operations is a Sage.js choice, not one
-inherited from any of those sources.
+Sharing a single memo across all four partition operations is a Sage.js
+choice, not one inherited from any of those sources.
 
 ### Performance
 
@@ -47,6 +76,17 @@ and constrained counting fills a table iteratively rather than memoizing a
 recursion, so ranking and sampling pay for one table and then answer in
 milliseconds.  `bench/compare-partitions.cjs` measures all of it against
 SageMath and PARI/GP.
+
+The scalar counting functions are ordinary Python with no native or FFI
+backend.  `fibonacci` is `O(log n)` big-integer multiplications; the Lucas
+sequences and `number_of_derangements` are `O(n)` big-integer operations;
+`bell_number`, `stirling_number1`, `stirling_number2`, and `euler_number`
+fill an `O(n*k)` (respectively `O(n^2)`) triangular table of big integers per
+call, with no cross-call memoization.  None of these paths call FLINT, so
+they stay well below FLINT-backed partition counting for large `n`; the
+`bignum` regression cases in `test/combinat-counting.cjs` exist precisely to
+keep every one of them exact past the `2^53` double-precision boundary rather
+than fast at unbounded `n`.
 """
 
 # Ruff's WASM build reports I001 while proposing this same import block.
@@ -160,7 +200,7 @@ def _partition_count_portable(value: int) -> Any:
     return _combinat_state.partition_counts[value]
 
 
-def _partition_exact_integer(value: Any, name: str) -> int:
+def _combinat_exact_integer(value: Any, name: str) -> int:
     """Return one exact machine integer or reject coercive truncation."""
     if not runtime.is_exact_integer(value):
         raise TypeError(name + " must be an integer")
@@ -402,7 +442,7 @@ class Partition(sage.Element):
             [1, 2, 1, 0, 0]
         ```
         """
-        minimum = _partition_exact_integer(minimum_length, "minimum_length")
+        minimum = _combinat_exact_integer(minimum_length, "minimum_length")
         if minimum < 0:
             raise ValueError("minimum_length must be nonnegative")
         largest = self._entries[0] if self._entries else 0
@@ -442,8 +482,8 @@ class Partition(sage.Element):
             1
         ```
         """
-        index_row = _partition_exact_integer(row, "row")
-        index_column = _partition_exact_integer(column, "column")
+        index_row = _combinat_exact_integer(row, "row")
+        index_column = _combinat_exact_integer(column, "column")
         if (
             index_row < 0
             or index_row >= len(self._entries)
@@ -632,7 +672,7 @@ class Partitions_all(_PartitionsBase):
             [[], [1], [2], [1, 1], [3]]
         ```
         """
-        position = _partition_exact_integer(index, "a rank")
+        position = _combinat_exact_integer(index, "a rank")
         if position < 0:
             raise ValueError("a rank must be nonnegative")
         size = 0
@@ -1247,30 +1287,30 @@ def Partitions(size: Any = None, **constraints: Any) -> Any:
     parts_in = None
     given = _combinat_setting(constraints, "min_part")
     if given is not None:
-        min_part = _partition_exact_integer(given, "min_part")
+        min_part = _combinat_exact_integer(given, "min_part")
         if min_part < 1:
             raise ValueError("min_part must be positive")
     given = _combinat_setting(constraints, "max_part")
     if given is not None:
-        max_part = _partition_exact_integer(given, "max_part")
+        max_part = _combinat_exact_integer(given, "max_part")
         if max_part < 0:
             raise ValueError("max_part must be nonnegative")
     given = _combinat_setting(constraints, "length")
     if given is not None:
         if "min_length" in supplied or "max_length" in supplied:
             raise ValueError("length cannot be combined with min_length/max_length")
-        min_length = _partition_exact_integer(given, "length")
+        min_length = _combinat_exact_integer(given, "length")
         max_length = min_length
         if min_length < 0:
             raise ValueError("length must be nonnegative")
     given = _combinat_setting(constraints, "min_length")
     if given is not None:
-        min_length = _partition_exact_integer(given, "min_length")
+        min_length = _combinat_exact_integer(given, "min_length")
         if min_length < 0:
             raise ValueError("min_length must be nonnegative")
     given = _combinat_setting(constraints, "max_length")
     if given is not None:
-        max_length = _partition_exact_integer(given, "max_length")
+        max_length = _combinat_exact_integer(given, "max_length")
         if max_length < 0:
             raise ValueError("max_length must be nonnegative")
     given = _combinat_setting(constraints, "parts_in")
@@ -1333,6 +1373,842 @@ def number_of_partitions(size: Any) -> Any:
     if value < 0:
         raise ValueError("number_of_partitions() requires a nonnegative integer")
     return runtime.normalize_integer(_partition_count(value))
+
+
+def _combinat_choose(n: int, k: int) -> Any:
+    """
+    Return `binomial(n, k)` as an unnormalized bigint, for internal callers.
+
+    `n` and `k` are ordinary Python integers, small enough that comparing and
+    subtracting them stays exact; the returned bigint is exact regardless of
+    how large `binomial(n, k)` itself grows.  The multiplicative formula
+    divides out one term at a time, and that intermediate quotient is always
+    exact because a product of `k` consecutive integers is always divisible
+    by `k!`.
+    """
+    if k < 0 or k > n:
+        return runtime.bigint(0)
+    smaller = k if k < n - k else n - k
+    result = runtime.bigint(1)
+    for index in range(smaller):
+        result = runtime.native_div(
+            runtime.native_mul(result, runtime.bigint(n - index)),
+            runtime.bigint(index + 1),
+        )
+    return result
+
+
+def _fibonacci_pair(n: int) -> tuple[Any, Any]:
+    """Return `(F(n), F(n+1))` by Dijkstra's fast-doubling identities."""
+    if n == 0:
+        return runtime.bigint(0), runtime.bigint(1)
+    low, high = _fibonacci_pair(n // 2)
+    doubled = runtime.native_sub(runtime.native_mul(runtime.bigint(2), high), low)
+    even_term = runtime.native_mul(low, doubled)
+    odd_term = runtime.native_add(
+        runtime.native_mul(low, low), runtime.native_mul(high, high)
+    )
+    if n % 2 == 0:
+        return even_term, odd_term
+    return odd_term, runtime.native_add(even_term, odd_term)
+
+
+def fibonacci(n: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Fibonacci number, for any integer `n`.
+
+    `F(0) = 0`, `F(1) = 1`, and `F(n) = F(n-1) + F(n-2)`.  Negative indices
+    use the standard extension `F(-n) = (-1)^(n+1) F(n)`.
+
+    The value comes from Dijkstra's fast-doubling identities
+    `F(2k) = F(k) (2 F(k+1) - F(k))` and `F(2k+1) = F(k)^2 + F(k+1)^2`,
+    which halve the index at every step, so the cost is `O(log n)`
+    big-integer multiplications rather than `O(n)` additions.
+
+    ### Input
+
+    - `n` -- an integer, positive, negative, or zero
+
+    ### Examples
+
+    ```sage
+        sage: [fibonacci(n) for n in range(10)]
+        [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+        sage: [fibonacci(-n) for n in range(1, 6)]
+        [1, -1, 2, -3, 5]
+        sage: fibonacci(200)
+        280571172992510140037611932413038677189525
+    ```
+
+    ### Limitations
+
+    Sage's two-argument `fibonacci(n, algorithm=...)` form and the Wolfram
+    Language `Fibonacci[n, x]` Fibonacci polynomials are not implemented.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.fibonacci` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise NotImplementedError(
+            "fibonacci(n, x, ...) is not implemented; the Wolfram Language's "
+            "Fibonacci polynomials and Sage's algorithm keyword are out of "
+            "scope, and a second argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    magnitude = value if value >= 0 else -value
+    result = _fibonacci_pair(magnitude)[0]
+    if value < 0 and magnitude % 2 == 0:
+        result = runtime.native_neg(result)
+    return runtime.normalize_integer(result)
+
+
+def _lucas_sequence(count: int, p: int, q: int, u0: int, u1: int) -> Any:
+    """Return term `count` of `x_0 = u0`, `x_1 = u1`, `x_k = p x_{k-1} - q x_{k-2}`."""
+    p_value = runtime.bigint(p)
+    q_value = runtime.bigint(q)
+    low = runtime.bigint(u0)
+    high = runtime.bigint(u1)
+    for _index in range(count):
+        low, high = (
+            high,
+            runtime.native_sub(
+                runtime.native_mul(p_value, high), runtime.native_mul(q_value, low)
+            ),
+        )
+    return runtime.normalize_integer(low)
+
+
+def lucas_number1(n: Any, P: Any, Q: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Lucas sequence number of the first kind, `U_n(P, Q)`.
+
+    Defined by `U_0 = 0`, `U_1 = 1`, and `U_k = P U_{k-1} - Q U_{k-2}`.  The
+    ordinary Fibonacci numbers are `U_n(1, -1)`.
+
+    ### Input
+
+    - `n` -- a nonnegative integer index
+    - `P`, `Q` -- integer sequence parameters
+
+    ### Examples
+
+    ```sage
+        sage: [lucas_number1(n, 1, -1) for n in range(8)]
+        [0, 1, 1, 2, 3, 5, 8, 13]
+        sage: lucas_number1(5, 1, -1) == fibonacci(5)
+        True
+        sage: lucas_number1(10, 2, 1)
+        10
+    ```
+
+    ### Limitations
+
+    Only nonnegative `n` and integer `P`, `Q` are implemented; Sage also
+    accepts symbolic or algebraic `P`, `Q`, and PARI's `lucas` extension to
+    negative `n`, neither of which is implemented here.  A fourth
+    positional argument raises `TypeError` rather than being silently
+    ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.lucas_number1` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "lucas_number1() takes exactly three arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    p_value = _combinat_exact_integer(P, "P")
+    q_value = _combinat_exact_integer(Q, "Q")
+    if value < 0:
+        raise ValueError("lucas_number1() requires a nonnegative index")
+    return _lucas_sequence(value, p_value, q_value, 0, 1)
+
+
+def lucas_number2(n: Any, P: Any, Q: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Lucas sequence number of the second kind, `V_n(P, Q)`.
+
+    Defined by `V_0 = 2`, `V_1 = P`, and `V_k = P V_{k-1} - Q V_{k-2}`.  The
+    ordinary Lucas numbers are `V_n(1, -1)`.
+
+    ### Input
+
+    - `n` -- a nonnegative integer index
+    - `P`, `Q` -- integer sequence parameters
+
+    ### Examples
+
+    ```sage
+        sage: [lucas_number2(n, 1, -1) for n in range(8)]
+        [2, 1, 3, 4, 7, 11, 18, 29]
+        sage: lucas_number2(5, 1, -1)
+        11
+    ```
+
+    ### Limitations
+
+    Only nonnegative `n` and integer `P`, `Q` are implemented, matching
+    `lucas_number1`.  A fourth positional argument raises `TypeError`
+    rather than being silently ignored; the Wolfram Language's two-term
+    `LucasL[n, x]` polynomial form is handled by the `_wolfram` wrapper,
+    not here.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.lucas_number2` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "lucas_number2() takes exactly three arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    p_value = _combinat_exact_integer(P, "P")
+    q_value = _combinat_exact_integer(Q, "Q")
+    if value < 0:
+        raise ValueError("lucas_number2() requires a nonnegative index")
+    return _lucas_sequence(value, p_value, q_value, 2, p_value)
+
+
+def catalan_number(n: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Catalan number, `binomial(2n, n) / (n + 1)`.
+
+    Matching Sage, `catalan_number` returns `0` for every negative `n`; this
+    is a convenient convention rather than the value of an analytic
+    continuation, and it disagrees with the Wolfram Language, whose
+    `CatalanNumber` continues the sequence through the Gamma function and is
+    generally nonzero at negative integers.
+
+    ### Input
+
+    - `n` -- an integer
+
+    ### Examples
+
+    ```sage
+        sage: [catalan_number(n) for n in range(7)]
+        [1, 1, 2, 5, 14, 42, 132]
+        sage: catalan_number(-3)
+        0
+        sage: catalan_number(60)
+        1583850964596120042686772779038896
+        sage: catalan_number(5) == binomial(10, 5) // 6
+        True
+    ```
+
+    ### Limitations
+
+    A second positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.catalan_number` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "catalan_number() takes exactly one argument; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    if value < 0:
+        return 0
+    result = _combinat_choose(2 * value, value)
+    result = runtime.native_div(result, runtime.bigint(value + 1))
+    return runtime.normalize_integer(result)
+
+
+def bell_number(n: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Bell number, the number of partitions of an `n`-set.
+
+    The value comes from the Bell triangle (also called Aitken's array or
+    the Peirce triangle): each row starts with the last entry of the row
+    before it, and each further entry is the running sum of that start with
+    the entries of the previous row; the first entry of row `n` is `B(n)`.
+
+    ### Input
+
+    - `n` -- a nonnegative integer
+
+    ### Examples
+
+    ```sage
+        sage: [bell_number(n) for n in range(8)]
+        [1, 1, 2, 5, 15, 52, 203, 877]
+        sage: bell_number(50)
+        185724268771078270438257767181908917499221852770
+        sage: bell_number(6) == sum(stirling_number2(6, k) for k in range(7))
+        True
+    ```
+
+    ### Limitations
+
+    The Wolfram Language's two-argument `BellB[n, x]` Bell polynomials are
+    not implemented; a second argument raises `NotImplementedError` rather
+    than being silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.bell_number` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise NotImplementedError(
+            "bell_number(n, x, ...) is not implemented; the Wolfram "
+            "Language's Bell polynomials are out of scope, and a second "
+            "argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    if value < 0:
+        raise ValueError("bell_number() requires a nonnegative integer")
+    row = [runtime.bigint(1)]
+    for _index in range(value):
+        new_row = [row[-1]]
+        for item in row:
+            new_row.append(runtime.native_add(new_row[-1], item))
+        row = new_row
+    return runtime.normalize_integer(row[0])
+
+
+def _stirling_table(n: int, k: int, second_kind: bool) -> Any:
+    """
+    Return one Stirling number, unsigned first kind or second kind.
+
+    Both kinds obey a two-term triangular recurrence, so a single table
+    walk serves both: the first kind multiplies the term above by `i - 1`
+    (one fewer than the current row) and the second kind multiplies it by
+    the column `j` itself.
+    """
+    if k < 0 or k > n:
+        return runtime.bigint(0)
+    row = [runtime.bigint(1)] + [runtime.bigint(0)] * k
+    for i in range(1, n + 1):
+        new_row = [runtime.bigint(0)] * (k + 1)
+        upper = i if i < k else k
+        multiplier = runtime.bigint(i if second_kind else i - 1)
+        for j in range(1, upper + 1):
+            column_multiplier = runtime.bigint(j) if second_kind else multiplier
+            term = runtime.native_mul(column_multiplier, row[j])
+            new_row[j] = runtime.native_add(term, row[j - 1])
+        row = new_row
+    return row[k]
+
+
+def stirling_number1(n: Any, k: Any, *extra: Any) -> Any:
+    r"""
+    Return the unsigned Stirling number of the first kind, `c(n, k)`.
+
+    `c(n, k)` counts the permutations of `n` elements with exactly `k`
+    cycles.  **This is the unsigned convention**: Sage's `stirling_number1`
+    always returns a nonnegative integer, unlike the Wolfram Language's
+    `StirlingS1`, which is signed as `(-1)^(n - k) c(n, k)`.
+
+    ### Input
+
+    - `n`, `k` -- nonnegative integers
+
+    ### Examples
+
+    ```sage
+        sage: [stirling_number1(5, k) for k in range(6)]
+        [0, 24, 50, 35, 10, 1]
+        sage: stirling_number1(0, 0)
+        1
+        sage: stirling_number1(6, 8)
+        0
+    ```
+
+    ### Limitations
+
+    A third positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.stirling_number1` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "stirling_number1() takes exactly two arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    index = _combinat_exact_integer(k, "k")
+    if value < 0:
+        raise ValueError("stirling_number1() requires a nonnegative n")
+    if index < 0:
+        raise ValueError("stirling_number1() requires a nonnegative k")
+    return runtime.normalize_integer(_stirling_table(value, index, False))
+
+
+def stirling_number2(n: Any, k: Any, *extra: Any) -> Any:
+    r"""
+    Return the Stirling number of the second kind, `S(n, k)`.
+
+    `S(n, k)` counts the ways to partition an `n`-set into exactly `k`
+    nonempty, unlabeled blocks.
+
+    ### Input
+
+    - `n`, `k` -- nonnegative integers
+
+    ### Examples
+
+    ```sage
+        sage: [stirling_number2(5, k) for k in range(6)]
+        [0, 1, 15, 25, 10, 1]
+        sage: stirling_number2(0, 0)
+        1
+        sage: sum(stirling_number2(6, k) for k in range(7)) == bell_number(6)
+        True
+    ```
+
+    ### Limitations
+
+    A third positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.stirling_number2` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "stirling_number2() takes exactly two arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    index = _combinat_exact_integer(k, "k")
+    if value < 0:
+        raise ValueError("stirling_number2() requires a nonnegative n")
+    if index < 0:
+        raise ValueError("stirling_number2() requires a nonnegative k")
+    return runtime.normalize_integer(_stirling_table(value, index, True))
+
+
+def multinomial(*args: Any) -> Any:
+    r"""
+    Return the multinomial coefficient of the given nonnegative integers.
+
+    `multinomial(k_1, ..., k_m) = (k_1 + ... + k_m)! / (k_1! ... k_m!)`,
+    the number of ways to split a labeled set of that total size into
+    labeled blocks of those sizes.  As in Sage, the entries may be passed
+    either as separate arguments or as one list or tuple.
+
+    ### Input
+
+    - `args` -- nonnegative integers, or a single list/tuple of them
+
+    ### Examples
+
+    ```sage
+        sage: multinomial(2, 3, 4)
+        1260
+        sage: multinomial([2, 3, 4])
+        1260
+        sage: multinomial(5, 0)
+        1
+        sage: multinomial() == 1
+        True
+    ```
+
+    Unlike the other counting functions in this module, `multinomial` has
+    no fixed arity to guard: every positional argument is significant
+    data, not an optional or unsupported extension point, so there is no
+    "extra" argument to reject.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.multinomial` (GPL-2.0-or-later).
+    """
+    if len(args) == 1 and isinstance(args[0], (list, tuple)):
+        values = list(args[0])
+    else:
+        values = list(args)
+    counts = []
+    total = 0
+    for value in values:
+        count = _combinat_exact_integer(value, "multinomial() arguments")
+        if count < 0:
+            raise ValueError("multinomial() arguments must be nonnegative")
+        counts.append(count)
+        total += count
+    result = runtime.bigint(1)
+    remaining = total
+    for count in counts:
+        result = runtime.native_mul(result, _combinat_choose(remaining, count))
+        remaining -= count
+    return runtime.normalize_integer(result)
+
+
+def _combinat_factor_count(value: Any, name: str) -> int:
+    """Return a nonnegative factor count, or reject a non-integer or negative one."""
+    count = _combinat_exact_integer(value, name)
+    if count < 0:
+        raise NotImplementedError(
+            name + " must be a nonnegative integer; negative counts are not implemented"
+        )
+    return count
+
+
+def falling_factorial(x: Any, a: Any, *extra: Any) -> Any:
+    r"""
+    Return the falling factorial `x (x - 1) (x - 2) ... (x - a + 1)`.
+
+    `a` counts the factors and must be a nonnegative integer; `x` may be
+    any Sage.js number that supports subtraction and multiplication, so the
+    result stays exact for exact `x` (an integer or a `Rational`) and is
+    otherwise whatever `x`'s own arithmetic produces.
+
+    ### Input
+
+    - `x` -- the starting value
+    - `a` -- a nonnegative integer, the number of descending factors
+
+    ### Examples
+
+    ```sage
+        sage: falling_factorial(5, 3)
+        60
+        sage: falling_factorial(5, 0)
+        1
+        sage: falling_factorial(10, 10) == factorial(10)
+        True
+    ```
+
+    ### Limitations
+
+    Sage extends `a` to negative integers through `1 / rising_factorial`;
+    that extension is not implemented here and raises `NotImplementedError`.
+    A third positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.arith.misc.falling_factorial` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "falling_factorial() takes exactly two arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    count = _combinat_factor_count(a, "falling_factorial() the factor count")
+    if runtime.is_exact_integer(x):
+        base = runtime.integer_bigint(x)
+        result = runtime.bigint(1)
+        for index in range(count):
+            result = runtime.native_mul(
+                result, runtime.native_sub(base, runtime.bigint(index))
+            )
+        return runtime.normalize_integer(result)
+    result = 1
+    for index in range(count):
+        result = result * (x - index)
+    return result
+
+
+def rising_factorial(x: Any, a: Any, *extra: Any) -> Any:
+    r"""
+    Return the rising factorial `x (x + 1) (x + 2) ... (x + a - 1)`.
+
+    Also called the Pochhammer symbol.  `a` counts the factors and must be
+    a nonnegative integer; `x` may be any Sage.js number that supports
+    addition and multiplication.
+
+    ### Input
+
+    - `x` -- the starting value
+    - `a` -- a nonnegative integer, the number of ascending factors
+
+    ### Examples
+
+    ```sage
+        sage: rising_factorial(5, 3)
+        210
+        sage: rising_factorial(5, 0)
+        1
+        sage: rising_factorial(1, 10) == factorial(10)
+        True
+    ```
+
+    ### Limitations
+
+    Sage extends `a` to negative integers through `1 / falling_factorial`;
+    that extension is not implemented here and raises `NotImplementedError`.
+    A third positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.arith.misc.rising_factorial` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "rising_factorial() takes exactly two arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    count = _combinat_factor_count(a, "rising_factorial() the factor count")
+    if runtime.is_exact_integer(x):
+        base = runtime.integer_bigint(x)
+        result = runtime.bigint(1)
+        for index in range(count):
+            result = runtime.native_mul(
+                result, runtime.native_add(base, runtime.bigint(index))
+            )
+        return runtime.normalize_integer(result)
+    result = 1
+    for index in range(count):
+        result = result * (x + index)
+    return result
+
+
+def number_of_derangements(n: Any, *extra: Any) -> Any:
+    r"""
+    Return the number of derangements of `n` elements, the subfactorial `!n`.
+
+    A derangement is a permutation with no fixed point.  The value comes
+    from the linear recurrence `D(0) = 1`, `D(1) = 0`,
+    `D(n) = (n - 1) (D(n-1) + D(n-2))`.
+
+    ### Input
+
+    - `n` -- a nonnegative integer
+
+    ### Examples
+
+    ```sage
+        sage: [number_of_derangements(n) for n in range(7)]
+        [1, 0, 1, 2, 9, 44, 265]
+        sage: number_of_derangements(20)
+        895014631192902121
+        sage: sum((-1)^k * binomial(6, k) * factorial(6 - k) for k in range(7))
+        265
+    ```
+
+    ### Limitations
+
+    A second positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.derangements.number_of_derangements` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "number_of_derangements() takes exactly one argument; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    if value < 0:
+        raise ValueError("number_of_derangements() requires a nonnegative integer")
+    if value == 0:
+        return 1
+    if value == 1:
+        return 0
+    low = runtime.bigint(1)
+    high = runtime.bigint(0)
+    for index in range(2, value + 1):
+        low, high = (
+            high,
+            runtime.native_mul(
+                runtime.bigint(index - 1), runtime.native_add(high, low)
+            ),
+        )
+    return runtime.normalize_integer(high)
+
+
+def _euler_number_even(half: int) -> Any:
+    """
+    Return `E(2 * half)`, the alternating-sign secant number.
+
+    `E(0) = 1` and `sum_{j=0}^{k} binomial(2k, 2j) E(2j) = 0` for `k >= 1`,
+    which is solved for the newest term at each step.
+    """
+    even_values = [runtime.bigint(1)]
+    for k in range(1, half + 1):
+        total = runtime.bigint(0)
+        for j in range(k):
+            term = runtime.native_mul(_combinat_choose(2 * k, 2 * j), even_values[j])
+            total = runtime.native_add(total, term)
+        even_values.append(runtime.native_neg(total))
+    return even_values[half]
+
+
+def euler_number(n: Any, *extra: Any) -> Any:
+    r"""
+    Return the `n`-th Euler number (the secant/zigzag number `E_n`).
+
+    `E_n` is `0` for odd `n`, and the even-indexed values alternate in
+    sign: `E_0 = 1`, `E_2 = -1`, `E_4 = 5`, `E_6 = -61`, matching both
+    Sage's `euler_number` and the Wolfram Language's `EulerE`.
+
+    ### Input
+
+    - `n` -- a nonnegative integer
+
+    ### Examples
+
+    ```sage
+        sage: [euler_number(n) for n in range(9)]
+        [1, 0, -1, 0, 5, 0, -61, 0, 1385]
+        sage: euler_number(11)
+        0
+    ```
+
+    ### Limitations
+
+    The Wolfram Language's two-argument `EulerE[n, x]` Euler polynomials are
+    not implemented; a second argument raises `NotImplementedError` rather
+    than being silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.combinat.euler_number` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise NotImplementedError(
+            "euler_number(n, x, ...) is not implemented; the Wolfram "
+            "Language's Euler polynomials are out of scope, and a second "
+            "argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    if value < 0:
+        raise ValueError("euler_number() requires a nonnegative integer")
+    if value % 2 == 1:
+        return 0
+    return runtime.normalize_integer(_euler_number_even(value // 2))
+
+
+def harmonic_number(n: Any, m: Any = 1, *extra: Any) -> Any:
+    r"""
+    Return the generalized harmonic number `H_n^{(m)} = sum_{k=1}^{n} 1/k^m`.
+
+    The ordinary harmonic number is `m = 1`.  The result is an exact
+    `Rational`, never a float, so it stays exact past any floating-point
+    precision.
+
+    ### Input
+
+    - `n` -- a nonnegative integer
+    - `m` -- a nonnegative integer power, default `1`
+
+    ### Examples
+
+    ```sage
+        sage: harmonic_number(5)
+        137/60
+        sage: harmonic_number(0)
+        0
+        sage: harmonic_number(5, 2)
+        5269/3600
+    ```
+
+    ### Limitations
+
+    A third positional argument raises `TypeError` rather than being
+    silently ignored.
+
+    This API and documentation are adapted from
+    `sage.functions.other.harmonic_number` (GPL-2.0-or-later).
+    """
+    if extra:
+        raise TypeError(
+            "harmonic_number() takes at most two arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    value = _combinat_exact_integer(n, "n")
+    power = _combinat_exact_integer(m, "m")
+    if value < 0:
+        raise ValueError("harmonic_number() requires a nonnegative n")
+    if power < 0:
+        raise NotImplementedError("harmonic_number() requires a nonnegative m")
+    total = runtime.rational_class(0, 1)
+    for k in range(1, value + 1):
+        denominator = runtime.native_pow(runtime.bigint(k), runtime.bigint(power))
+        total = total + runtime.rational_class(1, denominator)
+    return total
+
+
+def _q_binomial_table(n: int, k: int, q: Any, integer_mode: bool) -> Any:
+    """
+    Return the Gaussian binomial coefficient `binom(n, k)_q`.
+
+    The q-Pascal recurrence `binom(i, j)_q = binom(i-1, j-1)_q + q^j
+    binom(i-1, j)_q` never divides, so it is exact for an integer `q` and
+    stays a well-formed expression for a polynomial-ring `q` as well.
+    """
+    one = runtime.bigint(1) if integer_mode else 1
+    q_value = runtime.integer_bigint(q) if integer_mode else q
+    table = {}
+    for i in range(n + 1):
+        upper = i if i < k else k
+        for j in range(upper + 1):
+            if j == 0 or j == i:
+                table[(i, j)] = one
+                continue
+            if integer_mode:
+                power = runtime.native_pow(q_value, runtime.bigint(j))
+                term = runtime.native_mul(power, table[(i - 1, j)])
+                table[(i, j)] = runtime.native_add(table[(i - 1, j - 1)], term)
+            else:
+                table[(i, j)] = table[(i - 1, j - 1)] + q_value**j * table[(i - 1, j)]
+    return table[(n, k)]
+
+
+def q_binomial(n: Any, k: Any, q: Any, *extra: Any) -> Any:
+    r"""
+    Return the Gaussian binomial coefficient `binom(n, k)_q`.
+
+    `binom(n, k)_q` counts `k`-dimensional subspaces of an `n`-dimensional
+    vector space over a field with `q` elements when `q` is a prime power,
+    and is the natural q-analogue of `binomial(n, k)` for every `q`:
+    `binom(n, k)_1 = binomial(n, k)`.
+
+    `q` may be an exact integer, in which case the result is an exact
+    integer, or a polynomial-ring indeterminate, in which case the result
+    is the Gaussian polynomial itself.
+
+    ### Input
+
+    - `n`, `k` -- nonnegative integers
+    - `q` -- an exact integer or a polynomial-ring element
+
+    ### Examples
+
+    ```sage
+        sage: q_binomial(4, 2, 1) == binomial(4, 2)
+        True
+        sage: q_binomial(4, 2, 2)
+        35
+        sage: q_binomial(5, 0, 3)
+        1
+        sage: q_binomial(5, 7, 3)
+        0
+    ```
+
+    ### Limitations
+
+    Unlike Sage, `q` must be supplied explicitly: Sage.js does not
+    auto-construct a default polynomial ring and indeterminate when `q` is
+    omitted, so `q_binomial(n, k)` is not implemented.  A fourth positional
+    argument raises `TypeError` rather than being silently ignored.
+
+    This API and documentation are adapted from
+    `sage.combinat.q_analogues.q_binomial` (GPL-2.0-or-later).  `gaussian_binomial`
+    is Sage's own alias for the same function.
+    """
+    if extra:
+        raise TypeError(
+            "q_binomial() takes exactly three arguments; an extra "
+            "positional argument is never silently ignored"
+        )
+    n_value = _combinat_exact_integer(n, "n")
+    k_value = _combinat_exact_integer(k, "k")
+    if n_value < 0:
+        raise ValueError("q_binomial() requires a nonnegative n")
+    if k_value < 0 or k_value > n_value:
+        return 0
+    integer_mode = runtime.is_exact_integer(q)
+    result = _q_binomial_table(n_value, k_value, q, integer_mode)
+    if integer_mode:
+        return runtime.normalize_integer(result)
+    return result
+
+
+gaussian_binomial = q_binomial
 
 
 # Every algorithm here is implemented from its published description; no
@@ -1439,6 +2315,35 @@ def _register_combinat_doc(
     )
 
 
+def _register_combinat_function_doc(
+    name: str,
+    value: Any,
+    provenance: list[Any],
+    references: list[Any],
+    limitations: list[Any],
+    tags: list[Any],
+    status: str,
+    notes: str,
+    aliases: list[Any],
+) -> None:
+    """Register a scalar counting function, one call per name, no keyword args."""
+    runtime.register_doc(
+        name,
+        value,
+        {
+            "kind": "function",
+            "module": "sage.combinat",
+            "tags": tags,
+            "backends": ["Sage.js exact arithmetic"],
+            "sage_compatibility": {"status": status, "notes": notes},
+            "provenance": provenance,
+            "references": references,
+            "limitations": limitations,
+            "aliases": aliases,
+        },
+    )
+
+
 _ENUMERATION_LIMITATION = (
     "Enumeration is exact but explicit, so listing a class is practical only "
     "while its cardinality is small.  Counting, ranking, and uniform sampling "
@@ -1492,6 +2397,327 @@ _register_combinat_doc(
     [_SAGE_PROVENANCE, _FLINT_PROVENANCE, _PENTAGONAL_PROVENANCE],
     [_ANDREWS_REFERENCE],
     [_COUNTING_LIMITATION],
+)
+
+# The counting functions below are likewise implemented from their published
+# recurrences rather than transliterated from SageMath; what is adapted from
+# Sage is the public API, argument order, and the documentation prose.
+_SAGE_COMBINAT_FUNCTIONS_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.combinat.combinat`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/combinat/"
+        "sage/combinat/combinat.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+_SAGE_ARITH_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.arith.misc`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/rings_standard/sage/arith/misc.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+_SAGE_DERANGEMENTS_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.combinat.derangements`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/combinat/"
+        "sage/combinat/derangements.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+_SAGE_Q_ANALOGUES_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.combinat.q_analogues`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/combinat/"
+        "sage/combinat/q_analogues.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+_SAGE_FUNCTIONS_PROVENANCE = {
+    "kind": "sage-derived",
+    "source": "SageMath `sage.functions.other`",
+    "revision": "SageMath 10.9",
+    "url": (
+        "https://doc.sagemath.org/html/en/reference/functions/sage/functions/other.html"
+    ),
+    "license": "GPL-2.0-or-later",
+}
+
+_DIJKSTRA_REFERENCE = {
+    "id": "dijkstra-in-honour-of-fibonacci",
+    "type": "technical-report",
+    "title": "In Honour of Fibonacci (EWD654)",
+    "authors": ["Edsger W. Dijkstra"],
+    "year": 1978,
+    "relevant_sections": (
+        "The fast-doubling identities F(2k) = F(k) (2 F(k+1) - F(k)) and "
+        "F(2k+1) = F(k)^2 + F(k+1)^2"
+    ),
+}
+_CRANDALL_POMERANCE_REFERENCE = {
+    "id": "crandall-pomerance-prime-numbers",
+    "type": "book",
+    "title": "Prime Numbers: A Computational Perspective",
+    "authors": ["Richard Crandall", "Carl Pomerance"],
+    "year": 2005,
+    "relevant_sections": "Section 3.6, the Lucas sequences U_n(P, Q) and V_n(P, Q)",
+}
+_STANLEY_CATALAN_REFERENCE = {
+    "id": "stanley-catalan-numbers",
+    "type": "book",
+    "title": "Catalan Numbers",
+    "authors": ["Richard P. Stanley"],
+    "year": 2015,
+    "relevant_sections": "Chapter 1, C(n) = binomial(2n, n) / (n + 1)",
+}
+_ROTA_BELL_REFERENCE = {
+    "id": "rota-number-of-partitions-of-a-set",
+    "type": "article",
+    "title": (
+        "The Number of Partitions of a Set (American Mathematical Monthly "
+        "71:5, 498-504)"
+    ),
+    "authors": ["Gian-Carlo Rota"],
+    "year": 1964,
+    "relevant_sections": "The Bell triangle recurrence used to compute B(n)",
+}
+_CONCRETE_MATH_REFERENCE = {
+    "id": "graham-knuth-patashnik-concrete-mathematics",
+    "type": "book",
+    "title": "Concrete Mathematics: A Foundation for Computer Science",
+    "authors": ["Ronald L. Graham", "Donald E. Knuth", "Oren Patashnik"],
+    "year": 1994,
+    "relevant_sections": (
+        "Chapter 2 for falling/rising factorial notation, Chapter 5 for "
+        "multinomial coefficients, Chapter 6 for Stirling numbers and "
+        "harmonic numbers"
+    ),
+}
+_COMTET_REFERENCE = {
+    "id": "comtet-advanced-combinatorics",
+    "type": "book",
+    "title": "Advanced Combinatorics: The Art of Finite and Infinite Expansions",
+    "authors": ["Louis Comtet"],
+    "year": 1974,
+    "relevant_sections": "Chapter IV for derangements, Chapter V for Euler numbers",
+}
+
+_FIBONACCI_LIMITATION = (
+    "Sage's `algorithm` keyword is not implemented, and the Wolfram "
+    "Language's two-argument `Fibonacci[n, x]` Fibonacci polynomials are a "
+    "different function that is not implemented; a second positional "
+    "argument raises `TypeError` rather than being silently ignored."
+)
+_LUCAS_LIMITATION = (
+    "Only a nonnegative `n` and integer `P`, `Q` are implemented.  Sage also "
+    "accepts symbolic or algebraic `P`, `Q`, and PARI's extension to "
+    "negative `n`; neither is implemented here."
+)
+_CATALAN_NEGATIVE_LIMITATION = (
+    "`catalan_number` returns `0` for every negative `n`, matching Sage's "
+    "convention.  This is not the value of the Wolfram Language's analytic "
+    "continuation of `CatalanNumber` through the Gamma function, which is "
+    "generally nonzero at negative integers and is not reproduced here."
+)
+_STIRLING1_SIGN_LIMITATION = (
+    "`stirling_number1` is the UNSIGNED Stirling number of the first kind, "
+    "matching Sage's own convention.  It is not the signed convention used "
+    "by the Wolfram Language's `StirlingS1`; the `_wolfram.StirlingS1` "
+    "wrapper applies the `(-1)^(n-k)` sign explicitly."
+)
+_FACTORIAL_POWER_LIMITATION = (
+    "The factor count `a` must be a nonnegative integer.  Sage extends `a` "
+    "to negative integers through the reciprocal identity "
+    "`falling_factorial(x, -a) = 1 / rising_factorial(x, a)`; that "
+    "extension is not implemented and raises `NotImplementedError`."
+)
+_QBINOMIAL_LIMITATION = (
+    "`q` must be supplied explicitly.  Sage defaults `q` to the generator "
+    "of a freshly constructed `ZZ['q']` polynomial ring when omitted; "
+    "Sage.js does not auto-construct that ring, so `q_binomial(n, k)` "
+    "without a `q` is not implemented."
+)
+_HARMONIC_LIMITATION = (
+    "`n` and `m` must both be nonnegative integers, so `harmonic_number` "
+    "always returns an exact `Rational`.  Sage's symbolic evaluation for "
+    "non-integer or symbolic `n` is not implemented."
+)
+
+_register_combinat_function_doc(
+    "fibonacci",
+    fibonacci,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_DIJKSTRA_REFERENCE],
+    [_FIBONACCI_LIMITATION],
+    ["combinatorics", "integer sequences", "Fibonacci numbers"],
+    "partial",
+    "The one-argument form matches Sage for every integer `n`.",
+    [],
+)
+_register_combinat_function_doc(
+    "lucas_number1",
+    lucas_number1,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_CRANDALL_POMERANCE_REFERENCE],
+    [_LUCAS_LIMITATION],
+    ["combinatorics", "integer sequences", "Lucas sequences"],
+    "partial",
+    "Matches Sage for nonnegative `n` and integer `P`, `Q`.",
+    [],
+)
+_register_combinat_function_doc(
+    "lucas_number2",
+    lucas_number2,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_CRANDALL_POMERANCE_REFERENCE],
+    [_LUCAS_LIMITATION],
+    ["combinatorics", "integer sequences", "Lucas sequences"],
+    "partial",
+    "Matches Sage for nonnegative `n` and integer `P`, `Q`.",
+    [],
+)
+_register_combinat_function_doc(
+    "catalan_number",
+    catalan_number,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_STANLEY_CATALAN_REFERENCE],
+    [_CATALAN_NEGATIVE_LIMITATION],
+    ["combinatorics", "integer sequences", "Catalan numbers"],
+    "compatible",
+    "Matches Sage for every integer `n`, including negative `n`.",
+    [],
+)
+_register_combinat_function_doc(
+    "bell_number",
+    bell_number,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_ROTA_BELL_REFERENCE],
+    [],
+    ["combinatorics", "integer sequences", "set partitions"],
+    "compatible",
+    "Matches Sage for every nonnegative `n`.",
+    [],
+)
+_register_combinat_function_doc(
+    "stirling_number1",
+    stirling_number1,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [_STIRLING1_SIGN_LIMITATION],
+    ["combinatorics", "integer sequences", "Stirling numbers"],
+    "compatible",
+    "Matches Sage's unsigned convention for nonnegative `n`, `k`.",
+    [],
+)
+_register_combinat_function_doc(
+    "stirling_number2",
+    stirling_number2,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [],
+    ["combinatorics", "integer sequences", "Stirling numbers"],
+    "compatible",
+    "Matches Sage for nonnegative `n`, `k`.",
+    [],
+)
+_register_combinat_function_doc(
+    "multinomial",
+    multinomial,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [],
+    ["combinatorics", "binomial coefficients"],
+    "compatible",
+    "Accepts both the variadic and single-list calling forms, as Sage does.",
+    [],
+)
+_register_combinat_function_doc(
+    "falling_factorial",
+    falling_factorial,
+    [_SAGE_ARITH_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [_FACTORIAL_POWER_LIMITATION],
+    ["combinatorics", "factorial powers"],
+    "partial",
+    "Matches Sage for a nonnegative integer factor count `a`.",
+    [],
+)
+_register_combinat_function_doc(
+    "rising_factorial",
+    rising_factorial,
+    [_SAGE_ARITH_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [_FACTORIAL_POWER_LIMITATION],
+    ["combinatorics", "factorial powers"],
+    "partial",
+    "Matches Sage for a nonnegative integer factor count `a`.",
+    [],
+)
+_register_combinat_function_doc(
+    "number_of_derangements",
+    number_of_derangements,
+    [_SAGE_DERANGEMENTS_PROVENANCE],
+    [_COMTET_REFERENCE],
+    [],
+    ["combinatorics", "integer sequences", "derangements"],
+    "compatible",
+    "Matches Sage for every nonnegative `n`.",
+    [],
+)
+_register_combinat_function_doc(
+    "euler_number",
+    euler_number,
+    [_SAGE_COMBINAT_FUNCTIONS_PROVENANCE],
+    [_COMTET_REFERENCE],
+    [],
+    ["combinatorics", "integer sequences", "Euler numbers"],
+    "compatible",
+    "Matches Sage, and the Wolfram Language's `EulerE`, for every nonnegative `n`.",
+    [],
+)
+_register_combinat_function_doc(
+    "harmonic_number",
+    harmonic_number,
+    [_SAGE_FUNCTIONS_PROVENANCE],
+    [_CONCRETE_MATH_REFERENCE],
+    [_HARMONIC_LIMITATION],
+    ["combinatorics", "harmonic numbers"],
+    "partial",
+    "Matches Sage for nonnegative integer `n` and `m`.",
+    [],
+)
+_register_combinat_function_doc(
+    "q_binomial",
+    q_binomial,
+    [_SAGE_Q_ANALOGUES_PROVENANCE],
+    [_ANDREWS_REFERENCE],
+    [_QBINOMIAL_LIMITATION],
+    ["combinatorics", "binomial coefficients", "q-analogues"],
+    "partial",
+    (
+        "Matches Sage for an explicit integer or polynomial-ring `q`; "
+        "the zero-argument polynomial-ring default is not implemented."
+    ),
+    ["gaussian_binomial"],
+)
+_register_combinat_function_doc(
+    "gaussian_binomial",
+    gaussian_binomial,
+    [_SAGE_Q_ANALOGUES_PROVENANCE],
+    [_ANDREWS_REFERENCE],
+    [_QBINOMIAL_LIMITATION],
+    ["combinatorics", "binomial coefficients", "q-analogues"],
+    "partial",
+    "Sage's own alias for `q_binomial`, documented under the same name.",
+    ["q_binomial"],
 )
 
 
