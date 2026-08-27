@@ -157,6 +157,7 @@
     "src/lib/sagejs/hyperelliptic_curves/torsion.py",
     "src/lib/sagejs/hyperelliptic_curves/twists.py",
     "src/lib/sagejs/javascript.py",
+    "src/lib/sagejs/compiler.py",
     "src/lib/sagejs/native.py",
     "src/lib/sagejs/plotting/__init__.py",
     "src/lib/sagejs/plotting/_json.py",

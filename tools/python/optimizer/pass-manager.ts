@@ -1,4 +1,8 @@
 import { optimizationLevelRank } from "./controls";
+import {
+  collectOptimizationContracts,
+  CollectedOptimizationContracts,
+} from "./contracts";
 import { verifyOptimizerLowering } from "./lowerings";
 import {
   OPTIMIZER_IR_SCHEMA,
@@ -18,12 +22,14 @@ import {
 
 const IGNORED_AST_KEYS = new Set([
   "start", "end", "scope", "thedef", "imports", "globals", "classes",
-  "baselib", "optimization_ir", "optimization_region",
+  "baselib", "optimization_ir", "optimization_region", "optimization_contract",
 ]);
 
 export class OptimizerPassManager implements OptimizationPassContext {
   readonly program: OptimizationProgram;
   private readonly claimedNodes = new WeakSet<object>();
+  private readonly decisionByNode = new WeakMap<object, OptimizationDecision>();
+  private contracts!: CollectedOptimizationContracts;
   private analysisRevision = 0;
 
   constructor(
@@ -37,6 +43,7 @@ export class OptimizerPassManager implements OptimizationPassContext {
       disabledPasses: [...controls.disabledPasses].sort(),
       requiredOptimizations: [...controls.requiredOptimizations].sort(),
       passes: [],
+      contracts: [],
       regions: [],
     };
   }
@@ -68,6 +75,11 @@ export class OptimizerPassManager implements OptimizationPassContext {
     // was disabled or rejected by the selected optimization level.
     if (this.claimedNodes.has(candidate.node)) return;
     this.claimedNodes.add(candidate.node);
+    const functionContract = candidate.ownerFunction
+      ? this.contracts.byFunction.get(candidate.ownerFunction)
+      : undefined;
+    candidate.internal.functionId = functionContract?.id ?? null;
+    candidate.internal.guardFailure = functionContract?.guardFailure ?? "fallback";
     verifyInternalRegionPlan(candidate.internal);
     verifyOptimizerLowering(
       this.compiler,
@@ -86,15 +98,19 @@ export class OptimizerPassManager implements OptimizationPassContext {
     const selected = reasons.length === 0;
     const decision: OptimizationDecision = {
       ...candidate.decision,
+      functionId: functionContract?.id ?? null,
       selected,
       rejectionReasons: reasons,
     };
     verifyOptimizationDecision(decision);
     this.program.regions.push(decision);
+    this.decisionByNode.set(candidate.node, decision);
     if (selected) candidate.node.optimization_region = candidate.internal;
   }
 
   run(root: any): OptimizationProgram {
+    this.contracts = collectOptimizationContracts(this.compiler, root);
+    this.program.contracts = this.contracts.contracts;
     const passIds = new Set<string>();
     for (const pass of this.passes) {
       verifyOptimizationPass(pass);
@@ -132,10 +148,77 @@ export class OptimizerPassManager implements OptimizationPassContext {
       verifyOptimizationProgram(this.program, { allowUnknownPassReferences: false });
     }
     this.program.regions.sort((left, right) => left.id.localeCompare(right.id));
-    verifyOptimizationProgram(this.program);
+    this.enforceFunctionContracts();
     this.enforceRequirements();
+    verifyOptimizationProgram(this.program);
     root.optimization_ir = this.program;
     return this.program;
+  }
+
+  private lexicalLoops(definition: any): any[] {
+    const loops: any[] = [];
+    const seen = new Set<any>();
+    const visit = (value: any): void => {
+      if (!value || typeof value !== "object" || seen.has(value)) return;
+      seen.add(value);
+      if (Array.isArray(value)) {
+        for (const child of value) visit(child);
+        return;
+      }
+      if (!(value instanceof this.compiler.AST_Node)) return;
+      if (value !== definition &&
+          (value instanceof this.compiler.AST_Function ||
+           value instanceof this.compiler.AST_Class)) return;
+      if (value instanceof this.compiler.AST_ForIn ||
+          value instanceof this.compiler.AST_While) loops.push(value);
+      for (const [key, child] of Object.entries(value)) {
+        if (IGNORED_AST_KEYS.has(key) || typeof child === "function") continue;
+        visit(child);
+      }
+    };
+    visit(definition.body);
+    return loops;
+  }
+
+  private enforceFunctionContracts(): void {
+    for (const { definition, contract } of this.contracts.entries) {
+      const loops = this.lexicalLoops(definition);
+      const matches = loops.flatMap((loop) => {
+        const region = this.decisionByNode.get(loop);
+        if (!region || !region.selected || region.passId !== contract.requiredPassId) {
+          return [];
+        }
+        if (contract.target !== "auto" && region.target.kind !== contract.target) {
+          return [];
+        }
+        return [region];
+      });
+      contract.matchedRegionIds = matches.map((region) => region.id).sort();
+      const satisfied = contract.coverage === "all-loops"
+        ? loops.length > 0 && matches.length === loops.length
+        : matches.length > 0;
+      if (!satisfied) {
+        const details = loops.map((loop) => {
+          const region = this.decisionByNode.get(loop);
+          const location = `${loop.start?.line ?? 0}:${loop.start?.col ?? 0}`;
+          if (!region) return `${location}: no optimizer candidate`;
+          if (!region.selected) {
+            return `${location}: ${region.passId} rejected (` +
+              `${region.rejectionReasons.join(",")})`;
+          }
+          if (region.passId !== contract.requiredPassId) {
+            return `${location}: selected ${region.passId}`;
+          }
+          return `${location}: selected target ${region.target.kind}`;
+        }).join("; ");
+        throw new Error(
+          `optimization contract for ${contract.functionName} was not satisfied: ` +
+          `require=${contract.requiredPassId}, coverage=${contract.coverage}, ` +
+          `target=${contract.target}` + (details ? ` (${details})` : " (no loops)"),
+        );
+      }
+      contract.status = "satisfied";
+    }
   }
 
   private enforceRequirements(): void {

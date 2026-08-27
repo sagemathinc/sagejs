@@ -2,6 +2,7 @@ import { isCostQuantity } from "./cost-model";
 import { optimizerLoweringContract } from "./lowerings";
 import {
   CompleteTargetCost,
+  FunctionOptimizationContract,
   InternalRegionPlan,
   OPTIMIZER_IR_SCHEMA,
   OptimizationDecision,
@@ -87,7 +88,7 @@ function verifyTargetCandidate(candidate: TargetCandidatePlan, field: string): v
   verifyCost(candidate.cost, `${field}.cost`);
 }
 
-function verifySource(decision: OptimizationDecision): void {
+function verifySource(decision: { id: string; source: any }): void {
   requireString(decision.source?.filename, "source.filename");
   for (const field of ["line", "column", "endLine", "endColumn"] as const) {
     requireNonnegativeInteger(decision.source?.[field], `source.${field}`);
@@ -99,12 +100,40 @@ function verifySource(decision: OptimizationDecision): void {
   }
 }
 
+function verifyFunctionContract(contract: FunctionOptimizationContract): void {
+  if (contract.schema !== OPTIMIZER_IR_SCHEMA) {
+    throw new TypeError(`unknown optimizer contract schema ${contract.schema}`);
+  }
+  requireString(contract.id, "contract.id");
+  requireString(contract.functionName, "contract.functionName");
+  requireString(contract.requiredPassId, "contract.requiredPassId");
+  verifySource(contract);
+  if (contract.coverage !== "all-loops" && contract.coverage !== "at-least-one") {
+    throw new TypeError(`optimizer contract ${contract.id} has invalid coverage`);
+  }
+  if (!["auto", "v8", "wasm", "native", "library", "generic"].includes(
+    contract.target,
+  )) throw new TypeError(`optimizer contract ${contract.id} has invalid target`);
+  if (contract.guardFailure !== "fallback" && contract.guardFailure !== "error") {
+    throw new TypeError(`optimizer contract ${contract.id} has invalid guard policy`);
+  }
+  requireNonnegativeInteger(contract.loopCount, "contract.loopCount");
+  requireStringArray(contract.matchedRegionIds, "contract.matchedRegionIds");
+  if (contract.status !== "pending" && contract.status !== "satisfied") {
+    throw new TypeError(`optimizer contract ${contract.id} has invalid status`);
+  }
+  if (contract.status === "satisfied" && contract.matchedRegionIds.length === 0) {
+    throw new TypeError(`satisfied optimizer contract ${contract.id} has no regions`);
+  }
+}
+
 export function verifyOptimizationDecision(decision: OptimizationDecision): void {
   if (decision.schema !== OPTIMIZER_IR_SCHEMA) {
     throw new TypeError(`unknown optimizer decision schema ${decision.schema}`);
   }
   requireString(decision.id, "id");
   requireString(decision.passId, "passId");
+  if (decision.functionId !== null) requireString(decision.functionId, "functionId");
   requireString(decision.fallbackId, "fallbackId");
   // Contradictory selection is checked first so corrupt claims never get a
   // more superficial missing-field diagnosis.
@@ -783,6 +812,10 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   requireString(plan.id, "internal.id");
   requireString(plan.passId, "internal.passId");
   requireString(plan.loweringId, "internal.loweringId");
+  if (plan.functionId !== null) requireString(plan.functionId, "internal.functionId");
+  if (plan.guardFailure !== "fallback" && plan.guardFailure !== "error") {
+    throw new TypeError(`optimizer region ${plan.id} has an invalid guard policy`);
+  }
   requireString(plan.kind, "internal.kind");
   const lowering = optimizerLoweringContract(plan.loweringId);
   if (!lowering || lowering.passId !== plan.passId ||
@@ -1196,10 +1229,26 @@ export function verifyOptimizationProgram(
   if (previousRegions !== program.regions.length) {
     throw new TypeError("optimizer pass region counts do not match the program");
   }
+  if (!Array.isArray(program.contracts)) {
+    throw new TypeError("optimizer program contracts must be an array");
+  }
+  const contractIds = new Set<string>();
+  for (const contract of program.contracts) {
+    verifyFunctionContract(contract);
+    if (contractIds.has(contract.id)) {
+      throw new TypeError(`duplicate optimizer contract ${contract.id}`);
+    }
+    contractIds.add(contract.id);
+  }
   for (const decision of program.regions) {
     verifyOptimizationDecision(decision);
     if (ids.has(decision.id)) throw new TypeError(`duplicate optimizer region ${decision.id}`);
     ids.add(decision.id);
+    if (decision.functionId !== null && !contractIds.has(decision.functionId)) {
+      throw new TypeError(
+        `optimizer region ${decision.id} references unknown function contract ${decision.functionId}`,
+      );
+    }
     if (!passIds.has(decision.passId)) {
       throw new TypeError(`optimizer region ${decision.id} names an unregistered pass`);
     }
@@ -1212,6 +1261,15 @@ export function verifyOptimizationProgram(
     for (const candidate of decision.target.candidates) {
       if (!pass.supportedTargets.includes(candidate.kind)) {
         throw new TypeError(`optimizer pass ${pass.id} did not declare target ${candidate.kind}`);
+      }
+    }
+  }
+  for (const contract of program.contracts) {
+    for (const regionId of contract.matchedRegionIds) {
+      if (!ids.has(regionId)) {
+        throw new TypeError(
+          `optimizer contract ${contract.id} references unknown region ${regionId}`,
+        );
       }
     }
   }

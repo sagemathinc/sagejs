@@ -185,6 +185,7 @@ function print_top_level_usage() {
   console.log("  pytest          run installed pytest with Sage.js Python");
   console.log("  ffi             validate and inspect foreign-library declarations");
   console.log("  math            inspect declarative mathematical dispatch decisions");
+  console.log("  optimize        explain and verify mathematical compiler optimizations");
   console.log("  native          inspect and compile typed @native functions");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
@@ -561,6 +562,70 @@ closed if any requested optimization is absent or rejected.
 opt("explain_optimizations", "", "bool", false, function () {
   /*
 Print deterministic mathematical optimizer decisions and evidence to STDERR.
+*/
+});
+
+create_group("optimize", "<explain|check> [input.py]", function () {
+  /*
+Explain or verify mathematical compiler optimizations without executing the
+program. `explain` prints every proved, rejected, and selected region. `check`
+validates all explicit @optimize contracts and exits unsuccessfully when a
+contract cannot be proved. Source is read from stdin when no file is given.
+*/
+});
+
+opt("json", "", "bool", false, function () {
+  /*
+Emit the verified optimizer report as deterministic JSON.
+*/
+});
+
+opt("function", "", "string", "", function () {
+  /*
+Limit the report to an explicitly @optimize-decorated function name.
+*/
+});
+
+opt("sage", "", "bool", false, function () {
+  /*
+Parse mathematics-friendly Sage syntax.
+*/
+});
+
+opt("python", "", "bool", false, function () {
+  /*
+Parse ordinary Python syntax (the default for .py input).
+*/
+});
+
+opt("import_path", "p", "string", "", function () {
+  /*
+Additional import directories separated by the platform path separator.
+*/
+});
+
+opt("stdin_filename", "", "string", "<stdin>", function () {
+  /*
+Logical filename for source read from stdin.
+*/
+});
+
+opt("optimization_level", "", "string", undefined, function () {
+  /*
+Select O0, O1, O2, O3, or Os. The default is O2.
+*/
+});
+
+opt("optimization_disable", "", "string", "", function () {
+  /*
+Disable comma-separated stable optimizer pass IDs.
+*/
+});
+
+opt("optimization_require", "", "string", "", function () {
+  /*
+Require comma-separated optimizer pass or region IDs in addition to any
+function-level @optimize contracts.
 */
 });
 

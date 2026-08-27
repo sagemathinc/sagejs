@@ -9,6 +9,12 @@ export function explainOptimizationProgram(program: OptimizationProgram): any {
     level: program.level,
     disabledPasses: [...program.disabledPasses].sort(),
     requiredOptimizations: [...program.requiredOptimizations].sort(),
+    contracts: [...program.contracts]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((contract) => ({
+        ...contract,
+        matchedRegionIds: [...contract.matchedRegionIds].sort(),
+      })),
     passes: program.passes.map((pass) => ({
       ...pass,
       factsConsumed: [...pass.factsConsumed].sort(),
@@ -45,6 +51,18 @@ export function formatOptimizationExplanation(
     lines.push(
       `pass ${pass.id}: regions ${pass.regionsBefore} -> ${pass.regionsAfter}`,
     );
+  }
+  for (const contract of explanation.contracts) {
+    lines.push(
+      `contract ${contract.functionName} [${contract.status}]: ` +
+        `${contract.requiredPassId} coverage=${contract.coverage} ` +
+        `target=${contract.target} guard-failure=${contract.guardFailure}`,
+    );
+    lines.push(`  function-id: ${contract.id}`);
+    lines.push(`  loops/matched: ${contract.loopCount}/${contract.matchedRegionIds.length}`);
+    if (contract.matchedRegionIds.length) {
+      lines.push(`  regions: ${contract.matchedRegionIds.join(", ")}`);
+    }
   }
   if (!explanation.regions.length) lines.push("no optimization candidates");
   for (const region of explanation.regions) {

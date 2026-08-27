@@ -835,6 +835,7 @@ test("IR verification rejects malformed optimizer claims", () => {
       schema: OPTIMIZER_IR_SCHEMA,
       id: "bad",
       passId: CLOSED_RING_REGION_PASS,
+      functionId: null,
       fallbackId: "fallback",
       selected: true,
       rejectionReasons: ["contradiction"],
@@ -881,6 +882,8 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
         id: "bad-operation",
         passId: CLOSED_RING_REGION_PASS,
         loweringId: "v8.closed-ring-loop.v1",
+        functionId: null,
+        guardFailure: "fallback",
         kind: "closed-ring-region",
         operands: {
           iteratorKind: "range",
@@ -912,6 +915,8 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
         id: "bad-power",
         passId: CLOSED_RING_REGION_PASS,
         loweringId: "v8.closed-ring-loop.v1",
+        functionId: null,
+        guardFailure: "fallback",
         kind: "closed-ring-region",
         operands: {
           iteratorKind: "range",

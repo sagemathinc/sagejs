@@ -5,6 +5,7 @@ import { strictFloatRegionPass } from "./passes/strict-float-region";
 import { OptimizationProgram } from "./types";
 
 export * from "./controls";
+export * from "./contracts";
 export * from "./cost-model";
 export * from "./explain";
 export * from "./identity";

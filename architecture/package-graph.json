@@ -70,8 +70,9 @@
       "startup": "lazy",
       "max_source_bytes": 950000,
       "depends_on": ["core-runtime"],
-      "modules": ["sagejs.native", "sagejs.ffi"],
+      "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
+        "src/lib/sagejs/compiler.py",
         "src/lib/sagejs/native.py",
         "src/lib/sagejs/kernels/__init__.py"
       ],

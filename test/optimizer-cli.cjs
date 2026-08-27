@@ -15,6 +15,21 @@ const source = [
   "",
 ].join("\n");
 
+const contractSource = `
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.strict-float-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
+def recurrence(count: int, value: float, multiplier: float) -> float:
+    for _index in range(count):
+        value = value * multiplier
+    return value
+`;
+
 function compile(arguments_, environment = {}) {
   return spawnSync(
     process.execPath,
@@ -67,4 +82,47 @@ test("optimizer CLI rejects invalid levels instead of silently changing policy",
   const result = compile(["--optimization-level", "fastest"]);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /unknown Sage\.js optimization level "fastest"/);
+});
+
+test("dedicated optimizer CLI explains and checks import-proven contracts", () => {
+  const explained = spawnSync(
+    process.execPath,
+    [executable, "optimize", "explain", "--json", "--function", "recurrence"],
+    { cwd: root, encoding: "utf8", input: contractSource },
+  );
+  assert.equal(explained.status, 0, explained.stderr);
+  const report = JSON.parse(explained.stdout);
+  assert.equal(report.contracts.length, 1);
+  assert.equal(report.contracts[0].status, "satisfied");
+  assert.equal(report.regions.length, 1);
+  assert.equal(report.regions[0].target.kind, "v8");
+
+  const checked = spawnSync(
+    process.execPath,
+    [executable, "optimize", "check", "--json"],
+    { cwd: root, encoding: "utf8", input: contractSource },
+  );
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.deepEqual(JSON.parse(checked.stdout), {
+    ok: true,
+    schema: "sagejs.optimizing-mathematics/v1",
+    level: "O2",
+    contracts: 1,
+    selectedRegions: 1,
+  });
+
+  const rejected = spawnSync(
+    process.execPath,
+    [executable, "optimize", "check"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: contractSource.replace(
+        "        value = value * multiplier",
+        "        value = value * multiplier + 1.0",
+      ),
+    },
+  );
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /optimization contract .* was not satisfied/);
 });
