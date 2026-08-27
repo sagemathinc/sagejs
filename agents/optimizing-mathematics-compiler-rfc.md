@@ -1067,6 +1067,27 @@ uses `(x*y)*(a*b)` and `(b*a)*(y*x)`: `a*b` executes once after the guard, and
 the regrouped four-factor value executes once per iteration for two
 accumulators.
 
+The plan now retains two explicit statement graphs: `semanticStatements`
+records every recognized source operation, while `statements` is the lowered
+graph after backward liveness removes overwritten pure assignments.  All
+modified bindings are live at the loop boundary, so final Python-visible
+values and cross-iteration state remain conservative; only a store overwritten
+on every path before any read can disappear.  A dead conditional disappears
+only when both lowered arms are empty.
+
+This is deliberately not permission to forget the source operation.  Parent
+and method guards are derived from `semanticStatements`, including operations
+that lowering removes, so a monkey-patched method rejects the optimized region
+and executes the untouched source with its effects.  The independent verifier
+reconstructs the exact lowered graph and eliminated-assignment count, derives
+the complete source operation mask, and then computes hoisting, commoning,
+cost, code size, and sequence strategy from the verified lowered graph.
+Source and lowered sequence-use summaries remain separate: streaming validates
+every distinct source view, including a read used only by an eliminated store,
+while its profitability bound counts uses in the reduced graph.  A late invalid
+element in such a dead read therefore still triggers transactional restart and
+the original loop's exact behavior.
+
 The target-independent expression graph also represents statically bounded
 powers `x^e` for exact nonnegative safe-integer exponents.  These are not spelling
 rewrites to multiplication: the runtime guard authenticates the selected

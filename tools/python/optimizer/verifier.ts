@@ -397,6 +397,78 @@ function statementDataFlow(statements: any[], slotCount: number): {
   return { inputSlots, stateSlots, localSlots, definitelyAssigned };
 }
 
+function eliminateDeadStores(
+  statements: any[],
+  liveOut: Set<number>,
+): { statements: any[]; liveIn: Set<number>; eliminatedAssignments: number } {
+  let live = new Set(liveOut);
+  const output: any[] = [];
+  let eliminatedAssignments = 0;
+  for (let index = statements.length - 1; index >= 0; index -= 1) {
+    const statement = statements[index];
+    if (statement.kind === "assign") {
+      if (!live.has(statement.target)) {
+        eliminatedAssignments += 1;
+        continue;
+      }
+      live.delete(statement.target);
+      collectExpressionSlots(statement.value, live);
+      output.unshift(statement);
+      continue;
+    }
+    const body = eliminateDeadStores(statement.body, live);
+    const alternative = eliminateDeadStores(statement.alternative, live);
+    eliminatedAssignments += body.eliminatedAssignments +
+      alternative.eliminatedAssignments;
+    if (body.statements.length === 0 && alternative.statements.length === 0) {
+      continue;
+    }
+    live = new Set([...body.liveIn, ...alternative.liveIn]);
+    collectExpressionSlots(statement.condition.left, live);
+    collectExpressionSlots(statement.condition.right, live);
+    output.unshift({
+      ...statement,
+      body: body.statements,
+      alternative: alternative.statements,
+    });
+  }
+  return { statements: output, liveIn: live, eliminatedAssignments };
+}
+
+function expressionOperations(expression: any, operations: Set<string>): void {
+  if (expression.kind === "slot" || expression.kind === "sequence") return;
+  if (expression.kind === "neg") {
+    operations.add("neg");
+    expressionOperations(expression.value, operations);
+    return;
+  }
+  if (expression.kind === "power") {
+    operations.add("pow");
+    expressionOperations(expression.value, operations);
+    return;
+  }
+  operations.add(
+    expression.operator === "+" ? "add" :
+      expression.operator === "-" ? "sub" : "mul",
+  );
+  expressionOperations(expression.left, operations);
+  expressionOperations(expression.right, operations);
+}
+
+function statementOperations(statements: any[], operations: Set<string>): void {
+  for (const statement of statements) {
+    if (statement.kind === "assign") {
+      expressionOperations(statement.value, operations);
+      continue;
+    }
+    operations.add("equal");
+    expressionOperations(statement.condition.left, operations);
+    expressionOperations(statement.condition.right, operations);
+    statementOperations(statement.body, operations);
+    statementOperations(statement.alternative, operations);
+  }
+}
+
 function expressionOperationCost(
   expression: any,
   common: Set<string>,
@@ -701,15 +773,36 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         throw new TypeError("optimizer zip region has stale sequence bindings");
       }
     }
-    const observedSequenceAccesses = new Map<string, number>();
+    const semanticStatements = plan.operands.semanticStatements;
+    const semanticSequenceAccesses = new Map<string, number>();
     const observedInplaceOperations = new Set<string>();
+    verifyStatements(
+      semanticStatements,
+      slots.length,
+      sequences.length,
+      semanticSequenceAccesses,
+      observedInplaceOperations,
+    );
+    const observedSequenceAccesses = new Map<string, number>();
+    const loweredInplaceOperations = new Set<string>();
     verifyStatements(
       plan.operands.statements,
       slots.length,
       sequences.length,
       observedSequenceAccesses,
-      observedInplaceOperations,
+      loweredInplaceOperations,
     );
+    const observedOperations = new Set<string>();
+    statementOperations(semanticStatements, observedOperations);
+    const claimedOperations = plan.operands.operations;
+    if (!Array.isArray(claimedOperations) ||
+        claimedOperations.length !== observedOperations.size ||
+        claimedOperations.some((operation: unknown) =>
+          typeof operation !== "string" || !observedOperations.has(operation)) ||
+        JSON.stringify(claimedOperations) !==
+          JSON.stringify([...observedOperations].sort())) {
+      throw new TypeError("optimizer ring region has stale operations");
+    }
     const claimedInplaceOperations = plan.operands.inplaceOperations ?? [];
     if (!Array.isArray(claimedInplaceOperations) ||
         claimedInplaceOperations.some((operation: unknown) =>
@@ -720,7 +813,7 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
           !observedInplaceOperations.has(operation))) {
       throw new TypeError("optimizer ring region has stale inplace operations");
     }
-    const dataFlow = statementDataFlow(plan.operands.statements, slots.length);
+    const dataFlow = statementDataFlow(semanticStatements, slots.length);
     for (const [name, claimed, observed] of [
       ["input", plan.operands.inputSlots, dataFlow.inputSlots],
       ["state", plan.operands.stateSlots, dataFlow.stateSlots],
@@ -736,6 +829,17 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       dataFlow.stateSlots.includes(slot) &&
       !dataFlow.definitelyAssigned.has(slot))) {
       throw new TypeError("optimizer ring region has unsafe local data flow");
+    }
+    const deadStores = eliminateDeadStores(
+      semanticStatements, new Set(dataFlow.stateSlots),
+    );
+    if (JSON.stringify(plan.operands.statements) !==
+        JSON.stringify(deadStores.statements)) {
+      throw new TypeError("optimizer ring region has stale dead-store elimination");
+    }
+    if (!Number.isSafeInteger(plan.operands.eliminatedAssignments) ||
+        plan.operands.eliminatedAssignments !== deadStores.eliminatedAssignments) {
+      throw new TypeError("optimizer ring region has a stale eliminated-assignment count");
     }
     const invariantSlots = new Set(
       dataFlow.inputSlots.filter((slot) => !dataFlow.stateSlots.includes(slot)),
@@ -831,7 +935,7 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       throw new TypeError("optimizer ring region has invalid sequence-use counts");
     }
     const observedSequenceUses = new Array(sequences.length).fill(0);
-    for (const [key, uses] of observedSequenceAccesses) {
+    for (const [key, uses] of semanticSequenceAccesses) {
       observedSequenceUses[Number(key.split(":", 1)[0])] += uses;
     }
     if (observedSequenceUses.some((uses, index) =>
@@ -855,15 +959,63 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       }
       claimedSequenceAccesses.set(key, access.uses);
     }
-    if (claimedSequenceAccesses.size !== observedSequenceAccesses.size ||
-        [...observedSequenceAccesses].some(([key, uses]) =>
+    if (claimedSequenceAccesses.size !== semanticSequenceAccesses.size ||
+        [...semanticSequenceAccesses].some(([key, uses]) =>
           claimedSequenceAccesses.get(key) !== uses)) {
       throw new TypeError("optimizer ring region has stale sequence accesses");
     }
+    if (!Array.isArray(plan.operands.loweredSequenceUses) ||
+        plan.operands.loweredSequenceUses.length !== sequences.length ||
+        plan.operands.loweredSequenceUses.some((count: unknown) =>
+          !Number.isSafeInteger(count) || Number(count) < 0)) {
+      throw new TypeError(
+        "optimizer ring region has invalid lowered sequence-use counts",
+      );
+    }
+    const observedLoweredSequenceUses = new Array(sequences.length).fill(0);
+    for (const [key, uses] of observedSequenceAccesses) {
+      observedLoweredSequenceUses[Number(key.split(":", 1)[0])] += uses;
+    }
+    if (observedLoweredSequenceUses.some((uses, index) =>
+      uses !== plan.operands.loweredSequenceUses[index])) {
+      throw new TypeError(
+        "optimizer ring region has stale lowered sequence-use counts",
+      );
+    }
+    if (!Array.isArray(plan.operands.loweredSequenceAccesses)) {
+      throw new TypeError(
+        "optimizer ring region has invalid lowered sequence accesses",
+      );
+    }
+    const claimedLoweredSequenceAccesses = new Map<string, number>();
+    for (const access of plan.operands.loweredSequenceAccesses) {
+      if (!Number.isSafeInteger(access?.sequence) || access.sequence < 0 ||
+          access.sequence >= sequences.length ||
+          (access.indexOrder !== "forward" && access.indexOrder !== "reverse") ||
+          !Number.isSafeInteger(access.uses) || access.uses <= 0) {
+        throw new TypeError(
+          "optimizer ring region has an invalid lowered sequence access",
+        );
+      }
+      const key = `${access.sequence}:${access.indexOrder}`;
+      if (claimedLoweredSequenceAccesses.has(key)) {
+        throw new TypeError(
+          "optimizer ring region repeats a lowered sequence access",
+        );
+      }
+      claimedLoweredSequenceAccesses.set(key, access.uses);
+    }
+    if (claimedLoweredSequenceAccesses.size !== observedSequenceAccesses.size ||
+        [...observedSequenceAccesses].some(([key, uses]) =>
+          claimedLoweredSequenceAccesses.get(key) !== uses)) {
+      throw new TypeError(
+        "optimizer ring region has stale lowered sequence accesses",
+      );
+    }
     const expectedSequenceStrategy =
       affine?.kind === "sequence-increment" ||
-      (observedSequenceAccesses.size > 0 &&
-       observedSequenceAccesses.size <= 2 &&
+      (semanticSequenceAccesses.size > 0 &&
+       semanticSequenceAccesses.size <= 2 &&
        [...observedSequenceAccesses.values()].reduce(
          (total, uses) => total + uses, 0
        ) <= 8)

@@ -91,6 +91,51 @@ function statementDataFlow(statements: StatementPlan[], slotCount: number): {
   return { inputSlots, stateSlots, localSlots, definitelyAssigned };
 }
 
+function eliminateDeadStores(
+  statements: StatementPlan[],
+  liveOut: Set<number>,
+): {
+  statements: StatementPlan[];
+  liveIn: Set<number>;
+  eliminatedAssignments: number;
+} {
+  let live = new Set(liveOut);
+  const output: StatementPlan[] = [];
+  let eliminatedAssignments = 0;
+  const addReads = (value: ExpressionPlan, target: Set<number>): void => {
+    collectExpressionSlots(value, target);
+  };
+  for (let index = statements.length - 1; index >= 0; index -= 1) {
+    const statement = statements[index];
+    if (statement.kind === "assign") {
+      if (!live.has(statement.target)) {
+        eliminatedAssignments += 1;
+        continue;
+      }
+      live.delete(statement.target);
+      addReads(statement.value, live);
+      output.unshift(statement);
+      continue;
+    }
+    const body = eliminateDeadStores(statement.body, live);
+    const alternative = eliminateDeadStores(statement.alternative, live);
+    eliminatedAssignments += body.eliminatedAssignments +
+      alternative.eliminatedAssignments;
+    if (body.statements.length === 0 && alternative.statements.length === 0) {
+      continue;
+    }
+    live = new Set([...body.liveIn, ...alternative.liveIn]);
+    addReads(statement.condition.left, live);
+    addReads(statement.condition.right, live);
+    output.unshift({
+      ...statement,
+      body: body.statements,
+      alternative: alternative.statements,
+    });
+  }
+  return { statements: output, liveIn: live, eliminatedAssignments };
+}
+
 function expressionStructuralKey(
   value: ExpressionPlan,
   versions?: number[],
@@ -726,17 +771,21 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     }
     return output;
   };
-  const program = statements(loop.body.body);
-  if (!program || operations.size === 0 || slots.length > 16 ||
+  const semanticProgram = statements(loop.body.body);
+  if (!semanticProgram || operations.size === 0 || slots.length > 16 ||
       sequences.length > 4) return null;
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
-  const dataFlow = statementDataFlow(program, slots.length);
+  const dataFlow = statementDataFlow(semanticProgram, slots.length);
   if (dataFlow.inputSlots.length === 0 || dataFlow.localSlots.some((slot) =>
     dataFlow.stateSlots.includes(slot) && !dataFlow.definitelyAssigned.has(slot))) {
     return null;
   }
   const { inputSlots, stateSlots, localSlots } = dataFlow;
+  const deadStores = eliminateDeadStores(
+    semanticProgram, new Set(stateSlots),
+  );
+  const program = deadStores.statements;
   const invariantSlots = new Set(
     inputSlots.filter((slot) => !stateSlots.includes(slot)),
   );
@@ -764,46 +813,59 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const affine = inplaceOperations.size === 0
     ? affineTarget(program, stateSlots)
     : null;
-  const sequenceUses = new Array(sequences.length).fill(0);
-  const sequenceAccessMap = new Map<string, {
+  type SequenceAccess = {
     sequence: number;
     indexOrder: "forward" | "reverse";
     uses: number;
-  }>();
-  const countSequenceUses = (value: ExpressionPlan): void => {
-    if (value.kind === "sequence") {
-      sequenceUses[value.sequence] += 1;
-      const key = `${value.sequence}:${value.indexOrder}`;
-      const access = sequenceAccessMap.get(key);
-      if (access) access.uses += 1;
-      else sequenceAccessMap.set(key, {
-        sequence: value.sequence,
-        indexOrder: value.indexOrder,
-        uses: 1,
-      });
-    } else if (value.kind === "binary") {
-      countSequenceUses(value.left);
-      countSequenceUses(value.right);
-    } else if (value.kind === "neg" || value.kind === "power") {
-      countSequenceUses(value.value);
-    }
   };
-  const countStatementSequenceUses = (statement: StatementPlan): void => {
-    if (statement.kind === "assign") {
-      countSequenceUses(statement.value);
-      return;
-    }
-    countSequenceUses(statement.condition.left);
-    countSequenceUses(statement.condition.right);
-    statement.body.forEach(countStatementSequenceUses);
-    statement.alternative.forEach(countStatementSequenceUses);
+  const summarizeSequenceUses = (source: StatementPlan[]) => {
+    const uses = new Array(sequences.length).fill(0);
+    const accessMap = new Map<string, SequenceAccess>();
+    const countExpression = (value: ExpressionPlan): void => {
+      if (value.kind === "sequence") {
+        uses[value.sequence] += 1;
+        const key = `${value.sequence}:${value.indexOrder}`;
+        const access = accessMap.get(key);
+        if (access) access.uses += 1;
+        else accessMap.set(key, {
+          sequence: value.sequence,
+          indexOrder: value.indexOrder,
+          uses: 1,
+        });
+      } else if (value.kind === "binary") {
+        countExpression(value.left);
+        countExpression(value.right);
+      } else if (value.kind === "neg" || value.kind === "power") {
+        countExpression(value.value);
+      }
+    };
+    const countStatement = (statement: StatementPlan): void => {
+      if (statement.kind === "assign") {
+        countExpression(statement.value);
+        return;
+      }
+      countExpression(statement.condition.left);
+      countExpression(statement.condition.right);
+      statement.body.forEach(countStatement);
+      statement.alternative.forEach(countStatement);
+    };
+    source.forEach(countStatement);
+    return { uses, accesses: [...accessMap.values()] };
   };
-  program.forEach(countStatementSequenceUses);
-  const sequenceAccesses = [...sequenceAccessMap.values()];
+  // Sequence reads in eliminated pure assignments still belong to the source
+  // transaction.  Streaming lowering validates these views before executing
+  // the reduced graph so an invalid element restarts the untouched loop rather
+  // than becoming unobservable merely because its result was overwritten.
+  const semanticSequences = summarizeSequenceUses(semanticProgram);
+  const loweredSequences = summarizeSequenceUses(program);
+  const sequenceUses = semanticSequences.uses;
+  const sequenceAccesses = semanticSequences.accesses;
+  const loweredSequenceUses = loweredSequences.uses;
+  const loweredSequenceAccesses = loweredSequences.accesses;
   const transactionalStream =
     sequenceAccesses.length > 0 &&
     sequenceAccesses.length <= 2 &&
-    sequenceUses.reduce((total, count) => total + count, 0) <= 8;
+    loweredSequenceUses.reduce((total, count) => total + count, 0) <= 8;
   const sequenceStrategy =
     affine?.kind === "sequence-increment" || transactionalStream
       ? "stream"
@@ -824,13 +886,17 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     inputSlots,
     stateSlots,
     localSlots,
+    semanticStatements: semanticProgram,
     hoistedExpressions: hoisted,
     statements: program,
+    eliminatedAssignments: deadStores.eliminatedAssignments,
     operations: [...operations].sort(),
     inplaceOperations: [...inplaceOperations].sort(),
     affine,
     sequenceUses,
     sequenceAccesses,
+    loweredSequenceUses,
+    loweredSequenceAccesses,
     sequenceStrategy,
     operationCost,
     preheaderOperationCost,
@@ -848,7 +914,7 @@ export const closedRingRegionPass: OptimizationPass = {
     "parent-identity", "parent-stable", "method-stability", "fixed-shape",
     "no-alias", "no-escape", "no-callback", "operation-closed", "exact-range",
     "commutative-ring", "referentially-transparent-used-operations",
-    "inplace-fallback", "loop-invariant",
+    "inplace-fallback", "loop-invariant", "dead-store-free",
   ],
   factsInvalidated: [],
   preserves: [
@@ -891,13 +957,17 @@ export const closedRingRegionPass: OptimizationPass = {
         inputSlots: operands.inputSlots,
         stateSlots: operands.stateSlots,
         localSlots: operands.localSlots,
+        semanticStatements: operands.semanticStatements,
         hoistedExpressions: operands.hoistedExpressions,
         statements: operands.statements,
+        eliminatedAssignments: operands.eliminatedAssignments,
         operations: operands.operations,
         inplaceOperations: operands.inplaceOperations,
         affine: operands.affine,
         sequenceUses: operands.sequenceUses,
         sequenceAccesses: operands.sequenceAccesses,
+        loweredSequenceUses: operands.loweredSequenceUses,
+        loweredSequenceAccesses: operands.loweredSequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
         operationCost: operands.operationCost,
         preheaderOperationCost: operands.preheaderOperationCost,
@@ -960,6 +1030,7 @@ export const closedRingRegionPass: OptimizationPass = {
             { kind: "fixed-shape", authority: "runtime-guard", evidence: "the selected parent advertises a reviewed fixed representation" },
             { kind: "exact-range", authority: "runtime-guard", evidence: "the selected representation validates canonical values and machine intermediates" },
             { kind: "commutative-ring", authority: "runtime-guard", evidence: "the selected machine parent explicitly advertises reviewed commutative multiplication" },
+            ...(operands.eliminatedAssignments ? [{ kind: "dead-store-free", authority: "static" as const, evidence: "backward liveness over the semantic statement graph proves overwritten pure assignments unobservable" }] : []),
             ...(operands.hoistedExpressions.length ? [{ kind: "loop-invariant", authority: "static" as const, evidence: "hoisted expression slots are live-in and absent from the complete modified-slot set" }] : []),
           ],
           representation: {
@@ -973,6 +1044,9 @@ export const closedRingRegionPass: OptimizationPass = {
                 : "unbox live-ins and sequence prefixes",
               ...(operands.hoistedExpressions.length
                 ? ["evaluate pure loop-invariant subgraphs once in the guarded preheader"]
+                : []),
+              ...(operands.eliminatedAssignments
+                ? ["omit overwritten pure assignments from the lowered graph"]
                 : []),
               "materialize modified live-outs",
             ],

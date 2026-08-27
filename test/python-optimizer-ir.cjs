@@ -547,6 +547,82 @@ def conditional(values, zero, a, b, pivot):
   }
 });
 
+test("dead stores are removed only from the verified lowered statement graph", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def overwritten(values, zero):
+    answer = zero
+    scratch = zero
+    for x in values:
+        scratch = x*x
+        scratch = x+x
+        answer = answer+scratch
+    return answer, scratch
+
+def dead_branch(values, zero, pivot):
+    answer = zero
+    scratch = zero
+    for x in values:
+        if x == pivot:
+            scratch = x*x
+        else:
+            scratch = x+x
+        scratch = x
+        answer = answer+scratch
+    return answer, scratch
+`, optimizerOptions());
+    const [plan, branchPlan] = findLoops(compiler, ast).map(
+      (loop) => loop.optimization_region,
+    );
+    assert.equal(plan.operands.semanticStatements.length, 3);
+    assert.equal(plan.operands.statements.length, 2);
+    assert.equal(plan.operands.eliminatedAssignments, 1);
+    assert.deepEqual(plan.operands.operations, ["add", "mul"]);
+    assert.deepEqual(plan.operands.sequenceUses, [4]);
+    assert.deepEqual(plan.operands.loweredSequenceUses, [2]);
+    assert.equal(plan.operands.operationCost, 2);
+    assert.doesNotThrow(() => verifyInternalRegionPlan(plan));
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: { ...plan.operands, eliminatedAssignments: 0 },
+      }),
+      /stale eliminated-assignment count/,
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: {
+          ...plan.operands,
+          statements: plan.operands.semanticStatements,
+        },
+      }),
+      /stale dead-store elimination/,
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: { ...plan.operands, operations: ["add"] },
+      }),
+      /stale operations/,
+    );
+    assert.equal(branchPlan.operands.semanticStatements.length, 3);
+    assert.equal(branchPlan.operands.statements.length, 2);
+    assert.equal(branchPlan.operands.statements.some(
+      (statement) => statement.kind === "if",
+    ), false);
+    assert.equal(branchPlan.operands.eliminatedAssignments, 2);
+    assert.deepEqual(branchPlan.operands.operations, ["add", "equal", "mul"]);
+    assert.deepEqual(branchPlan.operands.sequenceUses, [6]);
+    assert.deepEqual(branchPlan.operands.loweredSequenceUses, [1]);
+    assert.doesNotThrow(() => verifyInternalRegionPlan(branchPlan));
+  } finally {
+    frontend.close();
+  }
+});
+
 test("compact powers respect the advertised outlined-target code budget", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
@@ -744,6 +820,11 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
           sequenceStrategy: "pack",
           sequenceUses: [],
           sequenceAccesses: [],
+          semanticStatements: [{
+            kind: "assign",
+            target: 0,
+            value: { kind: "binary", operator: "/", left: { kind: "slot", slot: 0 }, right: { kind: "slot", slot: 0 } },
+          }],
           statements: [{
             kind: "assign",
             target: 0,
@@ -769,6 +850,15 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
           sequenceStrategy: "pack",
           sequenceUses: [],
           sequenceAccesses: [],
+          semanticStatements: [{
+            kind: "assign",
+            target: 0,
+            value: {
+              kind: "power",
+              exponent: 9007199254740992,
+              value: { kind: "slot", slot: 0 },
+            },
+          }],
           statements: [{
             kind: "assign",
             target: 0,

@@ -546,9 +546,11 @@ def power_sum(values, zero):
       ...ast.body[0].body[1].optimization_region,
       operands: {
         ...plan,
+        semanticStatements: JSON.parse(JSON.stringify(plan.semanticStatements)),
         statements: JSON.parse(JSON.stringify(plan.statements)),
       },
     };
+    excessive.operands.semanticStatements[0].value.right.exponent = 9007199254740991;
     excessive.operands.statements[0].value.right.exponent = 9007199254740991;
     assert.throws(
       () => verifyInternalRegionPlan(excessive),
