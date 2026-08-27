@@ -280,14 +280,16 @@ def init_es6_itervar(output, itervar):
 
 
 def print_for_in(self, output):
-    if (
-        self.optimization_region
-        and self.optimization_region.kind == "closed-affine-recurrence"
-        and self.builtin_range is not False
-        and is_simple_for(self)
-        and self.object.args.length is 1
-    ):
-        return print_optimization_region(self, output)
+    if self.optimization_region:
+        if (
+            self.optimization_region.kind == "closed-affine-recurrence"
+            and self.builtin_range is not False
+            and is_simple_for(self)
+            and self.object.args.length is 1
+        ):
+            return print_optimization_region(self, output)
+        if self.optimization_region.kind == "closed-field-region":
+            return print_closed_field_region(self, output)
     prepare_loop_else(self, output)
 
     def write_object():
@@ -414,71 +416,630 @@ def print_optimization_region(self, output):
     suffix = output.index_counter
     output.index_counter += 1
     count_name = "ρσ_ResidueCount" + suffix
+    range_name = "ρσ_ResidueRange" + suffix
     result_name = "ρσ_ResidueResult" + suffix
     index_name = "ρσ_ResidueIndex" + suffix
 
     output.print("var")
     output.space()
-    output.assign(count_name)
+    output.assign(range_name)
+    output.print("ρσ_range(")
     self.object.args[0].print(output)
+    output.print(")")
     output.end_statement()
     output.indent()
     output.print("var")
     output.space()
-    output.assign(result_name)
-    output.print("ρσ_fast_machine_residue_recurrence(")
-    recurrence.accumulator.print(output)
-    output.comma()
-    recurrence.multiplier.print(output)
-    output.comma()
-    recurrence.increment.print(output)
-    output.comma()
-    output.print(count_name)
-    output.print(")")
+    output.assign(count_name)
+    output.print(range_name + "._length")
     output.end_statement()
     output.indent()
-    output.print("if")
-    output.space()
-    output.with_parens(lambda: output.spaced(result_name, "!==", "null"))
+    output.print("if (" + count_name + " !== 0)")
     output.space()
 
-    def fast_body():
+    def nonempty_region():
         output.indent()
-        output.assign(recurrence.accumulator)
-        output.print(result_name)
+        output.print("var")
+        output.space()
+        output.assign(result_name)
+        output.print("ρσ_fast_machine_residue_recurrence(")
+        recurrence.accumulator.print(output)
+        output.comma()
+        recurrence.multiplier.print(output)
+        output.comma()
+        recurrence.increment.print(output)
+        output.comma()
+        output.print(count_name)
+        output.print(")")
         output.end_statement()
         output.indent()
-        output.print("if (" + count_name + " > 0) ")
+        output.print("if")
+        output.space()
+        output.with_parens(lambda: output.spaced(result_name, "!==", "null"))
+        output.space()
+
+        def fast_body():
+            output.indent()
+            output.assign(recurrence.accumulator)
+            output.print(result_name)
+            output.end_statement()
+            output.indent()
+            output.assign(self.init)
+            output.print(count_name + " - 1")
+            output.end_statement()
+
+        output.with_block(fast_body)
+        output.space()
+        output.print("else")
+        output.space()
+
+        def generic_body():
+            output.indent()
+            output.print("for")
+            output.space()
+            output.print("(var " + index_name + " of ρσ_Iterable(" + range_name + "))")
+            output.space()
+            self.simple_for_index = index_name
+            self._do_print_body(output)
+            output.newline()
+
+        output.with_block(generic_body)
+
+    output.with_block(nonempty_region)
+
+
+def _field_operation_mask(operations):
+    bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16}
+    answer = 0
+    for operation in operations:
+        answer |= bits[operation]
+    return answer
+
+
+def _print_region_variable(output, name, value):
+    output.indent()
+    output.print("var")
+    output.space()
+    output.assign(name)
+    output.print(value)
+    output.end_statement()
+
+
+def _region_temp(counter, suffix):
+    name = "ρσ_FieldTemp" + suffix + "_" + str(counter[0])
+    counter[0] += 1
+    return name
+
+
+def _print_region_expression(
+    expression,
+    representation,
+    slot_names,
+    context_name,
+    index_name,
+    modulus_name,
+    modulus_c0_name,
+    modulus_c1_name,
+    output,
+    counter,
+    suffix,
+):
+    if expression.kind == "slot":
+        return slot_names[expression.slot]
+    if expression.kind == "sequence":
+        base = context_name + ".sequences[" + str(expression.sequence) + "]"
+        if representation == "prime":
+            return base + "[" + index_name + "]"
+        return [
+            base + "[2 * " + index_name + "]",
+            base + "[2 * " + index_name + " + 1]",
+        ]
+
+    if expression.kind == "neg":
+        value = _print_region_expression(
+            expression.value,
+            representation,
+            slot_names,
+            context_name,
+            index_name,
+            modulus_name,
+            modulus_c0_name,
+            modulus_c1_name,
+            output,
+            counter,
+            suffix,
+        )
+        if representation == "prime":
+            result = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                result,
+                "(" + value + " === 0 ? 0 : " + modulus_name + " - " + value + ")",
+            )
+            return result
+        answer = []
+        for component in value:
+            result = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                result,
+                "("
+                + component
+                + " === 0 ? 0 : "
+                + modulus_name
+                + " - "
+                + component
+                + ")",
+            )
+            answer.append(result)
+        return answer
+
+    left = _print_region_expression(
+        expression.left,
+        representation,
+        slot_names,
+        context_name,
+        index_name,
+        modulus_name,
+        modulus_c0_name,
+        modulus_c1_name,
+        output,
+        counter,
+        suffix,
+    )
+    right = _print_region_expression(
+        expression.right,
+        representation,
+        slot_names,
+        context_name,
+        index_name,
+        modulus_name,
+        modulus_c0_name,
+        modulus_c1_name,
+        output,
+        counter,
+        suffix,
+    )
+    operator = expression.operator
+    if representation == "prime":
+        result = _region_temp(counter, suffix)
+        if operator == "+":
+            value = "(" + left + " + " + right + ") % " + modulus_name
+        elif operator == "-":
+            value = (
+                "(("
+                + left
+                + " - "
+                + right
+                + ") % "
+                + modulus_name
+                + " + "
+                + modulus_name
+                + ") % "
+                + modulus_name
+            )
+        else:
+            value = "(" + left + " * " + right + ") % " + modulus_name
+        _print_region_variable(output, result, value)
+        return result
+
+    answer = []
+    if operator in ("+", "-"):
+        for component in range(2):
+            result = _region_temp(counter, suffix)
+            symbol = "+" if operator == "+" else "-"
+            value = (
+                "(("
+                + left[component]
+                + " "
+                + symbol
+                + " "
+                + right[component]
+                + ") % "
+                + modulus_name
+                + " + "
+                + modulus_name
+                + ") % "
+                + modulus_name
+            )
+            _print_region_variable(output, result, value)
+            answer.append(result)
+        return answer
+
+    quadratic = _region_temp(counter, suffix)
+    _print_region_variable(output, quadratic, left[1] + " * " + right[1])
+    result0 = _region_temp(counter, suffix)
+    value0 = (
+        "(("
+        + left[0]
+        + " * "
+        + right[0]
+        + " - "
+        + quadratic
+        + " * "
+        + modulus_c0_name
+        + ") % "
+        + modulus_name
+        + " + "
+        + modulus_name
+        + ") % "
+        + modulus_name
+    )
+    _print_region_variable(output, result0, value0)
+    result1 = _region_temp(counter, suffix)
+    value1 = (
+        "(("
+        + left[0]
+        + " * "
+        + right[1]
+        + " + "
+        + left[1]
+        + " * "
+        + right[0]
+        + " - "
+        + quadratic
+        + " * "
+        + modulus_c1_name
+        + ") % "
+        + modulus_name
+        + " + "
+        + modulus_name
+        + ") % "
+        + modulus_name
+    )
+    _print_region_variable(output, result1, value1)
+    return [result0, result1]
+
+
+def _print_region_statements(
+    statements,
+    representation,
+    slot_names,
+    context_name,
+    index_name,
+    modulus_name,
+    modulus_c0_name,
+    modulus_c1_name,
+    output,
+    counter,
+    suffix,
+):
+    for statement in statements:
+        if statement.kind == "assign":
+            value = _print_region_expression(
+                statement.value,
+                representation,
+                slot_names,
+                context_name,
+                index_name,
+                modulus_name,
+                modulus_c0_name,
+                modulus_c1_name,
+                output,
+                counter,
+                suffix,
+            )
+            targets = slot_names[statement.target]
+            if representation == "prime":
+                output.indent()
+                output.assign(targets)
+                output.print(value)
+                output.end_statement()
+            else:
+                for component in range(2):
+                    output.indent()
+                    output.assign(targets[component])
+                    output.print(value[component])
+                    output.end_statement()
+            continue
+
+        left = _print_region_expression(
+            statement.condition.left,
+            representation,
+            slot_names,
+            context_name,
+            index_name,
+            modulus_name,
+            modulus_c0_name,
+            modulus_c1_name,
+            output,
+            counter,
+            suffix,
+        )
+        right = _print_region_expression(
+            statement.condition.right,
+            representation,
+            slot_names,
+            context_name,
+            index_name,
+            modulus_name,
+            modulus_c0_name,
+            modulus_c1_name,
+            output,
+            counter,
+            suffix,
+        )
+        condition = (
+            left + " === " + right
+            if representation == "prime"
+            else left[0] + " === " + right[0] + " && " + left[1] + " === " + right[1]
+        )
+        output.indent()
+        output.print("if (" + condition + ")")
+        output.space()
+
+        def consequent():
+            _print_region_statements(
+                statement.body,
+                representation,
+                slot_names,
+                context_name,
+                index_name,
+                modulus_name,
+                modulus_c0_name,
+                modulus_c1_name,
+                output,
+                counter,
+                suffix,
+            )
+
+        output.with_block(consequent)
+        if statement.alternative:
+            output.space()
+            output.print("else")
+            output.space()
+
+            def alternative():
+                _print_region_statements(
+                    statement.alternative,
+                    representation,
+                    slot_names,
+                    context_name,
+                    index_name,
+                    modulus_name,
+                    modulus_c0_name,
+                    modulus_c1_name,
+                    output,
+                    counter,
+                    suffix,
+                )
+
+            output.with_block(alternative)
+
+
+def _print_closed_field_fast_path(self, output, plan, names, representation):
+    context_name = names["context"]
+    count_name = names["count"]
+    index_name = names["index"]
+    suffix = names["suffix"]
+    modulus_name = names["modulus"]
+    modulus_c0_name = names["modulus_c0"]
+    modulus_c1_name = names["modulus_c1"]
+    slot_names = []
+    for slot in range(len(plan.slots)):
+        if representation == "prime":
+            name = "ρσ_FieldValue" + suffix + "_" + str(slot)
+            _print_region_variable(
+                output, name, context_name + ".values[" + str(slot) + "]"
+            )
+            slot_names.append(name)
+        else:
+            pair = []
+            for component in range(2):
+                name = "ρσ_FieldValue" + suffix + "_" + str(slot) + "_" + str(component)
+                _print_region_variable(
+                    output,
+                    name,
+                    context_name + ".values[" + str(2 * slot + component) + "]",
+                )
+                pair.append(name)
+            slot_names.append(pair)
+
+    output.indent()
+    output.print("for")
+    output.space()
+
+    def condition():
+        output.spaced("var", index_name, "=", "0")
+        output.semicolon()
+        output.space()
+        output.spaced(index_name, "<", count_name)
+        output.semicolon()
+        output.space()
+        output.print(index_name + "++")
+
+    output.with_parens(condition)
+    output.space()
+
+    def body():
+        _print_region_statements(
+            plan.statements,
+            representation,
+            slot_names,
+            context_name,
+            index_name,
+            modulus_name,
+            modulus_c0_name,
+            modulus_c1_name,
+            output,
+            [0],
+            suffix,
+        )
+
+    output.with_block(body)
+    output.indent()
+    output.print("if (" + count_name + " > 0)")
+    output.space()
+
+    def materialize():
+        for state_slot in plan.stateSlots:
+            output.indent()
+            output.assign(plan.slots[state_slot].node)
+            output.print("ρσ_materialize_machine_field_value(")
+            output.print(context_name)
+            output.comma()
+            if representation == "prime":
+                output.print(slot_names[state_slot])
+            else:
+                output.print(slot_names[state_slot][0])
+                output.comma()
+                output.print(slot_names[state_slot][1])
+            output.print(")")
+            output.end_statement()
+        output.indent()
         output.assign(self.init)
-        output.print(count_name + " - 1")
+        if plan.iteratorKind == "range":
+            output.print(count_name + " - 1")
+        else:
+            output.print(names["iterable"] + "[" + count_name + " - 1]")
         output.end_statement()
 
-    output.with_block(fast_body)
-    output.space()
-    output.print("else")
-    output.space()
+    output.with_block(materialize)
 
-    def generic_body():
+
+def print_closed_field_region(self, output):
+    """Lower a verified field-operation graph without rediscovering meaning."""
+    plan = self.optimization_region.operands
+    suffix = str(output.index_counter)
+    output.index_counter += 1
+    names = {
+        "suffix": suffix,
+        "count": "ρσ_FieldCount" + suffix,
+        "context": "ρσ_FieldContext" + suffix,
+        "index": "ρσ_FieldIndex" + suffix,
+        "iterable": "ρσ_FieldIterable" + suffix,
+        "range": "ρσ_FieldRange" + suffix,
+        "modulus": "ρσ_FieldModulus" + suffix,
+        "modulus_c0": "ρσ_FieldModulusC0_" + suffix,
+        "modulus_c1": "ρσ_FieldModulusC1_" + suffix,
+    }
+    if plan.iteratorKind == "sequence":
+        output.print("var")
+        output.space()
+        output.assign(names["iterable"])
+        plan.iterable.print(output)
+        output.end_statement()
         output.indent()
-        output.print("for")
+        _print_region_variable(
+            output,
+            names["count"],
+            "ρσ_machine_field_sequence_length(" + names["iterable"] + ")",
+        )
+    else:
+        output.print("var")
+        output.space()
+        output.assign(names["range"])
+        output.print("ρσ_range(")
+        plan.count.print(output)
+        output.print(")")
+        output.end_statement()
+        output.indent()
+        _print_region_variable(
+            output,
+            names["count"],
+            names["range"] + "._length",
+        )
+
+    # A zero-trip loop must not read body-only names or sequence elements.
+    # Versioning therefore occurs only after the ordinary iterable/count
+    # expression has been evaluated and a nonzero trip is established.
+    output.indent()
+    output.print("if (" + names["count"] + " !== 0)")
+    output.space()
+
+    def nonempty_region():
+        output.indent()
+        output.print("var")
+        output.space()
+        output.assign(names["context"])
+        output.print("ρσ_prepare_machine_field_region([")
+        for index, slot in enumerate(plan.slots):
+            if index:
+                output.comma()
+            slot.node.print(output)
+        output.print("],[")
+        for index, sequence in enumerate(plan.sequences):
+            if index:
+                output.comma()
+            if plan.iteratorKind == "sequence" and index == 0:
+                output.print(names["iterable"])
+            else:
+                sequence.node.print(output)
+        output.print("],")
+        output.print(names["count"])
+        output.comma()
+        output.print(str(_field_operation_mask(plan.operations)))
+        output.print(")")
+        output.end_statement()
+        output.indent()
+        output.print("if (" + names["context"] + " !== null)")
         output.space()
 
-        def condition():
-            output.spaced("var", index_name, "=", "0")
-            output.semicolon()
+        def fast():
+            _print_region_variable(
+                output, names["modulus"], names["context"] + ".modulus"
+            )
+            output.indent()
+            output.print("if (" + names["context"] + ".kind === 1)")
             output.space()
-            output.spaced(index_name, "<", count_name)
-            output.semicolon()
-            output.space()
-            output.print(index_name + "++")
 
-        output.with_parens(condition)
+            def prime():
+                _print_closed_field_fast_path(self, output, plan, names, "prime")
+
+            output.with_block(prime)
+            output.space()
+            output.print("else")
+            output.space()
+
+            def extension():
+                _print_region_variable(
+                    output,
+                    names["modulus_c0"],
+                    names["context"] + ".modulusC0",
+                )
+                _print_region_variable(
+                    output,
+                    names["modulus_c1"],
+                    names["context"] + ".modulusC1",
+                )
+                _print_closed_field_fast_path(self, output, plan, names, "extension")
+
+            output.with_block(extension)
+
+        output.with_block(fast)
         output.space()
-        self.simple_for_index = index_name
-        self._do_print_body(output)
-        output.newline()
+        output.print("else")
+        output.space()
 
-    output.with_block(generic_body)
+        def fallback():
+            fallback_value = "ρσ_FieldFallback" + suffix
+            output.indent()
+            output.print("for")
+            output.space()
+            if plan.iteratorKind == "range":
+                output.print(
+                    "(var "
+                    + fallback_value
+                    + " of ρσ_Iterable("
+                    + names["range"]
+                    + "))"
+                )
+            else:
+                output.print(
+                    "(var "
+                    + fallback_value
+                    + " of ρσ_Iterable("
+                    + names["iterable"]
+                    + "))"
+                )
+            output.space()
+            self.simple_for_index = fallback_value
+            self._do_print_body(output)
+            output.newline()
+
+        output.with_block(fallback)
+
+    output.with_block(nonempty_region)
 
 
 def print_async_for(self, output):

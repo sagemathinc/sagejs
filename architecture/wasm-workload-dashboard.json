@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 48,
+    "heavy_workloads": 49,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 48,
+    "failed_heavy_workloads": 49,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,15 +20,15 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "6c454406a7cccc93e1855356448172252ada8eea331e490badef02846c0e4597"
+      "sha256": "ab2138da05d06381915fd7c829ae285b9cfe9f53733b1eb0e79eef15f183fd38"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "1b0fd6df3c4a84e5468808761a313108c9fa9f6c6a663c5ca983d06e62273905"
+      "sha256": "67b675bec35d49f1433726ded0888f6613b8d1656472de24303dd8619f96e9c0"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "265514a8bd6af9010ff5093a4540c7b50691a128b6e146f89e58b87ea287e6b5"
+      "sha256": "c90aa298c41ed41316c5fd60576a149cf9be7c5dc0b06490cd6d7c86159ddf16"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -39,35 +39,35 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 36,
+    "parity_workloads": 37,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1014,
+      "total": 1016,
       "by_kind": {
         "declared-ffi-function": 440,
         "declared-ffi-resource": 32,
         "napi-export": 325,
-        "production-kernel": 47,
-        "runtime-intrinsic": 144,
+        "production-kernel": 48,
+        "runtime-intrinsic": 145,
         "specialist-capability": 26
       },
       "by_disposition": {
-        "compiled-source": 47,
+        "compiled-source": 48,
         "desktop-only": 47,
         "generated-wasm": 321,
-        "portable-fallback": 554,
+        "portable-fallback": 555,
         "shared-core": 45
       },
       "by_status": {
-        "available": 552,
+        "available": 554,
         "desktop-only": 47,
         "fallback": 415
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 47,
-      "production_kernels": 40,
-      "compiled_functions": 273,
+      "registered_kernels": 48,
+      "production_kernels": 41,
+      "compiled_functions": 274,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30
@@ -76,7 +76,7 @@
   "route_classes": {
     "expected_requirements": {
       "wasm-library": 92,
-      "wasm-compiled-source": 14,
+      "wasm-compiled-source": 15,
       "portable-orchestration": 5,
       "portable-computation": 0
     },
@@ -165,6 +165,14 @@
       "heavy_workloads": 3,
       "accelerated": 0,
       "failed": 3,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 0
+    },
+    "finite-fields": {
+      "workloads": 1,
+      "heavy_workloads": 1,
+      "accelerated": 0,
+      "failed": 1,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -316,6 +324,53 @@
           "review": null,
           "capability_status": "available",
           "capability_disposition": "generated-wasm"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:optimizer-gf-p2-affine",
+      "public_workflow": "optimizer-gf-p2-affine",
+      "family": "finite-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-gf-p2-affine-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
         }
       ],
       "engines": {

@@ -24,6 +24,12 @@ export function explainOptimizationProgram(program: OptimizationProgram): any {
         ),
         guards: [...region.guards].sort(),
         rejectionReasons: [...region.rejectionReasons].sort(),
+        cacheIdentityInputs: [...region.cacheIdentityInputs].sort(),
+        target: {
+          ...region.target,
+          candidates: [...region.target.candidates]
+            .sort((left, right) => left.id.localeCompare(right.id)),
+        },
       })),
   }));
 }
@@ -46,13 +52,34 @@ export function formatOptimizationExplanation(
     lines.push(`  math: ${region.mathematical.kind}`);
     lines.push(`  representation: ${region.representation.kind}`);
     lines.push(`  target: ${region.target.kind}/${region.target.lowering}`);
+    lines.push(`  target-policy: ${region.target.policy}`);
+    lines.push(`  selected-candidate: ${region.target.selectedCandidate}`);
     lines.push(`  fallback: ${region.fallbackId}`);
+    lines.push(
+      `  crossings/copied/materializations: ` +
+        `${region.target.boundaryCrossings}/${region.target.copiedBytes}/` +
+        `${region.representation.materializations}`,
+    );
     if (region.rejectionReasons.length) {
       lines.push(`  reasons: ${region.rejectionReasons.join(", ")}`);
     }
     for (const fact of region.facts) {
       lines.push(`  fact ${fact.kind} [${fact.authority}]: ${fact.evidence}`);
     }
+    for (const candidate of region.target.candidates) {
+      lines.push(
+        `  candidate ${candidate.id}: ${candidate.kind}/` +
+          `${candidate.representation} [${candidate.availability}]` +
+          `${candidate.rejectionReason ? ` reason=${candidate.rejectionReason}` : ""}`,
+      );
+      lines.push(
+        `    cost crossings=${candidate.cost.boundaryCrossings} ` +
+          `copied=${candidate.cost.copiedBytes} allocations=${candidate.cost.allocations} ` +
+          `compile=${candidate.cost.compileMilliseconds} ` +
+          `load=${candidate.cost.loadMilliseconds} emitted=${candidate.cost.emittedBytes}`,
+      );
+    }
+    lines.push(`  cache-inputs: ${region.cacheIdentityInputs.join(", ")}`);
   }
   return `${lines.join("\n")}\n`;
 }

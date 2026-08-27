@@ -44,6 +44,13 @@
           "test/finite-field-machine-residues.cjs"
         ]
       },
+      "optimizer-gf-p2-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-gf-p2.cjs",
+          "bench/optimizer-gf-p2.cjs"
+        ]
+      },
       "runtime-intrinsic-contract": {
         "differential": true,
         "paths": [
@@ -472,6 +479,9 @@
       "ffi:flint:fq_context",
       "ffi:flint:fq_element",
       "ffi:flint:fq_element_pow"
+    ],
+    "optimizer-gf-p2-affine": [
+      "kernel:packed-gf-p2-affine-production"
     ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
@@ -11521,6 +11531,32 @@
       }
     },
     {
+      "id": "kernel:packed-gf-p2-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-p2-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded quadratic finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "kernel:packed-combinatorial-integer-rational-production",
       "kind": "production-kernel",
       "family": "packed-combinatorial-integer-rational",
@@ -18398,6 +18434,26 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This private WeakSet brand authenticates canonical machine-shadow field elements without invoking user getters, proxies, or callbacks; guarded optimized regions retain their exact generic source fallback.",
+      "public_explanation": "Compiler-proven finite-field regions use a private runtime brand to distinguish canonical machine representations from forged or observable objects."
     },
     {
       "id": "runtime:callable_instance_class",

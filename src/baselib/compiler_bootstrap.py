@@ -271,7 +271,37 @@ def ρσ_modular_power(value, exponent, modulus):
 def ρσ_math_tuple(values):
     return r"""%js (() => {
         const answer = Array.isArray(values) ? values : Array.from(values);
-        return Object.freeze(answer);
+        Object.freeze(answer);
+        let brand = ρσ_math_tuple.__machineFieldSequenceBrand;
+        if (!(brand instanceof WeakSet)) {
+            brand = new WeakSet();
+            Object.defineProperty(ρσ_math_tuple, "__machineFieldSequenceBrand", {
+                value: brand,
+                enumerable: false,
+                configurable: false,
+                writable: false,
+            });
+        }
+        brand.add(answer);
+        return answer;
+    })()"""
+
+
+def ρσ_brand_machine_field_element(value):
+    """Privately register one canonical field element for callback-free guards."""
+    return r"""%js (() => {
+        let brand = ρσ_brand_machine_field_element.__brand;
+        if (!(brand instanceof WeakSet)) {
+            brand = new WeakSet();
+            Object.defineProperty(ρσ_brand_machine_field_element, "__brand", {
+                value: brand,
+                enumerable: false,
+                configurable: false,
+                writable: false,
+            });
+        }
+        brand.add(value);
+        return value;
     })()"""
 
 
@@ -295,6 +325,150 @@ def ρσ_fast_closed_binary(left, right, operation, missing):
     })()"""
 
 
+def ρσ_machine_field_sequence_length(source):
+    """Return the length of one non-proxy runtime tuple, or `-1`."""
+    return r"""%js (() => {
+        const brand = ρσ_math_tuple.__machineFieldSequenceBrand;
+        return brand instanceof WeakSet && brand.has(source) ? source.length : -1;
+    })()"""
+
+
+def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
+    """Validate and unbox one transactional finite-field region."""
+    return r"""%js (() => {
+        if (!Number.isSafeInteger(count) || count < 0 ||
+            !Array.isArray(values) || values.length === 0 ||
+            !Array.isArray(sequences) || !Number.isSafeInteger(operation_mask)) {
+            return null;
+        }
+        const elementBrand = ρσ_brand_machine_field_element.__brand;
+        if (!(elementBrand instanceof WeakSet) ||
+            values.some((value) => !elementBrand.has(value))) return null;
+        const parent = values[0]._parent;
+        if (parent === undefined) return null;
+        const tupleBrand = ρσ_math_tuple.__machineFieldSequenceBrand;
+        if (sequences.some((source) =>
+            !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
+            source.length < count)) return null;
+        const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16;
+        const required = (bit) => (operation_mask & bit) !== 0;
+
+        const primePrototype = parent._closedScalarElementPrototype;
+        if (parent._machineResidues === true &&
+            parent._closedScalarArithmetic === true &&
+            primePrototype?._new_reduced === parent._closedScalarNewReduced &&
+            (!required(ADD) || primePrototype?._add_ === parent._closedScalarAdd) &&
+            (!required(SUB) || primePrototype?._sub_ === parent._closedScalarSub) &&
+            (!required(MUL) || primePrototype?._mul_ === parent._closedScalarMul) &&
+            (!required(NEG) || primePrototype?.__neg__ === parent._closedScalarNeg) &&
+            (!required(EQUAL) || primePrototype?._eq_ === parent._closedScalarEq)) {
+            const modulus = parent._residueModulus;
+            if (!Number.isSafeInteger(modulus) || modulus <= 1) return null;
+            const scalar = (value) =>
+                elementBrand.has(value) &&
+                value._parent === parent &&
+                Object.getPrototypeOf(value) === primePrototype &&
+                Number.isInteger(value._value) && value._value >= 0 &&
+                value._value < modulus;
+            if (!values.every(scalar)) return null;
+            const unboxed = new Float64Array(values.length);
+            for (let index = 0; index < values.length; index++) {
+                unboxed[index] = values[index]._value;
+            }
+            const packedSequences = [];
+            for (const source of sequences) {
+                const packed = new Float64Array(count);
+                for (let index = 0; index < count; index++) {
+                    if (!scalar(source[index])) return null;
+                    packed[index] = source[index]._value;
+                }
+                packedSequences.push(packed);
+            }
+            parent._lastCompilerOptimizationRoute = "v8-number-residue-region";
+            return { kind: 1, parent, prototype: primePrototype, modulus,
+                     values: unboxed, sequences: packedSequences };
+        }
+
+        const extensionPrototype = parent._machineExtensionElementPrototype;
+        const parentPrototype = Object.getPrototypeOf(parent);
+        if (parent._machineExtensionDegree2 !== true ||
+            parentPrototype?._from_machine_coordinates !==
+                parent._machineExtensionMaterialize) return null;
+        if ((required(ADD) && extensionPrototype?._add_ !== parent._machineExtensionAdd) ||
+            (required(SUB) && extensionPrototype?._sub_ !== parent._machineExtensionSub) ||
+            (required(MUL) && extensionPrototype?._mul_ !== parent._machineExtensionMul) ||
+            (required(EQUAL) && extensionPrototype?._eq_ !== parent._machineExtensionEq)) {
+            return null;
+        }
+        if (required(NEG)) {
+            let negOwner = extensionPrototype;
+            let negDescriptor;
+            while (negOwner !== null) {
+                negDescriptor = Object.getOwnPropertyDescriptor(negOwner, "__neg__");
+                if (negDescriptor !== undefined) break;
+                negOwner = Object.getPrototypeOf(negOwner);
+            }
+            if (negOwner !== parent._machineExtensionNegOwner ||
+                negDescriptor?.get !== parent._machineExtensionNegGetter) return null;
+        }
+        const modulus = parent._machineExtensionPrime;
+        const modulusC0 = parent._machineExtensionModulusC0;
+        const modulusC1 = parent._machineExtensionModulusC1;
+        const exactBound = modulus * modulus * modulus +
+            2 * modulus * modulus + modulus;
+        if (!Number.isSafeInteger(modulus) || modulus < 2 || modulus > 200000 ||
+            !Number.isInteger(modulusC0) || modulusC0 < 0 || modulusC0 >= modulus ||
+            !Number.isInteger(modulusC1) || modulusC1 < 0 || modulusC1 >= modulus ||
+            !Number.isSafeInteger(exactBound)) return null;
+        const scalar = (value) => {
+            if (!elementBrand.has(value) ||
+                value._parent !== parent ||
+                Object.getPrototypeOf(value) !== extensionPrototype) return false;
+            const coordinates = value._machineCoordinates;
+            return Array.isArray(coordinates) && Object.isFrozen(coordinates) &&
+                coordinates.length === 2 &&
+                Number.isInteger(coordinates[0]) && coordinates[0] >= 0 &&
+                coordinates[0] < modulus &&
+                Number.isInteger(coordinates[1]) && coordinates[1] >= 0 &&
+                coordinates[1] < modulus;
+        };
+        if (!values.every(scalar)) return null;
+        const unboxed = new Float64Array(2 * values.length);
+        for (let index = 0; index < values.length; index++) {
+            unboxed[2 * index] = values[index]._machineCoordinates[0];
+            unboxed[2 * index + 1] = values[index]._machineCoordinates[1];
+        }
+        const packedSequences = [];
+        for (const source of sequences) {
+            const packed = new Float64Array(2 * count);
+            for (let index = 0; index < count; index++) {
+                if (!scalar(source[index])) return null;
+                packed[2 * index] = source[index]._machineCoordinates[0];
+                packed[2 * index + 1] = source[index]._machineCoordinates[1];
+            }
+            packedSequences.push(packed);
+        }
+        parent._lastCompilerOptimizationRoute = "v8-extension-tuple-region";
+        return { kind: 2, parent, modulus, modulusC0, modulusC1,
+                 values: unboxed, sequences: packedSequences };
+    })()"""
+
+
+def ρσ_materialize_machine_field_value(context, coefficient0, coefficient1=0):
+    """Materialize one public value at a verified region exit."""
+    return r"""%js (() => {
+        if (context.kind === 1) {
+            const result = Object.create(context.prototype);
+            result._parent = context.parent;
+            result._value = coefficient0;
+            return ρσ_brand_machine_field_element(result);
+        }
+        return context.parent._machineExtensionMaterialize.call(
+            context.parent, coefficient0, coefficient1
+        );
+    })()"""
+
+
 def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
     return r"""%js (() => {
         if (!Number.isSafeInteger(count) || count < 0 ||
@@ -303,35 +477,110 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             typeof multiplier !== "object" || typeof increment !== "object") {
             return null;
         }
+        const elementBrand = ρσ_brand_machine_field_element.__brand;
+        if (!(elementBrand instanceof WeakSet) ||
+            !elementBrand.has(accumulator) || !elementBrand.has(multiplier) ||
+            !elementBrand.has(increment)) return null;
         const parent = accumulator._parent;
-        const prototype = parent?._closedScalarElementPrototype;
         if (parent === undefined || parent !== multiplier._parent ||
-            parent !== increment._parent || parent._machineResidues !== true ||
-            parent._closedScalarArithmetic !== true ||
-            Object.getPrototypeOf(accumulator) !== prototype ||
-            Object.getPrototypeOf(multiplier) !== prototype ||
-            Object.getPrototypeOf(increment) !== prototype ||
-            prototype?._mul_ !== parent._closedScalarMul ||
-            prototype?._add_ !== parent._closedScalarAdd ||
-            prototype?._new_reduced !== parent._closedScalarNewReduced) {
+            parent !== increment._parent) {
             return null;
         }
-        const modulus = parent._residueModulus;
-        let value = accumulator._value;
-        const factor = multiplier._value;
-        const addend = increment._value;
-        if (!Number.isSafeInteger(modulus) || modulus <= 1 ||
-            !Number.isInteger(value) || value < 0 || value >= modulus ||
-            !Number.isInteger(factor) || factor < 0 || factor >= modulus ||
-            !Number.isInteger(addend) || addend < 0 || addend >= modulus) {
+
+        const primePrototype = parent._closedScalarElementPrototype;
+        if (parent._machineResidues === true &&
+            parent._closedScalarArithmetic === true &&
+            Object.getPrototypeOf(accumulator) === primePrototype &&
+            Object.getPrototypeOf(multiplier) === primePrototype &&
+            Object.getPrototypeOf(increment) === primePrototype &&
+            primePrototype?._mul_ === parent._closedScalarMul &&
+            primePrototype?._add_ === parent._closedScalarAdd &&
+            primePrototype?._new_reduced === parent._closedScalarNewReduced) {
+            const modulus = parent._residueModulus;
+            let value = accumulator._value;
+            const factor = multiplier._value;
+            const addend = increment._value;
+            if (!Number.isSafeInteger(modulus) || modulus <= 1 ||
+                !Number.isInteger(value) || value < 0 || value >= modulus ||
+                !Number.isInteger(factor) || factor < 0 || factor >= modulus ||
+                !Number.isInteger(addend) || addend < 0 || addend >= modulus) {
+                return null;
+            }
+            if (count === 0) {
+                parent._lastCompilerOptimizationRoute = "v8-number-residue";
+                return accumulator;
+            }
+            for (let index = 0; index < count; index++) {
+                value = (value * factor + addend) % modulus;
+            }
+            const result = Object.create(primePrototype);
+            result._parent = parent;
+            result._value = value;
+            parent._lastCompilerOptimizationRoute = "v8-number-residue";
+            return result;
+        }
+
+        const extensionPrototype = parent._machineExtensionElementPrototype;
+        const parentPrototype = Object.getPrototypeOf(parent);
+        const materialize = parent._machineExtensionMaterialize;
+        const isolated = parent._machineExtensionIsolated;
+        if (parent._machineExtensionDegree2 !== true ||
+            Object.getPrototypeOf(accumulator) !== extensionPrototype ||
+            Object.getPrototypeOf(multiplier) !== extensionPrototype ||
+            Object.getPrototypeOf(increment) !== extensionPrototype ||
+            extensionPrototype?._mul_ !== parent._machineExtensionMul ||
+            extensionPrototype?._add_ !== parent._machineExtensionAdd ||
+            parentPrototype?._from_machine_coordinates !== materialize ||
+            parentPrototype?._machine_extension_affine_isolated !== isolated) {
             return null;
         }
+        const prime = parent._machineExtensionPrime;
+        const modulusC0 = parent._machineExtensionModulusC0;
+        const modulusC1 = parent._machineExtensionModulusC1;
+        const left = accumulator._machineCoordinates;
+        const factor = multiplier._machineCoordinates;
+        const addend = increment._machineCoordinates;
+        const validCoordinates = (value) =>
+            Array.isArray(value) && Object.isFrozen(value) && value.length === 2 &&
+            Number.isInteger(value[0]) && value[0] >= 0 && value[0] < prime &&
+            Number.isInteger(value[1]) && value[1] >= 0 && value[1] < prime;
+        const exactBound = prime * prime * prime + 2 * prime * prime + prime;
+        if (!Number.isSafeInteger(prime) || prime < 2 || prime > 200000 ||
+            !Number.isInteger(modulusC0) || modulusC0 < 0 || modulusC0 >= prime ||
+            !Number.isInteger(modulusC1) || modulusC1 < 0 || modulusC1 >= prime ||
+            !Number.isSafeInteger(exactBound) ||
+            !validCoordinates(left) || !validCoordinates(factor) ||
+            !validCoordinates(addend)) {
+            return null;
+        }
+        if (count === 0) {
+            parent._lastCompilerOptimizationRoute = "v8-extension-tuple";
+            return accumulator;
+        }
+        if (count >= parent._machineExtensionIsolatedMinSteps) {
+            const result = isolated.call(
+                parent, accumulator, multiplier, increment, count
+            );
+            if (result !== undefined) return result;
+        }
+        let valueC0 = left[0];
+        let valueC1 = left[1];
         for (let index = 0; index < count; index++) {
-            value = (value * factor + addend) % modulus;
+            const quadratic = valueC1 * factor[1];
+            let nextC0 = (
+                valueC0 * factor[0] - quadratic * modulusC0 + addend[0]
+            ) % prime;
+            let nextC1 = (
+                valueC0 * factor[1] + valueC1 * factor[0] -
+                quadratic * modulusC1 + addend[1]
+            ) % prime;
+            if (nextC0 < 0) nextC0 += prime;
+            if (nextC1 < 0) nextC1 += prime;
+            valueC0 = nextC0;
+            valueC1 = nextC1;
         }
-        const result = Object.create(prototype);
-        result._parent = parent;
-        result._value = value;
+        const result = materialize.call(parent, valueC0, valueC1);
+        parent._lastCompilerOptimizationRoute = "v8-extension-tuple";
         return result;
     })()"""
 

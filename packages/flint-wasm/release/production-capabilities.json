@@ -425,6 +425,7 @@
         "kernel:number-field-element-valuations-production",
         "kernel:number-field-om-proof-production",
         "kernel:packed-combinatorial-integer-rational-production",
+        "kernel:packed-gf-p2-affine-production",
         "kernel:packed-graph-components-production",
         "kernel:packed-graph-shortest-paths-production",
         "kernel:packed-integer-polynomial-production",

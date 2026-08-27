@@ -17,7 +17,7 @@
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 325,
-    "runtime-intrinsic": 144,
+    "runtime-intrinsic": 145,
     "wasm-export": 72
   },
   "boundaries": [
@@ -9670,6 +9670,14 @@
       "path": "tools/python/contract.ts",
       "export": "bool_builtin",
       "symbol": "ρσ_bool",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "brand_machine_field_element",
+      "symbol": "ρσ_brand_machine_field_element",
       "disposition": "runtime-primitive"
     },
     {

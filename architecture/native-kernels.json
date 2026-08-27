@@ -739,6 +739,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-gf-p2-affine-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "functions": ["packed_gf_p2_affine_recurrence"],
+      "semantic_domain": "one fused bounded affine recurrence over canonical power-basis coefficient pairs for a guarded quadratic finite field",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "direct-quadratic-formula"],
+      "benchmark": "bench:optimizer-gf-p2",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-combinatorial-integer-rational-production",
       "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
       "functions": [

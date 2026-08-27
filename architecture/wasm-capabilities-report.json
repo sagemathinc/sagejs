@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "dd8e21257db07102bda18ae0e4584b4287837e763609cf983542dd2cf10651d9",
+  "source_sha256": "265633e38b09337b60058b73fddffb814f92073e40bc5b12e384d0bdbbb30b6c",
   "counts": {
-    "total": 1014,
+    "total": 1016,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 325,
-      "production-kernel": 47,
-      "runtime-intrinsic": 144,
+      "production-kernel": 48,
+      "runtime-intrinsic": 145,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 47,
+      "compiled-source": 48,
       "desktop-only": 47,
       "generated-wasm": 321,
-      "portable-fallback": 554,
+      "portable-fallback": 555,
       "shared-core": 45
     },
     "by_status": {
-      "available": 552,
+      "available": 554,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -144,6 +144,9 @@
     ],
     "numpy-vertical-slice": [
       "specialist:numpy-ts"
+    ],
+    "optimizer-gf-p2-affine": [
+      "kernel:packed-gf-p2-affine-production"
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
@@ -6440,6 +6443,18 @@
       "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:packed-gf-p2-affine-production",
+      "family": "packed-gf-p2-affine",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded quadratic finite-field affine recurrences"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:packed-graph-components-production",
       "family": "packed-graph-components",
       "disposition": "compiled-source",
@@ -10612,6 +10627,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed finite-field regions"
+      ],
+      "explanation": "Compiler-proven finite-field regions use a private runtime brand to distinguish canonical machine representations from forged or observable objects."
     },
     {
       "id": "runtime:callable_instance_class",

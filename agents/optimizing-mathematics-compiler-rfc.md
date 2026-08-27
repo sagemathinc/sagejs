@@ -1,6 +1,6 @@
 # RFC: A multi-level optimizing compiler for Sage.js mathematics
 
-**Status:** Draft for review  
+**Status:** Implemented
 **Date:** 2026-08-27  
 **Scope:** Sage/Python-to-JavaScript compilation, mathematical representation
 selection, guarded V8 regions, WebAssembly regions, and source-transparent
@@ -837,3 +837,34 @@ small, explainable, extensible optimizing compiler architecture capable of
 turning proved mathematical regions into the execution form best suited to
 V8, Wasm, native code, or a mature library while preserving the exact public
 semantics that make Sage useful.
+
+## Implementation record
+
+The completion criteria were met on 2026-08-27:
+
+1. `tools/python/optimizer/` owns the versioned IR, facts, stable identities,
+   cost model, pass manager, explanations, and verifier. The former direct
+   prime-recurrence recognizer now enters this middle end.
+2. `closed-field-region` represents multi-state prime and quadratic-extension
+   computations as operation graphs, with complete costs, fallback
+   provenance, materialization plans, and independently checked entry guards.
+3. `O0`, `O1`, `O2`, `O3`, and `Os`, plus explain, disable, and require
+   controls, are compiler and public CLI contracts with fail-closed tests.
+4. `GF(p^2)` selects a scalar-tuple V8 region and the same representation can
+   select the source-transparent isolated kernel in
+   `src/lib/sagejs/kernels/arithmetic/gf_p2.py`.
+5. Grammar-generated, held-out, independent-coordinate-oracle, malformed-IR,
+   method-mutation, proxy, alias, effect, interruption, and resource tests run
+   in Node, Chromium, Firefox, and WebKit.
+6. `bench/optimizer-gf-p2.cjs` ratchets semantics, compilation latency,
+   emitted size, crossings, copied bytes, live resources, V8 tier loss, and
+   performance against handwritten JavaScript, generic Sage objects, and the
+   isolated target.
+7. Public polynomial evaluation composes the same extension-tuple operation
+   graph without a polynomial-named backend rule.
+8. An elliptic-curve batch is a held-out application consumer and receives the
+   optimization without an elliptic-curve-named compiler branch.
+
+The implementation deliberately leaves higher extension degrees, resident
+Wasm handles, and broader application profiling as later measured extensions;
+they are not required by the completion criteria above.

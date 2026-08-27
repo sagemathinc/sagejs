@@ -108,6 +108,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   map_class: "Map",
   math: "Math",
   math_tuple: "ρσ_math_tuple",
+  brand_machine_field_element: "ρσ_brand_machine_field_element",
   named_tuple: "ρσ_named_tuple",
   modular_inverse: "ρσ_modular_inverse",
   modular_power: "ρσ_modular_power",
