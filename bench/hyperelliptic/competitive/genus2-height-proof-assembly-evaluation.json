@@ -1,0 +1,130 @@
+{
+  "schema": "sagejs.hyperelliptic/genus2-height-proof-assembly-evaluation-v1",
+  "recorded_at_utc": "2026-08-27T02:21:05Z",
+  "status": "accepted-source-optimization",
+  "scope": "cold certified genus-2 canonical-height, pairing, and regulator proof assembly",
+  "contract": {
+    "curve": "y^2=x^5-x+1",
+    "basis": [
+      "P=[x,1]",
+      "Q=[x-1,1]",
+      "P+Q",
+      "P-Q"
+    ],
+    "target_bits": 64,
+    "working_precision_bits": 260,
+    "classification": "matched development-host diagnostic, not a competitor acceptance receipt",
+    "benchmark": "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs",
+    "command": "SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node bench/hyperelliptic/benchmark-genus2-height-competitive.cjs --targets 64 --repeat 3"
+  },
+  "source": {
+    "parent_commit": "6e5d3397fd869ca3f740949a2831c159a3b29811",
+    "genus2_heights_sha256": "8c00d058b8a2d62403a34f88e2665a9dbff8bd6242204310e8b50adc8ca46504",
+    "changes": [
+      "compute and reuse exact model-bound point bindings throughout one pairing transaction",
+      "encode immutable context diagnostics once for all restored canonical proof records",
+      "assemble short certified correction expressions directly from exact outward endpoints",
+      "compute achieved dyadic enclosure width with exact integer bit lengths"
+    ]
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "note": "One source-adjacent baseline and three fresh optimized processes were used. The final source-current replay is retained separately in /tmp during development and agrees with the optimized distribution."
+  },
+  "baseline_milliseconds": {
+    "single_point_object_cold": 247.69020080566406,
+    "rank2_pairing_object_cold": 372.4863529205322,
+    "rank4_pairing_object_cold": 1077.491044998169,
+    "rank2_certified_local_height_batch": 269.95849609375,
+    "rank4_certified_local_height_batch": 670.5677509307861,
+    "rank2_authenticated_record_assembly": 5.742549896240234,
+    "rank4_authenticated_record_assembly": 34.336090087890625,
+    "rank2_pairwise_divisor_sums": 45.69697380065918,
+    "rank4_pairwise_divisor_sums": 283.9369773864746
+  },
+  "optimized_fresh_process_samples_milliseconds": {
+    "single_point_object_cold": [
+      246.9329833984375,
+      241.4247989654541,
+      245.3022003173828
+    ],
+    "rank2_pairing_object_cold": [
+      308.00557136535645,
+      299.37744140625,
+      307.6493740081787
+    ],
+    "rank4_pairing_object_cold": [
+      927.4320602416992,
+      882.3938369750977,
+      901.9155502319336
+    ],
+    "rank2_certified_local_height_batch": [
+      207.4415683746338,
+      202.8508186340332,
+      208.1310749053955
+    ],
+    "rank4_certified_local_height_batch": [
+      512.2761726379395,
+      485.7168197631836,
+      497.73669242858887
+    ]
+  },
+  "optimized_medians_milliseconds": {
+    "single_point_object_cold": 245.3022003173828,
+    "rank2_pairing_object_cold": 307.6493740081787,
+    "rank4_pairing_object_cold": 901.9155502319336,
+    "rank2_certified_local_height_batch": 207.4415683746338,
+    "rank4_certified_local_height_batch": 497.73669242858887,
+    "rank2_authenticated_record_assembly": 4.355669021606445,
+    "rank4_authenticated_record_assembly": 28.11717987060547,
+    "rank2_pairwise_divisor_sums": 45.17078399658203,
+    "rank4_pairwise_divisor_sums": 285.8922481536865
+  },
+  "optimized_over_baseline": {
+    "single_point_object_cold": 0.9903589222322329,
+    "rank2_pairing_object_cold": 0.8259346190699607,
+    "rank4_pairing_object_cold": 0.8370515508400037,
+    "rank2_certified_local_height_batch": 0.7684202252430476,
+    "rank4_certified_local_height_batch": 0.7422616010652199,
+    "rank2_authenticated_record_assembly": 0.758490409366437,
+    "rank4_authenticated_record_assembly": 0.8188812354182868,
+    "rank2_pairwise_divisor_sums": 0.9884852374169784,
+    "rank4_pairwise_divisor_sums": 1.0068862843621476
+  },
+  "final_source_current_replay_milliseconds": {
+    "single_point_object_cold": 247.72024154663086,
+    "rank2_pairing_object_cold": 310.2993965148926,
+    "rank4_pairing_object_cold": 898.6086845397949,
+    "rank2_certified_local_height_batch": 209.7172737121582,
+    "rank4_certified_local_height_batch": 490.84997177124023
+  },
+  "exactness": {
+    "rigorous": true,
+    "requested_bits": 64,
+    "achieved_enclosure_width_bits": 67,
+    "magma_oracle_compatible_at_96_bits": true,
+    "regulator_certified": true,
+    "focused_height_and_adversarial_tests": "14/14 pass",
+    "covered_adversarial_contracts": [
+      "closure theorem and Flynn-table rebinding rejection",
+      "context and cache mutation rejection",
+      "model and point provenance authentication",
+      "late cancellation and retry atomicity",
+      "same-context reentrancy rejection",
+      "exact small-step and outward-logarithm differential oracles"
+    ]
+  },
+  "conclusion": {
+    "accepted": true,
+    "rank2_cold_improvement": "17.4%",
+    "rank4_cold_improvement": "16.3%",
+    "rank2_certified_batch_improvement": "23.2%",
+    "rank4_certified_batch_improvement": "25.8%",
+    "single_point_change": "within 1% of baseline",
+    "representation_change": false,
+    "remaining_floor": "pairwise divisor construction remains essentially unchanged and dominates rank-4 work outside the certified batch; recurrence, exact logarithm, and theorem authentication remain genuine proof costs",
+    "competitor_gate_reclassified": false
+  }
+}

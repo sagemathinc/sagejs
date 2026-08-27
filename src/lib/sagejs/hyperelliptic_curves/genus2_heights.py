@@ -103,10 +103,9 @@ def _enclosure_width_bits(value: RealBall) -> int:
         return value.precision_bits
     if numerator > denominator:
         return -1
-    bits = 0
-    while 2 * numerator <= denominator:
-        numerator *= 2
-        bits += 1
+    bits = denominator.bit_length() - numerator.bit_length()
+    if numerator << bits > denominator:
+        bits -= 1
     return bits
 
 
@@ -2683,8 +2682,14 @@ def _canonical_heights_uncached_local_batch(
         compact_context_payload = _encode_data(height_context_diagnostics(context))
     finite_denominators: dict[int, RealBall] = {}
     answers: list[Any] = []
+    proof_zero = _zero_ball(working_precision, "batched-proof-assembly-zero")
     for point_index, divisor in enumerate(values):
-        finite_partial = _zero_ball(working_precision, "empty-finite-correction-sum")
+        # Assemble each certified interval once from exact endpoints.  The
+        # cached denominators below are positive exact balls, so the general
+        # lower/upper quotient orientation remains valid without constructing
+        # and rounding one short-lived `RealBall` per recurrence step.
+        finite_lower = proof_zero.lower
+        finite_upper = proof_zero.upper
         for step_index, common in enumerate(modular_rows[point_index]):
             if common > 1:
                 common_logarithm = finite_logarithms.get(common)
@@ -2699,10 +2704,22 @@ def _canonical_heights_uncached_local_batch(
                         4 ** (step_index + 1), precision_bits=working_precision
                     )
                     finite_denominators[step_index] = denominator
-                finite_partial = finite_partial + common_logarithm / denominator
+                finite_lower = finite_lower + (
+                    common_logarithm.lower / denominator.upper
+                )
+                finite_upper = finite_upper + (
+                    common_logarithm.upper / denominator.lower
+                )
+        finite_partial = RealBall(
+            finite_lower,
+            finite_upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="batched factorization-free finite correction partial",
+        )
         finite_ball = RealBall(
-            finite_partial.lower,
-            (finite_partial + finite_tail).upper,
+            finite_partial.lower + finite_tail.lower,
+            finite_partial.upper + finite_tail.upper,
             precision_bits=working_precision,
             rigorous=True,
             source="Mueller--Stoll batched factorization-free finite correction",
@@ -2727,7 +2744,13 @@ def _canonical_heights_uncached_local_batch(
             }
         )
         archimedean_partial = archimedean_partials[point_index]
-        archimedean_ball = archimedean_partial + archimedean_tail
+        archimedean_ball = RealBall(
+            archimedean_partial.lower + archimedean_tail.lower,
+            archimedean_partial.upper + archimedean_tail.upper,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="batched normalized real Kummer correction",
+        )
         archimedean_diagnostics = (
             {}
             if _return_payloads
@@ -2854,14 +2877,29 @@ def _canonical_heights_uncached_local_batch(
                 )
             continue
         initial_naive_height = initial_naive_heights[point_index]
-        raw_ball = initial_naive_height - finite_ball - archimedean_ball
-        local_approximation = (
-            initial_naive_height - finite_partial - archimedean_partial
+        # Subtraction reverses the correction endpoints.  Keeping this final
+        # three-interval combination at the endpoint level avoids a chain of
+        # temporary proof objects while retaining the exact outward bounds.
+        raw_lower = (
+            initial_naive_height.lower - finite_ball.upper - archimedean_ball.upper
         )
-        zero = _zero_ball(working_precision)
+        raw_upper = (
+            initial_naive_height.upper - finite_ball.lower - archimedean_ball.lower
+        )
+        local_approximation = RealBall(
+            initial_naive_height.lower
+            - finite_partial.upper
+            - archimedean_partial.upper,
+            initial_naive_height.upper
+            - finite_partial.lower
+            - archimedean_partial.lower,
+            precision_bits=working_precision,
+            rigorous=True,
+            source="batched local Kummer correction partial",
+        )
         ball = RealBall(
-            zero.lower if raw_ball.lower < zero.lower else raw_ball.lower,
-            raw_ball.upper,
+            proof_zero.lower if raw_lower < proof_zero.lower else raw_lower,
+            raw_upper,
             precision_bits=working_precision,
             rigorous=True,
             source="batched Mueller--Stoll certified local Kummer correction",
@@ -4219,10 +4257,15 @@ def _install_height_proof_state(
         context: HeightContext,
         *,
         authenticate_bound: bool = True,
+        encoded_context_data: Any = None,
     ) -> CanonicalHeightResult:
         deferred_diagnostics = None
         encoded_diagnostics = None
-        context_data = encode_primitive(height_context_diagnostics_function(context))
+        context_data = encoded_context_data
+        if context_data is None:
+            context_data = encode_primitive(
+                height_context_diagnostics_function(context)
+            )
         if payload[5][0] == "local-height-batch-diagnostics-v1":
             deferred_diagnostics = deferred_canonical_diagnostics_type(
                 payload[5], context_data
@@ -4252,12 +4295,12 @@ def _install_height_proof_state(
             _deferred_diagnostics=deferred_diagnostics,
         )
 
-    def canonical_payload_with_context(payload: Any, context_data: Any) -> Any:
+    def canonical_payload_with_context(payload: Any, encoded_context_data: Any) -> Any:
         if payload[5][0] == "local-height-batch-diagnostics-v1":
-            diagnostics = payload[5][:29] + (encode_primitive(context_data),)
+            diagnostics = payload[5][:29] + (encoded_context_data,)
         else:
             diagnostics = replace_encoded_dictionary(
-                payload[5], "context", context_data
+                payload[5], "context", decode_primitive(encoded_context_data)
             )
         return payload[:5] + (diagnostics,)
 
@@ -4359,6 +4402,7 @@ def _install_height_proof_state(
         payload: Any,
         expected_terms: Any,
         exact_model_binding: Any,
+        exact_point_binding: Any,
         expected_bound_payload: Any,
     ) -> tuple[Any, ...] | None:
         """Authenticate a closure-produced primitive batch payload directly."""
@@ -4385,7 +4429,7 @@ def _install_height_proof_state(
             divisor,
             parameters,
             exact_model_binding,
-            point_binding(divisor),
+            exact_point_binding,
             expected_terms,
             payload,
         )
@@ -4614,8 +4658,10 @@ def _install_height_proof_state(
     def restore_pairing(
         payload: Any, jacobian: Any, context: HeightContext
     ) -> HeightPairingResult:
+        context_diagnostics = height_context_diagnostics_function(context)
+        encoded_context_data = encode_primitive(context_diagnostics)
         encoded_diagnostics = replace_encoded_dictionary(
-            payload[2], "context", height_context_diagnostics_function(context)
+            payload[2], "context", context_diagnostics
         )
         deferred_diagnostics = None
         if len(payload) == 4:
@@ -4631,6 +4677,7 @@ def _install_height_proof_state(
                     jacobian,
                     context,
                     authenticate_bound=(len(payload) != 4),
+                    encoded_context_data=encoded_context_data,
                 )
                 for value in payload[1]
             ),
@@ -4759,14 +4806,35 @@ def _install_height_proof_state(
             cache_scan_ready = requested_heights_ready
             proof_bounds_ready = cache_scan_ready
             certified_batch_ready = proof_bounds_ready
+            requested_point_bindings: list[Any] = []
             if parameters[3] != "exact":
                 unique_heights: list[Any] = []
+                unique_point_bindings: list[Any] = []
                 for value in requested_heights:
-                    if not any(value == stored for stored in unique_heights):
+                    matched_index = -1
+                    for index, stored in enumerate(unique_heights):
+                        if value is stored or value == stored:
+                            matched_index = index
+                            break
+                    if matched_index < 0:
                         unique_heights.append(value)
-                missing = tuple(
-                    value
-                    for value in unique_heights
+                        binding = None
+                        for basis_index, basis_value in enumerate(values):
+                            if value is basis_value:
+                                binding = point_bindings[basis_index]
+                                break
+                        if binding is None:
+                            binding = point_binding(value)
+                        unique_point_bindings.append(binding)
+                        matched_index = len(unique_heights) - 1
+                    requested_point_bindings.append(
+                        unique_point_bindings[matched_index]
+                    )
+                missing_rows = tuple(
+                    (value, binding)
+                    for value, binding in zip(
+                        unique_heights, unique_point_bindings, strict=True
+                    )
                     if cached_canonical_record(
                         cache_context,
                         value,
@@ -4774,14 +4842,14 @@ def _install_height_proof_state(
                         count_hit=False,
                         expected_terms=expected_terms,
                         exact_model_binding=exact_model_binding,
-                        exact_point_binding=point_binding(value),
+                        exact_point_binding=binding,
                     )
                     is None
                 )
                 cache_scan_ready = perf_counter_function()
                 proof_bounds_ready = cache_scan_ready
                 certified_batch_ready = cache_scan_ready
-                if missing:
+                if missing_rows:
                     proof_precision = max(
                         parameters[1],
                         (
@@ -4796,7 +4864,7 @@ def _install_height_proof_state(
                     proof_bounds_ready = perf_counter_function()
                     proof_bound_payload = bound_payload(proof_bounds)
                     batch_answers = canonical_height_batch_function(
-                        missing,
+                        tuple(value for value, _binding in missing_rows),
                         steps=parameters[0],
                         precision=parameters[1],
                         target_bits=parameters[2],
@@ -4807,8 +4875,10 @@ def _install_height_proof_state(
                         _proof_terms=frozen_specialized_terms(jacobian),
                         _return_payloads=True,
                     )
-                    batch_misses = len(missing)
-                    for value, batch_answer in zip(missing, batch_answers, strict=True):
+                    batch_misses = len(missing_rows)
+                    for (value, binding), batch_answer in zip(
+                        missing_rows, batch_answers, strict=True
+                    ):
                         record = canonical_record_from_payload(
                             cache_context,
                             value,
@@ -4816,6 +4886,7 @@ def _install_height_proof_state(
                             batch_answer,
                             expected_terms,
                             exact_model_binding,
+                            binding,
                             proof_bound_payload,
                         )
                         if record is not None:
@@ -4833,7 +4904,9 @@ def _install_height_proof_state(
             requested_records: list[Any] = []
             direct_supported = parameters[3] != "exact"
             if direct_supported:
-                for value in requested_heights:
+                for value, binding in zip(
+                    requested_heights, requested_point_bindings, strict=True
+                ):
                     match = cached_canonical_record(
                         cache_context,
                         value,
@@ -4841,7 +4914,7 @@ def _install_height_proof_state(
                         count_hit=False,
                         expected_terms=expected_terms,
                         exact_model_binding=exact_model_binding,
-                        exact_point_binding=point_binding(value),
+                        exact_point_binding=binding,
                     )
                     if match is None:
                         direct_supported = False
@@ -4869,6 +4942,7 @@ def _install_height_proof_state(
                 record_index = size
                 polarization_started = perf_counter_function()
                 context_diagnostics = height_context_diagnostics_function(cache_context)
+                encoded_context_diagnostics = encode_primitive(context_diagnostics)
                 for left in range(size):
                     for right in range(left + 1, size):
                         _check_height_batch_cancel(
@@ -4887,7 +4961,7 @@ def _install_height_proof_state(
                                 left,
                                 right,
                                 canonical_payload_with_context(
-                                    sum_payload, context_diagnostics
+                                    sum_payload, encoded_context_diagnostics
                                 ),
                             )
                         )
@@ -4955,7 +5029,7 @@ def _install_height_proof_state(
                 values,
                 parameters,
                 model_binding(jacobian),
-                tuple(point_binding(value) for value in values),
+                point_bindings,
                 expected_terms,
                 direct_payload,
             )
