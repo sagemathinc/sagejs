@@ -1050,6 +1050,23 @@ polynomial identity with two named intermediates over `Zmod(1009)` and
 `GF(5^3)`, using independent coordinate oracles, a matched O0 prefix, route and
 resource ratchets, and final temporary-value checks.
 
+Pure operation subgraphs whose slots are all live-ins and absent from the
+complete modified-slot set are now explicit preheader values.  The analysis
+simulates versioned value availability in source order, so it hoists only
+subgraphs that the loop would otherwise evaluate; a later expression hidden by
+whole-expression commoning cannot create dead preheader code.  Hoisted values
+remain available across conservative control-flow joins, while any expression
+depending on a sequence element, local, or loop-carried state remains inside
+the loop.
+
+Plans record `preheaderOperationCost` separately from per-iteration
+`operationCost`, and admission still bounds their sum.  The independent
+verifier reconstructs the exact hoisted expression list, both costs, and the
+combined outlined target size.  The strengthened cross-statement benchmark now
+uses `(x*y)*(a*b)` and `(b*a)*(y*x)`: `a*b` executes once after the guard, and
+the regrouped four-factor value executes once per iteration for two
+accumulators.
+
 The target-independent expression graph also represents statically bounded
 powers `x^e` for exact nonnegative safe-integer exponents.  These are not spelling
 rewrites to multiplication: the runtime guard authenticates the selected

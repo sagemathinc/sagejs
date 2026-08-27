@@ -162,6 +162,7 @@ function statementsOperationCost(
   slotCount: number,
   versions = new Array(slotCount).fill(0),
   common = new Set<string>(),
+  persistent = new Set<string>(),
 ): number {
   let total = 0;
   for (const statement of statements) {
@@ -176,17 +177,110 @@ function statementsOperationCost(
     const bodyVersions = [...versions];
     const alternativeVersions = [...versions];
     total += statementsOperationCost(
-      statement.body, slotCount, bodyVersions, new Set(common),
+      statement.body, slotCount, bodyVersions, new Set(common), persistent,
     );
     total += statementsOperationCost(
-      statement.alternative, slotCount, alternativeVersions, new Set(common),
+      statement.alternative, slotCount, alternativeVersions, new Set(common), persistent,
     );
     for (let slot = 0; slot < slotCount; slot += 1) {
       versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
     }
     common.clear();
+    for (const key of persistent) common.add(key);
   }
   return total;
+}
+
+function expressionIsInvariant(
+  value: ExpressionPlan,
+  invariantSlots: Set<number>,
+): boolean {
+  if (value.kind === "slot") return invariantSlots.has(value.slot);
+  if (value.kind === "sequence") return false;
+  if (value.kind === "neg" || value.kind === "power") {
+    return expressionIsInvariant(value.value, invariantSlots);
+  }
+  return expressionIsInvariant(value.left, invariantSlots) &&
+    expressionIsInvariant(value.right, invariantSlots);
+}
+
+function hoistedExpressions(
+  statements: StatementPlan[],
+  invariantSlots: Set<number>,
+  slotCount: number,
+): ExpressionPlan[] {
+  const answer: ExpressionPlan[] = [];
+  const seen = new Set<string>();
+  const persistent = new Set<string>();
+  const markExpression = (
+    value: ExpressionPlan,
+    target: Set<string>,
+    versions: number[],
+  ): void => {
+    if (value.kind === "slot" || value.kind === "sequence") return;
+    const key = expressionStructuralKey(value, versions);
+    if (target.has(key)) return;
+    target.add(key);
+    if (value.kind === "binary") {
+      markExpression(value.left, target, versions);
+      markExpression(value.right, target, versions);
+    } else {
+      markExpression(value.value, target, versions);
+    }
+  };
+  const visitExpression = (
+    value: ExpressionPlan,
+    common: Set<string>,
+    versions: number[],
+  ): void => {
+    if (value.kind === "slot" || value.kind === "sequence") return;
+    const key = expressionStructuralKey(value, versions);
+    if (common.has(key)) return;
+    common.add(key);
+    if (expressionIsInvariant(value, invariantSlots)) {
+      if (!seen.has(key)) {
+        seen.add(key);
+        answer.push(value);
+      }
+      markExpression(value, persistent, versions);
+      for (const persistentKey of persistent) common.add(persistentKey);
+      return;
+    }
+    if (value.kind === "binary") {
+      visitExpression(value.left, common, versions);
+      visitExpression(value.right, common, versions);
+    } else {
+      visitExpression(value.value, common, versions);
+    }
+  };
+  const visitStatements = (
+    source: StatementPlan[],
+    versions: number[],
+    common: Set<string>,
+  ): void => {
+    for (const statement of source) {
+      if (statement.kind === "assign") {
+        visitExpression(statement.value, common, versions);
+        versions[statement.target] += 1;
+        continue;
+      }
+      visitExpression(statement.condition.left, common, versions);
+      visitExpression(statement.condition.right, common, versions);
+      const bodyVersions = [...versions];
+      const alternativeVersions = [...versions];
+      visitStatements(statement.body, bodyVersions, new Set(common));
+      visitStatements(statement.alternative, alternativeVersions, new Set(common));
+      for (let slot = 0; slot < slotCount; slot += 1) {
+        versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+      }
+      common.clear();
+      for (const key of persistent) common.add(key);
+    }
+  };
+  visitStatements(
+    statements, new Array(slotCount).fill(0), new Set<string>(),
+  );
+  return answer;
 }
 
 function powerProductCount(exponent: number): number {
@@ -231,6 +325,7 @@ function statementsTargetCodeUnits(
   slotCount: number,
   versions = new Array(slotCount).fill(0),
   common = new Set<string>(),
+  persistent = new Set<string>(),
 ): number {
   let total = 0;
   for (const statement of statements) {
@@ -245,15 +340,16 @@ function statementsTargetCodeUnits(
     const bodyVersions = [...versions];
     const alternativeVersions = [...versions];
     total += statementsTargetCodeUnits(
-      statement.body, slotCount, bodyVersions, new Set(common),
+      statement.body, slotCount, bodyVersions, new Set(common), persistent,
     );
     total += statementsTargetCodeUnits(
-      statement.alternative, slotCount, alternativeVersions, new Set(common),
+      statement.alternative, slotCount, alternativeVersions, new Set(common), persistent,
     );
     for (let slot = 0; slot < slotCount; slot += 1) {
       versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
     }
     common.clear();
+    for (const key of persistent) common.add(key);
   }
   return total;
 }
@@ -261,9 +357,20 @@ function statementsTargetCodeUnits(
 function estimatedTargetCodeBytes(
   statements: StatementPlan[],
   slotCount: number,
+  hoisted: ExpressionPlan[] = [],
 ): number {
+  const common = new Set<string>();
+  let units = 0;
+  const versions = new Array(slotCount).fill(0);
+  for (const expression of hoisted) {
+    units += expressionTargetCodeUnits(expression, common, versions);
+  }
+  const persistent = new Set(common);
+  units += statementsTargetCodeUnits(
+    statements, slotCount, versions, new Set(common), persistent,
+  );
   return TARGET_CODE_BASE_BYTES +
-    TARGET_CODE_BYTES_PER_UNIT * statementsTargetCodeUnits(statements, slotCount);
+    TARGET_CODE_BYTES_PER_UNIT * units;
 }
 
 type AffineTargetPlan =
@@ -622,10 +729,6 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const program = statements(loop.body.body);
   if (!program || operations.size === 0 || slots.length > 16 ||
       sequences.length > 4) return null;
-  const operationCost = statementsOperationCost(program, slots.length);
-  if (operationCost > MAX_OPERATION_COST) return null;
-  const targetCodeBytes = estimatedTargetCodeBytes(program, slots.length);
-  if (targetCodeBytes > MAX_TARGET_CODE_BYTES) return null;
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
   const dataFlow = statementDataFlow(program, slots.length);
@@ -634,6 +737,30 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     return null;
   }
   const { inputSlots, stateSlots, localSlots } = dataFlow;
+  const invariantSlots = new Set(
+    inputSlots.filter((slot) => !stateSlots.includes(slot)),
+  );
+  const hoisted = hoistedExpressions(program, invariantSlots, slots.length);
+  const available = new Set<string>();
+  const versions = new Array(slots.length).fill(0);
+  let preheaderOperationCost = 0;
+  for (const expression of hoisted) {
+    preheaderOperationCost += expressionOperationCost(
+      expression, available, versions,
+    );
+  }
+  const operationCost = statementsOperationCost(
+    program,
+    slots.length,
+    versions,
+    new Set(available),
+    new Set(available),
+  );
+  if (preheaderOperationCost + operationCost > MAX_OPERATION_COST) return null;
+  const targetCodeBytes = estimatedTargetCodeBytes(
+    program, slots.length, hoisted,
+  );
+  if (targetCodeBytes > MAX_TARGET_CODE_BYTES) return null;
   const affine = inplaceOperations.size === 0
     ? affineTarget(program, stateSlots)
     : null;
@@ -697,6 +824,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     inputSlots,
     stateSlots,
     localSlots,
+    hoistedExpressions: hoisted,
     statements: program,
     operations: [...operations].sort(),
     inplaceOperations: [...inplaceOperations].sort(),
@@ -705,6 +833,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     sequenceAccesses,
     sequenceStrategy,
     operationCost,
+    preheaderOperationCost,
     targetCodeBytes,
   };
 }
@@ -719,7 +848,7 @@ export const closedRingRegionPass: OptimizationPass = {
     "parent-identity", "parent-stable", "method-stability", "fixed-shape",
     "no-alias", "no-escape", "no-callback", "operation-closed", "exact-range",
     "commutative-ring", "referentially-transparent-used-operations",
-    "inplace-fallback",
+    "inplace-fallback", "loop-invariant",
   ],
   factsInvalidated: [],
   preserves: [
@@ -762,6 +891,7 @@ export const closedRingRegionPass: OptimizationPass = {
         inputSlots: operands.inputSlots,
         stateSlots: operands.stateSlots,
         localSlots: operands.localSlots,
+        hoistedExpressions: operands.hoistedExpressions,
         statements: operands.statements,
         operations: operands.operations,
         inplaceOperations: operands.inplaceOperations,
@@ -770,6 +900,7 @@ export const closedRingRegionPass: OptimizationPass = {
         sequenceAccesses: operands.sequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
         operationCost: operands.operationCost,
+        preheaderOperationCost: operands.preheaderOperationCost,
         targetCodeBytes: operands.targetCodeBytes,
       });
       const id = identity.id;
@@ -829,6 +960,7 @@ export const closedRingRegionPass: OptimizationPass = {
             { kind: "fixed-shape", authority: "runtime-guard", evidence: "the selected parent advertises a reviewed fixed representation" },
             { kind: "exact-range", authority: "runtime-guard", evidence: "the selected representation validates canonical values and machine intermediates" },
             { kind: "commutative-ring", authority: "runtime-guard", evidence: "the selected machine parent explicitly advertises reviewed commutative multiplication" },
+            ...(operands.hoistedExpressions.length ? [{ kind: "loop-invariant", authority: "static" as const, evidence: "hoisted expression slots are live-in and absent from the complete modified-slot set" }] : []),
           ],
           representation: {
             level: "representation",
@@ -839,6 +971,9 @@ export const closedRingRegionPass: OptimizationPass = {
               operands.sequenceStrategy === "stream"
                 ? "unbox live-ins and validate sequence elements while streaming"
                 : "unbox live-ins and sequence prefixes",
+              ...(operands.hoistedExpressions.length
+                ? ["evaluate pure loop-invariant subgraphs once in the guarded preheader"]
+                : []),
               "materialize modified live-outs",
             ],
             materializations: operands.stateSlots.length,

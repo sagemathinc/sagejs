@@ -432,6 +432,7 @@ function statementsOperationCost(
   slotCount: number,
   versions = new Array(slotCount).fill(0),
   common = new Set<string>(),
+  persistent = new Set<string>(),
 ): number {
   let total = 0;
   for (const statement of statements) {
@@ -446,17 +447,110 @@ function statementsOperationCost(
     const bodyVersions = [...versions];
     const alternativeVersions = [...versions];
     total += statementsOperationCost(
-      statement.body, slotCount, bodyVersions, new Set(common),
+      statement.body, slotCount, bodyVersions, new Set(common), persistent,
     );
     total += statementsOperationCost(
-      statement.alternative, slotCount, alternativeVersions, new Set(common),
+      statement.alternative, slotCount, alternativeVersions, new Set(common), persistent,
     );
     for (let slot = 0; slot < slotCount; slot += 1) {
       versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
     }
     common.clear();
+    for (const key of persistent) common.add(key);
   }
   return total;
+}
+
+function expressionIsInvariant(
+  expression: any,
+  invariantSlots: Set<number>,
+): boolean {
+  if (expression.kind === "slot") return invariantSlots.has(expression.slot);
+  if (expression.kind === "sequence") return false;
+  if (expression.kind === "neg" || expression.kind === "power") {
+    return expressionIsInvariant(expression.value, invariantSlots);
+  }
+  return expressionIsInvariant(expression.left, invariantSlots) &&
+    expressionIsInvariant(expression.right, invariantSlots);
+}
+
+function hoistedExpressions(
+  statements: any[],
+  invariantSlots: Set<number>,
+  slotCount: number,
+): any[] {
+  const answer: any[] = [];
+  const seen = new Set<string>();
+  const persistent = new Set<string>();
+  const markExpression = (
+    expression: any,
+    target: Set<string>,
+    versions: number[],
+  ): void => {
+    if (expression.kind === "slot" || expression.kind === "sequence") return;
+    const key = expressionStructuralKey(expression, versions);
+    if (target.has(key)) return;
+    target.add(key);
+    if (expression.kind === "binary") {
+      markExpression(expression.left, target, versions);
+      markExpression(expression.right, target, versions);
+    } else {
+      markExpression(expression.value, target, versions);
+    }
+  };
+  const visitExpression = (
+    expression: any,
+    common: Set<string>,
+    versions: number[],
+  ): void => {
+    if (expression.kind === "slot" || expression.kind === "sequence") return;
+    const key = expressionStructuralKey(expression, versions);
+    if (common.has(key)) return;
+    common.add(key);
+    if (expressionIsInvariant(expression, invariantSlots)) {
+      if (!seen.has(key)) {
+        seen.add(key);
+        answer.push(expression);
+      }
+      markExpression(expression, persistent, versions);
+      for (const persistentKey of persistent) common.add(persistentKey);
+      return;
+    }
+    if (expression.kind === "binary") {
+      visitExpression(expression.left, common, versions);
+      visitExpression(expression.right, common, versions);
+    } else {
+      visitExpression(expression.value, common, versions);
+    }
+  };
+  const visitStatements = (
+    source: any[],
+    versions: number[],
+    common: Set<string>,
+  ): void => {
+    for (const statement of source) {
+      if (statement.kind === "assign") {
+        visitExpression(statement.value, common, versions);
+        versions[statement.target] += 1;
+        continue;
+      }
+      visitExpression(statement.condition.left, common, versions);
+      visitExpression(statement.condition.right, common, versions);
+      const bodyVersions = [...versions];
+      const alternativeVersions = [...versions];
+      visitStatements(statement.body, bodyVersions, new Set(common));
+      visitStatements(statement.alternative, alternativeVersions, new Set(common));
+      for (let slot = 0; slot < slotCount; slot += 1) {
+        versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+      }
+      common.clear();
+      for (const key of persistent) common.add(key);
+    }
+  };
+  visitStatements(
+    statements, new Array(slotCount).fill(0), new Set<string>(),
+  );
+  return answer;
 }
 
 function powerProductCount(exponent: number): number {
@@ -500,6 +594,7 @@ function statementsTargetCodeUnits(
   slotCount: number,
   versions = new Array(slotCount).fill(0),
   common = new Set<string>(),
+  persistent = new Set<string>(),
 ): number {
   let total = 0;
   for (const statement of statements) {
@@ -514,21 +609,39 @@ function statementsTargetCodeUnits(
     const bodyVersions = [...versions];
     const alternativeVersions = [...versions];
     total += statementsTargetCodeUnits(
-      statement.body, slotCount, bodyVersions, new Set(common),
+      statement.body, slotCount, bodyVersions, new Set(common), persistent,
     );
     total += statementsTargetCodeUnits(
-      statement.alternative, slotCount, alternativeVersions, new Set(common),
+      statement.alternative, slotCount, alternativeVersions, new Set(common), persistent,
     );
     for (let slot = 0; slot < slotCount; slot += 1) {
       versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
     }
     common.clear();
+    for (const key of persistent) common.add(key);
   }
   return total;
 }
 
-function estimatedTargetCodeBytes(statements: any[], slotCount: number): number {
-  return 1024 + 128 * statementsTargetCodeUnits(statements, slotCount);
+function estimatedTargetCodeBytes(
+  statements: any[],
+  slotCount: number,
+  hoisted: any[] = [],
+): number {
+  const common = new Set<string>();
+  const versions = new Array(slotCount).fill(0);
+  let units = 0;
+  for (const expression of hoisted) {
+    units += expressionTargetCodeUnits(expression, common, versions);
+  }
+  units += statementsTargetCodeUnits(
+    statements,
+    slotCount,
+    versions,
+    new Set(common),
+    new Set(common),
+  );
+  return 1024 + 128 * units;
 }
 
 export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
@@ -607,26 +720,6 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
           !observedInplaceOperations.has(operation))) {
       throw new TypeError("optimizer ring region has stale inplace operations");
     }
-    const observedOperationCost = statementsOperationCost(
-      plan.operands.statements,
-      slots.length,
-    );
-    if (!Number.isSafeInteger(plan.operands.operationCost) ||
-        plan.operands.operationCost !== observedOperationCost ||
-        observedOperationCost > 64) {
-      throw new TypeError("optimizer ring region has a stale or excessive operation cost");
-    }
-    const observedTargetCodeBytes = estimatedTargetCodeBytes(
-      plan.operands.statements,
-      slots.length,
-    );
-    if (!Number.isSafeInteger(plan.operands.targetCodeBytes) ||
-        plan.operands.targetCodeBytes !== observedTargetCodeBytes ||
-        observedTargetCodeBytes > 32768) {
-      throw new TypeError(
-        "optimizer ring region has a stale or excessive target code size",
-      );
-    }
     const dataFlow = statementDataFlow(plan.operands.statements, slots.length);
     for (const [name, claimed, observed] of [
       ["input", plan.operands.inputSlots, dataFlow.inputSlots],
@@ -643,6 +736,53 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       dataFlow.stateSlots.includes(slot) &&
       !dataFlow.definitelyAssigned.has(slot))) {
       throw new TypeError("optimizer ring region has unsafe local data flow");
+    }
+    const invariantSlots = new Set(
+      dataFlow.inputSlots.filter((slot) => !dataFlow.stateSlots.includes(slot)),
+    );
+    const observedHoisted = hoistedExpressions(
+      plan.operands.statements, invariantSlots, slots.length,
+    );
+    if (!Array.isArray(plan.operands.hoistedExpressions) ||
+        JSON.stringify(plan.operands.hoistedExpressions) !==
+          JSON.stringify(observedHoisted)) {
+      throw new TypeError("optimizer ring region has stale hoisted expressions");
+    }
+    const available = new Set<string>();
+    const versions = new Array(slots.length).fill(0);
+    let observedPreheaderOperationCost = 0;
+    for (const expression of observedHoisted) {
+      observedPreheaderOperationCost += expressionOperationCost(
+        expression, available, versions,
+      );
+    }
+    const observedOperationCost = statementsOperationCost(
+      plan.operands.statements,
+      slots.length,
+      versions,
+      new Set(available),
+      new Set(available),
+    );
+    if (!Number.isSafeInteger(plan.operands.preheaderOperationCost) ||
+        plan.operands.preheaderOperationCost !== observedPreheaderOperationCost) {
+      throw new TypeError("optimizer ring region has a stale preheader operation cost");
+    }
+    if (!Number.isSafeInteger(plan.operands.operationCost) ||
+        plan.operands.operationCost !== observedOperationCost ||
+        observedPreheaderOperationCost + observedOperationCost > 64) {
+      throw new TypeError("optimizer ring region has a stale or excessive operation cost");
+    }
+    const observedTargetCodeBytes = estimatedTargetCodeBytes(
+      plan.operands.statements,
+      slots.length,
+      observedHoisted,
+    );
+    if (!Number.isSafeInteger(plan.operands.targetCodeBytes) ||
+        plan.operands.targetCodeBytes !== observedTargetCodeBytes ||
+        observedTargetCodeBytes > 32768) {
+      throw new TypeError(
+        "optimizer ring region has a stale or excessive target code size",
+      );
     }
     const affine = plan.operands.affine;
     if (observedInplaceOperations.size > 0 && affine !== null &&
