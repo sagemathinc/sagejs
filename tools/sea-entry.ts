@@ -46,6 +46,10 @@ interface SeaArguments {
   emit_sage: boolean;
   no_js: boolean;
   tokens: boolean;
+  optimization_level?: string;
+  optimization_disable?: string;
+  optimization_require?: string;
+  explain_optimizations?: boolean;
   json?: boolean;
   jsonl?: boolean;
   markdown?: boolean;
@@ -85,6 +89,14 @@ Options:
                   remove this executable's user kernelspec
   --no-js         hide generated JavaScript in the REPL (default)
   --tokens        display parser tokens
+  --optimization-level O0|O1|O2|O3|Os
+                  select the mathematical optimizer policy
+  --optimization-disable IDS
+                  disable comma-separated stable pass IDs
+  --optimization-require IDS
+                  require comma-separated pass or region IDs
+  --explain-optimizations
+                  print deterministic optimizer decisions
   -h, --help      show this help
   -V, --version   show the Sage.js version`);
 }
@@ -227,7 +239,8 @@ function parseArguments(): SeaArguments {
     return args;
   }
   let optionsEnded = false;
-  for (const argument of rawArguments) {
+  for (let argumentIndex = 0; argumentIndex < rawArguments.length; argumentIndex += 1) {
+    const argument = rawArguments[argumentIndex];
     if (!optionsEnded && argument === "--") {
       optionsEnded = true;
     } else if (!optionsEnded && argument === "--python") {
@@ -261,6 +274,27 @@ function parseArguments(): SeaArguments {
       args.no_js = true;
     } else if (!optionsEnded && argument === "--tokens") {
       args.tokens = true;
+    } else if (!optionsEnded && argument === "--explain-optimizations") {
+      args.explain_optimizations = true;
+    } else if (
+      !optionsEnded &&
+      ["--optimization-level", "--optimization-disable", "--optimization-require"]
+        .includes(argument)
+    ) {
+      const value = rawArguments[++argumentIndex];
+      if (value === undefined) throw new Error(`${argument} requires a value`);
+      const field = argument.slice(2).replaceAll("-", "_") as
+        | "optimization_level"
+        | "optimization_disable"
+        | "optimization_require";
+      args[field] = value;
+    } else if (!optionsEnded && /^--optimization-(?:level|disable|require)=/.test(argument)) {
+      const separator = argument.indexOf("=");
+      const field = argument.slice(2, separator).replaceAll("-", "_") as
+        | "optimization_level"
+        | "optimization_disable"
+        | "optimization_require";
+      args[field] = argument.slice(separator + 1);
     } else if (
       !optionsEnded &&
       (argument === "--help" || argument === "-h")
@@ -337,6 +371,10 @@ async function main(): Promise<void> {
       mathematica: argv.mathematica,
       emitSage: argv.emit_sage,
       tokens: argv.tokens,
+      optimizationLevel: argv.optimization_level,
+      optimizationDisable: argv.optimization_disable,
+      optimizationRequire: argv.optimization_require,
+      explainOptimizations: argv.explain_optimizations,
     });
     // A non-interactive SEA has no filesystem handles keeping Node alive while
     // the lazily initialized Tree-sitter frontend consumes piped input.  Wait

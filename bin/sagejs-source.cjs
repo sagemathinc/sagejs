@@ -106,6 +106,10 @@ if (argv.mode === "self") {
     emitSage: !!argv.emit_sage,
     tokens: argv.tokens,
     importDirs: load("utils").getImportDirs(argv.import_path),
+    optimizationLevel: argv.optimization_level || undefined,
+    optimizationDisable: argv.optimization_disable || undefined,
+    optimizationRequire: argv.optimization_require || undefined,
+    explainOptimizations: !!argv.explain_optimizations,
   });
 } else if (argv.mode === "msgfmt") {
   load("msgfmt").cli(argv, basePath, srcPath, compilerPath);

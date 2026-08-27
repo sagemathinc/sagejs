@@ -27,6 +27,7 @@ import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import { formatOptimizationExplanation } from "./python/optimizer";
 import {
   baselibStandaloneImportPrelude,
   standaloneRuntimeRequirePrelude,
@@ -103,6 +104,10 @@ export default async function Compile({
     wolfram?: boolean;
     mathematica?: boolean;
     emit_sage?: boolean;
+    optimization_level?: string;
+    optimization_disable?: string;
+    optimization_require?: string;
+    explain_optimizations?: boolean;
   };
   src_path: string;
   lib_path: string;
@@ -167,6 +172,10 @@ export default async function Compile({
         bound_methods: true,
         sequential_definitions: true,
       },
+      optimization_level: argv.optimization_level || undefined,
+      optimization_disable: argv.optimization_disable || undefined,
+      optimization_require: argv.optimization_require || undefined,
+      optimization_explain: !!argv.explain_optimizations,
     });
   }
 
@@ -269,6 +278,12 @@ export default async function Compile({
       }
     });
     if (process.exitCode || !topLevel) return;
+
+    if (argv.explain_optimizations) {
+      process.stderr.write(
+        formatOptimizationExplanation(topLevel.optimization_ir),
+      );
+    }
 
     let output;
     try {
