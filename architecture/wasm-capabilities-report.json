@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "265633e38b09337b60058b73fddffb814f92073e40bc5b12e384d0bdbbb30b6c",
+  "source_sha256": "92d32c9b801967c1a715f948914a9451ba968b3f4797b5d0d413f56f452b1a55",
   "counts": {
-    "total": 1016,
+    "total": 1017,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 325,
-      "production-kernel": 48,
+      "production-kernel": 49,
       "runtime-intrinsic": 145,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 48,
+      "compiled-source": 49,
       "desktop-only": 47,
       "generated-wasm": 321,
       "portable-fallback": 555,
       "shared-core": 45
     },
     "by_status": {
-      "available": 554,
+      "available": 555,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -147,6 +147,9 @@
     ],
     "optimizer-gf-p2-affine": [
       "kernel:packed-gf-p2-affine-production"
+    ],
+    "optimizer-gf-pk-affine": [
+      "kernel:packed-gf-pk-affine-production"
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
@@ -6451,6 +6454,18 @@
       "wasm_module": "kernel-gmp",
       "public_consumers": [
         "guarded quadratic finite-field affine recurrences"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-gf-pk-affine-production",
+      "family": "packed-gf-pk-affine",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded fixed-degree finite-field affine recurrences"
       ],
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },

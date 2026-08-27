@@ -281,13 +281,6 @@ def init_es6_itervar(output, itervar):
 
 def print_for_in(self, output):
     if self.optimization_region:
-        if (
-            self.optimization_region.kind == "closed-affine-recurrence"
-            and self.builtin_range is not False
-            and is_simple_for(self)
-            and self.object.args.length is 1
-        ):
-            return print_optimization_region(self, output)
         if self.optimization_region.kind == "closed-field-region":
             return print_closed_field_region(self, output)
     prepare_loop_else(self, output)
@@ -407,87 +400,6 @@ def print_for_in(self, output):
     print_loop_else(self, output)
 
 
-def print_optimization_region(self, output):
-    """Lower one verified optimization-region plan to JavaScript."""
-    region = self.optimization_region
-    if region.kind != "closed-affine-recurrence":
-        raise TypeError("unsupported optimization region " + region.kind)
-    recurrence = region.operands
-    suffix = output.index_counter
-    output.index_counter += 1
-    count_name = "ρσ_ResidueCount" + suffix
-    range_name = "ρσ_ResidueRange" + suffix
-    result_name = "ρσ_ResidueResult" + suffix
-    index_name = "ρσ_ResidueIndex" + suffix
-
-    output.print("var")
-    output.space()
-    output.assign(range_name)
-    output.print("ρσ_range(")
-    self.object.args[0].print(output)
-    output.print(")")
-    output.end_statement()
-    output.indent()
-    output.print("var")
-    output.space()
-    output.assign(count_name)
-    output.print(range_name + "._length")
-    output.end_statement()
-    output.indent()
-    output.print("if (" + count_name + " !== 0)")
-    output.space()
-
-    def nonempty_region():
-        output.indent()
-        output.print("var")
-        output.space()
-        output.assign(result_name)
-        output.print("ρσ_fast_machine_residue_recurrence(")
-        recurrence.accumulator.print(output)
-        output.comma()
-        recurrence.multiplier.print(output)
-        output.comma()
-        recurrence.increment.print(output)
-        output.comma()
-        output.print(count_name)
-        output.print(")")
-        output.end_statement()
-        output.indent()
-        output.print("if")
-        output.space()
-        output.with_parens(lambda: output.spaced(result_name, "!==", "null"))
-        output.space()
-
-        def fast_body():
-            output.indent()
-            output.assign(recurrence.accumulator)
-            output.print(result_name)
-            output.end_statement()
-            output.indent()
-            output.assign(self.init)
-            output.print(count_name + " - 1")
-            output.end_statement()
-
-        output.with_block(fast_body)
-        output.space()
-        output.print("else")
-        output.space()
-
-        def generic_body():
-            output.indent()
-            output.print("for")
-            output.space()
-            output.print("(var " + index_name + " of ρσ_Iterable(" + range_name + "))")
-            output.space()
-            self.simple_for_index = index_name
-            self._do_print_body(output)
-            output.newline()
-
-        output.with_block(generic_body)
-
-    output.with_block(nonempty_region)
-
-
 def _field_operation_mask(operations):
     bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16}
     answer = 0
@@ -514,12 +426,12 @@ def _region_temp(counter, suffix):
 def _print_region_expression(
     expression,
     representation,
+    degree,
     slot_names,
     context_name,
     index_name,
     modulus_name,
-    modulus_c0_name,
-    modulus_c1_name,
+    modulus_coefficients_name,
     output,
     counter,
     suffix,
@@ -531,20 +443,26 @@ def _print_region_expression(
         if representation == "prime":
             return base + "[" + index_name + "]"
         return [
-            base + "[2 * " + index_name + "]",
-            base + "[2 * " + index_name + " + 1]",
+            base
+            + "["
+            + str(degree)
+            + " * "
+            + index_name
+            + ("" if component == 0 else " + " + str(component))
+            + "]"
+            for component in range(degree)
         ]
 
     if expression.kind == "neg":
         value = _print_region_expression(
             expression.value,
             representation,
+            degree,
             slot_names,
             context_name,
             index_name,
             modulus_name,
-            modulus_c0_name,
-            modulus_c1_name,
+            modulus_coefficients_name,
             output,
             counter,
             suffix,
@@ -577,12 +495,12 @@ def _print_region_expression(
     left = _print_region_expression(
         expression.left,
         representation,
+        degree,
         slot_names,
         context_name,
         index_name,
         modulus_name,
-        modulus_c0_name,
-        modulus_c1_name,
+        modulus_coefficients_name,
         output,
         counter,
         suffix,
@@ -590,12 +508,12 @@ def _print_region_expression(
     right = _print_region_expression(
         expression.right,
         representation,
+        degree,
         slot_names,
         context_name,
         index_name,
         modulus_name,
-        modulus_c0_name,
-        modulus_c1_name,
+        modulus_coefficients_name,
         output,
         counter,
         suffix,
@@ -604,19 +522,34 @@ def _print_region_expression(
     if representation == "prime":
         result = _region_temp(counter, suffix)
         if operator == "+":
-            value = "(" + left + " + " + right + ") % " + modulus_name
+            total = _region_temp(counter, suffix)
+            _print_region_variable(output, total, left + " + " + right)
+            value = (
+                total
+                + " >= "
+                + modulus_name
+                + " ? "
+                + total
+                + " - "
+                + modulus_name
+                + " : "
+                + total
+            )
         elif operator == "-":
             value = (
-                "(("
+                left
+                + " >= "
+                + right
+                + " ? "
                 + left
                 + " - "
                 + right
-                + ") % "
-                + modulus_name
+                + " : "
+                + left
                 + " + "
                 + modulus_name
-                + ") % "
-                + modulus_name
+                + " - "
+                + right
             )
         else:
             value = "(" + left + " * " + right + ") % " + modulus_name
@@ -625,81 +558,108 @@ def _print_region_expression(
 
     answer = []
     if operator in ("+", "-"):
-        for component in range(2):
+        for component in range(degree):
             result = _region_temp(counter, suffix)
-            symbol = "+" if operator == "+" else "-"
-            value = (
-                "(("
-                + left[component]
-                + " "
-                + symbol
-                + " "
-                + right[component]
-                + ") % "
-                + modulus_name
-                + " + "
-                + modulus_name
-                + ") % "
-                + modulus_name
-            )
+            if operator == "+":
+                total = _region_temp(counter, suffix)
+                _print_region_variable(
+                    output,
+                    total,
+                    left[component] + " + " + right[component],
+                )
+                value = (
+                    total
+                    + " >= "
+                    + modulus_name
+                    + " ? "
+                    + total
+                    + " - "
+                    + modulus_name
+                    + " : "
+                    + total
+                )
+            else:
+                value = (
+                    left[component]
+                    + " >= "
+                    + right[component]
+                    + " ? "
+                    + left[component]
+                    + " - "
+                    + right[component]
+                    + " : "
+                    + left[component]
+                    + " + "
+                    + modulus_name
+                    + " - "
+                    + right[component]
+                )
             _print_region_variable(output, result, value)
             answer.append(result)
         return answer
 
-    quadratic = _region_temp(counter, suffix)
-    _print_region_variable(output, quadratic, left[1] + " * " + right[1])
-    result0 = _region_temp(counter, suffix)
-    value0 = (
-        "(("
-        + left[0]
-        + " * "
-        + right[0]
-        + " - "
-        + quadratic
-        + " * "
-        + modulus_c0_name
-        + ") % "
-        + modulus_name
-        + " + "
-        + modulus_name
-        + ") % "
-        + modulus_name
-    )
-    _print_region_variable(output, result0, value0)
-    result1 = _region_temp(counter, suffix)
-    value1 = (
-        "(("
-        + left[0]
-        + " * "
-        + right[1]
-        + " + "
-        + left[1]
-        + " * "
-        + right[0]
-        + " - "
-        + quadratic
-        + " * "
-        + modulus_c1_name
-        + ") % "
-        + modulus_name
-        + " + "
-        + modulus_name
-        + ") % "
-        + modulus_name
-    )
-    _print_region_variable(output, result1, value1)
-    return [result0, result1]
+    product = []
+    for exponent in range(2 * degree - 1):
+        terms = []
+        for left_index in range(degree):
+            right_index = exponent - left_index
+            if right_index < 0 or right_index >= degree:
+                continue
+            terms.append(left[left_index] + " * " + right[right_index])
+        coefficient = _region_temp(counter, suffix)
+        _print_region_variable(
+            output,
+            coefficient,
+            "(" + " + ".join(terms) + ") % " + modulus_name,
+        )
+        product.append(coefficient)
+
+    for exponent in range(2 * degree - 2, degree - 1, -1):
+        factor = product[exponent]
+        for modulus_index in range(degree):
+            result_index = exponent - degree + modulus_index
+            correction = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                correction,
+                "("
+                + factor
+                + " * "
+                + modulus_coefficients_name[modulus_index]
+                + ") % "
+                + modulus_name,
+            )
+            coefficient = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                coefficient,
+                product[result_index]
+                + " >= "
+                + correction
+                + " ? "
+                + product[result_index]
+                + " - "
+                + correction
+                + " : "
+                + product[result_index]
+                + " + "
+                + modulus_name
+                + " - "
+                + correction,
+            )
+            product[result_index] = coefficient
+    return product[:degree]
 
 
 def _print_region_statements(
     statements,
     representation,
+    degree,
     slot_names,
     context_name,
     index_name,
     modulus_name,
-    modulus_c0_name,
-    modulus_c1_name,
+    modulus_coefficients_name,
     output,
     counter,
     suffix,
@@ -709,12 +669,12 @@ def _print_region_statements(
             value = _print_region_expression(
                 statement.value,
                 representation,
+                degree,
                 slot_names,
                 context_name,
                 index_name,
                 modulus_name,
-                modulus_c0_name,
-                modulus_c1_name,
+                modulus_coefficients_name,
                 output,
                 counter,
                 suffix,
@@ -726,7 +686,7 @@ def _print_region_statements(
                 output.print(value)
                 output.end_statement()
             else:
-                for component in range(2):
+                for component in range(degree):
                     output.indent()
                     output.assign(targets[component])
                     output.print(value[component])
@@ -736,12 +696,12 @@ def _print_region_statements(
         left = _print_region_expression(
             statement.condition.left,
             representation,
+            degree,
             slot_names,
             context_name,
             index_name,
             modulus_name,
-            modulus_c0_name,
-            modulus_c1_name,
+            modulus_coefficients_name,
             output,
             counter,
             suffix,
@@ -749,21 +709,23 @@ def _print_region_statements(
         right = _print_region_expression(
             statement.condition.right,
             representation,
+            degree,
             slot_names,
             context_name,
             index_name,
             modulus_name,
-            modulus_c0_name,
-            modulus_c1_name,
+            modulus_coefficients_name,
             output,
             counter,
             suffix,
         )
-        condition = (
-            left + " === " + right
-            if representation == "prime"
-            else left[0] + " === " + right[0] + " && " + left[1] + " === " + right[1]
-        )
+        if representation == "prime":
+            condition = left + " === " + right
+        else:
+            condition = " && ".join(
+                left[component] + " === " + right[component]
+                for component in range(degree)
+            )
         output.indent()
         output.print("if (" + condition + ")")
         output.space()
@@ -772,12 +734,12 @@ def _print_region_statements(
             _print_region_statements(
                 statement.body,
                 representation,
+                degree,
                 slot_names,
                 context_name,
                 index_name,
                 modulus_name,
-                modulus_c0_name,
-                modulus_c1_name,
+                modulus_coefficients_name,
                 output,
                 counter,
                 suffix,
@@ -793,12 +755,12 @@ def _print_region_statements(
                 _print_region_statements(
                     statement.alternative,
                     representation,
+                    degree,
                     slot_names,
                     context_name,
                     index_name,
                     modulus_name,
-                    modulus_c0_name,
-                    modulus_c1_name,
+                    modulus_coefficients_name,
                     output,
                     counter,
                     suffix,
@@ -807,14 +769,30 @@ def _print_region_statements(
             output.with_block(alternative)
 
 
-def _print_closed_field_fast_path(self, output, plan, names, representation):
+def _print_closed_field_fast_path(self, output, plan, names, representation, degree=1):
     context_name = names["context"]
     count_name = names["count"]
     index_name = names["index"]
     suffix = names["suffix"]
     modulus_name = names["modulus"]
-    modulus_c0_name = names["modulus_c0"]
-    modulus_c1_name = names["modulus_c1"]
+    modulus_coefficients_name = names["modulus_coefficients"]
+    if representation == "extension":
+        modulus_coefficients_name = []
+        for component in range(degree):
+            coefficient_name = (
+                "ρσ_FieldModulusCoefficient"
+                + suffix
+                + "_"
+                + str(degree)
+                + "_"
+                + str(component)
+            )
+            _print_region_variable(
+                output,
+                coefficient_name,
+                context_name + ".modulusCoefficients[" + str(component) + "]",
+            )
+            modulus_coefficients_name.append(coefficient_name)
     slot_names = []
     for slot in range(len(plan.slots)):
         if representation == "prime":
@@ -824,16 +802,16 @@ def _print_closed_field_fast_path(self, output, plan, names, representation):
             )
             slot_names.append(name)
         else:
-            pair = []
-            for component in range(2):
+            coordinates = []
+            for component in range(degree):
                 name = "ρσ_FieldValue" + suffix + "_" + str(slot) + "_" + str(component)
                 _print_region_variable(
                     output,
                     name,
-                    context_name + ".values[" + str(2 * slot + component) + "]",
+                    context_name + ".values[" + str(degree * slot + component) + "]",
                 )
-                pair.append(name)
-            slot_names.append(pair)
+                coordinates.append(name)
+            slot_names.append(coordinates)
 
     output.indent()
     output.print("for")
@@ -855,12 +833,12 @@ def _print_closed_field_fast_path(self, output, plan, names, representation):
         _print_region_statements(
             plan.statements,
             representation,
+            degree,
             slot_names,
             context_name,
             index_name,
             modulus_name,
-            modulus_c0_name,
-            modulus_c1_name,
+            modulus_coefficients_name,
             output,
             [0],
             suffix,
@@ -881,9 +859,12 @@ def _print_closed_field_fast_path(self, output, plan, names, representation):
             if representation == "prime":
                 output.print(slot_names[state_slot])
             else:
-                output.print(slot_names[state_slot][0])
-                output.comma()
-                output.print(slot_names[state_slot][1])
+                output.print("[")
+                for component in range(degree):
+                    if component:
+                        output.comma()
+                    output.print(slot_names[state_slot][component])
+                output.print("]")
             output.print(")")
             output.end_statement()
         output.indent()
@@ -910,8 +891,7 @@ def print_closed_field_region(self, output):
         "iterable": "ρσ_FieldIterable" + suffix,
         "range": "ρσ_FieldRange" + suffix,
         "modulus": "ρσ_FieldModulus" + suffix,
-        "modulus_c0": "ρσ_FieldModulusC0_" + suffix,
-        "modulus_c1": "ρσ_FieldModulusC1_" + suffix,
+        "modulus_coefficients": "ρσ_FieldModulusCoefficients" + suffix,
     }
     if plan.iteratorKind == "sequence":
         output.print("var")
@@ -976,35 +956,112 @@ def print_closed_field_region(self, output):
         output.space()
 
         def fast():
-            _print_region_variable(
-                output, names["modulus"], names["context"] + ".modulus"
-            )
-            output.indent()
-            output.print("if (" + names["context"] + ".kind === 1)")
-            output.space()
-
-            def prime():
-                _print_closed_field_fast_path(self, output, plan, names, "prime")
-
-            output.with_block(prime)
-            output.space()
-            output.print("else")
-            output.space()
-
-            def extension():
+            def v8_path():
                 _print_region_variable(
                     output,
-                    names["modulus_c0"],
-                    names["context"] + ".modulusC0",
+                    names["modulus"],
+                    names["context"] + ".modulus",
                 )
-                _print_region_variable(
-                    output,
-                    names["modulus_c1"],
-                    names["context"] + ".modulusC1",
-                )
-                _print_closed_field_fast_path(self, output, plan, names, "extension")
+                output.indent()
+                output.print("if (" + names["context"] + ".kind === 1)")
+                output.space()
 
-            output.with_block(extension)
+                def prime():
+                    _print_closed_field_fast_path(self, output, plan, names, "prime")
+
+                output.with_block(prime)
+                output.space()
+                output.print("else")
+                output.space()
+
+                def extension():
+                    _print_region_variable(
+                        output,
+                        names["modulus_coefficients"],
+                        names["context"] + ".modulusCoefficients",
+                    )
+                    for degree in range(2, 5):
+                        output.indent()
+                        output.print(
+                            ("if" if degree == 2 else "else if")
+                            + " ("
+                            + names["context"]
+                            + ".degree === "
+                            + str(degree)
+                            + ")"
+                        )
+                        output.space()
+
+                        def fixed_degree_path(degree=degree):
+                            # Keep each fixed-shape variant in its own V8
+                            # compilation unit.  Emitting degrees 2--4 into
+                            # one large enclosing function made TurboFan
+                            # optimize all three mutually exclusive bodies as
+                            # one region and was several times slower for
+                            # degree 3.  The entry guard selects exactly one
+                            # outlined closure, whose loop remains entirely
+                            # scalar and monomorphic.
+                            output.print("(() =>")
+                            output.space()
+
+                            def outlined_degree_path():
+                                _print_closed_field_fast_path(
+                                    self,
+                                    output,
+                                    plan,
+                                    names,
+                                    "extension",
+                                    degree,
+                                )
+
+                            output.with_block(outlined_degree_path)
+                            output.print(")()")
+                            output.end_statement()
+
+                        output.with_block(fixed_degree_path)
+
+                output.with_block(extension)
+
+            if plan.affine:
+                adaptive_result = "ρσ_FieldAdaptiveResult" + suffix
+                accumulator = plan.slots[plan.affine.accumulatorSlot]
+                multiplier = plan.slots[plan.affine.multiplierSlot]
+                increment = plan.slots[plan.affine.incrementSlot]
+                output.indent()
+                output.print("var")
+                output.space()
+                output.assign(adaptive_result)
+                output.print("ρσ_fast_machine_residue_recurrence(")
+                accumulator.node.print(output)
+                output.comma()
+                multiplier.node.print(output)
+                output.comma()
+                increment.node.print(output)
+                output.comma()
+                output.print(names["count"])
+                output.print(")")
+                output.end_statement()
+                output.indent()
+                output.print("if (" + adaptive_result + " !== null)")
+                output.space()
+
+                def isolated_path():
+                    output.indent()
+                    output.assign(accumulator.node)
+                    output.print(adaptive_result)
+                    output.end_statement()
+                    output.indent()
+                    output.assign(self.init)
+                    output.print(names["count"] + " - 1")
+                    output.end_statement()
+
+                output.with_block(isolated_path)
+                output.space()
+                output.print("else")
+                output.space()
+                output.with_block(v8_path)
+            else:
+                v8_path()
 
         output.with_block(fast)
         output.space()

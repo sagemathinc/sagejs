@@ -750,6 +750,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "packed-gf-pk-affine-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "functions": ["packed_gf_pk_affine_recurrence"],
+      "semantic_domain": "one fused bounded affine recurrence over canonical power-basis coefficient tuples of reviewed degrees two through four",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "independent-coordinate-convolution"],
+      "benchmark": "bench:optimizer-extension-degrees",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-combinatorial-integer-rational-production",
       "source": "src/lib/sagejs/kernels/matrix/combinatorial.py",
       "functions": [

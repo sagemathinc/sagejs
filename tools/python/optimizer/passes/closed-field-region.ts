@@ -25,6 +25,40 @@ type StatementPlan =
   | { kind: "assign"; target: number; value: ExpressionPlan }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
+type AffineTargetPlan = {
+  accumulatorSlot: number;
+  multiplierSlot: number;
+  incrementSlot: number;
+};
+
+function affineTarget(
+  statements: StatementPlan[],
+  stateSlots: number[],
+): AffineTargetPlan | null {
+  if (statements.length !== 1 || stateSlots.length !== 1) return null;
+  const statement = statements[0];
+  if (statement.kind !== "assign" || statement.target !== stateSlots[0]) return null;
+  const addition = statement.value;
+  if (addition.kind !== "binary" || addition.operator !== "+" ||
+      addition.right.kind !== "slot") return null;
+  const multiplication = addition.left;
+  if (multiplication.kind !== "binary" || multiplication.operator !== "*" ||
+      multiplication.left.kind !== "slot" ||
+      multiplication.right.kind !== "slot" ||
+      multiplication.left.slot !== statement.target) return null;
+  const slots = [
+    statement.target,
+    multiplication.right.slot,
+    addition.right.slot,
+  ];
+  if (new Set(slots).size !== slots.length) return null;
+  return {
+    accumulatorSlot: statement.target,
+    multiplierSlot: multiplication.right.slot,
+    incrementSlot: addition.right.slot,
+  };
+}
+
 function sourceRegion(node: any): SourceRegion {
   return {
     filename: node.start?.file ?? "<input>",
@@ -203,6 +237,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
   const stateSlots = [...modified].map((name) => slotByName.get(name)!);
+  const affine = iteratorKind === "range"
+    ? affineTarget(program, stateSlots)
+    : null;
   return {
     iteratorKind,
     count,
@@ -213,6 +250,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     stateSlots,
     statements: program,
     operations: [...operations].sort(),
+    affine,
   };
 }
 
@@ -258,6 +296,7 @@ export const closedFieldRegionPass: OptimizationPass = {
         stateSlots: operands.stateSlots,
         statements: operands.statements,
         operations: operands.operations,
+        affine: operands.affine,
       });
       const id = identity.id;
       context.consider({
@@ -322,18 +361,24 @@ export const closedFieldRegionPass: OptimizationPass = {
           target: {
             level: "target",
             revision: 1,
-            kind: "v8",
-            lowering: "monomorphic scalar locals generated from target-neutral field operations",
-            boundaryCrossings: 0,
+            kind: operands.affine ? "adaptive" : "v8",
+            lowering: operands.affine
+              ? "trip-count-gated isolated affine target or monomorphic scalar operation graph"
+              : "monomorphic scalar locals generated from target-neutral field operations",
+            boundaryCrossings: operands.affine ? "runtime-dependent" : 0,
             copiedBytes: "runtime-dependent",
-            selectedCandidate: "v8-closed-field-program",
-            policy: "bounded monomorphic scalar region with one entry validation",
+            selectedCandidate: operands.affine
+              ? "runtime-adaptive"
+              : "v8-closed-field-program",
+            policy: operands.affine
+              ? "guarded representation, trip count, and authenticated isolated-target availability"
+              : "bounded monomorphic scalar region with one entry validation",
             candidates: [
               targetCandidate({
                 id: "v8-closed-field-program",
                 kind: "v8",
                 representation: "number-residue or extension-tuple-number",
-                availability: "selected",
+                availability: operands.affine ? "runtime-gated" : "selected",
                 cost: {
                   arithmeticOperations: "runtime-dependent",
                   representationConversions: "runtime-dependent",
@@ -353,29 +398,37 @@ export const closedFieldRegionPass: OptimizationPass = {
                 id: "wasm-resident-field-program",
                 kind: "wasm",
                 representation: "packed or resident field values",
-                availability: "rejected",
-                rejectionReason: "resident-general-region-lowering-unimplemented",
+                availability: operands.affine ? "runtime-gated" : "rejected",
+                rejectionReason: operands.affine
+                  ? null
+                  : "resident-general-region-lowering-unimplemented",
                 cost: {
                   arithmeticOperations: "runtime-dependent",
                   boundaryCrossings: 1,
                   copiedBytes: "runtime-dependent",
                   materializations: operands.stateSlots.length,
                 },
-                evidence: "candidate retained for the same Mathematical IR; no general resident lowering yet",
+                evidence: operands.affine
+                  ? "source-transparent packed quadratic kernel in the authenticated Wasm pack"
+                  : "candidate retained for the same Mathematical IR; no general resident lowering yet",
               }),
               targetCandidate({
                 id: "native-isolated-field-program",
                 kind: "native",
                 representation: "packed fixed-shape field values",
-                availability: "rejected",
-                rejectionReason: "general-operation-graph-native-lowering-unimplemented",
+                availability: operands.affine ? "runtime-gated" : "rejected",
+                rejectionReason: operands.affine
+                  ? null
+                  : "general-operation-graph-native-lowering-unimplemented",
                 cost: {
                   arithmeticOperations: "runtime-dependent",
                   boundaryCrossings: 1,
                   copiedBytes: "runtime-dependent",
                   materializations: operands.stateSlots.length,
                 },
-                evidence: "isolated affine witness exists; general operation graph is not silently substituted",
+                evidence: operands.affine
+                  ? "source-transparent packed quadratic kernel in the production native pack"
+                  : "isolated affine witness exists; general operation graph is not silently substituted",
               }),
               targetCandidate({
                 id: "generic-field-program-fallback",

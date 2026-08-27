@@ -190,6 +190,24 @@ print(answer, elapsed < 3.0)
 print(K._lastCompilerOptimizationRoute)
 `;
 
+const extensionDegreeSource = String.raw`
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+
+def affine(count):
+    aa = a*a
+    value = K(1)+2*a+3*aa
+    factor = K(2)+a+4*aa
+    increment = K(3)+4*a+aa
+    for index in range(count):
+        value = value*factor+increment
+    return value, index
+
+K._machineExtensionIsolatedMinSteps = 4096
+answer = affine(10000)
+print(tuple(answer[0]._machineCoordinates), answer[1], K._lastCompilerOptimizationRoute)
+`;
+
 const adversarialSource = String.raw`
 P.<x> = PolynomialRing(GF(97))
 K.<a> = GF(97^2, modulus=x^2+x+5)
@@ -352,6 +370,26 @@ try {
         performance.stdout,
         /\) True\nv8-extension-tuple-region\n$/,
         `${engine} V8 tier ceiling and route`,
+      );
+
+      const extensionFast = await page.evaluate(
+        ([program, timeout, level]) =>
+          window.__sagejsTest.evaluate(program, timeout, level),
+        [extensionDegreeSource, 120_000, "O2"],
+      );
+      const extensionSlow = await page.evaluate(
+        ([program, timeout, level]) =>
+          window.__sagejsTest.evaluate(program, timeout, level),
+        [extensionDegreeSource, 120_000, "O0"],
+      );
+      assert.ok(
+        extensionFast.stdout.endsWith("wasm-compiled-source\n"),
+        `${engine} fixed-degree isolated route: ${extensionFast.stdout}`,
+      );
+      assert.equal(
+        extensionFast.stdout.replace("wasm-compiled-source\n", "generic\n"),
+        extensionSlow.stdout,
+        `${engine} degree-three isolated O2/O0`,
       );
 
       const adversarial = await page.evaluate(

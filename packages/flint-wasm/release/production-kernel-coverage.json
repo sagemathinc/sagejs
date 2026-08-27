@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 48,
-    "production_kernels": 41,
-    "compiled_functions": 274,
+    "registered_kernels": 49,
+    "production_kernels": 42,
+    "compiled_functions": 275,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -328,6 +328,15 @@
     },
     {
       "id": "packed-gf-p2-affine-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
+      "fallback_reasons": []
+    },
+    {
+      "id": "packed-gf-pk-affine-production",
       "production": true,
       "status": "available",
       "compiled_functions": 1,
