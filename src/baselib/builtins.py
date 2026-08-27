@@ -12,6 +12,8 @@ from typing import Any, Callable, Iterator
 import sagejs.runtime as runtime
 
 _builtins_number_class = runtime.native_number_class
+_builtins_number_prototype = runtime.reflect.get(_builtins_number_class, "prototype")
+_builtins_number_value_of = runtime.reflect.get(_builtins_number_prototype, "valueOf")
 _Bool = bool
 _Float = float
 _Int = int
@@ -806,6 +808,35 @@ def ρσ_float_result(value: Any) -> Any:
     if runtime.number.isInteger(number):
         return _builtins_box_float(number)
     return number
+
+
+def ρσ_strict_float_unbox(value: Any) -> Any:
+    """Return an authenticated Python float as one binary64 primitive.
+
+    `None` is the fail-closed result. Nonintegral primitive Numbers, infinities,
+    and NaNs already carry Python float identity. Integral floats use the one
+    frozen private Number subclass created by `_builtins_box_float`; the
+    captured intrinsic avoids invoking a mutable user-visible `valueOf`.
+    """
+    if (
+        runtime.reflect.get(_builtins_number_prototype, "valueOf")
+        is not _builtins_number_value_of
+    ):
+        return None
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return None if runtime.number.isSafeInteger(value) else value
+    if (
+        value is None
+        or not runtime.strict_equal(runtime.jstype(value), "object")
+        or _builtins_float_prototype is runtime.undefined
+        or runtime.object.getPrototypeOf(value) is not _builtins_float_prototype
+        or not runtime.object.isFrozen(value)
+    ):
+        return None
+    try:
+        return runtime.reflect.apply(_builtins_number_value_of, value, [])
+    except Exception:
+        return None
 
 
 def _builtins_numeric_result(

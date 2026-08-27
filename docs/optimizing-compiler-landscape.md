@@ -1,7 +1,6 @@
 ---
 title: "The Sage.js optimizer in the compiler landscape"
 ---
-
 # The Sage.js optimizer in the compiler landscape
 
 Sage.js is building a guarded, multi-level optimizer for **mathematical
@@ -69,6 +68,15 @@ A tiny word-prime recurrence often favors monomorphic Number locals optimized
 by V8. A longer fixed-degree extension-field computation might favor tuple
 locals or a resident Wasm loop. A large FLINT object normally favors a coarse
 native or Wasm library call. Target choice is evidence, not identity.
+
+Numerical code requires a neighboring but different mathematical IR. IEEE-754
+addition is not associative, NaNs and signed zero are observable, and a source
+multiply followed by an add is not automatically a fused multiply-add. The
+strict numerical region therefore records an ordered binary64 program rather
+than claiming commutative-ring laws. This resembles the conservative semantic
+mode of numerical subset compilers; any future reassociation or fast-math must
+be an explicit, separately tested policy rather than a consequence of choosing
+V8, Wasm, or native code.
 
 ## Mojo and MLIR: layered lowering
 

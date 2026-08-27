@@ -257,6 +257,7 @@
     "bench:optimizer-branching-region": "node bench/optimizer-branching-region.cjs",
     "bench:optimizer-static-power": "node bench/optimizer-static-power.cjs",
     "bench:optimizer-integer-constants": "node bench/optimizer-integer-constants.cjs",
+    "bench:optimizer-strict-float": "node bench/optimizer-strict-float.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
