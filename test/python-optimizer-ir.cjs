@@ -10,7 +10,7 @@ const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
 const {
-  CLOSED_FIELD_REGION_PASS,
+  CLOSED_RING_REGION_PASS,
   OPTIMIZER_IR_SCHEMA,
   explainOptimizationProgram,
   formatOptimizationExplanation,
@@ -91,14 +91,14 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     assert.equal(program.level, "O2");
     assert.equal(program.regions.length, 1);
     assert.deepEqual(program.passes.map((pass) => pass.id), [
-      CLOSED_FIELD_REGION_PASS,
+      CLOSED_RING_REGION_PASS,
     ]);
     const [region] = program.regions;
-    assert.equal(region.passId, CLOSED_FIELD_REGION_PASS);
+    assert.equal(region.passId, CLOSED_RING_REGION_PASS);
     assert.equal(region.selected, true);
-    assert.equal(region.semantic.kind, "sage.closed-field-loop");
-    assert.equal(region.mathematical.kind, "math.closed-field-program");
-    assert.equal(region.representation.kind, "guarded-unboxed-field-program");
+    assert.equal(region.semantic.kind, "sage.closed-ring-loop");
+    assert.equal(region.mathematical.kind, "math.closed-commutative-ring-program");
+    assert.equal(region.representation.kind, "guarded-unboxed-ring-program");
     assert.equal(region.target.kind, "adaptive");
     assert.match(region.id, /optimizer-witness\.sage:6:/);
     assert.doesNotThrow(() => JSON.stringify(program));
@@ -107,11 +107,11 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     assert.deepEqual(detached, JSON.parse(JSON.stringify(detached)));
     assert.match(
       formatOptimizationExplanation(program),
-      /selected math\.closed-field-region\.v1@optimizer-witness\.sage/,
+      /selected math\.closed-ring-region\.v1@optimizer-witness\.sage/,
     );
     const loop = findLoop(compiler, ast);
     assert.equal(loop.optimization_region.id, region.id);
-    assert.equal(loop.optimization_region.kind, "closed-field-region");
+    assert.equal(loop.optimization_region.kind, "closed-ring-region");
   } finally {
     frontend.close();
   }
@@ -146,7 +146,7 @@ test("optimization levels, disable controls, and requirements fail closed", asyn
     for (const options of [
       { optimization_level: "O0" },
       { optimization_level: "O1" },
-      { optimization_disable: CLOSED_FIELD_REGION_PASS },
+      { optimization_disable: CLOSED_RING_REGION_PASS },
     ]) {
       const ast = frontend.parse(source, optimizerOptions(options));
       assert.equal(ast.optimization_ir.regions.length, 1);
@@ -155,12 +155,12 @@ test("optimization levels, disable controls, and requirements fail closed", asyn
     }
 
     assert.doesNotThrow(() => frontend.parse(source, optimizerOptions({
-      optimization_require: CLOSED_FIELD_REGION_PASS,
+      optimization_require: CLOSED_RING_REGION_PASS,
     })));
     assert.throws(
       () => frontend.parse(source, optimizerOptions({
         optimization_level: "O0",
-        optimization_require: CLOSED_FIELD_REGION_PASS,
+        optimization_require: CLOSED_RING_REGION_PASS,
       })),
       /required optimization .* was not selected/,
     );
@@ -190,7 +190,7 @@ test("IR verification rejects malformed optimizer claims", () => {
     () => verifyOptimizationDecision({
       schema: OPTIMIZER_IR_SCHEMA,
       id: "bad",
-      passId: CLOSED_FIELD_REGION_PASS,
+      passId: CLOSED_RING_REGION_PASS,
       fallbackId: "fallback",
       selected: true,
       rejectionReasons: ["contradiction"],
@@ -236,7 +236,7 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
         schema: OPTIMIZER_IR_SCHEMA,
         id: "bad-operation",
         passId: "test.bad.v1",
-        kind: "closed-field-region",
+        kind: "closed-ring-region",
         operands: {
           slots: [{ name: "x" }],
           sequences: [],

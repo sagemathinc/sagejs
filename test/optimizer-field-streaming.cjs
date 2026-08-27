@@ -76,6 +76,49 @@ print(K4._lastCompilerOptimizationRoute)
   }
 });
 
+test("the same ring IR preserves zero divisors over composite residue rings", async () => {
+  const source = String.raw`
+def horner(values, point, initial):
+    value = initial
+    for coefficient in values:
+        value = value*point+coefficient
+    return value
+
+R = Zmod(100)
+R._lastCompilerOptimizationRoute = 'generic'
+values = tuple(R(20*index+25) for index in range(513))
+print(horner(values, R(40), R(75)), R._lastCompilerOptimizationRoute)
+
+S = Zmod(94906266)
+S._lastCompilerOptimizationRoute = 'generic'
+boundary_values = tuple(S(index^2+17) for index in range(257))
+print(horner(boundary_values, S(94906265), S(94906264)), S._lastCompilerOptimizationRoute)
+
+T = Zmod(94906267)
+T._lastCompilerOptimizationRoute = 'outside-bound'
+outside_values = tuple(T(index+3) for index in range(17))
+print(horner(outside_values, T(11), T(7)), T._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    const normalize = (stdout) => stdout
+      .replaceAll("v8-number-residue-stream", "generic");
+    assert.equal(normalize(fast.stdout), slow.stdout);
+    assert.deepEqual(fast.stdout.trim().split("\n").map((line) => line.split(" ").at(-1)), [
+      "v8-number-residue-stream",
+      "v8-number-residue-stream",
+      "outside-bound",
+    ]);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
 test("a late invalid sequence element restarts the untouched generic loop", async () => {
   const source = String.raw`
 P.<x> = PolynomialRing(GF(5))

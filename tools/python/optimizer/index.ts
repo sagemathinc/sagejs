@@ -1,6 +1,6 @@
 import { optimizerControls } from "./controls";
 import { OptimizerPassManager } from "./pass-manager";
-import { closedFieldRegionPass } from "./passes/closed-field-region";
+import { closedRingRegionPass } from "./passes/closed-field-region";
 import { OptimizationProgram } from "./types";
 
 export * from "./controls";
@@ -9,7 +9,7 @@ export * from "./explain";
 export * from "./identity";
 export * from "./types";
 export * from "./verifier";
-export { CLOSED_FIELD_REGION_PASS } from "./passes/closed-field-region";
+export { CLOSED_RING_REGION_PASS } from "./passes/closed-field-region";
 
 export function optimizePythonAst(
   compiler: any,
@@ -20,6 +20,6 @@ export function optimizePythonAst(
   return new OptimizerPassManager(
     compiler,
     controls,
-    [closedFieldRegionPass],
+    [closedRingRegionPass],
   ).run(ast);
 }

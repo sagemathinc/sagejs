@@ -7,7 +7,7 @@ import {
 import { targetCandidate } from "../cost-model";
 import { stableRegionIdentity } from "../identity";
 
-export const CLOSED_FIELD_REGION_PASS = "math.closed-field-region.v1";
+export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
 
 type ExpressionPlan =
   | { kind: "slot"; slot: number }
@@ -267,8 +267,8 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   };
 }
 
-export const closedFieldRegionPass: OptimizationPass = {
-  id: CLOSED_FIELD_REGION_PASS,
+export const closedRingRegionPass: OptimizationPass = {
+  id: CLOSED_RING_REGION_PASS,
   inputSchema: OPTIMIZER_IR_SCHEMA,
   acceptedLevel: "sage-semantic",
   producedLevel: "target",
@@ -301,8 +301,8 @@ export const closedFieldRegionPass: OptimizationPass = {
       const operands = recognize(context.compiler, node);
       if (!operands) return;
       const source = sourceRegion(node);
-      const identity = stableRegionIdentity(CLOSED_FIELD_REGION_PASS, source, {
-        kind: "closed-field-region",
+      const identity = stableRegionIdentity(CLOSED_RING_REGION_PASS, source, {
+        kind: "closed-ring-region",
         iteratorKind: operands.iteratorKind,
         slots: operands.slots.map((slot: any) => slot.name),
         sequences: operands.sequences.map((sequence: any) => sequence.name),
@@ -321,19 +321,19 @@ export const closedFieldRegionPass: OptimizationPass = {
         internal: {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
-          passId: CLOSED_FIELD_REGION_PASS,
-          kind: "closed-field-region",
+          passId: CLOSED_RING_REGION_PASS,
+          kind: "closed-ring-region",
           operands,
         },
         decision: {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
-          passId: CLOSED_FIELD_REGION_PASS,
+          passId: CLOSED_RING_REGION_PASS,
           source,
           semantic: {
             level: "sage-semantic",
             revision: 1,
-            kind: "sage.closed-field-loop",
+            kind: "sage.closed-ring-loop",
             operations: [
               "iterate", "sequential-assign", ...operands.operations.map(
                 (operation: string) => `${operation}-dispatch`
@@ -348,10 +348,10 @@ export const closedFieldRegionPass: OptimizationPass = {
           mathematical: {
             level: "mathematical",
             revision: 1,
-            kind: "math.closed-field-program",
-            domain: "one guarded closed finite-field parent",
+            kind: "math.closed-commutative-ring-program",
+            domain: "one guarded finite commutative ring or fixed finite-field parent",
             operations: operands.operations.map(
-              (operation: string) => `math.field.${operation}`
+              (operation: string) => `math.ring.${operation}`
             ),
             exactness: "runtime parent/shape/method guards plus exact Number range",
           },
@@ -366,7 +366,7 @@ export const closedFieldRegionPass: OptimizationPass = {
           representation: {
             level: "representation",
             revision: 1,
-            kind: "guarded-unboxed-field-program",
+            kind: "guarded-unboxed-ring-program",
             candidates: ["number-residue", "extension-tuple-number", "boxed-sage-value"],
             conversions: [
               operands.affine?.kind === "sequence-increment"
@@ -391,7 +391,7 @@ export const closedFieldRegionPass: OptimizationPass = {
             copiedBytes: "runtime-dependent",
             selectedCandidate: operands.affine?.kind === "fixed-increment"
               ? "runtime-adaptive"
-              : "v8-closed-field-program",
+              : "v8-closed-ring-program",
             policy: operands.affine?.kind === "fixed-increment"
               ? "guarded representation, trip count, and authenticated isolated-target availability"
               : operands.affine?.kind === "sequence-increment"
@@ -399,7 +399,7 @@ export const closedFieldRegionPass: OptimizationPass = {
               : "bounded monomorphic scalar region with one entry validation",
             candidates: [
               targetCandidate({
-                id: "v8-closed-field-program",
+                id: "v8-closed-ring-program",
                 kind: "v8",
                 representation: "number-residue or extension-tuple-number",
                 availability: operands.affine?.kind === "fixed-increment"
@@ -421,7 +421,7 @@ export const closedFieldRegionPass: OptimizationPass = {
                 evidence: "guarded monomorphic operation graph emitted as primitive locals",
               }),
               targetCandidate({
-                id: "wasm-resident-field-program",
+                id: "wasm-resident-ring-program",
                 kind: "wasm",
                 representation: "packed or resident field values",
                 availability: operands.affine?.kind === "fixed-increment"
@@ -441,7 +441,7 @@ export const closedFieldRegionPass: OptimizationPass = {
                   : "candidate retained for the same Mathematical IR; no general resident lowering yet",
               }),
               targetCandidate({
-                id: "native-isolated-field-program",
+                id: "native-isolated-ring-program",
                 kind: "native",
                 representation: "packed fixed-shape field values",
                 availability: operands.affine?.kind === "fixed-increment"
@@ -461,7 +461,7 @@ export const closedFieldRegionPass: OptimizationPass = {
                   : "isolated affine witness exists; general operation graph is not silently substituted",
               }),
               targetCandidate({
-                id: "generic-field-program-fallback",
+                id: "generic-ring-program-fallback",
                 kind: "generic",
                 representation: "boxed-sage-value",
                 availability: "available",
@@ -485,7 +485,7 @@ export const closedFieldRegionPass: OptimizationPass = {
           fallbackId: `semantic:${source.filename}:${source.line}:${source.column}`,
           cacheIdentityInputs: [
             `schema:${OPTIMIZER_IR_SCHEMA}`,
-            `pass:${CLOSED_FIELD_REGION_PASS}`,
+            `pass:${CLOSED_RING_REGION_PASS}`,
             `source:${source.filename}:${source.line}:${source.column}:${source.endLine}:${source.endColumn}`,
             `operations:${operands.operations.join(",")}`,
             `slots:${operands.slots.map((slot: any) => slot.name).join(",")}`,

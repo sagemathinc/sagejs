@@ -845,7 +845,8 @@ The completion criteria were met on 2026-08-27:
 1. `tools/python/optimizer/` owns the versioned IR, facts, stable identities,
    cost model, pass manager, explanations, and verifier. The former direct
    prime-recurrence recognizer now enters this middle end.
-2. `closed-field-region` represents multi-state prime and quadratic-extension
+2. `closed-ring-region` represents multi-state residue-ring and
+   quadratic-extension
    computations as operation graphs, with complete costs, fallback
    provenance, materialization plans, and independently checked entry guards.
 3. `O0`, `O1`, `O2`, `O3`, and `Os`, plus explain, disable, and require

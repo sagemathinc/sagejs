@@ -281,7 +281,7 @@ def init_es6_itervar(output, itervar):
 
 def print_for_in(self, output):
     if self.optimization_region:
-        if self.optimization_region.kind == "closed-field-region":
+        if self.optimization_region.kind == "closed-ring-region":
             return print_closed_field_region(self, output)
     prepare_loop_else(self, output)
 

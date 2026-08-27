@@ -273,11 +273,11 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   if (!plan.operands || typeof plan.operands !== "object") {
     throw new TypeError(`optimizer region ${plan.id} has no operands`);
   }
-  if (plan.kind === "closed-field-region") {
+  if (plan.kind === "closed-ring-region") {
     const slots = plan.operands.slots;
     const sequences = plan.operands.sequences;
     if (!Array.isArray(slots) || slots.length === 0 || !Array.isArray(sequences)) {
-      throw new TypeError("optimizer field region has invalid slots or sequences");
+      throw new TypeError("optimizer ring region has invalid slots or sequences");
     }
     verifyStatements(plan.operands.statements, slots.length, sequences.length);
     for (const slot of plan.operands.stateSlots ?? []) {
