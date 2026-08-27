@@ -256,7 +256,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1630000,
+      "max_source_bytes": 1635000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

@@ -171,6 +171,26 @@ finally:
     )
 assert not live.public_class_group_projection_reserved
 assert not live.public_saturation_payload_issued
+assert not live.public_generation_payload_issued
+assert live.public_class_group_projection_source is None
+
+# Relation/presentation subtrees are likewise construction hints.  A changed
+# retained presentation must fail the ordinary conditional proof replay and
+# leave the one-shot transaction cleanly retryable.
+generation_payload = live.generation_artifact.evidence
+original_backend = generation_payload["presentation"]["backend"]
+generation_payload["presentation"]["backend"] = "mutated"
+try:
+    class_unit_module.class_group(K, proof=False)
+    raise AssertionError("a changed retained generation payload was accepted")
+except ArithmeticError as error:
+    assert "adapted public class group failed proof replay" in str(error)
+finally:
+    generation_payload["presentation"]["backend"] = original_backend
+assert live.public_class_group_projection is None
+assert not live.public_class_group_projection_reserved
+assert not live.public_saturation_payload_issued
+assert not live.public_generation_payload_issued
 assert live.public_class_group_projection_source is None
 
 # The retained primitive tree is only a construction hint.  Changing it while
@@ -189,6 +209,7 @@ finally:
 assert live.public_class_group_projection is None
 assert not live.public_class_group_projection_reserved
 assert not live.public_saturation_payload_issued
+assert not live.public_generation_payload_issued
 assert live.public_class_group_projection_source is None
 
 before_live_publication = payload_builds[0]

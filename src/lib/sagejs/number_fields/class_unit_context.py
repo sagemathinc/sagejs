@@ -608,6 +608,7 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_reserved = False
         self.public_class_group_projection_source: Any = None
         self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
         self.sealed = False
 
     @staticmethod
@@ -1547,6 +1548,7 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_reserved = True
         self.public_class_group_projection_source = source
         self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
         return "reserved", None
 
     def consume_public_saturation_payload(
@@ -1590,6 +1592,43 @@ class _LiveClassUnitArtifacts:
         self.public_saturation_payload_issued = True
         return body_payload, body_json, content_sha256
 
+    def consume_public_generation_payload(self, source: Any) -> dict[str, Any] | None:
+        """Issue retained relation-presentation bytes as a construction hint."""
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_generation_payload_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+        ):
+            return None
+        artifact = self.generation_artifact
+        evidence = None if artifact is None else artifact.evidence
+        factors = tuple(getattr(source, "conditional_factor_base", ()))
+        relations = tuple(getattr(source, "conditional_relation_records", ()))
+        if (
+            artifact is None
+            or not artifact.producer_authenticated
+            or artifact.proof_status != "exact-relations-conditional-grh"
+            or not isinstance(evidence, dict)
+            or evidence.get("schema") != _CLASS_GENERATION_AUTHORITY_SCHEMA
+            or evidence.get("proof_status") != artifact.proof_status
+            or len(factors) != len(artifact.factor_base)
+            or any(
+                current is not retained
+                for current, retained in zip(factors, artifact.factor_base, strict=True)
+            )
+            or len(relations) != len(self.relations)
+            or any(
+                current is not retained
+                for current, retained in zip(relations, self.relations, strict=True)
+            )
+            or getattr(source, "conditional_presentation_evidence", None)
+            is not artifact.presentation
+        ):
+            return None
+        self.public_generation_payload_issued = True
+        return evidence
+
     def finish_public_class_group_projection(
         self, projection: Any = None, *, commit: bool
     ) -> bool:
@@ -1598,6 +1637,7 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_reserved = False
         self.public_class_group_projection_source = None
         self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
         if not commit:
             return True
         if projection is None or self.public_class_group_projection is not None:
@@ -2146,6 +2186,14 @@ class ClassUnitGroupContext:
             raise TypeError("public saturation payloads are engine-owned")
         live = self._live_artifacts
         return None if live is None else live.consume_public_saturation_payload(source)
+
+    def _consume_live_public_generation_payload(
+        self, token: Any, source: Any
+    ) -> dict[str, Any] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public generation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.consume_public_generation_payload(source)
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""

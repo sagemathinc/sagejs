@@ -463,6 +463,29 @@ def _producer_conditional_evidence(
     if len(relations) != relation_count:
         raise ArithmeticError("conditional relation evidence has the wrong count")
     _module, _plan, plan_payload = _conditional_factor_base_plan(order, theorem, bound)
+    retained = None
+    context = getattr(result, "context", None)
+    consume = getattr(context, "_consume_live_public_generation_payload", None)
+    if callable(consume):
+        context_module = __import__(
+            "sagejs.number_fields.class_unit_context",
+            fromlist=["class_unit_context"],
+        )
+        token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+        retained = consume(token, result) if token is not None else None
+    retained_matches = bool(
+        isinstance(retained, dict)
+        and retained.get("proof_status") == EXACT_RELATIONS_CONDITIONAL_GRH
+        and retained.get("theorem") == theorem
+        and retained.get("bound") == bound
+        and tuple(retained.get("assumptions", ()))
+        == ("GRH for the Dedekind zeta function",)
+        and isinstance(retained.get("factor_base"), list)
+        and len(retained["factor_base"]) == len(factor_base)
+        and isinstance(retained.get("relations"), list)
+        and len(retained["relations"]) == len(relations)
+        and isinstance(retained.get("presentation"), dict)
+    )
     body = {
         "schema": _CONDITIONAL_EVIDENCE_SCHEMA,
         "proof_status": EXACT_RELATIONS_CONDITIONAL_GRH,
@@ -474,16 +497,26 @@ def _producer_conditional_evidence(
         "assumption": "GRH for the Dedekind zeta function",
         "relation_count": relation_count,
         "factor_base_plan": plan_payload,
-        "factor_base": [
-            _canonical_payload(prime, "conditional factor-base prime")
-            for prime in factor_base
-        ],
-        "relations": [
-            _canonical_payload(record, "conditional relation record")
-            for record in relations
-        ],
-        "presentation": _canonical_payload(
-            presentation, "conditional relation presentation"
+        "factor_base": (
+            list(retained["factor_base"])
+            if retained_matches
+            else [
+                _canonical_payload(prime, "conditional factor-base prime")
+                for prime in factor_base
+            ]
+        ),
+        "relations": (
+            list(retained["relations"])
+            if retained_matches
+            else [
+                _canonical_payload(record, "conditional relation record")
+                for record in relations
+            ]
+        ),
+        "presentation": (
+            retained["presentation"]
+            if retained_matches
+            else _canonical_payload(presentation, "conditional relation presentation")
         ),
     }
     if not _conditional_payload_within_caps(body):
