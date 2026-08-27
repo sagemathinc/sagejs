@@ -428,6 +428,46 @@ $x-(\ell+1)$, the supersingular characteristic polynomial should match the
 appropriate cuspidal/new Hecke polynomial, with the comparison convention
 recorded explicitly.
 
+Magma is a second, structurally independent oracle rather than merely a
+competitor timer. Its general `BrandtModule(D, m)` interface constructs the
+canonical left-quaternion-ideal-class basis and pairing for discriminant $D$
+and Eichler conductor $m$. The default Hecke path uses theta series of reduced
+Gram matrices; `ComputeGrams := false` instead enumerates neighboring ideals in
+the graph style of Mestre--Oesterlé. The oracle harness should record and
+compare both modes whenever both are feasible:
+
+```magma
+Bgram := BrandtModule(p, 1);
+Bgraph := BrandtModule(p, 1 : ComputeGrams := false);
+Tgram := HeckeOperator(Bgram, ell);
+Tgraph := HeckeOperator(Bgraph, ell);
+```
+
+The exact checks include `Dimension`, `Basis`, `InnerProductMatrix`,
+`CuspidalSubspace`, `HeckeOperator`, and characteristic polynomials or
+decompositions. Magma matrices act on the right with respect to `Basis(B)`, so
+the harness must transpose when necessary rather than silently compare two
+opposite conventions. Construction time, first-$T_\ell$ time, warm-$T_\ell$
+time, and peak memory are separate benchmark cells. The Gram/theta and
+neighboring modes must retain their names in every receipt.
+
+LMFDB is a third exact data oracle. For prime level $p$, weight $2$, and
+trivial character, the `mf_newforms` records provide the Hecke-orbit
+dimensions, coefficient fields, cutter polynomials, and traces. Their total
+dimension must equal the cuspidal dimension, and their $T_\ell$ factors must
+match the Brandt operator after removing the Eisenstein line. The related
+elliptic-curve tables provide a particularly transparent partial check: the
+number of conductor-$p$ rational isogeny classes equals the number of
+degree-one rational newform orbits, and each corresponding $a_\ell$ occurs as
+a rational cuspidal eigenvalue. This count does not include higher-degree
+newform orbits and must never be presented as the full cuspidal factorization.
+
+Network tests should download bounded API results into a content-addressed
+fixture. Routine tests replay the checked fixture offline and verify its
+source URL, retrieval timestamp, schema, and SHA-256 digest. A live LMFDB
+request is an explicit refresh/integration operation, not an undeclared unit
+test dependency.
+
 ### Portability
 
 The first claimed platform envelope must state exactly how
@@ -673,6 +713,9 @@ available.
 ### First-slice correctness gates
 
 - exact Sage fixtures for points and matrices;
+- exact Magma Brandt-module fixtures from both Gram/theta and neighboring
+  modes, including the canonical pairing and matrix-orientation conversion;
+- content-addressed LMFDB newform and elliptic-isogeny-class fixtures;
 - exact modular-symbol characteristic-polynomial comparison;
 - structural graph invariants on a broad prime corpus;
 - exceptional-automorphism mass tests;
@@ -694,7 +737,11 @@ At a minimum, benchmark:
 - one prime-field matvec;
 - block matvec;
 - a verified Wiedemann minimal polynomial; and
-- the corresponding bounded dense oracle where feasible.
+- the corresponding bounded dense oracle where feasible;
+- Magma construction and first/warm Hecke timings with `ComputeGrams` both
+  true and false; and
+- Sage construction and first/warm Hecke timings under the same output
+  contract.
 
 Recommended corpus:
 
@@ -852,6 +899,13 @@ The recommended answers are included so review can focus on genuine choices.
   including source by William Stein, David Kohel, and Iftikhar Burhanuddin.
 - SageMath source,
   [`ssmod.py`](https://github.com/sagemath/sage/blob/develop/src/sage/modular/ssmod/ssmod.py).
+- Magma Handbook,
+  [Brandt module creation](https://docs.magma-maths.org/ModularArithmeticGeometry/BrandtModules/ModBrdt:brandt-modules.html)
+  and
+  [Hecke operators](https://docs.magma-maths.org/ModularArithmeticGeometry/BrandtModules/hecke-operators.html).
+- LMFDB,
+  [database access options](https://www.lmfdb.org/api/options) and the
+  `mf_newforms` HTTP API table.
 - Alex Cowan,
   [*Computing newforms using supersingular isogeny graphs*](https://arxiv.org/abs/2010.10745).
 - Jean-François Mestre, English translation of the method-of-graphs note,
