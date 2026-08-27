@@ -630,30 +630,44 @@ def _print_region_expression(
             streaming,
             sequence_values,
         )
-        square = _print_region_product(
-            value,
-            value,
-            representation,
-            degree,
-            modulus_name,
-            modulus_coefficients_name,
-            output,
-            counter,
-            suffix,
-        )
-        if expression.exponent == 2:
-            return square
-        return _print_region_product(
-            square,
-            value,
-            representation,
-            degree,
-            modulus_name,
-            modulus_coefficients_name,
-            output,
-            counter,
-            suffix,
-        )
+        exponent = expression.exponent
+        if exponent == 0:
+            if representation == "prime":
+                return "1"
+            return ["1"] + ["0" for _component in range(1, degree)]
+        result = None
+        factor = value
+        while exponent:
+            if exponent % 2:
+                result = (
+                    factor
+                    if result is None
+                    else _print_region_product(
+                        result,
+                        factor,
+                        representation,
+                        degree,
+                        modulus_name,
+                        modulus_coefficients_name,
+                        output,
+                        counter,
+                        suffix,
+                    )
+                )
+            exponent //= 2
+            if exponent:
+                factor = _print_region_product(
+                    factor,
+                    factor,
+                    representation,
+                    degree,
+                    modulus_name,
+                    modulus_coefficients_name,
+                    output,
+                    counter,
+                    suffix,
+                )
+        return result
 
     if expression.kind == "neg":
         value = _print_region_expression(

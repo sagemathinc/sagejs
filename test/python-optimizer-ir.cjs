@@ -196,6 +196,10 @@ def branching(values, pivot, left, right):
       ["stream", "stream", "pack", "stream"],
     );
     assert.deepEqual(
+      plans.map((plan) => plan.operands.operationCost),
+      [2, 2, 3, 7],
+    );
+    assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceAccesses),
       [
         [
@@ -210,6 +214,16 @@ def branching(values, pivot, left, right):
         ],
         [{ sequence: 0, indexOrder: "forward", uses: 3 }],
       ],
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plans[3],
+        operands: {
+          ...plans[3].operands,
+          operationCost: plans[3].operands.operationCost + 1,
+        },
+      }),
+      /stale or excessive operation cost/,
     );
   } finally {
     frontend.close();
@@ -440,7 +454,7 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
           statements: [{
             kind: "assign",
             target: 0,
-            value: { kind: "power", exponent: 4, value: { kind: "slot", slot: 0 } },
+            value: { kind: "power", exponent: 9, value: { kind: "slot", slot: 0 } },
           }],
         },
       }),
