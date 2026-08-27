@@ -18,6 +18,7 @@ Start with:
 - [Jupyter](../JUPYTER.md)
 - [Measuring execution](timing.md)
 - [Optimizing mathematics compiler laboratory](optimizing-mathematics-compiler-lab.md)
+- [The Sage.js optimizer in the compiler landscape](optimizing-compiler-landscape.md)
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
 - [Certified number-field maximal orders](number-field-maximal-orders.md)

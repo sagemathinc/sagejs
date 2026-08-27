@@ -8,6 +8,10 @@ These examples make Sage.js's guarded mathematical optimizer visible from
 ordinary Sage source. They are intended to be copied into the Sage.js prompt,
 a Sage.js Jupyter cell, or a `.sage` file.
 
+For the architectural comparison with Mojo, Cython, Numba, Julia, PyPy,
+Graal/Truffle, JAX, and Pythran, see
+[The Sage.js optimizer in the compiler landscape](optimizing-compiler-landscape.md).
+
 The optimizer does not replace finite-field semantics globally. It recognizes
 a bounded loop region, proves its data flow, checks the live parent,
 representation, and operator identities at entry, performs the loop using
@@ -143,6 +147,37 @@ run and scale the elapsed time linearly. Do not infer a ratio from one cold
 sample: warm each path, take several observations, compare exact answers, and
 report the median.
 
+## Ask the compiler what it proved
+
+Put a snippet in `a.py`, then compile it in Sage mode with the deterministic
+optimizer explanation enabled:
+
+```sh
+sagejs compile --sage --omit-baselib --explain-optimizations \
+  --output a.js a.py
+```
+
+The explanation is printed to standard error. For every recognized region it
+shows whether it was selected, the stable pass and region identity, source
+location, semantic and mathematical operation sets, proven facts, runtime
+guards, chosen representation and target, competing targets, cost model, and
+the exact fallback. The JavaScript is written to `a.js` so it does not obscure
+the explanation.
+
+When a file is expected to contain an optimizable ring region, make absence a
+hard error instead of merely inspecting the report:
+
+```sh
+sagejs compile --sage --omit-baselib --explain-optimizations \
+  --optimization-require math.closed-ring-region.v1 \
+  --output a.js a.py
+```
+
+Use `--optimization-level O0` with the first command to see the same region
+recognized but rejected with `optimization-level-too-low`. This is useful for
+distinguishing “the pass did not understand my source” from “policy disabled a
+valid optimization.”
+
 The repository's ratcheted benchmark versions also compare generated and
 generic execution, validate independent mathematical oracles, check route and
 resource invariants, and enforce generous performance ceilings:
@@ -165,4 +200,3 @@ not a missed promise that arbitrary Sage code is already fast.
 Inspect `parent._lastCompilerOptimizationRoute` after a call when experimenting.
 Use the O0 comparison to distinguish optimizer effects from ordinary V8
 warmup, input construction, or a fast algorithm elsewhere in Sage.js.
-
