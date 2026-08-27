@@ -262,3 +262,65 @@ print(value, routes)
     await session.close();
   }
 });
+
+test("single-use sequence analysis streams guarded dot products", async () => {
+  const source = String.raw`
+def dot_product(left, right, zero):
+    answer = zero
+    for index in range(len(left)):
+        answer = answer + left[index]*right[index]
+    return answer
+
+R = Zmod(1009)
+left = tuple(R(index^2+3) for index in range(1025))
+right = tuple(R(index^3+7) for index in range(1025))
+R._lastCompilerOptimizationRoute = 'generic'
+print(dot_product(left, right, R(0)), R._lastCompilerOptimizationRoute)
+
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+left_ext = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(513))
+right_ext = tuple(K(index+2)+((index^2+3)%5)*a+((index^3+1)%5)*aa for index in range(513))
+K._lastCompilerOptimizationRoute = 'generic'
+print(dot_product(left_ext, right_ext, K(0)), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic"),
+      slow.stdout,
+    );
+    assert.match(fast.stdout, /v8-number-residue-stream/);
+    assert.match(fast.stdout, /v8-extension-tuple-stream/);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("repeated sequence reads retain the packed-prefix strategy", async () => {
+  const session = await sessionAtLevel("O2");
+  try {
+    const result = await session.evaluate(String.raw`
+R = Zmod(1009)
+values = tuple(R(index^2+3) for index in range(1025))
+def sum_of_squares(values):
+    answer = R(0)
+    for index in range(len(values)):
+        answer = answer + values[index]*values[index]
+    return answer
+print(sum_of_squares(values), R._lastCompilerOptimizationRoute)
+`);
+    assert.match(result.stdout, /v8-number-residue-region/);
+    assert.doesNotMatch(result.stdout, /stream/);
+  } finally {
+    await session.close();
+  }
+});

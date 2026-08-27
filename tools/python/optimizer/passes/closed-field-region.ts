@@ -276,6 +276,29 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
 
   const stateSlots = [...modified].map((name) => slotByName.get(name)!);
   const affine = affineTarget(program, stateSlots);
+  const sequenceUses = new Array(sequences.length).fill(0);
+  const countSequenceUses = (value: ExpressionPlan): void => {
+    if (value.kind === "sequence") {
+      sequenceUses[value.sequence] += 1;
+    } else if (value.kind === "binary") {
+      countSequenceUses(value.left);
+      countSequenceUses(value.right);
+    } else if (value.kind === "neg") {
+      countSequenceUses(value.value);
+    }
+  };
+  for (const statement of program) {
+    if (statement.kind === "assign") countSequenceUses(statement.value);
+  }
+  const straightLineSingleUse =
+    sequences.length > 0 &&
+    program.every((statement) => statement.kind === "assign") &&
+    sequenceUses.reduce((total, count) => total + count, 0) <= 2 &&
+    sequenceUses.every((count) => count <= 1);
+  const sequenceStrategy =
+    affine?.kind === "sequence-increment" || straightLineSingleUse
+      ? "stream"
+      : "pack";
   return {
     iteratorKind,
     count,
@@ -287,6 +310,8 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     statements: program,
     operations: [...operations].sort(),
     affine,
+    sequenceUses,
+    sequenceStrategy,
   };
 }
 
@@ -334,6 +359,8 @@ export const closedRingRegionPass: OptimizationPass = {
         statements: operands.statements,
         operations: operands.operations,
         affine: operands.affine,
+        sequenceUses: operands.sequenceUses,
+        sequenceStrategy: operands.sequenceStrategy,
       });
       const id = identity.id;
       context.consider({
@@ -394,7 +421,7 @@ export const closedRingRegionPass: OptimizationPass = {
             kind: "guarded-unboxed-ring-program",
             candidates: ["number-residue", "extension-tuple-number", "boxed-sage-value"],
             conversions: [
-              operands.affine?.kind === "sequence-increment"
+              operands.sequenceStrategy === "stream"
                 ? "unbox live-ins and validate sequence elements while streaming"
                 : "unbox live-ins and sequence prefixes",
               "materialize modified live-outs",
@@ -407,8 +434,8 @@ export const closedRingRegionPass: OptimizationPass = {
             kind: operands.affine?.kind === "fixed-increment" ? "adaptive" : "v8",
             lowering: operands.affine?.kind === "fixed-increment"
               ? "trip-count-gated isolated affine target or monomorphic scalar operation graph"
-              : operands.affine?.kind === "sequence-increment"
-                ? "transactional streaming affine target over guarded sequence elements"
+              : operands.sequenceStrategy === "stream"
+                ? "transactional streaming operation graph over guarded sequence elements"
               : "monomorphic scalar locals generated from target-neutral field operations",
             boundaryCrossings: operands.affine?.kind === "fixed-increment"
               ? "runtime-dependent"
@@ -419,7 +446,7 @@ export const closedRingRegionPass: OptimizationPass = {
               : "v8-closed-ring-program",
             policy: operands.affine?.kind === "fixed-increment"
               ? "guarded representation, trip count, and authenticated isolated-target availability"
-              : operands.affine?.kind === "sequence-increment"
+              : operands.sequenceStrategy === "stream"
                 ? "guarded streaming sequence with transactional materialization and exact restart fallback"
               : "bounded monomorphic scalar region with one entry validation",
             candidates: [

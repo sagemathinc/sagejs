@@ -879,7 +879,7 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
     suffix = names["suffix"]
     modulus_name = names["modulus"]
     modulus_coefficients_name = names["modulus_coefficients"]
-    streaming = plan.affine is not None and plan.affine.kind == "sequence-increment"
+    streaming = plan.sequenceStrategy == "stream"
     if representation == "extension":
         modulus_coefficients_name = []
         for component in range(degree):
@@ -1084,8 +1084,7 @@ def print_closed_field_region(self, output):
             str(
                 _field_operation_mask(
                     plan.operations,
-                    plan.affine is not None
-                    and plan.affine.kind == "sequence-increment",
+                    plan.sequenceStrategy == "stream",
                 )
             )
         )
