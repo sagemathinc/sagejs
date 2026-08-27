@@ -308,6 +308,11 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
            affine.incrementSequence >= sequences.length)) {
         throw new TypeError("optimizer affine target sequence is out of range");
       }
+      if (affine.kind === "sequence-increment" &&
+          affine.incrementOperator !== "add" &&
+          affine.incrementOperator !== "subtract") {
+        throw new TypeError("optimizer affine target has an invalid increment sign");
+      }
     }
     return;
   }

@@ -357,6 +357,7 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         const primePrototype = parent._closedScalarElementPrototype;
         if (parent._machineResidues === true &&
             parent._closedScalarArithmetic === true &&
+            parent._closedScalarCommutative === true &&
             primePrototype?._new_reduced === parent._closedScalarNewReduced &&
             (!required(ADD) || primePrototype?._add_ === parent._closedScalarAdd) &&
             (!required(SUB) || primePrototype?._sub_ === parent._closedScalarSub) &&
@@ -403,6 +404,7 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         const degree = parent._machineExtensionDegree;
         const modulusCoefficients = parent._machineExtensionModulusCoefficients;
         if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
+            parent._machineExtensionCommutative !== true ||
             !(tupleBrand instanceof WeakSet) ||
             !tupleBrand.has(modulusCoefficients) ||
             modulusCoefficients.length !== degree ||
@@ -513,6 +515,7 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
         const primePrototype = parent._closedScalarElementPrototype;
         if (parent._machineResidues === true &&
             parent._closedScalarArithmetic === true &&
+            parent._closedScalarCommutative === true &&
             Object.getPrototypeOf(accumulator) === primePrototype &&
             Object.getPrototypeOf(multiplier) === primePrototype &&
             Object.getPrototypeOf(increment) === primePrototype &&
@@ -540,7 +543,7 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             result._parent = parent;
             result._value = value;
             parent._lastCompilerOptimizationRoute = "v8-number-residue";
-            return result;
+            return ρσ_brand_machine_field_element(result);
         }
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
@@ -551,6 +554,7 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
         const tupleBrand = ρσ_math_tuple.__machineFieldSequenceBrand;
         const degree = parent._machineExtensionDegree;
         if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
+            parent._machineExtensionCommutative !== true ||
             !(tupleBrand instanceof WeakSet) ||
             !tupleBrand.has(modulusCoefficients) ||
             modulusCoefficients.length !== degree ||

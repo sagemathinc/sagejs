@@ -869,7 +869,7 @@ The completion criteria were met on 2026-08-27:
 The implementation deliberately left higher extension degrees, resident Wasm
 handles, and broader application profiling beyond the initial completion
 criteria.  The first post-RFC refinement, also completed on 2026-08-27,
-generalized the same field-operation IR and guarded machine representation to
+generalized the same ring-operation IR and guarded machine representation to
 fixed extension degrees two through four.  Affine operation graphs now select
 compact degree-specific V8 emitters or one source-transparent isolated
 native/Wasm call; Horner, multi-state, equality-branch, polynomial, and held-out
@@ -908,3 +908,17 @@ The measured scalar-JavaScript lower bounds are about 26 ms and 39 ms, making
 the remaining brand, parent, prototype, and coordinate guards visible rather
 than hiding them in a headline speedup.  Both routes retain zero native
 resources and the late-invalid-element differential proves exact restart.
+
+The semantic domain was then corrected from “field” to “commutative ring.”
+The proved operation set never uses division, and the guarded Number-residue
+representation applies equally to `Zmod(n)` with zero divisors.  The renamed
+`math.closed-ring-region.v1` contract now states that fact explicitly, and its
+runtime parent guard advertises commutative multiplication rather than relying
+on which classes happen to use the representation today.  Differentials cover
+composite moduli, the largest exact machine modulus, and the first modulus
+outside the bound.  Operation-graph normalization consequently accepts
+commuted addition and multiplication order plus signed sequence increments;
+these are justified by a verified commutative-ring fact rather than by source
+spelling.  Compact residue-ring results also retain the private representation
+brand, with a chained-block route ratchet preventing silent loss of subsequent
+optimization.

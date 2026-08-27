@@ -872,6 +872,7 @@ class FiniteField_prime_modn(sage.Parent):
         self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
         self._residueModulus = runtime.number(order) if self._machineResidues else order
         self._closedScalarArithmetic = True
+        self._closedScalarCommutative = True
         self._closedScalarElementPrototype = _finite_field_element_prototype
         self._closedScalarMul = runtime.reflect.get(
             _finite_field_element_prototype, "_mul_"
@@ -1000,6 +1001,7 @@ class IntegerModRing(sage.Parent):
         self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
         self._residueModulus = runtime.number(order) if self._machineResidues else order
         self._closedScalarArithmetic = True
+        self._closedScalarCommutative = True
         self._closedScalarElementPrototype = _integer_mod_element_prototype
         self._closedScalarMul = runtime.reflect.get(
             _integer_mod_element_prototype, "_mul_"
@@ -1125,6 +1127,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._explicitModulus = explicit_modulus
         self._generatedResourceBackend = generated_resource_backend
         self._machineExtensionDegree = 0
+        self._machineExtensionCommutative = False
         self._machineExtensionPrime = runtime.undefined
         self._machineExtensionModulusCoefficients = runtime.undefined
         self._machineExtensionElementPrototype = runtime.undefined
@@ -1157,6 +1160,7 @@ class FiniteFieldExtensionParent(sage.Parent):
                 element_prototype = runtime.reflect.get(element_type, "prototype")
                 parent_prototype = runtime.object.getPrototypeOf(self)
                 self._machineExtensionDegree = degree
+                self._machineExtensionCommutative = True
                 self._machineExtensionPrime = runtime.number(prime)
                 self._machineExtensionModulusCoefficients = runtime.math_tuple(
                     [
