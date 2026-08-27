@@ -174,6 +174,27 @@ assert not live.public_saturation_payload_issued
 assert not live.public_generation_payload_issued
 assert live.public_class_group_projection_source is None
 
+# Generation replay authenticates the current ordered relation batch against
+# the producer's immutable digest.  A changed live record must fail before
+# publication even when the retained serialized evidence itself is unchanged.
+collector = live.collector
+relation = collector.records[0]
+original_provenance = dict(relation.provenance)
+relation.provenance["mutated-after-admission"] = True
+try:
+    class_unit_module.class_group(K, proof=False)
+    raise AssertionError("a changed live relation batch was accepted")
+except ArithmeticError as error:
+    assert "adapted public class group failed proof replay" in str(error)
+finally:
+    relation.provenance.clear()
+    relation.provenance.update(original_provenance)
+assert live.public_class_group_projection is None
+assert not live.public_class_group_projection_reserved
+assert not live.public_saturation_payload_issued
+assert not live.public_generation_payload_issued
+assert live.public_class_group_projection_source is None
+
 # Relation/presentation subtrees are likewise construction hints.  A changed
 # retained presentation must fail the ordinary conditional proof replay and
 # leave the one-shot transaction cleanly retryable.

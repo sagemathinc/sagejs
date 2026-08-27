@@ -4975,12 +4975,28 @@ class ClassUnitGroupEngine:
                     evidence,
                     (evidence_sha256, relations_sha256, presentation_sha256),
                 )
+        generation_records = tuple(collector.records)
+        generation_relation_payloads = evidence.get("relations")
+        if not isinstance(generation_relation_payloads, list) or len(
+            generation_records
+        ) != len(generation_relation_payloads):
+            raise ArithmeticError(
+                "class-generation evidence has the wrong relation count"
+            )
         cache_key = _canonical_payload_hash(
             {
                 "evidence_sha256": evidence_sha256,
                 "class_number": int(presentation.order),
                 "proof_status": proof_status,
             }
+        )
+        standard_relations = _optional_module(
+            "sagejs.number_fields.class_group_relations"
+        )
+        standard_relation_type = getattr(standard_relations, "RelationRecord", None)
+        use_standard_relation_batch = bool(
+            self.components.relations is standard_relations
+            and callable(standard_relation_type)
         )
 
         def verify_generation(
@@ -5055,18 +5071,34 @@ class ClassUnitGroupEngine:
                     receipt_diagnostics() if callable(receipt_diagnostics) else None
                 )
                 try:
-                    for record in collector.records:
-                        if callable(reconstruct):
-                            replay = record.verify(
-                                order,
-                                factor_base,
-                                reconstructor=collector,
-                                admission_verifier=collector,
-                            )
-                        else:
-                            replay = record.verify(order, factor_base)
-                        if replay["certified"] is not True:
+                    records = generation_records
+                    if use_standard_relation_batch and all(
+                        type(record) is standard_relation_type for record in records
+                    ):
+                        # These exact records were admitted before the
+                        # generation evidence and its immutable relation hash
+                        # were issued.  Authenticate their current payloads as
+                        # one ordered batch instead of rebuilding a canonical
+                        # receipt string separately for every relation.
+                        current_payloads = [record.to_dict() for record in records]
+                        if (
+                            _canonical_payload_hash(current_payloads)
+                            != relations_sha256
+                        ):
                             return False
+                    else:
+                        for record in records:
+                            if callable(reconstruct):
+                                replay = record.verify(
+                                    order,
+                                    factor_base,
+                                    reconstructor=collector,
+                                    admission_verifier=collector,
+                                )
+                            else:
+                                replay = record.verify(order, factor_base)
+                            if replay["certified"] is not True:
+                                return False
                 finally:
                     after_reconstruction: Any = (
                         reconstruction_diagnostics()
