@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
@@ -669,7 +670,7 @@ test("job aggregation rejects duplicate identities and every bad retained sample
 });
 
 test("runner fixture loading invokes the full checksum validator", () => {
-  const temporary = fs.mkdtempSync(path.join(process.env.TMPDIR || "/tmp", "sagejs-cu-fixture-"));
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-cu-fixture-"));
   const filename = path.join(temporary, "fixture.json");
   const changed = clone(fixture);
   changed.records[0].class_number = "2";

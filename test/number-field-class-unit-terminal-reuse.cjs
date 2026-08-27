@@ -7,12 +7,19 @@ const { join } = require("node:path");
 const test = require("node:test");
 
 const root = join(__dirname, "..");
-const sagejs =
-  process.env.SAGEJS_TEST_EXECUTABLE ||
-  join(root, "bin", process.platform === "win32" ? "sagejs.cmd" : "sagejs");
+function sagejsInvocation(args) {
+  if (process.env.SAGEJS_TEST_EXECUTABLE) {
+    return [process.env.SAGEJS_TEST_EXECUTABLE, args];
+  }
+  if (process.platform === "win32") {
+    return [process.execPath, [join(root, "bin", "sagejs-source.cjs"), ...args]];
+  }
+  return [join(root, "bin", "sagejs"), args];
+}
 
 function run(source) {
-  const result = spawnSync(sagejs, ["--python", "-"], {
+  const [executable, arguments_] = sagejsInvocation(["--python", "-"]);
+  const result = spawnSync(executable, arguments_, {
     cwd: root,
     encoding: "utf8",
     input: source,
@@ -21,7 +28,14 @@ function run(source) {
     // finite, but allow slower CI architectures to finish the proof replays.
     timeout: 300_000,
   });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(
+    result.status,
+    0,
+    result.error?.message ||
+      result.stderr ||
+      result.stdout ||
+      "sagejs subprocess failed without diagnostics",
+  );
   return result.stdout.trim();
 }
 
