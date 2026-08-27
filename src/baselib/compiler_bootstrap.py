@@ -351,9 +351,27 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
             source.length < count)) return null;
         const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32,
-              POW = 64;
+              POW = 64, IADD = 128, ISUB = 256, IMUL = 512;
         const required = (bit) => (operation_mask & bit) !== 0;
         const streaming = required(STREAM);
+        const inplaceNames = [];
+        if (required(IADD)) inplaceNames.push("__iadd__");
+        if (required(ISUB)) inplaceNames.push("__isub__");
+        if (required(IMUL)) inplaceNames.push("__imul__");
+        const hasNoInplaceDescriptor = (value) => {
+            for (const name of inplaceNames) {
+                let owner = value;
+                while (owner !== null) {
+                    if (Object.getOwnPropertyDescriptor(owner, name) !== undefined) {
+                        return false;
+                    }
+                    owner = Object.getPrototypeOf(owner);
+                }
+            }
+            return true;
+        };
+        if (inplaceNames.length !== 0 &&
+            values.some((value) => !hasNoInplaceDescriptor(value))) return null;
 
         const primePrototype = parent._closedScalarElementPrototype;
         if (parent._machineResidues === true &&

@@ -274,6 +274,122 @@ def dot(left, right, K):
   }
 });
 
+test("augmented ring assignments agree with their exact generic dispatch", async () => {
+  for (const setup of [
+    `R=Zmod(1009)\nvalues=tuple(R(i^2+3) for i in range(257))\nparent=R`,
+    `P.<x>=PolynomialRing(GF(5))\nK.<a>=GF(5^3,modulus=x^3+x+1)\nvalues=tuple(K(i)+(i^2+1)*a+(i^3+2)*a^2 for i in range(257))\nparent=K`,
+  ]) {
+    const source = `
+${setup}
+def augmented(values, parent):
+    total=parent(1)
+    product=parent(2)
+    for coefficient in values:
+        total += coefficient
+        product *= coefficient
+        total -= product
+    return total,product
+print(augmented(values,parent))
+print(getattr(parent,'_lastCompilerOptimizationRoute','generic'))
+`;
+    const optimized = await sessionAtLevel("O2");
+    const generic = await sessionAtLevel("O0");
+    try {
+      const [fast, slow] = await Promise.all([
+        optimized.evaluate(source), generic.evaluate(source),
+      ]);
+      assert.equal(
+        fast.stdout.split("\n")[0],
+        slow.stdout.split("\n")[0],
+      );
+      assert.match(fast.stdout, /v8-(number-residue|extension-tuple)-stream/);
+      assert.match(slow.stdout, /generic/);
+    } finally {
+      await Promise.all([optimized.close(), generic.close()]);
+    }
+  }
+});
+
+test("augmented plans are explicit, verified, and never select affine isolation", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def augmented(values, K):
+    total=K(1)
+    product=K(2)
+    for coefficient in values:
+        total += coefficient
+        product *= coefficient
+        total -= product
+    return total,product
+`, parserOptions);
+    const plan = ast.body[0].body[2].optimization_region;
+    assert.deepEqual(plan.operands.inplaceOperations, ["add", "mul", "sub"]);
+    assert.deepEqual(
+      plan.operands.statements.map((statement) => statement.assignmentOperator),
+      ["+=", "*=", "-="],
+    );
+    assert.equal(plan.operands.affine, null);
+    assert.throws(() => verifyInternalRegionPlan({
+      ...plan,
+      operands: { ...plan.operands, inplaceOperations: ["add"] },
+    }), /stale inplace operations/);
+    assert.throws(() => verifyInternalRegionPlan({
+      ...plan,
+      operands: {
+        ...plan.operands,
+        statements: [{
+          ...plan.operands.statements[0],
+          assignmentOperator: "+=",
+          value: { kind: "slot", slot: plan.operands.statements[0].target },
+        }, ...plan.operands.statements.slice(1)],
+      },
+    }), /stale normalization/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("callable in-place descriptors force the exact augmented fallback", async () => {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  const source = String.raw`
+import sagejs.runtime as runtime
+P.<x>=PolynomialRing(GF(97))
+K.<a>=GF(97^2,modulus=x^2+x+5)
+prototype=runtime.object.getPrototypeOf(a)
+def changed_iadd(self,other):
+    return K(17)+a
+def changed_isub(self,other):
+    return K(19)+2*a
+def changed_imul(self,other):
+    return K(23)+3*a
+runtime.reflect.set(prototype,'__iadd__',changed_iadd)
+runtime.reflect.set(prototype,'__isub__',changed_isub)
+runtime.reflect.set(prototype,'__imul__',changed_imul)
+def augmented(values):
+    value=K(1)+a
+    for coefficient in values:
+        value += coefficient
+        value *= coefficient
+        value -= coefficient
+    return value
+values=tuple(K(i+2)+(i+1)*a for i in range(7))
+K._lastCompilerOptimizationRoute='inplace-descriptor-fallback'
+print(augmented(values),K._lastCompilerOptimizationRoute)
+`;
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source), generic.evaluate(source),
+    ]);
+    assert.equal(fast.stdout, slow.stdout);
+    assert.match(fast.stdout, /inplace-descriptor-fallback/);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
 test("prime fields consume the same operation graph and Number representation", async () => {
   const optimized = await sessionAtLevel("O2");
   const generic = await sessionAtLevel("O0");

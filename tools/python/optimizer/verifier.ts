@@ -266,12 +266,29 @@ function verifyStatements(
   slotCount: number,
   sequenceCount: number,
   sequenceAccesses: Map<string, number>,
+  inplaceOperations: Set<string>,
 ): void {
   if (!Array.isArray(statements)) throw new TypeError("optimizer statements must be an array");
   for (const statement of statements) {
     if (statement?.kind === "assign") {
       if (!Number.isSafeInteger(statement.target) || statement.target < 0 ||
           statement.target >= slotCount) throw new TypeError("optimizer assignment target is out of range");
+      const assignmentOperator = statement.assignmentOperator ?? "=";
+      if (!["=", "+=", "-=", "*="].includes(assignmentOperator)) {
+        throw new TypeError("optimizer assignment operator is unhandled");
+      }
+      if (assignmentOperator !== "=") {
+        const operator = assignmentOperator[0];
+        const operation = operator === "+" ? "add" :
+          operator === "-" ? "sub" : "mul";
+        if (statement.value?.kind !== "binary" ||
+            statement.value.operator !== operator ||
+            statement.value.left?.kind !== "slot" ||
+            statement.value.left.slot !== statement.target) {
+          throw new TypeError("optimizer augmented assignment has stale normalization");
+        }
+        inplaceOperations.add(operation);
+      }
       verifyExpression(statement.value, slotCount, sequenceCount, sequenceAccesses);
     } else if (statement?.kind === "if") {
       if (statement.condition?.kind !== "comparison" ||
@@ -281,8 +298,14 @@ function verifyStatements(
       }
       verifyExpression(statement.condition.left, slotCount, sequenceCount, sequenceAccesses);
       verifyExpression(statement.condition.right, slotCount, sequenceCount, sequenceAccesses);
-      verifyStatements(statement.body, slotCount, sequenceCount, sequenceAccesses);
-      verifyStatements(statement.alternative, slotCount, sequenceCount, sequenceAccesses);
+      verifyStatements(
+        statement.body, slotCount, sequenceCount, sequenceAccesses,
+        inplaceOperations,
+      );
+      verifyStatements(
+        statement.alternative, slotCount, sequenceCount, sequenceAccesses,
+        inplaceOperations,
+      );
     } else {
       throw new TypeError(`optimizer target-independent statement ${statement?.kind} is unhandled`);
     }
@@ -401,12 +424,24 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       }
     }
     const observedSequenceAccesses = new Map<string, number>();
+    const observedInplaceOperations = new Set<string>();
     verifyStatements(
       plan.operands.statements,
       slots.length,
       sequences.length,
       observedSequenceAccesses,
+      observedInplaceOperations,
     );
+    const claimedInplaceOperations = plan.operands.inplaceOperations ?? [];
+    if (!Array.isArray(claimedInplaceOperations) ||
+        claimedInplaceOperations.some((operation: unknown) =>
+          operation !== "add" && operation !== "sub" && operation !== "mul") ||
+        new Set(claimedInplaceOperations).size !== claimedInplaceOperations.length ||
+        claimedInplaceOperations.length !== observedInplaceOperations.size ||
+        claimedInplaceOperations.some((operation: string) =>
+          !observedInplaceOperations.has(operation))) {
+      throw new TypeError("optimizer ring region has stale inplace operations");
+    }
     const observedOperationCost = statementsOperationCost(plan.operands.statements);
     if (!Number.isSafeInteger(plan.operands.operationCost) ||
         plan.operands.operationCost !== observedOperationCost ||
@@ -419,6 +454,10 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       }
     }
     const affine = plan.operands.affine;
+    if (observedInplaceOperations.size > 0 && affine !== null &&
+        affine !== undefined) {
+      throw new TypeError("optimizer augmented region has an unsafe affine target");
+    }
     if (affine !== null && affine !== undefined) {
       if (affine.kind !== "fixed-increment" &&
           affine.kind !== "sequence-increment") {

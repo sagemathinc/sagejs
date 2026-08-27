@@ -400,13 +400,16 @@ def print_for_in(self, output):
     print_loop_else(self, output)
 
 
-def _field_operation_mask(operations, streaming=False):
+def _field_operation_mask(operations, streaming=False, inplace_operations=None):
     bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16, "pow": 64}
+    inplace_bits = {"add": 128, "sub": 256, "mul": 512}
     answer = 0
     for operation in operations:
         answer |= bits[operation]
     if streaming:
         answer |= 32
+    for operation in inplace_operations or []:
+        answer |= inplace_bits[operation]
     return answer
 
 
@@ -1344,6 +1347,7 @@ def print_closed_field_region(self, output):
                 _field_operation_mask(
                     plan.operations,
                     plan.sequenceStrategy == "stream",
+                    plan.inplaceOperations,
                 )
             )
         )

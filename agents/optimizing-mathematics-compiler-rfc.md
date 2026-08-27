@@ -965,6 +965,26 @@ tax.  Projected O0 zip execution was about 96x and 144x slower respectively;
 the benchmark separately checks both public answers against an independent
 JavaScript coordinate oracle.
 
+Augmented assignments `+=`, `-=`, and `*=` are normalized into the same ring
+expression DAG only after preserving their distinct Python dispatch contract.
+Each assignment records its source operator, the verifier independently checks
+that its normalized root reads and updates the same slot, and the plan records
+the exact set of in-place fallbacks it requires.  Entry versioning walks each
+live value's complete descriptor chain with descriptor inspection (never
+getter invocation) and requires the corresponding `__iadd__`, `__isub__`, or
+`__imul__` descriptor to be absent.  Any own or inherited customization
+therefore executes the original augmented assignment.  Until an isolated
+target carries the same proof, augmented graphs deliberately select V8 rather
+than being misclassified as affine native/Wasm recurrences.
+
+The zip benchmark also compares augmented and ordinary spellings over the
+same 100,000-term dot product.  Fresh medians were 18.01 ms versus 18.46 ms for
+`Zmod(1009)` and 61.11 ms versus 62.49 ms for `GF(5^3)`; the small differences
+are noise-level wins rather than an augmented-operation penalty.  Projected O0
+augmented execution was about 130x and 170x slower.  Differential tests cover
+all three operators across both representations, and callable mutations of
+all three `__i*__` descriptors prove the exact fallback path.
+
 Immutable sequence views are now represented explicitly in the same IR rather
 than being materialized in mathematical source.  A compiler-known builtin
 `reversed(sequence)` contributes a reverse index map only when its operand is a
