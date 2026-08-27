@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 // Focused compatibility vectors adapted from CPython's Lib/test/test_json,

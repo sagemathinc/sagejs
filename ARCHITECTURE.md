@@ -65,6 +65,10 @@ real algorithm merely because a benchmark was urgent.
 - A performance claim MUST identify the exact workload, result equivalence,
   warmup/sample policy, host, and separately report dynamic Sage.js, compiled
   Sage.js, and relevant established/native baselines.
+- Choosing among guarded V8 locals, Wasm, `@native`, and mature libraries MUST
+  account for region size, boundary crossings, representation, data residency,
+  compile latency, and exact fallback semantics. The measured decision guide
+  is [`architecture/EXECUTION-TIER-PERFORMANCE.md`](architecture/EXECUTION-TIER-PERFORMANCE.md).
 - Native Windows x64 is first class.  New native dependencies require Windows
   support or an explicit capability flag with a tested correct fallback.
 

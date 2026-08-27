@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-rational-public-scalar-acceptance",
+  "title": "Hyp Rational Public Scalar Acceptance",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add an exact equal-contract Sage.js/Magma harness for bounded ordinary public rational genus-2 scalars and a separately labeled 256-bit bounded-height scalar",
+  "base_commit": "ac1a64ab41e380652bd14f2af6d331ec712900cf",
+  "claims": [
+    "bench/hyperelliptic/benchmark-rational-public-scalar.cjs",
+    "test/hyperelliptic-rational-public-scalar-benchmark.cjs",
+    "test/node-test-manifest.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "sage"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/test-manifest.test.cjs test/hyperelliptic-rational-public-scalar-benchmark.cjs",
+    "node bench/hyperelliptic/benchmark-rational-public-scalar.cjs --no-magma --samples=2 --iterations=4 --torsion-iterations=8 --warmups=2",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm parallel:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added a resident equal-contract Sage.js/Magma harness for ordinary public genus-2 QQ scalar multiplication. Three proven non-torsion cases cover small, growing-coefficient, and generalized h != 0 models under an explicit exact-output bit budget; a distinct 256-bit scalar case uses rational 2-torsion and is labeled as bounded height. Exact canonical rows, result digests, output bit sizes, timer resolution, source identities, non-torsion/torsion proofs, and reference certificate replay are all recorded outside timing. Unit regressions reject over-budget exact output and prevent the 256-bit bounded-height row from masquerading as non-torsion QQ growth.",
+    "risks": [
+      "A literal 256-bit non-torsion QQ scalar is not computationally materializable: canonical-height growth makes output coefficient size quadratic in the scalar and therefore exponential in its bit length. The harness measures non-torsion QQ work only under an explicit output-bit budget and labels the 256-bit torsion row separately.",
+      "The accepted rational publisher currently rejects the observed exponent-7 row after its coefficients grow to about 20,000 bits, so the harness fails early above the audited exponent-6 boundary instead of partially timing an unpublishable public result.",
+      "Magma equality and same-host performance remain pending the final frozen integrated SHA; this lane intentionally did not use bench-1.",
+      "The base revision exceeds the pre-existing hyperelliptic-curves-heights package budget (534848 > 510000), so architecture:check and the broad unit tier fail there after all focused scalar tests pass. This CJS-only lane does not alter that package."
+    ],
+    "next_steps": [
+      "Integrate the harness on the final frozen mathematical SHA, then run its resident Sage.js/Magma mode exclusively on bench-1 and commit the exact JSON receipt.",
+      "Replace the literal Phase-6 256-bit non-torsion QQ exit with bounded exact-output non-torsion rows plus a separately labeled 256-bit bounded-height finite/local/Kummer or torsion row.",
+      "Resolve the independently existing hyperelliptic-curves-heights package budget before requiring the broad architecture/unit gates on integration."
+    ]
+  }
+}

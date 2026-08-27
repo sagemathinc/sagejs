@@ -73,10 +73,12 @@
           "ffi-resource-backend.mjs",
           "ffi-resource-manifest.json",
           "flint-factor.wasm",
+          "hyperelliptic-auto-receipt-policy.json",
           "lazy-modules.json",
           "native-kernels/index.json",
           "production-kernel-coverage.json",
           "runtime/analytic-backend.mjs",
+          "runtime/auto-receipt-policy.mjs",
           "runtime/capability-trace.mjs",
           "runtime/compiler-worker.mjs",
           "runtime/curve-backend.d.ts",
@@ -110,8 +112,8 @@
           "web-tree-sitter.wasm"
         ],
         "maximumCompressedDelta": {
-          "gzipBytes": 13000000,
-          "brotliBytes": 7250000
+          "gzipBytes": 14000000,
+          "brotliBytes": 7800000
         }
       },
       {
@@ -200,6 +202,33 @@
           "gzipBytes": 1600000,
           "brotliBytes": 1250000
         }
+      },
+      {
+        "id": "polyglot-frontends",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": [
+          "foreign-frontend.mjs",
+          "tree-sitter-macaulay2.wasm",
+          "tree-sitter-magma.wasm",
+          "tree-sitter-maple.wasm",
+          "tree-sitter-matlab.wasm",
+          "tree-sitter-wolfram.wasm"
+        ],
+        "maximumCompressedDelta": {
+          "gzipBytes": 1000000,
+          "brotliBytes": 800000
+        }
+      },
+      {
+        "id": "numpy",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["numpy-ts.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 675000,
+          "brotliBytes": 430000
+        }
       }
     ]
   },
@@ -209,7 +238,12 @@
       "provider": "web-tree-sitter.wasm",
       "consumers": [
         "tree-sitter-python.wasm",
-        "tree-sitter-sage.wasm"
+        "tree-sitter-sage.wasm",
+        "tree-sitter-macaulay2.wasm",
+        "tree-sitter-magma.wasm",
+        "tree-sitter-maple.wasm",
+        "tree-sitter-matlab.wasm",
+        "tree-sitter-wolfram.wasm"
       ],
       "memory": {
         "pageBytes": 65536,
@@ -222,6 +256,7 @@
     "conway-polynomials.json",
     "compiler.js",
     "compiler-frontend.mjs",
+    "foreign-frontend.mjs",
     "baselib.js",
     "stdlib.json",
     "lazy-modules.json",
@@ -231,12 +266,19 @@
     "serialization.mjs",
     "wasi-runtime.mjs",
     "ffi-production-closure.json",
+    "hyperelliptic-auto-receipt-policy.json",
     "native-kernels/index.json",
+    "numpy-ts.mjs",
     "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",
     "web-tree-sitter.wasm",
     "tree-sitter-python.wasm",
     "tree-sitter-sage.wasm",
+    "tree-sitter-macaulay2.wasm",
+    "tree-sitter-magma.wasm",
+    "tree-sitter-maple.wasm",
+    "tree-sitter-matlab.wasm",
+    "tree-sitter-wolfram.wasm",
     "wasm-capability-api.mjs",
     "wasm-capabilities-report.json"
   ],

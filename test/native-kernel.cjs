@@ -1,3 +1,4 @@
+// sagejs-test-tier: specialized
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -2440,22 +2441,19 @@ int main(void)
       ["-275", ((1n << 190n) + 17n).toString()],
     );
 
-    const cowasmRoot = join(root, "..", "cowasm");
-    const wasiSdk = join(
-      cowasmRoot, "core", "build", "build", "wasi-sdk", "dist",
-      "wasi-sdk-next", "native",
-    );
-    const wasiClang = join(wasiSdk, "bin", "clang");
-    const wasiGmp = join(cowasmRoot, "sagemath", "gmp", "dist", "wasi-sdk");
-    const wasiRun = join(
-      root, "packages", "flint-wasm", "node_modules", ".bin", "wasi-run",
-    );
-    if (existsSync(wasiClang) && existsSync(wasiRun) &&
-        existsSync(join(wasiGmp, "lib", "libgmp.a"))) {
+    let preparedWasi = null;
+    try {
+      preparedWasi = require(
+        "../packages/wasm-toolchain/scripts/toolchain.cjs"
+      ).resolveToolchain({ root });
+    } catch {}
+    if (preparedWasi) {
+      const wasiClang = preparedWasi.paths.clang;
+      const wasiGmp = preparedWasi.paths.libraries.gmp.prefix;
       const wasm = join(temporary, "native-core.wasm");
       const buildWasm = spawnSync(wasiClang, [
         "--target=wasm32-wasip1",
-        `--sysroot=${join(wasiSdk, "share", "wasi-sysroot")}`,
+        `--sysroot=${preparedWasi.paths.sysroot}`,
         "-O3",
         `-I${integerKernel.outputPath}`,
         `-I${join(wasiGmp, "include")}`,
@@ -2467,7 +2465,16 @@ int main(void)
         "-o", wasm,
       ], { encoding: "utf8" });
       assert.equal(buildWasm.status, 0, buildWasm.stderr);
-      const runWasm = spawnSync(wasiRun, [wasm], { encoding: "utf8" });
+      const runWasm = spawnSync(process.execPath, ["-e", `
+const { readFileSync } = require("node:fs");
+const { WASI } = require("node:wasi");
+(async () => {
+  const wasi = new WASI({ version: "preview1", args: [], env: {}, returnOnExit: true });
+  const module = await WebAssembly.compile(readFileSync(process.argv[1]));
+  const instance = await WebAssembly.instantiate(module, { wasi_snapshot_preview1: wasi.wasiImport });
+  wasi.start(instance);
+})().catch((error) => { console.error(error); process.exitCode = 1; });
+`, wasm], { encoding: "utf8" });
       assert.equal(runWasm.status, 0, runWasm.stderr);
       assert.deepEqual(
         runWasm.stdout.trim().split("\n"),

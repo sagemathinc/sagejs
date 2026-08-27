@@ -1,3 +1,5 @@
+// sagejs-test-tier: unit
+// sagejs-test-platform: true
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -38,6 +40,8 @@ const constructorEnd = generated.indexOf(
 );
 const constructor = generated.slice(constructorStart, constructorEnd);
 const initialize = methodBody("FiniteFieldElement", "__init__");
+const setAttribute = methodBody("FiniteFieldElement", "__setattr__");
+const deleteAttribute = methodBody("FiniteFieldElement", "__delattr__");
 const newReduced = methodBody("FiniteFieldElement", "_new_reduced");
 const add = methodBody("FiniteFieldElement", "_add_");
 const subtract = methodBody("FiniteFieldElement", "_sub_");
@@ -53,10 +57,9 @@ assert.doesNotMatch(
   "finite_fields.py must not require verbatim JavaScript escapes",
 );
 assert.doesNotMatch(constructor, /ρσ_object_id/);
-assert.match(initialize, /value instanceof FiniteFieldElement/);
-assert.match(initialize, /value instanceof Rational/);
+assert.match(initialize, /ρσ_instanceof_one\(value, FiniteFieldElement\)/);
+assert.match(initialize, /ρσ_instanceof_one\(value, Rational\)/);
 assert.match(initialize, /residue = ρσ_integer_bigint\(value\)/);
-assert.doesNotMatch(initialize, /ρσ_instanceof/);
 assert.doesNotMatch(
   initialize,
   /ρσ_integer_bigint\?\.__call__|ρσ_integer_bigint\?\./,
@@ -64,13 +67,18 @@ assert.doesNotMatch(
 
 assert.match(newReduced, /Object\.create\(_finite_field_element_prototype\)/);
 assert.match(newReduced, /answer\._parent = self\._parent/);
-assert.match(newReduced, /answer\._value = value/);
-assert.match(newReduced, /Object\.freeze\(answer\)/);
+assert.match(
+  newReduced,
+  /self\._parent\._machineResidues[\s\S]*_builtins_number_class\(value\)[\s\S]*: value/,
+);
+assert.doesNotMatch(newReduced, /Object\.freeze\(answer\)/);
+assert.match(setAttribute, /finite field elements are immutable/);
+assert.match(deleteAttribute, /finite field elements are immutable/);
 assert.match(add, /return self\._new_reduced\(value\)/);
 assert.match(subtract, /return self\._new_reduced\(value\)/);
 assert.match(
   multiply,
-  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._modulus\)/,
+  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._residueModulus\)/,
 );
 for (const body of [add, subtract, multiply]) {
   assert.doesNotMatch(
@@ -82,12 +90,16 @@ assert.match(
   residueNewReduced,
   /Object\.create\(_integer_mod_element_prototype\)/,
 );
-assert.match(residueNewReduced, /Object\.freeze\(answer\)/);
+assert.match(
+  residueNewReduced,
+  /self\._parent\._machineResidues[\s\S]*_builtins_number_class\(value\)[\s\S]*: value/,
+);
+assert.doesNotMatch(residueNewReduced, /Object\.freeze\(answer\)/);
 assert.match(residueAdd, /return self\._new_reduced\(value\)/);
 assert.match(residueSubtract, /return self\._new_reduced\(value\)/);
 assert.match(
   residueMultiply,
-  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._modulus\)/,
+  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._residueModulus\)/,
 );
 for (const body of [residueAdd, residueSubtract, residueMultiply]) {
   assert.doesNotMatch(

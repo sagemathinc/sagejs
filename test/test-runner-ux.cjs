@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -11,6 +12,7 @@ const {
   parseRunnerOptions,
   partition,
 } = require("../scripts/run-test-tier.cjs");
+const packageScripts = require("../package.json").scripts;
 
 test("test durations are rendered for humans", () => {
   assert.equal(formatDuration(0), "0s");
@@ -54,6 +56,8 @@ test("routine validation is bounded and full validation remains exhaustive", () 
   const fullScripts = plans.full.map((phase) => phase[1]);
   assert.equal(routineScripts.includes("test:integration"), false);
   assert.equal(routineScripts.includes("test:native"), false);
+  assert.equal(routineScripts[0], "merge:check");
+  assert.equal(plans.ci[0][1], "merge:check");
   assert.equal(fullScripts.includes("test:integration"), true);
   assert.equal(fullScripts.includes("test:native"), true);
   assert.ok(plans.routine.length < plans.full.length);
@@ -61,15 +65,20 @@ test("routine validation is bounded and full validation remains exhaustive", () 
   assert.equal(plans.ci.map((phase) => phase[1]).includes("build:check"), false);
 });
 
+test("the integration tier prepares its declared multiprocessing modules", () => {
+  assert.match(packageScripts["test:integration"], /python:precompile:run/);
+  assert.match(packageScripts["test:integration"], /test:integration:run/);
+});
+
 test("routine validation describes whether build work is reused", () => {
   const reused = materializePlan("routine", { current: true });
   const stale = materializePlan("routine", { current: false });
-  assert.deepEqual(reused[2], [
+  assert.deepEqual(reused[1], [
     "Build readiness (reuse current successful build)",
     "build:check",
     1,
   ]);
-  assert.deepEqual(stale[2], [
+  assert.deepEqual(stale[1], [
     "Build readiness (rebuild required)",
     "build:check",
     300,

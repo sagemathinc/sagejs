@@ -121,6 +121,45 @@ function promotionSites(fn) {
   return sites;
 }
 
+/*
+ * A direct helper call is not intrinsically a reason to abandon the machine
+ * word core.  In particular, fixed-width helpers which only manipulate
+ * uint64 values and borrowed buffers cannot request promotion at all.  This
+ * small call-graph fixed point records that fact transitively, including for
+ * mutually recursive helper groups.  Unknown callees remain conservative.
+ *
+ * This proof is distinct from replay safety: a buffer-mutating helper which
+ * cannot promote is safe to call directly even though replaying it would not
+ * be safe.  A mutating helper which *can* promote must still be rejected before
+ * the call so that the exact backend never observes partially applied writes.
+ */
+function wordPromotionCapabilities(functions) {
+  const byName = new Map(functions.map((fn) => [fn.name, fn]));
+  const mayPromoteByName = new Map(functions.map((fn) => [fn.name, false]));
+  let changed;
+  do {
+    changed = false;
+    for (const fn of functions) {
+      if (mayPromoteByName.get(fn.name)) continue;
+      let mayPromoteTransitively = false;
+      walks(fn.body, (operation) => {
+        if (mayPromoteTransitively) return;
+        if (operation.kind === "native.call") {
+          mayPromoteTransitively = !byName.has(operation.function) ||
+            mayPromoteByName.get(operation.function) === true;
+          return;
+        }
+        mayPromoteTransitively = mayPromote(operation);
+      });
+      if (mayPromoteTransitively) {
+        mayPromoteByName.set(fn.name, true);
+        changed = true;
+      }
+    }
+  } while (changed);
+  return mayPromoteByName;
+}
+
 function emitDivisionError(indent, failure) {
   return [
     `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
@@ -473,7 +512,9 @@ function emitWordOperation(operation, context, indent) {
   }
   if (operation.kind === "native.call") {
     const callee = context.functions?.get(operation.function);
-    if (callee !== undefined && !callee.analysis.effects.replaySafe) {
+    const calleeMayPromote = context.mayPromote?.get(operation.function) ?? true;
+    if (callee !== undefined && !callee.analysis.effects.replaySafe &&
+        calleeMayPromote) {
       return promote();
     }
     const outputs = operation.results === undefined
@@ -481,17 +522,22 @@ function emitWordOperation(operation, context, indent) {
       : operation.results.map((result) => `&${value(result.name)}`);
     const args = operation.arguments.map((argument) => value(argument.name));
     const status = `sagejs_word_status_${context.sites.get(operation)}`;
-    return [
+    const lines = [
       `${indent}{`,
       `${indent}    const int ${status} = word_${operation.function}(` +
         `status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""});`,
       `${indent}    if (${status} == SAGEJS_WORD_ERROR)`,
       `${indent}        ${context.failure}`,
-      `${indent}    if (${status} == SAGEJS_WORD_PROMOTE)`,
-      context.promote(operation, `${indent}        `),
-      `${indent}}`,
-    ].join("\n");
+    ];
+    if (calleeMayPromote) {
+      lines.push(
+        `${indent}    if (${status} == SAGEJS_WORD_PROMOTE)`,
+        context.promote(operation, `${indent}        `),
+      );
+    }
+    lines.push(`${indent}}`);
+    return lines.join("\n");
   }
   if (operation.kind === "ffi.call") {
     return emitWordForeignCall(operation, {
@@ -593,7 +639,7 @@ function emitWordStatements(statements, context, indent) {
   return lines.filter(Boolean).join("\n");
 }
 
-function emitWordFunction(fn, functions) {
+function emitWordFunction(fn, functions, mayPromote) {
   if (fn.analysis?.backend?.requiresExactWorkspace) {
     const unused = [
       ...wordResults(fn.returnType).map((_value, index) =>
@@ -627,6 +673,7 @@ ${unused.join("\n")}
       return `${indent}return SAGEJS_WORD_PROMOTE;`;
     },
     functions,
+    mayPromote,
     sites,
     value: wordName,
   };
@@ -642,10 +689,11 @@ ${emitWordStatements(fn.body, context, "    ")}
 
 function generateWordFunctions(functions) {
   const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
+  const mayPromote = wordPromotionCapabilities(functions);
   return {
     prototypes: functions.map((fn) => wordSignature(fn, true)).join("\n"),
     functions: functions
-      .map((fn) => emitWordFunction(fn, functionMap))
+      .map((fn) => emitWordFunction(fn, functionMap, mayPromote))
       .join("\n\n"),
   };
 }
@@ -656,6 +704,7 @@ module.exports = {
   generateWordFunctions,
   int64Constant,
   promotionSites,
+  wordPromotionCapabilities,
   wordName,
   wordResults,
   wordSignature,

@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -206,6 +207,7 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(
     validationCommandsForFiles(["packages/flint/src/p1.c"]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "architecture:check"],
       [
         "pnpm",
@@ -219,17 +221,23 @@ test("changed-file checks rebuild native code before testing it", () => {
     ],
   );
   assert.deepEqual(validationCommandsForFiles(["DOCUMENTATION.md"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "docs:check"],
   ]);
   assert.deepEqual(validationCommandsForFiles([".agents/lanes.json"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "architecture:check"],
     ["pnpm", "test:unit"],
   ]);
   assert.deepEqual(
     validationCommandsForFiles(["test/parallel-development.cjs"]),
-    [["pnpm", "test:unit"]],
+    [
+      ["pnpm", "merge:check"],
+      ["pnpm", "test:unit"],
+    ],
   );
   assert.deepEqual(validationCommandsForFiles(["test/graphics.cjs"]), [
+    ["pnpm", "merge:check"],
     ["pnpm", "test:integration"],
   ]);
   assert.deepEqual(
@@ -238,8 +246,43 @@ test("changed-file checks rebuild native code before testing it", () => {
       "src/lib/sagejs/number_fields/local_parallel_worker.py",
     ]),
     [
+      ["pnpm", "merge:check"],
       ["pnpm", "build"],
       ["pnpm", "python:precompile:run"],
+    ],
+  );
+  assert.deepEqual(
+    validationCommandsForFiles([
+      "docs/hyperelliptic-bsd-arithmetic.md",
+      "src/lib/sagejs/hyperelliptic_curves/family_cpu.py",
+      "test/hyperelliptic-bsd-public.cjs",
+    ]),
+    [
+      ["pnpm", "merge:check"],
+      ["pnpm", "build"],
+      ["pnpm", "docs:check"],
+      ["pnpm", "python:precompile:run"],
+      ["pnpm", "test:integration"],
+    ],
+  );
+  assert.deepEqual(
+    validationCommandsForFiles([
+      "architecture/native-code.json",
+      "docs/hyperelliptic-bsd-arithmetic.md",
+      "scripts/parallel-development.cjs",
+      "src/baselib/integer.py",
+      "src/lib/sagejs/number_fields/om_auto_selector.py",
+    ]),
+    [
+      ["pnpm", "merge:check"],
+      ["pnpm", "build"],
+      ["pnpm", "architecture:check"],
+      ["pnpm", "test:unit"],
+      ["pnpm", "test:baselib:strict"],
+      ["pnpm", "test:compiler"],
+      ["pnpm", "docs:check"],
+      ["pnpm", "python:precompile:run"],
+      ["pnpm", "test:integration"],
     ],
   );
 });
@@ -1009,7 +1052,7 @@ test("native compiler self-host bypasses an installed platform launcher", () => 
       require.resolve(`@sagemath/${packageName}/package.json`, {
         paths: [directory],
       }),
-      join(packageDirectory, "package.json"),
+      realpathSync(join(packageDirectory, "package.json")),
     );
 
     assert.equal(ensureNativeCompiler(directory, {
@@ -1718,7 +1761,12 @@ test("a custom prefix skips only its package during cache restore", () => {
       results.map(({ id, status }) => ({ id, status })),
       [
         { id: "flint", status: "skipped-custom-prefix" },
-        { id: "fflas", status: "skipped-custom-prefix" },
+        ...(fflasUsesFlintPrefix()
+          ? [{ id: "fflas", status: "skipped-custom-prefix" }]
+          : [
+              { id: "fflas-dependencies", status: "miss" },
+              { id: "fflas-addon", status: "miss" },
+            ]),
         { id: "graph-dependencies", status: "miss" },
         { id: "graph-addon", status: "miss" },
       ],

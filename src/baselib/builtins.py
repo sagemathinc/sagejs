@@ -12,6 +12,8 @@ from typing import Any, Callable, Iterator
 import sagejs.runtime as runtime
 
 _builtins_number_class = runtime.native_number_class
+_builtins_number_prototype = runtime.reflect.get(_builtins_number_class, "prototype")
+_builtins_number_value_of = runtime.reflect.get(_builtins_number_prototype, "valueOf")
 _Bool = bool
 _Float = float
 _Int = int
@@ -613,6 +615,137 @@ def _builtins_exact_integer_primitive(value: Any) -> _Bool:
     )
 
 
+_BUILTINS_DBL_MANT_DIG = 53
+_BUILTINS_DBL_MAX_EXP = 1024
+_BUILTINS_DBL_MIN_EXP = -1021
+_BUILTINS_DBL_ROUND_PRECISION = _BUILTINS_DBL_MANT_DIG + 2
+_BUILTINS_DBL_SHIFT_MAX = _BUILTINS_DBL_MAX_EXP - _BUILTINS_DBL_ROUND_PRECISION
+_BUILTINS_DBL_ROUND_Q_MAX = runtime.native_lshift(
+    runtime.bigint(1), runtime.bigint(_BUILTINS_DBL_ROUND_PRECISION)
+)
+_BUILTINS_DBL_HALF_EVEN_CORRECTION = [0, -1, -2, 1, 0, -1, 2, 1]
+_BUILTINS_DBL_MIN_OVERFLOW = runtime.native_sub(
+    runtime.native_lshift(runtime.bigint(1), runtime.bigint(_BUILTINS_DBL_MAX_EXP)),
+    runtime.native_lshift(
+        runtime.bigint(1),
+        runtime.bigint(_BUILTINS_DBL_MAX_EXP - _BUILTINS_DBL_MANT_DIG - 1),
+    ),
+)
+
+
+def _builtins_integer_to_binary64(value: Any) -> _Float:
+    """Convert an exact integer to binary64 with CPython's rounding rules.
+
+    This is the `int_to_float` oracle from CPython's `test_long.py`, adapted
+    to Sage.js BigInt primitives.  Keeping two guard bits plus a sticky bit
+    prevents the operand from being rounded before the requested operation.
+    """
+    integer = runtime.bigint(value)
+    if integer == runtime.bigint(0):
+        return 0.0
+
+    negative = integer < runtime.bigint(0)
+    if negative:
+        integer = runtime.native_neg(integer)
+
+    shift = _builtins_integer_nbits(integer) - _BUILTINS_DBL_ROUND_PRECISION
+    if shift < 0:
+        quotient = runtime.native_lshift(integer, runtime.bigint(-shift))
+    else:
+        quotient = runtime.native_rshift(integer, runtime.bigint(shift))
+        restored = runtime.native_lshift(quotient, runtime.bigint(shift))
+        if restored != integer:
+            quotient = runtime.native_bitor(quotient, runtime.bigint(1))
+
+    correction_index = runtime.number(
+        runtime.native_bitand(quotient, runtime.bigint(7))
+    )
+    quotient = runtime.native_add(
+        quotient,
+        runtime.bigint(_BUILTINS_DBL_HALF_EVEN_CORRECTION[correction_index]),
+    )
+    carry = 1 if quotient == _BUILTINS_DBL_ROUND_Q_MAX else 0
+    if shift + carry > _BUILTINS_DBL_SHIFT_MAX:
+        raise OverflowError("int too large to convert to float")
+
+    # Rounding makes quotient a multiple of four with at most 53 remaining
+    # significant bits, so this final BigInt-to-Number conversion is exact.
+    result = runtime.native_mul(
+        runtime.number(quotient),
+        runtime.math.pow(2, shift),
+    )
+    return runtime.native_neg(result) if negative else result
+
+
+def _builtins_binary64_operand(value: Any) -> _Float:
+    """Cross an arithmetic operand into binary64 without silent overflow."""
+    if runtime.strict_equal(runtime.jstype(value), "bigint"):
+        return _builtins_integer_to_binary64(value)
+    return runtime.number(value)
+
+
+def _builtins_integer_true_divide(left: Any, right: Any) -> _Float:
+    """Return CPython's correctly rounded binary64 quotient of two integers."""
+    numerator = runtime.bigint(left)
+    denominator = runtime.bigint(right)
+    negative = (numerator < runtime.bigint(0)) != (denominator < runtime.bigint(0))
+    if denominator == runtime.bigint(0):
+        raise runtime.zero_division_error("division by zero")
+    if numerator == runtime.bigint(0):
+        return -0.0 if negative else 0.0
+    if numerator < runtime.bigint(0):
+        numerator = runtime.native_neg(numerator)
+    if denominator < runtime.bigint(0):
+        denominator = runtime.native_neg(denominator)
+
+    if numerator >= runtime.native_mul(_BUILTINS_DBL_MIN_OVERFLOW, denominator):
+        raise OverflowError("integer division result too large for a float")
+
+    exponent_difference = _builtins_integer_nbits(numerator) - _builtins_integer_nbits(
+        denominator
+    )
+    if exponent_difference >= 0:
+        if numerator >= runtime.native_lshift(
+            denominator, runtime.bigint(exponent_difference)
+        ):
+            exponent_difference += 1
+    elif (
+        runtime.native_lshift(numerator, runtime.bigint(-exponent_difference))
+        >= denominator
+    ):
+        exponent_difference += 1
+
+    exponent = (
+        exponent_difference
+        if exponent_difference > _BUILTINS_DBL_MIN_EXP
+        else _BUILTINS_DBL_MIN_EXP
+    ) - _BUILTINS_DBL_MANT_DIG
+    scaled_numerator = numerator
+    scaled_denominator = denominator
+    if exponent < 0:
+        scaled_numerator = runtime.native_lshift(numerator, runtime.bigint(-exponent))
+    elif exponent > 0:
+        scaled_denominator = runtime.native_lshift(
+            denominator, runtime.bigint(exponent)
+        )
+
+    quotient = runtime.native_div(scaled_numerator, scaled_denominator)
+    remainder = runtime.native_mod(scaled_numerator, scaled_denominator)
+    doubled_remainder = runtime.native_mul(remainder, runtime.bigint(2))
+    if doubled_remainder > scaled_denominator or (
+        doubled_remainder == scaled_denominator
+        and runtime.native_mod(quotient, runtime.bigint(2)) == runtime.bigint(1)
+    ):
+        quotient = runtime.native_add(quotient, runtime.bigint(1))
+
+    # quotient has at most 53 significant bits and therefore converts exactly.
+    result = runtime.native_mul(
+        runtime.number(quotient),
+        runtime.math.pow(2, exponent),
+    )
+    return runtime.native_neg(result) if negative else result
+
+
 def _builtins_is_boxed_float(value: Any) -> _Bool:
     """Return whether `value` is Sage.js's integral-float wrapper."""
     return (
@@ -677,6 +810,35 @@ def ρσ_float_result(value: Any) -> Any:
     return number
 
 
+def ρσ_strict_float_unbox(value: Any) -> Any:
+    """Return an authenticated Python float as one binary64 primitive.
+
+    `None` is the fail-closed result. Nonintegral primitive Numbers, infinities,
+    and NaNs already carry Python float identity. Integral floats use the one
+    frozen private Number subclass created by `_builtins_box_float`; the
+    captured intrinsic avoids invoking a mutable user-visible `valueOf`.
+    """
+    if (
+        runtime.reflect.get(_builtins_number_prototype, "valueOf")
+        is not _builtins_number_value_of
+    ):
+        return None
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return None if runtime.number.isSafeInteger(value) else value
+    if (
+        value is None
+        or not runtime.strict_equal(runtime.jstype(value), "object")
+        or _builtins_float_prototype is runtime.undefined
+        or runtime.object.getPrototypeOf(value) is not _builtins_float_prototype
+        or not runtime.object.isFrozen(value)
+    ):
+        return None
+    try:
+        return runtime.reflect.apply(_builtins_number_value_of, value, [])
+    except Exception:
+        return None
+
+
 def _builtins_numeric_result(
     value: Any,
     left: Any,
@@ -685,6 +847,8 @@ def _builtins_numeric_result(
     """Preserve float contagion for a primitive arithmetic result."""
     if _builtins_is_python_float(left) or _builtins_is_python_float(right):
         return ρσ_float_result(value)
+    if runtime.strict_equal(value, 0):
+        return 0
     return value
 
 
@@ -735,6 +899,13 @@ runtime.set_class_repr(_NoneType, "<class 'NoneType'>")
 
 
 def ρσ_operator_add(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_add_slow(left, right)
+
+
+def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -754,7 +925,10 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_add(runtime.number(left), runtime.number(right)),
+                runtime.native_add(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -780,6 +954,13 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_add_exact_slow(left, right)
+
+
+def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     # Primitive values cannot override Python's arithmetic methods. Handle
     # them before the general parent/coercion and special-method machinery;
     # overflowing safe integers still promote to BigInt below.
@@ -795,6 +976,8 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
             return result
         if _builtins_is_python_float(left) or _builtins_is_python_float(right):
             return ρσ_float_result(result)
+        if runtime.strict_equal(result, 0):
+            return 0
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -846,7 +1029,10 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_add(runtime.number(left), runtime.number(right)),
+                runtime.native_add(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -876,6 +1062,8 @@ def ρσ_operator_neg(value: Any) -> Any:
         answer = runtime.native_neg(value)
         if _builtins_is_python_float(value):
             return ρσ_float_result(answer)
+        if runtime.strict_equal(answer, 0):
+            return 0
         return answer
     if _builtins_member_is_function(value, "__neg__"):
         return _builtins_call_member(value, "__neg__", [])
@@ -1017,6 +1205,13 @@ def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_sub_slow(left, right)
+
+
+def _builtins_operator_sub_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1035,7 +1230,10 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_sub(runtime.number(left), runtime.number(right)),
+                runtime.native_sub(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -1057,6 +1255,13 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_sub_exact_slow(left, right)
+
+
+def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1068,6 +1273,8 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
             return result
         if _builtins_is_python_float(left) or _builtins_is_python_float(right):
             return ρσ_float_result(result)
+        if runtime.strict_equal(result, 0):
+            return 0
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -1110,7 +1317,10 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_sub(runtime.number(left), runtime.number(right)),
+                runtime.native_sub(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -1141,6 +1351,13 @@ def _builtins_repeat_string(text: str, count: Any) -> str:
 
 
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_mul_slow(left, right)
+
+
+def _builtins_operator_mul_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1159,7 +1376,10 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_mul(runtime.number(left), runtime.number(right)),
+                runtime.native_mul(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -1185,6 +1405,13 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_mul_exact_slow(left, right)
+
+
+def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1196,6 +1423,8 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
             return result
         if _builtins_is_python_float(left) or _builtins_is_python_float(right):
             return ρσ_float_result(result)
+        if runtime.strict_equal(result, 0):
+            return 0
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -1242,7 +1471,10 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
             right_type, "number"
         ):
             return _builtins_numeric_result(
-                runtime.native_mul(runtime.number(left), runtime.number(right)),
+                runtime.native_mul(
+                    _builtins_binary64_operand(left),
+                    _builtins_binary64_operand(right),
+                ),
                 left,
                 right,
             )
@@ -1320,13 +1552,12 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
         and _builtins_exact_integer_primitive(right)
         and right < 0
     ):
-        left_number = runtime.number(left)
-        right_number = runtime.number(right)
-        if not runtime.number.isFinite(left_number) or not runtime.number.isFinite(
-            right_number
-        ):
-            raise OverflowError("int too large to convert to float")
-        return ρσ_float_result(runtime.native_pow(left_number, right_number))
+        return ρσ_float_result(
+            runtime.native_pow(
+                _builtins_integer_to_binary64(left),
+                _builtins_integer_to_binary64(right),
+            )
+        )
     if runtime.strict_equal(left_type, right_type) and (
         runtime.strict_equal(left_type, "number")
         or runtime.strict_equal(left_type, "bigint")
@@ -1433,9 +1664,13 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     # exponentiation. JavaScript rejects every BigInt/Number mixture, so cross
     # the explicit floating boundary before invoking its numeric operator.
     if runtime.strict_equal(left_type, "bigint"):
-        return ρσ_float_result(runtime.native_pow(runtime.number(left), right))
+        return ρσ_float_result(
+            runtime.native_pow(_builtins_integer_to_binary64(left), right)
+        )
     if runtime.strict_equal(right_type, "bigint"):
-        return ρσ_float_result(runtime.native_pow(left, runtime.number(right)))
+        return ρσ_float_result(
+            runtime.native_pow(left, _builtins_integer_to_binary64(right))
+        )
     if not runtime.strict_equal(left_type, "number") or not runtime.strict_equal(
         right_type, "number"
     ):
@@ -1566,6 +1801,13 @@ def ρσ_operator_idiv_python_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "truediv", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_truediv_slow(left, right)
+
+
+def _builtins_operator_truediv_slow(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
         result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
         if result is not NotImplemented:
@@ -1582,20 +1824,40 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
             return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error("division by zero")
-    if runtime.strict_equal(ρσ_python_jstype(left), "bigint") or runtime.strict_equal(
-        ρσ_python_jstype(right), "bigint"
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
+    if _builtins_exact_integer_primitive(left) and _builtins_exact_integer_primitive(
+        right
+    ):
+        if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
+            right_type, "bigint"
+        ):
+            return ρσ_float_result(_builtins_integer_true_divide(left, right))
+        return ρσ_float_result(runtime.native_div(left, right))
+    if runtime.strict_equal(left_type, "bigint") or runtime.strict_equal(
+        right_type, "bigint"
     ):
         return ρσ_float_result(
-            runtime.native_div(runtime.number(left), runtime.number(right))
+            runtime.native_div(
+                _builtins_binary64_operand(left),
+                _builtins_binary64_operand(right),
+            )
         )
-    if runtime.strict_equal(ρσ_python_jstype(left), "number") and runtime.strict_equal(
-        ρσ_python_jstype(right), "number"
+    if runtime.strict_equal(left_type, "number") and runtime.strict_equal(
+        right_type, "number"
     ):
         return ρσ_float_result(runtime.native_div(left, right))
     return ρσ_float_result(runtime.native_div(left, right))
 
 
 def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "truediv", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_truediv_exact_slow(left, right)
+
+
+def _builtins_operator_truediv_exact_slow(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
         result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
         if result is not NotImplemented:
@@ -1659,7 +1921,10 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
         right_type, "bigint"
     ):
         return ρσ_float_result(
-            runtime.native_mod(runtime.number(left), runtime.number(right))
+            runtime.native_mod(
+                _builtins_binary64_operand(left),
+                _builtins_binary64_operand(right),
+            )
         )
     return _builtins_numeric_result(runtime.native_mod(left, right), left, right)
 
@@ -1950,7 +2215,10 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
         right_type, "bigint"
     ):
         answer = runtime.math.floor(
-            runtime.native_div(runtime.number(left), runtime.number(right))
+            runtime.native_div(
+                _builtins_binary64_operand(left),
+                _builtins_binary64_operand(right),
+            )
         )
     else:
         answer = runtime.math.floor(runtime.native_div(left, right))
@@ -2000,6 +2268,147 @@ def ρσ_bool(value: Any) -> _Bool:
     return True
 
 
+_BUILTINS_MAX_BINARY_FRACTION_BITS = 1074
+_BUILTINS_ZERO_DECIMAL_WIDTH = 309
+_BUILTINS_INTEGRAL_LIMIT = 4503599627370496
+_BUILTINS_FAST_POWER_DIGITS = 22
+_BUILTINS_ROUND_SLACK = 8.881784197001252e-16
+
+
+def _builtins_finite_number(value: Any) -> _Bool:
+    """Return whether a value is a finite float, boxed or primitive."""
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return runtime.number.isFinite(value)
+    if _builtins_is_python_float(value):
+        return runtime.number.isFinite(runtime.number(value))
+    return False
+
+
+def _builtins_round_by_scale(value: Any, digits: _Int) -> Any:
+    """
+    Round through a power of ten, where the scaled value settles the answer.
+
+    Multiplying shifts the value by up to an ulp, which only changes the answer
+    when the scaled value sits on a half.  Away from one it names the integer
+    the expansion would, and dividing that by an exactly representable power of
+    ten rounds once, onto the decimal Python names.  Near one the answer is not
+    this function's to give, and it defers by returning `runtime.undefined`.
+    """
+    power = runtime.math.pow(10, digits)
+    scaled = runtime.native_mul(value, power)
+    magnitude = runtime.math.abs(scaled)
+    if magnitude >= _BUILTINS_INTEGRAL_LIMIT:
+        return runtime.undefined
+    floor_value = runtime.math.floor(scaled)
+    fraction = runtime.native_sub(scaled, floor_value)
+    if runtime.math.abs(runtime.native_sub(fraction, 0.5)) <= runtime.native_mul(
+        magnitude, _BUILTINS_ROUND_SLACK
+    ):
+        return runtime.undefined
+    if fraction > 0.5:
+        floor_value = runtime.native_add(floor_value, 1)
+    return runtime.native_div(floor_value, power)
+
+
+def _builtins_keep_zero_sign(answer: Any, value: Any) -> Any:
+    """Give a zero result the sign Python keeps for it."""
+    if runtime.strict_equal(answer, 0) and (
+        value < 0 or runtime.native_div(1, value) < 0
+    ):
+        return runtime.native_mul(0, -1)
+    return answer
+
+
+def _builtins_binary_ratio(value: Any) -> Any:
+    """Return the exact numerator and power-of-two denominator of a float."""
+    scaled = runtime.math.abs(value)
+    binary_places = 0
+    while not runtime.number.isInteger(scaled):
+        scaled = runtime.native_mul(scaled, 2)
+        binary_places += 1
+    numerator = runtime.bigint(scaled)
+    if value < 0:
+        numerator = -numerator
+    return numerator, binary_places
+
+
+def _builtins_round_bigint_ratio(numerator: _Int, denominator: _Int) -> _Int:
+    """Round an exact rational to an integer, with ties going to even."""
+    negative = numerator < 0
+    magnitude = -numerator if negative else numerator
+    quotient = runtime.native_div(magnitude, denominator)
+    remainder = runtime.native_mod(magnitude, denominator)
+    doubled = runtime.native_mul(remainder, runtime.bigint(2))
+    if doubled > denominator or (
+        doubled == denominator and runtime.native_mod(quotient, runtime.bigint(2)) != 0
+    ):
+        quotient = runtime.native_add(quotient, runtime.bigint(1))
+    return -quotient if negative else quotient
+
+
+def _builtins_decimal_coefficient(value: _Int, places: _Int) -> Any:
+    """Convert `value * 10**-places` to the nearest binary64 number."""
+    negative = value < 0
+    magnitude = -value if negative else value
+    digits = str(magnitude)
+    if places == 0:
+        text = digits
+    elif len(digits) <= places:
+        text = "0." + "0" * (places - len(digits)) + digits
+    else:
+        split = len(digits) - places
+        text = digits[0:split] + "." + digits[split:]
+    if negative:
+        text = "-" + text
+    return runtime.number(text)
+
+
+def _builtins_round_finite_exact(value: Any, digits: _Int) -> Any:
+    """
+    Round a finite binary64 value through its exact rational representation.
+
+    The common case is handled before this function by a safe scaling fast
+    path.  This path is deliberately exact: powers of five and two describe
+    the requested decimal grid as integers, the quotient is rounded to even,
+    and the final decimal is converted to binary64 exactly once.
+    """
+    if runtime.strict_equal(value, 0):
+        return value
+    if digits >= _BUILTINS_MAX_BINARY_FRACTION_BITS:
+        return value
+    if digits <= -_BUILTINS_ZERO_DECIMAL_WIDTH:
+        return _builtins_keep_zero_sign(0, value)
+
+    decimal_places = runtime.number(digits)
+    numerator, binary_places = _builtins_binary_ratio(value)
+    if decimal_places >= 0:
+        if decimal_places >= binary_places:
+            return value
+        scaled_numerator = runtime.native_mul(
+            numerator,
+            runtime.native_pow(runtime.bigint(5), runtime.bigint(decimal_places)),
+        )
+        denominator = runtime.native_pow(
+            runtime.bigint(2), runtime.bigint(binary_places - decimal_places)
+        )
+        coefficient = _builtins_round_bigint_ratio(scaled_numerator, denominator)
+        answer = _builtins_decimal_coefficient(coefficient, decimal_places)
+        return _builtins_keep_zero_sign(answer, value)
+
+    width = -decimal_places
+    denominator = runtime.native_mul(
+        runtime.native_pow(runtime.bigint(2), runtime.bigint(binary_places + width)),
+        runtime.native_pow(runtime.bigint(5), runtime.bigint(width)),
+    )
+    coefficient = _builtins_round_bigint_ratio(numerator, denominator)
+    if coefficient == 0:
+        return _builtins_keep_zero_sign(0, value)
+    answer = runtime.number(str(coefficient) + "e" + str(width))
+    if not runtime.number.isFinite(answer):
+        raise OverflowError("rounded value too large to represent")
+    return answer
+
+
 def ρσ_round(
     value: Any = _BUILTINS_MISSING,
     ndigits: Any = runtime.undefined,
@@ -2012,7 +2421,7 @@ def ρσ_round(
     if _builtins_exact_integer_primitive(value):
         if ndigits is runtime.undefined or ndigits is None:
             return runtime.normalize_integer(runtime.bigint(value))
-        digits = int(ndigits)
+        digits = _builtins_index_value(ndigits)
         if digits >= 0:
             return runtime.normalize_integer(runtime.bigint(value))
 
@@ -2020,7 +2429,10 @@ def ρσ_round(
         negative = magnitude < 0
         if negative:
             magnitude = -magnitude
-        factor = runtime.native_pow(runtime.bigint(10), runtime.bigint(-digits))
+        width = -digits
+        if width > len(str(magnitude)):
+            return 0
+        factor = runtime.native_pow(runtime.bigint(10), runtime.bigint(width))
         quotient = runtime.native_div(magnitude, factor)
         remainder = runtime.native_mod(magnitude, factor)
         doubled = runtime.native_mul(remainder, runtime.bigint(2))
@@ -2050,10 +2462,28 @@ def ρσ_round(
             floor_value if runtime.native_mod(floor_value, 2) == 0 else floor_value + 1
         )
 
-    scale = runtime.math.pow(10, int(ndigits))
-    answer = runtime.native_div(
-        ρσ_round(runtime.native_mul(value, scale)),
-        scale,
+    digits = _builtins_index_value(ndigits)
+    if _builtins_finite_number(value):
+        number = runtime.number(value)
+        if digits >= 0 and digits <= _BUILTINS_FAST_POWER_DIGITS:
+            quick = _builtins_round_by_scale(number, runtime.number(digits))
+            if quick is not runtime.undefined:
+                answer = _builtins_keep_zero_sign(quick, number)
+                if _builtins_is_python_float(value):
+                    return ρσ_float_result(answer)
+                return answer
+        answer = _builtins_round_finite_exact(number, digits)
+        if _builtins_is_python_float(value):
+            return ρσ_float_result(answer)
+        return answer
+
+    scale = runtime.math.pow(10, digits)
+    answer = _builtins_keep_zero_sign(
+        runtime.native_div(
+            ρσ_round(runtime.native_mul(value, scale)),
+            scale,
+        ),
+        value,
     )
     if _builtins_is_python_float(value):
         return ρσ_float_result(answer)
@@ -2269,6 +2699,32 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
     return runtime.number(answer)
 
 
+_BUILTINS_DECIMAL_DIGITS = "0123456789"
+
+
+def _builtins_valid_float_underscores(text: _Str) -> _Bool:
+    """Return whether every `_` in `text` separates two decimal digits.
+
+    CPython removes underscores before converting numeric text, but only after
+    checking that each one has an ASCII digit immediately before and after it.
+    The check deliberately does not admit underscores in signs, decimal-point
+    boundaries, exponents, or the `inf` and `nan` spellings.
+    """
+    groups = text.split("_")
+    index = 1
+    while index < len(groups):
+        before = groups[index - 1]
+        after = groups[index]
+        if len(before) == 0 or len(after) == 0:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, before[-1]) == -1:
+            return False
+        if runtime.string_find(_BUILTINS_DECIMAL_DIGITS, after[0]) == -1:
+            return False
+        index += 1
+    return True
+
+
 def ρσ_float(value: Any = 0) -> Any:
     if _builtins_is_boxed_float(value):
         return value
@@ -2277,7 +2733,7 @@ def ρσ_float(value: Any = 0) -> Any:
     if runtime.strict_equal(value_type, "number"):
         answer = value
     elif runtime.strict_equal(value_type, "bigint"):
-        answer = runtime.number(value)
+        answer = _builtins_integer_to_binary64(value)
     elif runtime.strict_equal(value_type, "boolean"):
         answer = 1 if value else 0
     elif runtime.strict_equal(value_type, "string"):
@@ -2290,8 +2746,13 @@ def ρσ_float(value: Any = 0) -> Any:
             return runtime.number.NaN
         if normalized == "":
             raise ValueError("Could not convert string to float: " + str(value))
+        text = value
+        if runtime.string_find(text, "_") != -1:
+            if not _builtins_valid_float_underscores(text):
+                raise ValueError("Could not convert string to float: " + str(value))
+            text = text.replace(runtime.regexp("_", "g"), "")
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
-        answer = runtime.number(value)
+        answer = runtime.number(text)
         reject_nan = True
     elif _builtins_member_is_function(value, "decode") and _builtins_member_is_function(
         value, "__len__"
@@ -2300,7 +2761,10 @@ def ρσ_float(value: Any = 0) -> Any:
     elif _builtins_member_is_function(value, "__float__"):
         answer = _builtins_call_member(value, "__float__", [])
     elif _builtins_member_is_function(value, "__index__"):
-        answer = runtime.number(_builtins_call_member(value, "__index__", []))
+        indexed = _builtins_call_member(value, "__index__", [])
+        if not _builtins_exact_integer_primitive(indexed):
+            raise TypeError("__index__ returned non-int")
+        answer = _builtins_integer_to_binary64(indexed)
     else:
         raise TypeError(
             "float() argument must be a string or a real number, not "
@@ -3886,7 +4350,12 @@ def _builtins_index_value(value: Any) -> _Int:
         if _builtins_exact_integer_primitive(answer):
             return answer
         raise TypeError("__index__ returned non-int")
-    raise TypeError("object cannot be interpreted as an integer")
+    value_name = (
+        "float"
+        if _builtins_is_python_float(value)
+        else _builtins_get_member(ρσ_type(value), "__name__")
+    )
+    raise TypeError("'" + value_name + "' object cannot be interpreted as an integer")
 
 
 def ρσ_range(
@@ -6443,38 +6912,6 @@ def srange(
             answer.append(current)
             current += step_value
     return answer
-
-
-class _Partitions:
-    def __init__(self, value: Any) -> None:
-        if not runtime.is_exact_integer(value):
-            raise TypeError("partition size must be an integer")
-        self._value = int(value)
-        if self._value < 0:
-            raise ValueError("partition size must be nonnegative")
-
-    def _partitions(
-        self,
-        remaining: _Int,
-        maximum: _Int,
-    ) -> Iterator[list[_Int]]:
-        if remaining == 0:
-            yield []
-        else:
-            upper = min(remaining, maximum)
-            for first in range(upper, 0, -1):
-                for rest in self._partitions(remaining - first, first):
-                    yield [first] + rest
-
-    def __iter__(self) -> Iterator[list[_Int]]:
-        return self._partitions(self._value, self._value)
-
-    def list(self) -> list[list[_Int]]:
-        return list(self)
-
-
-def Partitions(value: Any) -> _Partitions:
-    return _Partitions(value)
 
 
 def bernoulli(index: Any) -> Any:

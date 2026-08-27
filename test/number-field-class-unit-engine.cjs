@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -1685,8 +1686,10 @@ forged = ClassUnitSaturationRecord(
     },
 )
 assert not forged.complete and not forged.verify()
-record.analytic_validation["lower_index"] = 2
-assert not record.verify()
+detached_validation = record.analytic_validation
+detached_validation["lower_index"] = 2
+assert detached_validation != record.analytic_validation
+assert record.verify()
 assert engine._resource_usage["saturation_rounds"] == 1
 assert engine.stages[-1].name == "saturation"
 assert engine.stages[-1].state == "complete"

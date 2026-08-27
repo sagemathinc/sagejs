@@ -46,12 +46,24 @@ const HARNESS_HTML = `<!doctype html>
 
 const HARNESS_JAVASCRIPT = `
 import { createSage } from "/kernel.mjs";
-const state = { session: null, error: null };
+const state = { session: null, sessions: new Map(), error: null };
+async function sessionFor(optimizationLevel) {
+  if (optimizationLevel === undefined || optimizationLevel === "O2") {
+    return state.session;
+  }
+  let session = state.sessions.get(optimizationLevel);
+  if (session === undefined) {
+    session = await createSage({ optimizationLevel });
+    state.sessions.set(optimizationLevel, session);
+  }
+  return session;
+}
 window.__sagejsTest = {
   protocol: 1,
-  async evaluate(source, timeout) {
+  async evaluate(source, timeout, optimizationLevel) {
     const started = performance.now();
-    const result = await state.session.evaluate(source, { timeout });
+    const session = await sessionFor(optimizationLevel);
+    const result = await session.evaluate(source, { timeout });
     return {
       repr: result.repr,
       stdout: result.stdout,
@@ -83,7 +95,13 @@ window.__sagejsTest = {
     return { rejected, latency_ms: performance.now() - started };
   },
   async reset() { await state.session.reset(); },
-  async close() { await state.session.close(); },
+  async close() {
+    await Promise.all([
+      state.session.close(),
+      ...[...state.sessions.values()].map((session) => session.close()),
+    ]);
+    state.sessions.clear();
+  },
   diagnostics() {
     return {
       cross_origin_isolated: globalThis.crossOriginIsolated,

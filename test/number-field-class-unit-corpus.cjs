@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -734,7 +735,10 @@ test("external comparator identities bind their mathematical runtimes", {
 });
 
 test("measured-process timeout kills the benchmark process group", {
-  skip: process.platform !== "linux" || !fs.existsSync("/usr/bin/timeout"),
+  skip:
+    process.platform !== "linux" ||
+    !fs.existsSync("/usr/bin/time") ||
+    !fs.existsSync("/usr/bin/timeout"),
   timeout: 10_000,
 }, async () => {
   const marker = `sagejs-cu-timeout-${process.pid}-${Date.now()}`;

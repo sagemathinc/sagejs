@@ -13,6 +13,11 @@ This document describes what is implemented, the mathematical representation,
 the available group operations, and where the current implementation is—or is
 not—intended to be fast.
 
+For rational torsion certificates, canonical heights, height pairings,
+regulators, subgroup saturation, and analytic BSD quotients over `QQ`, see
+[BSD arithmetic for genus-2 and genus-3
+Jacobians](hyperelliptic-bsd-arithmetic.md).
+
 ## Supported models
 
 The curve is written
@@ -329,12 +334,14 @@ SQLite research datasets.
 
 ## Efficiency and native acceleration
 
-The public group law is correctness-first:
+The public group law is correctness-first, but supported odd-degree genus-2/3
+models now reuse a prepared exact arithmetic context:
 
 | Operation | Current method | Intended scale |
 | --- | --- | --- |
-| Addition/doubling | ordinary-Python generalized Cantor arithmetic; one-crossing packed genus-3 sums for samplers | individual computations and correctness oracles |
-| Scalar multiplication | packed native genus-3 kernel when supported; ordinary Python fallback | exact scalars, with native inputs bounded to 128 bits |
+| Addition/doubling | source-transparent packed Cantor kernels over odd prime fields; retained FLINT Mumford results over `QQ`; ordinary Python reference fallback | individual calls and prepared batches |
+| Negation/subtraction/sum | packed retained batches over odd prime fields; exact public fallback | batch pipelines without polynomial intermediates |
+| Scalar multiplication | packed source-transparent genus-2/3 kernels or retained FLINT rational results; ordinary Python fallback | exact scalars with explicit batch and memory bounds |
 | Element order | native factor-and-strip when supported; independently readable Python fallback | an annihilating multiple and its factorization |
 | Jacobian order | evaluation/resultant from cached Frobenius data | inexpensive after local Frobenius computation |
 | Genus-2 structure | native smalljac when supported | production path in its declared domain |
@@ -343,15 +350,27 @@ The public group law is correctness-first:
 
 At fixed genus, each Cantor operation involves only low-degree polynomials, but
 the ordinary fallback still creates generic Python polynomial objects and runs
-generic extended-gcd operations. Supported genus-3 scalar multiplication and
-factor-and-strip element orders use the existing packed native kernel.
+generic extended-gcd operations. `J.prepared_arithmetic()` therefore owns the
+immutable model identity and bounded scratch state used by `prepare_batch`,
+`add_batch`, `negate_batch`, `subtract_batch`, `scalar_batch`, and `sum`.
+Prepared finite-field batches retain one authenticated immutable packed buffer;
+generated native adapters may borrow it only at inputs proved read-only. The
+dynamic fallback receives an explicit copy. Public result wrappers remain
+ordinary `MumfordDivisor` values and materialize `u,v` only when requested.
+
+Over `QQ`, the same public operators use a sealed FLINT Mumford-result resource
+whose indivisible reduced `(u,v)` value remains private. The first operation
+that needs polynomial, hashing, packing, or serialization data extracts and
+validates one canonical primitive row; `algorithm="reference"` always replays
+the ordinary polynomial law. Owner, parent, model fingerprint, lifecycle, and
+memory checks reject resource transplantation or stale contexts.
+
 Profiling also showed that adding the `2*g+1` point divisors used by each fast
 sample was a repeated high-volume language crossing, so those divisors are
-now packed and summed in one bounded native call. A profile of the remaining
-basis construction found only tens to hundreds of generic group operations;
-another handwritten vector-DLP boundary would not dominate end-to-end time.
-Native work remains batched and capability-gated if larger noncyclic profiles
-justify it later.
+now packed and summed in one bounded native call. Factor-and-strip, ordered
+multi-progression search, structure maps, genus-3 certification, rational
+torsion, and saturation reuse the same prepared operations rather than
+repacking a curve for every Sylow component.
 
 ### Native genus-3 certification kernel
 

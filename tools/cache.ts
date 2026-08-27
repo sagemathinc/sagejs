@@ -6,6 +6,7 @@ import {
   renameSync,
   rmSync,
 } from "node:fs";
+import type { Stats } from "node:fs";
 import { homedir } from "node:os";
 import {
   basename,
@@ -102,6 +103,15 @@ interface ScannedDirectory {
   newestMtimeMs: number;
 }
 
+function lstatIfPresent(filename: string): Stats | undefined {
+  try {
+    return lstatSync(filename);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
 export function defaultModuleCacheRoot(
   environment: NodeJS.ProcessEnv = process.env,
   home: string = homedir(),
@@ -178,7 +188,8 @@ function scanDirectory(directory: string): ScannedDirectory {
     const current = pending.pop()!;
     for (const name of readdirSync(current)) {
       const filename = join(current, name);
-      const metadata = lstatSync(filename);
+      const metadata = lstatIfPresent(filename);
+      if (metadata === undefined) continue;
       if (metadata.isSymbolicLink()) {
         throw new Error(`cache prune refused symlinked entry: ${filename}`);
       }
@@ -198,7 +209,8 @@ function hasFreshLease(directory: string, now: number): boolean {
       !name.endsWith(MODULE_CACHE_LEASE_SUFFIX)
     ) continue;
     const filename = join(directory, name);
-    const metadata = lstatSync(filename);
+    const metadata = lstatIfPresent(filename);
+    if (metadata === undefined) continue;
     if (metadata.isSymbolicLink()) {
       throw new Error(`cache prune refused symlinked lease: ${filename}`);
     }

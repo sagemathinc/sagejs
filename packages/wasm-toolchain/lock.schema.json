@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/wasm-toolchain-lock-v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "schema", "sourceCatalog", "canonicalBuilder", "wasiSdk", "libraries", "build"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schema": { "const": "sagejs.wasm-toolchain-lock/v2" },
+    "sourceCatalog": { "const": "../../tools/source-mirror/catalog.json" },
+    "canonicalBuilder": { "const": "linux-x64" },
+    "wasiSdk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "target", "sources"],
+      "properties": {
+        "version": { "type": "string" },
+        "target": { "const": "wasm32-wasip1" },
+        "sources": { "type": "object", "minProperties": 1, "additionalProperties": { "type": "string" } }
+      }
+    },
+    "libraries": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "source", "prefix", "archiveName"],
+        "properties": {
+          "version": { "type": "string" },
+          "source": { "type": "string" },
+          "prefix": { "type": "string", "pattern": "^prefixes/[a-z0-9-]+$" },
+          "archiveName": { "type": "string", "pattern": "^lib[A-Za-z0-9_]+\\.a$" },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "jobs", "cFlags", "linkFlags", "emulationLibraries", "repositoryInputs"],
+      "properties": {
+        "target": { "const": "wasm32-wasip1" },
+        "jobs": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "cFlags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "linkFlags": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "emulationLibraries": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "repositoryInputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.).+$" } }
+      }
+    }
+  }
+}

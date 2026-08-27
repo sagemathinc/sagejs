@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -7,6 +8,7 @@ const { join, resolve } = require("node:path");
 
 const {
   nativeFiles,
+  trackedNativeExtensions,
   validateNativeAudit,
   validateKernelRegistry,
   validateNativeCode,
@@ -28,10 +30,15 @@ const auditManifest = JSON.parse(readFileSync(
 
 test("every tracked native file has an architectural classification", () => {
   const result = validateNativeCode(codeManifest);
-  assert.equal(
-    result.entries.length,
-    nativeFiles(root, codeManifest.policy.tracked_extensions).length,
+  assert.deepEqual(
+    trackedNativeExtensions(root),
+    codeManifest.policy.tracked_extensions,
   );
+  assert.deepEqual(
+    nativeFiles(root),
+    nativeFiles(root, codeManifest.policy.tracked_extensions),
+  );
+  assert.equal(result.entries.length, nativeFiles().length);
   assert.ok(result.audited.some((entry) =>
     entry.path === "packages/flint/src/p1.c"
   ));

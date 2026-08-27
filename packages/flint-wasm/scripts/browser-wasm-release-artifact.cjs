@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { isDeepStrictEqual } = require("node:util");
 const zlib = require("node:zlib");
-const { canonicalJson } = require("./wasm-toolchain.cjs");
+const { canonicalJson } = require("../../wasm-toolchain/scripts/toolchain.cjs");
 
 function sha256(bytes) {
   return crypto.createHash("sha256").update(bytes).digest("hex");
@@ -328,15 +328,56 @@ function inspectProductionArtifact(distDirectory) {
   };
 }
 
-function enforceTopologyBudgets(report) {
+function reviewedTopologyLimits(budget, groupIds) {
+  if (budget === null || budget === undefined) return new Map();
+  if (budget.schema !== "sagejs.browser-wasm-budget/v1") {
+    throw new Error(`unsupported browser Wasm budget schema ${budget.schema}`);
+  }
+  const value = budget.artifact_topology_limits;
+  if (value === undefined) return new Map();
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("artifact_topology_limits must be an object");
+  }
+  const limits = new Map();
+  for (const [groupId, limit] of Object.entries(value)) {
+    if (!groupIds.has(groupId)) {
+      throw new Error(`artifact_topology_limits names unknown group ${groupId}`);
+    }
+    if (limit === null || typeof limit !== "object" || Array.isArray(limit)) {
+      throw new Error(`artifact_topology_limits.${groupId} must be an object`);
+    }
+    const keys = Object.keys(limit).sort();
+    if (!isDeepStrictEqual(keys, ["brotli_bytes", "gzip_bytes"])) {
+      throw new Error(
+        `artifact_topology_limits.${groupId} must contain exactly gzip_bytes and brotli_bytes`,
+      );
+    }
+    for (const encoding of keys) {
+      if (!Number.isSafeInteger(limit[encoding]) || limit[encoding] <= 0) {
+        throw new Error(
+          `artifact_topology_limits.${groupId}.${encoding} must be a positive safe integer`,
+        );
+      }
+    }
+    limits.set(groupId, limit);
+  }
+  return limits;
+}
+
+function enforceTopologyBudgets(report, budget = null) {
   const failures = [];
   if (!Array.isArray(report.payload_groups) || report.payload_groups.length === 0) {
     return ["authenticated artifact topology is absent"];
   }
+  const limits = reviewedTopologyLimits(
+    budget,
+    new Set(report.payload_groups.map((group) => group.id)),
+  );
   for (const group of report.payload_groups) {
     for (const encoding of ["gzip_bytes", "brotli_bytes"]) {
       const actual = group.compressed_delta?.[encoding];
-      const maximum = group.maximum_compressed_delta?.[encoding];
+      const maximum =
+        limits.get(group.id)?.[encoding] ?? group.maximum_compressed_delta?.[encoding];
       if (!Number.isSafeInteger(maximum) || maximum <= 0) {
         failures.push(`${group.id} has no positive ${encoding} delta budget`);
       } else if (actual > maximum) {
@@ -347,12 +388,13 @@ function enforceTopologyBudgets(report) {
   return failures;
 }
 
-function compareArtifacts(left, right) {
+function compareArtifacts(left, right, { includeBuildReceipt = true } = {}) {
   const differences = [];
   if (left.production_manifest_sha256 !== right.production_manifest_sha256) {
     differences.push("production manifest bytes differ");
   }
-  if (left.build_receipt_sha256 !== right.build_receipt_sha256) {
+  if (includeBuildReceipt &&
+      left.build_receipt_sha256 !== right.build_receipt_sha256) {
     differences.push("build receipt bytes differ");
   }
   const byPath = (report) => new Map(report.files.map((item) => [item.path, item]));
@@ -399,7 +441,9 @@ if (require.main === module) {
   try {
     const dist = argument("--dist") ?? path.resolve(__dirname, "..", "dist");
     const report = inspectProductionArtifact(dist);
-    const topologyFailures = enforceTopologyBudgets(report);
+    const budgetPath = argument("--budget");
+    const budget = budgetPath ? JSON.parse(fs.readFileSync(budgetPath)) : null;
+    const topologyFailures = enforceTopologyBudgets(report, budget);
     if (topologyFailures.length) {
       throw new Error(`artifact topology budget failed:\n${topologyFailures.join("\n")}`);
     }
@@ -408,11 +452,21 @@ if (require.main === module) {
       const differences = compareArtifacts(report, inspectProductionArtifact(compare));
       if (differences.length) throw new Error(`artifact is not reproducible:\n${differences.join("\n")}`);
     }
-    const budgetPath = argument("--budget");
-    if (budgetPath) {
+    const comparePayload = argument("--compare-payload");
+    if (comparePayload) {
+      const differences = compareArtifacts(
+        report,
+        inspectProductionArtifact(comparePayload),
+        { includeBuildReceipt: false },
+      );
+      if (differences.length) {
+        throw new Error(`cross-platform payload differs:\n${differences.join("\n")}`);
+      }
+    }
+    if (budget !== null) {
       const failures = enforceBudget(
         report,
-        JSON.parse(fs.readFileSync(budgetPath)),
+        budget,
         { requireBaseline: process.argv.includes("--require-baseline") },
       );
       if (failures.length) throw new Error(`payload budget failed:\n${failures.join("\n")}`);

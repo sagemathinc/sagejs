@@ -1,4 +1,12 @@
 const DIRECT_BUILTIN_CALLS = new Set([
+  "_builtins_operator_add_exact_slow",
+  "_builtins_operator_add_slow",
+  "_builtins_operator_mul_exact_slow",
+  "_builtins_operator_mul_slow",
+  "_builtins_operator_sub_exact_slow",
+  "_builtins_operator_sub_slow",
+  "_builtins_operator_truediv_exact_slow",
+  "_builtins_operator_truediv_slow",
   "divmod",
   "float",
   "int",
@@ -6,7 +14,9 @@ const DIRECT_BUILTIN_CALLS = new Set([
   "list",
   "ord",
   "range",
+  "reversed",
   "sum",
+  "zip",
 ]);
 
 function unique(values: string[]): string[] {
@@ -286,6 +296,13 @@ export class PythonAstSemanticAnalyzer {
       names.push(target.name);
       return;
     }
+    if (
+      target instanceof this.compiler.AST_UnaryPrefix &&
+      target.operator === "*"
+    ) {
+      this.addTarget(target.expression, names);
+      return;
+    }
     if (target instanceof this.compiler.AST_Seq) {
       names.push("ρσ_unpack");
       for (const value of target.to_array()) this.addTarget(value, names);
@@ -319,7 +336,6 @@ export class PythonAstSemanticAnalyzer {
           ) {
             this.addTarget(statement.init, names);
           } else if (statement instanceof this.compiler.AST_With) {
-            names.push("ρσ_with_exception", "ρσ_with_suppress");
             for (const clause of statement.clauses ?? []) {
               if (clause.alias) names.push(clause.alias.name);
             }

@@ -1,0 +1,83 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-analytic-acceptance",
+  "title": "Hyperelliptic Phase 9 acceptance",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "root/analytic_perf",
+  "objective": "Provide a source-authenticated bounded Phase 9 analytic acceptance harness and receipt contract covering true fresh initialization versus resident PARI, warm versus fresh evaluation, genus-2/3 derivative speedups, cold universal-table amortization, direct Arb differentials, and exact/refined CPU family scans.",
+  "base_commit": "b30ecbfae62760d44a24438f3fb7f99bedfe1eee",
+  "claims": [
+    "bench/hyperelliptic/analytic-acceptance/",
+    "test/hyperelliptic-analytic-acceptance.cjs"
+  ],
+  "dependencies": [
+    "hyp-analytic-phase9"
+  ],
+  "references": [
+    "agents/hyperelliptic-magma-pari-performance-plan.md",
+    "agents/hyperelliptic-central-weights-gpu-twists-plan.md"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "PARI/GP 2.18.1-alpha at matched realbitprecision",
+      "direct Arb central-weight evaluation",
+      "sequential exact quadratic-twist coefficient/sign replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "node --test test/hyperelliptic-analytic-acceptance.cjs",
+    "node bench/hyperelliptic/analytic-acceptance/run.cjs --diagnostic --samples 1 --precision 64 --gp /home/user/.local/pari-2.18.1-alpha/bin/gp --maximum-wall-seconds 1200 --output /tmp/sagejs-phase9-diagnostic.json",
+    "node bench/hyperelliptic/analytic-acceptance/validate-receipt.cjs /tmp/sagejs-phase9-diagnostic.json"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-analytic-acceptance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.125,
+      "started_at": "2026-08-23T23:23:56.745Z",
+      "commit": "e700d19f37868627e1d00df79d2e16aab5e7eb13",
+      "workspace_fingerprint": "e692191770dcf8b825c68b9651880b4e15e2023abc818d1b53ed4ca9be119506",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/analytic-acceptance/validate-receipt.cjs /tmp/sagejs-phase9-diagnostic.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.047,
+      "started_at": "2026-08-23T23:23:57.535Z",
+      "commit": "e700d19f37868627e1d00df79d2e16aab5e7eb13",
+      "workspace_fingerprint": "e692191770dcf8b825c68b9651880b4e15e2023abc818d1b53ed4ca9be119506",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Confirmed that no durable final Phase-9 receipt existed: the only checked analytic JSON is the historical before-baseline with null commit/date and no Phase-9 gates. Added a source-authenticated, transactional, bounded acceptance harness. It brackets Sage.js with matched-64-bit resident PARI, gates only true isolated fresh plan misses, separates cache hits and one explicitly cold universal-table observation, retains direct one/four-worker Arb evidence, and proves exact twist coefficient/sign digests plus sequential/two-worker CPU refinement. A full source-current one-sample local diagnostic passed in 204.920 seconds: fresh init was 1.613x PARI, warm/fresh 232.946x, minimum genus-2/genus-3 derivative speedups were 31.657x/937.855x, direct genus-2/genus-3 scaled differences were 4.19e-14/4.47e-7 inside declared tolerances, and all ten family rows passed exact/refinement gates.",
+    "risks": [
+      "No acceptance receipt is fabricated or checked in by this lane: bench-1 remained reserved and untouched. The local receipt uses Node 26, one sample, and a busy development host and is explicitly diagnostic-only.",
+      "The five-sample acceptance is projected at 15--19 minutes from a measured 3m10.7s one-sample competitive route plus 20--80 seconds of exact evidence. The runner enforces a hard 20-minute total deadline; an honestly failed receipt may require increasing the documented bound and rerunning, never relabeling partial evidence.",
+      "The embedded legacy competitive JSON still contains its historical mixed cold/warm row when samples exceed one. The acceptance gate deliberately ignores that field and uses the new single explicitly cleared cache-miss observation with exact coefficients prewarmed.",
+      "Integration must add the new focused test to shared manifest ownership if repository-wide manifest enforcement requires it, then rebuild on bench-1 so the build receipt covers the integrated commit and pinned Node 22.22.2 native artifacts."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane, reserve an idle bench-1, build the exact clean integrated commit with Node 22.22.2, and run the command in analytic-acceptance/README.md with SAGEJS_BENCH_HOST=bench-1.",
+      "Commit the transactionally written phase9-receipt-linux-x64.json even if a numerical gate fails, validate it source-current, and update the completion audit from EVIDENCE AUDIT only when every gate passes.",
+      "Preserve the separate process-cold construction and cache-hit rows in future benchmark refactors; never compare a Sage.js prefix/same-L cache hit with a fresh PARI lfuninit."
+    ]
+  }
+}

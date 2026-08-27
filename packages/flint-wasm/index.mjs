@@ -325,18 +325,68 @@ export async function instantiateFlintFactor(
     }
   }
 
-  const p1Objects = new WeakSet();
+  // Projective-line objects are immutable and can be reconstructed exactly
+  // from their level.  Keep only a bounded number of C objects active: a long
+  // synchronous Python loop cannot run FinalizationRegistry callbacks, so an
+  // unbounded finalizer-only design retained every abandoned presentation.
+  const maximumCachedP1Handles = 16;
+  const p1Objects = new WeakMap();
+  const activeP1States = new Set();
   const p1Finalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
-    : new FinalizationRegistry((handle) => {
-        instance.exports.sagejs_p1_destroy(handle);
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          instance.exports.sagejs_p1_destroy(state.handle);
+          activeP1States.delete(state);
+          state.handle = 0;
+        }
       });
 
+  function pruneP1Handles(protectedState) {
+    while (activeP1States.size > maximumCachedP1Handles) {
+      let victim;
+      for (const candidate of activeP1States) {
+        if (candidate !== protectedState) {
+          victim = candidate;
+          break;
+        }
+      }
+      if (victim === undefined) {
+        throw new Error("P1 handle cache has no evictable entry");
+      }
+      instance.exports.sagejs_p1_destroy(victim.handle);
+      activeP1States.delete(victim);
+      victim.handle = 0;
+    }
+  }
+
+  function hydrateP1(state) {
+    if (state.handle !== 0) {
+      activeP1States.delete(state);
+      activeP1States.add(state);
+      return;
+    }
+    const handle = uint32(instance.exports.sagejs_p1_create(state.level));
+    if (handle === 0) {
+      throw new Error("unable to restore the WASM P1List");
+    }
+    const count = uint32(instance.exports.sagejs_p1_count(handle));
+    if (count !== state.count) {
+      instance.exports.sagejs_p1_destroy(handle);
+      throw new Error("restored WASM P1List has inconsistent cardinality");
+    }
+    state.handle = handle;
+    activeP1States.add(state);
+    pruneP1Handles(state);
+  }
+
   function p1Object(value) {
-    if (!p1Objects.has(value)) {
+    const state = p1Objects.get(value);
+    if (state === undefined) {
       throw new TypeError("expected a Sage.js WASM P1List");
     }
-    return value;
+    hydrateP1(state);
+    return state;
   }
 
   function wasmInt64(value, description) {
@@ -367,13 +417,16 @@ export async function instantiateFlintFactor(
     if (handle === 0) {
       throw new Error("unable to construct the WASM P1List");
     }
-    const value = Object.freeze({
+    const state = {
       handle,
       level,
       count: uint32(instance.exports.sagejs_p1_count(handle)),
-    });
-    p1Objects.add(value);
-    p1Finalizer?.register(value, handle);
+    };
+    const value = Object.freeze({ level, count: state.count });
+    p1Objects.set(value, state);
+    activeP1States.add(state);
+    p1Finalizer?.register(value, state, value);
+    pruneP1Handles(state);
     traceWasmP1(p1WasmCapabilities.list, 4, 8);
     return value;
   }
@@ -643,6 +696,16 @@ export async function instantiateFlintFactor(
   Object.defineProperty(backend, "__sagejs_wasm_resource_live_count__", {
     value: () => instance.exports.sagejs_wasm_resource_live_count(),
     enumerable: false,
+  });
+  Object.defineProperties(backend, {
+    p1HandleCacheLimit: {
+      value: maximumCachedP1Handles,
+      enumerable: false,
+    },
+    p1ActiveHandleCount: {
+      value: () => activeP1States.size,
+      enumerable: false,
+    },
   });
   Object.defineProperty(backend, "__sagejs_ffi_manifest__", {
     value: Object.freeze({

@@ -12,6 +12,16 @@ const { execFileSync } = require("node:child_process");
 const root = resolve(__dirname, "..");
 const laneFile = join(root, ".agents", "lanes.json");
 const lanePolicy = JSON.parse(readFileSync(laneFile, "utf8"));
+const precompiledPythonPackages = JSON.parse(readFileSync(
+  join(root, "scripts", "precompiled-python-packages.json"),
+  "utf8",
+));
+const taskRuntimeSources = new Set(
+  (precompiledPythonPackages.taskRuntimeImports || []).flatMap((name) => {
+    const stem = `src/lib/${name.replaceAll(".", "/")}`;
+    return [`${stem}.py`, `${stem}/__init__.py`];
+  }),
+);
 const lanes = new Map(lanePolicy.lanes.map((lane) => [lane.id, lane]));
 const liveStatuses = new Set(["active", "review", "blocked"]);
 const validStatuses = new Set(["proposed", ...liveStatuses, "complete"]);
@@ -360,12 +370,15 @@ function validationCommandsForFiles(files) {
   const has = (prefix) => files.some((filename) => filename.startsWith(prefix));
   const matches = (pattern) => files.some((filename) => pattern.test(filename));
 
+  if (files.length > 0) add("pnpm", "merge:check");
+
   if (has("src/") || has("tools/") || has("scripts/")) add("pnpm", "build");
   if (
     has("src/lib/sagejs/number_fields/") ||
     has("src/lib/multiprocessing.py") ||
     has("scripts/precompiled-python-packages.json") ||
-    has("scripts/build-lazy-module-cache.cjs")
+    has("scripts/build-lazy-module-cache.cjs") ||
+    files.some((filename) => taskRuntimeSources.has(filename))
   ) {
     add("pnpm", "python:precompile:run");
   }
@@ -428,7 +441,37 @@ function validationCommandsForFiles(files) {
       add("pnpm", "test:cli");
     }
   }
-  if (files.length > 0 && commands.length === 0) add("pnpm", "test:portable");
+  const precompileIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "python:precompile:run"
+  );
+  const docsIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "docs:check"
+  );
+  if (precompileIndex !== -1 && docsIndex > precompileIndex) {
+    const [precompile] = commands.splice(precompileIndex, 1);
+    const updatedDocsIndex = commands.findIndex((command) =>
+      command[0] === "pnpm" && command[1] === "docs:check"
+    );
+    commands.splice(updatedDocsIndex + 1, 0, precompile);
+  }
+  const updatedPrecompileIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "python:precompile:run"
+  );
+  const integrationIndex = commands.findIndex((command) =>
+    command[0] === "pnpm" && command[1] === "test:integration"
+  );
+  if (
+    updatedPrecompileIndex !== -1 &&
+    integrationIndex !== -1 &&
+    integrationIndex < updatedPrecompileIndex
+  ) {
+    const [integration] = commands.splice(integrationIndex, 1);
+    const finalPrecompileIndex = commands.findIndex((command) =>
+      command[0] === "pnpm" && command[1] === "python:precompile:run"
+    );
+    commands.splice(finalPrecompileIndex + 1, 0, integration);
+  }
+  if (files.length > 0 && commands.length === 1) add("pnpm", "test:portable");
   return commands;
 }
 

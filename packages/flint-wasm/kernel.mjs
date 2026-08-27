@@ -48,12 +48,33 @@ export class SageSession {
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
     compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
+    foreignFrontend = new URL("./dist/foreign-frontend.mjs", import.meta.url),
     treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
     pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
     sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
+    foreignGrammars = Object.freeze({
+      magma: new URL("./dist/tree-sitter-magma.wasm", import.meta.url),
+      macaulay2: new URL("./dist/tree-sitter-macaulay2.wasm", import.meta.url),
+      maple: new URL("./dist/tree-sitter-maple.wasm", import.meta.url),
+      matlab: new URL("./dist/tree-sitter-matlab.wasm", import.meta.url),
+      wolfram: new URL("./dist/tree-sitter-wolfram.wasm", import.meta.url),
+    }),
     capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
+    optimizationLevel,
     onGraphicsSave,
   } = {}) {
+    if (
+      optimizationLevel !== undefined &&
+      !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
+    ) {
+      throw new TypeError("Sage.js optimizationLevel must be O0, O1, O2, O3, or Os");
+    }
+    let configuredCompilerWorker = String(compilerWorker);
+    if (optimizationLevel !== undefined) {
+      const compilerWorkerUrl = new URL(configuredCompilerWorker, import.meta.url);
+      compilerWorkerUrl.searchParams.set("sagejsOptimizationLevel", optimizationLevel);
+      configuredCompilerWorker = String(compilerWorkerUrl);
+    }
     this.resources = {
       worker: String(worker),
       compiler: String(compiler),
@@ -67,11 +88,15 @@ export class SageSession {
       nativeKernels: String(nativeKernels),
       m4ri: String(m4ri),
       symbolic: String(symbolic),
-      compilerWorker: String(compilerWorker),
+      compilerWorker: configuredCompilerWorker,
       compilerFrontend: String(compilerFrontend),
+      foreignFrontend: String(foreignFrontend),
       treeSitterRuntime: String(treeSitterRuntime),
       pythonGrammar: String(pythonGrammar),
       sageGrammar: String(sageGrammar),
+      foreignGrammars: Object.fromEntries(
+        Object.entries(foreignGrammars).map(([name, url]) => [name, String(url)]),
+      ),
       capabilityReport: String(capabilityReport),
     };
     this.onGraphicsSave = onGraphicsSave;
@@ -211,9 +236,11 @@ export class SageSession {
         symbolic: this.resources.symbolic,
         compilerWorker: this.resources.compilerWorker,
         compilerFrontend: this.resources.compilerFrontend,
+        foreignFrontend: this.resources.foreignFrontend,
         treeSitterRuntime: this.resources.treeSitterRuntime,
         pythonGrammar: this.resources.pythonGrammar,
         sageGrammar: this.resources.sageGrammar,
+        foreignGrammars: this.resources.foreignGrammars,
         capabilityReport: this.resources.capabilityReport,
       },
       [channel.port2],

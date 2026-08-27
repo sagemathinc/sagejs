@@ -140,6 +140,10 @@ function print_top_level_usage() {
     "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
   );
 
+  console.log(label("Execution backend:"));
+  console.log("  --wasm          run the receipt-authenticated browser Wasm artifact");
+  console.log("                  (must be the first option)\n");
+
   console.log(label("Language modes:"));
   console.log("  --sage          force Sage/Python mathematical syntax");
   console.log("  --python        ordinary Python syntax and division");
@@ -167,6 +171,7 @@ function print_top_level_usage() {
 
   console.log(label("Examples:"));
   console.log("  " + command(executable));
+  console.log("  " + command(executable + " --wasm"));
   console.log("  " + command(executable + " --python"));
   console.log("  " + command(executable + " program.sage"));
   console.log("  " + command(executable + " --wolfram program.wl"));
@@ -532,6 +537,33 @@ With --execute, execution continues after printing.
 */
 });
 
+opt("optimization_level", "", "string", undefined, function () {
+  /*
+Select the mathematical optimizer policy: O0, O1, O2, O3, or Os.
+The default is O2, or SAGEJS_OPT_LEVEL when set.
+*/
+});
+
+opt("optimization_disable", "", "string", "", function () {
+  /*
+Disable comma-separated stable optimizer pass IDs.
+SAGEJS_OPT_DISABLE provides the same control.
+*/
+});
+
+opt("optimization_require", "", "string", "", function () {
+  /*
+Require comma-separated optimizer pass or region IDs. Compilation fails
+closed if any requested optimization is absent or rejected.
+*/
+});
+
+opt("explain_optimizations", "", "bool", false, function () {
+  /*
+Print deterministic mathematical optimizer decisions and evidence to STDERR.
+*/
+});
+
 create_group("repl", "", function () {
   /*
 Run a Read-Eval-Print-Loop (REPL). This allows
@@ -610,6 +642,31 @@ Print generated Sage source before executing foreign-language input.
 opt("tokens", "", "bool", false, function () {
   /*
 Show every token as they are parsed.
+*/
+});
+
+opt("optimization_level", "", "string", undefined, function () {
+  /*
+Select the mathematical optimizer policy: O0, O1, O2, O3, or Os.
+The default is O2, or SAGEJS_OPT_LEVEL when set.
+*/
+});
+
+opt("optimization_disable", "", "string", "", function () {
+  /*
+Disable comma-separated stable optimizer pass IDs.
+*/
+});
+
+opt("optimization_require", "", "string", "", function () {
+  /*
+Require comma-separated optimizer pass or region IDs for every compiled input.
+*/
+});
+
+opt("explain_optimizations", "", "bool", false, function () {
+  /*
+Print deterministic mathematical optimizer decisions and evidence.
 */
 });
 

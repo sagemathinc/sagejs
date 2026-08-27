@@ -142,3 +142,28 @@ test("algebraic composition preserves the forced portable matrix fallback", {
   );
   assert.equal(algebraic.__sagejs_algebraic_matrix_live_count__(), 0);
 });
+
+test("retained algebraic matrices spill exactly instead of exhausting handles", {
+  skip: fs.existsSync(artifact) ? false : "the algebraic artifact has not been built",
+}, async () => {
+  const algebraic = await backend([]);
+  const zero = algebraic.qqbarFromRational(0n, 1n);
+  const one = algebraic.qqbarFromRational(1n, 1n);
+  const matrices = [];
+  for (let index = 0; index < 100; index += 1) {
+    matrices.push(algebraic.qqbarMatrix(2, 2, [
+      one, zero, algebraic.qqbarFromRational(BigInt(index), 1n), one,
+    ], true));
+  }
+  assert.equal(algebraic.algebraicHandleCacheLimits.matrices, 32);
+  assert.ok(
+    algebraic.__sagejs_algebraic_matrix_live_count__() <=
+      algebraic.algebraicHandleCacheLimits.matrices,
+  );
+  assert.equal(algebraic.matrixRank(matrices[0]), 2);
+  assert.equal(algebraic.matrixRank(matrices[99]), 2);
+  for (const matrix of matrices) {
+    algebraic.__sagejs_algebraic_matrix_close__(matrix);
+  }
+  assert.equal(algebraic.__sagejs_algebraic_matrix_live_count__(), 0);
+});

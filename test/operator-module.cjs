@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 // Focused compatibility vectors derived from CPython 3.14's operator module.

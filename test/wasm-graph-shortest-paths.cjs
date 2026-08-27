@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -24,8 +25,8 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
-  resolveToolchain,
-} = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
+  wasmKernelToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
 const {
   PRECOMPILED_MODULE_FILENAME,
@@ -52,21 +53,11 @@ const descriptor = {
 };
 
 function discoverToolchain() {
-  let status;
   try {
-    status = resolveToolchain({ root });
+    return wasmKernelToolchain({ root });
   } catch {
     return null;
   }
-  if (!status.ready) return null;
-  return {
-    clang: status.paths.clang,
-    sysroot: status.paths.sysroot,
-    gmpPrefix: status.paths.libraries.gmp.prefix,
-    flintPrefix: status.paths.libraries.flint.prefix,
-    mpfrPrefix: status.paths.libraries.mpfr.prefix,
-    mpcPrefix: status.paths.libraries.mpc.prefix,
-  };
 }
 
 function chromiumPath() {

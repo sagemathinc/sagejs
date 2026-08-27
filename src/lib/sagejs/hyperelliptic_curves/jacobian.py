@@ -256,8 +256,11 @@ def _product_integers(values: Any) -> int:
 class MumfordDivisor(sage.Element):
     """A canonical reduced divisor class on an odd-degree Jacobian."""
 
+    __slots__ = ("__packed_row_binding",)
+
     def __init__(self, parent: Any, u: Any, v: Any, check: bool = True) -> None:
         self._parent = parent
+        self._packed_hash: int | None = None
         ring = parent.polynomial_ring()
         u = ring(u)
         v = ring(v)
@@ -277,6 +280,43 @@ class MumfordDivisor(sage.Element):
             parent._validate_reduced(u, v)
         self._u = u
         self._v = v
+        self.__packed_row_binding: tuple[Any, Any] | None = None
+
+    @property
+    def _packed_row(self) -> tuple[int, ...] | None:
+        """Return the write-once internal canonical-row binding."""
+        binding = self.__packed_row_binding
+        if binding is None:
+            return None
+        if len(binding) != 2 or binding[0] is not self:
+            raise ArithmeticError("a Jacobian divisor packed binding was corrupted")
+        context = self._parent.prepared_arithmetic()
+        copied = runtime.immutable_uint64_capsule_copy(
+            binding[1],
+            self,
+            context.model_fingerprint + ":" + str(id(self._parent)),
+            "sagejs.hyperelliptic.packed-mumford.odd.v1.divisor8",
+            1,
+        )
+        if len(copied) != 8:
+            raise ArithmeticError("a Jacobian divisor packed span was corrupted")
+        return tuple(int(copied[index]) for index in range(8))
+
+    def _materialize(self) -> None:
+        if self._u is not None:
+            return
+        row = self._packed_row
+        if row is None:
+            raise ArithmeticError("a Jacobian divisor has no representation")
+        degree = row[0]
+        field = self._parent.base_ring()
+        ring = self._parent.polynomial_ring()
+        self._u = ring([field(value) for value in row[1 : degree + 2]])
+        self._v = ring([field(value) for value in row[5 : 5 + degree]])
+
+    def is_materialized(self) -> bool:
+        """Return whether the polynomial `(u,v)` pair has been constructed."""
+        return self._u is not None
 
     def parent(self) -> Any:
         return self._parent
@@ -285,36 +325,52 @@ class MumfordDivisor(sage.Element):
         return self._parent.curve()
 
     def uv(self) -> tuple[Any, Any]:
+        self._materialize()
         return self._u, self._v
 
     def degree(self) -> int:
+        packed = self._packed_row
+        if packed is not None:
+            return packed[0]
+        assert self._u is not None
         return self._u.degree()
 
     def is_zero(self) -> bool:
+        packed = self._packed_row
+        if packed is not None:
+            return packed[0] == 0
+        assert self._u is not None and self._v is not None
         return self._u.is_one() and self._v.is_zero()
 
     def __bool__(self) -> bool:
         return not self.is_zero()
 
     def __iter__(self) -> Any:
-        yield self._u
-        yield self._v
+        yield from self.uv()
 
     def __getitem__(self, index: int) -> Any:
-        return (self._u, self._v)[index]
+        return self.uv()[index]
 
     def __repr__(self) -> str:
-        return "(" + str(self._u) + ", " + str(self._v) + ")"
+        u_value, v_value = self.uv()
+        return "(" + str(u_value) + ", " + str(v_value) + ")"
 
     __str__ = __repr__
 
     def _eq_(self, other: Any) -> bool:
-        return (
-            isinstance(other, MumfordDivisor)
-            and self._parent is other._parent
-            and self._u == other._u
-            and self._v == other._v
-        )
+        if not isinstance(other, MumfordDivisor) or self._parent is not other._parent:
+            return False
+        self_packed = self._packed_row
+        other_packed = other._packed_row
+        if self_packed is not None or other_packed is not None:
+            try:
+                context = self._parent.prepared_arithmetic()
+                return context.pack(self) == context.pack(other)
+            except (ArithmeticError, NotImplementedError, TypeError, ValueError):
+                pass
+        left_u, left_v = self.uv()
+        right_u, right_v = other.uv()
+        return left_u == right_u and left_v == right_v
 
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
@@ -323,29 +379,170 @@ class MumfordDivisor(sage.Element):
         return not self == other
 
     def __hash__(self) -> int:
-        return hash((id(self._parent), str(self._u), str(self._v)))
+        if self._packed_hash is None:
+            try:
+                packed = self._parent.prepared_arithmetic().pack(self)
+                self._packed_hash = hash((id(self._parent), packed))
+            except (ArithmeticError, NotImplementedError, TypeError, ValueError):
+                u_value, v_value = self.uv()
+                self._packed_hash = hash((id(self._parent), str(u_value), str(v_value)))
+        return self._packed_hash
 
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
-        return self._parent, ([self._u, self._v],)
+        u_value, v_value = self.uv()
+        return self._parent, ([u_value, v_value],)
 
-    def __neg__(self) -> Any:
-        u = self._u
+    def __getstate__(self) -> dict[str, Any]:
+        """Return portable mathematical state without opaque native storage."""
+        field = self._parent.base_ring()
+        if not hasattr(field, "characteristic") or not hasattr(field, "order"):
+            raise NotImplementedError(
+                "Mumford divisor pickle state currently requires a prime field"
+            )
+        prime = int(field.characteristic())
+        if int(field.order()) != prime:
+            raise NotImplementedError(
+                "Mumford divisor pickle state currently requires a prime field"
+            )
+        u_value, v_value = self.uv()
+
+        def coefficients(polynomial: Any) -> list[int]:
+            return [int(value) for value in polynomial.list()]
+
+        return {
+            "version": 1,
+            "prime": prime,
+            "variable": self._parent.polynomial_ring().variable_name(),
+            "f": coefficients(self._parent.f()),
+            "h": coefficients(self._parent.h()),
+            "u": coefficients(u_value),
+            "v": coefficients(v_value),
+        }
+
+    def __setstate__(self, state: Mapping[str, Any]) -> None:
+        """Restore and revalidate portable finite-field mathematical state."""
+        expected = {"version", "prime", "variable", "f", "h", "u", "v"}
+        if not isinstance(state, dict) or set(state) != expected:
+            raise ValueError("invalid Mumford divisor pickle state")
+        if state["version"] != 1:
+            raise ValueError("unsupported Mumford divisor pickle state version")
+        finite_fields = __import__(
+            "sagejs._baselib.finite_fields",
+            fromlist=["GF"],
+        )
+        model = __import__(
+            "sagejs.hyperelliptic_curves.model",
+            fromlist=["HyperellipticCurve"],
+        )
+        field = finite_fields.GF(state["prime"])
+        ring = sage.PolynomialRing(field, state["variable"])
+        jacobian = model.HyperellipticCurve(
+            ring(state["f"]),
+            ring(state["h"]),
+        ).jacobian()
+        u_value = ring(state["u"])
+        v_value = ring(state["v"])
+        jacobian._validate_reduced(u_value, v_value)
+        self._parent = jacobian
+        self._u = u_value
+        self._v = v_value
+        self.__packed_row_binding = None
+        self._packed_hash = None
+
+    def _negate_reference(self) -> Any:
+        u, v = self.uv()
         return self._parent._element(
             u,
-            _polynomial_remainder(-self._parent.h() - self._v, u),
+            _polynomial_remainder(-self._parent.h() - v, u),
             False,
         )
+
+    def negate(
+        self,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Return the canonical inverse through prepared or reference arithmetic."""
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown Jacobian negation algorithm " + repr(algorithm))
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if diagnostics or context.native_available:
+            result = context.negate_batch((self,), diagnostics=diagnostics)
+            if diagnostics:
+                values, record = result
+                return values[0], record
+            return result[0]
+        return self._negate_reference()
+
+    def __neg__(self) -> Any:
+        return self.negate()
 
     def _neg_(self) -> Any:
         return self.__neg__()
 
     def _add_(self, other: Any) -> Any:
+        return self.add(other)
+
+    def add(
+        self,
+        other: Any,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Add two divisors through the prepared or reference Cantor law."""
         if not isinstance(other, MumfordDivisor) or other._parent is not self._parent:
             raise TypeError("Jacobian divisors must have the same parent")
-        u, v = self._parent._compose(self._u, self._v, other._u, other._v)
-        return self._parent._element(u, v, False)
+        if algorithm == "auto" and not diagnostics:
+            cached = self._parent._prepared_arithmetic_cache.get(("auto", 1_000_000))
+            if (
+                cached is not None
+                and not bool(getattr(cached, "closed", False))
+                and cached.native_available
+                and hasattr(cached, "_add_one")
+            ):
+                return cached._add_one(self, other)
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if not diagnostics and not context.native_available:
+            left_u, left_v = self.uv()
+            right_u, right_v = other.uv()
+            u, v = self._parent._compose(left_u, left_v, right_u, right_v)
+            return self._parent._element(u, v, False)
+        if not diagnostics and hasattr(context, "_add_one"):
+            return context._add_one(self, other)
+        result = context.add_batch((self,), (other,), diagnostics=diagnostics)
+        if diagnostics:
+            values, record = result
+            return values[0], record
+        return result[0]
+
+    def double(
+        self,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Return twice this divisor with optional execution diagnostics."""
+        result = self._parent.prepared_arithmetic(algorithm=algorithm).double_batch(
+            (self,), diagnostics=diagnostics
+        )
+        if diagnostics:
+            values, record = result
+            return values[0], record
+        return result[0]
 
     def __add__(self, other: Any) -> Any:
+        if isinstance(other, MumfordDivisor) and other._parent is self._parent:
+            cached = self._parent._prepared_arithmetic_cache.get(("auto", 1_000_000))
+            if (
+                cached is not None
+                and not bool(getattr(cached, "closed", False))
+                and cached.native_available
+                and hasattr(cached, "_add_one")
+            ):
+                return cached._add_one(self, other)
+            return self.add(other)
         return runtime.coercion_model.binOp("add", self, other)
 
     def __radd__(self, other: Any) -> Any:
@@ -353,8 +550,31 @@ class MumfordDivisor(sage.Element):
             return self
         return self.__add__(other)
 
+    def subtract(
+        self,
+        other: Any,
+        *,
+        algorithm: str = "auto",
+        diagnostics: bool = False,
+    ) -> Any:
+        """Subtract a divisor through prepared or reference arithmetic."""
+        if not isinstance(other, MumfordDivisor) or other._parent is not self._parent:
+            raise TypeError("Jacobian divisors must have the same parent")
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError(
+                "unknown Jacobian subtraction algorithm " + repr(algorithm)
+            )
+        context = self._parent.prepared_arithmetic(algorithm=algorithm)
+        if diagnostics or context.native_available:
+            result = context.subtract_batch((self,), (other,), diagnostics=diagnostics)
+            if diagnostics:
+                values, record = result
+                return values[0], record
+            return result[0]
+        return self.add(other._negate_reference(), algorithm="reference")
+
     def __sub__(self, other: Any) -> Any:
-        return self + (-other)
+        return self.subtract(other)
 
     def __mul__(self, scalar: Any) -> Any:
         return self.__rmul__(scalar)
@@ -368,15 +588,27 @@ class MumfordDivisor(sage.Element):
         if not runtime.is_exact_integer(scalar):
             raise TypeError("Jacobian divisor multipliers must be integers")
         if scalar < 0:
-            return (-self).__rmul__(-scalar)
+            return self._negate_reference()._scalar_multiple_reference(-scalar)
         result = self._parent.zero()
         addend = self
+        started = False
         while scalar:
             if scalar % 2:
-                result = result + addend
+                digit = 1 if scalar == 1 else 2 - scalar % 4
+                selected = addend if digit == 1 else addend._negate_reference()
+                if started:
+                    u, v = self._parent._compose(
+                        result[0], result[1], selected[0], selected[1]
+                    )
+                    result = self._parent._element(u, v, False)
+                else:
+                    result = selected
+                    started = True
+                scalar -= digit
             scalar //= 2
             if scalar:
-                addend = addend + addend
+                u, v = self._parent._compose(addend[0], addend[1], addend[0], addend[1])
+                addend = self._parent._element(u, v, False)
         return result
 
     def scalar_multiple(
@@ -394,6 +626,17 @@ class MumfordDivisor(sage.Element):
                 "sagejs.hyperelliptic_curves.jacobian_native",
                 fromlist=["native_scalar_multiply"],
             )
+            context = self._parent.prepared_arithmetic(algorithm=algorithm)
+            if context.native_available:
+                try:
+                    return context.scalar_batch(
+                        (self,),
+                        (scalar,),
+                        algorithm=algorithm,
+                        max_group_operations=max_group_operations,
+                    )[0]
+                except RuntimeError as error:
+                    raise JacobianResourceLimitError(str(error)) from error
             try:
                 answer = native.native_scalar_multiply(
                     self,
@@ -476,6 +719,31 @@ class MumfordDivisor(sage.Element):
 
     additive_order = order
 
+    def canonical_height(self, **options: Any) -> Any:
+        """Return a certified or explicitly numerical canonical-height result."""
+        genus = int(self._parent.dimension())
+        if genus == 2:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.genus2_heights",
+                fromlist=["canonical_height"],
+            )
+            return module.canonical_height(self, **options)
+        if genus == 3:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.genus3_heights",
+                fromlist=[
+                    "move_split_mumford_divisor",
+                    "automatic_split_mumford_canonical_height",
+                ],
+            )
+            moving_x = options.pop("moving_x", None)
+            max_search = options.pop("max_search", 128)
+            move = module.move_split_mumford_divisor(
+                self, moving_x=moving_x, max_search=max_search
+            )
+            return module.automatic_split_mumford_canonical_height(move, **options)
+        raise NotImplementedError("canonical heights support genus 2 or 3")
+
     def to_data(self) -> dict[str, Any]:
         """Return a versioned exact prime-field Mumford representation."""
         return self._parent._divisor_data(self)
@@ -547,6 +815,7 @@ class HyperellipticJacobian(sage.Parent):
         self._points_cache: list[MumfordDivisor] | None = None
         self._group_basis_cache: dict[str, Any] | None = None
         self._group_structure_diagnostics_cache: dict[str, Any] | None = None
+        self._prepared_arithmetic_cache: dict[tuple[str, int], Any] = {}
 
     def curve(self) -> Any:
         return self._curve
@@ -567,6 +836,60 @@ class HyperellipticJacobian(sage.Parent):
 
     def h(self) -> Any:
         return self._h
+
+    def prepared_arithmetic(
+        self,
+        *,
+        algorithm: str = "auto",
+        max_batch_items: int = 1_000_000,
+    ) -> Any:
+        """Return the immutable cached packed-arithmetic context.
+
+        Native contexts cover odd-degree one-point-at-infinity genus-2/3
+        models over `QQ` or a supported odd prime field. `auto` has an exact
+        ordinary-Cantor fallback when the relevant native capability is absent.
+        """
+        if isinstance(max_batch_items, bool):
+            raise TypeError("max_batch_items must be an integer")
+        try:
+            maximum = int(max_batch_items)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise TypeError("max_batch_items must be an integer") from error
+        if max_batch_items != maximum:
+            raise ValueError("max_batch_items must be an exact integer")
+        key = (algorithm, maximum)
+        context = self._prepared_arithmetic_cache.get(key)
+        if context is not None and bool(getattr(context, "closed", False)):
+            del self._prepared_arithmetic_cache[key]
+            context = None
+        if context is None:
+            context = None
+            if algorithm != "reference" and str(self.base_ring()) == "Rational Field":
+                rational_native = __import__(
+                    "sagejs.hyperelliptic_curves.jacobian_rational_native",
+                    fromlist=["PreparedRationalJacobianArithmetic"],
+                )
+                try:
+                    context = rational_native.PreparedRationalJacobianArithmetic(
+                        self,
+                        algorithm=algorithm,
+                        max_batch_items=maximum,
+                    )
+                except (NotImplementedError, RuntimeError):
+                    if algorithm == "native":
+                        raise
+            if context is None:
+                native = __import__(
+                    "sagejs.hyperelliptic_curves.jacobian_native",
+                    fromlist=["PreparedJacobianArithmetic"],
+                )
+                context = native.PreparedJacobianArithmetic(
+                    self,
+                    algorithm=algorithm,
+                    max_batch_items=maximum,
+                )
+            self._prepared_arithmetic_cache[key] = context
+        return context
 
     def _prime_field_model_data(self) -> dict[str, Any]:
         field = self.base_ring()
@@ -934,6 +1257,9 @@ class HyperellipticJacobian(sage.Parent):
                 divisors.append(self.point_to_divisor(point))
         if not divisors:
             return self.zero()
+        prepared = self.prepared_arithmetic()
+        if prepared.native_available:
+            return prepared.sum(divisors)
         native = __import__(
             "sagejs.hyperelliptic_curves.jacobian_native",
             fromlist=["native_sum"],
@@ -1165,18 +1491,30 @@ class HyperellipticJacobian(sage.Parent):
             scalar_list = list(scalars)
             if len(scalar_list) != len(element_list):
                 raise ValueError("elements and scalars must have the same length")
-        answer = []
-        for element, scalar in zip(element_list, scalar_list, strict=True):
+        for element in element_list:
             if not isinstance(element, MumfordDivisor) or element.parent() is not self:
                 raise ValueError("every batch element must lie in this Jacobian")
-            answer.append(
-                element.scalar_multiple(
-                    scalar,
-                    algorithm=algorithm,
-                    max_group_operations=max_group_operations,
+        context = self.prepared_arithmetic()
+        if context.native_available and algorithm != "reference":
+            try:
+                return list(
+                    context.scalar_batch(
+                        element_list,
+                        scalar_list,
+                        algorithm="native",
+                        max_group_operations=max_group_operations,
+                    )
                 )
+            except RuntimeError as error:
+                raise JacobianResourceLimitError(str(error)) from error
+        return [
+            element.scalar_multiple(
+                scalar,
+                algorithm=algorithm,
+                max_group_operations=max_group_operations,
             )
-        return answer
+            for element, scalar in zip(element_list, scalar_list, strict=True)
+        ]
 
     def annihilation_tests(
         self,
@@ -1222,6 +1560,71 @@ class HyperellipticJacobian(sage.Parent):
         return self._order_cache[extension_degree]
 
     cardinality = order
+
+    def torsion_bound(self, primes: Any = None, **options: Any) -> Any:
+        """Return a replayable rational-torsion upper-bound certificate."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.torsion", fromlist=["torsion_bound"]
+        )
+        return module.torsion_bound(self, primes, **options)
+
+    def rational_two_torsion(self) -> Any:
+        """Return the exact rational two-torsion of an odd-degree model."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.torsion",
+            fromlist=["rational_two_torsion"],
+        )
+        return module.rational_two_torsion(self)
+
+    def torsion_subgroup(self, generators: Any = (), **options: Any) -> Any:
+        """Certify the subgroup generated by supplied rational torsion divisors."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.torsion",
+            fromlist=["certify_supplied_torsion"],
+        )
+        return module.certify_supplied_torsion(self, generators, **options)
+
+    def height_pairing(self, points: Any, **options: Any) -> Any:
+        """Return the canonical height-pairing matrix on rational divisors."""
+        if self._genus == 2:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.genus2_heights",
+                fromlist=["height_pairing"],
+            )
+            return module.height_pairing(points, **options)
+        if self._genus == 3:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.genus3_heights",
+                fromlist=["pairing_matrix_from_heights"],
+            )
+
+            def height_value(point: Any) -> Any:
+                return point.canonical_height(**options)
+
+            return module.pairing_matrix_from_heights(
+                points,
+                height_value,
+                prec=options.get("prec", 128),
+            )
+        raise NotImplementedError("height pairings support genus 2 or 3")
+
+    def regulator(self, points: Any, **options: Any) -> Any:
+        """Return the regulator of the supplied rational subgroup."""
+        if self._genus == 2:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.genus2_heights",
+                fromlist=["regulator"],
+            )
+            return module.regulator(points, **options)
+        return self.height_pairing(points, **options)
+
+    def saturate(self, points: Any, **options: Any) -> Any:
+        """Saturate a rational subgroup within explicit proof boundaries."""
+        module = __import__(
+            "sagejs.hyperelliptic_curves.saturation",
+            fromlist=["saturate_subgroup"],
+        )
+        return module.saturate_subgroup(self, points, **options)
 
     def count_points(self, n: int = 1, algorithm: str = "auto") -> Any:
         if n < 1:
@@ -1742,6 +2145,10 @@ class HyperellipticJacobian(sage.Parent):
             fromlist=["smalljac_group_invariants"],
         )
         use_smalljac = frobenius.smalljac_supports_group_structure(self._curve)
+        if use_smalljac and algorithm == "auto":
+            use_smalljac = bool(
+                frobenius.smalljac_group_auto_receipt_decision(self._curve).allowed
+            )
         if algorithm == "smalljac" and not use_smalljac:
             raise NotImplementedError(
                 "smalljac group structure requires an odd-degree genus-2 curve "
@@ -1750,13 +2157,20 @@ class HyperellipticJacobian(sage.Parent):
         if use_smalljac and algorithm in ("auto", "smalljac"):
             invariants = frobenius.smalljac_group_invariants(self._curve)
             exponent = invariants[-1]
-            for element in self.random_elements(count=5, max_attempts=20):
+            verification_elements = self.random_elements(count=5, max_attempts=20)
+            for element in verification_elements:
                 if not (exponent * element).is_zero():
                     raise ArithmeticError(
                         "a sampled Jacobian element is not killed by the "
                         "smalljac group exponent"
                     )
             if not certificate:
+                self._group_structure_diagnostics_cache = {
+                    "algorithm": "smalljac",
+                    "samples": len(verification_elements),
+                    "group_order": order,
+                    "verified_exponent": int(exponent),
+                }
                 return invariants
             result = self._generic_group_basis(
                 factors,
@@ -1785,13 +2199,32 @@ class HyperellipticJacobian(sage.Parent):
                 }
                 return invariants
             field = self.base_ring()
+            finite_field_order = int(field.order()) if hasattr(field, "order") else 0
             prime_basis_supported = (
                 hasattr(field, "characteristic")
                 and hasattr(field, "order")
                 and int(field.characteristic()) == int(field.order())
                 and int(field.characteristic()) != 2
             )
-            if algorithm != "auto" or prime_basis_supported:
+            enumeration_base = (
+                finite_field_order
+                if prime_basis_supported
+                else finite_field_order * finite_field_order
+            )
+            candidate_bound = 0
+            power = 1
+            for _degree in range(self._genus + 1):
+                candidate_bound += power
+                power *= enumeration_base
+            auto_exhaustive = (
+                algorithm == "auto"
+                and not certificate
+                and order <= 64
+                and order <= max_elements
+                and finite_field_order > 0
+                and candidate_bound <= max_candidates
+            )
+            if not auto_exhaustive and (algorithm != "auto" or prime_basis_supported):
                 result = self._generic_group_basis(
                     factors,
                     max_random_elements=max_random_elements,
@@ -1814,6 +2247,12 @@ class HyperellipticJacobian(sage.Parent):
         )
         if len(invariants) > 2 * self._genus:
             raise ArithmeticError("Jacobian group rank exceeds 2g")
+        if algorithm == "auto":
+            self._group_structure_diagnostics_cache = {
+                "algorithm": "exhaustive-small-order",
+                "samples": len(elements),
+                "generated_subgroup_order": order,
+            }
         if not certificate:
             return invariants
         result = self._generic_group_basis(

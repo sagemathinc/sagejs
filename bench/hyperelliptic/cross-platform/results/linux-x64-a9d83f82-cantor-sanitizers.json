@@ -1,0 +1,67 @@
+{
+  "schema": "sagejs.hyperelliptic-cantor-sanitizers/v1",
+  "platform": "linux-x64",
+  "source_commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+  "source_sha256": "ca71e1ce16810e9d8f210105072249b93beaacad581f8a2eb25585f7b5d81d2e",
+  "generated_core_sha256": "ef2c2937ce82b44637ec2cf654c1b31b9d8c22fb47acd3b0c42641f3b28df25e",
+  "harness_path": "bench/hyperelliptic/benchmark-public-jacobian.cjs",
+  "harness_sha256": "37d970e221495d0c2c4f42a57aab703e4dbc9b509195d278019596bbe8f35155",
+  "sanitizer_harness_sha256": "e15cd55d69b83c02b7a2933175dc18483c530517ed5576727a75de7ec2b6ce29",
+  "flint_prefix_identity": "b6c28ba42a0eb5e6cdfd67dacf491c5b374f7f23da1ebf2fc1065148e029e132",
+  "rows": [
+    {
+      "sanitizer": "address",
+      "status": "passed",
+      "compile_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compile_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "fc2d7f8c278dccdb4ad13b00ae668265edc3f4789309ab419dc9e71aa79af0e8",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact": [
+        {
+          "genus": 2,
+          "digest": "16532588233038003552"
+        },
+        {
+          "genus": 3,
+          "digest": "8706117988639488592"
+        }
+      ]
+    },
+    {
+      "sanitizer": "undefined",
+      "status": "passed",
+      "compile_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compile_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "b804781c57700ef0e36842e683bf074f903a877eb21d606b77f1292860192fe6",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact": [
+        {
+          "genus": 2,
+          "digest": "16532588233038003552"
+        },
+        {
+          "genus": 3,
+          "digest": "8706117988639488592"
+        }
+      ]
+    },
+    {
+      "sanitizer": "leak",
+      "status": "passed",
+      "compile_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compile_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "13d9d1f5e1e1ea89f4ddc142d1442515d282fc2ae93203e989b86df010fae8fa",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exact": [
+        {
+          "genus": 2,
+          "digest": "16532588233038003552"
+        },
+        {
+          "genus": 3,
+          "digest": "8706117988639488592"
+        }
+      ]
+    }
+  ]
+}

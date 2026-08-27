@@ -1,0 +1,330 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-25T08:49:44.534Z",
+  "repository": {
+    "commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8",
+    "package_smoke_overlay": {
+      "source_commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "base_test_sha256": "2a85aad10b6922600d6c97e312dfb32ee8430e197c85000c0b379c1b64a459e0",
+      "patched_test_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21",
+      "updater_sha256": "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e"
+    }
+  },
+  "host": {
+    "hostname": "cocalc-vm-a427a86c8cf341febdccb9a7",
+    "platform": "linux",
+    "architecture": "arm64",
+    "node": "v26.5.1"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "available",
+    "elapsed_ms": 312318.107955,
+    "stdout_sha256": "cfecab497d3d8fa0cfa2a2783169a8b4a87ae151dac826c7fa65d47b57781e15",
+    "value": {
+      "compiled": true,
+      "rows": [
+        {
+          "add_speedup": 40.007700168175795,
+          "authenticated_unpack_batch_median_ns": 95567616,
+          "authenticated_unpack_cached_prepare_median_ns": 30720,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1869056,
+          "genus": 2,
+          "materialized_add_speedup": 15.65641805697736,
+          "materialized_scalar_batch_median_ns": 1206056960,
+          "materialized_scalar_speedup": 729.2989305866988,
+          "multi_search_group_operations": 504,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.4892258579409416,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 469888256,
+          "native_add_materialized_stages": {
+            "kernel": 2593792,
+            "materialization": 314395136,
+            "pack": 181953792,
+            "publication": 985856,
+            "validation": 0
+          },
+          "native_add_median_ns": 183883776,
+          "native_add_stages": {
+            "kernel": 2543360,
+            "materialization": 0,
+            "pack": 183212288,
+            "publication": 927232,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 3849216,
+          "native_negate_median_ns": 89374208,
+          "native_scalar_batch_median_ns": 1009383424,
+          "native_scalar_materialized_median_ns": 20778496,
+          "native_scalar_median_ns": 17889024,
+          "native_scalar_throughput_ns": 136292352,
+          "native_search_median_ns": 2433792,
+          "native_subtract_median_ns": 177915904,
+          "native_sum_median_ns": 3290624,
+          "negate_speedup": 11.47647786708219,
+          "prepare_cached_batch_median_ns": 32000,
+          "prepare_fresh_unregistered_batch_median_ns": 1194572288,
+          "prepare_public_batch_median_ns": 89908992,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 761856,
+          "raw_add_boundary_median_ns": 2560256,
+          "raw_copy_boundary_median_ns": 31232,
+          "raw_fixed_add_boundary_median_ns": 1156925,
+          "raw_fixed_digest": "16532588233038003552",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 7356766976,
+          "reference_negate_median_ns": 1025701120,
+          "reference_scalar_median_ns": 15153734912,
+          "reference_search_median_ns": 3323427584,
+          "reference_subtract_median_ns": 8150459136,
+          "reference_sum_median_ns": 7134235136,
+          "reference_unpack_batch_median_ns": 2261724416,
+          "repeated_native_search_median_ns": 9581568,
+          "result_digest": "52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176",
+          "retained_add_median_ns": 4163072,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 1049344,
+          "retained_scalar_batch_median_ns": 920037888,
+          "retained_to_raw_add_ratio": 1.626037396260374,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 847.0967958900385,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 207,
+          "search_hash_collisions": 121,
+          "search_speedup": 1365.5347638582098,
+          "search_status": "not_found",
+          "subtract_speedup": 45.810739527816466,
+          "sum_speedup": 2168.0493231678856,
+          "validated_public_construct_and_prepare_median_ns": 3557148416,
+          "validated_public_construction_median_ns": 2337948672,
+          "standalone_core_median_ns": 1099566,
+          "raw_fixed_boundary_to_standalone_ratio": 1.0521651269682766,
+          "full_copy_to_raw_copy_ratio": 59.84426229508197
+        },
+        {
+          "add_speedup": 39.16377525977034,
+          "authenticated_unpack_batch_median_ns": 97123072,
+          "authenticated_unpack_cached_prepare_median_ns": 34816,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1809152,
+          "genus": 3,
+          "materialized_add_speedup": 15.16452218922477,
+          "materialized_scalar_batch_median_ns": 1652295680,
+          "materialized_scalar_speedup": 870.9527500026396,
+          "multi_search_group_operations": 504,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.126276435466771,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 478162176,
+          "native_add_materialized_stages": {
+            "kernel": 2536448,
+            "materialization": 298141440,
+            "pack": 179450368,
+            "publication": 1233920,
+            "validation": 0
+          },
+          "native_add_median_ns": 185148160,
+          "native_add_stages": {
+            "kernel": 2546688,
+            "materialization": 0,
+            "pack": 180326912,
+            "publication": 1302016,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 4587776,
+          "native_negate_median_ns": 90365440,
+          "native_scalar_batch_median_ns": 1452272384,
+          "native_scalar_materialized_median_ns": 24245504,
+          "native_scalar_median_ns": 21834240,
+          "native_scalar_throughput_ns": 168613120,
+          "native_search_median_ns": 2576896,
+          "native_subtract_median_ns": 181545984,
+          "native_sum_median_ns": 4861696,
+          "negate_speedup": 11.238253208306185,
+          "prepare_cached_batch_median_ns": 28928,
+          "prepare_fresh_unregistered_batch_median_ns": 1216590080,
+          "prepare_public_batch_median_ns": 88975872,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 740608,
+          "raw_add_boundary_median_ns": 2501376,
+          "raw_copy_boundary_median_ns": 28416,
+          "raw_fixed_add_boundary_median_ns": 1144325,
+          "raw_fixed_digest": "8706117988639488592",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 7251100928,
+          "reference_negate_median_ns": 1015549696,
+          "reference_scalar_median_ns": 21116688384,
+          "reference_search_median_ns": 3662995200,
+          "reference_subtract_median_ns": 8073199616,
+          "reference_sum_median_ns": 10096600320,
+          "reference_unpack_batch_median_ns": 2208599040,
+          "repeated_native_search_median_ns": 9754880,
+          "result_digest": "815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323",
+          "retained_add_median_ns": 6043136,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 1111808,
+          "retained_scalar_batch_median_ns": 1359705600,
+          "retained_to_raw_add_ratio": 2.4159246750588474,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 967.1364052057686,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 207,
+          "search_hash_collisions": 114,
+          "search_speedup": 1421.4757599841048,
+          "search_status": "not_found",
+          "subtract_speedup": 44.46917215199869,
+          "sum_speedup": 2076.7650466010214,
+          "validated_public_construct_and_prepare_median_ns": 3632040704,
+          "validated_public_construction_median_ns": 2415791360,
+          "standalone_core_median_ns": 1099391,
+          "raw_fixed_boundary_to_standalone_ratio": 1.040871718978962,
+          "full_copy_to_raw_copy_ratio": 63.666666666666664
+        }
+      ],
+      "schema": "sagejs.hyperelliptic.public-jacobian-benchmark.v1",
+      "workload": "resident prepared context; medians; 1000 public results",
+      "source": {
+        "commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+        "status": "clean",
+        "harness_sha256": "37d970e221495d0c2c4f42a57aab703e4dbc9b509195d278019596bbe8f35155",
+        "kernel_source_sha256": "ca71e1ce16810e9d8f210105072249b93beaacad581f8a2eb25585f7b5d81d2e"
+      },
+      "runtime": {
+        "node": "v26.5.1",
+        "platform": "linux",
+        "architecture": "arm64",
+        "release": "6.17.0-1022-gcp",
+        "cpu_model": "Neoverse-N1"
+      },
+      "standalone": {
+        "compiler": "cc -O3 -fPIC with native bounds-check, frame, section, and link flags",
+        "contract": "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
+        "timing": {
+          "warmups": 10,
+          "samples": 9,
+          "callsPerSample": 50
+        },
+        "rows": [
+          {
+            "genus": 2,
+            "standalone_core_median_ns": 1099566,
+            "digest": "16532588233038003552"
+          },
+          {
+            "genus": 3,
+            "standalone_core_median_ns": 1099391,
+            "digest": "8706117988639488592"
+          }
+        ]
+      }
+    }
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "8cc40c709513c7e0a79f3497f8702cb3f665ce57559659303deed9396842488d",
+    "artifact_id": null,
+    "pack_count": 40,
+    "load_ms": 38.34807599999476,
+    "process_rss_bytes": 108163072,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 3.4515989999636076,
+          "median": 4.356398999982048,
+          "max": 5.376279000018258,
+          "mad": 0.20907899999292567
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552",
+        "wasm_to_standalone_ratio": 3.961925887106411
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 3.413040000014007,
+          "median": 3.4420790000003763,
+          "max": 4.064758999971673,
+          "mad": 0.023761000018566847
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592",
+        "wasm_to_standalone_ratio": 3.13089610520768
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 4.588359999994282,
+        "median": 5.938559999980498,
+        "max": 6.322799000015948,
+        "mad": 0.38423900003544986
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 250.21209200000158,
+      "stdout_sha256": "fa5315a000bd09971d0cd3f0f3e38e059b56efdf561e2c407d9ef590c228ee3c",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 3842.8330089999945,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///home/user/sagejs-hyp-cross-168f8504/packages/flint-wasm/kernel.mjs:288:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 2136.6234399999958,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 8088.348412,
+      "stdout_sha256": "eb6d152b4dc3eb3ffd5e7fd29346df4cc65d14602dea5c387caa0271fda034b2",
+      "stdout": "(node:74489) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✔ authenticated production packs execute every hyperelliptic source family (2019.029533ms)\n✔ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (5816.038548ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (0.47692ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 8045.498016",
+      "stderr": "",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "test_source_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21"
+    }
+  },
+  "finished_at": "2026-08-25T08:56:12.067Z",
+  "package_smoke_supplemented_at_utc": "2026-08-25T08:56:38.496Z"
+}

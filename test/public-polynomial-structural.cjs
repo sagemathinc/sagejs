@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -132,6 +133,8 @@ const portableWitness = [
   "import sagejs._baselib.polynomial as polynomial_module",
   "import sagejs.polynomial_algorithms.public_structural as public_structural",
   "polynomial_module._generated_flint_resources_available_cache = False",
+  "polynomial_module._generated_fmpz_polynomial_resources_available_cache = False",
+  "polynomial_module._generated_fmpq_polynomial_resources_available_cache = False",
   "public_structural._generated_resources_cache = False",
   "R = PolynomialRing(ZZ, 'x'); x = R.gen()",
   "S = PolynomialRing(QQ, 'y'); y = S.gen()",

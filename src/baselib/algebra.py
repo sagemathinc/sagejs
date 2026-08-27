@@ -144,6 +144,22 @@ class Element:
     def parent(self) -> Parent:
         return self._parent
 
+    def __bool__(self) -> bool:
+        """
+        Report whether the element differs from the zero of its parent.
+
+        Sage decides an element's truth by whether it is zero, so an element
+        that prints as zero must not be true.  Without this an `if` on a ring
+        element takes the branch for a nonzero value whatever it holds.
+        """
+        checker = getattr(self, "is_zero", None)
+        if callable(checker):
+            return not checker()
+        answer = self == 0
+        if answer is True or answer is False:
+            return not answer
+        return True
+
 
 class RingElement(Element):
     """Base class for elements represented by ring parents."""
@@ -198,7 +214,7 @@ class RationalField(Field):
         return (
             getattr(value, "_parent", None) is self
             or runtime.is_exact_integer(value)
-            or runtime.jstype(value) == "number"
+            or isinstance(value, float)
             or getattr(
                 getattr(value, "_parent", None),
                 "_kind",
@@ -739,7 +755,7 @@ class CoercionModel:
     def parentOf(self, value: Any) -> Parent:
         if is_exact_integer(value):
             return ZZ
-        if runtime.jstype(value) == "number":
+        if isinstance(value, float):
             return runtime.reflect.get(runtime.global_object, "RDF")
         if (
             value is not None
@@ -1006,6 +1022,9 @@ def _tuple_index(
 
 
 _tuple_array_prototype_cache = runtime.undefined
+_machine_field_sequence_brand = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
 
 
 def _tuple_array_prototype(
@@ -1066,7 +1085,25 @@ def math_tuple(values: list[Any]) -> Any:
     prototype = _tuple_array_prototype_cache
     if prototype is runtime.undefined:
         prototype = _tuple_array_prototype(values)
-    return runtime.native_freeze_tuple(values, prototype)
+    answer = runtime.native_freeze_tuple(values, prototype)
+    runtime.reflect.apply(
+        runtime.reflect.get(_machine_field_sequence_brand, "add"),
+        _machine_field_sequence_brand,
+        [answer],
+    )
+    return answer
+
+
+runtime.object.defineProperty(
+    math_tuple,
+    "__machineFieldSequenceBrand",
+    {
+        "value": _machine_field_sequence_brand,
+        "enumerable": False,
+        "configurable": False,
+        "writable": False,
+    },
+)
 
 
 def _install_type_tuple_metadata() -> None:

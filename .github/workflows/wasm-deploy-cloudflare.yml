@@ -73,10 +73,7 @@ jobs:
             "Native Node oracle for the public browser corpus" \
             "Clean reproducibility build a" \
             "Clean reproducibility build b" \
-            "reproducibility" \
-            "Public parity (chromium)" \
-            "Public parity (firefox)" \
-            "Public parity (webkit)"
+            "reproducibility"
           do
             conclusion="$(jq -r --arg name "$required" \
               '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
@@ -86,6 +83,30 @@ jobs:
               exit 1
             }
           done
+
+          release_gate="$(jq -r \
+            '[.jobs[] | select(.name == "Browser release gates") | .conclusion] | first // "missing"' \
+            <<<"$jobs")"
+          if [[ "$release_gate" == "missing" ]]; then
+            # Releases produced before the sharded-gate aggregation migration
+            # remain deployable only when every legacy engine parity gate passed.
+            for required in \
+              "Public parity (chromium)" \
+              "Public parity (firefox)" \
+              "Public parity (webkit)"
+            do
+              conclusion="$(jq -r --arg name "$required" \
+                '[.jobs[] | select(.name == $name) | .conclusion] | first // "missing"' \
+                <<<"$jobs")"
+              [[ "$conclusion" == "success" ]] || {
+                echo "Required legacy release job '$required' concluded '$conclusion'" >&2
+                exit 1
+              }
+            done
+          elif [[ "$release_gate" != "success" ]]; then
+            echo "Required release job 'Browser release gates' concluded '$release_gate'" >&2
+            exit 1
+          fi
 
           if [[ "$TARGET" == "production" ]]; then
             deploy_branch="main"
@@ -106,6 +127,21 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: Check out the deployment control plane
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: build/deployment-control
+          sparse-checkout: |
+            .github/workflows/wasm-candidate.yml
+            .github/workflows/wasm-deploy-cloudflare.yml
+            docs/webassembly-cloudflare-deployment.md
+            packages/flint-wasm/scripts/browser-wasm-deployment.cjs
+            test/wasm-deployment-workflow.cjs
+            website/live/cloudflare
+            website/live/test/cloudflare-deployment.test.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Require production deployments to come from main
         if: inputs.target == 'production'
         env:
@@ -125,6 +161,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26.5.1
+          cache: pnpm
+
+      - name: Install the exact staging dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Fail closed when Cloudflare configuration is absent
         env:
@@ -180,6 +220,8 @@ jobs:
             --headers website/live/dist/_headers
           node --test website/live/test/*.test.mjs
           node --test test/wasm-deployment-workflow.cjs
+          node --test build/deployment-control/website/live/test/cloudflare-deployment.test.mjs
+          node --test build/deployment-control/test/wasm-deployment-workflow.cjs
           test -f website/live/dist/runtime-version.json
           test -f website/live/dist/asset-manifest.json
 
@@ -193,7 +235,7 @@ jobs:
           SAGEJS_PUBLIC_ORIGIN: ${{ vars.SAGEJS_PUBLIC_ORIGIN }}
         run: |
           set -euo pipefail
-          node website/live/cloudflare/prepare-release.mjs \
+          node build/deployment-control/website/live/cloudflare/prepare-release.mjs \
             --site website/live/dist \
             --output build/cloudflare-deploy \
             --target "$TARGET" \
@@ -201,9 +243,10 @@ jobs:
             --worker-name "$CLOUDFLARE_WORKER_NAME" \
             --bucket "$R2_BUCKET_NAME" \
             --public-origin "$SAGEJS_PUBLIC_ORIGIN"
-          node website/live/cloudflare/upload-r2.mjs \
+          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json \
             --verify-only
+          printf '%s\n' "$GITHUB_SHA" > build/cloudflare-deploy/deployment-control.sha
           echo "release=$(jq -r .release build/cloudflare-deploy/deployment.json)" >>"$GITHUB_OUTPUT"
           echo "worker=$(jq -r .name build/cloudflare-deploy/wrangler.json)" >>"$GITHUB_OUTPUT"
 
@@ -215,7 +258,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -euo pipefail
-          node website/live/cloudflare/upload-r2.mjs \
+          node build/deployment-control/website/live/cloudflare/upload-r2.mjs \
             --deployment build/cloudflare-deploy/deployment.json
 
       - name: Preserve the exact staged site as a deployment receipt
@@ -232,10 +275,21 @@ jobs:
           name: sagejs-r2-${{ inputs.target }}-${{ steps.source.outputs.sha }}
           path: |
             build/cloudflare-deploy/deployment.json
+            build/cloudflare-deploy/deployment-control.sha
             build/cloudflare-deploy/wrangler.json
             build/cloudflare-deploy/worker.mjs
           if-no-files-found: error
           retention-days: 90
+
+      - name: Isolate the Wrangler installation from the pnpm workspace
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          await writeFile(
+            "build/cloudflare-deploy/package.json",
+            `${JSON.stringify({ private: true })}\n`,
+          );
+          NODE
 
       - name: Atomically activate the uploaded release with a Cloudflare Worker
         id: deploy
@@ -243,8 +297,10 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: build/cloudflare-deploy
+          packageManager: npm
           wranglerVersion: "4.125.0"
-          command: deploy --config build/cloudflare-deploy/wrangler.json
+          command: deploy --config wrangler.json
 
       - name: Validate the deployed preview origin
         if: inputs.target == 'preview'
@@ -256,9 +312,10 @@ jobs:
             echo "Cloudflare returned an unexpected preview URL" >&2
             exit 1
           }
-          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+          node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
             --headers website/live/_headers \
-            --origin "$DEPLOYMENT_URL"
+            --origin "$DEPLOYMENT_URL" \
+            --expected-runtime website/live/dist/runtime-version.json
 
       - name: Validate app.sagejs.org after production deployment
         if: inputs.target == 'production'
@@ -266,6 +323,18 @@ jobs:
           SAGEJS_PUBLIC_ORIGIN: ${{ vars.SAGEJS_PUBLIC_ORIGIN }}
         run: |
           set -euo pipefail
-          node packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
-            --headers website/live/_headers \
-            --origin "$SAGEJS_PUBLIC_ORIGIN"
+          for attempt in $(seq 1 12); do
+            if node build/deployment-control/packages/flint-wasm/scripts/browser-wasm-deployment.cjs \
+              --headers website/live/_headers \
+              --origin "$SAGEJS_PUBLIC_ORIGIN" \
+              --expected-runtime website/live/dist/runtime-version.json
+            then
+              exit 0
+            fi
+            if [[ "$attempt" == 12 ]]; then
+              echo "Production origin did not validate after 12 attempts" >&2
+              exit 1
+            fi
+            echo "Production origin is not ready; retrying in 10 seconds ($attempt/12)" >&2
+            sleep 10
+          done

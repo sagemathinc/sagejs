@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any, Callable, Iterable
 
 from sagejs.hyperelliptic_curves.genus3_candidate_kernel import (
+    scan_genus3_candidate_progressions,
     scan_genus3_weil_candidates,
     scan_genus3_weil_candidates_batch,
 )
@@ -42,11 +43,122 @@ def genus3_candidate_kernel_available() -> bool:
     return is_compiled(scan_genus3_weil_candidates)
 
 
+def genus3_candidate_progression_kernel_available() -> bool:
+    """Return whether packed filtering and progression output is compiled."""
+    return is_compiled(scan_genus3_candidate_progressions)
+
+
 def _host_buffer_length(value: int) -> int:
     """Return a native host size while keeping CPython imports ordinary."""
     if _runtime is None:
         return int(value)
     return _runtime.number(value)
+
+
+def _candidate_word_capacity(prime: int) -> int:
+    """Return a conservative limb count for coefficients and `L(+-1)`."""
+    return max(1, (3 * prime.bit_length() + 69) // 64)
+
+
+def _merged_progression_intervals(
+    progressions: Iterable[dict[str, int]], prime: int
+) -> tuple[int | None, tuple[tuple[int, int], ...]]:
+    """Return the common residue and merged quotient intervals."""
+    intervals = []
+    residue = None
+    for progression in progressions:
+        base = int(progression["base"])
+        stride = int(progression["stride"])
+        count = int(progression["count"])
+        if stride != prime or count < 1:
+            raise RuntimeError("invalid packed candidate-order progression")
+        base_residue = base % prime
+        if residue is None:
+            residue = base_residue
+        elif residue != base_residue:
+            raise RuntimeError("candidate orders disagree modulo the prime")
+        start = (base - base_residue) // prime
+        intervals.append((start, start + count))
+    if not intervals:
+        return None, ()
+    intervals.sort()
+    merged = []
+    start, stop = intervals[0]
+    for next_start, next_stop in intervals[1:]:
+        if next_start <= stop:
+            if next_stop > stop:
+                stop = next_stop
+        else:
+            merged.append((start, stop))
+            start, stop = next_start, next_stop
+    merged.append((start, stop))
+    return residue, tuple(merged)
+
+
+def _orders_from_progressions(
+    progressions: Iterable[dict[str, int]], prime: int
+) -> tuple[int, ...]:
+    """Expand the union of same-residue stride-`p` intervals exactly once."""
+    residue, merged = _merged_progression_intervals(progressions, prime)
+    if residue is None:
+        return ()
+    return tuple(
+        residue + prime * quotient
+        for start, stop in merged
+        for quotient in range(start, stop)
+    )
+
+
+def _coprime_inverse(value: int, modulus: int) -> int:
+    """Return the inverse of `value` modulo `modulus`, assuming coprimality."""
+    old_remainder, remainder = value, modulus
+    old_coefficient, coefficient = 1, 0
+    while remainder:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = remainder, old_remainder - quotient * remainder
+        old_coefficient, coefficient = (
+            coefficient,
+            old_coefficient - quotient * coefficient,
+        )
+    if old_remainder != 1:
+        raise ArithmeticError("candidate progression modulus is not coprime")
+    return old_coefficient % modulus
+
+
+def progression_order_count(
+    progressions: Iterable[dict[str, int]],
+    prime: int,
+    witnesses: Iterable[int] = (),
+) -> int:
+    """Count distinct progression orders divisible by every witness."""
+    residue, intervals = _merged_progression_intervals(progressions, prime)
+    if residue is None:
+        return 0
+    modulus = 1
+    for witness in witnesses:
+        witness = int(witness)
+        if witness <= 0:
+            raise ValueError("order witnesses must be positive")
+        modulus = modulus * witness // _integer_gcd(modulus, witness)
+    if modulus == 1:
+        return sum(stop - start for start, stop in intervals)
+    common = _integer_gcd(prime, modulus)
+    if residue % common != 0:
+        return 0
+    reduced_modulus = modulus // common
+    if reduced_modulus == 1:
+        quotient_residue = 0
+    else:
+        quotient_residue = (
+            -(residue // common)
+            * _coprime_inverse((prime // common) % reduced_modulus, reduced_modulus)
+        ) % reduced_modulus
+    count = 0
+    for start, stop in intervals:
+        first = start + (quotient_residue - start) % reduced_modulus
+        if first < stop:
+            count += 1 + (stop - 1 - first) // reduced_modulus
+    return count
 
 
 def _integer_gcd(left: int, right: int) -> int:
@@ -349,7 +461,11 @@ def _scan_candidate_lifts(
         # resource limit that may be much larger than the actual answer.
         capacity = min(256, max_candidates)
         output_length = _host_buffer_length(2 + 3 * capacity)
-        output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+        output = kernel_integer_zeros(
+            scan_genus3_weil_candidates,
+            output_length,
+            _candidate_word_capacity(prime),
+        )
         stored = scan_genus3_weil_candidates(
             output,
             prime,
@@ -394,7 +510,11 @@ def _scan_candidate_lifts(
         if initial_candidate_count > capacity:
             capacity = initial_candidate_count
             output_length = _host_buffer_length(2 + 3 * capacity)
-            output = kernel_integer_zeros(scan_genus3_weil_candidates, output_length)
+            output = kernel_integer_zeros(
+                scan_genus3_weil_candidates,
+                output_length,
+                _candidate_word_capacity(prime),
+            )
             stored = scan_genus3_weil_candidates(
                 output,
                 prime,
@@ -588,6 +708,166 @@ def enumerate_genus3_weil_candidates(
     }
 
 
+def summarize_genus3_candidate_progressions(
+    prime: int,
+    residues: Iterable[int],
+    *,
+    primary_witnesses: Iterable[int] = (),
+    twist_witnesses: Iterable[int] = (),
+    order_kind: str = "jacobian",
+    max_candidates: int = 100_000,
+    max_combinations: int = 2_000_000,
+    materialize_orders: bool = True,
+) -> dict[str, Any] | None:
+    """Filter candidates and return bounded order progressions, if compiled.
+
+    This deliberately does not publish one Python tuple per Weil candidate.
+    The native scan retains only compact metadata and maximal stride-`p`
+    progressions.  `None` means the production kernel is unavailable, so a
+    caller can retain the exact materialized fallback.
+    """
+    prime, normalized, max_candidates, max_combinations = _checked_inputs(
+        prime, residues, max_candidates, max_combinations
+    )
+    if not isinstance(materialize_orders, bool):
+        raise TypeError("materialize_orders must be a boolean")
+    if not genus3_candidate_progression_kernel_available():
+        return None
+    primary = tuple(
+        _checked_exact_integer(value, "primary witness") for value in primary_witnesses
+    )
+    twist = tuple(
+        _checked_exact_integer(value, "twist witness") for value in twist_witnesses
+    )
+    if any(value <= 0 for value in primary + twist):
+        raise ValueError("candidate-filter witnesses must be positive")
+    if order_kind == "jacobian":
+        kind = 0
+    elif order_kind == "twist":
+        kind = 1
+    else:
+        raise ValueError("order_kind must be 'jacobian' or 'twist'")
+
+    primary_source = kernel_integer_buffer(
+        scan_genus3_candidate_progressions, primary if primary else (1,)
+    )
+    twist_source = kernel_integer_buffer(
+        scan_genus3_candidate_progressions, twist if twist else (1,)
+    )
+    capacity = min(64, max_candidates)
+
+    def scan(progression_capacity: int) -> tuple[int, tuple[Any, ...]]:
+        output = kernel_integer_zeros(
+            scan_genus3_candidate_progressions,
+            _host_buffer_length(7 + 2 * progression_capacity),
+            _candidate_word_capacity(prime),
+        )
+        status = scan_genus3_candidate_progressions(
+            output,
+            prime,
+            normalized[0],
+            normalized[1],
+            normalized[2],
+            primary_source,
+            len(primary),
+            twist_source,
+            len(twist),
+            kind,
+            max_combinations,
+        )
+        return status, integer_buffer_values(output)
+
+    status, values = scan(capacity)
+    candidate_count = int(values[0])
+    survivor_count = int(values[1])
+    combinations_examined = int(values[2])
+    progression_count = int(values[3])
+    diagnostics = {
+        "combinations_examined": combinations_examined,
+        "max_combinations": max_combinations,
+        "max_candidates": max_candidates,
+        "candidate_scan": "native_progression_stream",
+        "progression_count": progression_count,
+    }
+    if status == -1:
+        return {
+            "status": "resource_limit",
+            "prime": prime,
+            "residues": normalized,
+            "candidate_count": candidate_count,
+            "survivor_count": None,
+            "candidate": None,
+            "order_count": None,
+            "orders": (),
+            "progressions": (),
+            "diagnostics": {**diagnostics, "reason": "max_combinations exceeded"},
+        }
+    if status == -2:
+        raise RuntimeError("invalid native candidate-progression input")
+    if candidate_count > max_candidates or survivor_count > max_candidates:
+        return {
+            "status": "resource_limit",
+            "prime": prime,
+            "residues": normalized,
+            "candidate_count": candidate_count,
+            "survivor_count": survivor_count,
+            "candidate": None,
+            "order_count": None,
+            "orders": (),
+            "progressions": (),
+            "diagnostics": {**diagnostics, "reason": "max_candidates exceeded"},
+        }
+    if status == -3:
+        if progression_count < 0 or progression_count > max_candidates:
+            raise RuntimeError("invalid native candidate-progression count")
+        status, values = scan(progression_count)
+        if status != progression_count:
+            raise RuntimeError(
+                "native candidate-progression scan was not deterministic"
+            )
+        if (
+            int(values[0]) != candidate_count
+            or int(values[1]) != survivor_count
+            or int(values[2]) != combinations_examined
+            or int(values[3]) != progression_count
+        ):
+            raise RuntimeError(
+                "native candidate-progression metadata changed on replay"
+            )
+    elif status != progression_count:
+        raise RuntimeError(
+            "native candidate-progression scan returned an invalid status"
+        )
+
+    progressions = tuple(
+        {
+            "base": int(values[7 + 2 * index]),
+            "stride": prime,
+            "count": int(values[8 + 2 * index]),
+        }
+        for index in range(progression_count)
+    )
+    order_count = progression_order_count(progressions, prime)
+    orders = (
+        _orders_from_progressions(progressions, prime) if materialize_orders else None
+    )
+    candidate = None
+    if survivor_count == 1:
+        candidate = (int(values[4]), int(values[5]), int(values[6]))
+    return {
+        "status": "ok",
+        "prime": prime,
+        "residues": normalized,
+        "candidate_count": candidate_count,
+        "survivor_count": survivor_count,
+        "candidate": candidate,
+        "order_count": order_count,
+        "orders": orders,
+        "progressions": progressions,
+        "diagnostics": diagnostics,
+    }
+
+
 def enumerate_genus3_weil_candidates_batch(
     rows: Iterable[tuple[int, Iterable[int]]],
     *,
@@ -627,6 +907,7 @@ def enumerate_genus3_weil_candidates_batch(
     output = kernel_integer_zeros(
         scan_genus3_weil_candidates_batch,
         stride * len(normalized_rows),
+        max(_candidate_word_capacity(prime) for prime, _residues in normalized_rows),
     )
     source = kernel_integer_buffer(scan_genus3_weil_candidates_batch, packed)
     completed = scan_genus3_weil_candidates_batch(
@@ -772,12 +1053,20 @@ def complete_genus3_lpolynomial(
         filters.append({"kind": "twist_annihilation_test", "index": index})
 
     annihilation_calls = {"jacobian": 0, "twist": 0}
+    annihilation_cache: dict[tuple[str, int, int], bool] = {}
 
-    def passes_test(test: Callable[[int], bool], order: int, kind: str) -> bool:
+    def passes_test(
+        test: Callable[[int], bool], order: int, kind: str, index: int
+    ) -> bool:
+        key = (kind, index, order)
+        cached = annihilation_cache.get(key)
+        if cached is not None:
+            return cached
         annihilation_calls[kind] += 1
         result = test(order)
         if not isinstance(result, bool):
             raise TypeError(kind + " annihilation test must return bool")
+        annihilation_cache[key] = result
         return result
 
     def accept(candidate: Candidate) -> bool:
@@ -791,11 +1080,14 @@ def complete_genus3_lpolynomial(
             return False
         if any(candidate_twist_order % witness for witness in twist_witnesses):
             return False
-        if any(not passes_test(test, order, "jacobian") for test in jacobian_tests):
+        if any(
+            not passes_test(test, order, "jacobian", index)
+            for index, test in enumerate(jacobian_tests)
+        ):
             return False
         if any(
-            not passes_test(test, candidate_twist_order, "twist")
-            for test in twist_tests
+            not passes_test(test, candidate_twist_order, "twist", index)
+            for index, test in enumerate(twist_tests)
         ):
             return False
         return True

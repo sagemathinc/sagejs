@@ -9,7 +9,10 @@ import {
   readTaskRuntimeSource,
   runtimeRequire,
 } from "./resources";
-import { runRuntimeBootstrap } from "./runtime-bootstrap";
+import {
+  installHyperellipticAutoReceiptPolicy,
+  runRuntimeBootstrap,
+} from "./runtime-bootstrap";
 import { importPath, libraryPath } from "./utils";
 
 interface CallableSpec {
@@ -45,6 +48,7 @@ export function createTaskEvaluator({
   onOutput(text: string): void;
   precompiledNativeRuntime?: boolean;
 }): TaskEvaluator {
+  installHyperellipticAutoReceiptPolicy();
   global.require = runtimeRequire as NodeJS.Require;
   // Strict baselib modules use this collision-proof name instead of the public
   // ``require`` binding, which user code is allowed to shadow.

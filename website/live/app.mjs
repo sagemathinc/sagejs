@@ -1,4 +1,5 @@
 import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
+import { createSourceEditor } from "./codemirror-editor.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
@@ -147,6 +148,8 @@ function scheduleSave() {
   autosaveTimer = setTimeout(saveWorkspace, 450);
 }
 
+createSourceEditor(elements.source, { onRun: (mode) => void run(mode) });
+
 function download(bytes, filename, type) {
   const blob = new Blob([bytes], { type });
   const url = URL.createObjectURL(blob);
@@ -162,15 +165,46 @@ function safeFilename(value, extension) {
   return `${base.slice(0, 80)}.${extension}`;
 }
 
-function renderMessage(kind, title, text = "") {
+function renderMessage(kind, title, text = "", input = "") {
   const article = document.createElement("article");
   article.className = `result result-${kind}`;
   const heading = document.createElement("h3");
   heading.textContent = title;
+  const outputLabel = document.createElement("strong");
+  outputLabel.className = "result-output-label";
+  outputLabel.textContent = "Output";
   const pre = document.createElement("pre");
+  pre.className = "result-output";
   pre.textContent = text;
   pre.tabIndex = 0;
-  article.append(heading, pre);
+  article.append(heading);
+  if (input) {
+    const inputHeading = document.createElement("div");
+    inputHeading.className = "result-input-heading";
+    const inputLabel = document.createElement("strong");
+    inputLabel.textContent = "Input";
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "quiet-button result-copy-input";
+    copy.textContent = "Copy input";
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(input);
+        copy.textContent = "Copied";
+        setTimeout(() => { copy.textContent = "Copy input"; }, 1200);
+        setLive("The input for this result was copied.");
+      } catch (error) {
+        setLive(`Could not copy input: ${error.message}`);
+      }
+    });
+    inputHeading.append(inputLabel, copy);
+    const inputSource = document.createElement("pre");
+    inputSource.className = "result-input";
+    inputSource.textContent = input;
+    inputSource.tabIndex = 0;
+    article.append(inputHeading, inputSource);
+  }
+  article.append(outputLabel, pre);
   elements.output.prepend(article);
   return { article, pre };
 }
@@ -195,7 +229,12 @@ async function run(mode) {
   saveWorkspace();
   const currentRun = ++runCounter;
   const collector = new OutputCollector();
-  const { article, pre } = renderMessage("running", `Run ${currentRun} · ${mode}`, "Starting…");
+  const { article, pre } = renderMessage(
+    "running",
+    `Run ${currentRun} · ${mode}`,
+    "Starting…",
+    source,
+  );
   const plot = document.createElement("div");
   plot.className = "plot";
   article.append(plot);
@@ -425,6 +464,7 @@ elements.sessions.addEventListener("change", () => {
 elements.source.addEventListener("input", scheduleSave);
 elements.title.addEventListener("input", scheduleSave);
 elements.source.addEventListener("keydown", (event) => {
+  if (event.defaultPrevented) return;
   if (event.key !== "Enter" || event.altKey) return;
   if (event.shiftKey) { event.preventDefault(); void run("cell"); }
   else if (event.ctrlKey || event.metaKey) { event.preventDefault(); void run("all"); }

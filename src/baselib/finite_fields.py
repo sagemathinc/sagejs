@@ -84,9 +84,147 @@ def _decode_extension_element_coordinates(source: Any, degree: int) -> list[Any]
 
 _flint_ffi_module_cache = runtime.undefined
 _generated_extension_resources_available_cache = runtime.undefined
+_machine_extension_kernel_module_cache = runtime.undefined
+_machine_extension_native_module_cache = runtime.undefined
+_FQ_CONTEXT_RESOURCE_CACHE_LIMIT = 32
+_fq_context_resource_cache = []
+_FQ_ELEMENT_RESOURCE_CACHE_LIMIT = 128
+_fq_element_resource_cache = []
+
+# Every canonical residue is at most `p - 1`.  This is the largest modulus for
+# which one fused multiply-add `a * b + c` remains an exact JavaScript Number:
+# `p * (p - 1) <= Number.MAX_SAFE_INTEGER`.  Larger parents retain BigInt
+# residues, so this representation choice never changes exact semantics.
+_MACHINE_RESIDUE_MAX_MODULUS = runtime.bigint(94906266)
+
+# Machine extension products reduce every convolution term modulo `p` before
+# it participates in polynomial reduction.  For the reviewed degrees below,
+# every intermediate is therefore bounded by a small multiple of `p^2`.
+# The conservative prime ceiling keeps those operations far below
+# `Number.MAX_SAFE_INTEGER`; larger parents retain their exact boxed resource
+# representation.
+_MACHINE_EXTENSION_NUMBER_MAX_PRIME = runtime.bigint(200000)
+_MACHINE_EXTENSION_NUMBER_MAX_DEGREE = 4
+_MACHINE_EXTENSION_ISOLATED_MIN_STEPS = 4096
 
 
-@runtime.bigint_fields("_value")
+def _machine_extension_kernel_modules() -> tuple[Any, Any]:
+    """Load the compiled quadratic-field kernel without hiding real defects."""
+    global _machine_extension_kernel_module_cache
+    global _machine_extension_native_module_cache
+    if _machine_extension_kernel_module_cache is runtime.undefined:
+        try:
+            _machine_extension_kernel_module_cache = __import__(
+                "sagejs.kernels.arithmetic.gf_p2",
+                fromlist=["packed_gf_p2_affine_recurrence"],
+            )
+            _machine_extension_native_module_cache = __import__(
+                "sagejs.native",
+                fromlist=[
+                    "is_compiled",
+                    "kernel_uint64_zeros",
+                ],
+            )
+        except ImportError:
+            _machine_extension_kernel_module_cache = None
+            _machine_extension_native_module_cache = None
+    return (
+        _machine_extension_kernel_module_cache,
+        _machine_extension_native_module_cache,
+    )
+
+
+def _touch_fq_context_resource(storage: Any) -> None:
+    if _fq_context_resource_cache and _fq_context_resource_cache[-1] is storage:
+        return
+    if storage in _fq_context_resource_cache:
+        _fq_context_resource_cache.remove(storage)
+    _fq_context_resource_cache.append(storage)
+    while len(_fq_context_resource_cache) > _FQ_CONTEXT_RESOURCE_CACHE_LIMIT:
+        victim = _fq_context_resource_cache[0]
+        victim._spill()
+        _fq_context_resource_cache.pop(0)
+
+
+def _touch_fq_element_resource(storage: Any) -> None:
+    if _fq_element_resource_cache and _fq_element_resource_cache[-1] is storage:
+        return
+    if storage in _fq_element_resource_cache:
+        _fq_element_resource_cache.remove(storage)
+    _fq_element_resource_cache.append(storage)
+    while len(_fq_element_resource_cache) > _FQ_ELEMENT_RESOURCE_CACHE_LIMIT:
+        victim = _fq_element_resource_cache[0]
+        victim._spill()
+        _fq_element_resource_cache.pop(0)
+
+
+class _FqContextResourceStorage:
+    """Bound generated `fq` contexts while preserving their exact modulus."""
+
+    def __init__(self, parent: Any, resource: Any) -> None:
+        self.parent = parent
+        self._resource = resource
+        _touch_fq_context_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is runtime.undefined:
+            self._resource = _flint_ffi_module().fq_context(
+                runtime.uint64_buffer(self.parent._modulusCoefficients),
+                self.parent._degree + 1,
+                self.parent._prime,
+            )
+        _touch_fq_context_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined:
+            return
+        # FLINT elements and polynomials borrow their context.  Snapshot every
+        # active child before closing the context; the bounded child caches
+        # make this list bounded as well.
+        for child in list(self.parent._nativeResourceChildren):
+            child._spill()
+        self._resource.close()
+        self._resource = runtime.undefined
+
+
+class _FqElementResourceStorage:
+    """Keep exact coordinates while bounding active generated `fq` handles."""
+
+    def __init__(self, parent: Any, resource: Any) -> None:
+        self.parent = parent
+        self._resource = resource
+        self._coordinates: Any = runtime.undefined
+        self.parent._registerNativeResource(self)
+        _touch_fq_element_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            self._resource = ffi.fq_element(
+                self.parent._nativeContext,
+                runtime.uint64_buffer(self._coordinates),
+                self.parent._degree,
+            )
+            self._coordinates = runtime.undefined
+            self.parent._registerNativeResource(self)
+        _touch_fq_element_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined:
+            return
+        region = _flint_ffi_module().fq_element_coordinate_bytes(self._resource)
+        self._coordinates = _decode_extension_element_coordinates(
+            region.take_bytes(), self.parent._degree
+        )
+        self._resource.close()
+        self._resource = runtime.undefined
+        self.parent._unregisterNativeResource(self)
+
+
 @runtime.lightweight_math_class
 class FiniteFieldElement(sage.Element):
     def __init__(self, parent: Any, value: Any) -> None:
@@ -114,23 +252,41 @@ class FiniteFieldElement(sage.Element):
         if residue < 0:
             residue = runtime.native_add(residue, parent._modulus)
         self._parent = parent
-        self._value = residue
-        runtime.object.freeze(self)
+        self._value = runtime.number(residue) if parent._machineResidues else residue
+        runtime.brand_machine_field_element(self)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Keep public field elements immutable without freezing JS temporaries.
+
+        Baselib construction writes the two private representation slots
+        directly.  Python-level attribute assignment always enters this
+        method, so public immutability does not require an `Object.freeze`
+        barrier on every arithmetic result.
+        """
+        if name in ("_parent", "_value") and not hasattr(self, name):
+            object.__setattr__(self, name, value)
+            return
+        raise AttributeError("finite field elements are immutable")
+
+    def __delattr__(self, name: str) -> None:
+        """Reject deletion of representation or user-visible attributes."""
+        raise AttributeError("finite field elements are immutable")
 
     def _new_reduced(self, value: int) -> FiniteFieldElement:
         answer = runtime.object.create(_finite_field_element_prototype)
         answer._parent = self._parent
-        answer._value = value
-        runtime.object.freeze(answer)
-        return answer
+        answer._value = (
+            runtime.number(value) if self._parent._machineResidues else value
+        )
+        return runtime.brand_machine_field_element(answer)
 
     def _add_(
         self,
         other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         value = runtime.native_add(self._value, other._value)
-        if value >= self._parent._modulus:
-            value = runtime.native_sub(value, self._parent._modulus)
+        if value >= self._parent._residueModulus:
+            value = runtime.native_sub(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _sub_(
@@ -139,7 +295,7 @@ class FiniteFieldElement(sage.Element):
     ) -> FiniteFieldElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _mul_(
@@ -149,7 +305,7 @@ class FiniteFieldElement(sage.Element):
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(self._value, other._value),
-                self._parent._modulus,
+                self._parent._residueModulus,
             ),
         )
 
@@ -157,13 +313,13 @@ class FiniteFieldElement(sage.Element):
         self,
         other: FiniteFieldElement,
     ) -> FiniteFieldElement:
+        inverse = runtime.modular_inverse(other._value, self._parent._modulus)
+        if self._parent._machineResidues:
+            inverse = runtime.number(inverse)
         return self._new_reduced(
             runtime.native_mod(
-                runtime.native_mul(
-                    self._value,
-                    runtime.modular_inverse(other._value, self._parent._modulus),
-                ),
-                self._parent._modulus,
+                runtime.native_mul(self._value, inverse),
+                self._parent._residueModulus,
             ),
         )
 
@@ -189,7 +345,7 @@ class FiniteFieldElement(sage.Element):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._residueModulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> FiniteFieldElement:
@@ -224,9 +380,9 @@ class FiniteFieldElement(sage.Element):
         return self._value == runtime.bigint(1)
 
     def is_unit(self) -> bool:
-        return runtime.bigint_gcd(self._value, self._parent._modulus) == runtime.bigint(
-            1
-        )
+        return runtime.bigint_gcd(
+            runtime.integer_bigint(self._value), self._parent._modulus
+        ) == runtime.bigint(1)
 
     def multiplicative_order(self) -> int:
         if not self.is_unit():
@@ -330,7 +486,7 @@ class FiniteFieldElement(sage.Element):
 
     def rational_reconstruction(self) -> Any:
         modulus = self._parent._modulus
-        residue = self._value
+        residue = runtime.integer_bigint(self._value)
         bound = runtime.bigint(
             runtime.math.floor(runtime.math.sqrt(runtime.number(modulus) / 2.0))
         )
@@ -391,28 +547,27 @@ def _new_reduced_prime_field_element(
     """Construct an element from an already canonical residue."""
     answer = runtime.object.create(_finite_field_element_prototype)
     answer._parent = parent
-    answer._value = runtime.bigint(value)
-    runtime.object.freeze(answer)
-    return answer
+    answer._value = runtime.number(value) if parent._machineResidues else value
+    return runtime.brand_machine_field_element(answer)
 
 
-@runtime.bigint_fields("_value")
 @runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
     def _new_reduced(self, value: int) -> IntegerModElement:
         answer = runtime.object.create(_integer_mod_element_prototype)
         answer._parent = self._parent
-        answer._value = value
-        runtime.object.freeze(answer)
-        return answer
+        answer._value = (
+            runtime.number(value) if self._parent._machineResidues else value
+        )
+        return runtime.brand_machine_field_element(answer)
 
     def _add_(
         self,
         other: FiniteFieldElement,
     ) -> IntegerModElement:
         value = runtime.native_add(self._value, other._value)
-        if value >= self._parent._modulus:
-            value = runtime.native_sub(value, self._parent._modulus)
+        if value >= self._parent._residueModulus:
+            value = runtime.native_sub(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _sub_(
@@ -421,7 +576,7 @@ class IntegerModElement(FiniteFieldElement):
     ) -> IntegerModElement:
         value = runtime.native_sub(self._value, other._value)
         if value < 0:
-            value = runtime.native_add(value, self._parent._modulus)
+            value = runtime.native_add(value, self._parent._residueModulus)
         return self._new_reduced(value)
 
     def _mul_(
@@ -431,7 +586,7 @@ class IntegerModElement(FiniteFieldElement):
         return self._new_reduced(
             runtime.native_mod(
                 runtime.native_mul(self._value, other._value),
-                self._parent._modulus,
+                self._parent._residueModulus,
             ),
         )
 
@@ -439,13 +594,13 @@ class IntegerModElement(FiniteFieldElement):
         self,
         other: FiniteFieldElement,
     ) -> IntegerModElement:
+        inverse = runtime.modular_inverse(other._value, self._parent._modulus)
+        if self._parent._machineResidues:
+            inverse = runtime.number(inverse)
         return self._new_reduced(
             runtime.native_mod(
-                runtime.native_mul(
-                    self._value,
-                    runtime.modular_inverse(other._value, self._parent._modulus),
-                ),
-                self._parent._modulus,
+                runtime.native_mul(self._value, inverse),
+                self._parent._residueModulus,
             ),
         )
 
@@ -453,7 +608,7 @@ class IntegerModElement(FiniteFieldElement):
         if self._value == runtime.bigint(0):
             return self
         return self._new_reduced(
-            runtime.native_sub(self._parent._modulus, self._value),
+            runtime.native_sub(self._parent._residueModulus, self._value),
         )
 
     def __pow__(self, exponent: int) -> IntegerModElement:
@@ -479,43 +634,95 @@ _integer_mod_element_prototype = runtime.reflect.get(IntegerModElement, "prototy
 
 @runtime.lightweight_math_class
 class FiniteFieldExtensionElement(sage.Element):
-    def __init__(self, parent: Any, native_value: Any) -> None:
+    def __init__(
+        self,
+        parent: Any,
+        native_value: Any,
+        machine_coordinates: Any = runtime.undefined,
+    ) -> None:
         self._parent = parent
-        self._native = native_value
+        self._native_storage = (
+            _FqElementResourceStorage(parent, native_value)
+            if parent._generatedResourceBackend
+            else native_value
+        )
+        self._machineCoordinates = machine_coordinates
         runtime.object.freeze(self)
+        runtime.brand_machine_field_element(self)
 
-    def _new(self, native_value: Any) -> FiniteFieldExtensionElement:
-        return _new_extension_field_element(self._parent, native_value)
+    @property
+    def _native(self) -> Any:
+        if isinstance(self._native_storage, _FqElementResourceStorage):
+            return self._native_storage.resource
+        return self._native_storage
+
+    def _new(
+        self,
+        native_value: Any,
+        machine_coordinates: Any = runtime.undefined,
+    ) -> FiniteFieldExtensionElement:
+        return _new_extension_field_element(
+            self._parent,
+            native_value,
+            machine_coordinates,
+        )
 
     def _add_(
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
         if self._parent._generatedResourceBackend:
-            return self._new(
-                _flint_ffi_module().fq_element_add(self._native, other._native)
+            native_value = _flint_ffi_module().fq_element_add(
+                self._native, other._native
             )
-        return self._new(runtime.flint_backend().fqAdd(self._native, other._native))
+        else:
+            native_value = runtime.flint_backend().fqAdd(self._native, other._native)
+        return self._new(
+            native_value,
+            self._parent._machine_extension_binary_coordinates(
+                self._machineCoordinates,
+                other._machineCoordinates,
+                "add",
+            ),
+        )
 
     def _sub_(
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
         if self._parent._generatedResourceBackend:
-            return self._new(
-                _flint_ffi_module().fq_element_sub(self._native, other._native)
+            native_value = _flint_ffi_module().fq_element_sub(
+                self._native, other._native
             )
-        return self._new(runtime.flint_backend().fqSub(self._native, other._native))
+        else:
+            native_value = runtime.flint_backend().fqSub(self._native, other._native)
+        return self._new(
+            native_value,
+            self._parent._machine_extension_binary_coordinates(
+                self._machineCoordinates,
+                other._machineCoordinates,
+                "sub",
+            ),
+        )
 
     def _mul_(
         self,
         other: FiniteFieldExtensionElement,
     ) -> FiniteFieldExtensionElement:
         if self._parent._generatedResourceBackend:
-            return self._new(
-                _flint_ffi_module().fq_element_mul(self._native, other._native)
+            native_value = _flint_ffi_module().fq_element_mul(
+                self._native, other._native
             )
-        return self._new(runtime.flint_backend().fqMul(self._native, other._native))
+        else:
+            native_value = runtime.flint_backend().fqMul(self._native, other._native)
+        return self._new(
+            native_value,
+            self._parent._machine_extension_binary_coordinates(
+                self._machineCoordinates,
+                other._machineCoordinates,
+                "mul",
+            ),
+        )
 
     def _truediv_(
         self,
@@ -557,8 +764,13 @@ class FiniteFieldExtensionElement(sage.Element):
 
     def __neg__(self) -> FiniteFieldExtensionElement:
         if self._parent._generatedResourceBackend:
-            return self._new(_flint_ffi_module().fq_element_neg(self._native))
-        return self._new(runtime.flint_backend().fqNeg(self._native))
+            native_value = _flint_ffi_module().fq_element_neg(self._native)
+        else:
+            native_value = runtime.flint_backend().fqNeg(self._native)
+        return self._new(
+            native_value,
+            self._parent._machine_extension_neg_coordinates(self._machineCoordinates),
+        )
 
     def __pow__(
         self,
@@ -567,22 +779,47 @@ class FiniteFieldExtensionElement(sage.Element):
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0 and self.is_zero():
             raise sage.ZeroDivisionError("cannot invert zero in a finite field")
+        coordinates = self._parent._machine_extension_pow_coordinates(
+            self._machineCoordinates, exponent
+        )
         if self._parent._generatedResourceBackend:
-            return self._new(_flint_ffi_module().fq_element_pow(self._native, exponent))
-        return self._new(runtime.flint_backend().fqPow(self._native, exponent))
+            return self._new(
+                _flint_ffi_module().fq_element_pow(self._native, exponent),
+                coordinates,
+            )
+        return self._new(
+            runtime.flint_backend().fqPow(self._native, exponent), coordinates
+        )
 
     def is_zero(self) -> bool:
+        if self._machineCoordinates is not runtime.undefined:
+            for coefficient in self._machineCoordinates:
+                if coefficient != 0:
+                    return False
+            return True
         if self._parent._generatedResourceBackend:
             return bool(_flint_ffi_module().fq_element_is_zero(self._native))
         return runtime.flint_backend().fqIsZero(self._native)
 
     def is_one(self) -> bool:
+        if self._machineCoordinates is not runtime.undefined:
+            if self._machineCoordinates[0] != 1:
+                return False
+            for coefficient in self._machineCoordinates[1:]:
+                if coefficient != 0:
+                    return False
+            return True
         if self._parent._generatedResourceBackend:
             return bool(_flint_ffi_module().fq_element_is_one(self._native))
         return runtime.flint_backend().fqIsOne(self._native)
 
     def _power_basis_coordinates(self) -> list[Any]:
         """Return one host-owned coordinate copy for conversion and display."""
+        if self._machineCoordinates is not runtime.undefined:
+            return [
+                runtime.normalize_integer(coefficient)
+                for coefficient in self._machineCoordinates
+            ]
         if not self._parent._generatedResourceBackend:
             raise TypeError("power-basis export requires generated `fq` resources")
         region = _flint_ffi_module().fq_element_coordinate_bytes(self._native)
@@ -625,8 +862,12 @@ class FiniteFieldExtensionElement(sage.Element):
 def _new_extension_field_element(
     parent: Any,
     native_value: Any,
+    machine_coordinates: Any = runtime.undefined,
 ) -> FiniteFieldExtensionElement:
-    return runtime.reflect.construct(parent._elementType, [parent, native_value])
+    return runtime.reflect.construct(
+        parent._elementType,
+        [parent, native_value, machine_coordinates],
+    )
 
 
 @runtime.callable_instance_class
@@ -636,6 +877,32 @@ class FiniteField_prime_modn(sage.Parent):
         self._kind = "GF"
         self._elementType = FiniteFieldElement
         self._modulus = order
+        self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
+        self._residueModulus = runtime.number(order) if self._machineResidues else order
+        self._closedScalarArithmetic = True
+        self._closedScalarCommutative = True
+        self._closedScalarElementPrototype = _finite_field_element_prototype
+        self._closedScalarMul = runtime.reflect.get(
+            _finite_field_element_prototype, "_mul_"
+        )
+        self._closedScalarAdd = runtime.reflect.get(
+            _finite_field_element_prototype, "_add_"
+        )
+        self._closedScalarSub = runtime.reflect.get(
+            _finite_field_element_prototype, "_sub_"
+        )
+        self._closedScalarNeg = runtime.reflect.get(
+            _finite_field_element_prototype, "__neg__"
+        )
+        self._closedScalarPow = runtime.reflect.get(
+            _finite_field_element_prototype, "__pow__"
+        )
+        self._closedScalarEq = runtime.reflect.get(
+            _finite_field_element_prototype, "_eq_"
+        )
+        self._closedScalarNewReduced = runtime.reflect.get(
+            _finite_field_element_prototype, "_new_reduced"
+        )
         self._order = order
         self._generator = generator
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
@@ -742,6 +1009,32 @@ class IntegerModRing(sage.Parent):
         self._kind = "ZMOD"
         self._elementType = IntegerModElement
         self._modulus = order
+        self._machineResidues = order <= _MACHINE_RESIDUE_MAX_MODULUS
+        self._residueModulus = runtime.number(order) if self._machineResidues else order
+        self._closedScalarArithmetic = True
+        self._closedScalarCommutative = True
+        self._closedScalarElementPrototype = _integer_mod_element_prototype
+        self._closedScalarMul = runtime.reflect.get(
+            _integer_mod_element_prototype, "_mul_"
+        )
+        self._closedScalarAdd = runtime.reflect.get(
+            _integer_mod_element_prototype, "_add_"
+        )
+        self._closedScalarSub = runtime.reflect.get(
+            _integer_mod_element_prototype, "_sub_"
+        )
+        self._closedScalarNeg = runtime.reflect.get(
+            _integer_mod_element_prototype, "__neg__"
+        )
+        self._closedScalarPow = runtime.reflect.get(
+            _integer_mod_element_prototype, "__pow__"
+        )
+        self._closedScalarEq = runtime.reflect.get(
+            _integer_mod_element_prototype, "_eq_"
+        )
+        self._closedScalarNewReduced = runtime.reflect.get(
+            _integer_mod_element_prototype, "_new_reduced"
+        )
         self._order = order
         self._dict_keys = runtime.reflect.construct(runtime.map_class, [])
 
@@ -838,7 +1131,6 @@ class FiniteFieldExtensionParent(sage.Parent):
         )
         self._kind = "GF_EXTENSION"
         self._elementType = element_type
-        self._nativeContext = native_context
         runtime.object.freeze(modulus_coefficients)
         self._modulusCoefficients = modulus_coefficients
         self._primeSubfield = prime_subfield
@@ -848,6 +1140,361 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._variable = variable
         self._explicitModulus = explicit_modulus
         self._generatedResourceBackend = generated_resource_backend
+        self._machineExtensionDegree = 0
+        self._machineExtensionCommutative = False
+        self._machineExtensionPrime = runtime.undefined
+        self._machineExtensionModulusCoefficients = runtime.undefined
+        self._machineExtensionElementPrototype = runtime.undefined
+        self._machineExtensionMul = runtime.undefined
+        self._machineExtensionAdd = runtime.undefined
+        self._machineExtensionSub = runtime.undefined
+        self._machineExtensionNeg = runtime.undefined
+        self._machineExtensionNegOwner = runtime.undefined
+        self._machineExtensionNegGetter = runtime.undefined
+        self._machineExtensionPow = runtime.undefined
+        self._machineExtensionPowOwner = runtime.undefined
+        self._machineExtensionPowGetter = runtime.undefined
+        self._machineExtensionEq = runtime.undefined
+        self._machineExtensionMaterialize = runtime.undefined
+        self._machineExtensionIsolated = runtime.undefined
+        self._machineExtensionIsolatedMinSteps = _MACHINE_EXTENSION_ISOLATED_MIN_STEPS
+        self._lastCompilerOptimizationRoute = "generic"
+        if (
+            degree >= 2
+            and degree <= _MACHINE_EXTENSION_NUMBER_MAX_DEGREE
+            and prime <= _MACHINE_EXTENSION_NUMBER_MAX_PRIME
+            and len(modulus_coefficients) == degree + 1
+        ):
+            machine_modulus = [
+                runtime.integer_bigint(coefficient)
+                for coefficient in modulus_coefficients
+            ]
+            modulus_leading = machine_modulus[degree]
+            if modulus_leading == runtime.bigint(1) and all(
+                coefficient >= 0 and coefficient < prime
+                for coefficient in machine_modulus[:degree]
+            ):
+                element_prototype = runtime.reflect.get(element_type, "prototype")
+                parent_prototype = runtime.object.getPrototypeOf(self)
+                self._machineExtensionDegree = degree
+                self._machineExtensionCommutative = True
+                self._machineExtensionPrime = runtime.number(prime)
+                self._machineExtensionModulusCoefficients = runtime.math_tuple(
+                    [
+                        runtime.number(coefficient)
+                        for coefficient in machine_modulus[:degree]
+                    ]
+                )
+                self._machineExtensionElementPrototype = element_prototype
+                self._machineExtensionMul = runtime.reflect.get(
+                    element_prototype, "_mul_"
+                )
+                self._machineExtensionAdd = runtime.reflect.get(
+                    element_prototype, "_add_"
+                )
+                self._machineExtensionSub = runtime.reflect.get(
+                    element_prototype, "_sub_"
+                )
+                neg_owner = element_prototype
+                neg_descriptor = runtime.undefined
+                while neg_owner is not None:
+                    neg_descriptor = runtime.object.getOwnPropertyDescriptor(
+                        neg_owner, "__neg__"
+                    )
+                    if neg_descriptor is not runtime.undefined:
+                        break
+                    neg_owner = runtime.object.getPrototypeOf(neg_owner)
+                if neg_owner is not None and neg_descriptor is not runtime.undefined:
+                    self._machineExtensionNegOwner = neg_owner
+                    self._machineExtensionNegGetter = runtime.reflect.get(
+                        neg_descriptor, "get"
+                    )
+                    self._machineExtensionNeg = runtime.reflect.get(
+                        neg_owner, "__neg__", neg_owner
+                    )
+                pow_owner = element_prototype
+                pow_descriptor = runtime.undefined
+                while pow_owner is not None:
+                    pow_descriptor = runtime.object.getOwnPropertyDescriptor(
+                        pow_owner, "__pow__"
+                    )
+                    if pow_descriptor is not runtime.undefined:
+                        break
+                    pow_owner = runtime.object.getPrototypeOf(pow_owner)
+                if pow_owner is not None and pow_descriptor is not runtime.undefined:
+                    self._machineExtensionPowOwner = pow_owner
+                    self._machineExtensionPowGetter = runtime.reflect.get(
+                        pow_descriptor, "get"
+                    )
+                    self._machineExtensionPow = runtime.reflect.get(
+                        pow_owner, "__pow__", pow_owner
+                    )
+                self._machineExtensionEq = runtime.reflect.get(
+                    element_prototype, "_eq_"
+                )
+                self._machineExtensionMaterialize = runtime.reflect.get(
+                    parent_prototype, "_from_machine_coordinates"
+                )
+                self._machineExtensionIsolated = runtime.reflect.get(
+                    parent_prototype, "_machine_extension_affine_isolated"
+                )
+        self._nativeResourceChildren = []
+        self._nativeContextStorage: Any = runtime.undefined
+        self._legacyNativeContext: Any = runtime.undefined
+        if generated_resource_backend:
+            self._nativeContextStorage = _FqContextResourceStorage(self, native_context)
+        else:
+            self._legacyNativeContext = native_context
+
+    @property
+    def _nativeContext(self) -> Any:
+        if self._nativeContextStorage is runtime.undefined:
+            return self._legacyNativeContext
+        return self._nativeContextStorage.resource
+
+    def _registerNativeResource(self, storage: Any) -> None:
+        if storage not in self._nativeResourceChildren:
+            self._nativeResourceChildren.append(storage)
+
+    def _unregisterNativeResource(self, storage: Any) -> None:
+        if storage in self._nativeResourceChildren:
+            self._nativeResourceChildren.remove(storage)
+
+    def _machine_extension_binary_coordinates(
+        self,
+        left: Any,
+        right: Any,
+        operation: str,
+    ) -> Any:
+        """Propagate an optional fixed-width Number shadow exactly."""
+        if (
+            self._machineExtensionDegree == 0
+            or left is runtime.undefined
+            or right is runtime.undefined
+        ):
+            return runtime.undefined
+        degree = self._machineExtensionDegree
+        prime = self._machineExtensionPrime
+        if len(left) != degree or len(right) != degree:
+            return runtime.undefined
+        result = [0 for _index in range(degree)]
+        if operation == "add":
+            for index in range(degree):
+                result[index] = (left[index] + right[index]) % prime
+        elif operation == "sub":
+            for index in range(degree):
+                value = (left[index] - right[index]) % prime
+                if value < 0:
+                    value += prime
+                result[index] = value
+        elif operation == "mul":
+            product = [0 for _index in range(2 * degree - 1)]
+            for left_index in range(degree):
+                for right_index in range(degree):
+                    product_index = left_index + right_index
+                    product[product_index] = (
+                        product[product_index] + left[left_index] * right[right_index]
+                    ) % prime
+            modulus = self._machineExtensionModulusCoefficients
+            for exponent in range(2 * degree - 2, degree - 1, -1):
+                factor = product[exponent]
+                for modulus_index in range(degree):
+                    result_index = exponent - degree + modulus_index
+                    value = (
+                        product[result_index] - factor * modulus[modulus_index]
+                    ) % prime
+                    if value < 0:
+                        value += prime
+                    product[result_index] = value
+            for index in range(degree):
+                result[index] = product[index]
+        else:
+            raise ValueError("unknown finite-field machine operation")
+        return runtime.math_tuple(result)
+
+    def _machine_extension_neg_coordinates(self, coordinates: Any) -> Any:
+        if self._machineExtensionDegree == 0 or coordinates is runtime.undefined:
+            return runtime.undefined
+        prime = self._machineExtensionPrime
+        result = []
+        for coefficient in coordinates:
+            value = (-coefficient) % prime
+            if value < 0:
+                value += prime
+            result.append(value)
+        return runtime.math_tuple(result)
+
+    def _machine_extension_pow_coordinates(
+        self,
+        coordinates: Any,
+        exponent: Any,
+    ) -> Any:
+        """Propagate a nonnegative power through the fixed-width shadow."""
+        degree = self._machineExtensionDegree
+        if degree == 0 or coordinates is runtime.undefined or exponent < 0:
+            return runtime.undefined
+        if len(coordinates) != degree:
+            return runtime.undefined
+        one = [0 for _index in range(degree)]
+        one[0] = 1
+        result = runtime.math_tuple(one)
+        base = coordinates
+        while exponent:
+            if exponent % runtime.bigint(2):
+                result = self._machine_extension_binary_coordinates(result, base, "mul")
+            exponent //= runtime.bigint(2)
+            if exponent:
+                base = self._machine_extension_binary_coordinates(base, base, "mul")
+        return result
+
+    def _from_machine_coordinates(
+        self,
+        coordinates: Any,
+    ) -> FiniteFieldExtensionElement:
+        """Materialize one public element from guarded canonical coefficients."""
+        degree = self._machineExtensionDegree
+        prime = self._machineExtensionPrime
+        if degree == 0 or len(coordinates) != degree:
+            raise ValueError("invalid finite-field machine coordinate width")
+        canonical = []
+        for coefficient in coordinates:
+            if (
+                runtime.jstype(coefficient) != "number"
+                or not runtime.number.isInteger(coefficient)
+                or coefficient < 0
+                or coefficient >= prime
+            ):
+                raise ValueError("invalid canonical finite-field machine coordinates")
+            canonical.append(coefficient)
+        machine_coordinates = runtime.math_tuple(canonical)
+        if self._generatedResourceBackend:
+            return _new_extension_field_element(
+                self,
+                _flint_ffi_module().fq_element(
+                    self._nativeContext,
+                    runtime.uint64_buffer(machine_coordinates),
+                    degree,
+                ),
+                machine_coordinates,
+            )
+        result = self(runtime.integer_bigint(0))
+        generator = self.gen()
+        power = self(runtime.integer_bigint(1))
+        for coefficient in machine_coordinates:
+            if coefficient != 0:
+                result = result._add_(
+                    self(runtime.integer_bigint(coefficient))._mul_(power)
+                )
+            power = power._mul_(generator)
+        return result
+
+    def _machine_extension_affine_isolated(
+        self,
+        accumulator: Any,
+        multiplier: Any,
+        increment: Any,
+        count: int,
+    ) -> Any:
+        """Run one fused region through a compiled native or Wasm kernel."""
+        degree = self._machineExtensionDegree
+        if degree < 2 or degree > 4 or count > 4294967295:
+            return runtime.undefined
+        kernel_module, native_module = _machine_extension_kernel_modules()
+        if kernel_module is None or native_module is None:
+            return runtime.undefined
+        kernel_name = (
+            "packed_gf_p2_affine_recurrence"
+            if degree == 2
+            else "packed_gf_pk_affine_recurrence"
+        )
+        kernel = runtime.reflect.get(kernel_module, kernel_name)
+        native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
+        if not bool(runtime.reflect.apply(native_is_compiled, native_module, [kernel])):
+            return runtime.undefined
+        kernel_uint64_zeros = runtime.reflect.get(
+            native_module,
+            "kernel_uint64_zeros",
+        )
+        output = runtime.reflect.apply(
+            kernel_uint64_zeros,
+            native_module,
+            [kernel, degree],
+        )
+        left = accumulator._machineCoordinates
+        factor = multiplier._machineCoordinates
+        addend = increment._machineCoordinates
+        modulus = self._machineExtensionModulusCoefficients
+        if degree == 2:
+            status = kernel(
+                output,
+                left[0],
+                left[1],
+                factor[0],
+                factor[1],
+                addend[0],
+                addend[1],
+                count,
+                self._machineExtensionPrime,
+                modulus[0],
+                modulus[1],
+            )
+        else:
+            kernel_uint64_buffer = runtime.reflect.get(
+                native_module,
+                "kernel_uint64_buffer",
+            )
+            scratch = runtime.reflect.apply(
+                kernel_uint64_zeros,
+                native_module,
+                [kernel, 2 * degree - 1],
+            )
+            left_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, left],
+            )
+            factor_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, factor],
+            )
+            addend_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, addend],
+            )
+            modulus_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, modulus],
+            )
+            status = kernel(
+                output,
+                scratch,
+                left_buffer,
+                factor_buffer,
+                addend_buffer,
+                modulus_buffer,
+                degree,
+                count,
+                self._machineExtensionPrime,
+            )
+        if int(status) != 0:
+            raise RuntimeError(
+                "compiled fixed-degree finite-field region rejected valid input"
+            )
+        execution_target = getattr(kernel, "executionTarget", None)
+        if execution_target == "wasm":
+            self._lastCompilerOptimizationRoute = "wasm-compiled-source"
+        elif bool(getattr(kernel, "nativeAvailable", False)):
+            self._lastCompilerOptimizationRoute = "native-compiled-source"
+        else:
+            self._lastCompilerOptimizationRoute = "javascript-compiled-source"
+        return self._from_machine_coordinates(
+            runtime.math_tuple(
+                [runtime.number(output[index]) for index in range(degree)]
+            )
+        )
 
     def __call__(
         self,
@@ -866,6 +1513,14 @@ class FiniteFieldExtensionParent(sage.Parent):
             denominator = self(value._denominator)
             return numerator._truediv_(denominator)
         value = runtime.integer_bigint(value)
+        machine_coordinates = runtime.undefined
+        if self._machineExtensionDegree != 0:
+            machine_reduced = runtime.native_mod(value, self._prime)
+            if machine_reduced < 0:
+                machine_reduced += self._prime
+            machine_values = [0 for _index in range(self._machineExtensionDegree)]
+            machine_values[0] = runtime.number(machine_reduced)
+            machine_coordinates = runtime.math_tuple(machine_values)
         if self._generatedResourceBackend:
             reduced = runtime.native_mod(value, self._prime)
             if reduced < 0:
@@ -879,10 +1534,12 @@ class FiniteFieldExtensionParent(sage.Parent):
                     runtime.uint64_buffer(coordinates),
                     self._degree,
                 ),
+                machine_coordinates,
             )
         return _new_extension_field_element(
             self,
             runtime.flint_backend().fqFromBigInt(self._nativeContext, value),
+            machine_coordinates,
         )
 
     def _from_native(
@@ -900,6 +1557,11 @@ class FiniteFieldExtensionParent(sage.Parent):
             raise TypeError("power-basis ingress requires generated `fq` resources")
         if len(coordinates) != self._degree:
             raise ValueError("finite-field coordinate width does not match degree")
+        machine_coordinates = runtime.undefined
+        if self._machineExtensionDegree != 0:
+            machine_coordinates = runtime.math_tuple(
+                [runtime.number(coefficient) for coefficient in coordinates]
+            )
         return _new_extension_field_element(
             self,
             _flint_ffi_module().fq_element(
@@ -907,6 +1569,7 @@ class FiniteFieldExtensionParent(sage.Parent):
                 runtime.uint64_buffer(coordinates),
                 self._degree,
             ),
+            machine_coordinates,
         )
 
     def order(self) -> int:
@@ -942,6 +1605,11 @@ class FiniteFieldExtensionParent(sage.Parent):
         if self._generatedResourceBackend:
             coordinates = [runtime.bigint(0) for _index in range(self._degree)]
             coordinates[1] = runtime.bigint(1)
+            machine_coordinates = runtime.undefined
+            if self._machineExtensionDegree != 0:
+                machine_values = [0 for _index in range(self._machineExtensionDegree)]
+                machine_values[1] = 1
+                machine_coordinates = runtime.math_tuple(machine_values)
             return _new_extension_field_element(
                 self,
                 _flint_ffi_module().fq_element(
@@ -949,9 +1617,16 @@ class FiniteFieldExtensionParent(sage.Parent):
                     runtime.uint64_buffer(coordinates),
                     self._degree,
                 ),
+                machine_coordinates,
             )
         return _new_extension_field_element(
-            self, runtime.flint_backend().fqGen(self._nativeContext)
+            self,
+            runtime.flint_backend().fqGen(self._nativeContext),
+            runtime.math_tuple(
+                [0, 1] + [0 for _index in range(self._machineExtensionDegree - 2)]
+            )
+            if self._machineExtensionDegree != 0
+            else runtime.undefined,
         )
 
     def _first_ngens(
@@ -1067,6 +1742,71 @@ def _field_coercion(field: Any) -> Callable[[Any], Any]:
     return convert
 
 
+def _register_machine_integer_coercion(field: Any) -> Callable[[Any], Any]:
+    """Register and witness the canonical `ZZ -> field` embedding.
+
+    The optimizing compiler may replace repeated literal coercions only while
+    this complete live dispatch path is unchanged. The witness is descriptive
+    metadata; the guarded runtime independently checks every identity before
+    it unboxes a loop.
+    """
+    conversion = _field_coercion(field)
+    model = runtime.coercion_model
+    model.register(sage.ZZ, field, conversion)
+    left_plan = model.resolveParents(sage.ZZ, field)
+    right_plan = model.resolveParents(field, sage.ZZ)
+
+    call_owner = field
+    call_descriptor = runtime.undefined
+    while call_owner is not None:
+        call_descriptor = runtime.object.getOwnPropertyDescriptor(
+            call_owner, "__call__"
+        )
+        if call_descriptor is not runtime.undefined:
+            break
+        call_owner = runtime.object.getPrototypeOf(call_owner)
+
+    source_targets = model._maps.get(sage.ZZ)
+    operations = model._operations
+    field._machineIntegerCoercionReady = True
+    field._machineIntegerFastClosedBinary = runtime.fast_closed_binary
+    field._machineIntegerIsMathElement = runtime.is_math_element
+    field._machineIntegerCoercionModel = model
+    field._machineIntegerCoercionSource = sage.ZZ
+    field._machineIntegerCoercion = conversion
+    field._machineIntegerCoercionMaps = model._maps
+    field._machineIntegerCoercionTargets = source_targets
+    field._machineIntegerPlanCache = model._planCache
+    field._machineIntegerOperations = operations
+    field._machineIntegerOperationAdd = operations.get("add")
+    field._machineIntegerOperationSub = operations.get("sub")
+    field._machineIntegerOperationMul = operations.get("mul")
+    field._machineIntegerBinOp = runtime.reflect.get(model, "binOp")
+    field._machineIntegerEquals = runtime.reflect.get(model, "equals")
+    field._machineIntegerCoercePair = runtime.reflect.get(model, "coercePair")
+    field._machineIntegerResolveParents = runtime.reflect.get(model, "resolveParents")
+    field._machineIntegerParentOf = runtime.reflect.get(model, "parentOf")
+    field._machineIntegerApply = runtime.reflect.get(model, "_apply")
+    field._machineIntegerMap = runtime.reflect.get(model, "_map")
+    field._machineIntegerCache = runtime.reflect.get(model, "_cache")
+    field._machineIntegerIdentityMap = left_plan.rightMap
+    field._machineIntegerLeftPlanParent = left_plan.parent
+    field._machineIntegerRightPlanParent = right_plan.parent
+    field._machineIntegerCallOwner = call_owner
+    field._machineIntegerCallGetter = (
+        runtime.reflect.get(call_descriptor, "get")
+        if call_descriptor is not runtime.undefined
+        else runtime.undefined
+    )
+    field._machineIntegerCallValue = (
+        runtime.reflect.get(call_descriptor, "value")
+        if call_descriptor is not runtime.undefined
+        else runtime.undefined
+    )
+    field._machineIntegerCall = runtime.reflect.get(field, "__call__")
+    return conversion
+
+
 _prime_fields = runtime.map()
 _extension_fields = runtime.map()
 _residue_rings = runtime.map()
@@ -1145,8 +1885,16 @@ def _make_extension_field(
     backend = runtime.flint_backend()
     context = runtime.undefined
     missing_conway = False
+    # Keep the scalar, polynomial, and matrix representation coherent.  The
+    # mature Node/dynamic backend still owns the complete `fq_mat` surface,
+    # whose contexts and elements cannot be mixed with generated FFI owners.
+    # Browser/Wasm hosts without that legacy matrix API use the generated
+    # context, scalar, and polynomial resources.  Once `fq_matrix` itself is a
+    # generated resource this capability split can disappear atomically.
+    legacy_fq_matrix = runtime.reflect.get(backend, "fqMatrix")
     generated_resource_backend = (
-        _generated_extension_resources_available()
+        runtime.jstype(legacy_fq_matrix) != "function"
+        and _generated_extension_resources_available()
         and prime <= runtime.bigint(0xFFFFFFFFFFFFFFFF)
     )
     if coefficients is None and generated_resource_backend:
@@ -1221,8 +1969,7 @@ def _make_extension_field(
         generated_resource_backend,
     )
     _extension_fields.set(key, field)
-    conversion = _field_coercion(field)
-    runtime.coercion_model.register(sage.ZZ, field, conversion)
+    conversion = _register_machine_integer_coercion(field)
     runtime.coercion_model.register(prime_field, field, conversion)
     return field
 
@@ -1297,7 +2044,7 @@ def GF(
         generator = backend.wordPrimitiveRootPrime(order)
     field = FiniteField_prime_modn(order, generator)
     _prime_fields.set(key, field)
-    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))
+    _register_machine_integer_coercion(field)
     return field
 
 
@@ -1332,7 +2079,7 @@ def Zmod(order: Any) -> IntegerModRing:
         return ring
     ring = IntegerModRing(order)
     _residue_rings.set(key, ring)
-    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))
+    _register_machine_integer_coercion(ring)
     return ring
 
 

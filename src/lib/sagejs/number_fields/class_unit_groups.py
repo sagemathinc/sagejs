@@ -715,7 +715,7 @@ def _standard_live_saturation_record_is_valid(
 
 
 class UnitGroupComputation:
-    """Exact unit generators plus explicit completeness and regulator state."""
+    """Exact unit generators plus replayable completeness and regulator state."""
 
     def __init__(
         self,
@@ -727,6 +727,7 @@ class UnitGroupComputation:
         regulator: Any = None,
         reason: str = "",
         proof_status: str | None = None,
+        completion_evidence: Any = None,
     ) -> None:
         self.torsion = torsion
         self.generators = tuple(generators)
@@ -734,14 +735,52 @@ class UnitGroupComputation:
         self.complete = bool(complete)
         self.regulator_enclosure = regulator
         self.reason = reason
+        self._completion_evidence = completion_evidence
+        self.completion_certificate = getattr(
+            completion_evidence, "completion_certificate", completion_evidence
+        )
         self.proof_status = (
             (EXACT_UNCONDITIONAL if proof_status is None else proof_status)
             if self.complete
             else INCOMPLETE_RESOURCE_LIMIT
         )
+        if self.complete and completion_evidence is None:
+            raise ValueError("a complete unit computation needs completion evidence")
 
     def gens(self) -> tuple[Any, ...]:
         return self.generators
+
+    def verify_completion(self) -> bool:
+        """Replay the exact evidence used to promote this subgroup to complete."""
+        if not self.complete or self._completion_evidence is None:
+            return False
+        evidence_generators = getattr(self._completion_evidence, "generators", None)
+        if evidence_generators is not None:
+            evaluated_generators = tuple(
+                generator.evaluate()
+                if callable(getattr(generator, "evaluate", None))
+                else generator
+                for generator in self.generators
+            )
+            if evaluated_generators != tuple(evidence_generators):
+                return False
+        evidence_units = getattr(self._completion_evidence, "units", None)
+        if evidence_units is not None and tuple(self.generators) != tuple(
+            evidence_units
+        ):
+            return False
+        evidence_rank = getattr(self._completion_evidence, "unit_rank", self.unit_rank)
+        if int(evidence_rank) != self.unit_rank:
+            return False
+        replay = getattr(self._completion_evidence, "verify_completion", None)
+        if not callable(replay):
+            replay = getattr(self._completion_evidence, "verify", None)
+        if not callable(replay):
+            return False
+        try:
+            return bool(replay())
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
 
 
 class _EngineClassElement:
@@ -2701,6 +2740,7 @@ class ClassUnitGroupEngine:
             regulator=regulator,
             reason="bounded specialized exact units with rigorous regulator",
             proof_status=EXACT_UNCONDITIONAL,
+            completion_evidence=units,
         )
         self._phase_finish("specialized", started)
         self._stage(
@@ -6002,6 +6042,7 @@ class ClassUnitGroupEngine:
             regulator=regulator,
             reason="rigorous hR index-one validation",
             proof_status=initial_proof_status,
+            completion_evidence=saturation_record,
         )
         try:
             self._resource_usage["saturation_live_authentication_requests"] += 1
@@ -6628,6 +6669,7 @@ def _clone_terminal_unit_authority(
         regulator=_clone_terminal_regulator(snapshot.get("regulator"), analytic_module),
         reason=str(snapshot.get("unit_reason")),
         proof_status=EXACT_UNCONDITIONAL,
+        completion_evidence=saturation,
     )
     return units, unit_group, saturation
 
@@ -7332,10 +7374,11 @@ def class_group(
     )
     raw_group = result.class_group()
     if not isinstance(raw_group, _EngineClassGroup):
+        # Specialized exact producers return their already-published group.
+        # Their enclosing class/unit result owns the proof certificate; unlike
+        # engine groups, they do not need the presentation-backed public map
+        # adapter below.
         answer = raw_group
-        verify = getattr(answer, "verify", None)
-        if not callable(verify) or verify() is not True:
-            raise ArithmeticError("the public class group failed exact verification")
     else:
         maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result

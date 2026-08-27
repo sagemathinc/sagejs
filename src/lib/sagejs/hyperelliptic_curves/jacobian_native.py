@@ -1,16 +1,444 @@
-"""Optional packed acceleration for public genus-3 Jacobian divisors.
+"""Prepared packed acceleration for public genus-2/3 Jacobian divisors.
 
 The ordinary generalized Cantor law in `jacobian.py` is the semantic source of
-truth.  This module only packs that representation for the bounded native
-prime-field kernel and returns `None` when the capability or fixed-width domain
-does not apply.
+truth.  The v1 packed ABI covers odd-degree, one-point-at-infinity models over
+odd prime fields.  Even-degree Jacobians use a mathematically different
+representation and are deliberately rejected rather than ambiguously packed.
 """
 
 from __future__ import annotations
 
+import hashlib
+import time
 from typing import Any, Mapping
 
 import sagejs.runtime as runtime
+from sagejs.hyperelliptic_curves.auto_receipt_policy import (
+    AutoReceiptDecision,
+    auto_receipt_decision,
+    h_kind_from_coefficients,
+)
+from sagejs.native import (
+    is_compiled,
+    kernel_uint64_buffer,
+    kernel_uint64_zeros,
+)
+
+PACKED_MUMFORD_SCHEMA = "sagejs.hyperelliptic.packed-mumford.odd.v1"
+_PACKED_ROW_WORDS = 8
+_PACKED_BATCH_FORMAT = PACKED_MUMFORD_SCHEMA + ".batch8"
+_PACKED_DIVISOR_FORMAT = PACKED_MUMFORD_SCHEMA + ".divisor8"
+
+
+class PreparedJacobianCapability:
+    """Immutable description of a prepared arithmetic execution domain."""
+
+    def __init__(
+        self,
+        *,
+        available: bool,
+        selected: str,
+        reason: str,
+        genus: int,
+        prime: int | None,
+        model_fingerprint: str,
+        validation_available: bool = False,
+        search_available: bool = False,
+        multi_search_available: bool = False,
+    ) -> None:
+        self.available = bool(available)
+        self.selected = str(selected)
+        self.reason = str(reason)
+        self.genus = int(genus)
+        self.prime = prime
+        self.model_kind = "odd-degree-one-infinity"
+        self.schema = PACKED_MUMFORD_SCHEMA
+        self.model_fingerprint = str(model_fingerprint)
+        self.validation_available = bool(validation_available)
+        self.search_available = bool(search_available)
+        self.multi_search_available = bool(multi_search_available)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "available": self.available,
+            "selected": self.selected,
+            "reason": self.reason,
+            "genus": self.genus,
+            "prime": self.prime,
+            "model_kind": self.model_kind,
+            "schema": self.schema,
+            "model_fingerprint": self.model_fingerprint,
+            "validation_available": self.validation_available,
+            "search_available": self.search_available,
+            "multi_search_available": self.multi_search_available,
+        }
+
+    def __repr__(self) -> str:
+        return "PreparedJacobianCapability(" + repr(self.to_dict()) + ")"
+
+
+class PreparedBatchDiagnostics:
+    """Non-proof timing and branch counters for one prepared batch."""
+
+    def __init__(
+        self,
+        *,
+        operation: str,
+        requested: str,
+        selected: str,
+        fallback_reason: str,
+        count: int,
+        pack_ns: int,
+        kernel_ns: int,
+        unpack_ns: int,
+        materialization_ns: int,
+        validation_ns: int,
+        statuses: tuple[int, ...],
+    ) -> None:
+        self.operation = operation
+        self.requested = requested
+        self.selected = selected
+        self.fallback_reason = fallback_reason
+        self.count = count
+        self.pack_ns = pack_ns
+        self.kernel_ns = kernel_ns
+        # `unpack_ns` is retained as an attribute for in-tree consumers; v1
+        # diagnostics report the more precise operation name `publication`.
+        self.unpack_ns = unpack_ns
+        self.publication_ns = unpack_ns
+        self.materialization_ns = materialization_ns
+        self.validation_ns = validation_ns
+        self.statuses = statuses
+
+    def to_dict(self) -> dict[str, Any]:
+        branch_counts: dict[str, int] = {}
+        for status in self.statuses:
+            key = str(status)
+            branch_counts[key] = branch_counts.get(key, 0) + 1
+        return {
+            "operation": self.operation,
+            "requested": self.requested,
+            "selected": self.selected,
+            "fallback_reason": self.fallback_reason,
+            "count": self.count,
+            "timings_ns": {
+                "pack": self.pack_ns,
+                "kernel": self.kernel_ns,
+                "publication": self.publication_ns,
+                "materialization": self.materialization_ns,
+                "validation": self.validation_ns,
+            },
+            "status_counts": branch_counts,
+        }
+
+    def __repr__(self) -> str:
+        return "PreparedBatchDiagnostics(" + repr(self.to_dict()) + ")"
+
+
+class PreparedSearchDiagnostics:
+    """Exact counters and non-proof timing for one progression search."""
+
+    def __init__(
+        self,
+        *,
+        requested: str,
+        selected: str,
+        fallback_reason: str,
+        status: str,
+        count: int,
+        baby_count: int,
+        group_operations: int,
+        scalar_bits: int,
+        baby_steps: int,
+        giant_steps: int,
+        hash_collisions: int,
+        pack_ns: int,
+        kernel_ns: int,
+    ) -> None:
+        self.operation = "search_progression"
+        self.requested = requested
+        self.selected = selected
+        self.fallback_reason = fallback_reason
+        self.status = status
+        self.count = count
+        self.baby_count = baby_count
+        self.group_operations = group_operations
+        self.scalar_bits = scalar_bits
+        self.baby_steps = baby_steps
+        self.giant_steps = giant_steps
+        self.hash_collisions = hash_collisions
+        self.pack_ns = pack_ns
+        self.kernel_ns = kernel_ns
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "requested": self.requested,
+            "selected": self.selected,
+            "fallback_reason": self.fallback_reason,
+            "status": self.status,
+            "count": self.count,
+            "baby_count": self.baby_count,
+            "group_operations": self.group_operations,
+            "scalar_bits": self.scalar_bits,
+            "baby_steps": self.baby_steps,
+            "giant_steps": self.giant_steps,
+            "hash_collisions": self.hash_collisions,
+            "timings_ns": {"pack": self.pack_ns, "kernel": self.kernel_ns},
+        }
+
+    def __repr__(self) -> str:
+        return "PreparedSearchDiagnostics(" + repr(self.to_dict()) + ")"
+
+
+class PreparedMultiSearchDiagnostics:
+    """Exact counters and non-proof timing for ordered progression searches."""
+
+    def __init__(
+        self,
+        *,
+        requested: str,
+        selected: str,
+        fallback_reason: str,
+        status: str,
+        counts: tuple[int, ...],
+        baby_count: int,
+        group_operations: int,
+        scalar_bits: int,
+        baby_steps: int,
+        giant_steps: int,
+        hash_collisions: int,
+        progressions_scanned: int,
+        table_bytes: int,
+        pack_ns: int,
+        kernel_ns: int,
+    ) -> None:
+        self.operation = "search_progressions"
+        self.requested = requested
+        self.selected = selected
+        self.fallback_reason = fallback_reason
+        self.status = status
+        self.counts = counts
+        self.progression_count = len(counts)
+        self.total_count = sum(counts)
+        self.baby_count = baby_count
+        self.group_operations = group_operations
+        self.scalar_bits = scalar_bits
+        self.baby_steps = baby_steps
+        self.giant_steps = giant_steps
+        self.hash_collisions = hash_collisions
+        self.progressions_scanned = progressions_scanned
+        self.table_bytes = table_bytes
+        self.pack_ns = pack_ns
+        self.kernel_ns = kernel_ns
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "operation": self.operation,
+            "requested": self.requested,
+            "selected": self.selected,
+            "fallback_reason": self.fallback_reason,
+            "status": self.status,
+            "counts": self.counts,
+            "progression_count": self.progression_count,
+            "total_count": self.total_count,
+            "baby_count": self.baby_count,
+            "group_operations": self.group_operations,
+            "scalar_bits": self.scalar_bits,
+            "baby_steps": self.baby_steps,
+            "giant_steps": self.giant_steps,
+            "hash_collisions": self.hash_collisions,
+            "progressions_scanned": self.progressions_scanned,
+            "table_bytes": self.table_bytes,
+            "timings_ns": {"pack": self.pack_ns, "kernel": self.kernel_ns},
+        }
+
+    def __repr__(self) -> str:
+        return "PreparedMultiSearchDiagnostics(" + repr(self.to_dict()) + ")"
+
+
+class PreparedDivisorBatch:
+    """Immutable sequence of lazily published canonical packed divisors.
+
+    One opaque runtime capsule backs the whole batch.  Native read-only inputs
+    borrow that storage without copying; dynamic fallback and public access
+    receive explicit owned copies.  Indexing publishes and caches an ordinary
+    public divisor, while a subsequent prepared operation consumes the sealed
+    words without allocating one Python object per item.  The public
+    constructor is intentionally closed: only a prepared context may publish
+    rows already proved by its kernel.
+    """
+
+    __slots__ = ("__binding", "__published")
+
+    def __init__(self, *_args: Any, **_keywords: Any) -> None:
+        raise TypeError("prepared divisor batches are published by their context")
+
+    def _state(self) -> tuple[Any, Any, int]:
+        binding = self.__binding
+        if len(binding) != 4 or binding[0] is not self:
+            raise ArithmeticError("a prepared divisor batch binding was corrupted")
+        return binding[1], binding[2], binding[3]
+
+    def __len__(self) -> int:
+        return self._state()[2]
+
+    @property
+    def published_count(self) -> int:
+        """Return how many element wrappers have been demanded so far."""
+        return len(self.__published)
+
+    def _lease_for(self, context: Any) -> Any:
+        """Return an opaque read-only native lease after exact rebinding."""
+        owner, capsule, count = self._state()
+        if context is not owner:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        return runtime.immutable_uint64_capsule_lease(
+            capsule,
+            self,
+            owner._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+
+    def _rows_for(self, context: Any) -> tuple[int, ...]:
+        """Return an owned immutable copy for dynamic or public consumers."""
+        owner, capsule, count = self._state()
+        if context is not owner:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        copied = runtime.immutable_uint64_capsule_copy(
+            capsule,
+            self,
+            owner._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+        if len(copied) != _PACKED_ROW_WORDS * count:
+            raise ArithmeticError("a prepared divisor batch span was corrupted")
+        return tuple(int(copied[index]) for index in range(len(copied)))
+
+    def _row(self, index: int) -> tuple[int, ...]:
+        owner, _capsule, _count = self._state()
+        packed = self._rows_for(owner)
+        offset = 8 * index
+        return (
+            packed[offset],
+            packed[offset + 1],
+            packed[offset + 2],
+            packed[offset + 3],
+            packed[offset + 4],
+            packed[offset + 5],
+            packed[offset + 6],
+            packed[offset + 7],
+        )
+
+    def _strided_for(
+        self,
+        context: Any,
+        start: int,
+        step: int,
+        count: int,
+    ) -> Any:
+        owner, _capsule, total = self._state()
+        if owner is not context:
+            raise ValueError("a prepared divisor batch belongs to another context")
+        packed = self._rows_for(context)
+        rows: list[int] = []
+        position = start
+        for _index in range(count):
+            if position < 0 or position >= total:
+                raise IndexError("prepared divisor batch selection is out of range")
+            rows.extend(packed[8 * position : 8 * position + 8])
+            position += step
+        return context._publish_frozen_batch(tuple(rows), count)
+
+    def __getitem__(self, index: Any) -> Any:
+        owner, _capsule, count = self._state()
+        if isinstance(index, slice):
+            positions = range(count)[index]
+            packed = self._rows_for(owner)
+            return tuple(
+                self._published_at(owner, packed, position) for position in positions
+            )
+        position = _exact_integer(index, "batch index")
+        if position < 0:
+            position += count
+        if position < 0 or position >= count:
+            raise IndexError("prepared divisor batch index out of range")
+        cached = self.__published.get(position)
+        if cached is None:
+            packed = self._rows_for(owner)
+            cached = self._published_at(owner, packed, position)
+        return cached
+
+    def _published_at(
+        self,
+        owner: Any,
+        packed: tuple[int, ...],
+        position: int,
+        materialize: bool = False,
+    ) -> Any:
+        cached = self.__published.get(position)
+        if cached is None:
+            if materialize:
+                cached = owner._publish_materialized_kernel_output(packed, 8 * position)
+            else:
+                cached = owner._publish_kernel_output(packed, 8 * position)
+            self.__published[position] = cached
+        elif materialize:
+            cached.uv()
+        return cached
+
+    def __iter__(self) -> Any:
+        owner, _capsule, count = self._state()
+        packed = self._rows_for(owner)
+        index = 0
+        while index < count:
+            yield self._published_at(owner, packed, index)
+            index += 1
+
+    def __eq__(self, other: object) -> bool:
+        if other is self:
+            return True
+        try:
+            context, _capsule, count = self._state()
+            if len(other) != count:  # type: ignore[arg-type]
+                return False
+            packed = self._rows_for(context)
+            if isinstance(other, PreparedDivisorBatch):
+                other_context, _other_capsule, _other_count = other._state()
+                if other_context is context:
+                    other_packed = other._rows_for(context)
+                    return packed == other_packed
+            index = 0
+            while index < count:
+                offset = _PACKED_ROW_WORDS * index
+                if packed[offset : offset + _PACKED_ROW_WORDS] != context.pack(
+                    other[index]  # type: ignore[index]
+                ):
+                    return False
+                index += 1
+            return True
+        except (ArithmeticError, IndexError, TypeError, ValueError):
+            return False
+
+    def __add__(self, other: Any) -> tuple[Any, ...]:
+        return tuple(self) + tuple(other)
+
+    def __radd__(self, other: Any) -> tuple[Any, ...]:
+        return tuple(other) + tuple(self)
+
+    def __repr__(self) -> str:
+        return repr(tuple(self))
+
+    def materialize(self) -> tuple[Any, ...]:
+        """Return an ordinary tuple after constructing every `(u,v)` pair."""
+        owner, _capsule, count = self._state()
+        packed = self._rows_for(owner)
+        answer = tuple(
+            self._published_at(owner, packed, index, True) for index in range(count)
+        )
+        return answer
 
 
 def _exact_integer(value: Any, name: str) -> int:
@@ -35,6 +463,41 @@ def _bit_length(value: int) -> int:
         value //= 2
         bits += 1
     return bits
+
+
+def _ceil_square_root(value: int) -> int:
+    if value < 1:
+        raise ValueError("square-root input must be positive")
+    lower = 1
+    upper = 1
+    while upper * upper < value:
+        upper *= 2
+    while lower < upper:
+        middle = (lower + upper) // 2
+        if middle * middle < value:
+            lower = middle + 1
+        else:
+            upper = middle
+    return lower
+
+
+def _scalar_group_operations(value: int) -> int:
+    """Count additions and doublings in the signed non-adjacent chain."""
+    magnitude = abs(value)
+    operations = 0
+    started = False
+    while magnitude:
+        if magnitude % 2:
+            digit = 1 if magnitude == 1 else 2 - magnitude % 4
+            magnitude -= digit
+            if started:
+                operations += 1
+            else:
+                started = True
+        magnitude //= 2
+        if magnitude:
+            operations += 1
+    return operations
 
 
 def _backend_capability() -> tuple[Any, Any, Mapping[str, Any]] | None:
@@ -120,6 +583,1997 @@ def _unpack_divisor(jacobian: Any, packed: Any) -> Any:
     divisor = jacobian._element(ring(u_values), ring(v_values), False)
     jacobian._validate_reduced(divisor[0], divisor[1])
     return divisor
+
+
+def _prepared_prime(jacobian: Any) -> tuple[int | None, str]:
+    genus = int(jacobian.genus())
+    if genus not in (2, 3):
+        return None, "genus-not-2-or-3"
+    field = jacobian.base_ring()
+    if not hasattr(field, "characteristic") or not hasattr(field, "order"):
+        return None, "base-ring-not-finite-prime-field"
+    prime = int(field.characteristic())
+    if prime < 3 or int(field.order()) != prime:
+        return None, "base-ring-not-odd-prime-field"
+    if prime > 4_294_967_295:
+        return None, "prime-exceeds-source-kernel-word-domain"
+    if max(jacobian.f().degree(), 2 * jacobian.h().degree()) != 2 * genus + 1:
+        return None, "model-not-odd-degree-one-infinity"
+    return prime, "supported"
+
+
+class PreparedJacobianArithmetic:
+    """Prepared exact public arithmetic for one immutable Jacobian model.
+
+    `algorithm="reference"` always executes ordinary polynomial Cantor
+    arithmetic. `algorithm="native"` fails closed unless the same-source
+    kernel is compiled and the v1 prime-field domain applies. `"auto"` uses
+    that kernel when available in development; an installed enabled release
+    policy additionally requires an exact receipt for the model and workload.
+    Every denied automatic request takes the exact reference path.
+    """
+
+    def __init__(
+        self,
+        jacobian: Any,
+        *,
+        algorithm: str = "auto",
+        max_batch_items: int = 1_000_000,
+    ) -> None:
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        maximum = _exact_integer(max_batch_items, "max_batch_items")
+        if maximum < 1:
+            raise ValueError("max_batch_items must be positive")
+        self._jacobian = jacobian
+        self._divisor_class = type(jacobian.zero())
+        self._algorithm = algorithm
+        self._max_batch_items = maximum
+        self._kummer_context_cache: dict[tuple[int, str], Any] = {}
+        self.genus = int(jacobian.genus())
+        self.prime, self._domain_reason = _prepared_prime(jacobian)
+        self.schema = PACKED_MUMFORD_SCHEMA
+        self.model_kind = "odd-degree-one-infinity"
+        self._model = self._pack_model() if self.prime is not None else ()
+        self._h_kind = h_kind_from_coefficients(self._model[8:])
+        digest = hashlib.sha256()
+        digest.update(self.schema.encode("ascii"))
+        digest.update(bytes([self.genus]))
+        if self.prime is not None:
+            digest.update(int(self.prime).to_bytes(8, "little"))
+            for value in self._model:
+                digest.update(int(value).to_bytes(8, "little"))
+        else:
+            digest.update(repr(jacobian).encode("utf-8"))
+        self.model_fingerprint = digest.hexdigest()
+
+        from sagejs.hyperelliptic_curves.jacobian_kernels import (
+            packed_cantor_add_batch,
+            packed_cantor_negate_batch,
+            packed_cantor_progression_batch,
+            packed_cantor_scalar_batch,
+            packed_cantor_search_progression,
+            packed_cantor_search_progressions,
+            packed_cantor_subtract_batch,
+            packed_cantor_sum_batch,
+            packed_cantor_validate_batch,
+        )
+
+        self._add_kernel = packed_cantor_add_batch
+        self._negate_kernel = packed_cantor_negate_batch
+        self._sum_kernel = packed_cantor_sum_batch
+        self._validate_kernel = packed_cantor_validate_batch
+        self._progression_kernel = packed_cantor_progression_batch
+        self._search_kernel = packed_cantor_search_progression
+        self._multi_search_kernel = packed_cantor_search_progressions
+        self._scalar_kernel = packed_cantor_scalar_batch
+        self._subtract_kernel = packed_cantor_subtract_batch
+        self._native_available = (
+            self.prime is not None
+            and is_compiled(self._add_kernel)
+            and is_compiled(self._negate_kernel)
+            and is_compiled(self._sum_kernel)
+            and is_compiled(self._progression_kernel)
+            and is_compiled(self._scalar_kernel)
+            and is_compiled(self._subtract_kernel)
+        )
+        self._search_available = self._native_available and is_compiled(
+            self._search_kernel
+        )
+        self._validation_available = self.prime is not None and is_compiled(
+            self._validate_kernel
+        )
+        self._multi_search_available = self._native_available and is_compiled(
+            self._multi_search_kernel
+        )
+        if algorithm == "native" and not self._native_available:
+            raise NotImplementedError(
+                "prepared native Cantor arithmetic is unavailable: "
+                + (
+                    self._domain_reason
+                    if self.prime is None
+                    else "source-transparent-artifact-unavailable"
+                )
+            )
+
+    def jacobian(self) -> Any:
+        return self._jacobian
+
+    @property
+    def native_available(self) -> bool:
+        return self._native_available
+
+    @property
+    def search_available(self) -> bool:
+        """Return whether the fused one-boundary BSGS kernel is compiled."""
+        return self._search_available
+
+    @property
+    def validation_available(self) -> bool:
+        """Return whether authenticated serialized ingress is compiled."""
+        return self._validation_available
+
+    @property
+    def multi_search_available(self) -> bool:
+        """Return whether ordered shared-table BSGS search is compiled."""
+        return self._multi_search_available
+
+    @property
+    def max_batch_items(self) -> int:
+        return self._max_batch_items
+
+    @property
+    def model_coefficients(self) -> tuple[int, ...]:
+        """Return immutable packed `(f0,...,f7,h0,...,h3)` coefficients."""
+        return self._model
+
+    @property
+    def f_coefficients(self) -> tuple[int, ...]:
+        """Return the eight fixed-width packed coefficients of `f`."""
+        return self._model[:8]
+
+    @property
+    def h_coefficients(self) -> tuple[int, ...]:
+        """Return the four fixed-width packed coefficients of `h`."""
+        return self._model[8:]
+
+    def kummer_context(
+        self,
+        *,
+        max_batch_bytes: int = 64 << 20,
+        algorithm: str | None = None,
+    ) -> Any:
+        """Return the cached sign-free genus-2 prime Kummer context.
+
+        The import is deliberately lazy: public Cantor consumers need not load
+        the Kummer kernel, and neither API exposes host/native implementation
+        details.  Contexts are immutable and cached by their exact byte bound.
+        """
+        maximum = _exact_integer(max_batch_bytes, "max_batch_bytes")
+        if maximum < 1:
+            raise ValueError("max_batch_bytes must be positive")
+        requested = self._algorithm if algorithm is None else algorithm
+        if requested not in ("auto", "native", "reference"):
+            raise ValueError("unknown Kummer algorithm " + repr(requested))
+        if self.genus != 2:
+            raise NotImplementedError("the prepared Kummer context requires genus 2")
+        if self.prime is None:
+            raise NotImplementedError(
+                "the prepared Kummer context is unavailable: " + self._domain_reason
+            )
+        cache_key = (maximum, requested)
+        cached = self._kummer_context_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        try:
+            module = __import__(
+                "sagejs.hyperelliptic_curves.jacobian_kummer_native",
+                fromlist=["Genus2PrimeKummerContext"],
+            )
+        except ImportError as error:
+            raise NotImplementedError(
+                "the prepared genus-2 Kummer kernel is unavailable"
+            ) from error
+        context = module.Genus2PrimeKummerContext(
+            self.prime,
+            self.f_coefficients,
+            self.h_coefficients,
+            max_batch_bytes=maximum,
+            algorithm=requested,
+        )
+        self._kummer_context_cache[cache_key] = context
+        return context
+
+    def capability(self) -> PreparedJacobianCapability:
+        selected, reason = self._selection(
+            self._algorithm,
+            operation="add",
+            batch_items=1,
+            resource_bytes=352,
+        )
+        return PreparedJacobianCapability(
+            available=self._native_available,
+            selected=selected,
+            reason=reason,
+            genus=self.genus,
+            prime=self.prime,
+            model_fingerprint=self.model_fingerprint,
+            validation_available=self._validation_available,
+            search_available=self._search_available,
+            multi_search_available=self._multi_search_available,
+        )
+
+    def _receipt_decision(
+        self,
+        algorithm: str,
+        operation: str,
+        *,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> AutoReceiptDecision:
+        assert self.prime is not None
+        return auto_receipt_decision(
+            algorithm=algorithm,
+            backend="prime-cantor",
+            operation=operation,
+            fingerprint=self.model_fingerprint,
+            domain_id="prime-cantor-odd-v1",
+            genus=self.genus,
+            field_kind="prime-field",
+            model_kind=self.model_kind,
+            h_kind=self._h_kind,
+            prime=self.prime,
+            interval_start=self.prime,
+            interval_stop=self.prime,
+            batch_items=batch_items,
+            scalar_bits=scalar_bits,
+            resource_bytes=resource_bytes,
+        )
+
+    def _selection(
+        self,
+        requested: str | None,
+        *,
+        operation: str,
+        batch_items: int,
+        scalar_bits: int = 0,
+        resource_bytes: int = 0,
+    ) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._native_available:
+            decision = self._receipt_decision(
+                algorithm,
+                operation,
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native Cantor arithmetic is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _search_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        scalar_bits: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._search_available:
+            decision = self._receipt_decision(
+                algorithm,
+                "search-progression",
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-search-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native Cantor progression search is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _validation_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._validation_available:
+            decision = self._receipt_decision(
+                algorithm,
+                "validate",
+                batch_items=batch_items,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-validation-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native canonical ingress is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _multi_search_selection(
+        self,
+        requested: str | None,
+        *,
+        batch_items: int,
+        scalar_bits: int,
+        resource_bytes: int,
+    ) -> tuple[str, str]:
+        algorithm = self._algorithm if requested is None else requested
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown prepared Jacobian algorithm " + repr(algorithm))
+        if algorithm == "reference":
+            return "reference", "explicit-reference"
+        if self._multi_search_available:
+            decision = self._receipt_decision(
+                algorithm,
+                "search-progressions",
+                batch_items=batch_items,
+                scalar_bits=scalar_bits,
+                resource_bytes=resource_bytes,
+            )
+            if decision.allowed:
+                return "native", decision.reason
+            return "reference", decision.reason
+        reason = (
+            self._domain_reason
+            if self.prime is None
+            else "source-transparent-multi-search-artifact-unavailable"
+        )
+        if algorithm == "native":
+            raise NotImplementedError(
+                "prepared native multi-progression search is unavailable: " + reason
+            )
+        return "reference", reason
+
+    def _pack_model(self) -> tuple[int, ...]:
+        assert self.prime is not None
+        f_values = [_residue(value, self.prime) for value in self._jacobian.f().list()]
+        h_values = [_residue(value, self.prime) for value in self._jacobian.h().list()]
+        if len(f_values) > 8 or len(h_values) > 4:
+            raise ArithmeticError("the odd-degree v1 packed model has excessive degree")
+        f_values.extend([0] * (8 - len(f_values)))
+        h_values.extend([0] * (4 - len(h_values)))
+        return tuple(f_values + h_values)
+
+    def _capsule_model_label(self) -> str:
+        """Bind opaque storage to this exact Jacobian context identity."""
+        return self.model_fingerprint + ":" + str(id(self))
+
+    def _check_batch_size(self, count: int) -> None:
+        if count > self._max_batch_items:
+            raise RuntimeError(
+                "prepared Jacobian batch exceeds max_batch_items="
+                + str(self._max_batch_items)
+            )
+
+    def _pack_public_batch(
+        self,
+        values: Any,
+        cache: dict[int, tuple[int, ...]] | None = None,
+    ) -> list[int]:
+        """Flatten public rows, packing each repeated divisor identity once."""
+        rows: list[int] = []
+        known = {} if cache is None else cache
+        for divisor in values:
+            key = id(divisor)
+            row = known.get(key)
+            if row is None:
+                row = self.pack(divisor)
+                known[key] = row
+            rows.extend(row)
+        return rows
+
+    def pack(self, divisor: Any) -> tuple[int, ...]:
+        """Return the canonical odd-degree v1 eight-word row."""
+        if self.prime is None:
+            raise NotImplementedError(
+                "packed Mumford v1 is unavailable: " + self._domain_reason
+            )
+        if divisor.parent() is not self._jacobian:
+            raise ValueError("the divisor belongs to a different Jacobian")
+        cached = divisor._packed_row
+        if cached is not None and not divisor.is_materialized():
+            # Lazy wrappers were registered with the runtime's write-once
+            # capsule owner map before they escaped the prepared context.
+            return cached
+        # For an already-public materialized divisor, derive the mathematical
+        # row first.  A malicious capsule pre-registration may deny caching,
+        # but can never supply mathematical authority.
+        self._jacobian._validate_reduced(divisor[0], divisor[1])
+        u_value, v_value = divisor.uv()
+        degree = int(u_value.degree())
+        if degree < 0 or degree > self.genus:
+            raise ArithmeticError("the divisor is outside packed Mumford v1")
+        u_values = [_residue(value, self.prime) for value in u_value.list()]
+        v_values = [_residue(value, self.prime) for value in v_value.list()]
+        u_values.extend([0] * (4 - len(u_values)))
+        v_values.extend([0] * (3 - len(v_values)))
+        row = tuple([degree] + u_values[:4] + v_values[:3])
+        if row[degree + 1] != 1:
+            raise ArithmeticError("packed u is not monic")
+        if cached is not None:
+            if cached != row:
+                raise ArithmeticError(
+                    "a Jacobian divisor packed row disagrees with its provenance"
+                )
+            return cached
+        # Do not register one runtime capsule per already-materialized public
+        # divisor.  Its `(u,v)` pair is immutable mathematical provenance, and
+        # thousands of single-owner registrations cost substantially more than
+        # validating and sealing the one prepared batch that consumes them.
+        return row
+
+    def _bind_packed_row(self, divisor: Any, row: tuple[int, ...]) -> None:
+        """Bind a proved row once through opaque write-once runtime storage."""
+        if divisor.parent() is not self._jacobian:
+            raise ValueError("the divisor belongs to a different Jacobian")
+        existing = divisor._packed_row
+        if existing is not None:
+            if existing != row:
+                raise ArithmeticError("a divisor already has a different packed row")
+            return
+        capsule = runtime.immutable_uint64_capsule(
+            row,
+            divisor,
+            self.model_fingerprint + ":" + str(id(self._jacobian)),
+            _PACKED_DIVISOR_FORMAT,
+            1,
+        )
+        object.__setattr__(
+            divisor,
+            "_MumfordDivisor__packed_row_binding",
+            (divisor, capsule),
+        )
+
+    def _canonical_row(self, row: Any) -> tuple[int, ...]:
+        if self.prime is None:
+            raise NotImplementedError(
+                "packed Mumford v1 is unavailable: " + self._domain_reason
+            )
+        values = tuple(_exact_integer(value, "packed coefficient") for value in row)
+        if len(values) != _PACKED_ROW_WORDS:
+            raise ValueError("a packed Mumford v1 row must have eight words")
+        degree = values[0]
+        if degree < 0 or degree > self.genus:
+            raise ValueError("packed Mumford degree is outside the context")
+        if any(value < 0 or value >= self.prime for value in values[1:]):
+            raise ValueError("packed Mumford coefficients are not canonical residues")
+        if values[degree + 1] != 1:
+            raise ValueError("packed Mumford u is not monic")
+        if any(values[index] != 0 for index in range(degree + 2, 5)):
+            raise ValueError("packed Mumford u has nonzero unused words")
+        if any(values[index] != 0 for index in range(5 + degree, 8)):
+            raise ValueError("packed Mumford v has nonzero unused words")
+        return values
+
+    def _new_packed_divisor(
+        self, row: tuple[int, ...], materialize: bool = False
+    ) -> Any:
+        """Internally publish one kernel-proved immutable canonical row."""
+        # Deliberately bypass the public constructor only after the prepared
+        # context has validated or produced the row.  There is no parent token,
+        # constructor keyword, or Jacobian method through which an untrusted row
+        # can opt out of the public Mumford relation checks.
+        divisor = object.__new__(self._divisor_class)
+        divisor._parent = self._jacobian
+        if materialize:
+            degree = row[0]
+            field = self._jacobian.base_ring()
+            ring = self._jacobian.polynomial_ring()
+            divisor._u = ring([field(value) for value in row[1 : degree + 2]])
+            divisor._v = ring([field(value) for value in row[5 : 5 + degree]])
+        else:
+            divisor._u = None
+            divisor._v = None
+        object.__setattr__(divisor, "_MumfordDivisor__packed_row_binding", None)
+        divisor._packed_hash = None
+        if not materialize:
+            # Lazy divisors need an opaque authoritative row before escape.
+            # Materialized divisors already have immutable mathematical
+            # provenance in `(u,v)`; a later `pack` derives the canonical row
+            # from that provenance before installing any cache capsule.
+            self._bind_packed_row(divisor, row)
+        return divisor
+
+    def _publish_kernel_output(self, output: Any, offset: int) -> Any:
+        """Copy one proved canonical kernel row into an immutable divisor."""
+        # The exact source kernel has already checked the model, all inputs,
+        # the Mumford relation, reduction, coefficient bounds, and its nonzero
+        # per-item status.  Copy the eight owned buffer words directly: running
+        # the generic public parser here would repeat thousands of dynamic
+        # integer and shape checks in retained-packed pipelines.
+        row = (
+            int(output[offset]),
+            int(output[offset + 1]),
+            int(output[offset + 2]),
+            int(output[offset + 3]),
+            int(output[offset + 4]),
+            int(output[offset + 5]),
+            int(output[offset + 6]),
+            int(output[offset + 7]),
+        )
+        return self._new_packed_divisor(row)
+
+    def _publish_materialized_kernel_output(self, output: Any, offset: int) -> Any:
+        """Publish one proved row with its fixed-degree `(u,v)` provenance."""
+        row = (
+            int(output[offset]),
+            int(output[offset + 1]),
+            int(output[offset + 2]),
+            int(output[offset + 3]),
+            int(output[offset + 4]),
+            int(output[offset + 5]),
+            int(output[offset + 6]),
+            int(output[offset + 7]),
+        )
+        return self._new_packed_divisor(row, True)
+
+    def _publish_kernel_batch(self, output: Any, count: int) -> PreparedDivisorBatch:
+        """Seal one proved native output buffer as a lazy public sequence."""
+        return self._publish_frozen_batch(output, count)
+
+    def _publish_frozen_batch(self, packed: Any, count: int) -> PreparedDivisorBatch:
+        """Internally copy trusted canonical rows into opaque sealed storage."""
+        if len(packed) != 8 * count:
+            raise ArithmeticError("a packed Cantor batch has the wrong span")
+        batch = object.__new__(PreparedDivisorBatch)
+        capsule = runtime.immutable_uint64_capsule(
+            packed,
+            batch,
+            self._capsule_model_label(),
+            _PACKED_BATCH_FORMAT,
+            count,
+        )
+        return self._publish_capsule_batch(batch, capsule, count)
+
+    def _publish_capsule_batch(
+        self,
+        batch: PreparedDivisorBatch,
+        capsule: Any,
+        count: int,
+    ) -> PreparedDivisorBatch:
+        """Bind an already owner-registered capsule to its fresh batch shell."""
+        object.__setattr__(
+            batch,
+            "_PreparedDivisorBatch__binding",
+            (batch, self, capsule, count),
+        )
+        object.__setattr__(batch, "_PreparedDivisorBatch__published", {})
+        return batch
+
+    def prepare_batch(self, elements: Any) -> PreparedDivisorBatch:
+        """Freeze public divisors as canonical rows for a retained pipeline."""
+        if isinstance(elements, PreparedDivisorBatch):
+            elements._lease_for(self)
+            return elements
+        values = tuple(elements)
+        self._check_batch_size(len(values))
+        batch = object.__new__(PreparedDivisorBatch)
+        try:
+            capsule = runtime.immutable_uint64_capsule_gather(
+                batch,
+                values,
+                self.model_fingerprint + ":" + str(id(self._jacobian)),
+                _PACKED_DIVISOR_FORMAT,
+                1,
+                _PACKED_ROW_WORDS,
+                self._capsule_model_label(),
+                _PACKED_BATCH_FORMAT,
+                len(values),
+            )
+        except ValueError:
+            # Divisors created before this context, or a deliberately
+            # `check=False` object, may not have an owner-registered capsule.
+            # Only this unauthenticated path consults the public parent and
+            # recomputes every canonical row.  A successful gather already
+            # proved owner identity and the exact parent-bound model label.
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError(
+                        "every batch divisor must lie in this Jacobian"
+                    ) from None
+            return self._publish_frozen_batch(
+                tuple(self._pack_public_batch(values)), len(values)
+            )
+        return self._publish_capsule_batch(batch, capsule, len(values))
+
+    def unpack(self, row: Any) -> Any:
+        """Validate and publish one canonical odd-degree v1 row."""
+        values = self._canonical_row(row)
+        degree = values[0]
+        field = self._jacobian.base_ring()
+        ring = self._jacobian.polynomial_ring()
+        divisor = self._jacobian._element(
+            ring([field(value) for value in values[1 : degree + 2]]),
+            ring([field(value) for value in values[5 : 5 + degree]]),
+            False,
+        )
+        self._jacobian._validate_reduced(divisor[0], divisor[1])
+        self._bind_packed_row(divisor, values)
+        return divisor
+
+    def unpack_batch(
+        self,
+        rows: Any,
+        *,
+        algorithm: str | None = None,
+    ) -> PreparedDivisorBatch:
+        """Authenticate serialized rows and publish one sealed lazy batch.
+
+        Each input row is the canonical eight-word odd-degree v1 encoding.
+        Native execution validates every row against this exact curve before
+        it copies the first output word, so an invalid item cannot publish a
+        partial batch.  The reference path replays the same public Mumford
+        checks before sealing any result.
+        """
+        if self.prime is None:
+            raise NotImplementedError(
+                "packed Mumford v1 is unavailable: " + self._domain_reason
+            )
+        values = tuple(rows)
+        count = len(values)
+        self._check_batch_size(count)
+        flattened: list[int] = []
+        for row_index, row in enumerate(values):
+            try:
+                words = tuple(row)
+            except TypeError as error:
+                raise TypeError(
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " must be an iterable of eight integers"
+                ) from error
+            if len(words) != _PACKED_ROW_WORDS:
+                raise ValueError(
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " must have eight words"
+                )
+            for word_index, word in enumerate(words):
+                exact = _exact_integer(
+                    word,
+                    "serialized Mumford row "
+                    + str(row_index)
+                    + " word "
+                    + str(word_index),
+                )
+                if exact < 0:
+                    raise ValueError("serialized Mumford words must be nonnegative")
+                if exact >= 1 << 64:
+                    raise OverflowError(
+                        "serialized Mumford words must fit in unsigned 64 bits"
+                    )
+                flattened.append(exact)
+
+        selected, _reason = self._validation_selection(
+            algorithm,
+            batch_items=count,
+            resource_bytes=96 + 136 * count,
+        )
+        if selected == "reference":
+            # Validate the whole input before publishing the batch.  The
+            # temporary divisors remain unreachable if any later row fails.
+            for offset in range(count):
+                start = offset * _PACKED_ROW_WORDS
+                self.unpack(tuple(flattened[start : start + _PACKED_ROW_WORDS]))
+            return self._publish_frozen_batch(tuple(flattened), count)
+
+        assert self.prime is not None
+        packed_rows = kernel_uint64_buffer(self._validate_kernel, flattened)
+        output = kernel_uint64_zeros(self._validate_kernel, count * _PACKED_ROW_WORDS)
+        statuses = kernel_uint64_zeros(self._validate_kernel, count)
+        model = kernel_uint64_buffer(self._validate_kernel, self._model)
+        accepted = self._validate_kernel(
+            output,
+            statuses,
+            model,
+            packed_rows,
+            count,
+            self.genus,
+            self.prime,
+        )
+        if not accepted:
+            raise ValueError(
+                "serialized Mumford batch failed canonical curve validation"
+            )
+        return self._publish_kernel_batch(output, count)
+
+    def fingerprint(self, divisor: Any) -> str:
+        digest = hashlib.sha256()
+        digest.update(bytes.fromhex(self.model_fingerprint))
+        for value in self.pack(divisor):
+            digest.update(int(value).to_bytes(8, "little"))
+        return digest.hexdigest()
+
+    def _reference_add(self, left: Any, right: Any) -> Any:
+        u_value, v_value = self._jacobian._compose(left[0], left[1], right[0], right[1])
+        return self._jacobian._element(u_value, v_value, False)
+
+    def add_batch(
+        self,
+        lefts: Any,
+        rights: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        left_is_packed = isinstance(lefts, PreparedDivisorBatch)
+        right_is_packed = isinstance(rights, PreparedDivisorBatch)
+        left_values: Any = lefts if left_is_packed else tuple(lefts)
+        right_values: Any = rights if right_is_packed else tuple(rights)
+        if len(left_values) != len(right_values):
+            raise ValueError("left and right batches must have the same length")
+        self._check_batch_size(len(left_values))
+        if left_is_packed:
+            left_values._lease_for(self)
+        if right_is_packed:
+            right_values._lease_for(self)
+        selected, reason = self._selection(
+            algorithm,
+            operation="add",
+            batch_items=len(left_values),
+            resource_bytes=96 + 200 * len(left_values),
+        )
+        started = time.perf_counter_ns()
+        packed_left = None
+        packed_right = None
+        if selected == "native":
+            if left_is_packed:
+                packed_left = left_values._lease_for(self)
+            else:
+                prepared_left = self.prepare_batch(left_values)
+                packed_left = prepared_left._lease_for(self)
+            if right_is_packed:
+                if right_values is left_values:
+                    packed_right = packed_left
+                else:
+                    packed_right = right_values._lease_for(self)
+            elif right_values is left_values:
+                packed_right = packed_left
+            else:
+                prepared_right = self.prepare_batch(right_values)
+                packed_right = prepared_right._lease_for(self)
+        pack_ns = time.perf_counter_ns() - started
+        statuses: tuple[int, ...] = ()
+        validation_ns = 0
+        materialization_ns = 0
+        if selected == "reference":
+            left_public = tuple(left_values)
+            right_public = tuple(right_values)
+            for value in left_public:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+            for value in right_public:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+            started = time.perf_counter_ns()
+            answer = tuple(
+                self._reference_add(left, right)
+                for left, right in zip(left_public, right_public, strict=True)
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            if diagnostics:
+                statuses = tuple(100 for _value in answer)
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._add_kernel, len(left_values) * 8)
+            status_buffer = kernel_uint64_zeros(self._add_kernel, len(left_values))
+            model = kernel_uint64_buffer(self._add_kernel, self._model)
+            started = time.perf_counter_ns()
+            accepted = self._add_kernel(
+                output,
+                status_buffer,
+                model,
+                packed_left,
+                packed_right,
+                len(left_values),
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor addition kernel rejected a validated batch"
+                )
+            if diagnostics:
+                statuses = tuple(
+                    int(status_buffer[index]) for index in range(len(left_values))
+                )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, len(left_values))
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="add",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=len(left_values),
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=validation_ns,
+            statuses=statuses,
+        )
+        return answer, record
+
+    def double_batch(
+        self,
+        elements: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        result = self.add_batch(
+            elements,
+            elements,
+            algorithm=algorithm,
+            diagnostics=diagnostics,
+            materialize=materialize,
+        )
+        if diagnostics:
+            answer, record = result
+            record.operation = "double"
+            return answer, record
+        return result
+
+    def negate_batch(
+        self,
+        elements: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        """Return canonical inverses, retaining packed rows when native."""
+        values_are_packed = isinstance(elements, PreparedDivisorBatch)
+        values: Any = elements if values_are_packed else tuple(elements)
+        count = len(values)
+        self._check_batch_size(count)
+        if values_are_packed:
+            values._lease_for(self)
+        selected, reason = self._selection(
+            algorithm,
+            operation="negate",
+            batch_items=count,
+            resource_bytes=96 + 136 * count,
+        )
+        started = time.perf_counter_ns()
+        packed_rows = None
+        if selected == "native":
+            if values_are_packed:
+                packed_rows = values._lease_for(self)
+            else:
+                packed_rows = self.prepare_batch(values)._lease_for(self)
+        else:
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        pack_ns = time.perf_counter_ns() - started
+        materialization_ns = 0
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            answer: Any = tuple(value._negate_reference() for value in values)
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._negate_kernel, count * 8)
+            status_buffer = kernel_uint64_zeros(self._negate_kernel, count)
+            started = time.perf_counter_ns()
+            accepted = self._negate_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._negate_kernel, self._model),
+                packed_rows,
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor negation kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, count)
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="negate",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=count,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=0,
+            statuses=statuses,
+        )
+        return answer, record
+
+    def subtract_batch(
+        self,
+        lefts: Any,
+        rights: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        """Subtract paired divisors without materializing native intermediates."""
+        left_is_packed = isinstance(lefts, PreparedDivisorBatch)
+        right_is_packed = isinstance(rights, PreparedDivisorBatch)
+        left_values: Any = lefts if left_is_packed else tuple(lefts)
+        right_values: Any = rights if right_is_packed else tuple(rights)
+        if len(left_values) != len(right_values):
+            raise ValueError("left and right batches must have the same length")
+        count = len(left_values)
+        self._check_batch_size(count)
+        if left_is_packed:
+            left_values._lease_for(self)
+        if right_is_packed:
+            right_values._lease_for(self)
+        selected, reason = self._selection(
+            algorithm,
+            operation="subtract",
+            batch_items=count,
+            resource_bytes=160 + 208 * count,
+        )
+        started = time.perf_counter_ns()
+        packed_left = None
+        packed_right = None
+        if selected == "native":
+            packed_left = (
+                left_values._lease_for(self)
+                if left_is_packed
+                else self.prepare_batch(left_values)._lease_for(self)
+            )
+            if right_values is left_values:
+                packed_right = packed_left
+            else:
+                packed_right = (
+                    right_values._lease_for(self)
+                    if right_is_packed
+                    else self.prepare_batch(right_values)._lease_for(self)
+                )
+        else:
+            for value in left_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+            for value in right_values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        pack_ns = time.perf_counter_ns() - started
+        materialization_ns = 0
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            answer: Any = tuple(
+                self._reference_add(left, right._negate_reference())
+                for left, right in zip(left_values, right_values, strict=True)
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._subtract_kernel, count * 8)
+            status_buffer = kernel_uint64_zeros(self._subtract_kernel, count)
+            started = time.perf_counter_ns()
+            accepted = self._subtract_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._subtract_kernel, self._model),
+                packed_left,
+                packed_right,
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor subtraction kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, count)
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="subtract",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=count,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=0,
+            statuses=statuses,
+        )
+        return answer, record
+
+    def progression_batch(
+        self,
+        start: Any,
+        step: Any,
+        count: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        packed: bool = False,
+        materialize: bool = False,
+        max_group_operations: Any = None,
+    ) -> Any:
+        """Return `(start + i*step)` in one batch, optionally as packed rows."""
+        length = _exact_integer(count, "count")
+        if length < 0:
+            raise ValueError("count must be nonnegative")
+        if packed and materialize:
+            raise ValueError("packed progression results cannot be materialized")
+        self._check_batch_size(length)
+        if start.parent() is not self._jacobian or step.parent() is not self._jacobian:
+            raise ValueError("progression divisors must lie in this Jacobian")
+        operations = max(0, length - 1)
+        if max_group_operations is not None:
+            operation_limit = _exact_integer(
+                max_group_operations, "max_group_operations"
+            )
+            if operation_limit < 0:
+                raise ValueError("max_group_operations must be nonnegative")
+            if operations > operation_limit:
+                raise RuntimeError(
+                    "prepared progression exceeds max_group_operations="
+                    + str(operation_limit)
+                )
+        selected, reason = self._selection(
+            algorithm,
+            operation="progression",
+            batch_items=length,
+            resource_bytes=224 + 72 * length,
+        )
+        started = time.perf_counter_ns()
+        start_row = step_row = ()
+        if selected == "native":
+            start_row = self.pack(start)
+            step_row = self.pack(step)
+        pack_ns = time.perf_counter_ns() - started
+        validation_ns = 0
+        materialization_ns = 0
+        answer: Any
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            values = []
+            current = start
+            for index in range(length):
+                values.append(current)
+                if index + 1 < length:
+                    current = self._reference_add(current, step)
+            answer = (
+                tuple(self.pack(value) for value in values) if packed else tuple(values)
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._progression_kernel, length * 8)
+            status_buffer = kernel_uint64_zeros(self._progression_kernel, length)
+            started = time.perf_counter_ns()
+            accepted = self._progression_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._progression_kernel, self._model),
+                kernel_uint64_buffer(self._progression_kernel, start_row),
+                kernel_uint64_buffer(self._progression_kernel, step_row),
+                length,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor progression kernel rejected validated input"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(length))
+                if diagnostics
+                else ()
+            )
+            if packed:
+                answer = tuple(
+                    tuple(int(output[8 * item + index]) for index in range(8))
+                    for item in range(length)
+                )
+                unpack_ns = 0
+            else:
+                started = time.perf_counter_ns()
+                answer = self._publish_kernel_batch(output, length)
+                unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor_value in answer:
+                    divisor: Any = divisor_value
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="progression",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=length,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=validation_ns,
+            statuses=statuses,
+        )
+        return answer, record
+
+    def scalar_batch(
+        self,
+        elements: Any,
+        scalars: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+        max_group_operations: Any = None,
+    ) -> Any:
+        values_are_packed = isinstance(elements, PreparedDivisorBatch)
+        values: Any = elements if values_are_packed else tuple(elements)
+        scalar_values = tuple(_exact_integer(value, "scalar") for value in scalars)
+        if len(values) != len(scalar_values):
+            raise ValueError("element and scalar batches must have the same length")
+        self._check_batch_size(len(values))
+        if values_are_packed:
+            values._lease_for(self)
+        else:
+            for value in values:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        if max_group_operations is not None:
+            operation_limit = _exact_integer(
+                max_group_operations, "max_group_operations"
+            )
+            if operation_limit < 0:
+                raise ValueError("max_group_operations must be nonnegative")
+            for scalar in scalar_values:
+                required = _scalar_group_operations(scalar)
+                if required > operation_limit:
+                    raise RuntimeError(
+                        "prepared scalar multiplication exceeds "
+                        "max_group_operations=" + str(operation_limit)
+                    )
+        maximum_bits = max(
+            (_bit_length(abs(value)) for value in scalar_values), default=0
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._selection(
+            algorithm,
+            operation="scalar",
+            batch_items=len(values),
+            scalar_bits=maximum_bits,
+            resource_bytes=96 + len(values) * (18 + words_per_scalar) * 8,
+        )
+        started = time.perf_counter_ns()
+        packed_rows = None
+        if selected == "native":
+            if values_are_packed:
+                packed_rows = values._lease_for(self)
+            else:
+                prepared_values = self.prepare_batch(values)
+                packed_rows = prepared_values._lease_for(self)
+        words: list[int] = []
+        signs: list[int] = []
+        for value in scalar_values:
+            signs.append(1 if value < 0 else 0)
+            magnitude = abs(value)
+            for _index in range(words_per_scalar):
+                words.append(magnitude % (1 << 64))
+                magnitude //= 1 << 64
+        pack_ns = time.perf_counter_ns() - started
+        validation_ns = 0
+        materialization_ns = 0
+        if selected == "reference":
+            public_values = tuple(values)
+            started = time.perf_counter_ns()
+            answer = tuple(
+                self._reference_scalar(value, scalar)
+                for value, scalar in zip(public_values, scalar_values, strict=True)
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            unpack_ns = 0
+            statuses = tuple(100 for _value in answer) if diagnostics else ()
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._scalar_kernel, len(values) * 8)
+            status_buffer = kernel_uint64_zeros(self._scalar_kernel, len(values))
+            started = time.perf_counter_ns()
+            accepted = self._scalar_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._scalar_kernel, self._model),
+                packed_rows,
+                kernel_uint64_buffer(self._scalar_kernel, words),
+                kernel_uint64_buffer(self._scalar_kernel, signs),
+                len(values),
+                words_per_scalar,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor scalar kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(len(values)))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, len(values))
+            unpack_ns = time.perf_counter_ns() - started
+        if materialize:
+            started = time.perf_counter_ns()
+            if isinstance(answer, PreparedDivisorBatch):
+                answer = answer.materialize()
+            else:
+                for divisor in answer:
+                    divisor.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        if not diagnostics:
+            return answer
+        record = PreparedBatchDiagnostics(
+            operation="scalar",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=len(values),
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+            unpack_ns=unpack_ns,
+            materialization_ns=materialization_ns,
+            validation_ns=validation_ns,
+            statuses=statuses,
+        )
+        return answer, record
+
+    def _reference_scalar(self, value: Any, scalar: int) -> Any:
+        if scalar < 0:
+            return self._reference_scalar(value._negate_reference(), -scalar)
+        result = self._jacobian.zero()
+        addend = value
+        started = False
+        while scalar:
+            if scalar % 2:
+                digit = 1 if scalar == 1 else 2 - scalar % 4
+                selected = addend if digit == 1 else addend._negate_reference()
+                if started:
+                    result = self._reference_add(result, selected)
+                else:
+                    result = selected
+                    started = True
+                scalar -= digit
+            scalar //= 2
+            if scalar:
+                addend = self._reference_add(addend, addend)
+        return result
+
+    def search_progression(
+        self,
+        element: Any,
+        base: Any,
+        stride: Any,
+        count: Any,
+        *,
+        baby_count: Any = None,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        max_group_operations: Any = None,
+    ) -> Any:
+        """Find the least `i` with `(base + i*stride)*element == 0`.
+
+        This is a fused baby-step/giant-step search, not a materialized
+        progression.  The native path retains its hash table and all canonical
+        Mumford rows inside one source-transparent call.  `None` means that no
+        represented index was found.  A reached operation or table bound raises
+        `RuntimeError`; invalid mathematical inputs fail separately.
+        """
+        if element.parent() is not self._jacobian:
+            raise ValueError("the search divisor belongs to a different Jacobian")
+        base_value = _exact_integer(base, "base")
+        stride_value = _exact_integer(stride, "stride")
+        count_value = _exact_integer(count, "count")
+        if base_value <= 0 or stride_value <= 0 or count_value <= 0:
+            raise ValueError("base, stride, and count must be positive")
+        if baby_count is None:
+            baby_value = _ceil_square_root(count_value)
+        else:
+            baby_value = _exact_integer(baby_count, "baby_count")
+        if baby_value < 1 or baby_value > min(self._max_batch_items, 1_000_000):
+            raise RuntimeError(
+                "prepared search baby table exceeds max_batch_items="
+                + str(self._max_batch_items)
+            )
+        if (baby_value - 1) ** 2 >= count_value or baby_value**2 < count_value:
+            raise ValueError("baby_count must equal ceil(sqrt(count))")
+        giant_count = (count_value + baby_value - 1) // baby_value
+        full_operation_bound = (
+            _scalar_group_operations(base_value)
+            + _scalar_group_operations(stride_value)
+            + _scalar_group_operations(baby_value)
+            + baby_value
+            + giant_count
+            - 2
+        )
+        if max_group_operations is None:
+            operation_limit = full_operation_bound
+        else:
+            operation_limit = _exact_integer(
+                max_group_operations, "max_group_operations"
+            )
+            if operation_limit < 0:
+                raise ValueError("max_group_operations must be nonnegative")
+        if operation_limit >= 1 << 64:
+            raise ValueError("max_group_operations exceeds the uint64 kernel ABI")
+        maximum_bits = max(_bit_length(base_value), _bit_length(stride_value))
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._search_selection(
+            algorithm,
+            batch_items=baby_value,
+            scalar_bits=maximum_bits,
+            resource_bytes=256 + baby_value * 96 + words_per_scalar * 16,
+        )
+        requested = self._algorithm if algorithm is None else algorithm
+        started = time.perf_counter_ns()
+        packed_element = self.pack(element) if selected == "native" else ()
+        base_words: list[int] = []
+        stride_words: list[int] = []
+        base_copy = base_value
+        stride_copy = stride_value
+        for _index in range(words_per_scalar):
+            base_words.append(base_copy % (1 << 64))
+            stride_words.append(stride_copy % (1 << 64))
+            base_copy //= 1 << 64
+            stride_copy //= 1 << 64
+        pack_ns = time.perf_counter_ns() - started
+
+        status_name = "not_found"
+        group_operations = 0
+        scalar_bits = 0
+        baby_steps = 0
+        giant_steps = 0
+        hash_collisions = 0
+        found_index: int | None = None
+        base_multiple = self._jacobian.zero()
+        stride_multiple = self._jacobian.zero()
+        giant_stride = self._jacobian.zero()
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            needed = _scalar_group_operations(base_value)
+            if group_operations + needed > operation_limit:
+                status_name = "resource_limit"
+            else:
+                base_multiple = self._reference_scalar(element, base_value)
+                group_operations += needed
+                scalar_bits += _bit_length(base_value)
+            needed = _scalar_group_operations(stride_value)
+            if (
+                status_name != "resource_limit"
+                and group_operations + needed > operation_limit
+            ):
+                status_name = "resource_limit"
+            elif status_name != "resource_limit":
+                stride_multiple = self._reference_scalar(element, stride_value)
+                group_operations += needed
+                scalar_bits += _bit_length(stride_value)
+            needed = _scalar_group_operations(baby_value)
+            if (
+                status_name != "resource_limit"
+                and group_operations + needed > operation_limit
+            ):
+                status_name = "resource_limit"
+            elif status_name != "resource_limit":
+                giant_stride = self._reference_scalar(stride_multiple, baby_value)
+                group_operations += needed
+                scalar_bits += _bit_length(baby_value)
+            if status_name != "resource_limit":
+                table: dict[Any, int] = {}
+                current = self._jacobian.zero()
+                for baby in range(baby_value):
+                    baby_steps += 1
+                    if current not in table:
+                        table[current] = baby
+                    if baby + 1 < baby_value:
+                        if group_operations == operation_limit:
+                            status_name = "resource_limit"
+                            break
+                        current = self._reference_add(current, stride_multiple)
+                        group_operations += 1
+                if status_name != "resource_limit":
+                    current = -base_multiple
+                    increment = -giant_stride
+                    for giant in range(giant_count):
+                        giant_steps += 1
+                        baby = table.get(current)
+                        if baby is not None:
+                            candidate = giant * baby_value + baby
+                            if candidate < count_value:
+                                found_index = candidate
+                                status_name = "found"
+                                break
+                        if giant + 1 < giant_count:
+                            if group_operations == operation_limit:
+                                status_name = "resource_limit"
+                                break
+                            current = self._reference_add(current, increment)
+                            group_operations += 1
+            kernel_ns = time.perf_counter_ns() - started
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._search_kernel, 1)
+            status_buffer = kernel_uint64_zeros(self._search_kernel, 1)
+            diagnostic_buffer = kernel_uint64_zeros(self._search_kernel, 5)
+            started = time.perf_counter_ns()
+            accepted = self._search_kernel(
+                output,
+                status_buffer,
+                diagnostic_buffer,
+                kernel_uint64_buffer(self._search_kernel, self._model),
+                kernel_uint64_buffer(self._search_kernel, packed_element),
+                kernel_uint64_buffer(self._search_kernel, base_words),
+                kernel_uint64_buffer(self._search_kernel, stride_words),
+                words_per_scalar,
+                count_value,
+                baby_value,
+                operation_limit,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor progression search rejected its buffer ABI"
+                )
+            status = int(status_buffer[0])
+            group_operations = int(diagnostic_buffer[0])
+            scalar_bits = int(diagnostic_buffer[1])
+            baby_steps = int(diagnostic_buffer[2])
+            giant_steps = int(diagnostic_buffer[3])
+            hash_collisions = int(diagnostic_buffer[4])
+            if status == 1:
+                found_index = int(output[0])
+                status_name = "found"
+            elif status == 2:
+                status_name = "not_found"
+            elif status == 3:
+                status_name = "resource_limit"
+            elif status == 4:
+                raise ArithmeticError(
+                    "the packed Cantor progression search rejected validated input"
+                )
+            else:
+                raise ArithmeticError(
+                    "the packed Cantor progression search returned an invalid status"
+                )
+        record = PreparedSearchDiagnostics(
+            requested=requested,
+            selected=selected,
+            fallback_reason=reason,
+            status=status_name,
+            count=count_value,
+            baby_count=baby_value,
+            group_operations=group_operations,
+            scalar_bits=scalar_bits,
+            baby_steps=baby_steps,
+            giant_steps=giant_steps,
+            hash_collisions=hash_collisions,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+        )
+        if status_name == "resource_limit":
+            raise RuntimeError(
+                "prepared progression search exceeds max_group_operations="
+                + str(operation_limit)
+            )
+        return (found_index, record) if diagnostics else found_index
+
+    def search_progressions(
+        self,
+        element: Any,
+        bases: Any,
+        stride: Any,
+        counts: Any,
+        *,
+        baby_count: Any = None,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        max_group_operations: Any = None,
+    ) -> Any:
+        """Search ordered progressions with one shared BSGS baby table.
+
+        The result is `None` or `(progression_index, represented_index)`.  The
+        first matching input progression wins, and its least represented index
+        is returned.  All progressions share the positive `stride`; `bases` and
+        `counts` must be equally sized, nonempty positive sequences.
+        """
+        if element.parent() is not self._jacobian:
+            raise ValueError("the search divisor belongs to a different Jacobian")
+        base_values = tuple(_exact_integer(value, "base") for value in bases)
+        count_values = tuple(_exact_integer(value, "count") for value in counts)
+        if len(base_values) == 0 or len(base_values) != len(count_values):
+            raise ValueError("bases and counts must have the same nonzero length")
+        self._check_batch_size(len(base_values))
+        if any(value <= 0 for value in base_values):
+            raise ValueError("every progression base must be positive")
+        if any(value <= 0 for value in count_values):
+            raise ValueError("every progression count must be positive")
+        stride_value = _exact_integer(stride, "stride")
+        if stride_value <= 0:
+            raise ValueError("stride must be positive")
+        maximum_count = max(count_values)
+        if baby_count is None:
+            baby_value = _ceil_square_root(maximum_count)
+        else:
+            baby_value = _exact_integer(baby_count, "baby_count")
+        if baby_value < 1 or baby_value > min(self._max_batch_items, 1_000_000):
+            raise RuntimeError(
+                "prepared search baby table exceeds max_batch_items="
+                + str(self._max_batch_items)
+            )
+        if (baby_value - 1) ** 2 >= maximum_count or baby_value**2 < maximum_count:
+            raise ValueError("baby_count must equal ceil(sqrt(max(counts)))")
+        if any(value >= 1 << 64 for value in count_values):
+            raise ValueError("a progression count exceeds the uint64 kernel ABI")
+        giant_counts = tuple(
+            (value + baby_value - 1) // baby_value for value in count_values
+        )
+        full_operation_bound = (
+            _scalar_group_operations(stride_value)
+            + _scalar_group_operations(baby_value)
+            + baby_value
+            - 1
+        )
+        for base_value, giant_count in zip(base_values, giant_counts, strict=True):
+            full_operation_bound += _scalar_group_operations(base_value)
+            full_operation_bound += giant_count - 1
+        if max_group_operations is None:
+            operation_limit = full_operation_bound
+        else:
+            operation_limit = _exact_integer(
+                max_group_operations, "max_group_operations"
+            )
+            if operation_limit < 0:
+                raise ValueError("max_group_operations must be nonnegative")
+        if operation_limit >= 1 << 64:
+            raise ValueError("max_group_operations exceeds the uint64 kernel ABI")
+        maximum_bits = max(
+            _bit_length(stride_value),
+            max(_bit_length(value) for value in base_values),
+        )
+        words_per_scalar = max(1, (maximum_bits + 63) // 64)
+        selected, reason = self._multi_search_selection(
+            algorithm,
+            batch_items=len(base_values),
+            scalar_bits=maximum_bits,
+            resource_bytes=(
+                256 + baby_value * 96 + len(base_values) * (words_per_scalar + 1) * 8
+            ),
+        )
+        requested = self._algorithm if algorithm is None else algorithm
+
+        started = time.perf_counter_ns()
+        packed_element = self.pack(element) if selected == "native" else ()
+        base_words: list[int] = []
+        for base_value in base_values:
+            base_copy = base_value
+            for _index in range(words_per_scalar):
+                base_words.append(base_copy % (1 << 64))
+                base_copy //= 1 << 64
+        stride_words: list[int] = []
+        stride_copy = stride_value
+        for _index in range(words_per_scalar):
+            stride_words.append(stride_copy % (1 << 64))
+            stride_copy //= 1 << 64
+        pack_ns = time.perf_counter_ns() - started
+
+        status_name = "not_found"
+        group_operations = 0
+        scalar_bits = 0
+        baby_steps = 0
+        giant_steps = 0
+        hash_collisions = 0
+        progressions_scanned = 0
+        table_bytes = 0
+        found: tuple[int, int] | None = None
+        if selected == "reference":
+            started = time.perf_counter_ns()
+            needed = _scalar_group_operations(stride_value)
+            if group_operations + needed > operation_limit:
+                status_name = "resource_limit"
+                stride_multiple = self._jacobian.zero()
+            else:
+                stride_multiple = self._reference_scalar(element, stride_value)
+                group_operations += needed
+                scalar_bits += _bit_length(stride_value)
+            needed = _scalar_group_operations(baby_value)
+            if (
+                status_name != "resource_limit"
+                and group_operations + needed > operation_limit
+            ):
+                status_name = "resource_limit"
+                giant_stride = self._jacobian.zero()
+            elif status_name != "resource_limit":
+                giant_stride = self._reference_scalar(stride_multiple, baby_value)
+                group_operations += needed
+                scalar_bits += _bit_length(baby_value)
+            else:
+                giant_stride = self._jacobian.zero()
+            table: dict[Any, int] = {}
+            if status_name != "resource_limit":
+                current = self._jacobian.zero()
+                for baby in range(baby_value):
+                    baby_steps += 1
+                    if current not in table:
+                        table[current] = baby
+                    if baby + 1 < baby_value:
+                        if group_operations == operation_limit:
+                            status_name = "resource_limit"
+                            break
+                        current = self._reference_add(current, stride_multiple)
+                        group_operations += 1
+            if status_name != "resource_limit":
+                increment = -giant_stride
+                for progression, (base_value, count_value, giant_count) in enumerate(
+                    zip(base_values, count_values, giant_counts, strict=True)
+                ):
+                    progressions_scanned += 1
+                    needed = _scalar_group_operations(base_value)
+                    if group_operations + needed > operation_limit:
+                        status_name = "resource_limit"
+                        break
+                    base_multiple = self._reference_scalar(element, base_value)
+                    group_operations += needed
+                    scalar_bits += _bit_length(base_value)
+                    current = -base_multiple
+                    for giant in range(giant_count):
+                        giant_steps += 1
+                        baby = table.get(current)
+                        if baby is not None:
+                            candidate = giant * baby_value + baby
+                            if candidate < count_value:
+                                found = (progression, candidate)
+                                status_name = "found"
+                                break
+                        if giant + 1 < giant_count:
+                            if group_operations == operation_limit:
+                                status_name = "resource_limit"
+                                break
+                            current = self._reference_add(current, increment)
+                            group_operations += 1
+                    if status_name != "not_found":
+                        break
+            kernel_ns = time.perf_counter_ns() - started
+        else:
+            assert self.prime is not None
+            output = kernel_uint64_zeros(self._multi_search_kernel, 2)
+            status_buffer = kernel_uint64_zeros(self._multi_search_kernel, 1)
+            diagnostic_buffer = kernel_uint64_zeros(self._multi_search_kernel, 7)
+            started = time.perf_counter_ns()
+            accepted = self._multi_search_kernel(
+                output,
+                status_buffer,
+                diagnostic_buffer,
+                kernel_uint64_buffer(self._multi_search_kernel, self._model),
+                kernel_uint64_buffer(self._multi_search_kernel, packed_element),
+                kernel_uint64_buffer(self._multi_search_kernel, base_words),
+                kernel_uint64_buffer(self._multi_search_kernel, stride_words),
+                kernel_uint64_buffer(self._multi_search_kernel, count_values),
+                len(base_values),
+                words_per_scalar,
+                baby_value,
+                operation_limit,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search rejected its buffer ABI"
+                )
+            status = int(status_buffer[0])
+            group_operations = int(diagnostic_buffer[0])
+            scalar_bits = int(diagnostic_buffer[1])
+            baby_steps = int(diagnostic_buffer[2])
+            giant_steps = int(diagnostic_buffer[3])
+            hash_collisions = int(diagnostic_buffer[4])
+            progressions_scanned = int(diagnostic_buffer[5])
+            table_bytes = int(diagnostic_buffer[6])
+            if status == 1:
+                found = (int(output[0]), int(output[1]))
+                status_name = "found"
+            elif status == 2:
+                status_name = "not_found"
+            elif status == 3:
+                status_name = "resource_limit"
+            elif status == 4:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search rejected validated input"
+                )
+            else:
+                raise ArithmeticError(
+                    "the packed Cantor multi-progression search returned an invalid status"
+                )
+        record = PreparedMultiSearchDiagnostics(
+            requested=requested,
+            selected=selected,
+            fallback_reason=reason,
+            status=status_name,
+            counts=count_values,
+            baby_count=baby_value,
+            group_operations=group_operations,
+            scalar_bits=scalar_bits,
+            baby_steps=baby_steps,
+            giant_steps=giant_steps,
+            hash_collisions=hash_collisions,
+            progressions_scanned=progressions_scanned,
+            table_bytes=table_bytes,
+            pack_ns=pack_ns,
+            kernel_ns=kernel_ns,
+        )
+        if status_name == "resource_limit":
+            raise RuntimeError(
+                "prepared multi-progression search exceeds max_group_operations="
+                + str(operation_limit)
+            )
+        return (found, record) if diagnostics else found
+
+    def sum(
+        self,
+        elements: Any,
+        *,
+        algorithm: str | None = None,
+        diagnostics: bool = False,
+        materialize: bool = False,
+    ) -> Any:
+        level: Any = (
+            elements if isinstance(elements, PreparedDivisorBatch) else tuple(elements)
+        )
+        count = len(level)
+        self._check_batch_size(count)
+        selected, reason = self._selection(
+            algorithm,
+            operation="sum",
+            batch_items=count,
+            resource_bytes=96 + 200 * count,
+        )
+        initial_pack_ns = 0
+        if selected == "native":
+            started = time.perf_counter_ns()
+            level = self.prepare_batch(level)
+            initial_pack_ns = time.perf_counter_ns() - started
+        else:
+            for value in level:
+                if value.parent() is not self._jacobian:
+                    raise ValueError("every batch divisor must lie in this Jacobian")
+        if count == 0:
+            answer = self._jacobian.zero()
+            if not diagnostics:
+                return answer
+            return answer, PreparedBatchDiagnostics(
+                operation="sum",
+                requested=self._algorithm if algorithm is None else algorithm,
+                selected=selected,
+                fallback_reason="empty",
+                count=0,
+                pack_ns=initial_pack_ns,
+                kernel_ns=0,
+                unpack_ns=0,
+                materialization_ns=0,
+                validation_ns=0,
+                statuses=(),
+            )
+        if selected == "native":
+            assert self.prime is not None
+            assert isinstance(level, PreparedDivisorBatch)
+            output = kernel_uint64_zeros(self._sum_kernel, 8)
+            status_buffer = kernel_uint64_zeros(self._sum_kernel, count - 1)
+            started = time.perf_counter_ns()
+            accepted = self._sum_kernel(
+                output,
+                status_buffer,
+                kernel_uint64_buffer(self._sum_kernel, self._model),
+                level._lease_for(self),
+                count,
+                self.genus,
+                self.prime,
+            )
+            kernel_ns = time.perf_counter_ns() - started
+            if not accepted:
+                raise ArithmeticError(
+                    "the packed Cantor sum kernel rejected a validated batch"
+                )
+            statuses = (
+                tuple(int(status_buffer[index]) for index in range(count - 1))
+                if diagnostics
+                else ()
+            )
+            started = time.perf_counter_ns()
+            answer = self._publish_kernel_batch(output, 1)[0]
+            unpack_ns = time.perf_counter_ns() - started
+            materialization_ns = 0
+            if materialize:
+                started = time.perf_counter_ns()
+                answer.uv()
+                materialization_ns = time.perf_counter_ns() - started
+            record = PreparedBatchDiagnostics(
+                operation="sum",
+                requested=self._algorithm if algorithm is None else algorithm,
+                selected=selected,
+                fallback_reason=reason,
+                count=count,
+                pack_ns=initial_pack_ns,
+                kernel_ns=kernel_ns,
+                unpack_ns=unpack_ns,
+                materialization_ns=materialization_ns,
+                validation_ns=0,
+                statuses=statuses,
+            )
+            return (answer, record) if diagnostics else answer
+        total_pack = initial_pack_ns
+        total_kernel = total_unpack = total_validation = 0
+        all_statuses: list[int] = []
+        while len(level) > 1:
+            pair_count = len(level) // 2
+            if isinstance(level, PreparedDivisorBatch):
+                lefts = level._strided_for(self, 0, 2, pair_count)
+                rights = level._strided_for(self, 1, 2, pair_count)
+            else:
+                lefts = level[0 : 2 * pair_count : 2]
+                rights = level[1 : 2 * pair_count : 2]
+            if diagnostics:
+                pair_sums, record = self.add_batch(
+                    lefts, rights, algorithm=algorithm, diagnostics=True
+                )
+                total_pack += record.pack_ns
+                total_kernel += record.kernel_ns
+                total_unpack += record.unpack_ns
+                total_validation += record.validation_ns
+                all_statuses.extend(record.statuses)
+            else:
+                pair_sums = self.add_batch(lefts, rights, algorithm=algorithm)
+            if len(level) % 2:
+                if isinstance(level, PreparedDivisorBatch) and isinstance(
+                    pair_sums, PreparedDivisorBatch
+                ):
+                    carry = level._row(len(level) - 1)
+                    packed = pair_sums._rows_for(self) + carry
+                    level = self._publish_frozen_batch(packed, pair_count + 1)
+                else:
+                    level = tuple(pair_sums) + (level[-1],)
+            else:
+                level = pair_sums
+        answer = level[0]
+        materialization_ns = 0
+        if materialize:
+            started = time.perf_counter_ns()
+            answer.uv()
+            materialization_ns = time.perf_counter_ns() - started
+        record = PreparedBatchDiagnostics(
+            operation="sum",
+            requested=self._algorithm if algorithm is None else algorithm,
+            selected=selected,
+            fallback_reason=reason,
+            count=count,
+            pack_ns=total_pack,
+            kernel_ns=total_kernel,
+            unpack_ns=total_unpack,
+            materialization_ns=materialization_ns,
+            validation_ns=total_validation,
+            statuses=tuple(all_statuses),
+        )
+        return (answer, record) if diagnostics else answer
 
 
 def native_scalar_multiply(

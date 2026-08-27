@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -15,7 +16,10 @@ function run(source) {
     cwd: root,
     encoding: "utf8",
     input: source,
-    timeout: 120_000,
+    // This integration test intentionally performs several cold exact
+    // class/unit computations in one interpreter.  Keep the subprocess bound
+    // finite, but allow slower CI architectures to finish the proof replays.
+    timeout: 300_000,
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
@@ -28,7 +32,7 @@ import sagejs.number_fields.class_unit_groups as engine_module
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x**6 - x - 1, "a")
+K = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "a")
 
 started = time.monotonic()
 conditional = K.class_unit_group(proof=False)
@@ -38,19 +42,22 @@ assert conditional.proof_status == "exact-relations-conditional-grh"
 conditional_group = conditional.class_group()
 conditional_units = conditional.unit_group()
 conditional_stages = tuple(stage.name for stage in conditional.stages)
+conditional_factor_base_size = len(conditional.conditional_factor_base)
+conditional_relation_count = len(conditional.conditional_relation_records)
+conditional_unit_count = len(conditional.units())
 
 started = time.monotonic()
 unconditional = K.class_unit_group(proof=True)
 upgrade_seconds = time.monotonic() - started
 assert unconditional.complete
 assert unconditional.proof_status == "exact-unconditional"
-assert unconditional.class_number() == conditional.class_number() == 1
+assert unconditional.class_number() == conditional.class_number() == 4
 assert unconditional.diagnostics["terminal_upgrade"] == {
     "schema": "sagejs.number-fields/class-unit-terminal-upgrade-v1",
-    "reused_factor_base_size": 1,
-    "reused_relation_count": 10,
+    "reused_factor_base_size": conditional_factor_base_size,
+    "reused_relation_count": conditional_relation_count,
     "reused_presentation": True,
-    "reused_units": 3,
+    "reused_units": conditional_unit_count,
     "reused_saturation": True,
     "rerun_relation_search": False,
     "rerun_analytic_index": False,
@@ -142,7 +149,7 @@ assert K.class_unit_group(proof=False) is conditional
 # Every mutable unit-side semantic leaf is covered by the private terminal
 # snapshot.  Restoring the value restores eligibility; immutable unit contents
 # reject mutation at the source representation.
-M = NumberField(x**6 - x - 1, "m")
+M = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "m")
 mutable = M.class_unit_group(proof=False)
 live = mutable.context._live_artifacts
 snapshot = live.terminal_semantic_snapshot
@@ -184,7 +191,7 @@ except (AttributeError, TypeError):
 assert live._capture_terminal_semantics() == snapshot
 
 # Hostile torsion mutation before issuance fails closed to a cold proof run.
-L = NumberField(x**6 - x - 1, "b")
+L = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "b")
 changed = L.class_unit_group(proof=False)
 changed.unit_group().torsion.order = 999
 cold_fallback = L.class_unit_group(proof=True)
@@ -194,7 +201,7 @@ assert cold_fallback.unit_group().torsion.order != 999
 
 # A suffix exception releases the reservation, so an exact retry can reuse the
 # same authenticated conditional terminal.  The lease is also reentrancy-safe.
-T = NumberField(x**6 - x - 1, "t")
+T = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "t")
 retry_source = T.class_unit_group(proof=False)
 limits = engine_module.ClassUnitEngineLimits()
 original_proof_pass = engine_module.ClassUnitGroupEngine._unconditional_proof_pass
@@ -218,7 +225,7 @@ assert retried.diagnostics.get("terminal_upgrade") is not None
 # A retained prime ideal is an identity-bound shell around mutable exact HNF
 # data.  Its complete canonical serialization is sealed before publication, so
 # hostile lattice mutation rejects the terminal fork before the proof suffix.
-F = NumberField(x**3 - x**2 - 6*x - 12, "f")
+F = NumberField(x**5 + x**3 - x**2 + 4*x + 1, "f")
 factor_source = F.class_unit_group(proof=False)
 assert factor_source.proof_status == "exact-relations-conditional-grh"
 factor_live = factor_source.context._live_artifacts

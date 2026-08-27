@@ -19,6 +19,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
+# globals: ρσ_brand_machine_field_element, ρσ_fast_machine_residue_recurrence
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_json_scalar_sequence
 # globals: ρσ_canonical_json_exact
@@ -153,6 +154,70 @@ def uint64_buffer(source):
         }
         return BigUint64Array.from(source, (value) => BigInt(value));
     })()"""
+
+
+def immutable_uint64_capsule(source, owner, model, format, count):
+    """Copy unsigned words into opaque immutable runtime-owned storage.
+
+    The capsule exposes neither its words nor its binding. `owner` is matched
+    by identity; `model`, `format`, and `count` are matched exactly whenever a
+    consumer requests either a native lease or a dynamic copy.
+    """
+    try:
+        return r"%js globalThis.__sagejs_create_immutable_uint64_capsule__(source, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_lease(capsule, owner, model, format, count):
+    """Authorize a short-lived read-only native lease for `capsule`."""
+    try:
+        return r"%js globalThis.__sagejs_authorize_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_copy(capsule, owner, model, format, count):
+    """Return an owned mutable copy for source-transparent dynamic fallback."""
+    try:
+        return r"%js globalThis.__sagejs_copy_immutable_uint64_capsule__(capsule, owner, model, format, count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
+
+
+def immutable_uint64_capsule_gather(
+    destination_owner,
+    source_owners,
+    source_model,
+    source_format,
+    source_count,
+    item_words,
+    destination_model,
+    destination_format,
+    destination_count,
+):
+    """Gather privately registered rows into one new opaque capsule.
+
+    `source_owners` must be an immutable tuple. Source and destination logical
+    bindings are explicit; the dynamic path must request an owned copy before
+    reading the gathered words.
+    """
+    try:
+        return r"%js globalThis.__sagejs_gather_immutable_uint64_capsules__(destination_owner, source_owners, source_model, source_format, source_count, item_words, destination_model, destination_format, destination_count)"
+    except:
+        message = r"%js ρσ_last_exception.message"
+        if r"%js ρσ_last_exception instanceof RangeError":
+            raise ValueError(message)
+        raise TypeError(message)
 
 
 def integer_buffer(source, minimum_word_capacity=1):
@@ -363,6 +428,7 @@ def uint64_residue_elements(source, parent, element_type):
         if (modulus <= 0n || modulus > 0xffffffffffffffffn) {
             throw new RangeError("invalid uint64 residue modulus");
         }
+        const machineResidues = Reflect.get(parent, "_machineResidues") === true;
         const output = new Array(source.length);
         for (let index = 0; index < source.length; index += 1) {
             const residue = source[index];
@@ -371,11 +437,37 @@ def uint64_residue_elements(source, parent, element_type):
             }
             const value = Object.create(prototype);
             value._parent = parent;
-            value._value = residue;
-            output[index] = Object.freeze(value);
+            value._value = machineResidues ? Number(residue) : residue;
+            output[index] = value;
         }
         return ρσ_list_decorate(output);
     })()"""
+
+
+def fast_closed_binary(left, right, operation, missing):
+    """Dispatch one whitelisted closed-parent operation without coercion."""
+    return r"""%js (() => {
+        if (left !== null && right !== null &&
+            typeof left === "object" && typeof right === "object") {
+            const parent = left._parent;
+            if (parent !== undefined && parent === right._parent &&
+                parent._closedScalarArithmetic === true) {
+                switch (operation) {
+                    case "add": return left._add_(right);
+                    case "sub": return left._sub_(right);
+                    case "mul": return left._mul_(right);
+                    case "truediv": return left._truediv_(right);
+                    default: throw new Error("invalid closed binary operation");
+                }
+            }
+        }
+        return missing;
+    })()"""
+
+
+def fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
+    """Run a compiler-proven closed machine-residue recurrence."""
+    return ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count)
 
 
 def integer_buffer_prefix(source, length):
@@ -602,6 +694,7 @@ list_contains = ρσ_list_contains
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
+brand_machine_field_element = ρσ_brand_machine_field_element
 named_tuple = ρσ_named_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power

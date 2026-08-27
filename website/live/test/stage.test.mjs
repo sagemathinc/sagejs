@@ -17,6 +17,10 @@ test("staging consumes and verifies the production artifact manifest", async () 
   await mkdir(path.join(temporary, "architecture"), { recursive: true });
   await writeFile(path.join(appRoot, "index.html"), "<!doctype html><title>test</title>");
   await writeFile(
+    path.join(appRoot, "codemirror-editor.mjs"),
+    "export const editorFixture = 'bundled-editor';\n",
+  );
+  await writeFile(
     path.join(appRoot, "sw.js"),
     'const TRUSTED_MANIFEST_SHA256 = "__SAGEJS_ASSET_MANIFEST_SHA256__";\n',
   );
@@ -68,6 +72,10 @@ test("staging consumes and verifies the production artifact manifest", async () 
   assert.equal(result.artifactIdentity, artifact.identity);
   const identity = artifact.identity.slice("sha256:".length);
   assert.equal(await readFile(path.join(appRoot, `dist/assets/sha256-${identity}/dist/kernel.wasm`), "utf8"), "wasm bytes");
+  assert.match(
+    await readFile(path.join(appRoot, "dist/codemirror-editor.mjs"), "utf8"),
+    /bundled-editor/,
+  );
   const version = JSON.parse(await readFile(path.join(appRoot, "dist/runtime-version.json"), "utf8"));
   assert.equal(version.assetBase, `./assets/sha256-${identity}/`);
   const webManifest = JSON.parse(await readFile(path.join(appRoot, "dist/asset-manifest.json"), "utf8"));

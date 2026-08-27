@@ -226,9 +226,21 @@ init.diagnostics()
 ```
 
 The central jet is materialized once, exact coefficients are shared, and
-general points requested together use one inverse-Mellin grid.  `close()`
-clears the prepared host cache; the current implementation owns no persistent
-native pointer.  Process-local reference-weight and curve-plan caches are
+general points requested together use one inverse-Mellin grid. For central
+derivatives through the ordinary 64-bit envelope, the native evaluator can
+reuse a bounded, process-local universal Taylor table. Its key contains only
+genus, precision, derivative order, logarithmic domain, and algorithm version;
+it contains no curve coefficients or conductor. A fresh curve therefore still
+builds a fresh coefficient prefix, plan, and result while sharing the same
+mathematical weight table. The cold table-construction row is reported
+separately from warm-table initialization.
+
+The exact one-worker Arb contour remains the differential oracle. A bounded
+four-worker path partitions coefficient ranges into private Arb grids and
+merges them deterministically; diagnostics record requested and actual worker
+counts, wall and aggregate CPU time, cancellation, fallback, table construction,
+and table evaluation. `close()` clears the prepared host result cache.
+Process-local reference-weight, curve-plan, and universal-table caches are
 bounded and inspectable with `central_weight_cache_info()`, and may be reset
 with `clear_central_weight_cache()`.
 

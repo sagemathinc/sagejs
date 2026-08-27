@@ -1,0 +1,26 @@
+{
+  "schema": "sagejs.optimizer-field-held-out/v1",
+  "description": "Source-shape corpus maintained independently of the optimizer pass implementation.",
+  "workloads": [
+    {
+      "id": "two-interacting-accumulators",
+      "definition": "def held_pair(count, K, a):\n    left = K(1) + 2*a\n    right = K(3) + 4*a\n    increment = K(5) + 6*a\n    for step in range(count):\n        left = left * right + increment\n        right = right * increment + left\n    return left, right, step",
+      "call": "print(held_pair(37, K, a))"
+    },
+    {
+      "id": "horner-over-existing-elements",
+      "definition": "def held_horner(coefficients, point, K):\n    value = K(1)\n    for coefficient in coefficients:\n        value = value * point + coefficient\n    return value, coefficient",
+      "call": "coefficients = (K(2), K(3)+a, K(4)+2*a, K(5)+3*a)\nprint(held_horner(coefficients, K(7)+a, K))"
+    },
+    {
+      "id": "equality-controlled-recurrence",
+      "definition": "def held_branch(count, K, a):\n    left = K(1) + 2*a\n    right = K(3) + 4*a\n    increment = K(5) + 6*a\n    for step in range(count):\n        left = left * right + increment\n        if left == increment:\n            right = right + left\n        else:\n            right = right - left\n    return left, right, step",
+      "call": "print(held_branch(41, K, a))"
+    },
+    {
+      "id": "dot-product-over-tuple-prefixes",
+      "definition": "def held_dot(left, right, count, K):\n    total = K(1)\n    for position in range(count):\n        total = total + left[position] * right[position]\n    return total, position",
+      "call": "left = (K(2), K(3)+a, K(4)+2*a, K(5)+3*a)\nright = (K(7)+a, K(8)+2*a, K(9)+3*a, K(10)+4*a)\nprint(held_dot(left, right, len(left), K))"
+    }
+  ]
+}

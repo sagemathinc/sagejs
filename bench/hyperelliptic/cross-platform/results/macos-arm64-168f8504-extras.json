@@ -1,0 +1,112 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-23T16:24:19.856Z",
+  "repository": {
+    "commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8",
+    "package_smoke_overlay": {
+      "source_commit": "168f850407f3f685545932b1b770f40b42c74ad6",
+      "test_patch_commit": "08a7383d425c6dd4f02f46319fc3b31282b6b244",
+      "base_test_sha256": "9274b135dab7b58c1f29ccf427d1fb1ad3609bf01ffa6dd958bce10f9714fd06",
+      "patched_test_sha256": "c50744bf07c5588ccc50c346e93e3f2a21290526751ea7b5e4f7993e54857283",
+      "updater_sha256": "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e"
+    }
+  },
+  "host": {
+    "hostname": "studio.local",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "node": "v26.5.0"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "unavailable",
+    "reason": "the checked-in standalone harness emits GNU/ELF --gc-sections and --exclude-libs linker flags rejected by native Mach-O ld; macOS native kernels remain covered separately"
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "17dcb97fe3b7085a93dadc81658a0058d79387f144506342d53389fc9a91a78a",
+    "artifact_id": null,
+    "pack_count": 36,
+    "load_ms": 57.33470900000003,
+    "process_rss_bytes": 131596288,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 4.699584000000016,
+          "median": 5.761749999999893,
+          "max": 6.03245800000002,
+          "mad": 0.27070800000012696
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552"
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 4.729208999999969,
+          "median": 4.786292000000003,
+          "max": 5.827334000000064,
+          "mad": 0.0522920000000795
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592"
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 6.84862499999997,
+        "median": 7.8850419999999986,
+        "max": 10.766666999999984,
+        "mad": 0.8604589999999916
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 364.9803750000001,
+      "stdout_sha256": "45a9b2b3352452432c44f6dcbfcc012c45f209aaf9cdf7c91fe65a757f002a3a",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 5346.3205,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///Volumes/sage/sagejs-hyp-cross-168f8504/packages/flint-wasm/kernel.mjs:274:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 2905.1146660000004,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 9313.147666,
+      "stdout_sha256": "2037f1adfae4e76b9ccb513298878e319cb164d62defd05e47d48ecb67713e66",
+      "stdout": "(node:29111) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✔ authenticated production packs execute every hyperelliptic source family (2236.361334ms)\n✔ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (6654.7055ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (0.53ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 9192.875792",
+      "stderr": "",
+      "test_patch_commit": "08a7383d425c6dd4f02f46319fc3b31282b6b244",
+      "test_source_sha256": "c50744bf07c5588ccc50c346e93e3f2a21290526751ea7b5e4f7993e54857283"
+    }
+  },
+  "finished_at": "2026-08-23T16:25:50.851Z",
+  "package_smoke_supplemented_at_utc": "2026-08-23T16:26:07.897Z"
+}

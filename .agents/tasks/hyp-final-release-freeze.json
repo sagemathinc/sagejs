@@ -1,0 +1,129 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-final-release-freeze",
+  "title": "Hyp Final Release Freeze",
+  "lane": "integration",
+  "status": "review",
+  "owner": "user",
+  "objective": "Publish and validate the final higher-genus mathematical source, collect the remaining exact competitor and platform receipts, update the release scorecard, and enable only receipt-authenticated automatic envelopes",
+  "base_commit": "99e4e469c31e056ff4f91bd0ba1a741c484d05b1",
+  "claims": [
+    ".agents/lanes.json",
+    "agents/hyperelliptic-magma-pari-performance-plan.md",
+    "agents/hyperelliptic-magma-pari-performance-completion-audit.md",
+    "architecture/",
+    "packages/flint-wasm/",
+    "test/node-test-manifest.cjs",
+    "test/hyperelliptic-native-cantor.cjs",
+    "test/hyperelliptic-genus2-height-performance.cjs",
+    "test/hyperelliptic-analytic-acceptance.cjs",
+    "test/hyperelliptic-auto-receipt-dispatch.cjs",
+    "test/hyperelliptic-auto-receipt-policy.cjs",
+    "test/hyperelliptic-rational-public-scalar-benchmark.cjs",
+    "bench/hyperelliptic/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "mixed",
+    "fallback": "tested-capability",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "exact Magma/PARI and four-platform receipt digests"
+    ],
+    "exceptions": [
+      "Shared generated production registries, package budgets, and receipt policy are final-integration artifacts for already reviewed source-transparent mathematics"
+    ]
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.766,
+      "started_at": "2026-08-25T09:29:01.822Z",
+      "commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "workspace_fingerprint": "6eb6977eaf46ef6bdbb2f6e291dda9fb2cca55fa35d2769d4d22b570d335163c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.602,
+      "started_at": "2026-08-25T09:29:13.380Z",
+      "commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "workspace_fingerprint": "6eb6977eaf46ef6bdbb2f6e291dda9fb2cca55fa35d2769d4d22b570d335163c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.639,
+      "started_at": "2026-08-25T09:29:59.066Z",
+      "commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "workspace_fingerprint": "6eb6977eaf46ef6bdbb2f6e291dda9fb2cca55fa35d2769d4d22b570d335163c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.84,
+      "started_at": "2026-08-25T09:32:09.099Z",
+      "commit": "afe7750e388507e3871b95581438f04acdfbcfd9",
+      "workspace_fingerprint": "4b797badc617c0763536ba49de7d895dad0b91c995509e59df124d0b65d0919c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 39.66,
+      "started_at": "2026-08-25T09:32:21.726Z",
+      "commit": "afe7750e388507e3871b95581438f04acdfbcfd9",
+      "workspace_fingerprint": "4b797badc617c0763536ba49de7d895dad0b91c995509e59df124d0b65d0919c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 68.594,
+      "started_at": "2026-08-25T09:33:05.414Z",
+      "commit": "afe7750e388507e3871b95581438f04acdfbcfd9",
+      "workspace_fingerprint": "4b797badc617c0763536ba49de7d895dad0b91c995509e59df124d0b65d0919c",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Integrated the reviewed higher-genus mathematics, froze mathematical source a680c04d (framed bundle 36495206...73e1), collected exact native/dynamic and authenticated Wasm evidence on Linux x64, Linux ARM64, macOS ARM64, and Windows x64 at a9d83f82, recorded sanitizer/cache/failure evidence, and generated a fail-closed release policy with six exact GF(1009) Cantor envelopes backed by 24 normalized receipts. The final local release assembly contains the enabled policy and current 273-function Wasm coverage, passes the full 61-file portable suite, architecture, strict Python, and direct/public/browser hyperelliptic Wasm tests, and is documented as a defensible release candidate rather than a claim that every performance target passed.",
+    "risks": [
+      "The small-coefficient ordinary rational-addition row remains 7.81x Magma and the genus-2 object-cold height paths remain 322--335 ms and 738--777 ms; both are declared performance misses.",
+      "Source-current Phase-9 analytic acceptance times out at 600 seconds with roughly 17 GiB RSS. Historical evidence is retained but is not presented as current acceptance.",
+      "The first artifact-cold rank-three map after a full rebuild is 1.224 seconds; the separately measured process-cold post-publication path passes at 0.532--0.563 seconds.",
+      "The four-platform receipts bind the immutable pre-allowlist mathematical artifact. The final local package hash differs because it includes the subsequently generated enabled policy and 273-function coverage metadata; the framed mathematical bundle is unchanged.",
+      "Only six exact GF(1009) model/workload cells are automatically enabled. All other operations, models, primes, and workload sizes deliberately fall back until independently receipted."
+    ],
+    "next_steps": [
+      "Merge the review branch without rewriting its evidence commits and retain a9d83f82 plus the raw receipt hashes as the mathematical freeze identity.",
+      "Diagnose the Phase-9 evaluation/RSS regression before spending another acceptance run.",
+      "Revisit the two declared representation-heavy misses only after evaluating the live exact-workspace compiler slice.",
+      "Require a new source freeze and four-platform evidence before widening any automatic-selection envelope."
+    ]
+  }
+}

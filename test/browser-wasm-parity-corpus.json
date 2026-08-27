@@ -18,6 +18,51 @@
       }
     },
     {
+      "id": "partition-count-and-ranking",
+      "family": "enumerative-combinatorics",
+      "workflow": "partition-count-and-ranking",
+      "tier": "release",
+      "requires": [
+        { "id": "ffi:flint:arith_number_of_partitions", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "value=number_of_partitions(10^6)\nC=Partitions(100,max_part=20)\np=C.unrank(12345)\nprint(len(str(value)),value%10^12)\nprint(C.cardinality(),C.rank(p),p)\nlarge=Partitions(10000)\ntry:\n    large.unrank(1)\nexcept RuntimeError as error:\n    print(str(error),large._table is None)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1108 467104673818\n97132873 12345 [20, 20, 20, 12, 11, 5, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]\npartition ranking table requires 50015001 cells, exceeding the reviewed maximum 1000000 True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "optimizer-gf-p2-affine",
+      "family": "finite-fields",
+      "workflow": "optimizer-gf-p2-affine",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-gf-p2-affine-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<x> = PolynomialRing(GF(97))\nK.<a> = GF(97^2, modulus=x^2 + x + 5)\ndef optimized(count):\n    value = K(1) + 2*a\n    multiplier = K(3) + 4*a\n    increment = K(5) + 6*a\n    for index in range(count):\n        value = value * multiplier + increment\n    return value, index\nanswer = optimized(10000)\nprint(answer[0], answer[1], K._lastCompilerOptimizationRoute)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "15*a + 81 9999 wasm-compiled-source\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "optimizer-gf-pk-affine",
+      "family": "finite-fields",
+      "workflow": "optimizer-gf-pk-affine",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-gf-pk-affine-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<x> = PolynomialRing(GF(5))\nK.<a> = GF(5^3, modulus=x^3+x+1)\ndef optimized(count):\n    aa=a*a\n    value=K(1)+2*a+3*aa\n    multiplier=K(2)+a+4*aa\n    increment=K(3)+4*a+aa\n    for index in range(count):\n        value=value*multiplier+increment\n    return value,index\nK._machineExtensionIsolatedMinSteps=4096\nanswer=optimized(10000)\nprint(tuple(answer[0]._machineCoordinates),answer[1],K._lastCompilerOptimizationRoute)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "(2, 2, 0) 9999 wasm-compiled-source\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "capability-report-api",
       "family": "runtime",
       "workflow": "capability-report-api",
@@ -29,6 +74,21 @@
       "timeout_ms": 15000,
       "expect": {
         "stdout": "True True True\nimmutable\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "python-float-underscore-separators",
+      "family": "python-compatibility",
+      "workflow": "python-float-underscore-separators",
+      "tier": "routine",
+      "requires": [
+        { "id": "specialist:capability-report-api", "route": "shared-runtime-js" }
+      ],
+      "source": "sagejs_capabilities('runtime')\nprint(1_000_000.0 == 1000000.0, float('1_00_00.5e5') == 10000.5e5, float(b'.1_4') == .14)\ninvalid = 0\nfor text in ['1__0', '1_.0', '1._0', '1e_1', '_inf', 'nan_']:\n    try:\n        float(text)\n    except ValueError:\n        invalid += 1\nprint(invalid)",
+      "timeout_ms": 15000,
+      "expect": {
+        "stdout": "True True True\n6\n",
         "repr": ""
       }
     },
@@ -398,6 +458,21 @@
       }
     },
     {
+      "id": "hyperelliptic-bsd-supplied-quotient",
+      "family": "hyperelliptic-curves",
+      "workflow": "hyperelliptic-bsd-sagepack-roundtrip",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:sagepack", "route": "shared-runtime-js" }
+      ],
+      "source": "from sagejs.hyperelliptic_curves.bsd import BSDArithmeticInput, BSDAnalyticQuotient, LeadingTermData, RankEvidence, Provenance\nfrom sagejs_serialization import dumps, loads\nsource = Provenance.supplied('browser-parity-fixture')\ninput_data = BSDArithmeticInput.supplied_jacobian(leading_term=LeadingTermData.supplied(2, 12, 1, provenance=source), algebraic_rank=RankEvidence('supplied', 2, source), real_period=2, height_pairing=[[2,0],[0,3]], tamagawa_numbers={2:1,5:2}, bad_primes=(2,5), torsion_order=1, real_component_factor=1, period_differential_basis='supplied Neron top differential', real_period_is_total=True, subgroup_basis=[{'label':'P1'},{'label':'P2'}], curve_model={'base_ring':'QQ','f_coefficients':['1','-1','0','0','0','1'],'h_coefficients':['0']}, backend_versions={'sagejs':'browser-parity-fixture'})\nresult = BSDAnalyticQuotient(input_data)\nrecord = result.to_dict()\npacket = dumps(record)\nprint(str(result.sha_over_index_squared()), result.tamagawa_product(), result.rigorous, loads(packet) == record)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "1/4 2 False True\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "number-field-cubic-headline",
       "family": "number-fields",
       "workflow": "number-field-cubic-headline",
@@ -426,6 +501,21 @@
       "timeout_ms": 60000,
       "expect": {
         "stdout": "0265c0622cb1dde8aeed6412f652395dd4bbddd633c0a545440646753b3d76cc\n7203 True True\nTrue True True\nTrue True True\nTrue True\nTrue 5 2 1\nTrue True True\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "numpy-vertical-slice",
+      "family": "numerical",
+      "workflow": "numpy-vertical-slice",
+      "tier": "release",
+      "requires": [
+        { "id": "specialist:numpy-ts", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "import numpy as np\na = np.arange(12, dtype=np.int32).reshape(3, 4)\nview = a[:, 1:3]\nview[0, 0] = 99\nprint(type(a).__name__, a.dtype.name, a.shape)\nprint((a + 2).sum(axis=0).tolist())\nprint(round(float(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]]))), 10))",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "ndarray int32 (3, 4)\n[18, 119, 24, 27]\n0.75\n",
         "repr": ""
       }
     },

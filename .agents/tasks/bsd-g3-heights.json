@@ -1,0 +1,154 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bsd-g3-heights",
+  "title": "Genus-3 Faltings-Hriljac heights",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a bounded reference Faltings-Hriljac height and regulator engine for odd-degree genus-3 hyperelliptic Jacobians with explicit local capability diagnostics",
+  "base_commit": "4bce26d036b8273ae08f2dcb05dd335c71ad1b72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
+    "src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py"
+  ],
+  "dependencies": [
+    "bsd-periods"
+  ],
+  "references": [
+    "https://arxiv.org/abs/1004.4503",
+    "https://arxiv.org/abs/1105.1719"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "exact finite intersection and graph-lattice self checks",
+      "Magma canonical heights when available",
+      "genus-2 Muller-Stoll overlap fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+    "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+    "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py"
+  ],
+  "runs": [
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.08,
+      "started_at": "2026-08-22T06:39:58.126Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.713,
+      "started_at": "2026-08-22T06:39:58.898Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 60.253,
+      "started_at": "2026-08-22T06:40:07.220Z",
+      "commit": "1267491f1ab92495f17faf9b3530e50183a955fc",
+      "workspace_fingerprint": "3760da58536cf05487c6db8723079e9ae8d35277ac82c7f39c83bd85a907ee90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.624,
+      "started_at": "2026-08-22T07:28:26.824Z",
+      "commit": "031c499000494a4b1165296f535aa0cb75fa4136",
+      "workspace_fingerprint": "6138aaf912efdd71e171345f1c51e385fd365f9b48bd31cfe7d586fb39e8f947",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.083,
+      "started_at": "2026-08-22T07:28:44.695Z",
+      "commit": "031c499000494a4b1165296f535aa0cb75fa4136",
+      "workspace_fingerprint": "6138aaf912efdd71e171345f1c51e385fd365f9b48bd31cfe7d586fb39e8f947",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.085,
+      "started_at": "2026-08-22T07:45:05.884Z",
+      "commit": "70a93de8fc740dbee95248de0be1472c03bdbe15",
+      "workspace_fingerprint": "81ee1a604323e22d92cb4b5e9176be99c3a9026ffa233c51f7caa9e7bdc071ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.662,
+      "started_at": "2026-08-22T07:45:06.635Z",
+      "commit": "70a93de8fc740dbee95248de0be1472c03bdbe15",
+      "workspace_fingerprint": "81ee1a604323e22d92cb4b5e9176be99c3a9026ffa233c51f7caa9e7bdc071ea",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python -m py_compile src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.086,
+      "started_at": "2026-08-22T07:52:25.511Z",
+      "commit": "33d8e8e4486b6165e7b8c05d587834dcdb47f5da",
+      "workspace_fingerprint": "bd5113a4b0cb5ed2c1467e622a31bcb825dd8550f07db068c8900c99b17c907e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/hyperelliptic_curves/genus3_heights.py src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.763,
+      "started_at": "2026-08-22T07:52:26.256Z",
+      "commit": "33d8e8e4486b6165e7b8c05d587834dcdb47f5da",
+      "workspace_fingerprint": "bd5113a4b0cb5ed2c1467e622a31bcb825dd8550f07db068c8900c99b17c907e",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a bounded ordinary-Python genus-3 Faltings--Hriljac reference engine: exact regular-model matrix validation and Cox--Zucker vertical solves; replay-certified good and irreducible-nodal finite paths; exact rational-section intersections; split-Mumford factorization and Holmes moving representatives; complete finite candidate-prime plans with structured unsupported records; Muller theta Green functions with refinement witnesses; the frozen periods/Abel--Jacobi adapter; global pairing, canonical-height, pairing-matrix, and regulator assembly. Raw model-basis Abel--Jacobi integrals are explicitly normalized as z=A^-1*w before use with tau=A^-1*B, with raw and normalized coordinates retained in the certificate. Complete finite plans and automatic archimedean witnesses are bound to exact curve, Mumford divisor, moving representative, theta support, and class-multiple keys; cross-move reuse is rejected. Once a finite plan is supplied, the assembler accepts only the plan's exact pairing objects and derives the finite sum from the plan, preventing same-prime local-symbol substitution. Supplied matrices, local symbols, component assertions, prime-set assertions, and rigorous analytic assertions remain conditional and cannot promote certification. The automatic theta envelope is odd-degree genus-3 QQ, rational infinity, split rational Mumford degree three. The focused runtime, including a real period/Abel--Jacobi/theta integration regression, passed against frozen periods commit 717df283.",
+    "risks": [
+      "The current local-reduction cluster certificates do not encode replayable full regular-model incidence/blow-up matrices or section-to-component maps. Reducible semistable fibres therefore remain unsupported for certified automatic heights; supplied matrices/component claims are recorded only as conditional inputs.",
+      "The archimedean result is numerical and non-rigorous: theta radius refinement is checked, but period, Abel--Jacobi, truncation, and rounding errors are not enclosed.",
+      "Automatic archimedean integration depends on bsd-periods. It passed the full internal runtime against frozen periods commit 717df283, but no independent Magma end-to-end numeric height oracle is claimed.",
+      "Bad reduction at p=2 and rational sections meeting singular plane-fibre points require supplied certified local pairings. Mature integer factorization is guarded by an input-size cap, not a wall-clock cancellation mechanism.",
+      "Broad native, SEA, and Wasm suites were intentionally deferred to centralized integration at the integration owner's request."
+    ],
+    "next_steps": [
+      "Merge bsd-periods first, then compare one automatic split degree-three odd-model example with Magma CanonicalHeight and check two independent moving fibres.",
+      "Expose the selected classes/functions through the centrally owned hyperelliptic public API and attach the finite/archimedean provenance to the BSD quotient result.",
+      "Extend typed local certificates with curve-bound, replayable regular-model intersection matrices and section component maps for reducible split-cluster fibres, then widen the theta move for Mumford degree one and two.",
+      "Replace numerical theta refinement by ball-enclosed periods, Abel--Jacobi integrals, theta tails, and determinant/regulator arithmetic when a rigorous analytic backend is available."
+    ]
+  }
+}

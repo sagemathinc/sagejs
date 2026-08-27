@@ -32,33 +32,8 @@ const descriptor = {
 };
 
 function discoverToolchain() {
-  const common = spawnSync("git", ["rev-parse", "--git-common-dir"], {
-    cwd: root,
-    encoding: "utf8",
-  }).stdout.trim();
-  const store = resolve(root, common, "sagejs-wasm-toolchains", "v1");
-  for (const generation of existsSync(store)
-    ? readdirSync(store).sort().reverse()
-    : []) {
-    const cowasm = join(store, generation, "cowasm");
-    const sdk = join(
-      cowasm,
-      "core/build/build/wasi-sdk/dist/wasi-sdk-next/native",
-    );
-    const toolchain = {
-      clang: join(sdk, "bin/clang"),
-      sysroot: join(sdk, "share/wasi-sysroot"),
-      gmpPrefix: join(cowasm, "sagemath/gmp/dist/wasi-sdk"),
-      flintPrefix: "unused",
-      mpfrPrefix: "unused",
-      mpcPrefix: "unused",
-    };
-    if (
-      existsSync(toolchain.clang) &&
-      existsSync(join(toolchain.gmpPrefix, "lib/libgmp.a"))
-    ) return toolchain;
-  }
-  throw new Error("the pinned WASI/GMP toolchain is unavailable");
+  return require("../packages/wasm-toolchain/scripts/toolchain.cjs")
+    .wasmKernelToolchain({ root });
 }
 
 function publicPortableSeconds() {

@@ -12,6 +12,14 @@ const {
 
 const UINT64_MAX = 18446744073709551615n;
 const BUFFER_TYPES = new Set(["Float64Buffer", "Float64Record"]);
+const COMPARISONS = new Map([
+  ["==", "eq"],
+  ["!=", "ne"],
+  ["<", "lt"],
+  ["<=", "le"],
+  [">", "gt"],
+  [">=", "ge"],
+]);
 
 function nodeType(node) {
   return node?.constructor?.name;
@@ -149,7 +157,11 @@ function staticType(node, context) {
     if (name === "float64_record") return "Float64Record";
   }
   if (nodeType(node) === "AST_Binary") {
+    if (COMPARISONS.has(node.operator)) return "bool";
     return staticType(node.left, context) || staticType(node.right, context);
+  }
+  if (nodeType(node) === "AST_UnaryPrefix" && node.operator === "-") {
+    return staticType(node.expression, context);
   }
   return undefined;
 }
@@ -291,6 +303,35 @@ function lowerBinary(node, context, operations, expectedType) {
   return { name: target, type };
 }
 
+function lowerComparison(node, context, operations) {
+  const operation = COMPARISONS.get(node.operator);
+  const type = staticType(node.left, context) ||
+    staticType(node.right, context) || "Float64";
+  expect(
+    context,
+    node,
+    type === "Float64" || type === "uint64",
+    "binary64 comparisons require Float64 or uint64 operands",
+  );
+  const left = lowerExpression(node.left, context, operations, type);
+  const right = lowerExpression(node.right, context, operations, type);
+  expect(
+    context,
+    node,
+    left.type === type && right.type === type,
+    type + " comparison requires matching operands",
+  );
+  const target = temporary(context, node, "bool");
+  operations.push({
+    kind: type === "Float64" ? "float64.compare" : "uint64.compare",
+    operation,
+    target,
+    left: left.name,
+    right: right.name,
+  });
+  return { name: target, type: "bool" };
+}
+
 function lowerExpression(node, context, operations, expectedType) {
   if (expectedType === "uint64") {
     const integer = uint64Literal(node);
@@ -327,6 +368,27 @@ function lowerExpression(node, context, operations, expectedType) {
   if (nodeType(node) === "AST_Call") {
     return lowerCall(node, context, operations, expectedType);
   }
+  if (nodeType(node) === "AST_UnaryPrefix" && node.operator === "-") {
+    const source = lowerExpression(
+      node.expression,
+      context,
+      operations,
+      expectedType ?? "Float64",
+    );
+    expect(
+      context,
+      node,
+      source.type === "Float64",
+      "binary64 unary minus requires a Float64 operand",
+    );
+    const target = temporary(context, node, "Float64");
+    operations.push({
+      kind: "float64.negate",
+      target,
+      source: source.name,
+    });
+    return { name: target, type: "Float64" };
+  }
   if (nodeType(node) === "AST_ItemAccess") {
     const buffer = lowerExpression(node.expression, context, operations);
     expect(
@@ -352,7 +414,27 @@ function lowerExpression(node, context, operations, expectedType) {
     nodeType(node) === "AST_Binary",
     "unsupported " + nodeType(node) + " binary64 expression",
   );
+  if (COMPARISONS.has(node.operator)) {
+    expect(
+      context,
+      node,
+      expectedType === undefined || expectedType === "bool",
+      "binary64 comparison produces bool, not " + expectedType,
+    );
+    return lowerComparison(node, context, operations);
+  }
   return lowerBinary(node, context, operations, expectedType);
+}
+
+function lowerCondition(node, context, operations) {
+  const condition = lowerExpression(node, context, operations, "bool");
+  expect(
+    context,
+    node,
+    condition.type === "bool",
+    "binary64 if condition must be bool",
+  );
+  return condition;
 }
 
 function bufferSet(assign, context, operator = "=") {
@@ -603,6 +685,41 @@ function lowerBlock(block, context) {
       result.push(...range.operations, operation);
       continue;
     }
+    if (nodeType(statement) === "AST_If") {
+      const conditionOperations = [];
+      const condition = lowerCondition(
+        statement.condition,
+        context,
+        conditionOperations,
+      );
+      const before = new Set(context.initialized);
+      context.initialized = new Set(before);
+      const body = lowerBlock(statement.body, context);
+      const bodyInitialized = new Set(context.initialized);
+      context.initialized = new Set(before);
+      const hasAlternative = statement.alternative !== null &&
+        statement.alternative !== undefined;
+      const alternative = hasAlternative
+        ? lowerBlock(statement.alternative, context)
+        : [];
+      const alternativeInitialized = hasAlternative
+        ? new Set(context.initialized)
+        : before;
+      context.initialized = new Set(
+        Array.from(bodyInitialized).filter((name) =>
+          alternativeInitialized.has(name)
+        ),
+      );
+      const operation = {
+        kind: "if",
+        condition: { operations: conditionOperations, value: condition.name },
+        body,
+        alternative,
+      };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
+      continue;
+    }
     if (nodeType(statement) === "AST_Return") {
       const operations = [];
       const value = lowerExpression(
@@ -663,6 +780,9 @@ function mutationRoots(statements, aliases, result) {
         nestedChanged = mutationRoots(statement.body, aliases, result);
         changed = nestedChanged || changed;
       } while (nestedChanged);
+    } else if (statement.kind === "if") {
+      changed = mutationRoots(statement.body, aliases, result) || changed;
+      changed = mutationRoots(statement.alternative, aliases, result) || changed;
     }
   }
   return changed;

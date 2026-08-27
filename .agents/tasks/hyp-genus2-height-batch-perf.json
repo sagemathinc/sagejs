@@ -1,0 +1,140 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-genus2-height-batch-perf",
+  "title": "Genus-2 Height Batch Performance",
+  "lane": "hyperelliptic-curves",
+  "status": "active",
+  "owner": "user",
+  "objective": "Batch uncached genus-2 local height recurrences, exact outward logarithms, and proof publication so cold rank-2/rank-4 pairings approach the Phase-7 Magma gate without weakening certificates.",
+  "base_commit": "01d6fb577f38d37c89d9805f0592d9798277bd72",
+  "claims": [
+    "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+    "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+    "test/hyperelliptic-genus2-height-performance.cjs",
+    "test/hyperelliptic-genus2-heights.cjs",
+    "bench/hyperelliptic/benchmark-genus2-height-competitive.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "scalar certified genus-2 height path",
+      "exact small-step Flynn recurrence",
+      "mpmath multiprecision interval logarithm",
+      "Magma 2.18-5 demonstrated-accuracy pairing"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 23.266,
+      "started_at": "2026-08-23T11:21:38.463Z",
+      "commit": "01d6fb577f38d37c89d9805f0592d9798277bd72",
+      "workspace_fingerprint": "f68e1fd003cb5849fb7181814655a7913c48c982b34102d86571450cfad25e99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 36.01,
+      "started_at": "2026-08-23T11:22:07.712Z",
+      "commit": "01d6fb577f38d37c89d9805f0592d9798277bd72",
+      "workspace_fingerprint": "f68e1fd003cb5849fb7181814655a7913c48c982b34102d86571450cfad25e99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "./bin/sagejs native compile src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py --functions modular_kummer_height_recurrence,modular_kummer_height_recurrence_batch,dyadic_kummer_height_recurrence,dyadic_kummer_height_recurrence_batch,exact_kummer_small_step_batch,dyadic_log_interval_batch --json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.505,
+      "started_at": "2026-08-23T11:22:50.868Z",
+      "commit": "01d6fb577f38d37c89d9805f0592d9798277bd72",
+      "workspace_fingerprint": "f68e1fd003cb5849fb7181814655a7913c48c982b34102d86571450cfad25e99",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 24.927,
+      "started_at": "2026-08-23T23:31:47.077Z",
+      "commit": "33bb331cf4e7e9ec20ab6a0054dc2bcc1b7e4b3b",
+      "workspace_fingerprint": "2fcbf4f5ac0178cdae4f392390f35356be5f75fe72ad53ce6bc9568423a0e40f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/hyperelliptic/benchmark-genus2-height-competitive.cjs --targets 64 --repeat 3",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 3.587,
+      "started_at": "2026-08-23T23:32:50.610Z",
+      "commit": "33bb331cf4e7e9ec20ab6a0054dc2bcc1b7e4b3b",
+      "workspace_fingerprint": "2fcbf4f5ac0178cdae4f392390f35356be5f75fe72ad53ce6bc9568423a0e40f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 35.943,
+      "started_at": "2026-08-23T23:33:50.818Z",
+      "commit": "33bb331cf4e7e9ec20ab6a0054dc2bcc1b7e4b3b",
+      "workspace_fingerprint": "2fcbf4f5ac0178cdae4f392390f35356be5f75fe72ad53ce6bc9568423a0e40f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 35.932,
+      "started_at": "2026-08-23T23:34:42.546Z",
+      "commit": "33bb331cf4e7e9ec20ab6a0054dc2bcc1b7e4b3b",
+      "workspace_fingerprint": "72521878a277cde04d0b0af1721c7ac3a2ce388e0f9c910ca5928fc1e22a5d90",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-genus2-height-performance.cjs test/hyperelliptic-genus2-heights.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 29.83,
+      "started_at": "2026-08-23T23:40:40.298Z",
+      "commit": "33bb331cf4e7e9ec20ab6a0054dc2bcc1b7e4b3b",
+      "workspace_fingerprint": "72521878a277cde04d0b0af1721c7ac3a2ce388e0f9c910ca5928fc1e22a5d90",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Extended the reviewed proof-safe batch path with compact closure-owned primitive canonical/pairing payloads, lazy public diagnostic materialization, direct polarization from authenticated balls, and one atomic joint cache publication. Initial-height and finite-correction logarithms now share the exact outward integer atanh batch; finite logarithms and denominators are reused without changing the certified enclosure. The standard local 64-bit fixture improved from about 0.632s to 0.322-0.335s rank 2 and from 1.690s to 0.738-0.776s for the four-vector fixture; warm pairing remains about 18-26ms. This is an honest roughly 2x cold improvement, but it still misses the 0.18/0.50s prototype floors and the Phase-7 <=2x Magma gate.",
+    "risks": [
+      "Cold rank-2/four-vector pairing remains well above the historical resident Magma rows; no competitive claim or new bench-1 receipt is made.",
+      "Production integration must add four functions to genus2-kummer-height-production and resolve hyperelliptic-curves-kernels source budget 185106 > 175000 by 10106 bytes.",
+      "Only linux-x64 was run locally; production-pack integration must repeat native/dynamic differentials on linux-arm64, windows-x64, and macos-arm64."
+    ],
+    "next_steps": [
+      "Obtain an independent proof/correctness audit of exact log rounding, hidden proof publication, cancellation atomicity, and cache provenance before integration.",
+      "Extend architecture/native-kernels.json with modular_kummer_height_recurrence_batch, dyadic_kummer_height_recurrence_batch, exact_kummer_small_step_batch, and dyadic_log_interval_batch, then resolve the package byte budget and rerun pnpm architecture:check.",
+      "Profile the remaining certified batch tail: current rank-2/four-vector batches take about 0.257/0.620s, while named recurrence/log/oracle stages account for about 0.133/0.309s. Further progress requires reducing theorem/result checks and exact arithmetic inside that tail, or accelerating divisor sums/public Cantor arithmetic; compact publication itself is only about 6/25ms.",
+      "Do not request bench-1 until local rank-2/four-vector cold timings approach 0.18/0.50s."
+    ]
+  }
+}

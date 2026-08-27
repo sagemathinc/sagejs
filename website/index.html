@@ -20,6 +20,7 @@
         <span>Sage.js</span>
       </a>
       <nav aria-label="Primary navigation">
+        <a class="launch-link" href="https://app.sagejs.org/">Run in browser</a>
         <a href="#install">Install</a>
         <a href="./reference.html">Reference</a>
         <a href="#capabilities">Capabilities</a>
@@ -34,15 +35,15 @@
       <section class="hero wrap" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Free, open-source research mathematics · GPL-3.0</p>
-          <h1 id="hero-title">See what exists.<br />See how good it is.<br />See what comes next.</h1>
+          <h1 id="hero-title">Research mathematics,<br />ready in your browser.</h1>
           <p class="lede">
-            Sage.js is a new implementation of Python and Sage semantics on
-            JavaScript and Node. It does not embed or invoke CPython. This is
-            its living map of concrete capabilities, evidence, and priorities.
+            Open Sage.js instantly at <strong>app.sagejs.org</strong>, or install
+            it locally for native desktop performance. Sage.js implements Python
+            and Sage semantics on JavaScript; it does not embed or invoke CPython.
           </p>
           <div class="hero-actions">
-            <a class="button primary" href="#capabilities">Explore capabilities</a>
-            <a class="button secondary" href="https://github.com/sagemathinc/sagejs">View source</a>
+            <a class="button primary" href="https://app.sagejs.org/">Run Sage.js now</a>
+            <a class="button secondary" href="#capabilities">Explore capabilities</a>
           </div>
         </div>
         <aside class="snapshot" aria-label="Project snapshot">
@@ -61,8 +62,8 @@
         <div class="wrap">
           <p class="eyebrow light">Start using Sage.js</p>
           <div class="install-title-row">
-            <h2 id="install-title">Native downloads for every supported desktop.</h2>
-            <span class="alpha-badge">Early alpha · v0.3.0</span>
+            <h2 id="install-title">Use the browser app, or install it locally.</h2>
+            <span class="alpha-badge">Early alpha · v0.4.0</span>
           </div>
           <p class="alpha-note">
             Sage.js is research software at a very early stage. Expect missing
@@ -70,6 +71,18 @@
             It is free software, fully open source, and licensed under
             <a href="https://github.com/sagemathinc/sagejs/blob/main/LICENSE">GPL-3.0</a>.
           </p>
+          <article class="browser-launch">
+            <div>
+              <p class="eyebrow light">Nothing to install</p>
+              <h3>Start a Sage.js session in your browser</h3>
+              <p>
+                The WebAssembly app runs locally in Chromium, Firefox, and
+                WebKit, with an offline-capable, receipt-verified mathematics
+                runtime.
+              </p>
+            </div>
+            <a class="download-button" href="https://app.sagejs.org/">Open app.sagejs.org</a>
+          </article>
           <div class="install-grid">
             <article class="install-card">
               <div class="install-heading"><span class="number">01</span><h3>macOS or Linux</h3></div>
@@ -84,16 +97,16 @@
               <div class="install-heading"><span class="number">02</span><h3>Windows x64</h3></div>
               <p>Download the standalone ZIP, verify its neighboring SHA-256 file, extract it, and run <code>sagejs.exe</code>. No WSL or separate Node installation is needed.</p>
               <a class="download-button" href="https://github.com/sagemathinc/sagejs/releases/latest/download/sagejs-windows-x64.zip">Download the Windows ZIP</a>
-              <p class="fine-print">v0.3.0 early alpha · unsigned; Windows SmartScreen may ask you to confirm this new publisher</p>
+              <p class="fine-print">v0.4.0 early alpha · unsigned unless the release reports Authenticode signing; Windows SmartScreen may ask you to confirm this new publisher</p>
             </article>
             <article class="install-card">
               <div class="install-heading"><span class="number">03</span><h3>npm and embedding</h3></div>
               <p>Installs the command line and JavaScript embedding package, including its native executable for the current platform.</p>
               <div class="command-row">
-                <code>npm install -g @sagemath/sagejs@0.3.0</code>
-                <button class="copy" data-copy="npm install -g @sagemath/sagejs@0.3.0" type="button">Copy</button>
+                <code>npm install -g @sagemath/sagejs@0.4.0</code>
+                <button class="copy" data-copy="npm install -g @sagemath/sagejs@0.4.0" type="button">Copy</button>
               </div>
-              <p class="fine-print">For an application: <code>pnpm add --allow-build=zeromq @sagemath/sagejs@0.3.0</code>, then import <code>@sagemath/sagejs/kernel</code>. The 0.3.0 embedding API is the compiler and JavaScript runtime; the standalone command has the full native mathematics stack.</p>
+              <p class="fine-print">For an application: <code>pnpm add --allow-build=zeromq @sagemath/sagejs@0.4.0</code>, then import <code>@sagemath/sagejs/kernel</code>. The 0.4.0 embedding API is the compiler and JavaScript runtime; the standalone command has the full native mathematics stack.</p>
             </article>
           </div>
           <div class="install-facts" aria-label="Standalone installation size and behavior">

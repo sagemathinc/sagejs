@@ -33,6 +33,32 @@
           "packages/flint-wasm/test/resource-browser-smoke.mjs"
         ]
       },
+      "finite-field-boundary-benchmark": {
+        "differential": true,
+        "paths": [
+          "bench/finite-field-boundary/benchmark-js.mjs",
+          "bench/finite-field-boundary/benchmark-compiler-recurrence.cjs",
+          "bench/finite-field-boundary/benchmark-native-recurrence.cjs",
+          "bench/finite-field-boundary/results-2026-08-26.json",
+          "packages/flint-wasm/test/finite-field-compiler-browser.mjs",
+          "test/finite-field-machine-residues.cjs"
+        ]
+      },
+      "optimizer-gf-p2-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-gf-p2.cjs",
+          "bench/optimizer-gf-p2.cjs"
+        ]
+      },
+      "optimizer-extension-degree-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-extension-degrees.cjs",
+          "bench/optimizer-extension-degrees.cjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
       "runtime-intrinsic-contract": {
         "differential": true,
         "paths": [
@@ -55,6 +81,14 @@
           "test/ffi-wasm-fmpq-resource-core.cjs"
         ]
       },
+      "partition-count-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "test/combinat.cjs",
+          "packages/flint-wasm/test/partition-count-public.test.mjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
       "fflas-wasm-disposition": {
         "differential": true,
         "paths": [
@@ -74,6 +108,44 @@
         "paths": [
           "test/production-native-kernels.cjs",
           "test/native-kernel.cjs"
+        ]
+      },
+      "hyperelliptic-native-kummer": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-native-kummer.cjs"
+        ]
+      },
+      "hyperelliptic-native-cantor": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-native-cantor.cjs"
+        ]
+      },
+      "hyperelliptic-genus2-height-performance": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-genus2-height-performance.cjs",
+          "test/hyperelliptic-genus2-heights.cjs"
+        ]
+      },
+      "hyperelliptic-period-arb-performance": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-period-arb-performance.cjs",
+          "test/hyperelliptic-analytic-performance.cjs"
+        ]
+      },
+      "hyperelliptic-periods-pari-corpus": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-periods.cjs"
+        ]
+      },
+      "hyperelliptic-rational-reduction-batch": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-rational-reduction-batch.cjs"
         ]
       },
       "graph-components-wasm-differential": {
@@ -138,6 +210,14 @@
         "paths": [
           "packages/flint/test/test.cjs",
           "test/baselib-boundaries.cjs"
+        ]
+      },
+      "numpy-ts-browser-differential": {
+        "differential": true,
+        "paths": [
+          "test/numpy-module.cjs",
+          "packages/flint-wasm/test/evaluator-host.test.mjs",
+          "packages/flint-wasm/test/browser-wasm-parity.mjs"
         ]
       },
       "graph-public-fallback-differential": {
@@ -209,6 +289,13 @@
         "differential": true,
         "paths": [
           "packages/flint-wasm/test/curve-parity.test.mjs"
+        ]
+      },
+      "hyperelliptic-rational-cantor": {
+        "differential": true,
+        "paths": [
+          "test/hyperelliptic-rational-cantor.cjs",
+          "bench/hyperelliptic/benchmark-rational-cantor.cjs"
         ]
       }
     },
@@ -311,6 +398,11 @@
         "source": "packages/flint-wasm/scripts/build.cjs"
       },
       {
+        "id": "specialist:numpy-ts",
+        "family": "numerical",
+        "source": "src/lib/numpy.py"
+      },
+      {
         "id": "specialist:fflas-ffpack",
         "family": "dense-prime-matrices",
         "source": "packages/fflas/package.json"
@@ -396,6 +488,12 @@
       "ffi:flint:fq_element",
       "ffi:flint:fq_element_pow"
     ],
+    "optimizer-gf-p2-affine": [
+      "kernel:packed-gf-p2-affine-production"
+    ],
+    "optimizer-gf-pk-affine": [
+      "kernel:packed-gf-pk-affine-production"
+    ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
     ],
@@ -432,6 +530,9 @@
     "moebius-range-packed": [
       "kernel:packed-moebius-range-production"
     ],
+    "partition-count-and-ranking": [
+      "ffi:flint:arith_number_of_partitions"
+    ],
     "multivariate-resultant-packed": [
       "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
     ],
@@ -443,8 +544,17 @@
       "napi:@sagemath/sagejs-flint:complexEi",
       "napi:@sagemath/sagejs-flint:complexBesselI"
     ],
+    "python-float-underscore-separators": [
+      "specialist:capability-report-api"
+    ],
+    "numpy-vertical-slice": [
+      "specialist:numpy-ts"
+    ],
     "hyperelliptic-smalljac-local-factors": [
       "specialist:smalljac"
+    ],
+    "hyperelliptic-bsd-sagepack-roundtrip": [
+      "specialist:sagepack"
     ],
     "number-field-maximal-order-prime-zeta": [
       "ffi:flint:fmpz_matrix_hnf",
@@ -4225,6 +4335,34 @@
         "status": "included"
       },
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:arith_number_of_partitions",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "explicit-capability-unavailable-pentagonal-recurrence",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "number_of_partitions",
+        "Partitions.cardinality"
+      ],
+      "tests": [
+        "partition-count-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The generated adapter links FLINT's Rademacher partition counter into the receipt-authenticated production reactor. The exact recurrence is selected only when the declared backend operation is explicitly absent; accelerator failures propagate.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "resource_limits": {
+        "reviewed_release_input": 1000000,
+        "boundary_crossings": 1
+      },
+      "public_explanation": "Large partition counts use FLINT's exact Rademacher implementation in native and WebAssembly builds. Release telemetry requires the declared FLINT route so an accidental recurrence fallback fails validation."
     },
     {
       "id": "ffi:flint:fmpz_gcd",
@@ -11085,6 +11223,143 @@
       }
     },
     {
+      "id": "kernel:genus2-kummer-height-production",
+      "kind": "production-kernel",
+      "family": "genus2-kummer-height",
+      "source": "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-canonical-height",
+        "genus2-height-pairing-and-regulator"
+      ],
+      "tests": [
+        "hyperelliptic-genus2-height-performance",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 6 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 6 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 6,
+        "fallback_functions": 0,
+        "total_functions": 6,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-cantor-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-cantor",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "hyperelliptic-jacobian-prepared-arithmetic",
+        "hyperelliptic-group-structure",
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "tests": [
+        "hyperelliptic-native-cantor",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 11 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 11 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 11,
+        "fallback_functions": 0,
+        "total_functions": 11,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-kummer-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-kummer",
+      "source": "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "genus2-prime-kummer"
+      ],
+      "tests": [
+        "hyperelliptic-native-kummer",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-period-edge-batch-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-period-edge-batch",
+      "source": "src/lib/sagejs/hyperelliptic_curves/periods.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-periods"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:hyperelliptic-rational-reduction-production",
+      "kind": "production-kernel",
+      "family": "hyperelliptic-rational-reduction",
+      "source": "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "hyperelliptic-torsion-and-saturation"
+      ],
+      "tests": [
+        "hyperelliptic-rational-reduction-batch",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "kernel:genus3-weil-candidate-production",
       "kind": "production-kernel",
       "family": "genus3-weil-candidate",
@@ -11100,12 +11375,12 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 2,
+        "compiled_functions": 3,
         "fallback_functions": 0,
-        "total_functions": 2,
+        "total_functions": 3,
         "production_pack": true,
         "fallback_reasons": []
       }
@@ -11253,6 +11528,58 @@
       ],
       "tests": [
         "arithmetic-hotspots-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-gf-p2-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-p2-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded quadratic finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-gf-pk-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-pk-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded fixed-degree finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-extension-degree-differential"
       ],
       "status": "available",
       "reviewed": true,
@@ -13772,6 +14099,26 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb",
+      "kind": "napi-export",
+      "family": "hyperelliptic",
+      "source": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "disposition": "portable-fallback",
+      "fallback": "strict-python-mpmath-abel-jacobi-batch",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.abel_jacobi_batch"
+      ],
+      "tests": [
+        "hyperelliptic-period-arb-performance",
+        "hyperelliptic-periods-pari-corpus"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The desktop adapter reuses one bounded Arb/Acb period plan across an Abel--Jacobi batch, while browsers retain the exact-source-replayed strict-Python scalar batch fallback.",
+      "public_explanation": "Batched Abel--Jacobi integration remains available in browsers through the tested strict-Python arbitrary-precision implementation."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
       "kind": "napi-export",
       "family": "hyperelliptic",
@@ -13808,6 +14155,46 @@
       "reviewed": true,
       "review_note": "The Arb Node adapter accelerates the calculation, while browsers retain the independently refined strict-Python inverse-Mellin implementation.",
       "public_explanation": "Hyperelliptic L-series values remain available in browsers through the tested strict-Python inverse-Mellin implementation."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticPeriodEdgeBatchArb",
+      "kind": "napi-export",
+      "family": "hyperelliptic",
+      "source": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "disposition": "portable-fallback",
+      "fallback": "strict-python-mpmath-period-panels",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
+      ],
+      "tests": [
+        "hyperelliptic-period-arb-performance",
+        "hyperelliptic-periods-pari-corpus"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The Arb Node adapter batches endpoint-regularized edge panels, while browsers retain the independently refined strict-Python mpmath implementation and the separate source-transparent binary64 seed kernel.",
+      "public_explanation": "Hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision panel implementation."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticRealPeriodArb",
+      "kind": "napi-export",
+      "family": "hyperelliptic",
+      "source": "packages/flint/src/hyperelliptic/period_quadrature.c",
+      "disposition": "portable-fallback",
+      "fallback": "strict-python-mpmath-complete-periods",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "HyperellipticCurve.period_matrix and Abel--Jacobi integration"
+      ],
+      "tests": [
+        "hyperelliptic-period-arb-performance",
+        "hyperelliptic-periods-pari-corpus"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The bounded desktop adapter fuses mature Arb/Acb real-period refinements, while browsers retain the independently refined strict-Python complete-period implementation.",
+      "public_explanation": "Complete hyperelliptic periods remain available in browsers through the tested strict-Python arbitrary-precision implementation."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:identity",
@@ -17839,6 +18226,101 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
       "id": "runtime:array",
       "kind": "runtime-intrinsic",
       "family": "runtime",
@@ -17989,6 +18471,26 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This private WeakSet brand authenticates canonical machine-shadow field elements without invoking user getters, proxies, or callbacks; guarded optimized regions retain their exact generic source fallback.",
+      "public_explanation": "Compiler-proven finite-field regions use a private runtime brand to distinguish canonical machine representations from forged or observable objects."
     },
     {
       "id": "runtime:callable_instance_class",
@@ -18295,6 +18797,46 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:fast_closed_binary",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback.",
+      "public_explanation": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback."
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed GF(p) and Zmod(n) recurrences"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The compiler emits this guarded scalar-loop primitive only for an enumerated non-aliasing recurrence shape. Runtime parent, representation, prototype, method-stability, residue, and count guards retain the original dispatched source loop for every rejected case.",
+      "public_explanation": "A compiler-proven small modular recurrence can stay in V8 Number locals for the complete loop and materialize one exact public element afterward; all other cases run the original source loop."
+    },
+    {
       "id": "runtime:ffi_call",
       "kind": "runtime-intrinsic",
       "family": "runtime",
@@ -18524,6 +19066,82 @@
     },
     {
       "id": "runtime:global_object",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_copy",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_gather",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
+      "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:immutable_uint64_capsule_lease",
       "kind": "runtime-intrinsic",
       "family": "runtime",
       "source": "tools/python/contract.ts",
@@ -20656,6 +21274,30 @@
       "public_explanation": "Canonical SagePack serialization is available in browsers and produces the same exact byte representation as the Node runtime."
     },
     {
+      "id": "specialist:numpy-ts",
+      "family": "numerical",
+      "source": "src/lib/numpy.py",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "explicit-browser-capability-error-if-the-receipted-specialist-is-unavailable",
+      "wasm_module": "numpy-ts",
+      "public_consumers": [
+        "the initial Python-facing numpy compatibility facade"
+      ],
+      "tests": [
+        "numpy-ts-browser-differential",
+        "browser-wasm-workflow-parity"
+      ],
+      "review_note": "The pinned numpy-ts browser bundle is a separately budgeted, receipt-authenticated specialist loaded only after the compiler observes a NumPy import; the Python facade retains ownership of compatibility semantics.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/scripts/build.cjs"
+      },
+      "public_explanation": "The documented initial NumPy compatibility slice uses the pinned numpy-ts typed-array and Zig-WebAssembly backend in browsers without adding it to ordinary application startup.",
+      "shared_core": "src/lib/numpy.py"
+    },
+    {
       "id": "specialist:symbolic-find-root-wasm",
       "family": "numerical",
       "source": "packages/flint-wasm/src/numeric.c",
@@ -20733,6 +21375,566 @@
         "path": "packages/flint-wasm/compiler-worker.mjs"
       },
       "public_explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_mumford_result",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This indivisible exact FLINT Mumford owner supports lazy desktop publication; browsers construct canonical tuples and use the ordinary rational Cantor law.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through canonical tuples and the ordinary Cantor implementation; this owned result is desktop-only."
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_polynomial_pair",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This opaque owned FLINT fmpq-polynomial pair accelerates retained desktop results; browsers reconstruct the exact canonical row and use the ordinary rational Cantor law.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through canonical coefficient rows and the ordinary Cantor implementation; the retained FLINT pair is desktop-only."
+    },
+    {
+      "id": "ffi-resource:flint:fmpq_polynomial_workspace",
+      "kind": "declared-ffi-resource",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_add",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_allocated_bytes",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_coefficient_denominator",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_coefficient_numerator",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_copy",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_copy_pair_out",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This atomic copy creates the opaque desktop-only retained pair; browsers retain the exact canonical row and ordinary rational Cantor fallback.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic reconstructs from exact canonical rows; atomic FLINT pair publication is only a desktop acceleration."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_divexact",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_equal",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_is_one",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_is_zero",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_length",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_mumford_result",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This atomic load borrows both components of an authenticated desktop Mumford result together; browsers reconstruct canonical tuples instead.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic uses exact canonical tuples; atomic loading of a retained FLINT Mumford result is only a desktop acceleration."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_load_pair",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This atomic load borrows an authenticated retained pair into a desktop workspace; browsers reconstruct from the exact canonical row instead.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic reconstructs from exact canonical rows; atomic retained-pair loading is only a desktop acceleration."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_move_mumford_result_out",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This validated atomic move leaves initialized zero scratch slots and creates an indivisible exact desktop result; browsers publish canonical tuples instead.",
+      "wasm_declared": false,
+      "public_explanation": "Browser arithmetic publishes exact canonical tuples; atomic FLINT Mumford ownership transfer is only a desktop acceleration."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_monic",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_mul",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_neg",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_one",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_rem",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_sub",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_swap",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_xgcd",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
+    },
+    {
+      "id": "ffi:flint:fmpq_polynomial_workspace_zero",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "desktop-only",
+      "fallback": "ordinary-rational-cantor-reference",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "prepared rational genus-2/3 Jacobian arithmetic"
+      ],
+      "tests": [
+        "hyperelliptic-rational-cantor"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This bounded reusable FLINT fmpq-polynomial workspace is a desktop accelerator; browser auto dispatch retains the exact ordinary rational Cantor law and explicit native requests fail with a capability error.",
+      "wasm_declared": false,
+      "public_explanation": "Rational Jacobian arithmetic remains exact in browsers through the ordinary Cantor implementation; this reusable FLINT workspace is desktop-only."
     }
   ]
 }

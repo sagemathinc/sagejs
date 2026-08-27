@@ -12,6 +12,11 @@ For certified global conductors, root numbers, analytic L-values, and probable
 analytic ranks, see [Hyperelliptic conductors, root numbers, and
 L-series](hyperelliptic-lseries.md).
 
+For real periods, rational Tamagawa and torsion data, canonical heights,
+regulators, saturation, deficient places, and the factor-by-factor BSD
+quotient, see [BSD arithmetic for genus-2 and genus-3
+Jacobians](hyperelliptic-bsd-arithmetic.md).
+
 Sage.js supports smooth genus-2 and genus-3 curves written
 
 ```text

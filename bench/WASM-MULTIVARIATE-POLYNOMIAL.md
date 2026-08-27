@@ -123,7 +123,7 @@ are intentionally integration-owned. Integration must make these exact edits:
    those shared registries.
 
 The direct test compiles the same file with strict native warnings, exercises
-large coefficients and malformed/limit cases, and, when the locked CoWasm
+large coefficients and malformed/limit cases, and, when the locked Sage.js Wasm
 FLINT toolchain is present, links and executes that same test body as real
 `wasm32-wasip1`. No shell, process, filesystem, socket, or general Node API is
 part of the mathematical boundary.

@@ -15,6 +15,9 @@ var {
   analyzeBaselibModules,
   moduleId: baselibModuleId,
 } = require("./baselib-modules.cjs");
+var {
+  canonicalizeGeneratedPaths,
+} = require("./reproducible-generated-paths.cjs");
 
 const COMPILER_BASELIB_MODULES = new Set([
   "__future__.py",
@@ -403,7 +406,14 @@ function check_for_changes(base_path, src_path, signatures) {
 
 import createCompiler from "./compiler";
 
-async function compile(src_path, lib_path, sources, source_hash, profile) {
+async function compile(
+  base_path,
+  src_path,
+  lib_path,
+  sources,
+  source_hash,
+  profile,
+) {
   var file = path.join(src_path, "compiler.py");
   var t1 = new Date().getTime();
   var PyLang = createCompiler();
@@ -472,6 +482,14 @@ async function compile(src_path, lib_path, sources, source_hash, profile) {
   var output = new PyLang.OutputStream(output_options);
   toplevel.print(output);
   output = output.get().replace("__COMPILER_VERSION__", source_hash);
+  // Module metadata is useful for tracebacks, but a production compiler must
+  // not depend on the directory where it was built. Keep the real basedir and
+  // libdir above for import resolution, then publish stable virtual paths.
+  output = canonicalizeGeneratedPaths(output, base_path);
+  compiled_baselib.pretty = canonicalizeGeneratedPaths(
+    compiled_baselib.pretty,
+    base_path,
+  );
   fs.writeFileSync(path.join(out_path, "compiler.js"), output, "utf8");
   fs.writeFileSync(
     path.join(out_path, "baselib-plain-pretty.js"),
@@ -496,7 +514,7 @@ async function run_single_compile(base_path, src_path, lib_path, profile) {
     hashes = temp[3];
 
   if (compiler_changed) {
-    await compile(src_path, lib_path, sources, source_hash, profile);
+    await compile(base_path, src_path, lib_path, sources, source_hash, profile);
     fs.writeFileSync(signatures, JSON.stringify(hashes, null, 4));
   } else console.log("Compiler is built with the up-to-date version of itself");
   return compiler_changed;

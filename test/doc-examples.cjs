@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -44,6 +45,13 @@ test("every opted-in Sage example in docs executes", async () => {
   );
   assert.ok(showcase, "the elliptic L-series showcase has tested examples");
   assert.ok(showcase.examples.length >= 6);
+
+  const bsdGuide = documents.find(
+    (document) =>
+      document.path === "docs/hyperelliptic-bsd-arithmetic.md",
+  );
+  assert.ok(bsdGuide, "the hyperelliptic BSD guide has tested examples");
+  assert.ok(bsdGuide.examples.length >= 12);
 
   const result = await runTestedSageExamples();
   assert.equal(result.documents, documents.length);

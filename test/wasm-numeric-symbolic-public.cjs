@@ -1,12 +1,22 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
+const { existsSync } = require("node:fs");
 const test = require("node:test");
 
 const { pathToFileURL } = require("node:url");
 const path = require("node:path");
 
 const packageRoot = path.resolve(__dirname, "../packages/flint-wasm");
+const releaseArtifactAvailable = [
+  "wasi-runtime.mjs",
+  "production-manifest.json",
+  "build-receipt.json",
+].every((name) => existsSync(path.join(packageRoot, "dist", name)));
+const releaseArtifactSkip = releaseArtifactAvailable
+  ? false
+  : "build the FLINT Wasm release artifact first";
 
 function routeMap(result) {
   return new Map(
@@ -17,7 +27,9 @@ function routeMap(result) {
   );
 }
 
-test("public numeric and supported symbolic workflows select FLINT Wasm", async () => {
+test("public numeric and supported symbolic workflows select FLINT Wasm", {
+  skip: releaseArtifactSkip,
+}, async () => {
   const { createSage } = await import(pathToFileURL(
     path.join(packageRoot, "node-kernel.mjs"),
   ));
@@ -90,7 +102,9 @@ test("public numeric and supported symbolic workflows select FLINT Wasm", async 
   }
 });
 
-test("an interrupted bounded numeric worker is replaced before the next run", async () => {
+test("an interrupted bounded numeric worker is replaced before the next run", {
+  skip: releaseArtifactSkip,
+}, async () => {
   const { createSage, SageSessionTimeoutError } = await import(pathToFileURL(
     path.join(packageRoot, "node-kernel.mjs"),
   ));

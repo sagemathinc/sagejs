@@ -1,0 +1,330 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-25T08:43:28.004Z",
+  "repository": {
+    "commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8",
+    "package_smoke_overlay": {
+      "source_commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "base_test_sha256": "2a85aad10b6922600d6c97e312dfb32ee8430e197c85000c0b379c1b64a459e0",
+      "patched_test_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21",
+      "updater_sha256": "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e"
+    }
+  },
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v22.22.2"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "available",
+    "elapsed_ms": 242171.523177,
+    "stdout_sha256": "5ebfb663981430e4ddb90663db0a71029b7d1cfcfb0c9f11e81c6ce962c1c65d",
+    "value": {
+      "compiled": true,
+      "rows": [
+        {
+          "add_speedup": 39.737339961693856,
+          "authenticated_unpack_batch_median_ns": 71419136,
+          "authenticated_unpack_cached_prepare_median_ns": 27136,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1438464,
+          "genus": 2,
+          "materialized_add_speedup": 16.109812096228744,
+          "materialized_scalar_batch_median_ns": 911685632,
+          "materialized_scalar_speedup": 741.0615567783248,
+          "multi_search_group_operations": 504,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.436537857367264,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 355409152,
+          "native_add_materialized_stages": {
+            "kernel": 2087936,
+            "materialization": 253851904,
+            "pack": 155530752,
+            "publication": 1241600,
+            "validation": 0
+          },
+          "native_add_median_ns": 144085504,
+          "native_add_stages": {
+            "kernel": 2095104,
+            "materialization": 0,
+            "pack": 148519680,
+            "publication": 1116160,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 3259392,
+          "native_negate_median_ns": 67709696,
+          "native_scalar_batch_median_ns": 750539776,
+          "native_scalar_materialized_median_ns": 15911424,
+          "native_scalar_median_ns": 13689856,
+          "native_scalar_throughput_ns": 110694912,
+          "native_search_median_ns": 2035712,
+          "native_subtract_median_ns": 136260352,
+          "native_sum_median_ns": 2813184,
+          "negate_speedup": 11.42958739616849,
+          "prepare_cached_batch_median_ns": 32768,
+          "prepare_fresh_unregistered_batch_median_ns": 921888512,
+          "prepare_public_batch_median_ns": 69861632,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 742656,
+          "raw_add_boundary_median_ns": 2005248,
+          "raw_copy_boundary_median_ns": 26368,
+          "raw_fixed_add_boundary_median_ns": 1046676,
+          "raw_fixed_digest": "16532588233038003552",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 5725574656,
+          "reference_negate_median_ns": 773893888,
+          "reference_scalar_median_ns": 11791344640,
+          "reference_search_median_ns": 2565951488,
+          "reference_subtract_median_ns": 6332468736,
+          "reference_sum_median_ns": 5507175424,
+          "reference_unpack_batch_median_ns": 1775486208,
+          "repeated_native_search_median_ns": 7941632,
+          "result_digest": "52974fdb63612d853346986d072ee5628be94df7eb371becb2ac124ae419f176",
+          "retained_add_median_ns": 3451136,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 824064,
+          "retained_scalar_batch_median_ns": 682008576,
+          "retained_to_raw_add_ratio": 1.7210519596578577,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 861.3198444161867,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 207,
+          "search_hash_collisions": 121,
+          "search_speedup": 1260.4688128772636,
+          "search_status": "not_found",
+          "subtract_speedup": 46.473303811808734,
+          "sum_speedup": 1957.6307216307216,
+          "validated_public_construct_and_prepare_median_ns": 2724819200,
+          "validated_public_construction_median_ns": 1812839680,
+          "standalone_core_median_ns": 1000448,
+          "raw_fixed_boundary_to_standalone_ratio": 1.0462072991299898,
+          "full_copy_to_raw_copy_ratio": 54.55339805825243
+        },
+        {
+          "add_speedup": 40.17172139303483,
+          "authenticated_unpack_batch_median_ns": 67575808,
+          "authenticated_unpack_cached_prepare_median_ns": 23808,
+          "batch_items": 1000,
+          "full_copy_boundary_median_ns": 1322240,
+          "genus": 3,
+          "materialized_add_speedup": 15.184231454894702,
+          "materialized_scalar_batch_median_ns": 1195435008,
+          "materialized_scalar_speedup": 917.3736725356995,
+          "multi_search_group_operations": 504,
+          "multi_search_progressions": 4,
+          "multi_search_speedup": 2.0776352787874632,
+          "multi_search_table_bytes": 20480,
+          "native_add_materialized_median_ns": 374365952,
+          "native_add_materialized_stages": {
+            "kernel": 2029568,
+            "materialization": 235924224,
+            "pack": 138338304,
+            "publication": 820736,
+            "validation": 0
+          },
+          "native_add_median_ns": 141504000,
+          "native_add_stages": {
+            "kernel": 2041344,
+            "materialization": 0,
+            "pack": 140059392,
+            "publication": 845568,
+            "validation": 0
+          },
+          "native_multi_search_median_ns": 3732736,
+          "native_negate_median_ns": 69951744,
+          "native_scalar_batch_median_ns": 1037630208,
+          "native_scalar_materialized_median_ns": 18465280,
+          "native_scalar_median_ns": 16656640,
+          "native_scalar_throughput_ns": 124552448,
+          "native_search_median_ns": 2128896,
+          "native_subtract_median_ns": 140339968,
+          "native_sum_median_ns": 3609344,
+          "negate_speedup": 11.163495566314973,
+          "prepare_cached_batch_median_ns": 24576,
+          "prepare_fresh_unregistered_batch_median_ns": 946849536,
+          "prepare_public_batch_median_ns": 70257664,
+          "prime": 1009,
+          "publish_frozen_batch_median_ns": 499200,
+          "raw_add_boundary_median_ns": 2020352,
+          "raw_copy_boundary_median_ns": 31232,
+          "raw_fixed_add_boundary_median_ns": 1052508,
+          "raw_fixed_digest": "8706117988639488592",
+          "raw_fixed_timing": {
+            "calls_per_sample": 50,
+            "samples": 9,
+            "warmups": 10
+          },
+          "reference_add_median_ns": 5684459264,
+          "reference_negate_median_ns": 780905984,
+          "reference_scalar_median_ns": 16939561728,
+          "reference_search_median_ns": 2862016512,
+          "reference_subtract_median_ns": 6396816384,
+          "reference_sum_median_ns": 7836840960,
+          "reference_unpack_batch_median_ns": 1777491200,
+          "repeated_native_search_median_ns": 7755264,
+          "result_digest": "815855890429d4a56ba4d547f55494ba2a7b9ef1f3139b59c9d261f02e359323",
+          "retained_add_median_ns": 4285440,
+          "retained_add_published_input": 0,
+          "retained_add_published_output": 0,
+          "retained_copy_boundary_median_ns": 797440,
+          "retained_scalar_batch_median_ns": 965129216,
+          "retained_to_raw_add_ratio": 2.12113532691333,
+          "scalar_batch_items": 1000,
+          "scalar_bits": 256,
+          "scalar_comparison_items": 8,
+          "scalar_speedup": 1016.9855221701375,
+          "scalar_throughput_items": 64,
+          "search_count": 10000,
+          "search_group_operations": 207,
+          "search_hash_collisions": 114,
+          "search_speedup": 1344.3665223665223,
+          "search_status": "not_found",
+          "subtract_speedup": 45.58085964505849,
+          "sum_speedup": 2171.2646286970707,
+          "validated_public_construct_and_prepare_median_ns": 2762051584,
+          "validated_public_construction_median_ns": 1845249536,
+          "standalone_core_median_ns": 994588,
+          "raw_fixed_boundary_to_standalone_ratio": 1.058235168733184,
+          "full_copy_to_raw_copy_ratio": 42.33606557377049
+        }
+      ],
+      "schema": "sagejs.hyperelliptic.public-jacobian-benchmark.v1",
+      "workload": "resident prepared context; medians; 1000 public results",
+      "source": {
+        "commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc",
+        "status": "clean",
+        "harness_sha256": "37d970e221495d0c2c4f42a57aab703e4dbc9b509195d278019596bbe8f35155",
+        "kernel_source_sha256": "ca71e1ce16810e9d8f210105072249b93beaacad581f8a2eb25585f7b5d81d2e"
+      },
+      "runtime": {
+        "node": "v22.22.2",
+        "platform": "linux",
+        "architecture": "x64",
+        "release": "6.17.0-1022-gcp",
+        "cpu_model": "AMD EPYC 7B13"
+      },
+      "standalone": {
+        "compiler": "cc -O3 -fPIC with native bounds-check, frame, section, and link flags",
+        "contract": "same full compiled source-transparent core; 1000 repeated fixed degree-one pairs",
+        "timing": {
+          "warmups": 10,
+          "samples": 9,
+          "callsPerSample": 50
+        },
+        "rows": [
+          {
+            "genus": 2,
+            "standalone_core_median_ns": 1000448,
+            "digest": "16532588233038003552"
+          },
+          {
+            "genus": 3,
+            "standalone_core_median_ns": 994588,
+            "digest": "8706117988639488592"
+          }
+        ]
+      }
+    }
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "8cc40c709513c7e0a79f3497f8702cb3f665ce57559659303deed9396842488d",
+    "artifact_id": null,
+    "pack_count": 40,
+    "load_ms": 48.80591599998297,
+    "process_rss_bytes": 105259008,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.5327699999907054,
+          "median": 2.933359999995446,
+          "max": 3.4033500000077765,
+          "mad": 0.3739310000091791
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552",
+        "wasm_to_standalone_ratio": 2.9320464431888973
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.5168000000121538,
+          "median": 2.5594200000050478,
+          "max": 3.3641000000061467,
+          "mad": 0.04199999998672865
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592",
+        "wasm_to_standalone_ratio": 2.5733469537185725
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.655369000014616,
+        "median": 5.1364900000044145,
+        "max": 5.451969999994617,
+        "mad": 0.3154799999902025
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 386.40838000000804,
+      "stdout_sha256": "fa5315a000bd09971d0cd3f0f3e38e059b56efdf561e2c407d9ef590c228ee3c",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 4604.8681119999965,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///home/user/sagejs-hyp-final-d98b9dcd/packages/flint-wasm/kernel.mjs:288:13)\n    at listOnTimeout (node:internal/timers:585:17)\n    at process.processTimers (node:internal/timers:521:7)",
+      "recovery_elapsed_ms": 2514.504694000003,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 7973.765668,
+      "stdout_sha256": "981f36e2e9fe5dd6705ad5e683ea0a09a03adb9f2eea206018bda522b11f9bed",
+      "stdout": "TAP version 13\n# (node:1314400) ExperimentalWarning: WASI is an experimental feature and might change at any time\n# (Use `node --trace-warnings ...` to show where the warning was created)\n# Subtest: authenticated production packs execute every hyperelliptic source family\nok 1 - authenticated production packs execute every hyperelliptic source family\n  ---\n  duration_ms: 1853.446706\n  type: 'test'\n  ...\n# Subtest: the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes\nok 2 - the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes\n  ---\n  duration_ms: 5858.152703\n  type: 'test'\n  ...\n# Subtest: a real browser authenticates and executes all hyperelliptic kernel routes\nok 3 - a real browser authenticates and executes all hyperelliptic kernel routes # SKIP Chromium is not installed\n  ---\n  duration_ms: 0.40853\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 1\n# todo 0\n# duration_ms 7926.789143",
+      "stderr": "",
+      "test_patch_commit": "b36aab0335322d404254e04085f61cc8252b21bf",
+      "test_source_sha256": "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21"
+    }
+  },
+  "finished_at": "2026-08-25T08:47:46.962Z",
+  "package_smoke_supplemented_at_utc": "2026-08-25T08:48:07.017Z"
+}

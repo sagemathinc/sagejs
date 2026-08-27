@@ -1,0 +1,147 @@
+{
+  "schema": "sagejs.call-boundary-results/v1",
+  "date": "2026-08-26",
+  "units": "nanoseconds per call",
+  "method": {
+    "javascript_iterations": 10000000,
+    "python_iterations": 5000000,
+    "warmup_fraction": 0.1,
+    "samples": 9,
+    "statistic": "median",
+    "incremental_definition": "raw median minus same-runtime inline-loop median"
+  },
+  "hosts": [
+    {
+      "id": "linux-x64",
+      "os": "Linux",
+      "architecture": "x86_64",
+      "processor": "AMD EPYC 7B13",
+      "environment": "Docker",
+      "runtimes": {
+        "node-26.7.0": {
+          "inline": 0.350641,
+          "javascript": { "raw": 5.304464, "incremental": 4.953823 },
+          "wasm": { "raw": 7.464254, "incremental": 7.113612 },
+          "napi": { "raw": 39.908207, "incremental": 39.557566 }
+        },
+        "bun-1.4.0": {
+          "inline": 0.208064,
+          "javascript": { "raw": 5.172167, "incremental": 4.964103 },
+          "wasm": { "raw": 7.166049, "incremental": 6.957985 },
+          "napi": { "raw": 60.340603, "incremental": 60.132539 }
+        },
+        "deno-2.9.5": {
+          "inline": 0.352077,
+          "javascript": { "raw": 5.328496, "incremental": 4.976419 },
+          "wasm": { "raw": 7.445799, "incremental": 7.093722 },
+          "napi": { "raw": 56.641062, "incremental": 56.288985 }
+        },
+        "cpython-3.14.4": {
+          "inline": 25.95402,
+          "python": { "raw": 41.152961, "incremental": 15.198941 },
+          "fastcall": { "raw": 39.991685, "incremental": 14.037665 },
+          "varargs": { "raw": 67.259041, "incremental": 41.305021 }
+        }
+      }
+    },
+    {
+      "id": "linux-arm64",
+      "os": "Ubuntu 24.04 Linux",
+      "architecture": "aarch64",
+      "processor": "Neoverse-N1",
+      "environment": "Google VM, 4 vCPU",
+      "runtimes": {
+        "node-26.7.0": {
+          "inline": 0.75878,
+          "javascript": { "raw": 7.787987, "incremental": 7.029207 },
+          "wasm": { "raw": 11.838263, "incremental": 11.079483 },
+          "napi": { "raw": 48.566423, "incremental": 47.807643 }
+        },
+        "bun-1.4.0": {
+          "inline": 0.3396,
+          "javascript": { "raw": 5.091488, "incremental": 4.751887 },
+          "wasm": { "raw": 10.068867, "incremental": 9.729267 },
+          "napi": { "raw": 81.421915, "incremental": 81.082315 }
+        },
+        "deno-2.9.5": {
+          "inline": 0.757996,
+          "javascript": { "raw": 7.898867, "incremental": 7.140871 },
+          "wasm": { "raw": 11.795643, "incremental": 11.037647 },
+          "napi": { "raw": 99.290725, "incremental": 98.532729 }
+        },
+        "cpython-3.12.3": {
+          "inline": 47.631227,
+          "python": { "raw": 73.985528, "incremental": 26.354301 },
+          "fastcall": { "raw": 61.484553, "incremental": 13.853326 },
+          "varargs": { "raw": 122.261778, "incremental": 74.630552 }
+        }
+      }
+    },
+    {
+      "id": "windows-x64",
+      "os": "Windows Server 2022 Datacenter",
+      "architecture": "x64",
+      "processor": "AMD EPYC 7B13",
+      "environment": "VM, 2 cores / 4 logical processors",
+      "runtimes": {
+        "node-26.5.1": {
+          "inline": 0.34936,
+          "javascript": { "raw": 5.33526, "incremental": 4.9859 },
+          "wasm": { "raw": 7.49538, "incremental": 7.14602 },
+          "napi": { "raw": 30.22314, "incremental": 29.87378 }
+        },
+        "bun-1.4.0": {
+          "inline": 0.355,
+          "javascript": { "raw": 4.43725, "incremental": 4.08225 },
+          "wasm": { "raw": 7.07859, "incremental": 6.72359 },
+          "napi": { "raw": 79.93755, "incremental": 79.58255 }
+        },
+        "deno-2.9.5": {
+          "inline": 0.36275,
+          "javascript": { "raw": 5.53663, "incremental": 5.17388 },
+          "wasm": { "raw": 7.87756, "incremental": 7.51481 },
+          "napi": { "raw": 68.35043, "incremental": 67.98768 }
+        },
+        "cpython-3.13.7": {
+          "inline": 40.9417,
+          "python": { "raw": 74.20588, "incremental": 33.26418 },
+          "fastcall": { "raw": 62.00622, "incremental": 21.06452 },
+          "varargs": { "raw": 104.2862, "incremental": 63.3445 }
+        }
+      }
+    },
+    {
+      "id": "macos-arm64",
+      "os": "macOS 26.4",
+      "architecture": "arm64",
+      "processor": "Apple M1 Max",
+      "environment": "physical host on AC power",
+      "runtimes": {
+        "node-26.5.0": {
+          "inline": 1.406383,
+          "javascript": { "raw": 14.281946, "incremental": 12.875563 },
+          "wasm": { "raw": 40.981746, "incremental": 39.575363 },
+          "napi": { "raw": 68.872267, "incremental": 67.465883 }
+        },
+        "bun-1.4.0": {
+          "inline": 0.497533,
+          "javascript": { "raw": 10.080008, "incremental": 9.582475 },
+          "wasm": { "raw": 14.803475, "incremental": 14.305942 },
+          "napi": { "raw": 110.735083, "incremental": 110.23755 }
+        },
+        "deno-2.9.5": {
+          "inline": 1.382088,
+          "javascript": { "raw": 13.547779, "incremental": 12.165692 },
+          "wasm": { "raw": 40.119629, "incremental": 38.737542 },
+          "napi": { "raw": 110.176754, "incremental": 108.794667 }
+        },
+        "cpython-3.14.6": {
+          "inline": 58.293133,
+          "python": { "raw": 102.0731, "incremental": 43.779967 },
+          "fastcall": { "raw": 83.212417, "incremental": 24.919283 },
+          "varargs": { "raw": 166.779742, "incremental": 108.486608 }
+        }
+      }
+    }
+  ]
+}

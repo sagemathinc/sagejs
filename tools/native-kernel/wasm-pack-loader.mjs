@@ -2,6 +2,7 @@ const PACK_SCHEMA = "sagejs.native-wasm-pack/v1";
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 const authenticatedCapabilities = new WeakMap();
+const WASM32_MAX_ALLOCATION = 0xffff_ffff;
 
 function equalStrings(left, right) {
   return Array.isArray(left) && Array.isArray(right) &&
@@ -196,6 +197,41 @@ function integerFromLimbs(sign, limbs) {
   return sign < 0 ? -value : value;
 }
 
+function directFloat64Value(argument) {
+  if (typeof argument === "number") return argument;
+  if (argument !== null && typeof argument === "object") {
+    try {
+      // Python floats whose binary64 value is integral are genuine boxed
+      // Numbers so that the runtime can preserve their Python type identity.
+      // Calling the intrinsic directly accepts only objects with Number's
+      // internal slot; arbitrary valueOf()/Symbol.toPrimitive hooks cannot
+      // cross the typed Wasm boundary.
+      return Number.prototype.valueOf.call(argument);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function float64Value(argument) {
+  const direct = directFloat64Value(argument);
+  if (direct !== undefined) return direct;
+  if (argument !== null &&
+      (typeof argument === "object" || typeof argument === "function")) {
+    const convert = Reflect.get(argument, "__float__");
+    if (typeof convert === "function") {
+      const converted = directFloat64Value(
+        Reflect.apply(convert, argument, []),
+      );
+      if (converted !== undefined) return converted;
+    }
+  }
+  throw new TypeError(
+    "Float64 arguments require a JavaScript number or Python numeric value",
+  );
+}
+
 function isPackedIntegerBuffer(argument) {
   return argument !== null && typeof argument === "object" &&
     argument.sizes instanceof Int32Array &&
@@ -301,17 +337,43 @@ function makeMarshaller(instance, runtime, resourceBridge) {
   }
   const allocations = [];
   const copybacks = [];
-  function alloc(bytes) {
+  function alloc(bytes, description = "buffer") {
+    if (!Number.isSafeInteger(bytes) || bytes < 0 ||
+        bytes > WASM32_MAX_ALLOCATION) {
+      throw new RangeError(
+        `${description} exceeds the bounded wasm32 allocation ABI`,
+      );
+    }
     const address = Number(allocate(bytes));
-    if (address === 0) throw new RangeError("Wasm kernel allocation failed");
+    if (!Number.isInteger(address) || address <= 0 ||
+        address > WASM32_MAX_ALLOCATION) {
+      throw new RangeError("Wasm kernel allocation failed");
+    }
     allocations.push(address);
     return address;
   }
-  function encodeBuffer(type, argument) {
+  function bytesFor(length, elementBytes, description) {
+    if (!Number.isSafeInteger(length) || length < 0 ||
+        length > Math.floor(WASM32_MAX_ALLOCATION / elementBytes)) {
+      throw new RangeError(
+        `${description} exceeds the bounded wasm32 allocation ABI`,
+      );
+    }
+    return length * elementBytes;
+  }
+  function encodeBuffer(parameter, argument) {
+    const type = parameter.type;
     if (type === "IntegerBuffer") {
       const { target, values, wordCapacity } = valuesAndCapacity(argument);
-      const sizesAddress = alloc(values.length * 4);
-      const limbsAddress = alloc(values.length * wordCapacity * 8);
+      const sizesAddress = alloc(
+        bytesFor(values.length, 4, "IntegerBuffer sizes"),
+        "IntegerBuffer sizes",
+      );
+      const limbCount = values.length * wordCapacity;
+      const limbsAddress = alloc(
+        bytesFor(limbCount, 8, "IntegerBuffer limbs"),
+        "IntegerBuffer limbs",
+      );
       const sizes = new Int32Array(instance.exports.memory.buffer,
         sizesAddress, values.length);
       const limbs = new BigUint64Array(instance.exports.memory.buffer,
@@ -342,9 +404,33 @@ function makeMarshaller(instance, runtime, resourceBridge) {
       });
       return [sizesAddress, limbsAddress, values.length, wordCapacity];
     }
+    if (argument === null || argument === undefined ||
+        typeof argument.length !== "number") {
+      throw new TypeError(`${type} arguments require an array-like value`);
+    }
+    if (type === "Float64Buffer") {
+      const length = argument.length;
+      const bytes = bytesFor(length, 8, type);
+      const values = Float64Array.from(argument, (value) => Number(value));
+      const address = alloc(bytes, type);
+      new Float64Array(instance.exports.memory.buffer, address, length).set(values);
+      if (parameter.mutable === true) {
+        copybacks.push(() => {
+          const current = new Float64Array(
+            instance.exports.memory.buffer,
+            address,
+            length,
+          );
+          for (let index = 0; index < length; index += 1) {
+            setTarget(argument, index, current[index]);
+          }
+        });
+      }
+      return [address, length];
+    }
     const signed = type === "Int64Buffer";
     const values = Array.from(argument, (value) => BigInt(value));
-    const address = alloc(values.length * 8);
+    const address = alloc(bytesFor(values.length, 8, type), type);
     const view = signed
       ? new BigInt64Array(instance.exports.memory.buffer, address, values.length)
       : new BigUint64Array(instance.exports.memory.buffer, address, values.length);
@@ -373,9 +459,13 @@ function makeMarshaller(instance, runtime, resourceBridge) {
     if (["uint64", "PrimeModulusValue"].includes(parameter.type)) {
       return [BigInt(argument)];
     }
-    if (["IntegerBuffer", "Int64Buffer", "UInt64Buffer"].includes(
-      parameter.type,
-    )) return encodeBuffer(parameter.type, argument);
+    if (parameter.type === "Float64") {
+      return [float64Value(argument)];
+    }
+    if (
+      ["Float64Buffer", "IntegerBuffer", "Int64Buffer", "UInt64Buffer"]
+        .includes(parameter.type)
+    ) return encodeBuffer(parameter, argument);
     if (parameter.type.startsWith("Record:")) {
       if (argument === null || typeof argument !== "object") {
         throw new TypeError(`${parameter.type} argument must be an object`);
@@ -427,6 +517,13 @@ function decodeResults(instance, runtime, resultTypes, resourceBridge) {
     if (type === "bool" || type === "uint64") {
       const value = instance.exports[runtime.resultU64](index);
       return type === "bool" ? value !== 0n : value;
+    }
+    if (type === "Float64") {
+      const getter = instance.exports[runtime.resultFloat64];
+      if (typeof getter !== "function") {
+        throw new Error("Wasm kernel pack lacks its Float64 result export");
+      }
+      return getter(index);
     }
     if (type === "Integer") {
       const length = Number(instance.exports[runtime.resultLength](index));

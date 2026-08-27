@@ -1,0 +1,78 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "hyp-native-hygiene",
+  "title": "Native wrapper identifier hygiene",
+  "lane": "native-compiler",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make compiler-generated native and WebAssembly wrapper identifiers collision-free for ordinary typed-Python parameter and local names, with neutral same-source dynamic/native/Wasm differential and emitted-C regression coverage",
+  "base_commit": "2c741f372b546680206564776344899ae592c479",
+  "claims": [
+    "tools/native-kernel/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "neutral CPython, dynamic JavaScript, native host, and WebAssembly differential",
+      "inspectable generated C with adversarial source identifiers"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [
+    {
+      "command": "node --test tools/native-kernel/test/identifier-hygiene.cjs tools/native-kernel/test/contextual-uint64.cjs tools/native-kernel/test/float64-conditional.cjs tools/native-kernel/test/word-helper-chain.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.455,
+      "started_at": "2026-08-23T05:12:08.648Z",
+      "commit": "2c741f372b546680206564776344899ae592c479",
+      "workspace_fingerprint": "34395e9e56ff0e870a895a7304091966f3f1f8c1f1ff2f09ee652335c2368ae2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.739,
+      "started_at": "2026-08-23T05:12:11.714Z",
+      "commit": "2c741f372b546680206564776344899ae592c479",
+      "workspace_fingerprint": "34395e9e56ff0e870a895a7304091966f3f1f8c1f1ff2f09ee652335c2368ae2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 33.655,
+      "started_at": "2026-08-23T05:12:24.822Z",
+      "commit": "2c741f372b546680206564776344899ae592c479",
+      "workspace_fingerprint": "34395e9e56ff0e870a895a7304091966f3f1f8c1f1ff2f09ee652335c2368ae2",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Native Node adapters now allocate deterministic fresh internal C identifiers against the complete set of source-derived parameter identifiers. Tagged, exact/GMP, tuple-result, resource-refresh, exact-initialization, and Float64 adapters all use the hygienic mapping. A neutral witness reproduces the Cantor status collision and additional result/item/initialization collisions, inspects native and Wasm output, and agrees across CPython, dynamic JavaScript, and compiled native execution.",
+    "risks": [
+      "The complete pnpm test:native integration suite remains for the integration lane; focused native/compiler regressions, architecture checks, and strict baselib checks pass."
+    ],
+    "next_steps": [
+      "Cherry-pick the hygiene commit into higher-genus and compile the fused Cantor search with its original status parameter spelling.",
+      "Run the integrated native suite and platform CI on Windows x64 and arm64 hosts."
+    ]
+  }
+}

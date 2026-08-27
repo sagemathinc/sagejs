@@ -1,0 +1,406 @@
+{
+  "schema": "sagejs.hyperelliptic/abel-jacobi-magma-competitive-v1",
+  "recorded_at": "2026-08-23T09:18:29.906Z",
+  "host": {
+    "hostname": "cocalc-vm-51c5044ca6d3406d983e0f10",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.5.1",
+    "cpu": "AMD EPYC 7B13",
+    "load_average": [
+      1.06,
+      1.9,
+      1.35
+    ]
+  },
+  "contract": {
+    "curve": "y^2=17/60*x^5-10/3*x^4+173/12*x^3-139/6*x^2+74/5*x+1",
+    "points": "the 12 ordered affine points (x,+/-y), x=0..5, y=1,2,3,5,7,10",
+    "basepoint": "the unique point at infinity on the odd-degree model",
+    "target_precision": "Sage.js 64 bits; Magma 20 decimal digits (at least 64 bits, the nearest supported AnalyticJacobian input precision)",
+    "preparation": "Sage.js real_period and Magma AnalyticJacobian are prepared outside the compared rows",
+    "sagejs": "one public abel_jacobi_batch call for all 12 points, result cache disabled; elapsed wall time measured inside the resident Sage.js process",
+    "magma": "12 separate ToAnalyticJacobian calls sharing one prepared AnalyticJacobian; elapsed wall time measured inside one resident Magma process",
+    "output_validation": "exact rational point equations plus conjugate-pair cancellation; numeric vectors are retained but not directly equated because the programs choose different homology bases",
+    "pari": "no comparable public generic hyperelliptic Abel--Jacobi point-map API",
+    "rigorous": false,
+    "bench_1_required_for_acceptance": true
+  },
+  "samples": 5,
+  "sagejs": {
+    "prepared_object_cold_batch_ms": 191.383,
+    "prepared_object_cold_transport_ms": 199.05,
+    "one_boundary_batches_sharing_period_plan": {
+      "points_per_batch": 12,
+      "samples_ms": [
+        161.465,
+        152.087,
+        151.559,
+        151.155,
+        151.952
+      ],
+      "minimum_ms": 151.155,
+      "median_ms": 151.952,
+      "maximum_ms": 161.465,
+      "mad_ms": 0.393,
+      "transport": {
+        "samples_ms": [
+          169.175,
+          158.895,
+          158.447,
+          157.894,
+          159.246
+        ],
+        "minimum_ms": 157.894,
+        "median_ms": 158.895,
+        "maximum_ms": 169.175,
+        "mad_ms": 0.448
+      },
+      "per_point_from_median_ms": 12.662669
+    },
+    "final_vectors": [
+      [
+        [
+          -0.8881465774360954,
+          -4.654085387280643e-18
+        ],
+        [
+          -2.7232315693959874,
+          -6.020388650896953e-18
+        ]
+      ],
+      [
+        [
+          0.8881465774360954,
+          4.654085387280643e-18
+        ],
+        [
+          2.7232315693959874,
+          6.020388650896953e-18
+        ]
+      ],
+      [
+        [
+          -0.6186833665225691,
+          -9.509071859151885e-21
+        ],
+        [
+          -2.5979776031864916,
+          -4.4024986273851376e-20
+        ]
+      ],
+      [
+        [
+          0.6186833665225691,
+          9.509071859151885e-21
+        ],
+        [
+          2.5979776031864916,
+          4.4024986273851376e-20
+        ]
+      ],
+      [
+        [
+          -0.40043179230894266,
+          4.8276488541927894e-26
+        ],
+        [
+          -2.278232778924252,
+          2.4667976982852663e-25
+        ]
+      ],
+      [
+        [
+          0.40043179230894266,
+          -4.8276488541927894e-26
+        ],
+        [
+          2.278232778924252,
+          -2.4667976982852663e-25
+        ]
+      ],
+      [
+        [
+          -0.2724589845102299,
+          5.239667766712252e-31
+        ],
+        [
+          -1.9637724986780785,
+          1.846650518649078e-30
+        ]
+      ],
+      [
+        [
+          0.2724589845102299,
+          -5.239667766712252e-31
+        ],
+        [
+          1.9637724986780785,
+          -1.846650518649078e-30
+        ]
+      ],
+      [
+        [
+          -0.18813051107948406,
+          -5.484277765995343e-37
+        ],
+        [
+          -1.6709631408009584,
+          -2.983641379474471e-36
+        ]
+      ],
+      [
+        [
+          0.18813051107948406,
+          5.484277765995343e-37
+        ],
+        [
+          1.6709631408009584,
+          2.983641379474471e-36
+        ]
+      ],
+      [
+        [
+          -0.12752222119608275,
+          2.464746418752889e-42
+        ],
+        [
+          -1.400008630104978,
+          1.468367192852401e-41
+        ]
+      ],
+      [
+        [
+          0.12752222119608275,
+          -2.464746418752889e-42
+        ],
+        [
+          1.400008630104978,
+          -1.468367192852401e-41
+        ]
+      ]
+    ],
+    "evidence": {
+      "exact_rational_points_on_curve": true,
+      "conjugate_pair_maximum_error": 0,
+      "achieved_stability_bits": 38,
+      "arithmetic_accuracy_bits": 64,
+      "refinement_runs": [
+        [
+          96,
+          4,
+          16,
+          {
+            "quadrature": 3.284369,
+            "ray_planning": 0.03325,
+            "root_conversion": 0.04142
+          }
+        ],
+        [
+          128,
+          8,
+          16,
+          {
+            "quadrature": 7.48039,
+            "ray_planning": 0.01514,
+            "root_conversion": 0.03936
+          }
+        ],
+        [
+          160,
+          16,
+          16,
+          {
+            "quadrature": 14.705549,
+            "ray_planning": 0.01569,
+            "root_conversion": 0.04176
+          }
+        ]
+      ],
+      "stage_timings_ms": {
+        "branch_planning": 0.04816,
+        "exact_root_isolation": 0.45622,
+        "model_validation": 0.04075,
+        "refinement_assembly": 25.737318,
+        "result_assembly": 0.22578
+      },
+      "ordinary_source_replay_verified": true
+    }
+  },
+  "magma": {
+    "available": true,
+    "executable": "/home/user/magma-2.18/bin/magma",
+    "version": "2.18.5",
+    "analytic_jacobian_preparation_ms": 290,
+    "prepared_object_cold_batch_ms": 1360,
+    "separate_calls_sharing_prepared_jacobian": {
+      "calls_per_batch": 12,
+      "samples_ms": [
+        1420,
+        1430,
+        1420,
+        1420,
+        1430
+      ],
+      "minimum_ms": 1420,
+      "median_ms": 1420,
+      "maximum_ms": 1430,
+      "mad_ms": 0,
+      "per_call_from_median_ms": 118.333333
+    },
+    "final_values": [
+      {
+        "point": 1,
+        "differential": 1,
+        "real": "-0.11923339733674505528",
+        "imaginary": "1.8087061705980645864"
+      },
+      {
+        "point": 1,
+        "differential": 2,
+        "real": "0.0048536966424506801881",
+        "imaginary": "4.8290841986448726242"
+      },
+      {
+        "point": 2,
+        "differential": 1,
+        "real": "0.11923339733674505528",
+        "imaginary": "-1.8087061705980645864"
+      },
+      {
+        "point": 2,
+        "differential": 2,
+        "real": "-0.0048536966424506801881",
+        "imaginary": "-4.8290841986448726242"
+      },
+      {
+        "point": 3,
+        "differential": 1,
+        "real": "-0.65815981916379757517",
+        "imaginary": "0.61543337773982460321"
+      },
+      {
+        "point": 3,
+        "differential": 2,
+        "real": "-0.24565423577654073031",
+        "imaginary": "-1.7657072743013956701"
+      },
+      {
+        "point": 4,
+        "differential": 1,
+        "real": "0.65815981916379757517",
+        "imaginary": "-0.61543337773982460321"
+      },
+      {
+        "point": 4,
+        "differential": 2,
+        "real": "0.24565423577654073031",
+        "imaginary": "1.7657072743013956701"
+      },
+      {
+        "point": 5,
+        "differential": 1,
+        "real": "0.53082246408030550656",
+        "imaginary": "0.59663639642911990825"
+      },
+      {
+        "point": 5,
+        "differential": 2,
+        "real": "-0.66821143126468080611",
+        "imaginary": "3.2973957364731332305"
+      },
+      {
+        "point": 6,
+        "differential": 1,
+        "real": "-0.53082246408030550656",
+        "imaginary": "-0.59663639642911990825"
+      },
+      {
+        "point": 6,
+        "differential": 2,
+        "real": "0.66821143126468080611",
+        "imaginary": "-3.2973957364731332305"
+      },
+      {
+        "point": 7,
+        "differential": 1,
+        "real": "0.27487684848287998889",
+        "imaginary": "-0.59663639642912044158"
+      },
+      {
+        "point": 7,
+        "differential": 2,
+        "real": "-1.2971319917570276950",
+        "imaginary": "-3.2973957364731344971"
+      },
+      {
+        "point": 8,
+        "differential": 1,
+        "real": "-0.27487684848287998889",
+        "imaginary": "0.59663639642912044158"
+      },
+      {
+        "point": 8,
+        "differential": 2,
+        "real": "1.2971319917570276950",
+        "imaginary": "3.2973957364731344971"
+      },
+      {
+        "point": 9,
+        "differential": 1,
+        "real": "0.10621990162138831092",
+        "imaginary": "0.59663639642912009874"
+      },
+      {
+        "point": 9,
+        "differential": 2,
+        "real": "-1.8827507075112678198",
+        "imaginary": "3.2973957364731333258"
+      },
+      {
+        "point": 10,
+        "differential": 1,
+        "real": "-0.10621990162138831092",
+        "imaginary": "-0.59663639642912009874"
+      },
+      {
+        "point": 10,
+        "differential": 2,
+        "real": "1.8827507075112678198",
+        "imaginary": "-3.2973957364731333258"
+      },
+      {
+        "point": 11,
+        "differential": 1,
+        "real": "-0.014996678145414282777",
+        "imaginary": "-0.59663639642912034157"
+      },
+      {
+        "point": 11,
+        "differential": 2,
+        "real": "-2.4246597289032286144",
+        "imaginary": "-3.2973957364731343972"
+      },
+      {
+        "point": 12,
+        "differential": 1,
+        "real": "0.014996678145414282777",
+        "imaginary": "0.59663639642912034157"
+      },
+      {
+        "point": 12,
+        "differential": 2,
+        "real": "2.4246597289032286144",
+        "imaginary": "3.2973957364731343972"
+      }
+    ],
+    "validation": {
+      "exact_rational_points_on_curve": true,
+      "conjugate_pair_sums_below_1e_18": true
+    }
+  },
+  "comparison": {
+    "magma_separate_calls_over_sagejs_batch": 9.345056333579025,
+    "exit_criterion_passed": true
+  }
+}

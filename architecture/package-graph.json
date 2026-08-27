@@ -9,6 +9,9 @@
   "startup_budgets": {
     "development-cli": {
       "normalized_median_ms": 350,
+      "normalized_median_ms_by_platform_arch": {
+        "linux-arm64": 400
+      },
       "hard_limit_ms": 1500,
       "samples": 11,
       "reference_node_ms": 30
@@ -40,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 680000,
+      "max_source_bytes": 770000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -65,7 +68,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 900000,
+      "max_source_bytes": 950000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.native", "sagejs.ffi"],
       "files": [
@@ -78,7 +81,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 700000,
+      "max_source_bytes": 740000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -105,7 +108,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 410000,
+      "max_source_bytes": 420000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -374,6 +377,17 @@
       "prefixes": []
     },
     {
+      "id": "combinatorics",
+      "layer": 4,
+      "startup": "bootstrap",
+      "max_source_bytes": 60000,
+      "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
+      "files": [
+        "src/baselib/combinat.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "graph-theory",
       "layer": 4,
       "startup": "bootstrap",
@@ -450,17 +464,107 @@
       "prefixes": []
     },
     {
+      "id": "hyperelliptic-curves-kernels",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 260000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "hyperelliptic-curves"
+      ],
+      "modules": [
+        "sagejs.hyperelliptic_curves.auto_receipt_policy",
+        "sagejs.hyperelliptic_curves.genus2_kummer_formulas",
+        "sagejs.hyperelliptic_curves.genus2_kummer_height_kernel",
+        "sagejs.hyperelliptic_curves.genus3_candidate_kernel",
+        "sagejs.hyperelliptic_curves.jacobian_kernels",
+        "sagejs.hyperelliptic_curves.jacobian_kummer_native",
+        "sagejs.hyperelliptic_curves.jacobian_rational_native",
+        "sagejs.hyperelliptic_curves.rational_reduction_kernels"
+      ],
+      "files": [
+        "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_height_kernel.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus3_candidate_kernel.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+        "src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py",
+        "src/lib/sagejs/hyperelliptic_curves/rational_reduction_kernels.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "hyperelliptic-curves-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 590000,
+      "max_source_bytes": 835000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
-        "linear-algebra", "numeric-compat", "hyperelliptic-curves"
+        "linear-algebra", "numeric-compat", "hyperelliptic-curves",
+        "hyperelliptic-curves-kernels"
       ],
       "modules": ["sagejs.hyperelliptic_curves"],
       "files": [],
       "prefixes": ["src/lib/sagejs/hyperelliptic_curves/"]
+    },
+    {
+      "id": "hyperelliptic-curves-heights",
+      "layer": 8,
+      "startup": "lazy",
+      "max_source_bytes": 540000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra", "numeric-compat", "hyperelliptic-curves",
+        "hyperelliptic-curves-kernels", "hyperelliptic-curves-algorithms",
+        "number-field-global-arithmetic"
+      ],
+      "modules": [
+        "sagejs.hyperelliptic_curves.genus2_heights",
+        "sagejs.hyperelliptic_curves.genus2_kummer",
+        "sagejs.hyperelliptic_curves.genus3_heights",
+        "sagejs.hyperelliptic_curves.periods"
+      ],
+      "files": [
+        "src/lib/sagejs/hyperelliptic_curves/_test_genus3_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus2_kummer.py",
+        "src/lib/sagejs/hyperelliptic_curves/genus3_heights.py",
+        "src/lib/sagejs/hyperelliptic_curves/periods.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "hyperelliptic-curves-bsd",
+      "layer": 9,
+      "startup": "lazy",
+      "max_source_bytes": 650000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra", "numeric-compat", "hyperelliptic-curves",
+        "hyperelliptic-curves-kernels", "hyperelliptic-curves-algorithms",
+        "hyperelliptic-curves-heights",
+        "number-field-global-arithmetic"
+      ],
+      "modules": [
+        "sagejs.hyperelliptic_curves.bsd",
+        "sagejs.hyperelliptic_curves.bsd_pipeline",
+        "sagejs.hyperelliptic_curves.deficiency",
+        "sagejs.hyperelliptic_curves.saturation",
+        "sagejs.hyperelliptic_curves.tamagawa",
+        "sagejs.hyperelliptic_curves.torsion"
+      ],
+      "files": [
+        "src/lib/sagejs/hyperelliptic_curves/_test_bsd.py",
+        "src/lib/sagejs/hyperelliptic_curves/_test_deficiency.py",
+        "src/lib/sagejs/hyperelliptic_curves/bsd.py",
+        "src/lib/sagejs/hyperelliptic_curves/bsd_pipeline.py",
+        "src/lib/sagejs/hyperelliptic_curves/deficiency.py",
+        "src/lib/sagejs/hyperelliptic_curves/saturation.py",
+        "src/lib/sagejs/hyperelliptic_curves/tamagawa.py",
+        "src/lib/sagejs/hyperelliptic_curves/torsion.py"
+      ],
+      "prefixes": []
     },
     {
       "id": "modular-forms",

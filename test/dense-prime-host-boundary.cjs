@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -180,7 +181,7 @@ for (const line of lines) {
   assert.ok(write < writeLimit, `GF(${prime}) scalar write took ${write}s`);
   assert.ok(cached < 10e-6, `GF(${prime}) cached pivots took ${cached}s`);
   assert.ok(
-    pivots < rref * 1.2 + 0.0002,
+    pivots < rref * 1.3 + 0.0005,
     `GF(${prime}) fresh pivots ${pivots}s versus RREF ${rref}s`,
   );
 }

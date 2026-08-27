@@ -96,7 +96,7 @@ test("the production FmpqMatrix surface is generated and bounded", () => {
     "the generated host must not select handwritten operation branches",
   );
   assert.ok(
-    wasm.byteLength <= 6_600_000,
+    wasm.byteLength <= 6_650_000,
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
 });

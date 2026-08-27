@@ -132,8 +132,8 @@
       ]
     },
     "hyperelliptic": {
-      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and an Arb/Acb numerical primitive translated from the readable double-Mellin evaluator; exact reconstruction, ambiguity handling, and analytic policy remain in strict Python.",
-      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, and the readable numerical L-series evaluator remain available without native capabilities.",
+      "rationale": "Hyperelliptic exports are bounded packed adapters to pinned smalljac and rforest libraries and to mature Arb/Acb period and L-series primitives; exact reconstruction, ambiguity handling, topology, and analytic policy remain in strict Python.",
+      "fallback": "Exact point-count reconstruction, Hasse--Witt expansion, bounded ordinary Jacobian arithmetic, mpmath period panels, and the readable numerical L-series evaluator remain available without native capabilities.",
       "oracles": [
         "CPython",
         "Sage.js exact fallback",
@@ -150,6 +150,15 @@
         "CPython",
         "Sage.js JavaScript fallback",
         "igraph"
+      ]
+    },
+    "boundary-benchmarks": {
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
       ]
     }
   },
@@ -241,6 +250,31 @@
     }
   },
   "exports": [
+    {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
       "family": "dense-matrix-storage",
@@ -782,12 +816,27 @@
       "decision": "migrate-to-typed-python"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticAbelJacobiBatchArb",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticCentralWeights",
       "family": "hyperelliptic",
       "decision": "retain-host-adapter"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:hyperellipticLseriesValues",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticPeriodEdgeBatchArb",
+      "family": "hyperelliptic",
+      "decision": "retain-host-adapter"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:hyperellipticRealPeriodArb",
       "family": "hyperelliptic",
       "decision": "retain-host-adapter"
     },

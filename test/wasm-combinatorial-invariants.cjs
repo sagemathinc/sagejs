@@ -1,3 +1,4 @@
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -20,8 +21,8 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const {
-  resolveToolchain,
-} = require("../packages/flint-wasm/scripts/wasm-toolchain.cjs");
+  wasmKernelToolchain,
+} = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
 
 const functions = [
@@ -57,16 +58,11 @@ const descriptors = [
 ];
 
 function discoverToolchain() {
-  const status = resolveToolchain({ root });
-  if (!status.ready) return null;
-  return {
-    clang: status.paths.clang,
-    sysroot: status.paths.sysroot,
-    gmpPrefix: status.paths.libraries.gmp.prefix,
-    flintPrefix: status.paths.libraries.flint.prefix,
-    mpfrPrefix: status.paths.libraries.mpfr.prefix,
-    mpcPrefix: status.paths.libraries.mpc.prefix,
-  };
+  try {
+    return wasmKernelToolchain({ root });
+  } catch {
+    return null;
+  }
 }
 
 async function instantiate(manifest, outputRoot) {
@@ -164,8 +160,11 @@ async function syntheticManifest(temporary) {
 const toolchain = discoverToolchain();
 
 test("public heavy exact workflows retain an explicit portable route", async () => {
-  const session = await createSage();
+  const previousNativeDisable = process.env.SAGEJS_NATIVE_DISABLE;
+  process.env.SAGEJS_NATIVE_DISABLE = "1";
+  let session;
   try {
+    session = await createSage();
     const result = await session.evaluate([
       "from sagejs.linear_algebra.combinatorial import matrix_permanent, matrix_minors",
       "answer=[]",
@@ -184,7 +183,12 @@ test("public heavy exact workflows retain an explicit portable route", async () 
         "['3', 700, 'portable-computation', 'portable-computation']]",
     );
   } finally {
-    await session.close();
+    await session?.close();
+    if (previousNativeDisable === undefined) {
+      delete process.env.SAGEJS_NATIVE_DISABLE;
+    } else {
+      process.env.SAGEJS_NATIVE_DISABLE = previousNativeDisable;
+    }
   }
 });
 

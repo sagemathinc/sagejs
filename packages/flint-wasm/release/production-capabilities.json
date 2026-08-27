@@ -71,6 +71,7 @@
         "ffi-resource:flint:fq_element",
         "ffi-resource:flint:fq_polynomial",
         "ffi-resource:flint:nmod_matrix",
+        "ffi:flint:arith_number_of_partitions",
         "ffi:flint:dirichlet_group_init",
         "ffi:flint:dirichlet_group_num_primitive",
         "ffi:flint:dirichlet_group_size",
@@ -392,6 +393,8 @@
         "kernel:dense-rational-flint-production",
         "kernel:dense-word-prime-flint-production",
         "kernel:extension-polynomial-flint-production",
+        "kernel:hyperelliptic-cantor-production",
+        "kernel:hyperelliptic-kummer-production",
         "kernel:number-field-round4-state-production",
         "kernel:number-field-zeta-coefficients-production",
         "kernel:p1-heilbronn-production",
@@ -410,7 +413,10 @@
         "kernel:dense-integer-production",
         "kernel:dense-rational-production",
         "kernel:field-analysis-fixed-point-checker-production",
+        "kernel:genus2-kummer-height-production",
         "kernel:genus3-weil-candidate-production",
+        "kernel:hyperelliptic-period-edge-batch-production",
+        "kernel:hyperelliptic-rational-reduction-production",
         "kernel:number-field-bdf-interval-production",
         "kernel:number-field-composite-analysis-production",
         "kernel:number-field-cubic-norm-obstruction-production",
@@ -419,6 +425,8 @@
         "kernel:number-field-element-valuations-production",
         "kernel:number-field-om-proof-production",
         "kernel:packed-combinatorial-integer-rational-production",
+        "kernel:packed-gf-p2-affine-production",
+        "kernel:packed-gf-pk-affine-production",
         "kernel:packed-graph-components-production",
         "kernel:packed-graph-shortest-paths-production",
         "kernel:packed-integer-polynomial-production",
@@ -426,6 +434,13 @@
         "kernel:packed-permutation-center-production",
         "kernel:packed-rational-polynomial-production",
         "kernel:prime-ideal-candidate-materializer-production"
+      ]
+    },
+    "numpy": {
+      "artifact": "numpy-ts.mjs",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "specialist:numpy-ts"
       ]
     }
   }

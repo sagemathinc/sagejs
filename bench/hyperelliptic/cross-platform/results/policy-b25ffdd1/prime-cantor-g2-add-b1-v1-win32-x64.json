@@ -1,0 +1,88 @@
+{
+  "schema": "sagejs.hyperelliptic-auto-receipt/v1",
+  "platform": "win32-x64",
+  "source_bundle": {
+    "algorithm": "sagejs.source-bundle-sha256/v1",
+    "paths": [
+      "packages/flint-wasm/auto-receipt-policy.mjs",
+      "packages/flint-wasm/evaluator.mjs",
+      "packages/flint-wasm/release/production-layout.json",
+      "packages/flint-wasm/scripts/build.cjs",
+      "packages/flint/src/addon.h",
+      "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+      "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+      "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+      "tools/native-kernel/wasm-bridge.cjs",
+      "tools/runtime-bootstrap.ts",
+      "tools/task-evaluator.ts"
+    ],
+    "sha256": "e927c2ffe5ea3ebaef37f9a8c4eaf7dd5f89239379e7effd0c4d057aca698c1e",
+    "source_commit": "b25ffdd128cb19d95c979133349fb205a40f26e4"
+  },
+  "corpus": {
+    "id": "phase10-primary-cantor-b1-v1",
+    "path": "bench/hyperelliptic/cross-platform/run.cjs",
+    "sha256": "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669"
+  },
+  "backend": "prime-cantor",
+  "operation": "add",
+  "model_evidence": {
+    "kind": "exact-fingerprint",
+    "fingerprints": [
+      "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
+    ]
+  },
+  "envelope_evidence": {
+    "prime_min": 1009,
+    "prime_max": 1009,
+    "interval_start_min": 1009,
+    "interval_stop_max": 1009,
+    "interval_span_max": 1,
+    "batch_items_min": 1000,
+    "batch_items_max": 1000,
+    "scalar_bits_max": 0,
+    "resource_bytes_max": 200096
+  },
+  "exact": {
+    "harness_sha256": "b81a08b591d94191c23fedb6ea93c576251f46620b16732cab1087ca06c47669",
+    "targets": {
+      "dynamic": {
+        "result_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9"
+      },
+      "native": {
+        "result_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9"
+      }
+    }
+  },
+  "evidence": {
+    "failures": {
+      "missing-artifact": {
+        "status": "passed",
+        "artifact_sha256": "fbee9a66446850880bcf51941d5031896dffa5601b3caa7a15478744200475c4"
+      },
+      "cancellation": {
+        "status": "passed",
+        "artifact_sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470"
+      },
+      "memory-exhaustion": {
+        "status": "passed",
+        "artifact_sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470"
+      },
+      "worker-loss": {
+        "status": "passed",
+        "artifact_sha256": "2b41bb3e17a1bf8c6cf6b121852d73abd813e084c085ea2b7dcc7b84c9571470"
+      }
+    },
+    "sanitizers": {}
+  }
+}

@@ -25,7 +25,7 @@
 #include <flint/fmpz.h>
 
 #define EXPORT __attribute__((visibility("default")))
-#define NUMERIC_CAPACITY UINT32_C(65536)
+#define NUMERIC_CAPACITY UINT32_C(400000)
 #define NUMERIC_SLOT_BITS 13
 #define NUMERIC_SLOT_COUNT (UINT32_C(1) << NUMERIC_SLOT_BITS)
 #define NUMERIC_SLOT_MASK (NUMERIC_SLOT_COUNT - UINT32_C(1))
@@ -203,6 +203,117 @@ static int parse_rational(mpfr_t result, const char *text)
     return valid;
 }
 
+/*
+ * Copy an MPFR value out of the reactor without losing a bit.  Public decimal
+ * formatting deliberately follows Sage's displayed-digit convention and is
+ * therefore not a persistence format.  This private record uses the exact
+ * integer significand returned by mpfr_get_z_2exp and records signed zero and
+ * the non-finite classes separately.  The host uses it to spill inactive
+ * handles from its bounded cache, then recreates them on demand.
+ */
+static char *serialize_real(mpfr_srcptr value)
+{
+    mpfr_prec_t precision = mpfr_get_prec(value);
+    mpfr_exp_t exponent;
+    mpz_t significand;
+    char *digits;
+    char *result;
+    int length;
+    char tag;
+
+    if (mpfr_nan_p(value))
+    {
+        length = snprintf(NULL, 0, "N|%lu", (unsigned long) precision);
+        result = (char *) malloc((size_t) length + 1);
+        if (result != NULL)
+            snprintf(result, (size_t) length + 1,
+                "N|%lu", (unsigned long) precision);
+        return result;
+    }
+    if (mpfr_inf_p(value) || mpfr_zero_p(value))
+    {
+        tag = mpfr_inf_p(value) ? 'I' : 'Z';
+        length = snprintf(NULL, 0, "%c|%lu|%u", tag,
+            (unsigned long) precision, mpfr_signbit(value) ? 1U : 0U);
+        result = (char *) malloc((size_t) length + 1);
+        if (result != NULL)
+            snprintf(result, (size_t) length + 1, "%c|%lu|%u", tag,
+                (unsigned long) precision, mpfr_signbit(value) ? 1U : 0U);
+        return result;
+    }
+
+    mpz_init(significand);
+    exponent = mpfr_get_z_2exp(significand, value);
+    digits = mpz_get_str(NULL, 10, significand);
+    if (digits == NULL)
+    {
+        mpz_clear(significand);
+        return NULL;
+    }
+    length = snprintf(NULL, 0, "F|%lu|%ld|%s",
+        (unsigned long) precision, (long) exponent, digits);
+    result = (char *) malloc((size_t) length + 1);
+    if (result != NULL)
+        snprintf(result, (size_t) length + 1, "F|%lu|%ld|%s",
+            (unsigned long) precision, (long) exponent, digits);
+    free(digits);
+    mpz_clear(significand);
+    return result;
+}
+
+static int parse_serialized_real(
+    mpfr_t result, mpfr_prec_t *precision_result, const char *text)
+{
+    unsigned long precision_value;
+    long exponent;
+    unsigned int sign;
+    int offset = 0;
+    int consumed = 0;
+    mpz_t significand;
+
+    if (sscanf(text, "N|%lu%n", &precision_value, &consumed) == 1 &&
+        text[consumed] == '\0' && precision_value <= UINT32_MAX &&
+        valid_precision((uint32_t) precision_value))
+    {
+        *precision_result = (mpfr_prec_t) precision_value;
+        mpfr_init2(result, *precision_result);
+        mpfr_set_nan(result);
+        return 1;
+    }
+    consumed = 0;
+    if ((text[0] == 'I' || text[0] == 'Z') &&
+        sscanf(text + 1, "|%lu|%u%n", &precision_value, &sign, &consumed) == 2 &&
+        text[1 + consumed] == '\0' && sign <= 1 &&
+        precision_value <= UINT32_MAX &&
+        valid_precision((uint32_t) precision_value))
+    {
+        *precision_result = (mpfr_prec_t) precision_value;
+        mpfr_init2(result, *precision_result);
+        if (text[0] == 'I')
+            mpfr_set_inf(result, sign ? -1 : 1);
+        else
+            mpfr_set_zero(result, sign ? -1 : 1);
+        return 1;
+    }
+    consumed = 0;
+    if (sscanf(text, "F|%lu|%ld|%n",
+            &precision_value, &exponent, &offset) != 2 || offset <= 0 ||
+        precision_value > UINT32_MAX ||
+        !valid_precision((uint32_t) precision_value) || text[offset] == '\0')
+        return 0;
+    mpz_init(significand);
+    if (mpz_set_str(significand, text + offset, 10) != 0)
+    {
+        mpz_clear(significand);
+        return 0;
+    }
+    *precision_result = (mpfr_prec_t) precision_value;
+    mpfr_init2(result, *precision_result);
+    mpfr_set_z_2exp(result, significand, (mpfr_exp_t) exponent, MPFR_RNDN);
+    mpz_clear(significand);
+    return 1;
+}
+
 static char *format_real(mpfr_srcptr value)
 {
     mpfr_prec_t precision = mpfr_get_prec(value);
@@ -366,8 +477,29 @@ EXPORT uint32_t sagejs_numeric_live_count(void) { return numeric_live_count; }
 EXPORT uint32_t sagejs_numeric_real_from_string(uint32_t precision)
 {
     real_slot *slot;
+    mpfr_t restored;
+    mpfr_prec_t restored_precision;
     uint32_t handle;
     numeric_input[NUMERIC_CAPACITY - 1] = '\0';
+    /*
+     * Precision zero is outside the public MPFR contract and is reserved for
+     * exact host-cache restoration.  The JavaScript public entry point
+     * validates precision before crossing this boundary, so the persistence
+     * grammar is never accepted as a RealField string.
+     */
+    if (precision == 0)
+    {
+        if (!parse_serialized_real(restored, &restored_precision, numeric_input))
+        {
+            numeric_status = NUMERIC_INVALID_INPUT;
+            return 0;
+        }
+        handle = allocate_real(restored_precision, &slot);
+        if (handle != 0)
+            mpfr_set(slot->value, restored, MPFR_RNDN);
+        mpfr_clear(restored);
+        return handle;
+    }
     if (!valid_precision(precision))
     {
         numeric_status = NUMERIC_INVALID_INPUT;
@@ -516,7 +648,7 @@ EXPORT double sagejs_numeric_real_to_double(uint32_t handle)
     return mpfr_get_d(slot->value, MPFR_RNDN);
 }
 
-EXPORT uint32_t sagejs_numeric_real_format(uint32_t handle)
+EXPORT uint32_t sagejs_numeric_real_format(uint32_t handle, uint32_t exact_snapshot)
 {
     real_slot *slot = real_from_handle(handle);
     char *text;
@@ -526,7 +658,7 @@ EXPORT uint32_t sagejs_numeric_real_format(uint32_t handle)
         numeric_status = NUMERIC_INVALID_HANDLE;
         return 0;
     }
-    text = format_real(slot->value);
+    text = exact_snapshot ? serialize_real(slot->value) : format_real(slot->value);
     if (text == NULL)
     {
         numeric_status = NUMERIC_ALLOCATION_FAILED;

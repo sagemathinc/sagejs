@@ -58,11 +58,18 @@
     "dist/m4ri-resource-adapter.c",
     "dist/m4ri-resource-backend.mjs",
     "dist/m4ri-resource-manifest.json",
+    "dist/numpy-ts.mjs",
     "dist/compiler.js",
     "dist/compiler-frontend.mjs",
+    "dist/foreign-frontend.mjs",
     "dist/web-tree-sitter.wasm",
     "dist/tree-sitter-python.wasm",
     "dist/tree-sitter-sage.wasm",
+    "dist/tree-sitter-magma.wasm",
+    "dist/tree-sitter-macaulay2.wasm",
+    "dist/tree-sitter-maple.wasm",
+    "dist/tree-sitter-matlab.wasm",
+    "dist/tree-sitter-wolfram.wasm",
     "dist/baselib.js",
     "dist/plotly.min.js",
     "dist/stdlib.json",
@@ -98,23 +105,17 @@
   ],
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "pnpm run build && node --expose-gc --test test/*.test.mjs",
+    "test": "pnpm run build && node --expose-gc --test test/*.test.mjs test/*.test.cjs",
     "test:browser": "pnpm run build && node test/browser-smoke.mjs",
+    "test:browser:partitions": "node test/partition-count-browser.mjs",
+    "test:browser:finite-field-compiler": "node test/finite-field-compiler-browser.mjs",
     "test:browser:webkit-file-origin": "node test/browser-wasm-webkit-file-origin.mjs",
     "test:browser:webkit-memory": "node test/browser-wasm-webkit-memory.mjs",
     "test:browser-dynamic-code": "pnpm run build && node test/browser-dynamic-code.mjs",
     "test:resource-browser": "pnpm run build && node test/resource-browser-smoke.mjs"
   },
   "dependencies": {
-    "@cowasm/memfs": "3.5.1",
-    "assert": "2.1.0",
-    "buffer": "6.0.3",
-    "events": "3.3.0",
-    "path-browserify": "1.0.1",
-    "process": "0.11.10",
-    "stream-browserify": "3.0.0",
-    "util": "0.12.5",
-    "wasi-js": "1.7.3"
+    "path-browserify": "1.0.1"
   },
   "devDependencies": {
     "plotly.js-dist-min": "3.7.0"

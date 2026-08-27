@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-25T00:07:42.476Z",
+  "repository": {
+    "commit": "6aaa460afe6615ce599193cc4fb93e603c473b3e",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8"
+  },
+  "host": {
+    "hostname": "cocalc-vm-e1d2fb8e3de341f781653364",
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.5.1"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "unavailable",
+    "reason": "the checked-in standalone harness currently has a POSIX static-archive linker contract; Windows native kernels remain covered separately"
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "661c7872f30c396db04d8f20788757d9101e8946167b55539332812c5095c8e5",
+    "artifact_id": null,
+    "pack_count": 39,
+    "load_ms": 46.421599999999984,
+    "process_rss_bytes": 95625216,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.621499999999969,
+          "median": 3.0387000000000057,
+          "max": 3.8774999999999977,
+          "mad": 0.3952000000000453
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552"
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.528599999999983,
+          "median": 2.5837999999999965,
+          "max": 3.151800000000037,
+          "mad": 0.05520000000001346
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592"
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.5902000000000385,
+        "median": 4.1766999999999825,
+        "max": 5.856299999999976,
+        "mad": 0.5864999999999441
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 328.19469999999995,
+      "stdout_sha256": "b48f4998f2d8146696f78f28e4e988d8d8bc05df394799dfc3f99087ffd6da5e",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 3523.7099,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///C:/sjs-hyp-2b7a213d/packages/flint-wasm/kernel.mjs:288:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 1907.2826999999997,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 53334.3353,
+      "stdout_sha256": "c22a3be7aeb633e3cefafe3f3a9ee2183106b497a411a0c85bee4c019de89ebc",
+      "stdout": "(node:2964) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✔ authenticated production packs execute every hyperelliptic source family (47764.1667ms)\n✔ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (5284.841ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (1.4827ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 53263.68",
+      "stderr": ""
+    }
+  },
+  "finished_at": "2026-08-25T00:08:41.831Z"
+}

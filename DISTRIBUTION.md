@@ -174,19 +174,19 @@ provide either contract.
 
 There is strong evidence that the native library stack is portable:
 
-- the earlier CoWasm SageMath work builds GMP, MPFR, and FLINT for WASI and
-  exercises integer, rational, finite-field, polynomial, matrix, Arb, ACB,
-  algebraic-number, and Calcium operations;
+- Sage.js's pinned direct-WASI-SDK recipes build GMP, MPFR, MPC, FLINT/Arb,
+  M4RI, ffpoly, and smalljac and exercise integer, rational, finite-field,
+  polynomial, matrix, Arb, ACB, algebraic-number, and curve operations;
 - [python-flint](https://github.com/flintlib/python-flint) supports an
   Emscripten/Pyodide build; and
 - [napi-wasm](https://github.com/devongovett/napi-wasm) offers a possible
   compatibility layer for compiling a Node-API-shaped addon to WebAssembly.
 
-The implemented direct C ABI links the CoWasm FLINT, MPFR, and GMP archives
-into a 4.7 MiB stripped module, about 2 MiB with gzip. The compiler and baselib
-add about 0.45 MiB with gzip. CoWasm's `wasi-js` and `@cowasm/memfs` provide a
-browser-safe temporary filesystem for FLINT algorithms such as quadratic
-sieve, without granting access to a host filesystem. A real Chromium smoke
+The implemented direct C ABI links the Sage.js-built FLINT, MPFR, and GMP
+archives into authenticated Wasm reactors. Sage.js's small first-party WASI
+Preview 1 host provides a bounded, evaluator-private temporary filesystem for
+FLINT algorithms such as quadratic sieve, without granting access to a host
+filesystem. A real Chromium smoke
 test evaluates
 `factor(2026)` through the Sage parser, generated JavaScript, ordinary
 `IntegerFactorization`, and FLINT WASM layers. It also verifies persistent

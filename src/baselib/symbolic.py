@@ -33,6 +33,9 @@ _CONSTANT_NAMES = {
 }
 
 
+_RELATION_HEADS = ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]
+
+
 def _backend() -> Any:
     backend = _backend_state["value"]
     if backend is None:
@@ -57,6 +60,13 @@ def _number_record_value(value: Any) -> Any:
     ):
         return runtime.reflect.get(value, "num")
     return runtime.undefined
+
+
+def _machine_real_tree(value: float) -> Any:
+    """Preserve Python float identity in a MathJSON numeric record."""
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "num", str(value))
+    return record
 
 
 def _join_text(separator: str, values: Sequence[str]) -> str:
@@ -179,7 +189,7 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             + _format_expression(operands[1])
             + ")"
         )
-    elif head in ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]:
+    elif head in _RELATION_HEADS:
         precedence = 20
         operators = {
             "Equal": " == ",
@@ -212,6 +222,8 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
 def _expression_tree(value: Any) -> Any:
     if isinstance(value, Expression):
         return value._tree
+    if isinstance(value, float):
+        return _machine_real_tree(value)
     if runtime.jstype(value) in ("object", "function"):
         value_parent = runtime.reflect.get(value, "_parent")
         if runtime.jstype(value_parent) in ("object", "function"):
@@ -520,10 +532,11 @@ class Expression(sage.Element):
         return self._relation("Equal", right)
 
     def __bool__(self) -> bool:
-        evaluated = _call_backend("evaluate", [self._tree])
-        if evaluated is True:
-            return True
-        return False
+        """
+        Decide truth by what this is: a relation is a claim, true once proved,
+        and anything else is a value, false only when it is zero.
+        """
+        return bool(_call_backend("truth", [self._tree]))
 
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))
@@ -867,13 +880,44 @@ class Expression(sage.Element):
             order_parts = _exact_complex_parts_from_tree(self._tree[1])
             argument_parts = _exact_complex_parts_from_tree(self._tree[2])
             order = field(order_parts[0], order_parts[1])
-            argument = field(argument_parts[0], argument_parts[1])
-            value = field._fromNative(
-                runtime.flint_backend().complexBesselI(order._native, argument._native)
-            )
-            imaginary = value.imag()
-            if imaginary == 0:
-                return value.real()
+            backend = runtime.flint_backend()
+            close = getattr(backend, "closeNumericResource", None)
+            try:
+                argument = field(argument_parts[0], argument_parts[1])
+                try:
+                    native_value = backend.complexBesselI(
+                        order._native,
+                        argument._native,
+                    )
+                finally:
+                    if close is not None:
+                        close(argument._native)
+            finally:
+                if close is not None:
+                    close(order._native)
+            try:
+                value = field._fromNative(native_value)
+            except Exception:
+                if close is not None:
+                    close(native_value)
+                raise
+            try:
+                imaginary = value.imag()
+                try:
+                    is_real = float(imaginary) == 0
+                finally:
+                    if close is not None:
+                        close(imaginary._native)
+            except Exception:
+                if close is not None:
+                    close(value._native)
+                raise
+            if is_real:
+                try:
+                    return value.real()
+                finally:
+                    if close is not None:
+                        close(value._native)
             return value
         result = _call_backend("numeric", [self._tree, decimal_digits])
         return NumericalApproximation(

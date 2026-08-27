@@ -1,7 +1,7 @@
-# Sage.js WebAssembly proof of concept
+# Sage.js WebAssembly runtime
 
-This package links CoWasm's WebAssembly builds of FLINT, GMP, and MPFR into a
-small, browser-compatible Sage.js evaluator. It currently compiles and
+This package links Sage.js-owned WebAssembly builds of FLINT, GMP, MPFR, MPC,
+M4RI, ffpoly, and smalljac into a browser-compatible Sage.js evaluator. It compiles and
 evaluates Sage source and exposes integer factorization, primality testing,
 proven next-prime searches, and a first modular-symbol core through a narrow C
 ABI. The factorization ABI
@@ -58,14 +58,14 @@ validated, generation-tagged handles. Canonical logical words, SagePack bytes,
 and formatted text cross the boundary only when explicitly requested, with one
 copy into host-owned storage. The separate module gives M4RI its own linear
 memory and resource table instead of mixing its ownership domain with FLINT's.
-The current CoWasm dependency is M4RI 20250128, while native Sage.js pins
-20260122. The generated surface is tested against both; aligning those pins is
-distribution work rather than an ABI difference.
+Native and Wasm Sage.js both pin M4RI 20260122. The generated surface and
+public matrix workflows are tested against that exact source identity.
 
-The JavaScript loader has no host Node.js dependency. Its browser bundle uses
-CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
-unlink temporary files entirely in memory. This matters for algorithms such as
-the quadratic sieve; no browser filesystem access is required. The demo uses
+The JavaScript loader has no host Node.js dependency. Its small first-party
+WASI Preview 1 host lets FLINT create, seek, reopen, and unlink temporary files
+inside a bounded evaluator-private memory filesystem. This matters for
+algorithms such as the quadratic sieve; no browser filesystem access is
+required. The demo uses
 two isolated realms:
 
 1. An outer evaluator Web Worker owns the Sage runtime and all mathematical
@@ -120,11 +120,17 @@ The package also includes a production-artifact developer CLI. It accepts a
 source file, `-c`, piped source, or starts a line-oriented REPL:
 
 ```sh
-node packages/flint-wasm/node-cli.mjs -c 'print(factor(2026))'
+sagejs --wasm -c 'print(factor(2026))'
 printf '%s\n' 'E = EllipticCurve([1,2,3,4,999]); print(E.anlist(10000)[-5:])' |
-  node packages/flint-wasm/node-cli.mjs
-node packages/flint-wasm/node-cli.mjs --timeout 30000 --diagnostics example.sage
+  sagejs --wasm
+sagejs --wasm --timeout 30000 --diagnostics example.sage
 ```
+
+With no file or piped input, `sagejs --wasm` starts a prompt labeled `wasm: `
+so it cannot be confused with the native `sage: ` or Python `>>> ` prompts.
+The standalone `sagejs-wasm` package executable and
+`node packages/flint-wasm/node-cli.mjs` remain equivalent developer entry
+points.
 
 Both forms use `dist/production-manifest.json` and the same Wasm modules,
 compiler cache, capability report, and nested compiler worker as the browser.
@@ -200,22 +206,20 @@ thin client of this API rather than a separate worker protocol.
 
 ## Build
 
-First build the FLINT stack in a sibling
-[CoWasm](https://github.com/sagemathinc/cowasm) checkout. If the checkout is
-elsewhere, set `SAGEJS_COWASM_ROOT`:
+Prepare the content-addressed Sage.js Wasm toolchain, then build the repository
+and production artifact:
 
 ```sh
-git clone https://github.com/sagemathinc/cowasm.git ../cowasm
-(cd ../cowasm && pnpm install && make -C sagemath/flint test-wasi-sdk-standalone)
-pnpm build:wasm
-pnpm test:wasm
+pnpm install --frozen-lockfile
+pnpm --dir packages/wasm-toolchain toolchain:prepare
+pnpm --dir packages/wasm-toolchain probe
+pnpm build
+pnpm --dir packages/flint-wasm build
+node packages/flint-wasm/scripts/production-receipt.cjs validate
 ```
 
-For a checkout outside the sibling path, build with
-`SAGEJS_COWASM_ROOT=/path/to/cowasm pnpm build:wasm`.
-
-The build uses CoWasm's WASI SDK and static `libflint`, `libmpfr`, `libgmp`,
-and `libm4ri` archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB
+The build uses the pinned official WASI SDK and Sage.js-owned recipes for the
+static mathematical archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB
 before HTTP compression and about 2 MiB with gzip in the current build. The self-hosted
 compiler and baselib add about 3.8 MiB uncompressed or 0.45 MiB with gzip.
 The bundled WASI and in-memory filesystem host is about 0.55 MiB uncompressed.

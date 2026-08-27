@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// sagejs-test-tier: integration
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -164,6 +165,8 @@ test("public exact construction source tries checked whole-list packing first", 
 const portableConstruction = String.raw`
 import sagejs._baselib.polynomial as polynomial_module
 polynomial_module._generated_flint_resources_available_cache = False
+polynomial_module._generated_fmpz_polynomial_resources_available_cache = False
+polynomial_module._generated_fmpq_polynomial_resources_available_cache = False
 R = PolynomialRing(ZZ, 'x')
 S = PolynomialRing(QQ, 'y')
 huge = 2**65537 + 17
@@ -229,12 +232,18 @@ print("exact-polynomial-lazy-resource-ingress-ok")
 
 test("lazy integer resource source has no host-list projection", () => {
   const source = readFileSync(join(root, "src/baselib/polynomial.py"), "utf8");
-  const start = source.indexOf("    def _exact_polynomial_resource(self)");
+  const start = source.indexOf("class _FmpzPolynomialResourceStorage:");
+  const end = source.indexOf("\nclass _FmpqPolynomialResourceStorage:", start);
   assert.notEqual(start, -1);
-  const body = source.slice(start, source.indexOf("\n    def ", start + 8));
-  const integerBranch = body.slice(
-    body.indexOf("if self._has_fmpz_polynomial_resource():"),
-    body.indexOf("            else:"),
+  assert.notEqual(end, -1);
+  const integerStorage = source.slice(start, end);
+  const resourceStart = integerStorage.indexOf("    def resource(self)");
+  const resourceEnd = integerStorage.indexOf("\n    def _spill", resourceStart);
+  assert.notEqual(resourceStart, -1);
+  assert.notEqual(resourceEnd, -1);
+  const integerBranch = integerStorage.slice(
+    resourceStart,
+    resourceEnd,
   );
   assert.match(integerBranch, /runtime\.integer_buffer_to_packed_bytes\(/);
   assert.match(integerBranch, /_buffer_length\(/);

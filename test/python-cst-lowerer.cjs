@@ -1,3 +1,4 @@
+// sagejs-test-tier: unit
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -99,6 +100,62 @@ test("direct CST lowering matches established JavaScript for core nodes", async 
   }
 });
 
+test("closed modular recurrences receive a guarded scalar loop", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const emit = (source) => {
+      const ast = frontend.parse(source, parserOptions);
+      const output = new compiler.OutputStream(outputOptions);
+      ast.print(output);
+      return output.get();
+    };
+    const optimized = emit(`
+def recurrence(n, field):
+    value = field(1)
+    multiplier = field(12345)
+    increment = field(6789)
+    for index in range(n):
+        value = value * multiplier + increment
+    return value
+`);
+    assert.match(optimized, /ρσ_prepare_machine_field_region\(/);
+    assert.match(optimized, /ρσ_FieldCount\d+, 5, \[\]\)/);
+    assert.match(optimized, /ρσ_fast_machine_residue_recurrence\(/);
+    assert.match(optimized, /ρσ_FieldAdaptiveResult\d+ !== null/);
+    assert.match(optimized, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
+
+    const generic = (() => {
+      const ast = frontend.parse(`
+def recurrence(n, field):
+    value = field(1)
+    multiplier = field(12345)
+    increment = field(6789)
+    for index in range(n):
+        value = value * multiplier + increment
+    return value
+`, { ...parserOptions, optimization_level: "O0" });
+      const output = new compiler.OutputStream(outputOptions);
+      ast.print(output);
+      return output.get();
+    })();
+    assert.doesNotMatch(generic, /ρσ_prepare_machine_field_region\(/);
+    assert.doesNotMatch(generic, /ρσ_fast_machine_residue_recurrence\(/);
+    assert.match(generic, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
+
+    for (const source of [
+      `for multiplier in range(count):\n    value = value * multiplier + increment\n`,
+      `for index in range(count):\n    value = value * multiplier + increment\n    seen.append(1)\n`,
+      `for index in range(count):\n    value = value * multiplier + increment\nelse:\n    finished = True\n`,
+      `range = custom_range\nfor index in range(count):\n    value = value * multiplier + increment\n`,
+    ]) {
+      assert.doesNotMatch(emit(source), /ρσ_prepare_machine_field_region\(/);
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
 test("starred set displays lower to valid JavaScript spread", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -112,6 +169,68 @@ test("starred set displays lower to valid JavaScript spread", async () => {
     const javascript = output.get();
     assert.match(javascript, /\.\.\.Array\.from\(ρσ_Iterable\(/);
     assert.doesNotThrow(() => new Function(javascript));
+  } finally {
+    frontend.close();
+  }
+});
+
+test("starred assignment targets are declared in every Python scope", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "first, *rest = [1, 2, 3]\n" +
+        "def split(values):\n" +
+        "    head, *middle, last = values\n" +
+        "    return head, middle, last\n",
+      parserOptions,
+    );
+    assert.deepEqual(
+      ast.localvars.map((symbol) => symbol.name),
+      ["ρσ_unpack", "first", "rest"],
+    );
+    const split = ast.body.find((statement) =>
+      statement instanceof compiler.AST_Lambda
+    );
+    assert.ok(split);
+    assert.deepEqual(
+      split.localvars.map((symbol) => symbol.name),
+      ["ρσ_unpack", "head", "middle", "last"],
+    );
+
+    const output = new compiler.OutputStream({
+      ...outputOptions,
+      private_scope: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /var ρσ_unpack, \$ρσ\$py\$first, \$ρσ\$py\$rest/);
+    assert.match(
+      javascript,
+      /var ρσ_unpack, \$ρσ\$py\$head, \$ρσ\$py\$middle, \$ρσ\$py\$last/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("bare and reusable main programs emit strict JavaScript", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    for (const reuse_main_module of [false, true]) {
+      const ast = frontend.parse("answer = 42\n", {
+        ...parserOptions,
+        reuse_main_module,
+      });
+      const output = new compiler.OutputStream({
+        ...outputOptions,
+        private_scope: false,
+        reuse_main_module,
+      });
+      ast.print(output);
+      assert.match(output.get(), /^"use strict";/);
+    }
   } finally {
     frontend.close();
   }
@@ -435,7 +554,7 @@ test("comprehension targets stay in their implicit Python 3 scope", async () => 
     );
     assert.match(
       javascript,
-      /var ρσ_Result\s+= ρσ_dict\(\), \$ρσ\$py\$key, \$ρσ\$py\$value;/,
+      /var ρσ_Result\s+= ρσ_dict\(\), ρσ_unpack, \$ρσ\$py\$key, \$ρσ\$py\$value;/,
     );
     assert.doesNotMatch(
       javascript,
@@ -1124,6 +1243,10 @@ test("context managers receive Python exception metadata", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
+    assert.match(
+      javascript,
+      /var ρσ_with_exception = undefined, ρσ_with_suppress;/,
+    );
     assert.match(javascript, /ρσ_type\(ρσ_with_exception\)/);
     assert.match(
       javascript,
@@ -1132,7 +1255,7 @@ test("context managers receive Python exception metadata", async () => {
     assert.doesNotMatch(javascript, /ρσ_with_exception\.constructor/);
     assert.equal(
       (javascript.match(/ρσ_with_exception = undefined;/g) ?? []).length,
-      2,
+      1,
     );
   } finally {
     frontend.close();

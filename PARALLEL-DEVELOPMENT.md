@@ -110,6 +110,7 @@ Inside a project worktree:
 
 ```sh
 pnpm parallel:check                 # contract and current write scope
+pnpm merge:check                    # fast cross-branch inventory invariants
 pnpm test:changed                   # checks implied by changed files
 pnpm parallel:run -- TASK -- pnpm test:native
 pnpm parallel:status
@@ -121,6 +122,14 @@ receipt therefore becomes stale whenever relevant code changes. Before review,
 set the task status to `review` and fill in `handoff.summary`, risks, and next
 steps. `parallel:check` then requires fresh passing receipts for every declared
 validation command.
+
+Every Node test declares its runner tier in its own header with
+`// sagejs-test-tier: unit`, `integration`, or `specialized`. Optional
+`sagejs-test-portable`, `sagejs-test-smoke`, and `sagejs-test-platform`
+markers refine the routine profiles. The runner discovers these declarations;
+there is no second central list to repair after a merge. `pnpm merge:check`
+runs before builds and fails closed on missing test metadata, unresolved merge
+state, stale native-source policy, or stale WebAssembly inventories.
 
 The coordinator runs `pnpm parallel:status` from any worktree. It discovers all
 Git worktrees, selects the one live contract named by each `agent/ID` branch,
@@ -162,6 +171,7 @@ short integration project.
 | `pnpm parallel:cache -- status` | Report shared native-cache size and retained generations |
 | `pnpm parallel:cache -- cleanup` | Dry-run bounded obsolete native-cache cleanup |
 | `pnpm test:changed` | Run the deterministic checks implied by a diff |
+| `pnpm merge:check` | Fail fast on cross-branch inventory and merge invariants |
 | `pnpm architecture:check` | Enforce package, native-code, and kernel policy |
 
 Lane definitions live in [`.agents/lanes.json`](.agents/lanes.json). They are

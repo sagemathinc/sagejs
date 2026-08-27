@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "packages/flint-wasm/**"
+      - "packages/wasm-toolchain/**"
       - "packages/flint/src/**"
       - "src/**"
       - "ffi/**"
       - "tools/ffi/**"
       - "tools/native-kernel/**"
+      - "tools/source-mirror/**"
       - "test/browser-wasm-*"
       - "bench/browser-wasm-*"
       - ".github/workflows/wasm*.yml"
@@ -16,11 +18,13 @@ on:
     branches: [main]
     paths:
       - "packages/flint-wasm/**"
+      - "packages/wasm-toolchain/**"
       - "packages/flint/src/**"
       - "src/**"
       - "ffi/**"
       - "tools/ffi/**"
       - "tools/native-kernel/**"
+      - "tools/source-mirror/**"
       - "test/browser-wasm-*"
       - "bench/browser-wasm-*"
       - ".github/workflows/wasm*.yml"
@@ -58,23 +62,28 @@ jobs:
           key: >-
             sagejs-wasm-dist-v1-${{ runner.os }}-${{
             hashFiles('pnpm-lock.yaml', 'packages/flint-wasm/**',
+            'packages/wasm-toolchain/**', 'tools/source-mirror/**',
             'packages/flint/src/**', 'ffi/**', 'tools/ffi/**',
             'tools/native-kernel/**', 'src/**') }}
 
       - name: Resolve the pinned toolchain cache
         if: steps.artifact-cache.outputs.cache-hit != 'true'
         id: toolchain
-        run: echo "path=$(node packages/flint-wasm/scripts/wasm-toolchain.cjs cache-path)" >> "$GITHUB_OUTPUT"
-      - name: Restore the content-addressed CoWasm toolchain
+        run: |
+          path="$(node packages/wasm-toolchain/scripts/toolchain.cjs cache-path)"
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          echo "identity=${path##*/}" >> "$GITHUB_OUTPUT"
+      - name: Restore the content-addressed Sage.js Wasm toolchain
         if: steps.artifact-cache.outputs.cache-hit != 'true'
         uses: actions/cache@v6
         with:
           path: ${{ steps.toolchain.outputs.path }}
-          key: sagejs-cowasm-v1-${{ runner.os }}-${{ hashFiles('packages/flint-wasm/release/toolchain-lock.json') }}
+          key: sagejs-wasm-toolchain-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.identity }}
       - name: Prepare the pinned toolchain and build the artifact
         if: steps.artifact-cache.outputs.cache-hit != 'true'
         run: |
-          node packages/flint-wasm/scripts/wasm-toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/toolchain.cjs prepare
+          node packages/wasm-toolchain/scripts/probe.cjs
           pnpm build
           pnpm --dir packages/flint-wasm build
 

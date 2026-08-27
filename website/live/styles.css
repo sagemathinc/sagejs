@@ -18,11 +18,11 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 20rem; }
-button, input, select, textarea { font: inherit; }
+button, input, select { font: inherit; }
 button, select, input { min-height: 2.5rem; }
 button { border: 1px solid var(--line); border-radius: .55rem; background: var(--panel); color: var(--ink); cursor: pointer; padding: .48rem .78rem; }
 button:hover:not(:disabled) { border-color: var(--accent); }
-button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #65b995; outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid #65b995; outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .48; }
 button.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
 button.primary:hover:not(:disabled) { background: var(--accent-dark); }
@@ -60,7 +60,8 @@ main { display: grid; gap: 1.25rem; grid-template-columns: minmax(22rem, 1.1fr) 
 .example-bar select { flex: 0 1 21rem; }
 #example-description { color: var(--muted); flex: 1 1 12rem; font-size: .82rem; }
 .editor-label { display: block; padding: 1rem 1rem .45rem; }
-#source { background: var(--code); border: 0; border-radius: 0; color: #e9f2ed; font: 500 .91rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height: 24rem; padding: 1rem 1.15rem; resize: vertical; tab-size: 4; width: 100%; }
+.source-editor { background: var(--code); height: 24rem; min-height: 16rem; overflow: hidden; resize: vertical; width: 100%; }
+.source-editor .cm-editor { height: 100%; }
 .editor-help { color: var(--muted); font-size: .78rem; margin: .55rem 1rem 0; }
 kbd { background: #eef1ed; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: .25rem; font: .74rem ui-monospace, monospace; padding: .1rem .27rem; }
 .controls { justify-content: space-between; }
@@ -79,6 +80,11 @@ kbd { background: #eef1ed; border: 1px solid var(--line); border-bottom-width: 2
 .result { border: 1px solid var(--line); border-left: 4px solid #93a39a; border-radius: .5rem; overflow: hidden; }
 .result h3 { background: #f5f7f4; color: var(--muted); font-size: .76rem; letter-spacing: .04em; margin: 0; padding: .48rem .7rem; text-transform: uppercase; }
 .result pre { font: .84rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; margin: 0; max-height: 30rem; overflow: auto; padding: .75rem; white-space: pre-wrap; word-break: break-word; }
+.result-input-heading { align-items: center; background: #f9faf8; border-top: 1px solid var(--line); display: flex; justify-content: space-between; padding: .38rem .7rem; }
+.result-input-heading strong, .result-output-label { color: var(--muted); font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+.result-copy-input { font-size: .72rem; padding: .25rem .5rem; }
+.result pre.result-input { background: #f9faf8; border-bottom: 1px solid var(--line); color: #344039; max-height: 14rem; }
+.result-output-label { display: block; padding: .55rem .75rem 0; }
 .result-complete { border-left-color: var(--accent); }
 .result-error { border-left-color: var(--danger); }
 .result-running { border-left-color: #2b84a1; }
@@ -118,7 +124,7 @@ dialog dt { color: var(--muted); font-weight: 700; }
   .kernel-status { margin-left: auto; }
   main { padding: .7rem; }
   .workspace-bar #sessions { max-width: none; width: 100%; }
-  #source { font-size: .83rem; min-height: 20rem; }
+  .source-editor { height: 20rem; }
   .run-controls, .kernel-controls { width: 100%; }
   .run-controls button { flex: 1; }
 }

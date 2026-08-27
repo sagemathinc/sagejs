@@ -126,8 +126,8 @@ particular hot loop does not happen to call the host.
 
 Tests compile every backend family's core as an independent translation unit
 and execute the exact-integer core as an independent native executable. When
-the CoWasm WASI SDK and GMP archive are present, that identical file is also
-compiled to `wasm32-wasip1` and executed through WASI. Exact/GMP, packed
+the Sage.js-owned pinned WASI toolchain is prepared, that identical file is
+also compiled to `wasm32-wasip1` and executed through WASI. Exact/GMP, packed
 binary64, MPFR/MPC, source-transparent prime-field, and specialized
 prime-field kernels all use the same core-first status ABI. A backend that
 cannot emit an isolated core is rejected rather than routed through a legacy
