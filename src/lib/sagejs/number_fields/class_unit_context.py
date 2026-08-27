@@ -606,6 +606,8 @@ class _LiveClassUnitArtifacts:
         self.terminal_upgrade_issued = False
         self.public_class_group_projection: Any = None
         self.public_class_group_projection_reserved = False
+        self.public_class_group_projection_source: Any = None
+        self.public_saturation_payload_issued = False
         self.sealed = False
 
     @staticmethod
@@ -730,6 +732,9 @@ class _LiveClassUnitArtifacts:
             ),
             "saturation_units": tuple(getattr(saturation, "units", ())),
             "saturation_content_sha256": getattr(saturation, "content_sha256", None),
+            "saturation_body_payload": getattr(
+                saturation, "_canonical_body_payload", None
+            ),
             "saturation_certificate": getattr(
                 saturation, "_analytic_certificate", None
             ),
@@ -809,6 +814,7 @@ class _LiveClassUnitArtifacts:
                 "presentation",
                 "collector",
                 "saturation",
+                "saturation_body_payload",
                 "class_group",
                 "group_relation_reconstructor",
                 "group_combine_relations",
@@ -1539,7 +1545,50 @@ class _LiveClassUnitArtifacts:
         if self.public_class_group_projection_reserved:
             return None
         self.public_class_group_projection_reserved = True
+        self.public_class_group_projection_source = source
+        self.public_saturation_payload_issued = False
         return "reserved", None
+
+    def consume_public_saturation_payload(
+        self, source: Any
+    ) -> tuple[dict[str, Any], str, str] | None:
+        """Issue the retained canonical saturation body to one public adapter.
+
+        This is a construction receipt, not proof authority.  The public group
+        still performs its ordinary detached saturation replay before it can
+        be returned.  Reusable uninterrupted contexts may avoid serializing
+        the same exact unit objects a second time while that transaction is
+        reserved.
+        """
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_saturation_payload_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+        ):
+            return None
+        record = self.saturation_record
+        snapshot = self.terminal_semantic_snapshot
+        identity_snapshot = self.terminal_identity_snapshot
+        if record is None or snapshot is None or identity_snapshot is None:
+            return None
+        body_json = getattr(record, "_canonical_body_json", None)
+        body_payload = getattr(record, "_canonical_body_payload", None)
+        content_sha256 = getattr(record, "content_sha256", None)
+        if (
+            not isinstance(body_payload, dict)
+            or identity_snapshot.get("saturation_body_payload") is not body_payload
+            or not isinstance(body_json, str)
+            or len(body_json) > 64 * 1024 * 1024
+            or not isinstance(content_sha256, str)
+            or len(content_sha256) != 64
+            or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != content_sha256
+            or snapshot.get("saturation_body_json") != body_json
+            or snapshot.get("saturation_content_sha256") != content_sha256
+        ):
+            return None
+        self.public_saturation_payload_issued = True
+        return body_payload, body_json, content_sha256
 
     def finish_public_class_group_projection(
         self, projection: Any = None, *, commit: bool
@@ -1547,6 +1596,8 @@ class _LiveClassUnitArtifacts:
         if not self.public_class_group_projection_reserved:
             return False
         self.public_class_group_projection_reserved = False
+        self.public_class_group_projection_source = None
+        self.public_saturation_payload_issued = False
         if not commit:
             return True
         if projection is None or self.public_class_group_projection is not None:
@@ -2087,6 +2138,14 @@ class ClassUnitGroupContext:
             live is not None
             and live.finish_public_class_group_projection(projection, commit=commit)
         )
+
+    def _consume_live_public_saturation_payload(
+        self, token: Any, source: Any
+    ) -> tuple[dict[str, Any], str, str] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public saturation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.consume_public_saturation_payload(source)
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""

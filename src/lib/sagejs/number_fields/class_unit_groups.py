@@ -501,6 +501,7 @@ class ClassUnitSaturationRecord:
         )
         if _trusted_terminal_snapshot is None:
             body = self._body_dict()
+            self._canonical_body_payload = body
             self._canonical_body_json = json.dumps(
                 body,
                 allow_nan=False,
@@ -512,6 +513,7 @@ class ClassUnitSaturationRecord:
                 self._canonical_body_json.encode("utf-8")
             ).hexdigest()
         else:
+            self._canonical_body_payload = None
             token, body_json, content_sha256 = _trusted_terminal_snapshot
             if (
                 token is not _TERMINAL_SATURATION_CLONE_TOKEN

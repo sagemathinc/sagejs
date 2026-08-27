@@ -44,7 +44,9 @@ function runSource(source, timeout = 360_000) {
 test("quartic scalar projections retain exact resumable saturation state", () => {
   const output = runSource(String.raw`
 import sagejs.number_fields.class_group_factor_base as factor_base_module
+import sagejs.number_fields.class_group_maps as class_group_maps
 import sagejs.number_fields.class_unit_analytic as analytic_module
+import sagejs.number_fields.class_unit_context as context_module
 import sagejs.number_fields.class_unit_groups as class_unit_module
 import sagejs.number_fields.maximal_order as maximal_order_module
 
@@ -136,6 +138,74 @@ for proof in (False, True):
     assert group.verify()
     assert resources["relation_attempts"] == attempts
     assert resources["relations"] == relations
+
+# A reusable public adapter consumes the saturation record's already-canonical
+# body.  It never reconstructs that payload from exact unit objects, while the
+# returned group still performs the ordinary full saturation replay.  A
+# changed retained body is a failed hint and the reservation remains retryable.
+K = NumberField(x**4 - 2*x**3 - x**2 - 3*x + 1, "payload")
+result = class_unit_module.class_unit_context(K, proof=False, algorithm="auto")
+assert result.complete and result.class_number() == 2
+record = result.saturation_record
+payload_builds = [0]
+original_to_dict = record.to_dict
+def counted_to_dict():
+    payload_builds[0] += 1
+    return original_to_dict()
+record.to_dict = counted_to_dict
+live = result.context._live_artifacts
+transaction = result.context._begin_live_public_class_group_projection(
+    context_module._LIVE_CLASS_UNIT_CONTEXT_TOKEN, result
+)
+assert transaction == ("reserved", None)
+original_body = record._canonical_body_json
+record._canonical_body_json = "{}"
+try:
+    assert result.context._consume_live_public_saturation_payload(
+        context_module._LIVE_CLASS_UNIT_CONTEXT_TOKEN, result
+    ) is None
+finally:
+    record._canonical_body_json = original_body
+    assert result.context._finish_live_public_class_group_projection(
+        context_module._LIVE_CLASS_UNIT_CONTEXT_TOKEN, commit=False
+    )
+assert not live.public_class_group_projection_reserved
+assert not live.public_saturation_payload_issued
+assert live.public_class_group_projection_source is None
+
+# The retained primitive tree is only a construction hint.  Changing it while
+# leaving the canonical producer record intact reaches the final independent
+# replay, fails there, rolls the transaction back, and cannot publish a group.
+body_payload = record._canonical_body_payload
+original_reason = body_payload["reason"]
+body_payload["reason"] = "mutated retained saturation payload"
+try:
+    class_unit_module.class_group(K, proof=False)
+    raise AssertionError("a changed retained saturation payload was accepted")
+except ArithmeticError as error:
+    assert "adapted public class group failed proof replay" in str(error)
+finally:
+    body_payload["reason"] = original_reason
+assert live.public_class_group_projection is None
+assert not live.public_class_group_projection_reserved
+assert not live.public_saturation_payload_issued
+assert live.public_class_group_projection_source is None
+
+before_live_publication = payload_builds[0]
+group = class_unit_module.class_group(K, proof=False)
+assert group.order() == 2 and group.verify()
+# The one call belongs to the final independent public verifier.  The adapter
+# construction itself consumed the retained canonical body instead of calling
+# its serializer a second time.
+assert payload_builds[0] == before_live_publication + 1, (
+    "live-payload-builds", payload_builds[0]
+)
+before_cold_publication = payload_builds[0]
+cold = class_group_maps.class_group_from_engine_result(result)
+assert cold.order() == 2 and cold.verify()
+assert payload_builds[0] == before_cold_publication + 3, (
+    "cold-payload-builds", payload_builds[0]
+)
 
 # A class-number-one scalar stops after the exact live principal-witness
 # checks.  It defers certificate construction/replay, serves either proof

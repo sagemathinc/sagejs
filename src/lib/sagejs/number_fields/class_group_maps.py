@@ -608,10 +608,33 @@ def _producer_saturation(result: Any) -> tuple[Any, dict[str, Any]]:
         raise ArithmeticError(
             "a completed engine result has no replayable saturation evidence"
         )
-    payload = _canonical_payload(raw, "engine saturation evidence")
+    payload = None
+    live_payload = False
+    context = getattr(result, "context", None)
+    consume = getattr(context, "_consume_live_public_saturation_payload", None)
+    if callable(consume):
+        context_module = __import__(
+            "sagejs.number_fields.class_unit_context",
+            fromlist=["class_unit_context"],
+        )
+        token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+        receipt = consume(token, result) if token is not None else None
+        if (
+            isinstance(receipt, tuple)
+            and len(receipt) == 3
+            and isinstance(receipt[0], dict)
+            and isinstance(receipt[1], str)
+            and isinstance(receipt[2], str)
+        ):
+            candidate = dict(receipt[0])
+            candidate["content_sha256"] = receipt[2]
+            payload = candidate
+            live_payload = True
+    if payload is None:
+        payload = _canonical_payload(raw, "engine saturation evidence")
     if payload.get("schema") != _SATURATION_SCHEMA:
         raise ValueError("engine saturation evidence has the wrong schema")
-    if not _authenticated_payload(payload):
+    if not live_payload and not _authenticated_payload(payload):
         raise ArithmeticError("engine saturation evidence failed authentication")
     for name in ("rigorous", "complete", "saturated"):
         if payload.get(name) is not True:
