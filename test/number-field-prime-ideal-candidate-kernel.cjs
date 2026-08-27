@@ -8,12 +8,24 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
 
 function run(executable, args, source, timeout = 120_000) {
   const result = spawnSync(executable, args, {
+    cwd: root,
+    encoding: "utf8",
+    input: source,
+    timeout,
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
+function runSagejs(source, timeout = 120_000) {
+  const result = spawnSagejsSync(root, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
@@ -141,16 +153,14 @@ test("candidate HNF source matches in CPython and compiled Sage.js", () => {
     ["-c", `import sys; sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${kernelDifferential}`],
     "",
   );
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint([is_compiled(packed), is_compiled(cubic_packed)])\n`,
   );
   assert.equal(output, "[True, True]");
 });
 
 test("packed h3 candidates replay and preserve the five-record payload", () => {
-  const output = run(sagejs, ["--python", "-"], String.raw`
+  const output = runSagejs(String.raw`
 import hashlib
 import json
 
@@ -433,7 +443,7 @@ print(hashlib.sha256(encoded).hexdigest())
 });
 
 test("cubic reduced-algebra output is canonical or falls back exactly", () => {
-  const output = run(sagejs, ["--python", "-"], String.raw`
+  const output = runSagejs(String.raw`
 from sagejs.number_fields import prime_ideals
 
 R = PolynomialRing(QQ, "x")
@@ -532,7 +542,7 @@ print(outcomes)
 });
 
 test("maximal-order tables reuse the packed exact BL kernel", () => {
-  const output = run(sagejs, ["--python", "-"], String.raw`
+  const output = runSagejs(String.raw`
 from sagejs.number_fields import maximal_order
 
 R = PolynomialRing(QQ, "x")

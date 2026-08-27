@@ -21,7 +21,7 @@ const polynomial = corpus.cases.find(
 const witness = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 
 from sagejs.number_fields.local_polygons import _row_hermite
 from sagejs.number_fields.om_higher_residue import order_two_residual_evidence
@@ -38,7 +38,7 @@ from sagejs.number_fields.om_types import (
     validate_type_tree,
 )
 
-fixture = json.load(open("${join(root, "test/fixtures/number-field-maximal-order-corpus.json")}"))
+fixture = json.load(open(${JSON.stringify(join(root, "test/fixtures/number-field-maximal-order-corpus.json"))}))
 case = next(item for item in fixture["cases"] if item["id"] == "pari-round4-vector-429")
 polynomial = tuple(int(value) for value in case["polynomial"]["coefficients"])
 result = regular_local_basis(polynomial, 5, local_discriminant_valuation=312)
