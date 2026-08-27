@@ -168,7 +168,7 @@ print(program(values))
     ]);
     assert.equal(fast.stdout, slow.stdout);
     const route = await optimized.evaluate("K._lastCompilerOptimizationRoute");
-    assert.equal(route.repr, "'v8-extension-tuple-region'");
+    assert.equal(route.repr, "'v8-extension-tuple-stream'");
   } finally {
     await Promise.all([optimized.close(), generic.close()]);
   }

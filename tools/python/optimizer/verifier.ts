@@ -245,11 +245,12 @@ function verifyExpression(
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
-  // This is intentionally independent of the recognizer's bound: malformed
-  // or stale internal plans must not manufacture an unbounded code generator.
+  // The numeric exponent is not itself a code-size bound: binary
+  // exponentiation makes values such as 65537 cheap.  The independently
+  // recomputed operation-cost ceiling below is the actual bounded-code proof.
   if (expression.kind === "power" &&
       Number.isSafeInteger(expression.exponent) &&
-      expression.exponent >= 0 && expression.exponent <= 8) {
+      expression.exponent >= 0) {
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }

@@ -477,7 +477,11 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
           statements: [{
             kind: "assign",
             target: 0,
-            value: { kind: "power", exponent: 9, value: { kind: "slot", slot: 0 } },
+            value: {
+              kind: "power",
+              exponent: 9007199254740992,
+              value: { kind: "slot", slot: 0 },
+            },
           }],
         },
       }),
