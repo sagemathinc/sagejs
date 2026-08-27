@@ -3795,7 +3795,7 @@
           "kind": "memory"
         },
         {
-          "name": "sagejs_wasm_allocate_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_allocate_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -3808,6 +3808,10 @@
         },
         {
           "name": "sagejs_wasm_allocate_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -3891,7 +3895,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_0266c33fcf2e2c5f_packed_gf_p2_affine_recurrence",
+          "name": "sagejs_wasm_call_m_08192d1570305aa9_packed_gf_pk_affine_recurrence",
           "kind": "function"
         },
         {
@@ -3996,6 +4000,10 @@
         },
         {
           "name": "sagejs_wasm_call_m_3021ce61b66e0687_packed_bdf_interval_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_37164a849c64b9be_packed_gf_p2_affine_recurrence",
           "kind": "function"
         },
         {
@@ -4351,7 +4359,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_deallocate_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4364,6 +4372,10 @@
         },
         {
           "name": "sagejs_wasm_deallocate_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4447,7 +4459,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_last_message_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4460,6 +4472,10 @@
         },
         {
           "name": "sagejs_wasm_last_message_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4543,7 +4559,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_result_f64_at_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4556,6 +4572,10 @@
         },
         {
           "name": "sagejs_wasm_result_f64_at_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4639,7 +4659,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_result_length_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4652,6 +4672,10 @@
         },
         {
           "name": "sagejs_wasm_result_length_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4735,7 +4759,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_result_limbs_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4748,6 +4772,10 @@
         },
         {
           "name": "sagejs_wasm_result_limbs_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4831,7 +4859,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_result_sign_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4844,6 +4872,10 @@
         },
         {
           "name": "sagejs_wasm_result_sign_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4927,7 +4959,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_0266c33fcf2e2c5f",
+          "name": "sagejs_wasm_result_u64_at_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4940,6 +4972,10 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_3021ce61b66e0687",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_37164a849c64b9be",
           "kind": "function"
         },
         {
