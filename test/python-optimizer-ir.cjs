@@ -132,6 +132,7 @@ test("sequence-fed affine data flow selects the transactional V8 target", async 
       accumulatorSlot: 0,
       multiplierSlot: 1,
       incrementSequence: 0,
+      incrementOperator: "add",
     });
     assert.doesNotThrow(() => verifyInternalRegionPlan(loop.optimization_region));
   } finally {

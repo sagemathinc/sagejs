@@ -119,6 +119,63 @@ print(horner(outside_values, T(11), T(7)), T._lastCompilerOptimizationRoute)
   }
 });
 
+test("commutative affine normalization removes source-order sensitivity", async () => {
+  const source = String.raw`
+R = Zmod(1009)
+values = tuple(R(index^2+3*index+11) for index in range(257))
+
+def coefficient_left(values):
+    value = R(7)
+    point = R(37)
+    for coefficient in values:
+        value = coefficient + value*point
+    return value
+
+def factor_left(values):
+    value = R(7)
+    point = R(37)
+    for coefficient in values:
+        value = point*value + coefficient
+    return value
+
+def both_commuted(values):
+    value = R(7)
+    point = R(37)
+    for coefficient in values:
+        value = coefficient + point*value
+    return value
+
+def subtract_increment(values):
+    value = R(7)
+    point = R(37)
+    for coefficient in values:
+        value = value*point - coefficient
+    return value
+
+for function in (coefficient_left, factor_left, both_commuted, subtract_increment):
+    R._lastCompilerOptimizationRoute = 'generic'
+    print(function(values), R._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout.replaceAll("v8-number-residue-stream", "generic"),
+      slow.stdout,
+    );
+    assert.equal(
+      fast.stdout.match(/v8-number-residue-stream/g)?.length,
+      4,
+    );
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
 test("a late invalid sequence element restarts the untouched generic loop", async () => {
   const source = String.raw`
 P.<x> = PolynomialRing(GF(5))
@@ -172,6 +229,35 @@ after = len(K._nativeResourceChildren)
 print(answer.parent() is K, after-before, K._lastCompilerOptimizationRoute)
 `);
     assert.equal(result.stdout, "True 0 v8-extension-tuple-stream\n");
+  } finally {
+    await session.close();
+  }
+});
+
+test("optimized prime-ring outputs retain the private machine representation brand", async () => {
+  const session = await sessionAtLevel("O2");
+  try {
+    const result = await session.evaluate(String.raw`
+R = Zmod(1009)
+def recurrence(value, count):
+    multiplier = R(37)
+    increment = R(11)
+    for index in range(count):
+        value = value*multiplier+increment
+    return value
+value = R(7)
+routes = []
+for block in range(8):
+    R._lastCompilerOptimizationRoute = 'brand-missing'
+    value = recurrence(value, 257)
+    routes.append(R._lastCompilerOptimizationRoute)
+print(value, routes)
+`);
+    assert.doesNotMatch(result.stdout, /brand-missing/);
+    assert.equal(
+      result.stdout.match(/v8-number-residue/g)?.length,
+      8,
+    );
   } finally {
     await session.close();
   }

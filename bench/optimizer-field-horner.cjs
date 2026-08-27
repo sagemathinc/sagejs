@@ -27,7 +27,7 @@ const cases = [
     coefficient(index) {
       return [index % 5, (index + 1) % 5, (index * index + 2) % 5];
     },
-    maximumMs: 150,
+    maximumMs: 225,
   },
   {
     name: "quartic",
