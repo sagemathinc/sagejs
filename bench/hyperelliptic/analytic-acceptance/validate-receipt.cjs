@@ -4,7 +4,13 @@
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 
-const { ROOT, sourceIdentity, validateReceipt } = require("./contract.cjs");
+const {
+  FAILURE_SCHEMA,
+  ROOT,
+  sourceIdentity,
+  validateFailureReceipt,
+  validateReceipt,
+} = require("./contract.cjs");
 
 function main() {
   const filename = process.argv[2];
@@ -13,7 +19,9 @@ function main() {
   }
   const historical = process.argv.includes("--historical");
   const receipt = JSON.parse(readFileSync(resolve(filename), "utf8"));
-  const result = validateReceipt(receipt, {
+  const result = (receipt.schema === FAILURE_SCHEMA
+    ? validateFailureReceipt
+    : validateReceipt)(receipt, {
     currentSources: historical ? null : sourceIdentity(ROOT),
   });
   if (!result.passed) {
@@ -22,7 +30,8 @@ function main() {
     return;
   }
   process.stdout.write(
-    `validated ${receipt.schema} from ${receipt.source.commit} ` +
+    `${receipt.schema === FAILURE_SCHEMA ? "validated failure" : "validated"} ` +
+      `${receipt.schema} from ${receipt.source.commit} ` +
       `${historical ? "as historical evidence" : "against current source"}\n`,
   );
 }

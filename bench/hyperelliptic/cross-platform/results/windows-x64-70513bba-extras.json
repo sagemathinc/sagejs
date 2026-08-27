@@ -1,0 +1,102 @@
+{
+  "schema": "sagejs.hyperelliptic-phase10-portable-extras.v1",
+  "started_at": "2026-08-26T03:56:49.230Z",
+  "repository": {
+    "commit": "70513bba22f7895dfab72e5879f5a5f2ca7d6478",
+    "status": "",
+    "harness_sha256": "2451b8695b4cb9de08f015fd52882e41cf7aada32ab158b30f8564e6972ea9a8"
+  },
+  "host": {
+    "hostname": "cocalc-vm-e1d2fb8e3de341f781653364",
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v26.5.1"
+  },
+  "configuration": {
+    "repeat": 5
+  },
+  "standalone": {
+    "status": "unavailable",
+    "reason": "the checked-in standalone harness currently has a POSIX static-archive linker contract; Windows native kernels remain covered separately"
+  },
+  "wasm": {
+    "status": "available",
+    "manifest_sha256": "6a83808f00b8be09a61ce77d7aa426c04a55e1d57be48cd695f2aef0b79c984c",
+    "artifact_id": null,
+    "pack_count": 40,
+    "load_ms": 45.28620000000001,
+    "process_rss_bytes": 108593152,
+    "cantor": [
+      {
+        "genus": 2,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 2.9961000000000126,
+          "median": 3.2596999999999525,
+          "max": 4.29849999999999,
+          "mad": 0.2635999999999399
+        },
+        "exact_sha256": "6aa08d78cca6c13a9db2e08eed347753f11e244e10c2c5c8e833734301af4579",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "16532588233038003552"
+      },
+      {
+        "genus": 3,
+        "items": 1000,
+        "wall_ms": {
+          "count": 5,
+          "min": 3.065399999999954,
+          "median": 3.1521999999999935,
+          "max": 3.7829000000000406,
+          "mad": 0.08680000000003929
+        },
+        "exact_sha256": "5b744187da93296da6ef5f2bbfbdad554708d052ad35a1144970515974a6500d",
+        "status_sha256": "131577bf493a90e73f34fec173b7e3689e0f46581424cf4e2502ce3d385c8536",
+        "standalone_rolling_digest": "8706117988639488592"
+      }
+    ],
+    "kummer_project": {
+      "items": 4096,
+      "wall_ms": {
+        "count": 5,
+        "min": 3.819599999999923,
+        "median": 4.412000000000035,
+        "max": 7.7357999999999265,
+        "mad": 0.5924000000001115
+      },
+      "exact_sha256": "7aeb8f81607106b01b78ec62f2b6eb29c55fd2df9d9190d02df584cb28ad49b5",
+      "status_sha256": "9247c332f18377770d8324295d982e7ef80195863ccaa25e38803940a79b9e61"
+    },
+    "resource_bounds": {
+      "result": false,
+      "error": null,
+      "short_output_unchanged": true
+    },
+    "package_verification": {
+      "elapsed_ms": 1940.4914999999999,
+      "stdout_sha256": "c0104bb357c6a7e0116647d51ec0a7f9199268a0a60bfb1e070d67e7c340e631",
+      "stderr": ""
+    },
+    "cancellation": {
+      "elapsed_ms": 3899.1016,
+      "exit_code": 124,
+      "signal": null,
+      "stdout": "",
+      "stderr": "SageSessionTimeoutError: Sage.js evaluation timed out after 100 ms\n    at Timeout.<anonymous> (file:///C:/Users/user/sagejs-hyp-freeze-fc2984f0/packages/flint-wasm/kernel.mjs:288:13)\n    at listOnTimeout (node:internal/timers:635:17)\n    at process.processTimers (node:internal/timers:571:7)",
+      "recovery_elapsed_ms": 2127.3701,
+      "recovery_stdout": "42"
+    },
+    "package_load_test": {
+      "status": "passed",
+      "exit_code": 0,
+      "signal": null,
+      "error": null,
+      "elapsed_ms": 63626.931300000004,
+      "stdout_sha256": "b1ca9944b47fff671d4d79aee64b6ccea06790aaee5ef69ed274562b5e4280b7",
+      "stdout": "(node:2084) ExperimentalWarning: WASI is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n✔ authenticated production packs execute every hyperelliptic source family (55963.3486ms)\n✔ the public Node-Wasm evaluator authenticates all hyperelliptic kernel routes (7319.0757ms)\n﹣ a real browser authenticates and executes all hyperelliptic kernel routes (0.566ms) # Chromium is not installed\nℹ tests 3\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 1\nℹ todo 0\nℹ duration_ms 63554.8879",
+      "stderr": ""
+    }
+  },
+  "finished_at": "2026-08-26T03:58:01.119Z"
+}

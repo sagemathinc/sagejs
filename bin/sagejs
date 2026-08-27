@@ -2,8 +2,14 @@
 
 "use strict";
 
-const { launchNativeIfInstalled } = require("./native-launcher.cjs");
+const { launchWasmIfRequested } = require("./wasm-launcher.cjs");
 
-if (!launchNativeIfInstalled()) {
-  require("./sagejs-source.cjs");
+// Dispatch before resolving or launching an optional native executable.  The
+// Wasm CLI authenticates and runs the same production artifact as the browser;
+// it must never silently fall through to either N-API or the source runtime.
+if (!launchWasmIfRequested()) {
+  const { launchNativeIfInstalled } = require("./native-launcher.cjs");
+  if (!launchNativeIfInstalled()) {
+    require("./sagejs-source.cjs");
+  }
 }

@@ -64,7 +64,7 @@ def central_coefficient_cutoff(
     try:
         backend = runtime.flint_backend()
         function = runtime.reflect.get(backend, "hyperellipticCentralWeights")
-        if runtime.jstype(function) != "undefined":
+        if function is not runtime.undefined:
             planned = runtime.reflect.apply(
                 function,
                 backend,
@@ -375,7 +375,7 @@ def evaluate_twist_tile(job: tuple[Any, ...]) -> tuple[dict[str, Any], ...]:
     mode, threshold = mode_and_threshold
     backend = runtime.flint_backend()
     function = runtime.reflect.get(backend, "hyperellipticCentralWeights")
-    if runtime.jstype(function) == "undefined":
+    if function is runtime.undefined:
         raise NotImplementedError(
             "the native Arb central-weight backend is unavailable"
         )

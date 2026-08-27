@@ -13,6 +13,7 @@ const {
   matchesExample,
   matchesExpected,
   matchesTolerance,
+  parseWorkerResults,
 } = require("../scripts/run-sage-doctests.cjs");
 const {
   matchesTutorialExpected,
@@ -82,6 +83,29 @@ assert.ok(
   ),
 );
 assert.ok(!matchesExpected("6\n", "5\n"));
+assert.deepEqual(
+  parseWorkerResults(
+    {
+      status: 1,
+      stdout: JSON.stringify([{ id: "expected-error", actual: "ValueError: bad\n" }]),
+      stderr: "",
+    },
+    [{ id: "expected-error" }],
+  ),
+  [{ id: "expected-error", actual: "ValueError: bad\n" }],
+);
+assert.throws(
+  () =>
+    parseWorkerResults(
+      {
+        status: 1,
+        stdout: JSON.stringify([{ id: "wrong", actual: "" }]),
+        stderr: "",
+      },
+      [{ id: "expected-error" }],
+    ),
+  /doctest worker failed/,
+);
 assert.ok(matchesTolerance("1.00001\n", "1.0\n", 0.00002, 0));
 assert.ok(!matchesTolerance("1.01\n", "1.0\n", 0.00002, 0));
 assert.ok(matchesExample("any nondeterministic output\n", {

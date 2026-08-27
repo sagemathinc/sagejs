@@ -1,0 +1,492 @@
+{
+  "schema": "sagejs.hyperelliptic-prime-cantor-domain-acceptance/v1",
+  "generated_at_utc": "2026-08-26T15:20:07.413Z",
+  "host": {
+    "hostname": "cocalc-vm-a427a86c8cf341febdccb9a7",
+    "platform": "linux",
+    "architecture": "arm64",
+    "os_release": "6.17.0-1022-gcp",
+    "cpu_models": [
+      "Neoverse-N1"
+    ],
+    "logical_cpus": 4,
+    "total_memory_bytes": 16724393984,
+    "free_memory_bytes_before": 15938916352,
+    "node": "v26.5.1",
+    "preflight": {
+      "load_average": [
+        1,
+        0.97,
+        0.88
+      ],
+      "processes": {
+        "command": [
+          "ps",
+          "-eo",
+          "pid,pcpu,pmem,comm",
+          "--sort=-pcpu"
+        ],
+        "status": 0,
+        "error": null,
+        "stdout": "    PID %CPU %MEM COMMAND\n  17258  0.3  1.3 node-MainThread\n    826  0.0  0.0 rsyslogd\n  17187  0.0  0.0 systemd\n      1  0.0  0.0 systemd\n     72  0.0  0.0 hwrng\n    707  0.0  0.2 google_osconfig\n    720  0.0  0.2 snapd\n    842  0.0  0.1 google_guest_ag\n    204  0.0  0.1 multipathd\n    144  0.0  0.1 systemd-journal\n  10539  0.0  0.0 kworker/u16:1+iou_exit\n  14340  0.0  0.0 kworker/u16:2-iou_exit\n   9894  0.0  0.0 kworker/2:2-events\n  14270  0.0  0.0 kworker/3:1-mm_percpu_wq\n     15  0.0  0.0 rcu_sched\n   8512  0.0  0.0 kworker/0:2-events\n    703  0.0  0.0 dbus-daemon\n     49  0.0  0.0 kcompactd0\n  11196  0.0  0.0 kworker/u16:3-iou_exit\n    836  0.0  0.0 polkitd\n  17183  0.0  0.0 sshd\n     57  0.0  0.0 pr/ttyAMA-1\n  16734  0.0  0.0 kworker/1:3-events\n   1012  0.0  0.0 systemd-logind\n    975  0.0  0.0 sshd\n    467  0.0  0.0 systemd-resolve\n    210  0.0  0.0 systemd-udevd\n    809  0.0  0.1 unattended-upgr\n     97  0.0  0.0 jbd2/nvme0n1p1-8\n    710  0.0  0.1 networkd-dispat\n    660  0.0  0.0 systemd-network\n    353  0.0  0.0 jbd2/nvme0n2-8\n     18  0.0  0.0 migration/0\n     23  0.0  0.0 migration/1\n     35  0.0  0.0 migration/3\n     29  0.0  0.0 migration/2\n     36  0.0  0.0 ksoftirqd/3\n     14  0.0  0.0 ksoftirqd/0\n     24  0.0  0.0 ksoftirqd/1\n    101  0.0  0.0 kworker/2:1H-kblockd\n     30  0.0  0.0 ksoftirqd/2\n     10  0.0  0.0 kworker/0:0H-kblockd\n   1016  0.0  0.0 cron\n     78  0.0  0.0 kworker/1:1H-kblockd\n     38  0.0  0.0 kworker/3:0H-kblockd\n     17  0.0  0.0 rcu_exp_gp_kthread_worker\n    820  0.0  0.0 chronyd\n      2  0.0  0.0 kthreadd\n      3  0.0  0.0 pool_workqueue_release\n      4  0.0  0.0 kworker/R-rcu_gp\n      5  0.0  0.0 kworker/R-sync_wq\n      6  0.0  0.0 kworker/R-kvfree_rcu_reclaim\n      7  0.0  0.0 kworker/R-slub_flushwq\n      8  0.0  0.0 kworker/R-netns\n     13  0.0  0.0 kworker/R-mm_percpu_wq\n     16  0.0  0.0 rcu_exp_par_gp_kthread_worker/0\n     19  0.0  0.0 idle_inject/0\n     20  0.0  0.0 cpuhp/0\n     21  0.0  0.0 cpuhp/1\n     22  0.0  0.0 idle_inject/1\n     26  0.0  0.0 kworker/1:0H-events_highpri\n     27  0.0  0.0 cpuhp/2\n     28  0.0  0.0 idle_inject/2\n     32  0.0  0.0 kworker/2:0H-events_highpri\n     33  0.0  0.0 cpuhp/3\n     34  0.0  0.0 idle_inject/3\n     40  0.0  0.0 kdevtmpfs\n     41  0.0  0.0 kworker/R-inet_frag_wq\n     42  0.0  0.0 rcu_tasks_rude_kthread\n     43  0.0  0.0 rcu_tasks_trace_kthread\n     44  0.0  0.0 kauditd\n     45  0.0  0.0 khungtaskd\n     46  0.0  0.0 oom_reaper\n     48  0.0  0.0 kworker/R-writeback\n     50  0.0  0.0 ksmd\n     51  0.0  0.0 khugepaged\n     52  0.0  0.0 kworker/R-kblockd\n     53  0.0  0.0 kworker/R-blkcg_punt_bio\n     54  0.0  0.0 kworker/R-kintegrityd\n     58  0.0  0.0 kworker/R-tpm_dev_wq\n     59  0.0  0.0 kworker/R-ata_sff\n     60  0.0  0.0 kworker/R-md\n     61  0.0  0.0 kworker/R-md_bitmap\n     62  0.0  0.0 kworker/R-edac-poller\n     63  0.0  0.0 kworker/R-devfreq_wq\n     64  0.0  0.0 watchdogd\n     65  0.0  0.0 kworker/R-quota_events_unbound\n     66  0.0  0.0 kworker/0:1H\n     67  0.0  0.0 kswapd0\n     68  0.0  0.0 ecryptfs-kthread\n     69  0.0  0.0 kworker/R-kthrotld\n     70  0.0  0.0 irq/12-ACPI:Ged\n     71  0.0  0.0 kworker/R-acpi_thermal_pm\n     73  0.0  0.0 kworker/R-nvme-wq\n     74  0.0  0.0 kworker/R-nvme-reset-wq\n     75  0.0  0.0 kworker/R-nvme-delete-wq\n     76  0.0  0.0 kworker/R-nvme-auth-wq\n     79  0.0  0.0 kworker/R-mld\n     80  0.0  0.0 kworker/R-ipv6_addrconf\n     81  0.0  0.0 kworker/R-kstrp\n     85  0.0  0.0 kworker/u17:0\n     96  0.0  0.0 kworker/R-charger_manager\n     98  0.0  0.0 kworker/R-ext4-rsv-conversion\n    123  0.0  0.0 kworker/3:1H\n    165  0.0  0.0 kworker/R-kmpathd\n    166  0.0  0.0 kworker/R-kmpath_handlerd\n    220  0.0  0.0 psimon\n    354  0.0  0.0 kworker/R-ext4-rsv-conversion\n    362  0.0  0.0 jbd2/nvme0n1p16-8\n    363  0.0  0.0 kworker/R-ext4-rsv-conversion\n    759  0.0  0.0 agetty\n    803  0.0  0.0 agetty\n    822  0.0  0.0 chronyd\n   1380  0.0  0.0 psimon\n   4081  0.0  0.0 kworker/R-tls-strp\n  14723  0.0  0.0 kworker/1:1-cgroup_free\n  15388  0.0  0.0 kworker/3:0-cgroup_free\n  15849  0.0  0.0 kworker/2:0-cgroup_free\n  17138  0.0  0.0 kworker/0:0-cgroup_free\n  17188  0.0  0.0 (sd-pam)\n  17257  0.0  0.0 sshd\n  17473  0.0  0.0 kworker/1:0-cgroup_free\n  17487  0.0  0.0 kworker/3:2-cgroup_free\n  17504  0.0  0.0 kworker/0:1-cgroup_free\n  17614  0.0  0.0 kworker/2:1-cgroup_free\n  17636  0.0  0.0 kworker/u16:0-iou_exit\n  17637  0.0  0.0 kworker/u16:4\n  17654  0.0  0.0 ps\n",
+        "stderr": ""
+      }
+    }
+  },
+  "repository": {
+    "commit": "c562298260be498bfb2b0c61872b0d3ac9c06062",
+    "status": "",
+    "harness_sha256": "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583",
+    "corpus_sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f",
+    "build_receipt_sha256": "28805dcee2ad278ae40fe71c0061ac9112c69b3d897697b20638f5950f24a6fa"
+  },
+  "source_bundle": {
+    "algorithm": "sagejs.source-bundle-sha256/v1",
+    "paths": [
+      "packages/flint-wasm/auto-receipt-policy.mjs",
+      "packages/flint-wasm/evaluator.mjs",
+      "packages/flint-wasm/release/production-layout.json",
+      "packages/flint-wasm/scripts/build.cjs",
+      "packages/flint/src/addon.h",
+      "packages/flint/src/hyperelliptic/smalljac.c",
+      "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
+      "src/lib/sagejs/hyperelliptic_curves/certified_genus3.py",
+      "src/lib/sagejs/hyperelliptic_curves/frobenius.py",
+      "src/lib/sagejs/hyperelliptic_curves/genus2_kummer_formulas.py",
+      "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",
+      "src/lib/sagejs/hyperelliptic_curves/rforest.py",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-loader.cjs",
+      "tools/math-dispatch/hyperelliptic-auto-receipt-policy.cjs",
+      "tools/native-kernel/wasm-bridge.cjs",
+      "tools/runtime-bootstrap.ts",
+      "tools/task-evaluator.ts"
+    ],
+    "sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+    "source_commit": "c562298260be498bfb2b0c61872b0d3ac9c06062"
+  },
+  "corpus": {
+    "id": "prime-cantor-domain-v1",
+    "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
+    "sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f"
+  },
+  "model_evidence": {
+    "kind": "domain-envelope",
+    "domain_id": "prime-cantor-odd-v1",
+    "constraints": {
+      "genus": [
+        2,
+        3
+      ],
+      "field_kind": [
+        "prime-field"
+      ],
+      "model_kind": [
+        "odd-degree-one-infinity"
+      ],
+      "h_kind": [
+        "zero",
+        "nonzero"
+      ]
+    }
+  },
+  "envelope_evidence": {
+    "add": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 1000,
+      "scalar_bits_max": 0,
+      "resource_bytes_max": 200096
+    },
+    "scalar": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 64,
+      "scalar_bits_max": 256,
+      "resource_bytes_max": 11360
+    },
+    "progression": {
+      "prime_min": 5,
+      "prime_max": 65521,
+      "interval_start_min": 5,
+      "interval_stop_max": 65521,
+      "interval_span_max": 1,
+      "batch_items_min": 1,
+      "batch_items_max": 1000,
+      "scalar_bits_max": 0,
+      "resource_bytes_max": 72224
+    }
+  },
+  "compilation": {
+    "wall_ms": 5558.564182,
+    "cache_root": "/tmp/sagejs-hyperelliptic-domain-cache",
+    "cantor": {
+      "cache_key": "713320e014f3eceb01304e4a827a91ff1617ece2bef794f65255ebabdfcff106",
+      "cached": false,
+      "source_hash": "ca71e1ce16810e9d8f210105072249b93beaacad581f8a2eb25585f7b5d81d2e",
+      "native_abi": 23,
+      "host_isolation": {
+        "isolated": true,
+        "boundary": "packed-c-abi",
+        "hostAbiVersion": 2,
+        "hostCallbacks": 0,
+        "forbiddenApis": [
+          "Node-API",
+          "Node header",
+          "CPython API",
+          "JavaScript engine API"
+        ],
+        "nativeDependencies": [
+          "libc",
+          "libm",
+          "GMP",
+          "FLINT"
+        ],
+        "functions": [
+          "packed_cantor_validate_batch",
+          "packed_cantor_copy_batch",
+          "packed_cantor_add_batch",
+          "packed_cantor_sum_batch",
+          "packed_cantor_negate_batch",
+          "packed_cantor_subtract_batch",
+          "packed_cantor_progression_batch",
+          "packed_cantor_scalar_batch",
+          "packed_cantor_search_progression",
+          "packed_cantor_search_progressions",
+          "packed_cantor_scalar_many_primes",
+          "_validate_packed_model",
+          "_validate_packed_row",
+          "_cantor_add_one",
+          "_unpack_row",
+          "_cantor_negate_one",
+          "_cantor_scalar_one",
+          "_row_copy",
+          "_row_equal",
+          "_row_hash",
+          "_scalar_bit_length",
+          "_scalar_operation_count",
+          "_search_record",
+          "_multi_search_record",
+          "_poly_add",
+          "_poly_clear",
+          "_poly_divrem",
+          "_poly_mul",
+          "_poly_sub",
+          "_divexact",
+          "_pack_row",
+          "_poly_copy",
+          "_poly_is_one",
+          "_poly_xgcd",
+          "_reduce",
+          "_poly_scale"
+        ],
+        "kernelKinds": [
+          "prime-field-source",
+          "integer"
+        ]
+      },
+      "source_bounds_checked": true,
+      "manifest_sha256": "9d7e597fd06cc12c9fef7b82f96710b88920604ed90a6005a37d8199aad12b38"
+    }
+  },
+  "exact": {
+    "add_rows": 2020,
+    "add_sha256": "0d72f5510fd6db8c62415fa2a8c318267f7646aab00334230583ab8e42c5bb2b",
+    "progression_rows": 2160,
+    "progression_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161",
+    "scalar_rows": 148,
+    "scalar_sha256": "c0c5e0111101b09308f6f1255ed6586711e49626cb79d9ae4e4695365b23d342"
+  },
+  "timing": {
+    "add": {
+      "dynamic_ms": {
+        "count": 1,
+        "min": 16902.600288391113,
+        "median": 16902.600288391113,
+        "max": 16902.600288391113,
+        "mad": 0
+      },
+      "native_ms": {
+        "count": 1,
+        "min": 867.0306205749512,
+        "median": 867.0306205749512,
+        "max": 867.0306205749512,
+        "mad": 0
+      },
+      "native_to_dynamic": 0.05129569449562368
+    },
+    "scalar": {
+      "dynamic_ms": {
+        "count": 1,
+        "min": 357852.7088165283,
+        "median": 357852.7088165283,
+        "max": 357852.7088165283,
+        "mad": 0
+      },
+      "native_ms": {
+        "count": 1,
+        "min": 429.6891689300537,
+        "median": 429.6891689300537,
+        "max": 429.6891689300537,
+        "mad": 0
+      },
+      "native_to_dynamic": 0.0012007430944175304
+    },
+    "progression": {
+      "dynamic_ms": {
+        "count": 1,
+        "min": 17404.50429916382,
+        "median": 17404.50429916382,
+        "max": 17404.50429916382,
+        "mad": 0
+      },
+      "native_ms": {
+        "count": 1,
+        "min": 181.63299560546875,
+        "median": 181.63299560546875,
+        "max": 181.63299560546875,
+        "mad": 0
+      },
+      "native_to_dynamic": 0.010435976370449983
+    }
+  },
+  "modes": {
+    "dynamic": {
+      "algorithm": "reference",
+      "case_fingerprints": [
+        [
+          "p5-g2-h0",
+          "e116ef06811313961ff127575fe4edeaa39daddca3451da55b1107c77843fc75"
+        ],
+        [
+          "p5-g2-h1",
+          "591e95d8f7f7c7ec27fd81847f92471c98844686d6d5694d01c4e73d88741db1"
+        ],
+        [
+          "p5-g3-h0",
+          "2067d68234bbccd4bfb3f99570f5fafceaa3a9cdaeaa6ead839701033221895b"
+        ],
+        [
+          "p5-g3-h1",
+          "9cfa67892e0f3072c2040566f239000789f84650df8ddfbefaa7f07a6d1245bc"
+        ],
+        [
+          "p13-g2-h0",
+          "a9dc8e5f16dfcd66245d9a408118674e09ca9de6cdc2d35d2dcdb0860511e4b1"
+        ],
+        [
+          "p13-g2-h1",
+          "f40d06462e836c14bc0841f35fe6796da44fd8793e447d654c7f56503955d6eb"
+        ],
+        [
+          "p13-g3-h0",
+          "e827530be202083d3d4cfd87d099d0c0eb35afe43d5af5d530c61af509524d96"
+        ],
+        [
+          "p13-g3-h1",
+          "a95ec333b60ed615f7833c3bcdedbbc5fa1e2a75a8ccbb785664a10e52b909ce"
+        ],
+        [
+          "p101-g2-h0",
+          "44417d18f6e86d3c499daf19710f22bc1eccaeefc6da771cf8eaac88887cb279"
+        ],
+        [
+          "p101-g2-h1",
+          "17d6e83c06b33dbf77af6c54112faed806ee0d0b412d1cebce9fbed57df46e97"
+        ],
+        [
+          "p101-g3-h0",
+          "118d9536f5b787a42d9f8f46cf970ec4efc55386a6420688022bf36f2fc7c76f"
+        ],
+        [
+          "p101-g3-h1",
+          "143848bf5fb7ee090d345f4fe1a3cb05eea57e3a1e6d9d6fe8e14bb392ef1e17"
+        ],
+        [
+          "p1009-g2-h0",
+          "132c633cc7d8c54b00c71d5897812d62be2664ed1f1b629343c6d72e2f8c7f88"
+        ],
+        [
+          "p1009-g2-h1",
+          "47940b56552130eebc7d043a286efe9e1a3a5a1ebbb7c2f946facfda220eb497"
+        ],
+        [
+          "p1009-g3-h0",
+          "cf353fcd2e842dfeafbfd482e0e17031c8ace1548fca8e2e7898f7232bdbeac4"
+        ],
+        [
+          "p1009-g3-h1",
+          "b63f44f7ea3eb717c78b1bf441af2be60ca45edf41fa406851f07edac8356f24"
+        ],
+        [
+          "p65521-g2-h0",
+          "cd905adb5ffa16375a79d7afde794ff4512ad721f673ee33ee3336db48955091"
+        ],
+        [
+          "p65521-g2-h1",
+          "113e8e5ce2e6f47486dd212570591a0c28d049fc35dc1353114ad441c058d902"
+        ],
+        [
+          "p65521-g3-h0",
+          "6c6d95a56c82625099956f74a51357b070a7159bc9e91b973e43539240c0b438"
+        ],
+        [
+          "p65521-g3-h1",
+          "9177d7a8d50567d3a3fb50143da53a92b2c891da1d38cdaac092edb201daf98a"
+        ]
+      ],
+      "compiled": false,
+      "exact": {
+        "add_rows": 2020,
+        "add_sha256": "0d72f5510fd6db8c62415fa2a8c318267f7646aab00334230583ab8e42c5bb2b",
+        "progression_rows": 2160,
+        "progression_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161",
+        "scalar_rows": 148,
+        "scalar_sha256": "c0c5e0111101b09308f6f1255ed6586711e49626cb79d9ae4e4695365b23d342"
+      },
+      "execution_modes": [
+        "dynamic",
+        "dynamic",
+        "dynamic"
+      ],
+      "timings": {
+        "add": [
+          16902.600288391113
+        ],
+        "progression": [
+          17404.50429916382
+        ],
+        "scalar": [
+          357852.7088165283
+        ]
+      },
+      "worker_wall_ms": 425948.21856500005,
+      "rss_bytes": 377581568,
+      "stderr": ""
+    },
+    "native": {
+      "algorithm": "native",
+      "case_fingerprints": [
+        [
+          "p5-g2-h0",
+          "e116ef06811313961ff127575fe4edeaa39daddca3451da55b1107c77843fc75"
+        ],
+        [
+          "p5-g2-h1",
+          "591e95d8f7f7c7ec27fd81847f92471c98844686d6d5694d01c4e73d88741db1"
+        ],
+        [
+          "p5-g3-h0",
+          "2067d68234bbccd4bfb3f99570f5fafceaa3a9cdaeaa6ead839701033221895b"
+        ],
+        [
+          "p5-g3-h1",
+          "9cfa67892e0f3072c2040566f239000789f84650df8ddfbefaa7f07a6d1245bc"
+        ],
+        [
+          "p13-g2-h0",
+          "a9dc8e5f16dfcd66245d9a408118674e09ca9de6cdc2d35d2dcdb0860511e4b1"
+        ],
+        [
+          "p13-g2-h1",
+          "f40d06462e836c14bc0841f35fe6796da44fd8793e447d654c7f56503955d6eb"
+        ],
+        [
+          "p13-g3-h0",
+          "e827530be202083d3d4cfd87d099d0c0eb35afe43d5af5d530c61af509524d96"
+        ],
+        [
+          "p13-g3-h1",
+          "a95ec333b60ed615f7833c3bcdedbbc5fa1e2a75a8ccbb785664a10e52b909ce"
+        ],
+        [
+          "p101-g2-h0",
+          "44417d18f6e86d3c499daf19710f22bc1eccaeefc6da771cf8eaac88887cb279"
+        ],
+        [
+          "p101-g2-h1",
+          "17d6e83c06b33dbf77af6c54112faed806ee0d0b412d1cebce9fbed57df46e97"
+        ],
+        [
+          "p101-g3-h0",
+          "118d9536f5b787a42d9f8f46cf970ec4efc55386a6420688022bf36f2fc7c76f"
+        ],
+        [
+          "p101-g3-h1",
+          "143848bf5fb7ee090d345f4fe1a3cb05eea57e3a1e6d9d6fe8e14bb392ef1e17"
+        ],
+        [
+          "p1009-g2-h0",
+          "132c633cc7d8c54b00c71d5897812d62be2664ed1f1b629343c6d72e2f8c7f88"
+        ],
+        [
+          "p1009-g2-h1",
+          "47940b56552130eebc7d043a286efe9e1a3a5a1ebbb7c2f946facfda220eb497"
+        ],
+        [
+          "p1009-g3-h0",
+          "cf353fcd2e842dfeafbfd482e0e17031c8ace1548fca8e2e7898f7232bdbeac4"
+        ],
+        [
+          "p1009-g3-h1",
+          "b63f44f7ea3eb717c78b1bf441af2be60ca45edf41fa406851f07edac8356f24"
+        ],
+        [
+          "p65521-g2-h0",
+          "cd905adb5ffa16375a79d7afde794ff4512ad721f673ee33ee3336db48955091"
+        ],
+        [
+          "p65521-g2-h1",
+          "113e8e5ce2e6f47486dd212570591a0c28d049fc35dc1353114ad441c058d902"
+        ],
+        [
+          "p65521-g3-h0",
+          "6c6d95a56c82625099956f74a51357b070a7159bc9e91b973e43539240c0b438"
+        ],
+        [
+          "p65521-g3-h1",
+          "9177d7a8d50567d3a3fb50143da53a92b2c891da1d38cdaac092edb201daf98a"
+        ]
+      ],
+      "compiled": true,
+      "exact": {
+        "add_rows": 2020,
+        "add_sha256": "0d72f5510fd6db8c62415fa2a8c318267f7646aab00334230583ab8e42c5bb2b",
+        "progression_rows": 2160,
+        "progression_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161",
+        "scalar_rows": 148,
+        "scalar_sha256": "c0c5e0111101b09308f6f1255ed6586711e49626cb79d9ae4e4695365b23d342"
+      },
+      "execution_modes": [
+        "native-capable",
+        "native-capable",
+        "native-capable"
+      ],
+      "timings": {
+        "add": [
+          867.0306205749512
+        ],
+        "progression": [
+          181.63299560546875
+        ],
+        "scalar": [
+          429.6891689300537
+        ]
+      },
+      "worker_wall_ms": 6408.307768000001,
+      "rss_bytes": 326316032,
+      "stderr": ""
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "schema": "sagejs.hyperelliptic/genus2-height-native-integer-vector-evaluation-v1",
+  "recorded_at_utc": "2026-08-26T15:25:00.000Z",
+  "status": "measured-modest-win",
+  "scope": "one lexical 48-entry NativeIntegerVector in the exact dyadic genus-2 Kummer height recurrence",
+  "contract": {
+    "curve": "y^2=x^5-x+1",
+    "target_bits": 64,
+    "fresh_processes_per_revision": 5,
+    "inner_repetitions": 3,
+    "command": "SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off node bench/hyperelliptic/benchmark-genus2-height-competitive.cjs --targets 64 --repeat 3",
+    "comparison": "sequential exact-revision builds on one Linux x64 host",
+    "classification": "local matched diagnostic, not a quiet-host competitor acceptance receipt"
+  },
+  "host": {
+    "hostname": "project-cd40b605-e49e-4074-9c13-b9caa02cb60d",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "logical_cpus": 16,
+    "note": "The host was shared and noisy; only the matched same-host median comparison is interpreted."
+  },
+  "before": {
+    "commit": "60979faffcf07dafc6525c84a6691330151229c7",
+    "backend": "native-integer-buffer-batch",
+    "raw_sha256": [
+      "9857baabec6c8cad2b735542bb8ff5a1a0980bc998fce17d51a8fb3b2350c643",
+      "9cf67edbd077d1a6375103ef88b99ea5902224db50d5b09aa907603f96c566ad",
+      "c18bba72f202bdccb559d9ab6ddc977f49bb4b04ad7d24a0b3e7cc3d477217e6",
+      "05e8dd33988b85cdd3c71ae53bc06f0d67c13858107f486e32583a8a8907447f",
+      "2bbf6a552e2f290a7aae715fb2a00de9c45c76282a68ffa393a9b9900ff9640c"
+    ],
+    "milliseconds": {
+      "single_object_cold": {
+        "samples": [222.55825996398926, 239.0916347503662, 226.69291496276855, 231.70900344848633, 246.09708786010742],
+        "median": 231.70900344848633,
+        "mad": 7.382631301879883
+      },
+      "rank2_pairing_object_cold": {
+        "samples": [314.5110607147217, 320.605993270874, 321.17223739624023, 318.27592849731445, 321.8092918395996],
+        "median": 320.605993270874,
+        "mad": 1.203298568725586
+      },
+      "rank4_pairing_object_cold": {
+        "samples": [722.0611572265625, 711.2972736358643, 749.9773502349854, 721.524715423584, 722.1176624298096],
+        "median": 722.0611572265625,
+        "mad": 0.5364418029785156
+      },
+      "single_archimedean_correction": {
+        "samples": [124.0224838256836, 131.23178482055664, 128.5238265991211, 124.35555458068848, 130.9683322906494],
+        "median": 128.5238265991211,
+        "mad": 2.707958221435547
+      },
+      "rank2_dyadic_recurrence": {
+        "samples": [7.5435638427734375, 7.509708404541016, 7.766008377075195, 7.540464401245117, 7.440328598022461],
+        "median": 7.540464401245117,
+        "mad": 0.030755996704101562
+      },
+      "rank4_dyadic_recurrence": {
+        "samples": [18.623828887939453, 18.906354904174805, 18.728256225585938, 18.968820571899414, 19.09017562866211],
+        "median": 18.906354904174805,
+        "mad": 0.1780986785888672
+      }
+    }
+  },
+  "after": {
+    "commit": "64e76f598cdbbeb69bb022d750c794e5f429c197",
+    "backend": "native-packed-batch-live-exact-dyadic",
+    "raw_sha256": [
+      "eea8bc073247050dd1ba467ed921f2ad543297d6ef61059159b2653ce86e3e5e",
+      "b0ae10e13dee41ea28ecd7a7f96f83e8877a5261cdbc2b6185569b1cfda03f90",
+      "08ce84bae932d7390362f6b26a7a4b5ae381201a8f6ac1f4e0a2108ee816911f",
+      "5694f02120ee30471cde5aaec9b51842e263122b27b5b9959f369beaa762a161",
+      "4f9ea381ed9d33e3c37c76bb63ba7dced0ed98063d4aa76856426c12c8b15ad5"
+    ],
+    "milliseconds": {
+      "single_object_cold": {
+        "samples": [231.31918907165527, 238.74759674072266, 225.1718044281006, 231.24003410339355, 227.39696502685547],
+        "median": 231.24003410339355,
+        "mad": 3.843069076538086
+      },
+      "rank2_pairing_object_cold": {
+        "samples": [319.9911117553711, 321.84290885925293, 311.12051010131836, 313.86303901672363, 314.0988349914551],
+        "median": 314.0988349914551,
+        "mad": 2.9783248901367188
+      },
+      "rank4_pairing_object_cold": {
+        "samples": [712.4171257019043, 710.8397483825684, 713.1812572479248, 727.1463871002197, 721.5862274169922],
+        "median": 713.1812572479248,
+        "mad": 2.3415088653564453
+      },
+      "single_archimedean_correction": {
+        "samples": [128.94368171691895, 126.98197364807129, 124.79329109191895, 125.8547306060791, 125.47731399536133],
+        "median": 125.8547306060791,
+        "mad": 1.0614395141601562
+      },
+      "rank2_dyadic_recurrence": {
+        "samples": [7.428646087646484, 7.318258285522461, 7.049322128295898, 7.066249847412109, 6.997823715209961],
+        "median": 7.066249847412109,
+        "mad": 0.06842613220214844
+      },
+      "rank4_dyadic_recurrence": {
+        "samples": [17.47584342956543, 17.436504364013672, 17.41337776184082, 17.604351043701172, 17.243385314941406],
+        "median": 17.436504364013672,
+        "mad": 0.03933906555175781
+      }
+    }
+  },
+  "median_post_over_pre": {
+    "single_object_cold": 0.9979760417674187,
+    "rank2_pairing_object_cold": 0.979703566321291,
+    "rank4_pairing_object_cold": 0.9877020112634982,
+    "single_archimedean_correction": 0.9792326756550194,
+    "rank2_dyadic_recurrence": 0.9371106965567395,
+    "rank4_dyadic_recurrence": 0.9222562705708773
+  },
+  "exactness": {
+    "single_enclosures_equal": true,
+    "rank2_regulator_enclosures_equal": true,
+    "independent_magma_oracle_compatible": true,
+    "minimum_state_width_bits": 120
+  },
+  "conclusion": {
+    "accepted_workspace_api_is_suitable": true,
+    "dyadic_recurrence_improvement": "6.3% at rank 2 and 7.8% at rank 4",
+    "end_to_end_improvement": "0.2% single, 2.0% rank 2, and 1.2% rank 4",
+    "material_end_to_end_gate_closed": false,
+    "new_representation_machinery_justified": false,
+    "next_bottleneck": "theorem/result checking and proof assembly outside the fixed 48-slot recurrence"
+  }
+}

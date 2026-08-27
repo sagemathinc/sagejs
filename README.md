@@ -351,6 +351,19 @@ WASM builds also share the same host-neutral `P1List` and weight-2
 modular-symbol presentation core, establishing the adapter pattern for deeper
 mathematics in the browser.
 
+The main command can run that exact browser artifact under Node without
+loading the native N-API backend:
+
+```sh
+sagejs --wasm
+sagejs --wasm -c 'factor(2^128 + 1)'
+sagejs --wasm --diagnostics program.sage
+```
+
+The first form opens a `wasm: ` prompt. The launcher verifies the production
+receipt and every selected asset before evaluation; a stale or incomplete
+artifact fails closed instead of falling back to native execution.
+
 ## Documentation
 
 Sage.js retains public docstrings for `help(f)`, `f?`, Jupyter inspection, and

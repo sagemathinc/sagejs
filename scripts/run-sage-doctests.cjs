@@ -256,6 +256,30 @@ function parseArguments(argv) {
   return options;
 }
 
+function parseWorkerResults(result, examples) {
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    throw new Error(
+      `doctest worker failed\n${result.stdout}\n${result.stderr}`,
+    );
+  }
+  const complete =
+    Array.isArray(parsed) &&
+    parsed.length === examples.length &&
+    parsed.every(
+      (item, index) =>
+        item && item.id === examples[index].id && typeof item.actual === "string",
+    );
+  if (!complete || (result.status !== 0 && result.stderr.trim())) {
+    throw new Error(
+      `doctest worker failed\n${result.stdout}\n${result.stderr}`,
+    );
+  }
+  return parsed;
+}
+
 function runGroup(examples, randomSeed) {
   const result = spawnSync(process.execPath, [__filename, "--worker"], {
     cwd: resolve(__dirname, ".."),
@@ -263,12 +287,7 @@ function runGroup(examples, randomSeed) {
     input: JSON.stringify({ examples, randomSeed }),
     maxBuffer: 16 * 1024 * 1024,
   });
-  if (result.status !== 0) {
-    throw new Error(
-      `doctest worker failed\n${result.stdout}\n${result.stderr}`,
-    );
-  }
-  return JSON.parse(result.stdout);
+  return parseWorkerResults(result, examples);
 }
 
 function detail(example, actual) {
@@ -424,4 +443,5 @@ module.exports = {
   matchesExpected,
   matchesTolerance,
   normalized,
+  parseWorkerResults,
 };

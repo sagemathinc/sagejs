@@ -62,6 +62,38 @@ identical expensive scalar batch and pretending that it is a distinct tier.
 Receipts are immutable evidence. If the commit, compiler, VM image, workload,
 or runner changes, add a new receipt rather than overwriting an old one.
 
+## Branch-covering Cantor domain corpus
+
+The original release policy deliberately authorized only two exact model
+fingerprints at `GF(1009)`.  A broader `auto` entry requires evidence for the
+whole named model class, not an inference from those two curves.  The checked
+`domain-corpus-v1.json` therefore crosses:
+
+- genus 2 and genus 3;
+- the primes 5, 13, 101, 1009, and 65521;
+- odd-degree one-infinity models with both `h = 0` and `h != 0`;
+- singleton calls and the maximum admitted add, scalar, and progression
+  workloads.
+
+Every curve independently checks that `h^2 + 4*f` is squarefree.  The runner
+executes the same typed Cantor source once in forced-dynamic mode and once in
+native mode, rejects any difference in the complete canonical packed output,
+and requires native execution to be faster for all three operations.  It does
+not cover split even-degree models, extension fields, primes outside the
+recorded interval, larger batches, or scalars wider than 256 bits.
+
+From an exact clean checkout with a current build, collect a receipt with:
+
+```sh
+node bench/hyperelliptic/cross-platform/run-domain-corpus.cjs \
+  --repeat 1 \
+  --output bench/hyperelliptic/cross-platform/results/HOST-domain.json
+```
+
+Use `--check` for the cheap structural corpus regression.  Domain receipts are
+inputs to the release-policy generator; their mere presence never enables an
+automatic native path.
+
 After collecting comparable receipts, verify their per-mode and cross-host
 digests and print a compact timing/RSS summary with:
 
@@ -129,9 +161,19 @@ node bench/hyperelliptic/cross-platform/release-policy.cjs --check
 node scripts/hyperelliptic-auto-receipt-policy.cjs verify
 ```
 
-The generated policy is intentionally an allowlist of exact model and workload
-envelopes. It is not permission to widen an entry to a neighboring prime,
-larger batch, broader model class, or different operation. A release without a
-matching verified entry uses the existing exact dynamic/reference path;
-`algorithm="native"` remains an explicit developer or receipt-collection
-choice subject to the ordinary capability and resource checks.
+The generated policy is intentionally an allowlist of receipt-backed model and
+workload envelopes. The `c5622982` freeze replaces the two `GF(1009)` exact
+fingerprints with three named-domain entries: add, scalar, and progression for
+odd-prime, odd-degree one-infinity genus-2/3 models, `h = 0` or `h != 0`, primes
+5 through 65521, and only the recorded resource bounds. Its 12 normalized
+receipts bind the four raw `*-c5622982-domain.json` artifacts. Failure and
+sanitizer evidence from `70513bba` is carried forward only because the framed
+mathematical runtime source bundle is byte-identical, and that provenance is
+explicit in `policy-c5622982/evidence-index.json`.
+
+This does not authorize split even-degree models, extension fields,
+neighboring primes, larger batches, wider scalars, or different operations. A
+release without a matching verified entry uses the existing exact
+dynamic/reference path; `algorithm="native"` remains an explicit developer or
+receipt-collection choice subject to the ordinary capability and resource
+checks.

@@ -2,17 +2,23 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
 const test = require("node:test");
 
 const {
+  FAILURE_SCHEMA,
   IMPLEMENTATION_BASE,
   ROOT,
   SCHEMA,
   acceptanceGates,
   bracketedPariRows,
   sourceIdentity,
+  validateFailureReceipt,
   validateReceipt,
 } = require("../bench/hyperelliptic/analytic-acceptance/contract.cjs");
+const {
+  failureReceipt,
+} = require("../bench/hyperelliptic/analytic-acceptance/run.cjs");
 
 function differential(genus) {
   return {
@@ -121,6 +127,10 @@ function fixture() {
       node: "v22.22.2",
       noise_policy: { passed: true },
     },
+    postflight: {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
     provisioning: { pari: { version: "2.18.1 (alpha)" } },
     pari_bracket: { order: "PARI-Sage.js-PARI", rows: bracketed },
     competitive,
@@ -165,4 +175,122 @@ test("diagnostic receipts cannot masquerade as five-sample bench-1 acceptance", 
   receipt.mode = "diagnostic";
   result = validateReceipt(receipt);
   assert.equal(result.passed, true);
+});
+
+test("a timed-out formal run remains a structurally valid failed receipt", () => {
+  const receipt = {
+    schema: FAILURE_SCHEMA,
+    status: "failed",
+    mode: "acceptance",
+    source: {
+      commit: "f".repeat(40),
+      status: "",
+      implementation_base_commit: IMPLEMENTATION_BASE,
+      implementation_base_is_ancestor: true,
+      build_receipt_preflight: { current: true },
+      inputs: sourceIdentity(ROOT),
+    },
+    host: {
+      declared_host: "bench-1",
+      platform: "linux",
+      architecture: "x64",
+      node: "v22.22.2",
+      noise_policy: { passed: true },
+    },
+    postflight: {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
+    provisioning: { pari: { version: "2.18.1 (alpha)" } },
+    configuration: {
+      samples: 5,
+      precision_bits: 64,
+      lseries_only: true,
+      maximum_wall_seconds: 1200,
+    },
+    failure: {
+      stage: "analytic-competitive-benchmark",
+      name: "Error",
+      message: "Sage.js evaluation timed out after 600000 ms",
+      stack: "Error: Sage.js evaluation timed out after 600000 ms",
+    },
+    harness_wall_ms: 600123,
+  };
+  assert.deepEqual(
+    validateFailureReceipt(receipt, { currentSources: sourceIdentity(ROOT) }),
+    { passed: true, failures: [] },
+  );
+  receipt.failure.stack = "";
+  const invalid = validateFailureReceipt(receipt);
+  assert.equal(invalid.passed, false);
+  assert.ok(invalid.failures.some((value) => value.includes("stack")));
+});
+
+test("failed runs preserve accepted preflight separately from noisy postflight", () => {
+  const source = {
+    commit: "f".repeat(40),
+    status: "",
+    implementation_base_commit: IMPLEMENTATION_BASE,
+    implementation_base_is_ancestor: true,
+    build_receipt_preflight: { current: true },
+    inputs: sourceIdentity(ROOT),
+  };
+  const host = {
+    declared_host: "bench-1",
+    platform: "linux",
+    architecture: "x64",
+    node: "v22.22.2",
+    noise_policy: { passed: true },
+  };
+  const error = new Error("analytic competitive benchmark timed out");
+  Object.defineProperty(error, "phase9FailureContext", {
+    value: {
+      source,
+      host,
+      provisioning: { pari: { version: "2.18.1 (alpha)" } },
+    },
+  });
+  const receipt = failureReceipt(
+    {
+      mode: "acceptance",
+      declaredHost: "bench-1",
+      maximumLoad: 0.5,
+      maximumWallSeconds: 1200,
+      precisionBits: 64,
+      samples: 5,
+    },
+    error,
+    0,
+    {
+      captured_at_utc: "2026-08-26T00:00:01.000Z",
+      noise_policy: { passed: false },
+    },
+  );
+  assert.equal(receipt.host, host);
+  assert.equal(receipt.host.noise_policy.passed, true);
+  assert.equal(receipt.postflight.noise_policy.passed, false);
+  assert.deepEqual(
+    validateFailureReceipt(receipt, { currentSources: sourceIdentity(ROOT) }),
+    { passed: true, failures: [] },
+  );
+});
+
+test("Phase-9 sources make exact local-factor and single-call timing contracts explicit", () => {
+  const benchmark = readFileSync(
+    `${ROOT}/bench/hyperelliptic/benchmark-analytic-competitive.cjs`,
+    "utf8",
+  );
+  const evidence = readFileSync(
+    `${ROOT}/bench/hyperelliptic/analytic-acceptance/evidence.cjs`,
+    "utf8",
+  );
+  for (const source of [benchmark, evidence]) {
+    assert.match(source, /local_factor_algorithm=["']smalljac["']/u);
+    assert.match(source, /local_factor_algorithm=["']rforest["']/u);
+  }
+  assert.doesNotMatch(
+    benchmark,
+    /central_jet\([^\n]*for _repeat in range\(3\)/u,
+    "one public derivative call, not a hidden inner batch, must define a sample",
+  );
 });

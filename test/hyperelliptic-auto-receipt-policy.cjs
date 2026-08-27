@@ -199,7 +199,7 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy authenticates the final native ABI receipts", () => {
+test("the checked-in release policy gates auto after the combined source merge", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -208,74 +208,86 @@ test("the checked-in release policy authenticates the final native ABI receipts"
     sourceCommit: raw.source_bundle.source_commit,
   });
   assert.equal(policy.enabled, true);
-  assert.equal(policy.entries.length, 6);
-  assert.equal(policy.verified_receipts.length, 24);
-  assert.deepEqual(
+  assert.equal(
     policy.source_bundle.sha256,
-    "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
+    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
   );
-  assert(Object.isFrozen(policy));
   assert.deepEqual(
-    queryAutoReceiptPolicy(policy, {
-      platform: "linux-x64",
-      backend: "prime-cantor",
-      operation: "add",
-      source_bundle_sha256: policy.source_bundle.sha256,
-      model: {
-        kind: "exact-fingerprint",
-        fingerprint:
-          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
-      },
-      workload: {
-        prime: 1009,
-        interval_start: 1009,
-        interval_stop: 1009,
-        batch_items: 1000,
-        scalar_bits: 0,
-        resource_bytes: 200096,
-      },
-    }),
-    {
-      selected: true,
-      reason: "exact-receipt-policy-match",
-      entry_id: "prime-cantor-g2-add-a9d-v1",
-      backend: "prime-cantor",
-    },
+    policy.entries.map((entry) => entry.id),
+    [
+      "prime-cantor-domain-add-c5622982-v1",
+      "prime-cantor-domain-scalar-c5622982-v1",
+      "prime-cantor-domain-progression-c5622982-v1",
+    ],
   );
-  const nearby = {
+  assert.equal(policy.verified_receipts.length, 12);
+  const query = {
     platform: "linux-x64",
     backend: "prime-cantor",
     operation: "add",
     source_bundle_sha256: policy.source_bundle.sha256,
     model: {
-      kind: "exact-fingerprint",
-      fingerprint:
-        "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
+      kind: "domain-envelope",
+      domain_id: "prime-cantor-odd-v1",
+      genus: 2,
+      field_kind: "prime-field",
+      model_kind: "odd-degree-one-infinity",
+      h_kind: "zero",
     },
     workload: {
-      prime: 1009,
-      interval_start: 1009,
-      interval_stop: 1009,
-      batch_items: 999,
+      prime: 5,
+      interval_start: 5,
+      interval_stop: 5,
+      batch_items: 1000,
       scalar_bits: 0,
       resource_bytes: 200096,
     },
   };
-  assert.deepEqual(queryAutoReceiptPolicy(policy, nearby), {
-    selected: false,
-    reason: "unreceipted-fallback",
+  assert.deepEqual(queryAutoReceiptPolicy(policy, query), {
+    selected: true,
+    reason: "exact-receipt-policy-match",
+    entry_id: "prime-cantor-domain-add-c5622982-v1",
+    backend: "prime-cantor",
   });
-  assert.deepEqual(
-    policy.entries.map((entry) => [entry.backend, entry.operation]),
-    [
-      ["prime-cantor", "add"],
-      ["prime-cantor", "scalar"],
-      ["prime-cantor", "progression"],
-      ["prime-cantor", "add"],
-      ["prime-cantor", "scalar"],
-      ["prime-cantor", "progression"],
-    ],
-  );
+  for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
+    for (const genus of [2, 3]) {
+      for (const hKind of ["zero", "nonzero"]) {
+        for (const prime of [5, 13, 101, 1009, 65521]) {
+          const selected = queryAutoReceiptPolicy(policy, {
+            ...query,
+            platform,
+            model: { ...query.model, genus, h_kind: hKind },
+            workload: {
+              ...query.workload,
+              prime,
+              interval_start: prime,
+              interval_stop: prime,
+              batch_items: prime === 5 ? 1 : 1000,
+            },
+          });
+          assert.equal(selected.selected, true);
+        }
+      }
+    }
+  }
+  for (const rejected of [
+    { ...query, workload: { ...query.workload, prime: 3 } },
+    { ...query, workload: { ...query.workload, prime: 65537 } },
+    { ...query, workload: { ...query.workload, batch_items: 1001 } },
+    { ...query, model: { ...query.model, genus: 4 } },
+    { ...query, model: { ...query.model, model_kind: "even-degree-two-infinity" } },
+    { ...query, source_bundle_sha256: "0".repeat(64) },
+    {
+      ...query,
+      model: { kind: "exact-fingerprint", fingerprint: "0".repeat(64) },
+    },
+  ]) {
+    assert.deepEqual(queryAutoReceiptPolicy(policy, rejected), {
+      selected: false,
+      reason: "unreceipted-fallback",
+    });
+  }
+  assert(Object.isFrozen(policy));
 });
 
 test("source bundles are deterministic, framed, and path safe", (context) => {

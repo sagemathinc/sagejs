@@ -59,6 +59,13 @@ assert left.rational_prime_partition == (
     (2, (0, 3)), (3, (1, 2)), (5, (4,)), (11, (5,))
 )
 assert left.subfactor_indices == (0, 1, 4, 5)
+assert left.supports_unit_search
+single = _RelationSteeringContext(
+    ExactRelationCollector(O, (factor_base[4],)),
+    RelationSearchState(19),
+    _producer_token=_RELATION_STEERING_CONTEXT_TOKEN,
+)
+assert not single.supports_unit_search
 assert left.source_row(2) == right.source_row(2)
 assert left_state.to_dict() == right_state.to_dict()
 assert left.screen_norm(QQ(66)) == QQ(66)

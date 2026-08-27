@@ -81,7 +81,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 700000,
+      "max_source_bytes": 715000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -108,7 +108,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 410000,
+      "max_source_bytes": 420000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -498,7 +498,7 @@
       "id": "hyperelliptic-curves-algorithms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 835000,
+      "max_source_bytes": 875000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra", "numeric-compat", "hyperelliptic-curves",

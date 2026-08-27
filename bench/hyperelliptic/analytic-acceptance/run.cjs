@@ -25,6 +25,7 @@ const { performance } = require("node:perf_hooks");
 
 const { inspectBuildReceipt } = require("../../../scripts/build-receipt.cjs");
 const {
+  FAILURE_SCHEMA,
   IMPLEMENTATION_BASE,
   PINNED_GP,
   PINNED_PARi_SOURCE_SHA256,
@@ -273,46 +274,124 @@ async function run(options) {
   if (provisioning.pari.version !== "2.18.1 (alpha)") {
     throw new Error(`unexpected PARI version: ${provisioning.pari.version}`);
   }
-  const pariBefore = runCompetitive({
-    gp: options.gp,
-    samples: options.samples,
-    precisionBits: options.precisionBits,
-    pariOnly: true,
-    timeout: remaining(),
-  });
-  const competitive = runCompetitive({
-    gp: options.gp,
-    samples: options.samples,
-    precisionBits: options.precisionBits,
-    pariOnly: false,
-    timeout: remaining(),
-  });
-  const bracketedRows = bracketedPariRows([pariBefore, competitive]);
-  const evidence = await collectEvidence({
-    precisionBits: options.precisionBits,
-    timeoutMs: remaining(),
-  });
-  const gates = acceptanceGates(
-    competitive,
-    bracketedRows,
-    evidence,
-    options.precisionBits,
-  );
-  const receipt = {
-    schema: SCHEMA,
+  const source = {
+    commit: sourceCommit,
+    status: sourceStatus,
+    implementation_base_commit: IMPLEMENTATION_BASE,
+    implementation_base_is_ancestor: implementationBaseIsAncestor,
+    build_receipt_preflight: buildInspection,
+    inputs: sourceIdentity(ROOT),
+  };
+  const failureContext = { source, host, provisioning };
+  try {
+    const pariBefore = runCompetitive({
+      gp: options.gp,
+      samples: options.samples,
+      precisionBits: options.precisionBits,
+      pariOnly: true,
+      timeout: remaining(),
+    });
+    const competitive = runCompetitive({
+      gp: options.gp,
+      samples: options.samples,
+      precisionBits: options.precisionBits,
+      pariOnly: false,
+      timeout: remaining(),
+    });
+    const bracketedRows = bracketedPariRows([pariBefore, competitive]);
+    const evidence = await collectEvidence({
+      precisionBits: options.precisionBits,
+      timeoutMs: remaining(),
+    });
+    const gates = acceptanceGates(
+      competitive,
+      bracketedRows,
+      evidence,
+      options.precisionBits,
+    );
+    const receipt = {
+      schema: SCHEMA,
+      mode: options.mode,
+      recorded_at_utc: new Date().toISOString(),
+      source,
+      host,
+      postflight: hostSnapshot(options.declaredHost, options.maximumLoad),
+      provisioning,
+      configuration: {
+        samples: options.samples,
+        precision_bits: options.precisionBits,
+        lseries_only: true,
+        maximum_wall_seconds: options.maximumWallSeconds,
+        sagejs_threads: 1,
+        pari_threads: 1,
+        bounded_direct_arb_diagnostic_workers: [1, 4],
+        family_workers: [1, 2],
+      },
+      timing_contract: {
+        competitive_order: "resident PARI bracket, Sage.js then resident PARI",
+        initialization:
+          "100 true fresh isolated prefix-plan/LFunctionInit misses per sample; exact coefficients and one curve-independent universal table are warm",
+        cache_hits:
+          "same-LFunction and prefix-owned prepared hits are retained as separate non-gating rows",
+        cold_table:
+          "process/object-cold order-4 universal table construction is separate and never included in a cache-hit claim",
+        derivatives:
+          "orders 0 through 4 compare native universal weights with the ordinary inverse-Mellin route after exact coefficients are warm",
+        numerical_status:
+          "Arb arithmetic balls are rigorous; interpolation, contour truncation, and the outer analytic result remain explicitly nonrigorous and refinement-checked",
+      },
+      pari_bracket: {
+        order: "PARI-Sage.js-PARI",
+        resident_processes: 2,
+        rows: bracketedRows,
+      },
+      competitive,
+      evidence,
+      gates,
+      harness_wall_ms: Number((performance.now() - started).toFixed(3)),
+    };
+    receipt.validation = validateReceipt(receipt);
+    atomicWrite(options.output, receipt);
+    return receipt;
+  } catch (error) {
+    if (error !== null && (typeof error === "object" || typeof error === "function")) {
+      Object.defineProperty(error, "phase9FailureContext", {
+        configurable: true,
+        value: failureContext,
+      });
+    }
+    throw error;
+  }
+}
+
+function failureReceipt(options, error, started, postflight = null) {
+  const failureContext = error?.phase9FailureContext ?? null;
+  const sourceStatus = failureContext === null ? git("status", "--short") : null;
+  const sourceCommit = failureContext === null ? git("rev-parse", "HEAD") : null;
+  const implementationBaseIsAncestor = failureContext === null
+    ? command("git", ["merge-base", "--is-ancestor", IMPLEMENTATION_BASE, sourceCommit])
+        .status === 0
+    : null;
+  const message = String(error?.message ?? error);
+  return {
+    schema: FAILURE_SCHEMA,
+    status: "failed",
     mode: options.mode,
     recorded_at_utc: new Date().toISOString(),
-    source: {
+    source: failureContext?.source ?? {
       commit: sourceCommit,
       status: sourceStatus,
       implementation_base_commit: IMPLEMENTATION_BASE,
       implementation_base_is_ancestor: implementationBaseIsAncestor,
-      build_receipt_preflight: buildInspection,
+      build_receipt_preflight: inspectBuildReceipt(ROOT),
       inputs: sourceIdentity(ROOT),
     },
-    host,
-    postflight: hostSnapshot(options.declaredHost, options.maximumLoad),
-    provisioning,
+    host:
+      failureContext?.host ?? hostSnapshot(options.declaredHost, options.maximumLoad),
+    postflight:
+      postflight ?? hostSnapshot(options.declaredHost, options.maximumLoad),
+    provisioning:
+      failureContext?.provisioning ?? { pari: gpProvisioning(options.gp) },
     configuration: {
       samples: options.samples,
       precision_bits: options.precisionBits,
@@ -320,60 +399,54 @@ async function run(options) {
       maximum_wall_seconds: options.maximumWallSeconds,
       sagejs_threads: 1,
       pari_threads: 1,
-      bounded_direct_arb_diagnostic_workers: [1, 4],
-      family_workers: [1, 2],
     },
-    timing_contract: {
-      competitive_order: "resident PARI bracket, Sage.js then resident PARI",
-      initialization:
-        "100 true fresh isolated prefix-plan/LFunctionInit misses per sample; exact coefficients and one curve-independent universal table are warm",
-      cache_hits:
-        "same-LFunction and prefix-owned prepared hits are retained as separate non-gating rows",
-      cold_table:
-        "process/object-cold order-4 universal table construction is separate and never included in a cache-hit claim",
-      derivatives:
-        "orders 0 through 4 compare native universal weights with the ordinary inverse-Mellin route after exact coefficients are warm",
-      numerical_status:
-        "Arb arithmetic balls are rigorous; interpolation, contour truncation, and the outer analytic result remain explicitly nonrigorous and refinement-checked",
+    failure: {
+      stage: message.includes("analytic competitive benchmark")
+        ? "analytic-competitive-benchmark"
+        : "phase9-acceptance-harness",
+      name: String(error?.name ?? "Error"),
+      message,
+      stack: String(error?.stack ?? error),
     },
-    pari_bracket: {
-      order: "PARI-Sage.js-PARI",
-      resident_processes: 2,
-      rows: bracketedRows,
-    },
-    competitive,
-    evidence,
-    gates,
     harness_wall_ms: Number((performance.now() - started).toFixed(3)),
   };
-  receipt.validation = validateReceipt(receipt);
-  atomicWrite(options.output, receipt);
-  return receipt;
 }
 
 async function main() {
   const options = parseArguments();
-  const receipt = await run(options);
-  const relativeOutput = relative(ROOT, options.output) || options.output;
-  process.stdout.write(
-    `${receipt.validation.passed ? "PASS" : "FAIL"} ${receipt.schema} ` +
-      `${receipt.mode} ${relativeOutput} ${receipt.harness_wall_ms}ms\n`,
-  );
-  if (options.mode === "acceptance" && !receipt.validation.passed) {
-    for (const failure of receipt.validation.failures) process.stderr.write(`- ${failure}\n`);
-    process.exitCode = 2;
+  const started = performance.now();
+  try {
+    const receipt = await run(options);
+    const relativeOutput = relative(ROOT, options.output) || options.output;
+    process.stdout.write(
+      `${receipt.validation.passed ? "PASS" : "FAIL"} ${receipt.schema} ` +
+        `${receipt.mode} ${relativeOutput} ${receipt.harness_wall_ms}ms\n`,
+    );
+    if (options.mode === "acceptance" && !receipt.validation.passed) {
+      for (const failure of receipt.validation.failures) {
+        process.stderr.write(`- ${failure}\n`);
+      }
+      process.exitCode = 2;
+    }
+  } catch (error) {
+    const receipt = failureReceipt(options, error, started);
+    atomicWrite(options.output, receipt);
+    const relativeOutput = relative(ROOT, options.output) || options.output;
+    process.stderr.write(
+      `FAIL ${receipt.schema} ${receipt.mode} ${relativeOutput} ` +
+        `${receipt.harness_wall_ms}ms\n${receipt.failure.stack}\n`,
+    );
+    process.exitCode = 1;
   }
 }
 
 if (require.main === module) {
-  main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+  main();
 }
 
 module.exports = {
   atomicWrite,
+  failureReceipt,
   hostSnapshot,
   parseArguments,
   run,

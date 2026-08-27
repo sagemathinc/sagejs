@@ -6,6 +6,7 @@ const { resolve } = require("node:path");
 
 const ROOT = resolve(__dirname, "../../..");
 const SCHEMA = "sagejs.hyperelliptic/analytic-phase9-acceptance-v1";
+const FAILURE_SCHEMA = "sagejs.hyperelliptic/analytic-phase9-failure-v1";
 const IMPLEMENTATION_BASE = "b30ecbfae62760d44a24438f3fb7f99bedfe1eee";
 const PINNED_GP = "/home/user/.local/pari-2.18.1-alpha/bin/gp";
 const PINNED_PARi_SOURCE_SHA256 =
@@ -347,7 +348,94 @@ function validateReceipt(receipt, { currentSources = null } = {}) {
   return { passed: failures.length === 0, failures };
 }
 
+function validateFailureReceipt(receipt, { currentSources = null } = {}) {
+  const failures = [];
+  const requireValue = (condition, message) => {
+    if (!condition) failures.push(message);
+  };
+  requireValue(receipt?.schema === FAILURE_SCHEMA, `schema must be ${FAILURE_SCHEMA}`);
+  requireValue(receipt?.status === "failed", "failure receipt status must be failed");
+  requireValue(receipt?.mode === "acceptance", "failure receipt must record acceptance mode");
+  requireValue(receipt?.source?.status === "", "measured source worktree was dirty");
+  requireValue(
+    receipt?.source?.implementation_base_commit === IMPLEMENTATION_BASE,
+    "implementation base commit is not the audited Phase-9 base",
+  );
+  requireValue(
+    receipt?.source?.implementation_base_is_ancestor === true,
+    "implementation base is not an ancestor of the measured source",
+  );
+  requireValue(
+    receipt?.source?.build_receipt_preflight?.current === true,
+    "the measured build was not current before timing",
+  );
+  requireValue(
+    receipt?.host?.declared_host === "bench-1" &&
+      receipt?.host?.platform === "linux" &&
+      receipt?.host?.architecture === "x64" &&
+      receipt?.host?.node === "v22.22.2",
+    "failure receipt did not use the pinned bench-1 runtime",
+  );
+  requireValue(
+    receipt?.host?.noise_policy?.passed === true,
+    "failure receipt host did not satisfy the noise policy",
+  );
+  requireValue(
+    typeof receipt?.postflight?.captured_at_utc === "string" &&
+      typeof receipt?.postflight?.noise_policy?.passed === "boolean",
+    "failure receipt postflight snapshot is missing",
+  );
+  requireValue(
+    receipt?.provisioning?.pari?.version === "2.18.1 (alpha)",
+    "failure receipt did not use pinned PARI 2.18.1-alpha",
+  );
+  requireValue(
+    Number.isInteger(receipt?.configuration?.samples) &&
+      receipt.configuration.samples >= 5,
+    "failure receipt must retain the five-sample acceptance contract",
+  );
+  requireValue(
+    receipt?.configuration?.precision_bits === 64 &&
+      receipt?.configuration?.lseries_only === true,
+    "failure receipt changed the 64-bit L-series-only contract",
+  );
+  requireValue(
+    typeof receipt?.failure?.name === "string" && receipt.failure.name.length > 0,
+    "failure receipt error name is missing",
+  );
+  requireValue(
+    typeof receipt?.failure?.message === "string" && receipt.failure.message.length > 0,
+    "failure receipt error message is missing",
+  );
+  requireValue(
+    typeof receipt?.failure?.stack === "string" && receipt.failure.stack.length > 0,
+    "failure receipt error stack is missing",
+  );
+  requireValue(
+    Number.isFinite(receipt?.harness_wall_ms) && receipt.harness_wall_ms > 0,
+    "failure receipt wall time is missing",
+  );
+  if (currentSources !== null) {
+    const recorded = new Map(
+      (receipt?.source?.inputs ?? []).map((value) => [value.path, value]),
+    );
+    for (const value of currentSources) {
+      const prior = recorded.get(value.path);
+      requireValue(
+        prior?.sha256 === value.sha256 && prior?.bytes === value.bytes,
+        `source-current digest mismatch: ${value.path}`,
+      );
+    }
+    requireValue(
+      recorded.size === currentSources.length,
+      "receipt and current source input sets differ",
+    );
+  }
+  return { passed: failures.length === 0, failures };
+}
+
 module.exports = {
+  FAILURE_SCHEMA,
   IMPLEMENTATION_BASE,
   PINNED_GP,
   PINNED_PARi_SOURCE_SHA256,
@@ -360,5 +448,6 @@ module.exports = {
   sha256,
   sourceIdentity,
   summarize,
+  validateFailureReceipt,
   validateReceipt,
 };

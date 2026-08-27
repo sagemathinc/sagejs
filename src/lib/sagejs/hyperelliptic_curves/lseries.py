@@ -138,8 +138,20 @@ def central_weight_cache_info() -> dict[str, int]:
 class GlobalCoefficientPrefix:
     """One extendable exact global Dirichlet-coefficient prefix."""
 
-    def __init__(self, curve: Any) -> None:
+    def __init__(self, curve: Any, *, local_factor_algorithm: str = "auto") -> None:
+        local_factor_algorithm = str(local_factor_algorithm)
+        if local_factor_algorithm not in (
+            "auto",
+            "smalljac",
+            "rforest",
+            "exhaustive",
+        ):
+            raise ValueError(
+                "local_factor_algorithm must be 'auto', 'smalljac', "
+                "'rforest', or 'exhaustive'"
+            )
         self.curve = curve
+        self.local_factor_algorithm = local_factor_algorithm
         self._model_key = _curve_model_key(curve)
         self._values = [0, 1]
         self.extensions = 0
@@ -195,12 +207,28 @@ class GlobalCoefficientPrefix:
                 frobenius, "rational_local_coefficient_chunks", None
             )
             if packed_function is not None:
-                packed_chunks = packed_function(
-                    self.curve,
-                    start,
-                    cutoff,
-                    algorithm="auto",
-                )
+                packed_sources = []
+                packed_start = start
+                if self.local_factor_algorithm == "smalljac" and packed_start == 2:
+                    packed_sources.append(
+                        packed_function(
+                            self.curve,
+                            2,
+                            2,
+                            algorithm="exhaustive",
+                        )
+                    )
+                    packed_start = 3
+                if packed_start <= cutoff:
+                    packed_sources.append(
+                        packed_function(
+                            self.curve,
+                            packed_start,
+                            cutoff,
+                            algorithm=self.local_factor_algorithm,
+                        )
+                    )
+                packed_chunks = (chunk for source in packed_sources for chunk in source)
         except NotImplementedError:
             packed_chunks = None
         if packed_chunks is not None:
@@ -215,7 +243,11 @@ class GlobalCoefficientPrefix:
                     else tuple(int(value) for value in record.coefficients),
                     str(record.backend),
                 )
-                for record in self.curve.local_data(start, cutoff, algorithm="auto")
+                for record in self.curve.local_data(
+                    start,
+                    cutoff,
+                    algorithm=self.local_factor_algorithm,
+                )
                 if record.available
             )
         for prime_value, coefficient_values, backend_value in rows:
@@ -304,6 +336,7 @@ class GlobalCoefficientPrefix:
             "local_prime_bound": self._local_prime_bound,
             "cached_euler_factors": len(self._euler_factors),
             "coefficient_stream": self._coefficient_stream,
+            "local_factor_algorithm": self.local_factor_algorithm,
             "backend_counts": dict(self.backend_counts),
             "prepared_evaluation_entries": len(self._prepared_evaluation_cache),
             "prepared_evaluation_hits": self._prepared_evaluation_cache_hits,

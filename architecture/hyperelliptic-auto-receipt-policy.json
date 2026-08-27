@@ -59,12 +59,12 @@
       "tools/runtime-bootstrap.ts",
       "tools/task-evaluator.ts"
     ],
-    "sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
-    "source_commit": "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc"
+    "sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+    "source_commit": "c562298260be498bfb2b0c61872b0d3ac9c06062"
   },
   "entries": [
     {
-      "id": "prime-cantor-g2-add-a9d-v1",
+      "id": "prime-cantor-domain-add-c5622982-v1",
       "enabled": true,
       "backend": "prime-cantor",
       "operation": "add",
@@ -74,34 +74,48 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
       "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "id": "prime-cantor-domain-v1",
+        "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
+        "sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f"
       },
       "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "path": "bench/hyperelliptic/cross-platform/run-domain-corpus.cjs",
+        "sha256": "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583"
       },
       "required_targets": [
         "dynamic",
         "native"
       ],
-      "exact_result_sha256": "55839531b94a14a006f8db64d0bcce386a278bc34fc2246ea9915c091bd2f8d9",
+      "exact_result_sha256": "0d72f5510fd6db8c62415fa2a8c318267f7646aab00334230583ab8e42c5bb2b",
       "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
-        ]
+        "kind": "domain-envelope",
+        "domain_id": "prime-cantor-odd-v1",
+        "constraints": {
+          "genus": [
+            2,
+            3
+          ],
+          "field_kind": [
+            "prime-field"
+          ],
+          "model_kind": [
+            "odd-degree-one-infinity"
+          ],
+          "h_kind": [
+            "zero",
+            "nonzero"
+          ]
+        }
       },
       "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
+        "prime_min": 5,
+        "prime_max": 65521,
+        "interval_start_min": 5,
+        "interval_stop_max": 65521,
         "interval_span_max": 1,
-        "batch_items_min": 1000,
+        "batch_items_min": 1,
         "batch_items_max": 1000,
         "scalar_bits_max": 0,
         "resource_bytes_max": 200096
@@ -175,28 +189,28 @@
       "receipts": [
         {
           "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-add-a9d-v1-linux-x64.json",
-          "sha256": "760f7433794cb73193019c0740f7239611c1ef2eb0e574b228aea9c45b815a2e"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-add-c5622982-v1-linux-x64.json",
+          "sha256": "6115cb63e68c52d4f7b64cefb8132aaa1c8eee35538ed18b647f7773a1f5a979"
         },
         {
           "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-add-a9d-v1-linux-arm64.json",
-          "sha256": "f5c81525eb0855daf57eee5a99fc759cf7a42fb4d1e87b2e3c6510e0827eea43"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-add-c5622982-v1-linux-arm64.json",
+          "sha256": "66d65309f0526b5265ee8d61e0f5b9281cd0259a1a7a57c5dec757c8c5f95a15"
         },
         {
           "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-add-a9d-v1-darwin-arm64.json",
-          "sha256": "1eed4cf77ab2d5ba93c327f0e97eb2de2a89ed000c385524392ef6c489d9bf36"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-add-c5622982-v1-darwin-arm64.json",
+          "sha256": "2a8df0075c80f2b6142c93b79a3d67af935938c1e08e575d3aaa70759c6315e7"
         },
         {
           "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-add-a9d-v1-win32-x64.json",
-          "sha256": "37cb2ba268861e54896e28d25ddcb61e49c36829d374c8c993cf3c5527e46675"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-add-c5622982-v1-win32-x64.json",
+          "sha256": "17b87ea105adb022f0b236635ad07b276a6dfd6777e832225c0eb964b38146ce"
         }
       ]
     },
     {
-      "id": "prime-cantor-g2-scalar-a9d-v1",
+      "id": "prime-cantor-domain-scalar-c5622982-v1",
       "enabled": true,
       "backend": "prime-cantor",
       "operation": "scalar",
@@ -206,34 +220,48 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
       "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "id": "prime-cantor-domain-v1",
+        "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
+        "sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f"
       },
       "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "path": "bench/hyperelliptic/cross-platform/run-domain-corpus.cjs",
+        "sha256": "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583"
       },
       "required_targets": [
         "dynamic",
         "native"
       ],
-      "exact_result_sha256": "3186900856f5eb21b6e6e4eabd0e639d25911764fdf0a2f645aff938a7c514ee",
+      "exact_result_sha256": "c0c5e0111101b09308f6f1255ed6586711e49626cb79d9ae4e4695365b23d342",
       "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
-        ]
+        "kind": "domain-envelope",
+        "domain_id": "prime-cantor-odd-v1",
+        "constraints": {
+          "genus": [
+            2,
+            3
+          ],
+          "field_kind": [
+            "prime-field"
+          ],
+          "model_kind": [
+            "odd-degree-one-infinity"
+          ],
+          "h_kind": [
+            "zero",
+            "nonzero"
+          ]
+        }
       },
       "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
+        "prime_min": 5,
+        "prime_max": 65521,
+        "interval_start_min": 5,
+        "interval_stop_max": 65521,
         "interval_span_max": 1,
-        "batch_items_min": 64,
+        "batch_items_min": 1,
         "batch_items_max": 64,
         "scalar_bits_max": 256,
         "resource_bytes_max": 11360
@@ -307,28 +335,28 @@
       "receipts": [
         {
           "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-scalar-a9d-v1-linux-x64.json",
-          "sha256": "bf3d7f36a920cc7ad95ccbd0a03c38521066bd42b4025a14999a40b0ee84208e"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-scalar-c5622982-v1-linux-x64.json",
+          "sha256": "b0c32e2c6c9f74acdd7089f19f6495a6ae6325253f6a4926e4e0db9b5ecafb26"
         },
         {
           "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-scalar-a9d-v1-linux-arm64.json",
-          "sha256": "a024dfcda236396f24fbb81ea93c5d62f53515f40a146390d97c997289138a68"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-scalar-c5622982-v1-linux-arm64.json",
+          "sha256": "cfa6c19cb549a0afaa24fb50c18093663b0ae08c45bc698282e81892de77ff0f"
         },
         {
           "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-scalar-a9d-v1-darwin-arm64.json",
-          "sha256": "0eb1f76511e91b4bfb1d7d66453c888cfe4529e3c9d66ec2fd83b4a6b9f5e4a7"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-scalar-c5622982-v1-darwin-arm64.json",
+          "sha256": "39311475054f1f128222367f443a65247d7ac6866e96b9bfe720ba83eb699075"
         },
         {
           "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-scalar-a9d-v1-win32-x64.json",
-          "sha256": "654cf4dc429f6dff0d0c116f41610297ec060e6fec055eb03482101e3a79b821"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-scalar-c5622982-v1-win32-x64.json",
+          "sha256": "6c8ac53555ed80a0459ee78156e43b7d8d6d5843cb769092738d05b53c134ea0"
         }
       ]
     },
     {
-      "id": "prime-cantor-g2-progression-a9d-v1",
+      "id": "prime-cantor-domain-progression-c5622982-v1",
       "enabled": true,
       "backend": "prime-cantor",
       "operation": "progression",
@@ -338,34 +366,48 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
+      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
       "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "id": "prime-cantor-domain-v1",
+        "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
+        "sha256": "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f"
       },
       "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
+        "path": "bench/hyperelliptic/cross-platform/run-domain-corpus.cjs",
+        "sha256": "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583"
       },
       "required_targets": [
         "dynamic",
         "native"
       ],
-      "exact_result_sha256": "80d5995350d9261ebb840851ded45b324586ae2d527d0e58f13ac05817263807",
+      "exact_result_sha256": "7c642303e3002bb9c17ccb555b60cbe50f33270f3ff0c430b71bcaf1ab26b161",
       "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234"
-        ]
+        "kind": "domain-envelope",
+        "domain_id": "prime-cantor-odd-v1",
+        "constraints": {
+          "genus": [
+            2,
+            3
+          ],
+          "field_kind": [
+            "prime-field"
+          ],
+          "model_kind": [
+            "odd-degree-one-infinity"
+          ],
+          "h_kind": [
+            "zero",
+            "nonzero"
+          ]
+        }
       },
       "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
+        "prime_min": 5,
+        "prime_max": 65521,
+        "interval_start_min": 5,
+        "interval_stop_max": 65521,
         "interval_span_max": 1,
-        "batch_items_min": 1000,
+        "batch_items_min": 1,
         "batch_items_max": 1000,
         "scalar_bits_max": 0,
         "resource_bytes_max": 72224
@@ -439,419 +481,23 @@
       "receipts": [
         {
           "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-progression-a9d-v1-linux-x64.json",
-          "sha256": "fbf71a252ed8ae6c01c3508130f10bc0891a8ce11a1a005bcceefb75fc72b1d9"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-progression-c5622982-v1-linux-x64.json",
+          "sha256": "df0fed3b14d0055c256d5b987b30d2f0f4dbffe2ca4f4e88f42e0f292d614bd6"
         },
         {
           "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-progression-a9d-v1-linux-arm64.json",
-          "sha256": "fc5f39ff949ddb285885e7dfddf8419810e757de7c2e9b94eb7ea66177135696"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-progression-c5622982-v1-linux-arm64.json",
+          "sha256": "8e232c5c4c950dad7a81b1692220f4c7b9b7640b71eca85ad04643822e81bdce"
         },
         {
           "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-progression-a9d-v1-darwin-arm64.json",
-          "sha256": "5056b1dfd4ee38f174a07d27728efa90411da662768008b208b1d40586002754"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-progression-c5622982-v1-darwin-arm64.json",
+          "sha256": "88ea7a00ba4de6b7b77035fc1648537a32e2d3a464ec0a36615624347d78f214"
         },
         {
           "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g2-progression-a9d-v1-win32-x64.json",
-          "sha256": "4ac35283e93b4442a52628c5b2587987ea13b40d839f8326d1ef92bcf8a96dfd"
-        }
-      ]
-    },
-    {
-      "id": "prime-cantor-g3-add-a9d-v1",
-      "enabled": true,
-      "backend": "prime-cantor",
-      "operation": "add",
-      "platforms": [
-        "linux-x64",
-        "linux-arm64",
-        "darwin-arm64",
-        "win32-x64"
-      ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
-      "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "required_targets": [
-        "dynamic",
-        "native"
-      ],
-      "exact_result_sha256": "d75cb4e1514af9de65d9fa21d198493c62c095b37d20ff3d4f92e2f466fd7395",
-      "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
-        ]
-      },
-      "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
-        "interval_span_max": 1,
-        "batch_items_min": 1000,
-        "batch_items_max": 1000,
-        "scalar_bits_max": 0,
-        "resource_bytes_max": 200096
-      },
-      "required_evidence": {
-        "failures": [
-          {
-            "id": "missing-artifact",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cancellation",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "memory-exhaustion",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "worker-loss",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cache-corruption",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ],
-        "sanitizers": [
-          {
-            "id": "address",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "undefined",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "leak",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ]
-      },
-      "receipts": [
-        {
-          "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-add-a9d-v1-linux-x64.json",
-          "sha256": "c774758af11d500f97cbadf9e2dc15bf786e0c56fb6447a818cef22d15bac5ce"
-        },
-        {
-          "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-add-a9d-v1-linux-arm64.json",
-          "sha256": "399fad09012110d176bf3534da99a6b674587dddd62d733b9b4ffbd591e3606e"
-        },
-        {
-          "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-add-a9d-v1-darwin-arm64.json",
-          "sha256": "84b3685226eedb66f87cac5ad0a7697399361990df257cecb570b117be5972ee"
-        },
-        {
-          "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-add-a9d-v1-win32-x64.json",
-          "sha256": "78c406614c3e1446f375ce4870d753ca1f10a95c2d9c75bca324a7433e5192e1"
-        }
-      ]
-    },
-    {
-      "id": "prime-cantor-g3-scalar-a9d-v1",
-      "enabled": true,
-      "backend": "prime-cantor",
-      "operation": "scalar",
-      "platforms": [
-        "linux-x64",
-        "linux-arm64",
-        "darwin-arm64",
-        "win32-x64"
-      ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
-      "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "required_targets": [
-        "dynamic",
-        "native"
-      ],
-      "exact_result_sha256": "9461aa20d4cabd27c2c5bf8c6519fed7b5877d867467c56e8cafad170f3002c2",
-      "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
-        ]
-      },
-      "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
-        "interval_span_max": 1,
-        "batch_items_min": 64,
-        "batch_items_max": 64,
-        "scalar_bits_max": 256,
-        "resource_bytes_max": 11360
-      },
-      "required_evidence": {
-        "failures": [
-          {
-            "id": "missing-artifact",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cancellation",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "memory-exhaustion",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "worker-loss",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cache-corruption",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ],
-        "sanitizers": [
-          {
-            "id": "address",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "undefined",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "leak",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ]
-      },
-      "receipts": [
-        {
-          "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-scalar-a9d-v1-linux-x64.json",
-          "sha256": "52c463a11da6c22be9b0f4425fc7dc3a887865fa1a0d9703ebc9dd8e59106aab"
-        },
-        {
-          "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-scalar-a9d-v1-linux-arm64.json",
-          "sha256": "b963b46ce6186f752c3800a22c414030eab7e7bb62c34146730f6932e020bb8a"
-        },
-        {
-          "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-scalar-a9d-v1-darwin-arm64.json",
-          "sha256": "b740779de6d83f3c8356e1b7b69242350fe0adb337bd3fdf036d2be183429a73"
-        },
-        {
-          "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-scalar-a9d-v1-win32-x64.json",
-          "sha256": "3a0605c972745f961a6df44afa4dd0e4bcc821bc109a0af6c0d23d6420dcd7b8"
-        }
-      ]
-    },
-    {
-      "id": "prime-cantor-g3-progression-a9d-v1",
-      "enabled": true,
-      "backend": "prime-cantor",
-      "operation": "progression",
-      "platforms": [
-        "linux-x64",
-        "linux-arm64",
-        "darwin-arm64",
-        "win32-x64"
-      ],
-      "source_bundle_sha256": "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
-      "corpus": {
-        "id": "phase10-primary-cantor-a9d-v1",
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "harness": {
-        "path": "bench/hyperelliptic/cross-platform/run.cjs",
-        "sha256": "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435"
-      },
-      "required_targets": [
-        "dynamic",
-        "native"
-      ],
-      "exact_result_sha256": "45b22f5c6a8ca6885aa74c3929dfec0a16bb89b0c9a7fa6ba91527eee835bcaf",
-      "model": {
-        "kind": "exact-fingerprint",
-        "fingerprints": [
-          "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279"
-        ]
-      },
-      "envelope": {
-        "prime_min": 1009,
-        "prime_max": 1009,
-        "interval_start_min": 1009,
-        "interval_stop_max": 1009,
-        "interval_span_max": 1,
-        "batch_items_min": 1000,
-        "batch_items_max": 1000,
-        "scalar_bits_max": 0,
-        "resource_bytes_max": 72224
-      },
-      "required_evidence": {
-        "failures": [
-          {
-            "id": "missing-artifact",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cancellation",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "memory-exhaustion",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "worker-loss",
-            "platforms": [
-              "linux-x64",
-              "linux-arm64",
-              "darwin-arm64",
-              "win32-x64"
-            ]
-          },
-          {
-            "id": "cache-corruption",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ],
-        "sanitizers": [
-          {
-            "id": "address",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "undefined",
-            "platforms": [
-              "linux-x64"
-            ]
-          },
-          {
-            "id": "leak",
-            "platforms": [
-              "linux-x64"
-            ]
-          }
-        ]
-      },
-      "receipts": [
-        {
-          "platform": "linux-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-progression-a9d-v1-linux-x64.json",
-          "sha256": "5f29ddb2084331b890a76f100f26d68acd9a87911dba7fa21c10ca779b80ba4d"
-        },
-        {
-          "platform": "linux-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-progression-a9d-v1-linux-arm64.json",
-          "sha256": "db3a96ecd220fc40a8b1736c3e03aca224afbdc367f1739216469c033209af89"
-        },
-        {
-          "platform": "darwin-arm64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-progression-a9d-v1-darwin-arm64.json",
-          "sha256": "342980d0955de503a43aa2f26b37794bcda8badebfcf02b8ebd0fc51c61d9d49"
-        },
-        {
-          "platform": "win32-x64",
-          "path": "bench/hyperelliptic/cross-platform/results/policy-a9d83f82/prime-cantor-g3-progression-a9d-v1-win32-x64.json",
-          "sha256": "6bbb9066c7f4758ab4b34a5d83c34b7a392a843e47097910e9b1fc0c28d775b7"
+          "path": "bench/hyperelliptic/cross-platform/results/policy-c5622982/prime-cantor-domain-progression-c5622982-v1-win32-x64.json",
+          "sha256": "e6ea4d875210eb1d4976847e843a30282d629036c3c9416344194c9bd0eade8a"
         }
       ]
     }

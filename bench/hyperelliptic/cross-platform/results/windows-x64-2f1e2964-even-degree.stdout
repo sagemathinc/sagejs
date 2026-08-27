@@ -1,0 +1,16 @@
+✔ split even-degree Sage vectors, cancellation, and full authority (2334.5679ms)
+✔ pinned SageMath split oracle replays exactly (1980.3507ms)
+✔ generalized split equations use balanced reduction and negation (1071.4747ms)
+✔ small split Jacobians exhaustively satisfy the group contract (39280.9413ms)
+✔ genus-3 split enumeration and deterministic operation trees are exact (16375.3274ms)
+✔ unsupported models and cross-parent data fail closed (770.1128ms)
+✔ documentation example basic executes verbatim (874.1063ms)
+✔ documentation example group executes verbatim (2347.5527ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 65167.6141

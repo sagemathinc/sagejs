@@ -473,23 +473,25 @@ def test_real_period_abel_theta_integration():
         x_value + x_value**2 - 2 * x_value**4 - x_value**5 + x_value**6 + x_value**7
     )
     curve = HyperellipticCurve(f_value, 1 + x_value**2)
-    period_result = periods.real_period(curve, prec=64)
+    requested_bits = 64
+    period_result = periods.real_period(curve, prec=80)
+    assert period_result.achieved_stability_bits >= requested_bits
     raw_result = periods.abel_jacobi(
         curve,
         curve((0, 0)),
         period_result=period_result,
         basepoint="infinity",
-        prec=64,
+        prec=requested_bits,
     )
     normalized = normalize_abel_jacobi_coordinates(
         raw_result.vector_pairs(),
         period_result.period_matrix_pairs(),
-        prec=64,
+        prec=requested_bits,
     )
     theta = genus3_theta(
         normalized,
         period_result.siegel_matrix_pairs(),
-        prec=64,
+        prec=requested_bits,
         radius=6,
     )
     assert raw_result.verify()["verified"]

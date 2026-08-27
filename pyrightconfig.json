@@ -141,6 +141,7 @@
     "src/lib/sagejs/hyperelliptic_curves/group_structure.py",
     "src/lib/sagejs/hyperelliptic_curves/hasse_witt.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian.py",
+    "src/lib/sagejs/hyperelliptic_curves/jacobian_split.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_kummer_native.py",
     "src/lib/sagejs/hyperelliptic_curves/jacobian_native.py",

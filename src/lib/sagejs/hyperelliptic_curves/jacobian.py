@@ -328,6 +328,10 @@ class MumfordDivisor(sage.Element):
         self._materialize()
         return self._u, self._v
 
+    def mumford_coordinates(self) -> tuple[Any, ...]:
+        """Return the complete canonical odd-degree Mumford coordinates."""
+        return self.uv()
+
     def degree(self) -> int:
         packed = self._packed_row
         if packed is not None:
@@ -780,7 +784,7 @@ class MumfordDivisor(sage.Element):
 
 @runtime.callable_instance_class
 class HyperellipticJacobian(sage.Parent):
-    """The Jacobian of an odd-degree genus-2 or genus-3 hyperelliptic curve."""
+    """The Jacobian of a supported genus-2 or genus-3 hyperelliptic curve."""
 
     Element = MumfordDivisor
 
@@ -798,11 +802,6 @@ class HyperellipticJacobian(sage.Parent):
                 "been validated in this implementation"
             )
         model_degree = max(f.degree(), 2 * h.degree())
-        if model_degree != 2 * genus + 1:
-            raise NotImplementedError(
-                "Jacobian arithmetic currently requires an odd-degree model "
-                "with one point at infinity"
-            )
         if _polynomial_ring(f) is not _polynomial_ring(h):
             raise ValueError("f and h must belong to the same polynomial ring")
         self._curve = curve
@@ -810,9 +809,47 @@ class HyperellipticJacobian(sage.Parent):
         self._h = h
         self._genus = genus
         self._ring = _polynomial_ring(f)
-        self._zero: MumfordDivisor | None = None
+        self._model_kind = "odd-degree-one-infinity"
+        self._infinity_values: tuple[Any, ...] = ()
+        self._split_strategy: Any = None
+        self._split_element_class: Any = None
+        self._split_prepared_class: Any = None
+        if model_degree == 2 * genus + 2:
+            if (
+                not hasattr(base, "characteristic")
+                or not hasattr(base, "order")
+                or int(base.characteristic()) != int(base.order())
+            ):
+                raise NotImplementedError(
+                    "split even-degree Jacobian arithmetic currently requires "
+                    "an odd prime field"
+                )
+            infinity_values = tuple(curve.roots_at_infinity())
+            if len(infinity_values) == 0:
+                raise NotImplementedError(
+                    "even-degree Jacobian arithmetic for inert infinity is not "
+                    "yet implemented"
+                )
+            if len(infinity_values) != 2:
+                raise ArithmeticError(
+                    "a smooth even-degree model must have zero or two distinct "
+                    "rational infinity points"
+                )
+            split = __import__(
+                "sagejs.hyperelliptic_curves.jacobian_split",
+                fromlist=["SplitJacobianStrategy", "SplitMumfordDivisor"],
+            )
+            self._model_kind = "even-degree-split-two-infinity"
+            self._infinity_values = infinity_values
+            self._split_strategy = split.SplitJacobianStrategy(self, infinity_values)
+            self._split_element_class = split.SplitMumfordDivisor
+            self._split_prepared_class = split.PreparedSplitJacobianArithmetic
+            self.Element = self._split_element_class
+        elif model_degree != 2 * genus + 1:
+            raise NotImplementedError("unsupported hyperelliptic Jacobian model")
+        self._zero: Any = None
         self._order_cache: dict[int, Any] = {}
-        self._points_cache: list[MumfordDivisor] | None = None
+        self._points_cache: list[Any] | None = None
         self._group_basis_cache: dict[str, Any] | None = None
         self._group_structure_diagnostics_cache: dict[str, Any] | None = None
         self._prepared_arithmetic_cache: dict[tuple[str, int], Any] = {}
@@ -836,6 +873,45 @@ class HyperellipticJacobian(sage.Parent):
 
     def h(self) -> Any:
         return self._h
+
+    def model_kind(self) -> str:
+        """Return the exact divisor-representation model kind."""
+        return self._model_kind
+
+    def infinity_values(self) -> tuple[Any, ...]:
+        """Return the oriented infinity values for a split parent."""
+        if self._model_kind != "even-degree-split-two-infinity":
+            return tuple(self._curve.roots_at_infinity())
+        return tuple(self._infinity_values)
+
+    def infinity_points(self) -> tuple[Any, ...]:
+        """Return the rational infinity points in representation order."""
+        return tuple(self._curve.points_at_infinity())
+
+    def _validate_split_algorithm(self, algorithm: str) -> None:
+        if algorithm not in ("auto", "native", "reference"):
+            raise ValueError("unknown split Jacobian algorithm " + repr(algorithm))
+        if algorithm == "native":
+            raise NotImplementedError(
+                "native arithmetic does not yet support split even-degree "
+                "Jacobians; use algorithm='reference'"
+            )
+
+    def _split_diagnostics(self, operation: str, count: int) -> dict[str, Any]:
+        return {
+            "operation": operation,
+            "count": count,
+            "selected": "reference",
+            "native_available": False,
+            "reason": "split-even-degree-reference-only",
+            "model_kind": self._model_kind,
+        }
+
+    def _require_odd_model(self, feature: str) -> None:
+        if self._model_kind != "odd-degree-one-infinity":
+            raise NotImplementedError(
+                feature + " does not yet support split even-degree Jacobians"
+            )
 
     def prepared_arithmetic(
         self,
@@ -864,6 +940,12 @@ class HyperellipticJacobian(sage.Parent):
             context = None
         if context is None:
             context = None
+            if self._model_kind == "even-degree-split-two-infinity":
+                context = self._split_prepared_class(
+                    self,
+                    algorithm=algorithm,
+                    max_batch_items=maximum,
+                )
             if algorithm != "reference" and str(self.base_ring()) == "Rational Field":
                 rational_native = __import__(
                     "sagejs.hyperelliptic_curves.jacobian_rational_native",
@@ -906,12 +988,18 @@ class HyperellipticJacobian(sage.Parent):
                 answer.append(str(int(lifted) % prime))
             return tuple(answer)
 
-        return {
+        result = {
             "genus": self._genus,
             "prime": str(prime),
             "f_coefficients_ascending": coefficients(self._f),
             "h_coefficients_ascending": coefficients(self._h),
         }
+        if self._model_kind == "even-degree-split-two-infinity":
+            result["model_kind"] = self._model_kind
+            result["infinity_values"] = tuple(
+                str(int(value)) for value in self._infinity_values
+            )
+        return result
 
     def _divisor_data(self, divisor: MumfordDivisor) -> dict[str, Any]:
         if divisor.parent() is not self:
@@ -926,6 +1014,18 @@ class HyperellipticJacobian(sage.Parent):
                 answer.append(str(int(lifted) % prime))
             return tuple(answer)
 
+        if self._model_kind == "even-degree-split-two-infinity":
+            split_coordinates: Any = divisor.mumford_coordinates()
+            u_value = split_coordinates[0]
+            v_value = split_coordinates[1]
+            weight = split_coordinates[2]
+            return {
+                "schema": "sagejs.hyperelliptic.split-mumford-divisor.v1",
+                "curve": model,
+                "u_coefficients_ascending": coefficients(u_value),
+                "v_coefficients_ascending": coefficients(v_value),
+                "infinity_weight": str(weight),
+            }
         u_value, v_value = divisor.uv()
         return {
             "schema": "sagejs.hyperelliptic.mumford-divisor.v1",
@@ -939,7 +1039,7 @@ class HyperellipticJacobian(sage.Parent):
             return False
         expected = self._prime_field_model_data()
         try:
-            return (
+            matches = (
                 not isinstance(data.get("genus"), bool)
                 and isinstance(data.get("genus"), int)
                 and int(data.get("genus")) == int(expected["genus"])
@@ -949,6 +1049,13 @@ class HyperellipticJacobian(sage.Parent):
                 and tuple(data.get("h_coefficients_ascending"))
                 == tuple(expected["h_coefficients_ascending"])
             )
+            if not matches:
+                return False
+            if self._model_kind == "even-degree-split-two-infinity":
+                return data.get("model_kind") == self._model_kind and tuple(
+                    data.get("infinity_values", ())
+                ) == tuple(expected["infinity_values"])
+            return True
         except (TypeError, ValueError):
             return False
 
@@ -956,7 +1063,12 @@ class HyperellipticJacobian(sage.Parent):
         """Reconstruct and validate a versioned prime-field Mumford divisor."""
         if not hasattr(data, "get") or not hasattr(data, "__getitem__"):
             raise TypeError("divisor data must be a mapping")
-        if data.get("schema") != "sagejs.hyperelliptic.mumford-divisor.v1":
+        expected_schema = (
+            "sagejs.hyperelliptic.split-mumford-divisor.v1"
+            if self._model_kind == "even-degree-split-two-infinity"
+            else "sagejs.hyperelliptic.mumford-divisor.v1"
+        )
+        if data.get("schema") != expected_schema:
             raise ValueError("unknown Mumford-divisor schema")
         if not self._model_data_equal(data.get("curve")):
             raise ValueError("the serialized divisor belongs to a different Jacobian")
@@ -974,6 +1086,12 @@ class HyperellipticJacobian(sage.Parent):
 
         u_value = self._ring(parse(data["u_coefficients_ascending"]))
         v_value = self._ring(parse(data["v_coefficients_ascending"]))
+        if self._model_kind == "even-degree-split-two-infinity":
+            text = str(data.get("infinity_weight"))
+            weight = int(text)
+            if str(weight) != text:
+                raise ValueError("the infinity weight is not canonical")
+            return self._element(u_value, v_value, True, n=weight)
         return self._element(u_value, v_value, True)
 
     def verify_order_certificate(self, certificate: Mapping[str, Any]) -> bool:
@@ -1022,10 +1140,21 @@ class HyperellipticJacobian(sage.Parent):
 
     __str__ = __repr__
 
-    def _element(self, u: Any, v: Any, check: bool) -> MumfordDivisor:
+    def _element(
+        self,
+        u: Any,
+        v: Any,
+        check: bool,
+        *,
+        n: Any = None,
+    ) -> Any:
+        if self._model_kind == "even-degree-split-two-infinity":
+            if n is None:
+                raise ValueError("split Mumford elements require an infinity weight")
+            return self._split_element_class(self, u, v, n, check)
         return MumfordDivisor(self, u, v, check)
 
-    def __call__(self, *args: Any, check: bool = True) -> MumfordDivisor:
+    def __call__(self, *args: Any, check: bool = True) -> Any:
         if len(args) == 0 or (len(args) == 1 and args[0] == 0):
             return self.zero()
         if len(args) == 1:
@@ -1033,30 +1162,83 @@ class HyperellipticJacobian(sage.Parent):
             if isinstance(value, MumfordDivisor):
                 if value.parent() is self:
                     return value
+                if self._model_kind == "even-degree-split-two-infinity":
+                    raise ValueError(
+                        "a split divisor from a different parent must be "
+                        "reconstructed from serialized data"
+                    )
                 u, v = value.uv()
                 return MumfordDivisor(self, u, v, check)
-            if isinstance(value, tuple):
+            if hasattr(value, "is_at_infinity") and hasattr(value, "curve"):
                 return self.point_to_divisor(value, check=check)
-            if isinstance(value, list) and len(value) == 2:
-                return MumfordDivisor(self, value[0], value[1], check)
-            raise ValueError("expected 0, a divisor, [u,v], or an affine curve point")
+            if isinstance(value, (list, tuple)):
+                values = list(value)
+                if len(values) in (2, 3) and hasattr(values[0], "degree"):
+                    if len(values) == 3:
+                        if self._model_kind != "even-degree-split-two-infinity":
+                            raise ValueError(
+                                "odd-degree Mumford coordinates have two entries"
+                            )
+                        return self._element(values[0], values[1], check, n=values[2])
+                    if self._model_kind == "even-degree-split-two-infinity":
+                        u_value, v_value, weight = (
+                            self._split_strategy.default_coordinates(
+                                values[0], values[1]
+                            )
+                        )
+                        return self._element(u_value, v_value, False, n=weight)
+                    return MumfordDivisor(self, values[0], values[1], check)
+                return self.point_to_divisor(values, check=check)
+            raise ValueError(
+                "expected 0, a divisor, Mumford coordinates, or a curve point"
+            )
         if len(args) == 2:
+            if hasattr(args[0], "is_at_infinity") and hasattr(
+                args[1], "is_at_infinity"
+            ):
+                if self._model_kind != "even-degree-split-two-infinity":
+                    raise NotImplementedError(
+                        "two-point Jacobian construction currently requires a "
+                        "split even-degree model"
+                    )
+                return self._point_difference(args[0], args[1], check=check)
             if not hasattr(args[0], "degree"):
                 return self.point_to_divisor(args, check=check)
+            if self._model_kind == "even-degree-split-two-infinity":
+                u_value, v_value, weight = self._split_strategy.default_coordinates(
+                    args[0], args[1]
+                )
+                return self._element(u_value, v_value, False, n=weight)
             return MumfordDivisor(self, args[0], args[1], check)
-        raise ValueError("a Jacobian element takes at most two arguments")
+        if len(args) == 3 and hasattr(args[0], "degree"):
+            if self._model_kind != "even-degree-split-two-infinity":
+                raise ValueError("odd-degree Mumford coordinates have two entries")
+            return self._element(args[0], args[1], check, n=args[2])
+        raise ValueError("a Jacobian element takes at most three arguments")
 
     point = __call__
 
-    def zero(self) -> MumfordDivisor:
+    def zero(self) -> Any:
         if self._zero is None:
-            self._zero = self._element(self._ring(1), self._ring(0), False)
+            if self._model_kind == "even-degree-split-two-infinity":
+                self._zero = self._element(
+                    self._ring(1),
+                    self._ring(0),
+                    False,
+                    n=(self._genus + 1) // 2,
+                )
+            else:
+                self._zero = self._element(self._ring(1), self._ring(0), False)
         return self._zero
 
     def __contains__(self, value: object) -> bool:
         return isinstance(value, MumfordDivisor) and value.parent() is self
 
     def _validate_reduced(self, u: Any, v: Any) -> None:
+        if self._model_kind != "odd-degree-one-infinity":
+            raise ValueError(
+                "split divisors require validation of the full `(u,v,n)` value"
+            )
         if u.is_zero() or u[u.degree()] != self.base_ring()(1):
             raise ValueError("u must be monic and nonzero")
         if u.degree() > self._genus:
@@ -1067,6 +1249,8 @@ class HyperellipticJacobian(sage.Parent):
             raise ValueError("u does not divide v^2 + h*v - f")
 
     def _reduce(self, u: Any, v: Any) -> tuple[Any, Any]:
+        if self._model_kind != "odd-degree-one-infinity":
+            raise ValueError("odd-degree reduction cannot reduce a split divisor")
         steps = 0
         while u.degree() > self._genus:
             quotient = _exact_quotient(v * v + self._h * v - self._f, u)
@@ -1078,7 +1262,10 @@ class HyperellipticJacobian(sage.Parent):
         v = _polynomial_remainder(v, u)
         return u, v
 
-    def _compose(self, u1: Any, v1: Any, u2: Any, v2: Any) -> tuple[Any, Any]:
+    def _compose_semireduced(
+        self, u1: Any, v1: Any, u2: Any, v2: Any
+    ) -> tuple[Any, Any, int]:
+        """Return affine Cantor composition plus the cancelled-pair degree."""
         if u1 == u2 and v1 == v2:
             common, _left, bezout = _polynomial_xgcd(u1, v1 + v1 + self._h)
             u3 = _exact_quotient(u1, common)
@@ -1088,14 +1275,14 @@ class HyperellipticJacobian(sage.Parent):
                 common,
             )
             v3 = _polynomial_remainder(v1 + bezout * correction, u3)
-            return self._reduce(u3, v3)
+            return u3, v3, int(common.degree())
 
         common0, _left0, right0 = _polynomial_xgcd(u1, u2)
         difference = v1 - v2
         if common0.is_one():
             u3 = u1 * u2
             v3 = _polynomial_remainder(v2 + right0 * u2 * difference, u3)
-            return self._reduce(u3, v3)
+            return u3, v3, 0
 
         conjugate_sum = v1 + v2 + self._h
         if conjugate_sum.is_zero():
@@ -1103,7 +1290,7 @@ class HyperellipticJacobian(sage.Parent):
             v3 = _polynomial_remainder(
                 v2 + right0 * difference * _exact_quotient(u2, common0), u3
             )
-            return self._reduce(u3, v3)
+            return u3, v3, int(common0.degree())
 
         common, coefficient0, coefficient1 = _polynomial_xgcd(common0, conjugate_sum)
         u3 = _exact_quotient(u1 * u2, common * common)
@@ -1111,9 +1298,50 @@ class HyperellipticJacobian(sage.Parent):
             self._f - self._h * v2 - v2 * v2
         )
         v3 = _polynomial_remainder(v2 + _exact_quotient(numerator, common), u3)
+        return u3, v3, int(common.degree())
+
+    def _compose(self, u1: Any, v1: Any, u2: Any, v2: Any) -> tuple[Any, Any]:
+        if self._model_kind != "odd-degree-one-infinity":
+            raise ValueError("odd-degree composition cannot compose split divisors")
+        u3, v3, _cancellation_degree = self._compose_semireduced(u1, v1, u2, v2)
         return self._reduce(u3, v3)
 
-    def point_to_divisor(self, point: Any, check: bool = True) -> MumfordDivisor:
+    def _coerce_curve_point(self, point: Any, check: bool) -> Any:
+        if hasattr(point, "curve"):
+            if point.curve() is not self._curve:
+                raise ValueError("the point lies on a different curve")
+            return point
+        return self._curve(point, check=check)
+
+    def _point_difference(self, left: Any, right: Any, check: bool = True) -> Any:
+        if self._model_kind != "even-degree-split-two-infinity":
+            raise NotImplementedError("point differences require a split model")
+        left_point = self._coerce_curve_point(left, check)
+        right_point = self._coerce_curve_point(right, check)
+        u_value, v_value, weight = self._split_strategy.point_difference(
+            left_point, right_point
+        )
+        return self._element(u_value, v_value, False, n=weight)
+
+    def point_to_divisor(
+        self,
+        point: Any,
+        check: bool = True,
+        *,
+        basepoint: Any = None,
+    ) -> Any:
+        if self._model_kind == "even-degree-split-two-infinity":
+            point = self._coerce_curve_point(point, check)
+            if basepoint is None:
+                basepoint = self.infinity_points()[0]
+            else:
+                basepoint = self._coerce_curve_point(basepoint, check)
+            return self._point_difference(point, basepoint, check=check)
+        if basepoint is not None:
+            raise NotImplementedError(
+                "an explicit point-to-divisor basepoint currently requires a "
+                "split even-degree model"
+            )
         if hasattr(point, "is_at_infinity") and point.is_at_infinity():
             return self.zero()
         if hasattr(point, "curve") and point.curve() is not self._curve:
@@ -1163,6 +1391,12 @@ class HyperellipticJacobian(sage.Parent):
         if u_value.degree() > self._genus:
             raise ValueError("u has degree larger than the genus")
         if u_value.is_one():
+            if self._model_kind == "even-degree-split-two-infinity":
+                result = [
+                    self._element(self._ring(1), self._ring(0), False, n=weight)
+                    for weight in range(self._genus + 1)
+                ]
+                return result if all else result[0]
             result = [self.zero()]
             return result if all else result[0]
 
@@ -1223,14 +1457,23 @@ class HyperellipticJacobian(sage.Parent):
             combined = next_combined
 
         inverse_two = field(1) / field(2)
-        answer: list[MumfordDivisor] = []
+        answer: list[Any] = []
         for root, modulus in combined:
             if modulus != u_value:
                 raise ArithmeticError("lift_u CRT modulus does not equal u")
             v_value = _polynomial_remainder((root - self._h) * inverse_two, u_value)
-            divisor = self._element(u_value, v_value, True)
-            if divisor not in answer:
-                answer.append(divisor)
+            if self._model_kind == "even-degree-split-two-infinity":
+                weights = (
+                    range(self._genus - int(u_value.degree()) + 1) if all else range(1)
+                )
+                for weight in weights:
+                    divisor = self._element(u_value, v_value, True, n=weight)
+                    if divisor not in answer:
+                        answer.append(divisor)
+            else:
+                divisor = self._element(u_value, v_value, True)
+                if divisor not in answer:
+                    answer.append(divisor)
         if not answer:
             if all:
                 return []
@@ -1292,9 +1535,15 @@ class HyperellipticJacobian(sage.Parent):
                 continue
             candidate = _polynomial_monic(candidate)
             if candidate.degree() <= self._genus:
-                divisor = self._element(candidate, v_value, True)
-                if divisor not in candidates:
-                    candidates.append(divisor)
+                if self._model_kind == "even-degree-split-two-infinity":
+                    for weight in range(self._genus - int(candidate.degree()) + 1):
+                        divisor = self._element(candidate, v_value, True, n=weight)
+                        if divisor not in candidates:
+                            candidates.append(divisor)
+                else:
+                    divisor = self._element(candidate, v_value, True)
+                    if divisor not in candidates:
+                        candidates.append(divisor)
         if not candidates:
             raise ArithmeticError("covering Mumford sampling found no divisor")
         return candidates[sampler.index(len(candidates))]
@@ -1563,6 +1812,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def torsion_bound(self, primes: Any = None, **options: Any) -> Any:
         """Return a replayable rational-torsion upper-bound certificate."""
+        self._require_odd_model("rational torsion bounds")
         module = __import__(
             "sagejs.hyperelliptic_curves.torsion", fromlist=["torsion_bound"]
         )
@@ -1570,6 +1820,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def rational_two_torsion(self) -> Any:
         """Return the exact rational two-torsion of an odd-degree model."""
+        self._require_odd_model("rational two-torsion")
         module = __import__(
             "sagejs.hyperelliptic_curves.torsion",
             fromlist=["rational_two_torsion"],
@@ -1578,6 +1829,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def torsion_subgroup(self, generators: Any = (), **options: Any) -> Any:
         """Certify the subgroup generated by supplied rational torsion divisors."""
+        self._require_odd_model("rational torsion certification")
         module = __import__(
             "sagejs.hyperelliptic_curves.torsion",
             fromlist=["certify_supplied_torsion"],
@@ -1586,6 +1838,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def height_pairing(self, points: Any, **options: Any) -> Any:
         """Return the canonical height-pairing matrix on rational divisors."""
+        self._require_odd_model("canonical height pairings")
         if self._genus == 2:
             module = __import__(
                 "sagejs.hyperelliptic_curves.genus2_heights",
@@ -1610,6 +1863,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def regulator(self, points: Any, **options: Any) -> Any:
         """Return the regulator of the supplied rational subgroup."""
+        self._require_odd_model("regulators")
         if self._genus == 2:
             module = __import__(
                 "sagejs.hyperelliptic_curves.genus2_heights",
@@ -1620,6 +1874,7 @@ class HyperellipticJacobian(sage.Parent):
 
     def saturate(self, points: Any, **options: Any) -> Any:
         """Saturate a rational subgroup within explicit proof boundaries."""
+        self._require_odd_model("rational saturation")
         module = __import__(
             "sagejs.hyperelliptic_curves.saturation",
             fromlist=["saturate_subgroup"],
@@ -1655,8 +1910,13 @@ class HyperellipticJacobian(sage.Parent):
         )
         candidate_bound = 0
         power = 1
-        for _degree in range(self._genus + 1):
-            candidate_bound += power
+        for degree in range(self._genus + 1):
+            weight_count = (
+                self._genus - degree + 1
+                if self._model_kind == "even-degree-split-two-infinity"
+                else 1
+            )
+            candidate_bound += power * weight_count
             power *= field_order if prime_field_lifts else field_order * field_order
         if candidate_bound > max_candidates:
             raise JacobianResourceLimitError(
@@ -1681,7 +1941,11 @@ class HyperellipticJacobian(sage.Parent):
                         if _polynomial_remainder(
                             v * v + self._h * v - self._f, u
                         ).is_zero():
-                            answer.append(self._element(u, v, False))
+                            if self._model_kind == ("even-degree-split-two-infinity"):
+                                for weight in range(self._genus - degree + 1):
+                                    answer.append(self._element(u, v, False, n=weight))
+                            else:
+                                answer.append(self._element(u, v, False))
         if len(answer) != known_order:
             raise ArithmeticError(
                 "reduced Mumford enumeration found "
@@ -1939,7 +2203,11 @@ class HyperellipticJacobian(sage.Parent):
             "element_order_certificates": element_certificates,
             "algorithms": {
                 "basis": "sutherland-primary-basis.v1",
-                "group_law": "generalized-cantor-odd-degree.v1",
+                "group_law": (
+                    "balanced-cantor-even-split.v1"
+                    if self._model_kind == "even-degree-split-two-infinity"
+                    else "generalized-cantor-odd-degree.v1"
+                ),
                 "scalar_backend": str(
                     diagnostics.get("scalar_backend", "ordinary-python")
                 ),
@@ -2088,7 +2356,12 @@ class HyperellipticJacobian(sage.Parent):
             raise ValueError("certificate algorithm metadata is missing")
         if algorithms.get("basis") != "sutherland-primary-basis.v1":
             raise ValueError("unknown certificate basis algorithm")
-        if algorithms.get("group_law") != "generalized-cantor-odd-degree.v1":
+        expected_group_law = (
+            "balanced-cantor-even-split.v1"
+            if self._model_kind == "even-degree-split-two-infinity"
+            else "generalized-cantor-odd-degree.v1"
+        )
+        if algorithms.get("group_law") != expected_group_law:
             raise ValueError("unknown certificate group-law algorithm")
         if algorithms.get("scalar_backend") not in (
             "ordinary-python",
@@ -2213,8 +2486,13 @@ class HyperellipticJacobian(sage.Parent):
             )
             candidate_bound = 0
             power = 1
-            for _degree in range(self._genus + 1):
-                candidate_bound += power
+            for degree in range(self._genus + 1):
+                weight_count = (
+                    self._genus - degree + 1
+                    if self._model_kind == "even-degree-split-two-infinity"
+                    else 1
+                )
+                candidate_bound += power * weight_count
                 power *= enumeration_base
             auto_exhaustive = (
                 algorithm == "auto"

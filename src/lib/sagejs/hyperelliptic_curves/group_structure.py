@@ -100,7 +100,9 @@ def group_element_key(element: Any, prepared_context: Any = None) -> Any:
             fingerprint,
             tuple(int(value) for value in prepared_context.pack(element)),
         )
-    if not hasattr(element, "uv") or not hasattr(element, "parent"):
+    if not hasattr(element, "parent") or (
+        not hasattr(element, "mumford_coordinates") and not hasattr(element, "uv")
+    ):
         return element
     parent = element.parent()
     if not hasattr(parent, "base_ring"):
@@ -111,7 +113,14 @@ def group_element_key(element: Any, prepared_context: Any = None) -> Any:
     prime = int(field.characteristic())
     if prime != int(field.order()):
         return element
-    u_value, v_value = element.uv()
+    coordinates = (
+        element.mumford_coordinates()
+        if hasattr(element, "mumford_coordinates")
+        else element.uv()
+    )
+    if len(coordinates) not in (2, 3):
+        raise ArithmeticError("a Mumford table key has an invalid coordinate count")
+    u_value, v_value = coordinates[0], coordinates[1]
 
     def coefficients(polynomial: Any) -> tuple[int, ...]:
         answer = []
@@ -120,6 +129,14 @@ def group_element_key(element: Any, prepared_context: Any = None) -> Any:
             answer.append(int(lifted) % prime)
         return tuple(answer)
 
+    if len(coordinates) == 3:
+        weight = _checked_integer(coordinates[2], "split infinity weight")
+        return (
+            "prime-field-split-mumford",
+            coefficients(u_value),
+            coefficients(v_value),
+            weight,
+        )
     return ("prime-field-mumford", coefficients(u_value), coefficients(v_value))
 
 

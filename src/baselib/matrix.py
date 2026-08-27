@@ -36,6 +36,35 @@ _matrix_vector_public_module_cache = runtime.undefined
 _exact_vector_public_module_cache = runtime.undefined
 _sparse_random_module_cache = runtime.undefined
 _sparse_random_public_module_cache = runtime.undefined
+_MATRIX_RESOURCE_CACHE_LIMIT = 64
+_matrix_resource_cache = []
+
+
+def _touch_matrix_resource(storage: Any) -> None:
+    """Retain one exact matrix handle in the bounded synchronous-job cache."""
+    if _matrix_resource_cache and _matrix_resource_cache[-1] is storage:
+        return
+    if storage in _matrix_resource_cache:
+        _matrix_resource_cache.remove(storage)
+    _matrix_resource_cache.append(storage)
+    while len(_matrix_resource_cache) > _MATRIX_RESOURCE_CACHE_LIMIT:
+        victim = _matrix_resource_cache[0]
+        victim._spill()
+        _matrix_resource_cache.pop(0)
+
+
+def _forget_matrix_resource(storage: Any) -> None:
+    if storage in _matrix_resource_cache:
+        _matrix_resource_cache.remove(storage)
+
+
+def _discard_matrix_resource(storage: Any) -> None:
+    """Release a private temporary which will never be observed again."""
+    _forget_matrix_resource(storage)
+    if storage._resource is not runtime.undefined and not storage._resource.closed:
+        storage._resource.close()
+    storage._resource = runtime.undefined
+    storage._snapshot = runtime.undefined
 
 
 class _FmpzMatrixResourceStorage:
@@ -46,8 +75,34 @@ class _FmpzMatrixResourceStorage:
     """
 
     def __init__(self, resource: Any) -> None:
-        self.resource = resource
+        self._resource = resource
+        self._snapshot: Any = runtime.undefined
         self.entries: Any = runtime.undefined
+        _touch_matrix_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            region = ffi.FlintByteRegion.from_bytes(self._snapshot)
+            try:
+                self._resource = ffi.fmpz_matrix_deserialize(region)
+            finally:
+                region.close()
+            self._snapshot = runtime.undefined
+        _touch_matrix_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined or self._resource.closed:
+            return
+        ffi = _flint_ffi_module()
+        self._snapshot = ffi.fmpz_matrix_serialize(self._resource).take_bytes()
+        self._resource.close()
+        self._resource = runtime.undefined
 
 
 class _PackedRationalStorage:
@@ -64,9 +119,43 @@ class _FmpqMatrixResourceStorage:
     """Own one generated FLINT resource and optional compatibility buffers."""
 
     def __init__(self, resource: Any) -> None:
-        self.resource = resource
+        self._resource = resource
+        self._snapshot: Any = runtime.undefined
+        self._rows = 0
+        self._columns = 0
         self.numerators: Any = runtime.undefined
         self.denominators: Any = runtime.undefined
+        _touch_matrix_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            region = ffi.FlintByteRegion.from_bytes(self._snapshot)
+            try:
+                self._resource = ffi.fmpq_matrix_deserialize(
+                    region,
+                    self._rows,
+                    self._columns,
+                )
+            finally:
+                region.close()
+            self._snapshot = runtime.undefined
+        _touch_matrix_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined or self._resource.closed:
+            return
+        ffi = _flint_ffi_module()
+        self._rows = int(ffi.fmpq_matrix_nrows(self._resource))
+        self._columns = int(ffi.fmpq_matrix_ncols(self._resource))
+        self._snapshot = ffi.fmpq_matrix_serialize(self._resource).take_bytes()
+        self._resource.close()
+        self._resource = runtime.undefined
 
 
 class _SingularPackedRationalMatrix(Exception):
@@ -86,7 +175,41 @@ class _M4riMatrixResourceStorage:
     """
 
     def __init__(self, resource: Any) -> None:
-        self.resource = resource
+        self._resource = resource
+        self._snapshot: Any = runtime.undefined
+        self._rows = 0
+        self._columns = 0
+        _touch_matrix_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
+        if self._resource is runtime.undefined:
+            ffi = _m4ri_ffi_module()
+            region = ffi.M4riByteRegion.from_bytes(self._snapshot)
+            try:
+                self._resource = ffi.matrix_from_sagepack_bytes(
+                    region,
+                    self._rows,
+                    self._columns,
+                )
+            finally:
+                region.close()
+            self._snapshot = runtime.undefined
+        _touch_matrix_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined or self._resource.closed:
+            return
+        ffi = _m4ri_ffi_module()
+        self._rows = int(ffi.matrix_nrows(self._resource))
+        self._columns = int(ffi.matrix_ncols(self._resource))
+        self._snapshot = ffi.matrix_sagepack_bytes(self._resource).take_bytes()
+        self._resource.close()
+        self._resource = runtime.undefined
 
 
 class _NmodMatrixResourceStorage:
@@ -98,7 +221,106 @@ class _NmodMatrixResourceStorage:
     """
 
     def __init__(self, resource: Any) -> None:
-        self.resource = resource
+        self._resource = resource
+        self._snapshot: Any = runtime.undefined
+        self._rows = 0
+        self._columns = 0
+        self._modulus = 0
+        _touch_matrix_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is not runtime.undefined and self._resource.closed:
+            _forget_matrix_resource(self)
+            return self._resource
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            residues = runtime.uint64_unpack_le(
+                self._snapshot,
+                8,
+                self._rows * self._columns,
+            )
+            self._resource = ffi.nmod_matrix_from_entries(
+                residues,
+                len(residues),
+                self._rows,
+                self._columns,
+                self._modulus,
+            )
+            self._snapshot = runtime.undefined
+        _touch_matrix_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined or self._resource.closed:
+            return
+        ffi = _flint_ffi_module()
+        self._rows = int(ffi.nmod_matrix_nrows(self._resource))
+        self._columns = int(ffi.nmod_matrix_ncols(self._resource))
+        self._modulus = int(ffi.nmod_matrix_modulus(self._resource))
+        self._snapshot = ffi.nmod_matrix_serialize(self._resource, 8).take_bytes()
+        self._resource.close()
+        self._resource = runtime.undefined
+
+
+_VECTOR_RESOURCE_CACHE_LIMIT = 64
+_vector_resource_cache = []
+
+
+def _touch_vector_resource(storage: Any) -> None:
+    if _vector_resource_cache and _vector_resource_cache[-1] is storage:
+        return
+    if storage in _vector_resource_cache:
+        _vector_resource_cache.remove(storage)
+    _vector_resource_cache.append(storage)
+    while len(_vector_resource_cache) > _VECTOR_RESOURCE_CACHE_LIMIT:
+        victim = _vector_resource_cache[0]
+        victim._spill()
+        _vector_resource_cache.pop(0)
+
+
+class _ExactVectorResourceStorage:
+    """Spill an immutable exact vector to canonical bytes between uses."""
+
+    def __init__(self, resource: Any, rational: bool, length: int) -> None:
+        self._resource = resource
+        self._snapshot: Any = runtime.undefined
+        self.rational = rational
+        self.length = length
+        _touch_vector_resource(self)
+
+    @property
+    def resource(self) -> Any:
+        if self._resource is runtime.undefined:
+            ffi = _flint_ffi_module()
+            region = ffi.FlintByteRegion.from_bytes(self._snapshot)
+            try:
+                if self.rational:
+                    self._resource = ffi.fmpq_vector_from_byte_region(
+                        region, self.length
+                    )
+                else:
+                    self._resource = ffi.fmpz_vector_from_byte_region(
+                        region, self.length
+                    )
+            finally:
+                region.close()
+            self._snapshot = runtime.undefined
+        _touch_vector_resource(self)
+        return self._resource
+
+    def _spill(self) -> None:
+        if self._resource is runtime.undefined:
+            return
+        ffi = _flint_ffi_module()
+        region = (
+            ffi.fmpq_vector_serialize(self._resource)
+            if self.rational
+            else ffi.fmpz_vector_serialize(self._resource)
+        )
+        self._snapshot = region.take_bytes()
+        self._resource.close()
+        self._resource = runtime.undefined
 
 
 def _dense_integer_kernel_module() -> Any:
@@ -1867,7 +2089,12 @@ class VectorSpaceParent(sage.Parent):
                 != self._degree
             ):
                 raise ValueError("integer vector resource dimension does not agree")
-            return Vector(self, runtime.undefined, resource, presentation)
+            return Vector(
+                self,
+                runtime.undefined,
+                _ExactVectorResourceStorage(resource, False, self._degree),
+                presentation,
+            )
         except Exception:
             resource.close()
             raise
@@ -1887,7 +2114,12 @@ class VectorSpaceParent(sage.Parent):
                 != self._degree
             ):
                 raise ValueError("rational vector resource dimension does not agree")
-            return Vector(self, runtime.undefined, resource, presentation)
+            return Vector(
+                self,
+                runtime.undefined,
+                _ExactVectorResourceStorage(resource, True, self._degree),
+                presentation,
+            )
         except Exception:
             resource.close()
             raise
@@ -1964,19 +2196,21 @@ class Vector(sage.Element):
     def _has_fmpz_vector_resource(self) -> bool:
         return (
             self._coordinate_ring() is sage.ZZ
-            and self._native_value is not runtime.undefined
+            and isinstance(self._native_value, _ExactVectorResourceStorage)
+            and not self._native_value.rational
         )
 
     def _has_fmpq_vector_resource(self) -> bool:
         return (
             self._coordinate_ring() is sage.QQ
-            and self._native_value is not runtime.undefined
+            and isinstance(self._native_value, _ExactVectorResourceStorage)
+            and self._native_value.rational
         )
 
     def _exact_vector_resource(self) -> Any:
-        if self._native_value is runtime.undefined:
+        if not isinstance(self._native_value, _ExactVectorResourceStorage):
             raise TypeError("vector does not own an exact FLINT resource")
-        return self._native_value
+        return self._native_value.resource
 
     def _from_exact_vector_resource(self, resource: Any) -> Vector:
         return self._from_coordinate_resource(resource)
@@ -2759,6 +2993,21 @@ class Matrix(sage.Element):
         if not self._has_fmpq_matrix_resource():
             raise TypeError("rational matrix does not own a FLINT resource")
         return self._rational_storage_cache.resource
+
+    def _discard_private_resource(self) -> None:
+        """Release and detach one private temporary matrix resource."""
+        if self._has_fmpz_matrix_resource():
+            _discard_matrix_resource(self._integer_storage_cache)
+            self._integer_storage_cache = runtime.undefined
+        elif self._has_fmpq_matrix_resource():
+            _discard_matrix_resource(self._rational_storage_cache)
+            self._rational_storage_cache = runtime.undefined
+        elif self._has_m4ri_matrix_resource():
+            _discard_matrix_resource(self._m4ri_storage_cache)
+            self._m4ri_storage_cache = runtime.undefined
+        elif self._has_nmod_matrix_resource():
+            _discard_matrix_resource(self._nmod_storage_cache)
+            self._nmod_storage_cache = runtime.undefined
 
     def _materialize_rational_compatibility_buffers(self) -> None:
         """Decode a variable-size export only for legacy packed algorithms."""
@@ -3660,14 +3909,7 @@ class Matrix(sage.Element):
             self._set_same_base_block(row, column, block)
         finally:
             if temporary is not runtime.undefined:
-                if temporary._has_fmpz_matrix_resource():
-                    temporary._integer_resource().close()
-                elif temporary._has_fmpq_matrix_resource():
-                    temporary._rational_resource().close()
-                elif temporary._has_m4ri_matrix_resource():
-                    temporary._m4ri_resource().close()
-                elif temporary._has_nmod_matrix_resource():
-                    temporary._nmod_resource().close()
+                temporary._discard_private_resource()
 
     def _set_same_base_block(self, row: int, column: int, block: Matrix) -> None:
         """Set a same-base block whose temporary ownership is external."""

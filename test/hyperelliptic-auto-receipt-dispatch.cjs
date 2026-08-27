@@ -384,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent policy preserves development auto while release policy admits only exact receipts", (context) => {
+test("absent policy preserves development auto while the merged release admits the receipted Cantor domain", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -400,12 +400,11 @@ test("absent policy preserves development auto while release policy admits only 
   assert.equal(absent.group_auto, "smalljac");
 
   const release = parseSageJson(runSage(selectorWitness));
-  assert.equal(release.decision.allowed, false);
-  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.decision.allowed, true);
+  assert.equal(release.decision.reason, "exact-receipt-policy-match");
   assert.equal(release.matched_decision.allowed, true);
   assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
-  assert.equal(release.matched_decision.entry_id, "prime-cantor-g2-add-a9d-v1");
-  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
+  assert.deepEqual(release.prepared, ["native", "exact-receipt-policy-match"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
   assert.equal(release.group_auto, "squarefree-order");
@@ -464,25 +463,29 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the release policy enables six exact Cantor envelopes and fails closed elsewhere", () => {
+test("the merged release policy contains only the three branch-covered Cantor envelopes", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
   assert.equal(candidate.enabled, true);
-  assert.equal(candidate.entries.length, 6);
-  assert(candidate.entries.every((entry) => entry.enabled));
   assert.equal(
     candidate.source_bundle.sha256,
-    "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1",
+    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
   );
   assert.deepEqual(
-    [...new Set(candidate.entries.map((entry) => entry.backend))],
-    ["prime-cantor"],
+    candidate.entries.map((entry) => entry.id),
+    [
+      "prime-cantor-domain-add-c5622982-v1",
+      "prime-cantor-domain-scalar-c5622982-v1",
+      "prime-cantor-domain-progression-c5622982-v1",
+    ],
   );
-  assert.deepEqual(
-    [...new Set(candidate.entries.map((entry) => entry.operation))],
-    ["add", "scalar", "progression"],
-  );
+  assert(candidate.entries.every((entry) => entry.enabled));
+  assert(candidate.entries.every((entry) => entry.receipts.length === 4));
+  assert(candidate.entries.every((entry) => entry.model.kind === "domain-envelope"));
+  assert(candidate.entries.every(
+    (entry) => entry.model.domain_id === "prime-cantor-odd-v1",
+  ));
   assert(candidate.source_bundle_contract.paths.includes(
     "src/lib/sagejs/hyperelliptic_curves/auto_receipt_policy.py",
   ));

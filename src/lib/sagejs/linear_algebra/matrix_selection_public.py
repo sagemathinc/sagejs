@@ -26,14 +26,7 @@ def column_indices(columns: Any, column_count: int) -> tuple[int, ...]:
 
 def _close_matrix_resource(matrix: Any) -> None:
     """Deterministically release one temporary canonical resource."""
-    if matrix._has_fmpz_matrix_resource():
-        matrix._integer_resource().close()
-    elif matrix._has_fmpq_matrix_resource():
-        matrix._rational_resource().close()
-    elif matrix._has_m4ri_matrix_resource():
-        matrix._m4ri_resource().close()
-    elif matrix._has_nmod_matrix_resource():
-        matrix._nmod_resource().close()
+    matrix._discard_private_resource()
 
 
 def set_row(target: Any, row: int, values: Any) -> None:
@@ -323,7 +316,7 @@ def insert_row(target: Any, index: int, values: Any) -> Any:
     finally:
         for resource in temporary:
             resource.close()
-        inserted_resource.close()
+        _close_matrix_resource(inserted)
 
 
 __all__ = [

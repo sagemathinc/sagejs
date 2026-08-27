@@ -621,8 +621,12 @@ class QuadraticTwistFamily:
             "sagejs.hyperelliptic_curves.lseries",
             fromlist=["GlobalCoefficientPrefix"],
         )
+        local_factor_algorithm = (
+            "smalljac" if self.algorithm == "native" and curve.genus() == 2 else "auto"
+        )
         self._base_coefficient_prefix = self._lseries_module.GlobalCoefficientPrefix(
-            curve
+            curve,
+            local_factor_algorithm=local_factor_algorithm,
         )
         self._cpu_module = __import__(
             "sagejs.hyperelliptic_curves.family_cpu",

@@ -1086,12 +1086,8 @@ except (ArithmeticError, TypeError, ValueError) as error:
 else:
     raise AssertionError("malicious pre-registration authenticated a public row")
 
-try:
-    HyperellipticCurve(x**6 + x + 1).jacobian()
-except NotImplementedError as error:
-    assert "odd-degree model" in str(error)
-else:
-    raise AssertionError("even-degree Jacobian was ambiguously accepted by v1")
+even_jacobian = HyperellipticCurve(x**6 + x + 1).jacobian()
+assert even_jacobian.model_kind() == "even-degree-split-two-infinity"
 
 print("compiled=" + str(compiled))
 print("rows=" + repr(rows))

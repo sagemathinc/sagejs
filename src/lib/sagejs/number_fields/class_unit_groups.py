@@ -3605,6 +3605,7 @@ class ClassUnitGroupEngine:
             search.coefficient_bound = coefficient_bound
             steering_active = bool(
                 steering is not None
+                and bool(getattr(steering, "supports_unit_search", False))
                 and int(presentation.rank) == len(factor_base)
                 and unit_log_rank < unit_rank
             )
@@ -6355,6 +6356,32 @@ def class_unit_context(
     )
     if cached is not None:
         return cached
+    default_cubic_projection = bool(
+        use_cache
+        and int(field.degree()) == 3
+        and algorithm == "auto"
+        and seed == 0
+        and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
+    )
+    if default_cubic_projection:
+        projection = _cached_class_number_projection(field, cache_key, proof_value)
+        if projection is not None:
+            result = projection.finish()
+            if not isinstance(cache, dict):
+                cache = {}
+                field._class_unit_engine_cache = cache
+            _retain_class_unit_engine_result(
+                cache,
+                cache_key,
+                field,
+                cache_order,
+                proof_value,
+                algorithm,
+                seed,
+                limits_key,
+                result,
+            )
+            return result
     if use_cache and proof_value and isinstance(cache, dict):
         conditional_key = (
             False,
@@ -6419,13 +6446,7 @@ def class_unit_context(
                 upgraded,
             )
             return upgraded
-    if (
-        use_cache
-        and int(field.degree()) == 3
-        and algorithm == "auto"
-        and seed == 0
-        and selected_limits.to_dict() == ClassUnitEngineLimits().to_dict()
-    ):
+    if default_cubic_projection:
         projection = _cached_class_number_projection(field, cache_key, proof_value)
         if (
             projection is None

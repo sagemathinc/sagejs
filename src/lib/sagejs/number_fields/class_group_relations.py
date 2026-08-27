@@ -3175,6 +3175,11 @@ class _RelationSteeringContext:
         return len(self._collector.factor_base)
 
     @property
+    def supports_unit_search(self) -> bool:
+        """Return whether the fixed subfactor base can diversify unit search."""
+        return self.factor_base_size == 0 or len(self.rational_prime_partition) >= 2
+
+    @property
     def provisional_unit_logarithms(self) -> tuple[tuple[Any, ...], ...]:
         return tuple(self._provisional_unit_logarithms)
 

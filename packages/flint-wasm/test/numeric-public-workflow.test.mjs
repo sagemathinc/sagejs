@@ -66,6 +66,12 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   };
 
   assert.equal(backend.numericLiveCount(), 0);
+  assert.throws(
+    () => backend.realFromString("@SAGEJS-MPFR|F|53|0|1", 53),
+    /invalid WebAssembly numeric input/,
+    "the private exact snapshot grammar must not be accepted as public input",
+  );
+  assert.equal(backend.numericLiveCount(), 0);
   const one = keep(backend.realFromBigInt(1n, 100));
   const three = keep(backend.realFromBigInt(3n, 100));
   const fiveQuarters = keep(backend.realFromString("1.25", 100));
@@ -211,30 +217,38 @@ test("MPFR resources and Acb special functions execute in the production Wasm mo
   assert.throws(() => backend.realToString(one), /live WebAssembly real resource/);
 
   const mixedResources = [];
-  for (let index = 0; index < 4096; index += 1) {
+  for (let index = 0; index < 1024; index += 1) {
     mixedResources.push(backend.realFromBigInt(BigInt(index), 64));
   }
-  for (let index = 0; index < 4096; index += 1) {
+  for (let index = 0; index < 1024; index += 1) {
     mixedResources.push(backend.complexFromReals(
       mixedResources[index],
-      mixedResources[(index + 1) % 4096],
+      mixedResources[(index + 1) % 1024],
     ));
   }
-  assert.equal(backend.numericLiveCount(), 8192);
-  assert.throws(
-    () => backend.realFromBigInt(8192n, 64),
-    /resource limit reached/,
+  assert.equal(backend.numericHandleCacheLimit, 256);
+  assert.ok(
+    backend.numericLiveCount() <= backend.numericHandleCacheLimit,
+    "retained values must not make reactor handles grow without bound",
   );
-  const closedComplex = mixedResources.pop();
+  assert.equal(backend.realToString(mixedResources[0]), "0.000000000000000000");
+  assert.equal(
+    backend.complexToString(mixedResources[1024]),
+    "1.00000000000000000*I",
+  );
+  assert.deepEqual(
+    backend.serializeAnalyticPoint(mixedResources[1024]),
+    ["0.000000000000000000", "1.00000000000000000"],
+    "analytic serialization must rehydrate an evicted complex resource",
+  );
+  const closedComplex = mixedResources[1024];
   assert.equal(backend.closeNumericResource(closedComplex), true);
-  const replacement = backend.realFromBigInt(8192n, 64);
-  assert.equal(backend.numericLiveCount(), 8192);
   assert.throws(
     () => backend.complexToString(closedComplex),
     /live WebAssembly complex resource/,
   );
-  assert.equal(backend.closeNumericResource(replacement), true);
-  for (const resource of mixedResources.reverse()) {
+  for (const [index, resource] of mixedResources.reverse().entries()) {
+    if (index === 1023) continue;
     assert.equal(backend.closeNumericResource(resource), true);
   }
   assert.equal(backend.numericLiveCount(), 0);

@@ -298,6 +298,47 @@ class HyperellipticCurve_generic(sage.Parent):
             )
         return _frobenius_module().infinity_values(self)
 
+    def roots_at_infinity(self) -> list[Any]:
+        """Return the rational roots of the exact equation at infinity.
+
+        For an even-degree model the roots satisfy
+        `t^2 + h_(g+1)*t - f_(2g+2) = 0`. Over a prime field they are returned
+        in the deterministic order of their canonical integer lifts.
+        """
+        values = list(self._infinity_values())
+        if (
+            _is_finite_field(self._base)
+            and hasattr(self._base, "characteristic")
+            and hasattr(self._base, "order")
+            and int(self._base.characteristic()) == int(self._base.order())
+        ):
+            values.sort(key=lambda value: int(value))
+        return values
+
+    def points_at_infinity(self) -> list[HyperellipticCurvePoint]:
+        """Return the rational points at infinity in representation order."""
+        return [
+            HyperellipticCurvePoint(
+                self,
+                y_value=value,
+                infinity=True,
+                check=True,
+            )
+            for value in self.roots_at_infinity()
+        ]
+
+    def is_split(self) -> bool:
+        """Return whether the model has two rational points at infinity."""
+        return len(self.roots_at_infinity()) == 2
+
+    def is_ramified(self) -> bool:
+        """Return whether the model has one rational point at infinity."""
+        return len(self.roots_at_infinity()) == 1
+
+    def is_inert(self) -> bool:
+        """Return whether an even-degree model has no rational infinity."""
+        return len(self.roots_at_infinity()) == 0
+
     def __call__(
         self,
         coordinates: Any = 0,

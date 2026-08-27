@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 125,
+    "classified-native-file": 128,
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 320,
@@ -8509,6 +8509,30 @@
       "symbol": "layout",
       "disposition": "migrate-to-declared-ffi",
       "family": "graph"
+    },
+    {
+      "id": "native-file:bench/call-boundary/napi_add.c",
+      "kind": "classified-native-file",
+      "path": "bench/call-boundary/napi_add.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/call-boundary/python_add.c",
+      "kind": "classified-native-file",
+      "path": "bench/call-boundary/python_add.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/call-boundary/win_delay_load_hook.cc",
+      "kind": "classified-native-file",
+      "path": "bench/call-boundary/win_delay_load_hook.cc",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:bench/cowasm/buffer-landscape/c.c",

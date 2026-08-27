@@ -51,7 +51,7 @@ def relative_error(left, right):
     return answer
 
 clear_central_weight_cache()
-prefix2 = GlobalCoefficientPrefix(C2)
+prefix2 = GlobalCoefficientPrefix(C2, local_factor_algorithm="smalljac")
 prefix2.through(5000)
 universal2_started = time.monotonic()
 universal2 = native_central_weight_values(C2, ${precisionBits}, prefix2, 4)
@@ -67,7 +67,7 @@ direct2_bounded4 = native_central_weight_values(C2, ${precisionBits}, prefix2, 4
 direct2_bounded4_ms = 1000*(time.monotonic()-direct2_bounded4_started)
 assert universal2 is not None and direct2 is not None
 assert universal2_warm is not None and direct2_bounded4 is not None
-prefix3 = GlobalCoefficientPrefix(C3)
+prefix3 = GlobalCoefficientPrefix(C3, local_factor_algorithm="rforest")
 prefix3.through(1000)
 universal3 = native_central_weight_values(C3, 16, prefix3, 4)
 direct3 = native_central_weight_values(C3, 16, prefix3, 4, coefficient_workers=1, use_universal_table=False)
@@ -100,7 +100,7 @@ for genus, precision, universal, direct, tolerance in [
     })
 
 discriminants = list(fundamental_discriminants(-11,13))
-base_prefix = GlobalCoefficientPrefix(C2)
+base_prefix = GlobalCoefficientPrefix(C2, local_factor_algorithm="smalljac")
 coefficient_cutoff = 257
 base_values = base_prefix.through(coefficient_cutoff)
 coefficient_rows = []

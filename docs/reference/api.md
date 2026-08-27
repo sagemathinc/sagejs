@@ -4985,6 +4985,40 @@ Return whether `value` is prime, using FLINT's primality test.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `Jacobian`
+
+```sage
+Jacobian(curve: Any) -> Any
+```
+
+Return the Jacobian parent of a supported hyperelliptic curve.
+
+This is the conventional Sage spelling and is exactly equivalent to
+`curve.jacobian()`.
+
+```sage
+sage: R.<x> = GF(101)[]
+sage: H = HyperellipticCurve(x^8 + x + 1)
+sage: J = Jacobian(H)
+sage: J.curve() is H
+True
+sage: J.model_kind() == "even-degree-split-two-infinity"
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes.hyperelliptic_curves.jacobian_generic`
+- Tags: hyperelliptic curves, Jacobians, divisor arithmetic
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — Genus-2 and genus-3 odd-degree models and split even-degree models over odd prime fields.
+- Limitations: Split even-degree arithmetic currently requires an odd prime field and uses the exact reference implementation.
+
+### Provenance
+
+- `sage-derived` — [SageMath hyperelliptic Jacobians API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/sage/schemes/hyperelliptic_curves/); license GPL-2.0-or-later
+
 ## `line`
 
 ```sage

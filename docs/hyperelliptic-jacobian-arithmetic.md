@@ -31,16 +31,19 @@ The public Jacobian currently supports:
 - genus 2 and genus 3;
 - characteristic different from 2;
 - an odd-degree model with one point at infinity, meaning
-  `max(deg(f), 2*deg(h)) = 2*g + 1`;
+  `max(deg(f), 2*deg(h)) = 2*g + 1`; or a split even-degree model over an odd
+  prime field, using the separate balanced representation described in
+  [Split even-degree hyperelliptic
+  Jacobians](hyperelliptic-even-degree-jacobians.md);
 - coefficient fields supported by Sage.js polynomial arithmetic, including
   rational, prime, and finite-extension fields.
 
-The group law itself works over `QQ`, but orders, complete enumeration, and
-finite abelian group structure require a finite base field. Even-degree models
-have two points at infinity and need an extended divisor representation;
-characteristic 2 needs separately validated generalized arithmetic. Sage.js
-rejects both cases explicitly rather than silently constructing an incomplete
-group.
+The odd-degree group law itself works over `QQ`, but orders, complete
+enumeration, and finite abelian group structure require a finite base field.
+Split even-degree arithmetic initially requires an odd prime field.
+Even-degree inert models and characteristic 2 need separately validated
+representations. Sage.js rejects both explicitly rather than silently
+constructing an incomplete group.
 
 Exact local polynomials remain available for unsupported Jacobian models. For
 example, the genus-3 rforest pipeline uses its exact fallback for an

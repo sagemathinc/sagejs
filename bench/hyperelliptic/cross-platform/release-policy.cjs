@@ -19,29 +19,29 @@ const {
 
 const root = resolve(__dirname, "..", "..", "..");
 const results = join(__dirname, "results");
-const policyDirectory = join(results, "policy-a9d83f82");
+const policyDirectory = join(results, "policy-c5622982");
 const policyPath = join(
   root,
   "architecture",
   "hyperelliptic-auto-receipt-policy.json",
 );
-const sourceCommit = "a9d83f82261c3dc28fb8a79c2f161c57a9efc7cc";
+const sourceCommit = "c562298260be498bfb2b0c61872b0d3ac9c06062";
 const sourceBundleSha =
-  "36495206826f889109076b8f19702c1225ba2d7ff3ebfbd3a5c3e0aae89573e1";
-const packageSmokePatchCommit =
-  "b36aab0335322d404254e04085f61cc8252b21bf";
-const packageSmokePatchedSha =
-  "40964694c659d1152b5b2fc020fd57593bc0487dc039ad12aeedae2fd23fdc21";
-const harnessPath = "bench/hyperelliptic/cross-platform/run.cjs";
-const modelFingerprints = Object.freeze({
-  2: "9f6fd634246b344cc75da9f21f673dd3862236ae908cf4c2780d7a2e2a6da234",
-  3: "4979edd07927163f5a5e528117cb1fc49f6e9eeca2971d0e60eec50e7cf63279",
-});
+  "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d";
+const harnessPath = "bench/hyperelliptic/cross-platform/run-domain-corpus.cjs";
+const corpusPath = "bench/hyperelliptic/cross-platform/domain-corpus-v1.json";
+const legacySourceCommit = "70513bba22f7895dfab72e5879f5a5f2ca7d6478";
 const platformFiles = Object.freeze({
-  "linux-x64": "linux-x64-a9d83f82",
-  "linux-arm64": "linux-arm64-a9d83f82",
-  "darwin-arm64": "macos-arm64-a9d83f82",
-  "win32-x64": "windows-x64-a9d83f82",
+  "linux-x64": "linux-x64-c5622982-domain.json",
+  "linux-arm64": "linux-arm64-c5622982-domain.json",
+  "darwin-arm64": "macos-arm64-c5622982-domain.json",
+  "win32-x64": "windows-x64-c5622982-domain.json",
+});
+const legacyPlatformFiles = Object.freeze({
+  "linux-x64": "linux-x64-70513bba",
+  "linux-arm64": "linux-arm64-70513bba",
+  "darwin-arm64": "macos-arm64-70513bba",
+  "win32-x64": "windows-x64-70513bba",
 });
 const platforms = Object.freeze(Object.keys(platformFiles));
 
@@ -84,30 +84,16 @@ function artifact(id, platform, filename, assertions) {
   };
 }
 
-function exactModel(genus) {
+function domainModel() {
   return {
-    kind: "exact-fingerprint",
-    fingerprints: [modelFingerprints[genus]],
-  };
-}
-
-function envelope(operation) {
-  const values = {
-    add: { batch: 1000, scalarBits: 0, resourceBytes: 200096 },
-    scalar: { batch: 64, scalarBits: 256, resourceBytes: 11360 },
-    progression: { batch: 1000, scalarBits: 0, resourceBytes: 72224 },
-  }[operation];
-  assert(values, `unsupported operation ${operation}`);
-  return {
-    prime_min: 1009,
-    prime_max: 1009,
-    interval_start_min: 1009,
-    interval_stop_max: 1009,
-    interval_span_max: 1,
-    batch_items_min: values.batch,
-    batch_items_max: values.batch,
-    scalar_bits_max: values.scalarBits,
-    resource_bytes_max: values.resourceBytes,
+    kind: "domain-envelope",
+    domain_id: "prime-cantor-odd-v1",
+    constraints: {
+      genus: [2, 3],
+      field_kind: ["prime-field"],
+      model_kind: ["odd-degree-one-infinity"],
+      h_kind: ["zero", "nonzero"],
+    },
   };
 }
 
@@ -121,52 +107,92 @@ function main() {
     throw new Error("usage: release-policy.cjs --write|--check");
   }
   const candidate = readJson(policyPath);
-  const generated = generateSourceBundle(
-    root,
-    candidate.source_bundle_contract.paths,
-  );
+  const generated = generateSourceBundle(root, candidate.source_bundle_contract.paths);
   assert.equal(generated.sha256, sourceBundleSha);
   const sourceBundle = { ...generated, source_commit: sourceCommit };
   const harnessBytes = readFileSync(join(root, harnessPath));
   const harness = { path: harnessPath, sha256: sha256(harnessBytes) };
   assert.equal(
     harness.sha256,
-    "4af0f5cc971b5afae6bde2c236bea84f8a36e8a2efb1cd3e9ea6648ceda1e435",
+    "cbc4dad80e62b46674a5caaff28cac33009c4441e392fd4de19d97cf753fc583",
   );
+  const corpusBytes = readFileSync(join(root, corpusPath));
   const corpus = {
-    id: "phase10-primary-cantor-a9d-v1",
-    path: harnessPath,
-    sha256: harness.sha256,
+    id: "prime-cantor-domain-v1",
+    path: corpusPath,
+    sha256: sha256(corpusBytes),
   };
+  assert.equal(
+    corpus.sha256,
+    "885ef40a2cb4b6ecdb801a8ee1c8d24334d6632a6522e93d5f4106b665c85b1f",
+  );
+  const model = domainModel();
 
-  const receipts = {};
-  const extras = {};
-  const artifacts = [];
+  const domainReceipts = {};
   for (const platform of platforms) {
-    const stem = platformFiles[platform];
+    const receipt = readJson(join(results, platformFiles[platform]));
+    assert.equal(
+      receipt.schema,
+      "sagejs.hyperelliptic-prime-cantor-domain-acceptance/v1",
+    );
+    assert.equal(receipt.repository.commit, sourceCommit);
+    assert.equal(receipt.repository.status, "");
+    assert.equal(receipt.repository.harness_sha256, harness.sha256);
+    assert.equal(receipt.repository.corpus_sha256, corpus.sha256);
+    assert.equal(`${receipt.host.platform}-${receipt.host.architecture}`, platform);
+    assert.deepEqual(receipt.source_bundle, sourceBundle);
+    assert.deepEqual(receipt.corpus, corpus);
+    assert.deepEqual(receipt.model_evidence, model);
+    assert.equal(receipt.modes.dynamic.algorithm, "reference");
+    assert.equal(receipt.modes.dynamic.compiled, false);
+    assert.equal(receipt.modes.dynamic.stderr, "");
+    assert.equal(receipt.modes.native.algorithm, "native");
+    assert.equal(receipt.modes.native.compiled, true);
+    assert.equal(receipt.modes.native.stderr, "");
+    assert.deepEqual(receipt.modes.dynamic.exact, receipt.exact);
+    assert.deepEqual(receipt.modes.native.exact, receipt.exact);
+    assert.deepEqual(
+      receipt.modes.dynamic.case_fingerprints,
+      receipt.modes.native.case_fingerprints,
+    );
+    for (const operation of ["add", "scalar", "progression"]) {
+      assert(receipt.timing[operation].native_to_dynamic < 1);
+    }
+    domainReceipts[platform] = receipt;
+  }
+  const referenceExact = domainReceipts[platforms[0]].exact;
+  const referenceEnvelopes = domainReceipts[platforms[0]].envelope_evidence;
+  for (const platform of platforms.slice(1)) {
+    assert.deepEqual(domainReceipts[platform].exact, referenceExact);
+    assert.deepEqual(domainReceipts[platform].envelope_evidence, referenceEnvelopes);
+    assert.deepEqual(domainReceipts[platform].model_evidence, model);
+  }
+
+  // Carry the prior destructive-failure and sanitizer evidence forward only
+  // because its authenticated framed mathematical source bundle is unchanged.
+  const legacyReceipt = readJson(join(
+    results,
+    "policy-70513bba",
+    "prime-cantor-g2-add-70513bba-v1-linux-x64.json",
+  ));
+  assert.equal(legacyReceipt.source_bundle.source_commit, legacySourceCommit);
+  assert.equal(legacyReceipt.source_bundle.sha256, sourceBundle.sha256);
+  assert.deepEqual(legacyReceipt.source_bundle.paths, sourceBundle.paths);
+
+  const artifacts = [];
+  const legacyPrimary = {};
+  for (const platform of platforms) {
+    const stem = legacyPlatformFiles[platform];
     const primaryPath = join(results, `${stem}.json`);
     const extrasPath = join(results, `${stem}-extras.json`);
     const primary = readJson(primaryPath);
     const extra = readJson(extrasPath);
     assert.equal(primary.schema, "sagejs.hyperelliptic-cross-platform-acceptance.v1");
     assert.equal(extra.schema, "sagejs.hyperelliptic-phase10-portable-extras.v1");
-    assert.equal(primary.repository.commit, sourceCommit);
-    assert.equal(extra.repository.commit, sourceCommit);
+    assert.equal(primary.repository.commit, legacySourceCommit);
+    assert.equal(extra.repository.commit, legacySourceCommit);
     assert.equal(primary.repository.status, "");
     assert.equal(extra.repository.status, "");
-    assert.equal(
-      primary.configuration.receipt_policy,
-      "off-for-explicit-receipt-collection",
-    );
-    assert.deepEqual(extra.repository.package_smoke_overlay, {
-      source_commit: sourceCommit,
-      test_patch_commit: packageSmokePatchCommit,
-      base_test_sha256:
-        "2a85aad10b6922600d6c97e312dfb32ee8430e197c85000c0b379c1b64a459e0",
-      patched_test_sha256: packageSmokePatchedSha,
-      updater_sha256:
-        "b8862e8ca6b5ae2740f8fb4b53bbcd47cca79083f1f4df5fefe9d9f15cecc06e",
-    });
     assert.equal(`${primary.host.platform}-${primary.host.architecture}`, platform);
     assert.equal(`${extra.host.platform}-${extra.host.architecture}`, platform);
     assert.match(primary.modes.dynamic.cantor.capability, /artifact-unavailable/);
@@ -177,59 +203,55 @@ function main() {
     assert.equal(extra.wasm.cancellation.recovery_stdout, "42");
     assert.equal(extra.wasm.package_verification.stderr, "");
     assert.equal(extra.wasm.package_load_test.status, "passed");
-    assert.equal(
-      extra.wasm.package_load_test.test_patch_commit,
-      packageSmokePatchCommit,
-    );
-    assert.equal(
-      extra.wasm.package_load_test.test_source_sha256,
-      packageSmokePatchedSha,
-    );
-    receipts[platform] = primary;
-    extras[platform] = extra;
+    legacyPrimary[platform] = primary;
+    const carryForward = [
+      `evidence originated at ${legacySourceCommit}`,
+      `framed mathematical runtime source bundle remains ${sourceBundle.sha256}`,
+    ];
     artifacts.push(
       artifact("missing-artifact", platform, primaryPath, [
+        ...carryForward,
         "forced dynamic mode reports source-transparent artifact unavailable",
         "dynamic and native exact digests agree",
       ]),
       artifact("cancellation", platform, extrasPath, [
+        ...carryForward,
         "bounded evaluator cancellation exits 124",
         "fresh evaluator recovery returns 42",
       ]),
       artifact("memory-exhaustion", platform, extrasPath, [
+        ...carryForward,
         "undersized bounded output is rejected",
         "short output remains unchanged",
       ]),
       artifact("worker-loss", platform, extrasPath, [
+        ...carryForward,
         "timed-out worker is discarded",
         "fresh worker recovery returns 42",
       ]),
     );
   }
-
-  const referenceExact = receipts[platforms[0]].cross_mode_exact;
-  for (const platform of platforms.slice(1)) {
-    assert.deepEqual(receipts[platform].cross_mode_exact, referenceExact);
-  }
-  const cachePath = join(results, "linux-x64-a9d83f82-cache-corruption.stdout");
+  const cachePath = join(results, "linux-x64-70513bba-cache-corruption.stdout");
   assert.match(
     readFileSync(cachePath, "utf8"),
     /receipt validation detects changed production assets/,
   );
   artifacts.push(
     artifact("cache-corruption", "linux-x64", cachePath, [
+      `evidence originated at ${legacySourceCommit}`,
+      `framed mathematical runtime source bundle remains ${sourceBundle.sha256}`,
       "changed production asset invalidates its authenticated receipt",
       "artifact identity binds layout and content",
     ]),
   );
-  const sanitizerPath = join(results, "linux-x64-a9d83f82-cantor-sanitizers.json");
+  const sanitizerPath = join(results, "linux-x64-70513bba-cantor-sanitizers.json");
   const sanitizer = readJson(sanitizerPath);
   assert.equal(sanitizer.schema, "sagejs.hyperelliptic-cantor-sanitizers/v1");
   assert.equal(sanitizer.platform, "linux-x64");
-  assert.equal(sanitizer.source_commit, sourceCommit);
+  assert.equal(sanitizer.source_commit, legacySourceCommit);
   assert.equal(
     sanitizer.source_sha256,
-    receipts["linux-x64"].repository.source_sha256[
+    legacyPrimary["linux-x64"].repository.source_sha256[
       "src/lib/sagejs/hyperelliptic_curves/jacobian_kernels.py"
     ],
   );
@@ -240,6 +262,8 @@ function main() {
   for (const name of REQUIRED_SANITIZERS) {
     artifacts.push(
       artifact(name, "linux-x64", sanitizerPath, [
+        `evidence originated at ${legacySourceCommit}`,
+        `framed mathematical runtime source bundle remains ${sourceBundle.sha256}`,
         `${name} sanitizer executes add, scalar, and progression`,
         "genus-2 and genus-3 exact digests match the standalone corpus",
       ]),
@@ -249,6 +273,11 @@ function main() {
   const evidenceIndex = {
     schema: "sagejs.hyperelliptic-release-evidence-index/v1",
     source_bundle: sourceBundle,
+    carry_forward: {
+      from_source_commit: legacySourceCommit,
+      reason: "the authenticated framed mathematical runtime source bundle is unchanged",
+      source_bundle_sha256: sourceBundle.sha256,
+    },
     artifacts,
   };
   output(join(policyDirectory, "evidence-index.json"), evidenceIndex, write);
@@ -259,7 +288,6 @@ function main() {
     assert.equal(matches.length, 1, `missing ${platform} ${id} artifact`);
     return matches[0];
   };
-
   const requiredEvidence = {
     failures: REQUIRED_FAILURES.map((id) => ({
       id,
@@ -270,73 +298,70 @@ function main() {
       platforms: ["linux-x64"],
     })),
   };
+
   const entries = [];
-  for (const genus of [2, 3]) {
-    const exact = referenceExact.cantor_cases.find((row) => row.genus === genus);
-    assert(exact, `missing genus-${genus} exact row`);
-    for (const operation of ["add", "scalar", "progression"]) {
-      const digest = exact[`${operation}_sha256`];
-      const entryId = `prime-cantor-g${genus}-${operation}-a9d-v1`;
-      const references = [];
-      for (const platform of platforms) {
-        const receiptEvidence = {
-          failures: Object.fromEntries(
-            REQUIRED_FAILURES.filter(
-              (id) => id !== "cache-corruption" || platform === "linux-x64",
-            ).map((id) => [id, evidenceResult(findArtifact(id, platform))]),
-          ),
-          sanitizers: platform === "linux-x64"
-            ? Object.fromEntries(
-                REQUIRED_SANITIZERS.map((id) => [
-                  id,
-                  evidenceResult(findArtifact(id, platform)),
-                ]),
-              )
-            : {},
-        };
-        const policyReceipt = {
-          schema: RECEIPT_SCHEMA,
-          platform,
-          source_bundle: sourceBundle,
-          corpus,
-          backend: "prime-cantor",
-          operation,
-          model_evidence: exactModel(genus),
-          envelope_evidence: envelope(operation),
-          exact: {
-            harness_sha256: harness.sha256,
-            targets: {
-              dynamic: { result_sha256: digest },
-              native: { result_sha256: digest },
-            },
-          },
-          evidence: receiptEvidence,
-        };
-        const filename = join(policyDirectory, `${entryId}-${platform}.json`);
-        const receiptSha = output(filename, policyReceipt, write);
-        references.push({
-          platform,
-          path: repositoryPath(filename),
-          sha256: receiptSha,
-        });
-      }
-      entries.push({
-        id: entryId,
-        enabled: true,
+  for (const operation of ["add", "scalar", "progression"]) {
+    const digest = referenceExact[`${operation}_sha256`];
+    const entryId = `prime-cantor-domain-${operation}-c5622982-v1`;
+    const references = [];
+    for (const platform of platforms) {
+      const receiptEvidence = {
+        failures: Object.fromEntries(
+          REQUIRED_FAILURES.filter(
+            (id) => id !== "cache-corruption" || platform === "linux-x64",
+          ).map((id) => [id, evidenceResult(findArtifact(id, platform))]),
+        ),
+        sanitizers: platform === "linux-x64"
+          ? Object.fromEntries(
+              REQUIRED_SANITIZERS.map((id) => [
+                id,
+                evidenceResult(findArtifact(id, platform)),
+              ]),
+            )
+          : {},
+      };
+      const policyReceipt = {
+        schema: RECEIPT_SCHEMA,
+        platform,
+        source_bundle: sourceBundle,
+        corpus,
         backend: "prime-cantor",
         operation,
-        platforms: [...platforms],
-        source_bundle_sha256: sourceBundle.sha256,
-        corpus,
-        harness,
-        required_targets: ["dynamic", "native"],
-        exact_result_sha256: digest,
-        model: exactModel(genus),
-        envelope: envelope(operation),
-        required_evidence: requiredEvidence,
-        receipts: references,
+        model_evidence: model,
+        envelope_evidence: referenceEnvelopes[operation],
+        exact: {
+          harness_sha256: harness.sha256,
+          targets: {
+            dynamic: { result_sha256: digest },
+            native: { result_sha256: digest },
+          },
+        },
+        evidence: receiptEvidence,
+      };
+      const filename = join(policyDirectory, `${entryId}-${platform}.json`);
+      const receiptSha = output(filename, policyReceipt, write);
+      references.push({
+        platform,
+        path: repositoryPath(filename),
+        sha256: receiptSha,
       });
     }
+    entries.push({
+      id: entryId,
+      enabled: true,
+      backend: "prime-cantor",
+      operation,
+      platforms: [...platforms],
+      source_bundle_sha256: sourceBundle.sha256,
+      corpus,
+      harness,
+      required_targets: ["dynamic", "native"],
+      exact_result_sha256: digest,
+      model,
+      envelope: referenceEnvelopes[operation],
+      required_evidence: requiredEvidence,
+      receipts: references,
+    });
   }
 
   const policy = {
@@ -353,29 +378,73 @@ function main() {
   assert.equal(verified.verified_receipts.length, entries.length * platforms.length);
   for (const entry of entries) {
     for (const platform of platforms) {
-      const query = queryAutoReceiptPolicy(verified, {
-        platform,
-        backend: entry.backend,
-        operation: entry.operation,
-        source_bundle_sha256: sourceBundle.sha256,
-        model: {
-          kind: "exact-fingerprint",
-          fingerprint: entry.model.fingerprints[0],
-        },
-        workload: {
-          prime: entry.envelope.prime_min,
-          interval_start: entry.envelope.interval_start_min,
-          interval_stop: entry.envelope.interval_stop_max,
-          batch_items: entry.envelope.batch_items_min,
-          scalar_bits: entry.envelope.scalar_bits_max,
-          resource_bytes: entry.envelope.resource_bytes_max,
-        },
-      });
-      assert.equal(query.selected, true, `${entry.id} is not selected on ${platform}`);
+      for (const genus of [2, 3]) {
+        for (const hKind of ["zero", "nonzero"]) {
+          const query = queryAutoReceiptPolicy(verified, {
+            platform,
+            backend: entry.backend,
+            operation: entry.operation,
+            source_bundle_sha256: sourceBundle.sha256,
+            model: {
+              kind: "domain-envelope",
+              domain_id: model.domain_id,
+              genus,
+              field_kind: "prime-field",
+              model_kind: "odd-degree-one-infinity",
+              h_kind: hKind,
+            },
+            workload: {
+              prime: entry.envelope.prime_min,
+              interval_start: entry.envelope.interval_start_min,
+              interval_stop: entry.envelope.interval_start_min,
+              batch_items: entry.envelope.batch_items_max,
+              scalar_bits: entry.envelope.scalar_bits_max,
+              resource_bytes: entry.envelope.resource_bytes_max,
+            },
+          });
+          assert.equal(query.selected, true, `${entry.id} is not selected on ${platform}`);
+        }
+      }
     }
   }
+  const first = entries[0];
+  const baseQuery = {
+    platform: platforms[0],
+    backend: first.backend,
+    operation: first.operation,
+    source_bundle_sha256: sourceBundle.sha256,
+    model: {
+      kind: "domain-envelope",
+      domain_id: model.domain_id,
+      genus: 2,
+      field_kind: "prime-field",
+      model_kind: "odd-degree-one-infinity",
+      h_kind: "zero",
+    },
+    workload: {
+      prime: first.envelope.prime_min,
+      interval_start: first.envelope.interval_start_min,
+      interval_stop: first.envelope.interval_start_min,
+      batch_items: first.envelope.batch_items_max,
+      scalar_bits: first.envelope.scalar_bits_max,
+      resource_bytes: first.envelope.resource_bytes_max,
+    },
+  };
+  for (const query of [
+    { ...baseQuery, workload: { ...baseQuery.workload, prime: first.envelope.prime_min - 1 } },
+    { ...baseQuery, workload: { ...baseQuery.workload, prime: first.envelope.prime_max + 1 } },
+    { ...baseQuery, workload: { ...baseQuery.workload, batch_items: first.envelope.batch_items_max + 1 } },
+    { ...baseQuery, model: { ...baseQuery.model, genus: 4 } },
+    { ...baseQuery, model: { ...baseQuery.model, model_kind: "even-degree-two-infinity" } },
+    { ...baseQuery, source_bundle_sha256: "0".repeat(64) },
+  ]) {
+    assert.deepEqual(queryAutoReceiptPolicy(verified, query), {
+      selected: false,
+      reason: "unreceipted-fallback",
+    });
+  }
   process.stdout.write(
-    `${write ? "wrote" : "verified"} ${entries.length} exact entries and ` +
+    `${write ? "wrote" : "verified"} ${entries.length} domain entries and ` +
       `${verified.verified_receipts.length} receipts\n`,
   );
 }

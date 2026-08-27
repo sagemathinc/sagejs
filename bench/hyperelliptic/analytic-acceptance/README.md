@@ -24,6 +24,15 @@ The direct Arb evidence retains every decimal derivative from both routes.
 Arb ball arithmetic is rigorous, but the contour/interpolation truncation is
 still explicitly nonrigorous and accepted only after independent refinement.
 
+The acceptance harness requests its exact local factors explicitly: genus 2
+uses `smalljac` (with the prime 2 handled by the exact exhaustive path), and
+genus 3 uses `rforest`. This is an explicit benchmark/analytic algorithm choice,
+not a relaxation of receipt-backed `auto` dispatch. A public `auto` request
+continues to use a native local-factor backend only when the release receipt
+policy authorizes it. Each derivative timing is one complete public call per
+sample; the requested sample count, rather than a hidden inner repetition,
+provides the timing distribution.
+
 ## Primary acceptance command
 
 Do not run this while another benchmark owns `bench-1`.  Once the host is
@@ -48,17 +57,23 @@ version, an undeclared host, or a noisy one-minute load.  It records `uptime`,
 `uname`, `lscpu`, memory, top processes, governor information, algorithm-
 affecting environment variables, the GP executable digest, the successful
 build preflight, and SHA-256 identities for every mathematical and harness
-source file.
+source file. If an exception or evaluator timeout occurs before the ordinary
+acceptance object exists, the runner transactionally writes a distinct
+`analytic-phase9-failure-v1` receipt with that same provenance and the complete
+error stack. A structurally valid failure receipt remains a failed performance
+gate; it is evidence, never a pass.
 
-The measured one-sample development-host path is 3 minutes 11 seconds for the
-competitive rows plus 20--80 seconds for exact evidence, depending on whether
-the task-worker runtime is already cached.  Five acceptance samples therefore
-have an expected quiet-host wall time of 15--19 minutes.  The hard contract is
-20 minutes.  The
+After explicit local-factor selection and removal of hidden inner derivative
+repetitions, a measured one-sample development-host path is about 109 seconds
+for the competitive rows plus 53 seconds for exact evidence. The five-sample
+quiet-host duration must be established by the final acceptance receipt rather
+than projected from the superseded exhaustive-fallback run. The hard contract
+is 20 minutes. The
 competitive benchmark and exact evidence each have their own bounded timeout;
 the complete receipt also fails validation if total wall time exceeds the
-declared bound.  A failing numerical gate is still written transactionally as
-an honest receipt and makes the acceptance command exit nonzero.
+declared bound. A failing numerical gate or thrown benchmark stage is still
+written transactionally as honest evidence and makes the acceptance command
+exit nonzero.
 
 Validate a checked-in receipt against the current sources with:
 

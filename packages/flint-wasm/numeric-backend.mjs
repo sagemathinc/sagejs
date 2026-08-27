@@ -471,18 +471,32 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     }
   }
 
-  const realObjects = new WeakSet();
-  const complexObjects = new WeakSet();
-  const closedObjects = new WeakSet();
+  // Python numeric values may be abandoned many thousands of times during one
+  // synchronous evaluator job.  FinalizationRegistry callbacks cannot run
+  // until that job yields, so treating them as the primary reclamation path
+  // exhausts the reactor even when no old value is reachable.  Keep exact
+  // host-owned snapshots and use Wasm handles only as a bounded LRU cache.
+  const maximumCachedHandles = 256;
+  const realObjects = new WeakMap();
+  const complexObjects = new WeakMap();
+  const activeStates = new Set();
   const realFinalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
-    : new FinalizationRegistry((handle) => {
-        exports.sagejs_numeric_real_close(handle);
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          exports.sagejs_numeric_real_close(state.handle);
+          activeStates.delete(state);
+          state.handle = 0;
+        }
       });
   const complexFinalizer = typeof FinalizationRegistry === "undefined"
     ? undefined
-    : new FinalizationRegistry((handle) => {
-        exports.sagejs_numeric_complex_close(handle);
+    : new FinalizationRegistry((state) => {
+        if (state.handle !== 0) {
+          exports.sagejs_numeric_complex_close(state.handle);
+          activeStates.delete(state);
+          state.handle = 0;
+        }
       });
 
   const uint32 = (value) => Number(value) >>> 0;
@@ -548,44 +562,181 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     return utf8Decoder.decode(bytes.subarray(0, end));
   }
 
+  function closeHandle(state, operation = `${state.kind} cache eviction`) {
+    if (state.handle === 0) return;
+    const answer = state.kind === "real"
+      ? exports.sagejs_numeric_real_close(state.handle)
+      : exports.sagejs_numeric_complex_close(state.handle);
+    if (answer !== 1) failure(operation);
+    activeStates.delete(state);
+    state.handle = 0;
+  }
+
+  function snapshotState(state) {
+    if (state.handle === 0) return;
+    if (state.kind === "real") {
+      if (exports.sagejs_numeric_real_format(state.handle, 1) !== 1) {
+        failure("real cache snapshot");
+      }
+      state.snapshot = readOutput("real cache snapshot");
+    } else {
+      const parts = [];
+      for (let imaginary = 0; imaginary <= 1; imaginary += 1) {
+        const partHandle = uint32(exports.sagejs_numeric_complex_part(
+          state.handle, imaginary,
+        ));
+        if (partHandle === 0) failure("complex cache part");
+        try {
+          if (exports.sagejs_numeric_real_format(partHandle, 1) !== 1) {
+            failure("complex cache snapshot");
+          }
+          parts.push(readOutput("complex cache snapshot"));
+        } finally {
+          if (exports.sagejs_numeric_real_close(partHandle) !== 1) {
+            failure("complex cache part close");
+          }
+        }
+      }
+      state.snapshot = Object.freeze(parts);
+    }
+    closeHandle(state);
+  }
+
+  function pruneHandles(protectedStates = new Set()) {
+    while (activeStates.size > maximumCachedHandles) {
+      let victim;
+      for (const candidate of activeStates) {
+        if (!protectedStates.has(candidate)) {
+          victim = candidate;
+          break;
+        }
+      }
+      if (victim === undefined) {
+        throw new Error("numeric handle cache has no evictable entry");
+      }
+      snapshotState(victim);
+    }
+  }
+
+  function touch(state) {
+    if (state.handle === 0) return;
+    activeStates.delete(state);
+    activeStates.add(state);
+  }
+
+  function hydrateRealSnapshot(snapshot, precision, operation) {
+    writeInput(snapshot, operation);
+    const handle = uint32(exports.sagejs_numeric_real_from_string(0));
+    if (handle === 0) failure(operation);
+    if (uint32(exports.sagejs_numeric_real_precision(handle)) !== precision) {
+      exports.sagejs_numeric_real_close(handle);
+      throw new Error(`${operation} restored the wrong precision`);
+    }
+    return handle;
+  }
+
+  function hydrateState(state, protectedStates) {
+    if (state.handle !== 0) {
+      touch(state);
+      return;
+    }
+    if (state.snapshot === undefined) {
+      throw new TypeError(`expected a live WebAssembly ${state.kind} resource`);
+    }
+    if (state.kind === "real") {
+      state.handle = hydrateRealSnapshot(
+        state.snapshot, state.precision, "real cache restore",
+      );
+    } else {
+      let realHandle = 0;
+      let imaginaryHandle = 0;
+      try {
+        realHandle = hydrateRealSnapshot(
+          state.snapshot[0], state.precision,
+          "complex real-part cache restore",
+        );
+        imaginaryHandle = hydrateRealSnapshot(
+          state.snapshot[1], state.precision,
+          "complex imaginary-part cache restore",
+        );
+        state.handle = uint32(exports.sagejs_numeric_complex_from_reals(
+          realHandle, imaginaryHandle,
+        ));
+        if (state.handle === 0) failure("complex cache restore");
+      } finally {
+        if (imaginaryHandle !== 0 &&
+            exports.sagejs_numeric_real_close(imaginaryHandle) !== 1) {
+          failure("complex cache imaginary-part close");
+        }
+        if (realHandle !== 0 &&
+            exports.sagejs_numeric_real_close(realHandle) !== 1) {
+          failure("complex cache real-part close");
+        }
+      }
+    }
+    activeStates.add(state);
+    pruneHandles(protectedStates);
+  }
+
   function resource(kind, handle, precision, operation) {
     handle = uint32(handle);
     if (handle === 0) failure(operation);
+    const state = {
+      kind,
+      handle,
+      precision: Number(precision),
+      snapshot: undefined,
+      closed: false,
+    };
     const value = Object.freeze({
       __sagejsWasmNumericResource: kind,
-      handle,
       precision: Number(precision),
     });
     if (kind === "real") {
-      realObjects.add(value);
-      realFinalizer?.register(value, handle, value);
+      realObjects.set(value, state);
+      realFinalizer?.register(value, state, value);
     } else {
-      complexObjects.add(value);
-      complexFinalizer?.register(value, handle, value);
+      complexObjects.set(value, state);
+      complexFinalizer?.register(value, state, value);
     }
+    activeStates.add(state);
+    pruneHandles(new Set([state]));
     return value;
+  }
+
+  function rawState(value, kind) {
+    const objects = kind === "real" ? realObjects : complexObjects;
+    const state = objects.get(value);
+    if (state === undefined || state.closed) {
+      throw new TypeError(`expected a live WebAssembly ${kind} resource`);
+    }
+    return state;
+  }
+
+  function requireResources(values, kind) {
+    const states = values.map((value) => rawState(value, kind));
+    const protectedStates = new Set(states);
+    for (const state of states) hydrateState(state, protectedStates);
+    return states;
   }
 
   function requireResource(value, kind) {
-    const objects = kind === "real" ? realObjects : complexObjects;
-    if (!objects.has(value) || closedObjects.has(value)) {
-      throw new TypeError(`expected a live WebAssembly ${kind} resource`);
-    }
-    return value;
+    return requireResources([value], kind)[0];
   }
 
   function close(value) {
-    const kind = realObjects.has(value) ? "real"
-      : complexObjects.has(value) ? "complex" : undefined;
+    const realState = realObjects.get(value);
+    const complexState = complexObjects.get(value);
+    const state = realState ?? complexState;
+    const kind = realState !== undefined ? "real"
+      : complexState !== undefined ? "complex" : undefined;
     if (kind === undefined) throw new TypeError("expected a WebAssembly numeric resource");
-    if (closedObjects.has(value)) return false;
+    if (state.closed) return false;
     const finalizer = kind === "real" ? realFinalizer : complexFinalizer;
     finalizer?.unregister(value);
-    const answer = kind === "real"
-      ? exports.sagejs_numeric_real_close(value.handle)
-      : exports.sagejs_numeric_complex_close(value.handle);
-    if (answer !== 1) failure(`${kind} close`);
-    closedObjects.add(value);
+    closeHandle(state, `${kind} close`);
+    state.snapshot = undefined;
+    state.closed = true;
     return true;
   }
 
@@ -595,20 +746,19 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     resource("complex", handle, precision, operation);
   const realPrecision = (value) => {
     value = requireResource(value, "real");
-    const answer = uint32(exports.sagejs_numeric_real_precision(value.handle));
-    if (answer === 0) failure("real precision");
     trace("realPrecision", 4, 4);
-    return answer;
+    return value.precision;
   };
   const complexPrecision = (value) => {
     value = requireResource(value, "complex");
-    const answer = uint32(exports.sagejs_numeric_complex_precision(value.handle));
-    if (answer === 0) failure("complex precision");
     trace("complexPrecision", 4, 4);
-    return answer;
+    return value.precision;
   };
 
   function realFromText(value, precision, name) {
+    if (!Number.isSafeInteger(precision) || precision < 16 || precision > 1048576) {
+      throw new TypeError(`${name} precision must be an integer from 16 through 1048576`);
+    }
     const ingressBytes = writeInput(value, name);
     const answer = real(
       exports.sagejs_numeric_real_from_string(Number(precision)),
@@ -620,8 +770,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
   }
 
   function realBinary(name, operation, left, right) {
-    left = requireResource(left, "real");
-    right = requireResource(right, "real");
+    [left, right] = requireResources([left, right], "real");
     const answer = real(
       exports.sagejs_numeric_real_binary(operation, left.handle, right.handle),
       left.precision,
@@ -632,8 +781,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
   }
 
   function complexBinary(name, operation, left, right) {
-    left = requireResource(left, "complex");
-    right = requireResource(right, "complex");
+    [left, right] = requireResources([left, right], "complex");
     const answer = complex(
       exports.sagejs_numeric_complex_binary(operation, left.handle, right.handle),
       left.precision,
@@ -694,8 +842,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return answer;
     },
     realEqual(left, right) {
-      left = requireResource(left, "real");
-      right = requireResource(right, "real");
+      [left, right] = requireResources([left, right], "real");
       const answer = exports.sagejs_numeric_real_equal(left.handle, right.handle);
       if (answer < 0) failure("realEqual");
       trace("realEqual", 8, 1);
@@ -710,14 +857,18 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     },
     realToString(value) {
       value = requireResource(value, "real");
-      if (exports.sagejs_numeric_real_format(value.handle) !== 1) failure("realToString");
+      writeInput("", "realToString");
+      if (exports.sagejs_numeric_real_format(value.handle, 0) !== 1) {
+        failure("realToString");
+      }
       const answer = readOutput("realToString");
       trace("realToString", 4, utf8Encoder.encode(answer).length);
       return answer;
     },
     complexFromReals(realPart, imaginaryPart) {
-      realPart = requireResource(realPart, "real");
-      imaginaryPart = requireResource(imaginaryPart, "real");
+      [realPart, imaginaryPart] = requireResources(
+        [realPart, imaginaryPart], "real",
+      );
       const answer = complex(
         exports.sagejs_numeric_complex_from_reals(realPart.handle, imaginaryPart.handle),
         realPart.precision,
@@ -807,8 +958,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return answer;
     },
     complexEqual(left, right) {
-      left = requireResource(left, "complex");
-      right = requireResource(right, "complex");
+      [left, right] = requireResources([left, right], "complex");
       const answer = exports.sagejs_numeric_complex_equal(left.handle, right.handle);
       if (answer < 0) failure("complexEqual");
       trace("complexEqual", 8, 1);
@@ -834,8 +984,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return answer;
     },
     complexBesselI(order, argument) {
-      order = requireResource(order, "complex");
-      argument = requireResource(argument, "complex");
+      [order, argument] = requireResources([order, argument], "complex");
       const precision = Math.max(order.precision, argument.precision);
       const answer = complex(
         exports.sagejs_numeric_complex_bessel_i(order.handle, argument.handle),
@@ -936,7 +1085,6 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
       return result;
     },
     serializeAnalyticPoint(value) {
-      value = requireResource(value, "complex");
       const realPart = backend.complexReal(value);
       const imaginaryPart = backend.complexImag(value);
       try {
@@ -950,6 +1098,7 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     numericLiveCount() {
       return uint32(exports.sagejs_numeric_live_count());
     },
+    numericHandleCacheLimit: maximumCachedHandles,
   };
   return Object.freeze(backend);
 }

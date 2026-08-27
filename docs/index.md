@@ -26,6 +26,7 @@ Start with:
 - [Hyperelliptic conductors, root numbers, and L-series](hyperelliptic-lseries.md)
 - [BSD arithmetic for genus-2 and genus-3 Jacobians](hyperelliptic-bsd-arithmetic.md)
 - [Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves](hyperelliptic-jacobian-arithmetic.md)
+- [Split even-degree hyperelliptic Jacobians](hyperelliptic-even-degree-jacobians.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 - [WebAssembly browser support and capabilities](webassembly-browser-support.md)
 - [Portable Node and browser examples](webassembly-examples.md)
