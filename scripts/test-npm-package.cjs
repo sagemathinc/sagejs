@@ -21,6 +21,17 @@ try {
   });
   assert.doesNotMatch(rootContents, /\.sagejs-native-kernels\//);
   assert.doesNotMatch(rootContents, /package\/dist\/native-kernels\//);
+  for (const required of [
+    "package/packages/flint-wasm/auto-receipt-policy.mjs",
+    "package/packages/flint/src/hyperelliptic/smalljac.c",
+    "package/bench/hyperelliptic/cross-platform/run.cjs",
+    "package/bench/hyperelliptic/cross-platform/results/policy-a9d83f82/evidence-index.json",
+  ]) {
+    assert.ok(
+      rootContents.split("\n").includes(required),
+      `root package is missing receipt-policy input ${required}`,
+    );
+  }
 
   const manifest = {
     private: true,
