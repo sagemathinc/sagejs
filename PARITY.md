@@ -47,7 +47,8 @@ times over.
 | Malformed 3+ element pair -- refused by name, naming the actual head | Covered |
 | A constraint that is neither a relation nor a callable -- refused by name, naming the actual head | Covered |
 | Default region `-1 <= x <= 1` for a bare/unbounded variable | Covered |
-| `{x, xmin, xmax, Integers}` domain quadruple | **Gap** (see below) |
+| `{x, xmin, xmax, Integers}` domain quadruple, nested or not | Covered |
+| `{x, xmin, xmax, Reals}` domain quadruple | Covered |
 
 | Head | Result shape | Registered | Cross-head agreement |
 | --- | --- | --- | --- |
@@ -187,29 +188,7 @@ gap stays visible rather than being quietly encoded as "expected".
     from Wolfram's literal (almost certainly copy-pasted) reference text,
     not an oversight. (`n_maximize`'s docstring in `src/lib/wolfram.py`.)
 
-11. **`NMinimize`'s `{x, xmin, xmax, Integers}` integer-domain quadruple
-    has no path through the Wolfram frontend.** *Newly found during this
-    audit, not previously documented anywhere.* The shared engine,
-    `sagejs.optimization.nminimize.nminimize`, does implement a
-    `(variable, low, high, domain)` quadruple with `domain` one of the
-    Python strings `"Reals"`/`"Integers"` (see that module's docstring).
-    But Wolfram source spells the domain as the bare symbol `Integers`,
-    which has no entry in the Wolfram frontend's symbol-constant table
-    (`tools/wolfram/frontend.ts`); it falls through to an ordinary Sage
-    name lookup and resolves to Sage's own `Integers` ring-constructor
-    global, not the Python string `"Integers"` the engine's domain check
-    expects. The call does not refuse cleanly by name the way an
-    unsupported option does -- it fails with a confusing internal message
-    naming a Sage ring object the caller never wrote:
-    `NMinimize[(x-3.4)^2, {{x, -5, 5, Integers}}]` fails with `variable 0
-    has domain <function Zmod>; only 'Reals' and 'Integers' are
-    supported`. Not fixed as part of this audit: closing it needs a real
-    translation from Wolfram's `Integers` symbol to the engine's domain
-    string (and ideally a clean refusal for anything else), not a
-    one-line safety change. Tracked as a `t.skip` gap in
-    `test/wolfram-optimization-parity.cjs`.
-
-12. **A disjunctive `||` constraint is refused, not approximated.**
+11. **A disjunctive `||` constraint is refused, not approximated.**
     Wolfram accepts a union of regions -- `NMinimize[{(x-2)^2,
     x <= 1 || x >= 9}, {x}]` searches both branches and returns `1` at
     `x = 1`. Both `_optimize` and `_find_optimize` take a list of
@@ -286,6 +265,63 @@ The third, found after this audit shipped and fixed on top of it:
   already tested. The `||` divergence above was found the same way, in the
   same slot, ten minutes later.
 
+And a fourth, which the differential sweep below turned up while the
+third was being written:
+
+- **Wolfram's `Integers`/`Reals` domain quadruple never reached the
+  engine.** `nminimize.py` has always implemented an integer domain: its
+  `_integer_domain` accepts the strings `"Integers"` and `"Reals"`, and an
+  integer-domain coordinate is rounded before the polish step. What was
+  missing was the last step of the lowering. A bare Wolfram `Integers` is
+  an ordinary symbol to the parser, so it reached Sage as the *ring
+  constructor* of that name, and the engine refused it with `variable 0
+  has domain <function Zmod>` -- an internal repr naming something the
+  caller never wrote. In the un-nested spelling `{x, -5, 5, Integers}` it
+  was worse: the symbol was also collected as an optimization *variable*,
+  emitting `var('x,Integers')` and shadowing the ring itself. The frontend
+  now maps both domain symbols to the strings the engine reads, for the
+  global family only (to the local family a four-element spec is
+  `{x, x0, xmin, xmax}`, with no domain slot), and `_variable_entries`
+  resolves the top-level quadruple the same way it already resolved the
+  `{x, a, b}` triple.
+
+  This one is worth recording as a correction to this document rather than
+  only as a fix. The entry that stood here said closing the gap needed "a
+  real translation ... not a one-line safety change." That was wrong, and
+  wrong in the direction that keeps a gap open: the engine's half had been
+  built and tested all along, and only the two-symbol lowering was
+  missing. A gap note is a claim about cost, and an unexamined one is as
+  capable of being mistaken as any other claim here.
+
+## Differential sweep
+
+`test/wolfram-optimization-sweep.cjs` is a different kind of proof from
+the rest of this document. Everything above asserts *answers* -- given
+this call, expect that number -- and an assertion like that is only as
+good as the number someone thought to pin. A wrong answer nobody predicted
+looks exactly like a correct one.
+
+The sweep asserts *equivalences* instead: pairs of Wolfram sources that
+must produce identical results because they say the same thing. Two
+spellings of one problem run the identical engine call at the identical
+default seed, so they must agree bit for bit, and no oracle is needed
+anywhere. Every optimization bug found after the original audit came out
+of exactly this comparison, and none came from an assertion about a
+number:
+
+| Divergent pair | Cause |
+| --- | --- |
+| `{f, c1 && c2}` vs `{f, {c1, c2}}` | Python `and` short-circuited; one constraint never reached the engine |
+| `{f, c1 \|\| c2}` vs itself reordered | Python `or` kept whichever branch came last |
+| `{f, a <= x <= b}` vs `{f, {a <= x, x <= b}}` | the chain lowered to a comparison against a boolean |
+| `{x, a, b, Integers}` vs `{{x, a, b, Integers}}` | the un-nested quadruple was read as four variables |
+
+Each is now pinned by its own named regression test. What the sweep adds
+is the technique kept running: the same equivalences across every head,
+every constraint spelling and every variable spelling, so the next one is
+caught by CI rather than by someone happening to try the other spelling by
+hand.
+
 ## Suites this document credits
 
 - [`test/optimization-find.cjs`](test/optimization-find.cjs) -- the local
@@ -301,6 +337,14 @@ The third, found after this audit shipped and fixed on top of it:
   file goes through `createForeignFrontend("wolfram")`. Before this audit
   it was the closest thing to global-family test coverage that existed,
   which is exactly the hole `test/wolfram-optimization-parity.cjs` fills.
+- [`test/wolfram-optimization-sweep.cjs`](test/wolfram-optimization-sweep.cjs)
+  -- the differential sweep described above: ~190 equivalence checks over
+  every head, constraint spelling and variable spelling, plus the
+  determinism check the exact comparisons depend on.
+- [`test/wolfram-syntax.cjs`](test/wolfram-syntax.cjs) -- Wolfram surface
+  syntax that is not specific to any builtin: `(* ... *)` comments, and
+  chains of comparison operators both generally and in the constraint
+  slot.
 - [`test/wolfram-optimization-parity.cjs`](test/wolfram-optimization-parity.cjs)
   -- this audit's own suite: the global family's call forms and per-head
   result shapes through the frontend (previously untested for

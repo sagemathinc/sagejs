@@ -507,34 +507,94 @@ test("a constrained FindMinimum honors the requested Method, not always COBYLA",
 });
 
 // ---------------------------------------------------------------------
-// GAP FOUND DURING THIS AUDIT -- the `{x, xmin, xmax, Integers}` domain
-// quadruple `nminimize.py`'s own `_variable_spec` documents and implements
-// (see its docstring: "a `(variable, low, high, domain)` quadruple whose
-// `domain` is `"Reals"` or `"Integers"`") has no path through the Wolfram
-// frontend: Wolfram's bare symbol `Integers` lowers through the ordinary
-// symbol table in tools/wolfram/frontend.ts, which has no entry for it, so
-// it falls through to a plain Sage name lookup and resolves to Sage's own
-// `Integers` ring-constructor global -- not the Python string `"Integers"`
-// the domain check in nminimize.py's `_integer_domain` compares against.
-// The call does not refuse cleanly by name the way an unsupported option
-// does; it fails with a confusing internal message naming a Sage ring
-// object the caller never wrote. Recorded here and in PARITY.md as a
-// genuine, previously-undocumented gap, not fixed as part of this audit --
-// closing it needs a real translation (Wolfram's `Integers` symbol to the
-// domain string), not a one-line safety change.
+// The `{x, xmin, xmax, dom}` domain quadruple.
+//
+// This was PARITY.md's divergence 11 and a `t.skip` gap in this file: the
+// engine had always supported an integer domain -- `_integer_domain` in
+// nminimize.py accepts the strings "Integers" and "Reals", and the search
+// rounds an integer coordinate before its polish -- but the last step of
+// the lowering was missing. A bare Wolfram `Integers` is an ordinary
+// symbol to the parser, so it reached Sage as the *ring constructor* of
+// that name and the engine refused it with `variable 0 has domain
+// <function Zmod>`: an internal repr naming something the caller never
+// wrote. The un-nested spelling was worse, because the symbol was also
+// collected as an optimization *variable*, emitting `var('x,Integers')`
+// and shadowing the ring itself.
+//
+// Closed rather than documented, because it needed only the lowering and
+// not the "real translation" the old gap note assumed: the two domain
+// symbols map to the two strings the engine already reads.
 // ---------------------------------------------------------------------
 
-test("NMinimize's documented Integers domain quadruple has no path through the frontend", (t) => {
-  t.skip(
-    "gap: Wolfram's bare Integers symbol has no entry in the frontend's " +
-      "symbol table, so {x, xmin, xmax, Integers} resolves to Sage's ring " +
-      "constructor instead of the Python string \"Integers\" that " +
-      "nminimize.py's _integer_domain expects -- confirmed empirically: " +
-      "NMinimize[(x-3.4)^2, {{x, -5, 5, Integers}}] fails with \"variable " +
-      "0 has domain <function Zmod>; only 'Reals' and 'Integers' are " +
-      "supported\", not a clean refusal and not a working integer search. " +
-      "See PARITY.md.",
+test("an Integers domain restricts the search to integers", async () => {
+  // (x - 3.4)^2 over the integers in [-5, 5] is minimized at x = 3, value
+  // 0.16 -- not at 3.4, where the same problem over the reals lands. A
+  // domain that was accepted but ignored would return ~0 here.
+  const { value, rules } = extremum(
+    await wolfram("NMinimize[(x-3.4)^2, {{x, -5, 5, Integers}}]"),
   );
+  assert.equal(rules.x, 3, `x ${rules.x} should be the integer 3`);
+  assert.ok(Math.abs(value - 0.16) < 1e-9, `value ${value} should be 0.16`);
+});
+
+test("a Reals domain gives the continuous answer, and the contrast is visible", async () => {
+  const { value, rules } = extremum(
+    await wolfram("NMinimize[(x-3.4)^2, {{x, -5, 5, Reals}}]"),
+  );
+  assert.ok(Math.abs(rules.x - 3.4) < 1e-4, `x ${rules.x} should be ~3.4`);
+  assert.ok(value < 1e-9, `value ${value} should be ~0`);
+});
+
+test("the domain quadruple works un-nested as well as nested", async () => {
+  // `{x, -5, 5, Integers}` as the whole second argument is one variable
+  // with a domain, exactly as `{x, -5, 5}` is one variable with a region.
+  // Resolving that ambiguity is `_variable_entries`' job in wolfram.py;
+  // before this it read the quadruple as four separate variables and
+  // failed with "expected a symbolic variable".
+  assert.equal(
+    await wolfram("NMinimize[(x-3.4)^2, {x, -5, 5, Integers}]"),
+    await wolfram("NMinimize[(x-3.4)^2, {{x, -5, 5, Integers}}]"),
+  );
+});
+
+test("the domain reaches every global head, not just NMinimize", async () => {
+  // NArgMin returns the bare argument list, so an integer domain shows up
+  // directly in the result rather than only in the value.
+  assert.equal(
+    await wolfram("NArgMin[(x-3.4)^2, {{x, -5, 5, Integers}}]"),
+    "[3.0]",
+  );
+  const { value, rules } = extremum(
+    await wolfram("NMaximize[-((x-3.4)^2), {{x, -5, 5, Integers}}]"),
+  );
+  assert.equal(rules.x, 3, `x ${rules.x}`);
+  assert.ok(Math.abs(value + 0.16) < 1e-9, `value ${value} should be -0.16`);
+});
+
+test("domains are per-variable, not per-problem", async () => {
+  // The mixed case proves the domain is read for each variable separately
+  // rather than being one flag for the whole search: x is pinned to the
+  // integer 3 while y reaches the real 2.7.
+  const { rules } = extremum(
+    await wolfram(
+      "NMinimize[(x-3.4)^2 + (y-2.7)^2, {{x,-5,5,Integers}, {y,-5,5,Reals}}]",
+    ),
+  );
+  assert.equal(rules.x, 3, `x ${rules.x} should be the integer 3`);
+  assert.ok(Math.abs(rules.y - 2.7) < 1e-4, `y ${rules.y} should be ~2.7`);
+});
+
+test("a domain symbol is not declared as an optimization variable", async () => {
+  // The un-nested spelling used to emit `var('x,Integers')`, declaring
+  // Wolfram's domain symbol as a Sage symbolic variable and shadowing the
+  // ring of that name. Asserted on the lowering, since that is where the
+  // damage was done.
+  const lowered = frontend.lower(
+    "NMinimize[(x-3.4)^2, {x, -5, 5, Integers}]",
+    { captureResult: true },
+  ).source;
+  assert.match(lowered, /var\('x'\)/);
+  assert.doesNotMatch(lowered, /var\('[^']*Integers/);
 });
 
 // ---------------------------------------------------------------------

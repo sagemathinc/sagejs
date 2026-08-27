@@ -310,6 +310,23 @@ const OPTIMIZATION_HEADS = new Set([
  * `LOCAL_OPTIMIZATION_OPTIONS` below disagree on exactly one thing: whether
  * `Method -> {"Name", "Sub" -> value, ...}` sub-options have anywhere to go.
  */
+/**
+ * Wolfram's domain symbols, as they appear in the global family's
+ * `{x, xmin, xmax, dom}` variable quadruple.
+ *
+ * `nminimize.py`'s `_integer_domain` has always accepted both, by the
+ * exact strings `"Integers"` and `"Reals"`, and the engine rounds an
+ * integer-domain coordinate before its polish step. What was missing was
+ * the last step of the lowering: a bare Wolfram `Integers` is an ordinary
+ * symbol to the parser, so it reached Sage as the *ring constructor* of
+ * that name rather than as the string the engine reads, and the engine
+ * refused it with `domain <function Zmod>` -- an internal repr, naming
+ * something the caller never wrote. Worse, in the un-nested spelling
+ * `{x, -5, 5, Integers}` the symbol was also collected as an optimization
+ * *variable*, emitting `var('x,Integers')` and shadowing the ring.
+ */
+const WOLFRAM_DOMAINS = new Set(["Integers", "Reals"]);
+
 const GLOBAL_OPTIMIZATION_HEADS = new Set([
   "NArgMax",
   "NArgMin",
@@ -933,6 +950,7 @@ class SageLowerer {
     const names: string[] = [];
     for (const element of node.elements) {
       if (element.kind === "symbol") {
+        if (WOLFRAM_DOMAINS.has(element.name)) continue;
         names.push(element.name);
       } else if (
         element.kind === "list" && element.elements[0]?.kind === "symbol"
@@ -1109,7 +1127,9 @@ class SageLowerer {
     );
     const positional = [
       this.optimizationProblem(expression.arguments[0], head),
-      this.expression(expression.arguments[1]),
+      GLOBAL_OPTIMIZATION_HEADS.has(head)
+        ? this.optimizationVariableSpec(expression.arguments[1])
+        : this.expression(expression.arguments[1]),
     ];
     return `_wolfram.${head}(${[...positional, ...options].join(", ")})`;
   }
@@ -1134,6 +1154,29 @@ class SageLowerer {
     return `[${this.expression(expression.elements[0])}, ${
       this.optimizationConstraints(expression.elements[1], head)
     }]`;
+  }
+
+  /**
+   * Lower a global head's variable specification, turning a bare domain
+   * symbol into the string the engine reads.
+   *
+   * Only the global family: to `FindMinimum` and its siblings a
+   * four-element `{x, x0, xmin, xmax}` spec is a starting point plus a
+   * box, with no domain slot at all, so a symbol in that position is an
+   * error there rather than a domain and must keep lowering normally.
+   */
+  private optimizationVariableSpec(expression: WolframExpression): string {
+    if (expression.kind === "symbol" && WOLFRAM_DOMAINS.has(expression.name)) {
+      return JSON.stringify(expression.name);
+    }
+    if (expression.kind === "list") {
+      return `[${
+        expression.elements
+          .map((element) => this.optimizationVariableSpec(element))
+          .join(", ")
+      }]`;
+    }
+    return this.expression(expression);
   }
 
   /**

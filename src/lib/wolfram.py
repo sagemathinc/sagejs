@@ -211,11 +211,27 @@ def _variable_entries(variables: Any) -> list[Any]:
     `{x, a, b}` at the top level, which is a single variable with a region
     rather than three bare variables; it is resolved here the way Wolfram
     resolves it, by checking that the last two elements are numbers.
+
+    The same ambiguity, and the same resolution, applies one element later
+    to the domain quadruple `{x, a, b, Integers}`: four bare variables have
+    a symbol in position 1, a quadruple has a number there and a domain
+    string last. (The frontend lowers Wolfram's bare `Integers`/`Reals`
+    symbols to those strings; see `WOLFRAM_DOMAINS` in
+    `tools/wolfram/frontend.ts`.) Without this the quadruple was read as
+    four separate variables and failed with "expected a symbolic
+    variable", naming nothing the caller wrote.
     """
     if not isinstance(variables, (list, tuple)):
         return [variables]
     entries = list(variables)
     if len(entries) == 3 and _is_number(entries[1]) and _is_number(entries[2]):
+        return [entries]
+    if (
+        len(entries) == 4
+        and _is_number(entries[1])
+        and _is_number(entries[2])
+        and isinstance(entries[3], str)
+    ):
         return [entries]
     return entries
 
