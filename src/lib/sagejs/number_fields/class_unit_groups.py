@@ -602,11 +602,42 @@ class ClassUnitSaturationRecord:
         payload["content_sha256"] = self.content_sha256
         return _component_payload(payload)
 
+    def verify_payload(
+        self,
+        payload: Any,
+        field: Any = None,
+        order: Any = None,
+        original_units: Sequence[Any] | None = None,
+    ) -> bool:
+        """Replay one supplied payload without rebuilding this record twice."""
+        try:
+            body = self._body_dict()
+            expected = dict(body)
+            expected["content_sha256"] = self.content_sha256
+            if _component_payload(payload) != _component_payload(expected):
+                return False
+            return ClassUnitSaturationRecord._verify_body(
+                self, body, field, order, original_units
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
     def verify(
         self,
         field: Any = None,
         order: Any = None,
         original_units: Sequence[Any] | None = None,
+    ) -> bool:
+        return ClassUnitSaturationRecord._verify_body(
+            self, self._body_dict(), field, order, original_units
+        )
+
+    def _verify_body(
+        self,
+        body: dict[str, Any],
+        field: Any,
+        order: Any,
+        original_units: Sequence[Any] | None,
     ) -> bool:
         selected_field = self._field if field is None else field
         selected_order = self._order if order is None else order
@@ -614,7 +645,7 @@ class ClassUnitSaturationRecord:
             return False
         if original_units is not None and tuple(original_units) != self.original_units:
             return False
-        if _canonical_payload_hash(self._body_dict()) != self.content_sha256:
+        if _canonical_payload_hash(body) != self.content_sha256:
             return False
         one = selected_order.ideal(1)
         try:
@@ -1108,16 +1139,15 @@ class ClassUnitComputation:
 
     def verify_saturation_record(self, payload: Any) -> bool:
         record = self.saturation_record
-        if record is None:
+        if type(record) is not ClassUnitSaturationRecord:
             return False
-        encode = getattr(record, "to_dict", None)
-        replay = getattr(record, "verify", None)
         return bool(
-            callable(encode)
-            and callable(replay)
-            and _component_payload(payload) == _component_payload(encode())
-            and replay(
-                self.field, self.field.maximal_order(), self.saturation_original_units
+            ClassUnitSaturationRecord.verify_payload(
+                record,
+                payload,
+                self.field,
+                self.field.maximal_order(),
+                self.saturation_original_units,
             )
         )
 

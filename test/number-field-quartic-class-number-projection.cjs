@@ -147,12 +147,12 @@ K = NumberField(x**4 - 2*x**3 - x**2 - 3*x + 1, "payload")
 result = class_unit_module.class_unit_context(K, proof=False, algorithm="auto")
 assert result.complete and result.class_number() == 2
 record = result.saturation_record
-payload_builds = [0]
-original_to_dict = record.to_dict
-def counted_to_dict():
-    payload_builds[0] += 1
-    return original_to_dict()
-record.to_dict = counted_to_dict
+body_builds = [0]
+original_body_dict = record._body_dict
+def counted_body_dict():
+    body_builds[0] += 1
+    return original_body_dict()
+record._body_dict = counted_body_dict
 live = result.context._live_artifacts
 transaction = result.context._begin_live_public_class_group_projection(
     context_module._LIVE_CLASS_UNIT_CONTEXT_TOKEN, result
@@ -212,20 +212,20 @@ assert not live.public_saturation_payload_issued
 assert not live.public_generation_payload_issued
 assert live.public_class_group_projection_source is None
 
-before_live_publication = payload_builds[0]
+before_live_publication = body_builds[0]
 group = class_unit_module.class_group(K, proof=False)
 assert group.order() == 2 and group.verify()
 # The one call belongs to the final independent public verifier.  The adapter
 # construction itself consumed the retained canonical body instead of calling
 # its serializer a second time.
-assert payload_builds[0] == before_live_publication + 1, (
-    "live-payload-builds", payload_builds[0]
+assert body_builds[0] == before_live_publication + 1, (
+    "live-body-builds", body_builds[0]
 )
-before_cold_publication = payload_builds[0]
+before_cold_publication = body_builds[0]
 cold = class_group_maps.class_group_from_engine_result(result)
 assert cold.order() == 2 and cold.verify()
-assert payload_builds[0] == before_cold_publication + 3, (
-    "cold-payload-builds", payload_builds[0]
+assert body_builds[0] == before_cold_publication + 3, (
+    "cold-body-builds", body_builds[0]
 )
 
 # A class-number-one scalar stops after the exact live principal-witness
