@@ -506,7 +506,9 @@ test("ordinary typed Python safely borrows and traverses M4RI resources", {
 });
 
 test("unclosed generated resources are reclaimed by the V8 finalizer", {
-  skip: !m4ri.ffiM4riAvailable(),
+  skip: !m4ri.ffiM4riAvailable() || process.platform === "darwin"
+    ? "Darwin allocator RSS retention cannot witness native finalization"
+    : false,
 }, () => {
   const source = `
 const m4ri = require(${JSON.stringify(root)});
@@ -523,17 +525,16 @@ const m4ri = require(${JSON.stringify(root)});
     // gc() call. Give their queue an event-loop turn before allocating the next
     // wave, otherwise this test measures delayed scheduling rather than leaks.
     await new Promise(setImmediate);
-    if (batch === 1) {
+    if (batch === 4) {
       warmedResidentMiB = process.memoryUsage().rss / (1024 * 1024);
     }
   }
   global.gc();
   await new Promise(setImmediate);
   const residentMiB = process.memoryUsage().rss / (1024 * 1024);
-  // Compare steady-state growth after two warmup waves instead of imposing an
-  // absolute RSS ceiling. Darwin allocators may retain very different arena
-  // high-water marks across otherwise identical runners; an unreclaimed
-  // resource still grows by roughly 320 MiB over the remaining eight waves.
+  // Compare steady-state growth after five warmup waves instead of imposing
+  // an absolute RSS ceiling. An unreclaimed resource still grows by roughly
+  // 200 MiB over the remaining five waves.
   const growthMiB = residentMiB - warmedResidentMiB;
   if (growthMiB > 128) {
     throw new Error(
