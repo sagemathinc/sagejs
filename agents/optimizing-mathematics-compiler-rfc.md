@@ -922,3 +922,13 @@ these are justified by a verified commutative-ring fact rather than by source
 spelling.  Compact residue-ring results also retain the private representation
 brand, with a chained-block route ratchet preventing silent loss of subsequent
 optimization.
+
+Straight-line operation graphs now also carry per-sequence use counts.  The
+representation planner streams one or two immutable sequences when each is
+read at most once per iteration, which covers guarded dot products without a
+dot-product recognizer.  Repeated reads and control-flow graphs retain the
+packed-prefix strategy.  `bench/optimizer-field-dot-product.cjs` ratchets the
+streaming choice over both a residue ring and a cubic extension field against
+independent coordinate oracles and projected O0 execution; an intentionally
+packed upper-bound experiment remains documented only as diagnostic evidence,
+not as a matched headline comparison.

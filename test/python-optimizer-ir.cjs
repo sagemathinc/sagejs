@@ -55,11 +55,11 @@ function optimizerOptions(extra = {}) {
   };
 }
 
-function findLoop(compiler, root) {
+function findLoops(compiler, root) {
   const seen = new Set();
-  let answer;
+  const answer = [];
   const visit = (value) => {
-    if (!value || typeof value !== "object" || seen.has(value) || answer) return;
+    if (!value || typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
     if (Array.isArray(value)) {
       for (const child of value) visit(child);
@@ -67,7 +67,7 @@ function findLoop(compiler, root) {
     }
     if (!(value instanceof compiler.AST_Node)) return;
     if (value instanceof compiler.AST_ForIn) {
-      answer = value;
+      answer.push(value);
       return;
     }
     for (const [key, child] of Object.entries(value)) {
@@ -79,6 +79,10 @@ function findLoop(compiler, root) {
   };
   visit(root);
   return answer;
+}
+
+function findLoop(compiler, root) {
+  return findLoops(compiler, root)[0];
 }
 
 test("the mathematical optimizer emits versioned verified IR", async () => {
@@ -125,7 +129,7 @@ test("sequence-fed affine data flow selects the transactional V8 target", async 
     const [region] = ast.optimization_ir.regions;
     assert.equal(region.selected, true);
     assert.equal(region.target.kind, "v8");
-    assert.match(region.target.lowering, /streaming affine/);
+    assert.match(region.target.lowering, /streaming operation graph/);
     const loop = findLoop(compiler, ast);
     assert.deepEqual(loop.optimization_region.operands.affine, {
       kind: "sequence-increment",
@@ -135,6 +139,38 @@ test("sequence-fed affine data flow selects the transactional V8 target", async 
       incrementOperator: "add",
     });
     assert.doesNotThrow(() => verifyInternalRegionPlan(loop.optimization_region));
+  } finally {
+    frontend.close();
+  }
+});
+
+test("sequence-use analysis separates streaming and packed operation graphs", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def dot(left, right, zero):
+    answer = zero
+    for index in range(len(left)):
+        answer = answer + left[index] * right[index]
+    return answer
+
+def squares(values, zero):
+    answer = zero
+    for index in range(len(values)):
+        answer = answer + values[index] * values[index]
+    return answer
+`, optimizerOptions());
+    assert.equal(ast.optimization_ir.regions.length, 2);
+    const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.sequenceUses),
+      [[1, 1], [2]],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.sequenceStrategy),
+      ["stream", "pack"],
+    );
   } finally {
     frontend.close();
   }

@@ -144,7 +144,7 @@ test("generated GF(p^2) programs agree exactly with O0 across reviewed bounds", 
       ]);
       assert.equal(fast.stdout, slow.stdout, `GF(${prime}^2)`);
       const route = await optimized.evaluate("K._lastCompilerOptimizationRoute");
-      assert.equal(route.repr, "'v8-extension-tuple-region'");
+      assert.equal(route.repr, "'v8-extension-tuple-stream'");
       const genericRoute = await generic.evaluate("K._lastCompilerOptimizationRoute");
       assert.equal(genericRoute.repr, "'generic'");
     } finally {

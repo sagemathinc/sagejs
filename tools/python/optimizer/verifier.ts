@@ -314,6 +314,19 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         throw new TypeError("optimizer affine target has an invalid increment sign");
       }
     }
+    if (plan.operands.sequenceStrategy !== "pack" &&
+        plan.operands.sequenceStrategy !== "stream") {
+      throw new TypeError("optimizer ring region has an invalid sequence strategy");
+    }
+    if (plan.operands.sequenceStrategy === "stream" && sequences.length === 0) {
+      throw new TypeError("optimizer ring region streams without a sequence");
+    }
+    if (!Array.isArray(plan.operands.sequenceUses) ||
+        plan.operands.sequenceUses.length !== sequences.length ||
+        plan.operands.sequenceUses.some((count: unknown) =>
+          !Number.isSafeInteger(count) || Number(count) < 0)) {
+      throw new TypeError("optimizer ring region has invalid sequence-use counts");
+    }
     return;
   }
   throw new TypeError(`optimizer target lowering does not handle region ${plan.kind}`);
