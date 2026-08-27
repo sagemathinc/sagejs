@@ -682,3 +682,102 @@ for function, arguments in (
     await Promise.all([optimized.close(), generic.close()]);
   }
 });
+
+test("dead-store lowering preserves results and guards eliminated operations", async () => {
+  const source = String.raw`
+def overwritten(values, zero):
+    answer = zero
+    scratch = zero
+    for x in values:
+        scratch = x*x
+        scratch = x+x
+        answer = answer+scratch
+    return answer, scratch
+
+def dead_branch(values, zero, pivot):
+    answer = zero
+    scratch = zero
+    for x in values:
+        if x == pivot:
+            scratch = x*x
+        else:
+            scratch = x+x
+        scratch = x
+        answer = answer+scratch
+    return answer, scratch
+
+def dead_other(values, other, zero):
+    answer = zero
+    scratch = zero
+    for x, y in zip(values, other):
+        scratch = y*y
+        scratch = x
+        answer = answer+scratch
+    return answer, scratch
+
+R = Zmod(1009)
+prime_values = tuple(R(index^2+3) for index in range(257))
+R._lastCompilerOptimizationRoute = 'generic'
+print(overwritten(prime_values, R(0)), R._lastCompilerOptimizationRoute)
+R._lastCompilerOptimizationRoute = 'generic'
+print(dead_branch(prime_values, R(0), prime_values[129]), R._lastCompilerOptimizationRoute)
+S = Zmod(1013)
+mixed_other = tuple(R(index+5) for index in range(256)) + (S(7),)
+R._lastCompilerOptimizationRoute = 'late-dead-sequence-fallback'
+print(dead_other(prime_values, mixed_other, R(0)), R._lastCompilerOptimizationRoute)
+
+P.<t> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=t^3+t+1)
+aa = a*a
+cubic_values = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(257))
+K._lastCompilerOptimizationRoute = 'generic'
+print(overwritten(cubic_values, K(0)), K._lastCompilerOptimizationRoute)
+K._lastCompilerOptimizationRoute = 'generic'
+print(dead_branch(cubic_values, K(0), cubic_values[129]), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic"),
+      slow.stdout,
+    );
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+
+  const guarded = await sessionAtLevel("O2");
+  try {
+    const result = await guarded.evaluate(String.raw`
+import sagejs.runtime as runtime
+def overwritten(values, zero):
+    answer = zero
+    scratch = zero
+    for x in values:
+        scratch = x*x
+        scratch = x+x
+        answer = answer+scratch
+    return answer, scratch
+P.<t> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=t^3+t+1)
+values = tuple(K(index)+(index%5)*a for index in range(17))
+prototype = runtime.object.getPrototypeOf(a)
+calls = [0]
+def changed_mul(other):
+    calls[0] += 1
+    return K(0)
+runtime.reflect.set(prototype, '_mul_', changed_mul)
+K._lastCompilerOptimizationRoute = 'eliminated-operation-fallback'
+print(overwritten(values, K(0)), calls[0], K._lastCompilerOptimizationRoute)
+`);
+    assert.match(result.stdout, / 17 eliminated-operation-fallback\n$/);
+  } finally {
+    await guarded.close();
+  }
+});

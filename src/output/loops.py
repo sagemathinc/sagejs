@@ -573,6 +573,118 @@ def _copy_region_operation_values(values):
     return answer
 
 
+def _print_region_sequence_value(
+    sequence,
+    index_order,
+    representation,
+    degree,
+    context_name,
+    index_name,
+    count_name,
+    modulus_name,
+    output,
+    counter,
+    suffix,
+    streaming=False,
+    sequence_values=None,
+):
+    cache_key = str(sequence) + ":" + index_order
+    if streaming and sequence_values is not None and cache_key in sequence_values:
+        return sequence_values[cache_key]
+    base = context_name + ".sequences[" + str(sequence) + "]"
+    sequence_index = index_name
+    if index_order == "reverse":
+        sequence_index = "(" + count_name + " - 1 - " + index_name + ")"
+    if streaming:
+        element = _region_temp(counter, suffix)
+        _print_region_variable(output, element, base + "[" + sequence_index + "]")
+        valid = (
+            context_name
+            + ".elementBrand.has("
+            + element
+            + ") && "
+            + element
+            + "._parent === "
+            + context_name
+            + ".parent && Object.getPrototypeOf("
+            + element
+            + ") === "
+            + context_name
+            + ".prototype"
+        )
+        if representation == "prime":
+            valid += (
+                " && Number.isInteger("
+                + element
+                + "._value) && "
+                + element
+                + "._value >= 0 && "
+                + element
+                + "._value < "
+                + modulus_name
+            )
+        else:
+            coordinates = element + "._machineCoordinates"
+            valid += (
+                " && Array.isArray("
+                + coordinates
+                + ") && Object.isFrozen("
+                + coordinates
+                + ") && "
+                + coordinates
+                + ".length === "
+                + str(degree)
+            )
+            for component in range(degree):
+                coordinate = coordinates + "[" + str(component) + "]"
+                valid += (
+                    " && Number.isInteger("
+                    + coordinate
+                    + ") && "
+                    + coordinate
+                    + " >= 0 && "
+                    + coordinate
+                    + " < "
+                    + modulus_name
+                )
+        output.indent()
+        output.print("if (!(" + valid + "))")
+        output.space()
+
+        def reject_stream_element():
+            output.indent()
+            output.assign("ρσ_FieldStreamValid" + suffix)
+            output.print("false")
+            output.end_statement()
+            output.indent()
+            output.print("break")
+            output.end_statement()
+
+        output.with_block(reject_stream_element)
+        if representation == "prime":
+            value = element + "._value"
+        else:
+            value = [
+                element + "._machineCoordinates[" + str(component) + "]"
+                for component in range(degree)
+            ]
+        if sequence_values is not None:
+            sequence_values[cache_key] = value
+        return value
+    if representation == "prime":
+        return base + "[" + sequence_index + "]"
+    return [
+        base
+        + "["
+        + str(degree)
+        + " * "
+        + sequence_index
+        + ("" if component == 0 else " + " + str(component))
+        + "]"
+        for component in range(degree)
+    ]
+
+
 def _print_region_expression(
     expression,
     representation,
@@ -594,101 +706,21 @@ def _print_region_expression(
     if expression.kind == "slot":
         return slot_names[expression.slot]
     if expression.kind == "sequence":
-        cache_key = str(expression.sequence) + ":" + expression.indexOrder
-        if streaming and sequence_values is not None and cache_key in sequence_values:
-            return sequence_values[cache_key]
-        base = context_name + ".sequences[" + str(expression.sequence) + "]"
-        sequence_index = index_name
-        if expression.indexOrder == "reverse":
-            sequence_index = "(" + count_name + " - 1 - " + index_name + ")"
-        if streaming:
-            element = _region_temp(counter, suffix)
-            _print_region_variable(output, element, base + "[" + sequence_index + "]")
-            valid = (
-                context_name
-                + ".elementBrand.has("
-                + element
-                + ") && "
-                + element
-                + "._parent === "
-                + context_name
-                + ".parent && Object.getPrototypeOf("
-                + element
-                + ") === "
-                + context_name
-                + ".prototype"
-            )
-            if representation == "prime":
-                valid += (
-                    " && Number.isInteger("
-                    + element
-                    + "._value) && "
-                    + element
-                    + "._value >= 0 && "
-                    + element
-                    + "._value < "
-                    + modulus_name
-                )
-            else:
-                coordinates = element + "._machineCoordinates"
-                valid += (
-                    " && Array.isArray("
-                    + coordinates
-                    + ") && Object.isFrozen("
-                    + coordinates
-                    + ") && "
-                    + coordinates
-                    + ".length === "
-                    + str(degree)
-                )
-                for component in range(degree):
-                    coordinate = coordinates + "[" + str(component) + "]"
-                    valid += (
-                        " && Number.isInteger("
-                        + coordinate
-                        + ") && "
-                        + coordinate
-                        + " >= 0 && "
-                        + coordinate
-                        + " < "
-                        + modulus_name
-                    )
-            output.indent()
-            output.print("if (!(" + valid + "))")
-            output.space()
-
-            def reject_stream_element():
-                output.indent()
-                output.assign("ρσ_FieldStreamValid" + suffix)
-                output.print("false")
-                output.end_statement()
-                output.indent()
-                output.print("break")
-                output.end_statement()
-
-            output.with_block(reject_stream_element)
-            if representation == "prime":
-                value = element + "._value"
-            else:
-                value = [
-                    element + "._machineCoordinates[" + str(component) + "]"
-                    for component in range(degree)
-                ]
-            if sequence_values is not None:
-                sequence_values[cache_key] = value
-            return value
-        if representation == "prime":
-            return base + "[" + sequence_index + "]"
-        return [
-            base
-            + "["
-            + str(degree)
-            + " * "
-            + sequence_index
-            + ("" if component == 0 else " + " + str(component))
-            + "]"
-            for component in range(degree)
-        ]
+        return _print_region_sequence_value(
+            expression.sequence,
+            expression.indexOrder,
+            representation,
+            degree,
+            context_name,
+            index_name,
+            count_name,
+            modulus_name,
+            output,
+            counter,
+            suffix,
+            streaming,
+            sequence_values,
+        )
 
     operation_key = _region_expression_key(expression, slot_versions)
     if operation_values is not None and operation_key in operation_values:
@@ -1297,6 +1329,27 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
     output.space()
 
     def body():
+        sequence_values = {}
+        if streaming:
+            # Validate every source-level sequence view, including reads whose
+            # pure result disappeared during dead-store elimination.  A failed
+            # value guard still restarts the untouched semantic loop.
+            for access in plan.sequenceAccesses:
+                _print_region_sequence_value(
+                    access.sequence,
+                    access.indexOrder,
+                    representation,
+                    degree,
+                    context_name,
+                    index_name,
+                    count_name,
+                    modulus_name,
+                    output,
+                    expression_counter,
+                    suffix,
+                    streaming,
+                    sequence_values,
+                )
         _print_region_statements(
             plan.statements,
             representation,
@@ -1311,7 +1364,7 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             expression_counter,
             suffix,
             streaming,
-            {},
+            sequence_values,
             _copy_region_operation_values(hoisted_values),
             [0 for _slot in slot_names],
             hoisted_values,

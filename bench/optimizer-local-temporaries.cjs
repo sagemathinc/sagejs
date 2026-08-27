@@ -38,26 +38,30 @@ function residueOracle(iterations) {
   let answer = 0;
   let square = 0;
   let shifted = 0;
+  let overwritten = 0;
   for (let index = 0; index < iterations; index += 1) {
     const value = (index * index + 3) % 1009;
     square = value * value % 1009;
     shifted = (square + value) % 1009;
+    overwritten = (value + value) % 1009;
     answer = (answer + shifted * square) % 1009;
   }
-  return [answer, square, shifted];
+  return [answer, square, shifted, overwritten];
 }
 
 function cubicOracle(iterations) {
   let answer = [0, 0, 0];
   let square = [0, 0, 0];
   let shifted = [0, 0, 0];
+  let overwritten = [0, 0, 0];
   for (let index = 0; index < iterations; index += 1) {
     const value = [index % 5, (index + 1) % 5, (index * index + 2) % 5];
     square = extensionMultiply(value, value);
     shifted = extensionAdd(square, value);
+    overwritten = extensionAdd(value, value);
     answer = extensionAdd(answer, extensionMultiply(shifted, square));
   }
-  return [...answer, ...square, ...shifted];
+  return [...answer, ...square, ...shifted, ...overwritten];
 }
 
 const cases = [
@@ -65,7 +69,7 @@ const cases = [
     name: "word-residue-ring",
     route: "v8-number-residue-stream",
     oracle: residueOracle,
-    answer: "tuple([int(answer),int(square),int(shifted)])",
+    answer: "tuple([int(answer),int(square),int(shifted),int(overwritten)])",
     setup(iterations) {
       return `
 R=Zmod(1009)
@@ -78,7 +82,7 @@ parent=R`;
     name: "cubic-extension-field",
     route: "v8-extension-tuple-stream",
     oracle: cubicOracle,
-    answer: "tuple(answer._power_basis_coordinates())+tuple(square._power_basis_coordinates())+tuple(shifted._power_basis_coordinates())",
+    answer: "tuple(answer._power_basis_coordinates())+tuple(square._power_basis_coordinates())+tuple(shifted._power_basis_coordinates())+tuple(overwritten._power_basis_coordinates())",
     setup(iterations) {
       return `
 P.<x>=PolynomialRing(GF(5))
@@ -111,12 +115,14 @@ def staged(values, zero):
     for item in values:
         square=item*item
         shifted=square+item
+        overwritten=(item*item)*(item*item)
+        overwritten=item+item
         answer=answer+shifted*square
-    return answer,square,shifted
+    return answer,square,shifted,overwritten
 staged(values,zero)
 for sample in range(${samples}):
     started=time.time()
-    answer,square,shifted=staged(values,zero)
+    answer,square,shifted,overwritten=staged(values,zero)
     print('${label}',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))
 print('resources',len(parent._nativeResourceChildren) if hasattr(parent,'_nativeResourceChildren') else 0)
 `;
