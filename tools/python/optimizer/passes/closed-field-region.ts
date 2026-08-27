@@ -1068,6 +1068,7 @@ export const closedRingRegionPass: OptimizationPass = {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
           passId: CLOSED_RING_REGION_PASS,
+          loweringId: "v8.closed-ring-loop.v1",
           kind: "closed-ring-region",
           operands,
         },

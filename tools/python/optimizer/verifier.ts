@@ -1,4 +1,5 @@
 import { isCostQuantity } from "./cost-model";
+import { optimizerLoweringContract } from "./lowerings";
 import {
   CompleteTargetCost,
   InternalRegionPlan,
@@ -781,7 +782,15 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   }
   requireString(plan.id, "internal.id");
   requireString(plan.passId, "internal.passId");
+  requireString(plan.loweringId, "internal.loweringId");
   requireString(plan.kind, "internal.kind");
+  const lowering = optimizerLoweringContract(plan.loweringId);
+  if (!lowering || lowering.passId !== plan.passId ||
+      lowering.internalKind !== plan.kind) {
+    throw new TypeError(
+      `optimizer region ${plan.id} has an invalid lowering contract`,
+    );
+  }
   if (!plan.operands || typeof plan.operands !== "object") {
     throw new TypeError(`optimizer region ${plan.id} has no operands`);
   }

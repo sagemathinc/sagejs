@@ -124,6 +124,7 @@ export const strictFloatRegionPass: OptimizationPass = {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
           passId: STRICT_FLOAT_REGION_PASS,
+          loweringId: "v8.strict-float-loop.v1",
           kind: "strict-float-region",
           operands: {
             ...operands,

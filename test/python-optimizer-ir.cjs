@@ -879,7 +879,8 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
       () => verifyInternalRegionPlan({
         schema: OPTIMIZER_IR_SCHEMA,
         id: "bad-operation",
-        passId: "test.bad.v1",
+        passId: CLOSED_RING_REGION_PASS,
+        loweringId: "v8.closed-ring-loop.v1",
         kind: "closed-ring-region",
         operands: {
           iteratorKind: "range",
@@ -910,6 +911,7 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
         schema: OPTIMIZER_IR_SCHEMA,
         id: "bad-power",
         passId: CLOSED_RING_REGION_PASS,
+        loweringId: "v8.closed-ring-loop.v1",
         kind: "closed-ring-region",
         operands: {
           iteratorKind: "range",

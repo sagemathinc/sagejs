@@ -148,6 +148,7 @@ export interface InternalRegionPlan {
   schema: typeof OPTIMIZER_IR_SCHEMA;
   id: string;
   passId: string;
+  loweringId: string;
   kind: string;
   operands: Record<string, any>;
 }

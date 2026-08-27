@@ -1,4 +1,5 @@
 import { optimizationLevelRank } from "./controls";
+import { verifyOptimizerLowering } from "./lowerings";
 import {
   OPTIMIZER_IR_SCHEMA,
   OptimizationCandidate,
@@ -68,6 +69,12 @@ export class OptimizerPassManager implements OptimizationPassContext {
     if (this.claimedNodes.has(candidate.node)) return;
     this.claimedNodes.add(candidate.node);
     verifyInternalRegionPlan(candidate.internal);
+    verifyOptimizerLowering(
+      this.compiler,
+      candidate.node,
+      candidate.internal,
+      candidate.decision,
+    );
     const reasons: string[] = [...(candidate.staticRejectionReasons ?? [])];
     if (this.controls.disabledPasses.has(candidate.decision.passId)) {
       reasons.push("pass-disabled");
