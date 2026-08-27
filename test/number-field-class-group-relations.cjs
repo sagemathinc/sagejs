@@ -55,6 +55,7 @@ from sagejs.number_fields.class_group_relations import (
     reconstruct_factor_base_ideal,
     reduce_ideal_over_base,
     verify_relation_record,
+    verify_relation_records,
 )
 
 fixture = json.loads(${JSON.stringify(JSON.stringify(fixture))})
@@ -528,8 +529,32 @@ assert live_verification == cold_verification == {"certified": True, "failures":
 assert live_reconstruction_rows == [
     source_relation.record.source_row,
     source_relation.record.quotient_row,
-    source_relation.record.row,
 ]
+batch_reconstruction_rows = []
+def batch_reconstructor(row):
+    batch_reconstruction_rows.append(tuple(row))
+    return reconstruct_factor_base_ideal(O, factor_base, row)
+assert verify_relation_records(
+    O,
+    factor_base,
+    (source_relation.record,),
+    reconstructor=batch_reconstructor,
+)
+assert batch_reconstruction_rows == live_reconstruction_rows
+cancel_checks = [0]
+def cancel_batch():
+    cancel_checks[0] += 1
+    return cancel_checks[0] >= 2
+assert not verify_relation_records(
+    O,
+    factor_base,
+    (source_relation.record, source_relation.record),
+    cancelled=cancel_batch,
+)
+assert cancel_checks[0] == 2
+assert not verify_relation_records(
+    O, tuple(reversed(factor_base)), (source_relation.record,)
+)
 assert factor_ideal_over_base(ramified ** -1, factor_base) == (0, -1)
 
 coefficients = case["nonsmooth_element_coefficients"]
@@ -551,6 +576,9 @@ mutated["witness"]["factors"][0]["element"][0][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
 mutated["source_row"][0] += 1
+mutations.append(mutated)
+mutated = json.loads(json.dumps(serialized[0]))
+mutated["quotient_row"][0] += 1
 mutations.append(mutated)
 mutated = json.loads(json.dumps(serialized[0]))
 mutated["norm_smoothness"]["principal_norm"][0] += 1

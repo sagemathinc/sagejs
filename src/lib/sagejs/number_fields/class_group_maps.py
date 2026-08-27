@@ -463,7 +463,7 @@ def _producer_conditional_evidence(
     if len(relations) != relation_count:
         raise ArithmeticError("conditional relation evidence has the wrong count")
     _module, _plan, plan_payload = _conditional_factor_base_plan(order, theorem, bound)
-    retained = None
+    retained: Any = None
     context = getattr(result, "context", None)
     consume = getattr(context, "_consume_live_public_generation_payload", None)
     if callable(consume):
@@ -473,18 +473,19 @@ def _producer_conditional_evidence(
         )
         token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
         retained = consume(token, result) if token is not None else None
+    retained_payload: dict[str, Any] = retained if isinstance(retained, dict) else {}
     retained_matches = bool(
-        isinstance(retained, dict)
-        and retained.get("proof_status") == EXACT_RELATIONS_CONDITIONAL_GRH
-        and retained.get("theorem") == theorem
-        and retained.get("bound") == bound
-        and tuple(retained.get("assumptions", ()))
+        retained_payload
+        and retained_payload.get("proof_status") == EXACT_RELATIONS_CONDITIONAL_GRH
+        and retained_payload.get("theorem") == theorem
+        and retained_payload.get("bound") == bound
+        and tuple(retained_payload.get("assumptions", ()))
         == ("GRH for the Dedekind zeta function",)
-        and isinstance(retained.get("factor_base"), list)
-        and len(retained["factor_base"]) == len(factor_base)
-        and isinstance(retained.get("relations"), list)
-        and len(retained["relations"]) == len(relations)
-        and isinstance(retained.get("presentation"), dict)
+        and isinstance(retained_payload.get("factor_base"), list)
+        and len(retained_payload["factor_base"]) == len(factor_base)
+        and isinstance(retained_payload.get("relations"), list)
+        and len(retained_payload["relations"]) == len(relations)
+        and isinstance(retained_payload.get("presentation"), dict)
     )
     body = {
         "schema": _CONDITIONAL_EVIDENCE_SCHEMA,
@@ -498,7 +499,7 @@ def _producer_conditional_evidence(
         "relation_count": relation_count,
         "factor_base_plan": plan_payload,
         "factor_base": (
-            list(retained["factor_base"])
+            list(retained_payload["factor_base"])
             if retained_matches
             else [
                 _canonical_payload(prime, "conditional factor-base prime")
@@ -506,7 +507,7 @@ def _producer_conditional_evidence(
             ]
         ),
         "relations": (
-            list(retained["relations"])
+            list(retained_payload["relations"])
             if retained_matches
             else [
                 _canonical_payload(record, "conditional relation record")
@@ -514,7 +515,7 @@ def _producer_conditional_evidence(
             ]
         ),
         "presentation": (
-            retained["presentation"]
+            retained_payload["presentation"]
             if retained_matches
             else _canonical_payload(presentation, "conditional relation presentation")
         ),
@@ -2156,6 +2157,7 @@ class _EngineProofReplayContext:
                 "FactorBaseIdealReconstructor",
                 "RelationRecord",
                 "reconstruct_factor_base_ideal",
+                "verify_relation_records",
             ],
         )
         matrix_module = __import__(
@@ -2266,16 +2268,16 @@ class _EngineProofReplayContext:
             relation = relation_module.RelationRecord.from_dict(payload)
             if relation.to_dict() != payload:
                 return False
-            verification = relation.verify(
-                self.order, factor_base, reconstructor=reconstructor
-            )
-            if (
-                not isinstance(verification, dict)
-                or verification.get("certified") is not True
-            ):
-                return False
             decoded_relations.append(relation)
         relations = tuple(decoded_relations)
+        if not relation_module.verify_relation_records(
+            self.order,
+            factor_base,
+            relations,
+            reconstructor=reconstructor,
+            cancelled=cancelled,
+        ):
+            return False
         if _cancelled(cancelled):
             return False
         presentation = matrix_module.RelationPresentation.from_dict(
