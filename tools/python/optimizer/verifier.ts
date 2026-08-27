@@ -326,7 +326,13 @@ function expressionStructuralKey(expression: any, versions?: number[]): string {
   if (expression.kind === "power") {
     return `power:${expression.exponent}(${expressionStructuralKey(expression.value, versions)})`;
   }
-  return `binary:${expression.operator}(${expressionStructuralKey(expression.left, versions)},${expressionStructuralKey(expression.right, versions)})`;
+  const left = expressionStructuralKey(expression.left, versions);
+  const right = expressionStructuralKey(expression.right, versions);
+  if (expression.operator === "+" || expression.operator === "*") {
+    const [first, second] = left <= right ? [left, right] : [right, left];
+    return `binary:${expression.operator}(${first},${second})`;
+  }
+  return `binary:${expression.operator}(${left},${right})`;
 }
 
 function collectExpressionSlots(expression: any, slots: Set<number>): void {
