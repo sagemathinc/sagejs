@@ -581,6 +581,25 @@
       "prefixes": []
     },
     {
+      "id": "sparse-modular-forms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": [
+        "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
+        "graph-theory", "modular-forms"
+      ],
+      "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
+      "files": [
+        "src/lib/sage/modular/ssmod/__init__.py",
+        "src/lib/sage/modular/ssmod/ssmod.py",
+        "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/sparse_hecke.py",
+        "src/lib/sagejs/modular_forms/supersingular.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "plot-spec",
       "layer": 2,
       "startup": "lazy",

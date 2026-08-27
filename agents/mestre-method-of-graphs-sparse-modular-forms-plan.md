@@ -2,8 +2,21 @@
 
 ## Status
 
-Design proposal only. No mathematical implementation, public API, package
-registration, or sparse storage type is part of this commit.
+Implementation is active. The first classical vertical slice now provides a
+public, lazily loaded `SupersingularModule(p)` for primes $p \geq 5$, exact
+$T_2$ discovery over $\operatorname{GF}(p^2)$, an immutable sparse operator,
+the mass-weighted graph view, and bounded dense materialization. Its focused
+corpus covers Sage's exact level-$37$ example, structural checks through
+$p=389$, and an independent Sage.js modular-symbol characteristic-polynomial
+comparison.
+
+The remaining first-slice portability gate is a uniform canonical
+power-basis-coordinate export for both finite-field backends. Exact equality
+currently defines point identity and no formatted representation is trusted,
+but cross-platform coordinate sorting must land before the basis digest is
+declared stable. General $T_\ell$, verified Krylov algorithms, Mestre
+reconstruction, and the Hilbert modules remain later implementation stages in
+this plan.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

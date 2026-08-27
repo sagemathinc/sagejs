@@ -11,6 +11,50 @@ from typing import Any
 import sagejs as sage
 import sagejs.runtime as runtime
 
+_supersingular_module_cache = runtime.undefined
+
+
+def _supersingular_module() -> Any:
+    """Load the sparse supersingular-module implementation lazily."""
+    global _supersingular_module_cache
+    if _supersingular_module_cache is runtime.undefined:
+        _supersingular_module_cache = __import__(
+            "sagejs.modular_forms.supersingular",
+            fromlist=["SupersingularModule"],
+        )
+    return _supersingular_module_cache
+
+
+def SupersingularModule(
+    characteristic: Any = 2,
+    level: Any = 1,
+    base_ring: Any = None,
+    dense_entry_limit: Any = 1000000,
+) -> Any:
+    """Construct the sparse level-one supersingular Brandt module.
+
+    The authoritative Hecke representation is sparse. Calling `matrix()` on
+    an operator is a bounded compatibility operation for small examples.
+
+    ```sage
+    sage: S = SupersingularModule(37)
+    sage: S.dimension()
+    3
+    sage: S.T(2) * vector(ZZ, [1, 1, 1])
+    (3, 3, 3)
+    ```
+
+    The initial implementation supports prime characteristic at least five,
+    auxiliary level one, and the $T_2$ operator.
+    """
+    module = _supersingular_module()
+    return module.SupersingularModule(
+        characteristic,
+        level,
+        base_ring,
+        dense_entry_limit=dense_entry_limit,
+    )
+
 
 def _native_p1_modules() -> tuple[Any, Any]:
     loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
@@ -5058,6 +5102,58 @@ runtime.register_doc(
                 "elimination and need a specialized cyclotomic-number-field "
                 "performance path."
             ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    "SupersingularModule",
+    SupersingularModule,
+    {
+        "kind": "function",
+        "module": "sage.modular.ssmod.ssmod",
+        "tags": [
+            "modular forms",
+            "supersingular elliptic curves",
+            "Brandt modules",
+            "Hecke operators",
+            "sparse matrices",
+            "isogeny graphs",
+        ],
+        "backends": [
+            "Sage.js exact finite-field arithmetic",
+            "Sage.js immutable sparse Hecke operators",
+        ],
+        "sage_compatibility": {
+            "status": "partial",
+            "notes": (
+                "Prime characteristic at least five, auxiliary level one, "
+                "and T_2 are supported. The Hecke operator itself is sparse; "
+                "dense matrix materialization is explicitly bounded."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "sage-derived",
+                "source": "SageMath supersingular modules",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/modfrm/"
+                    "sage/modular/ssmod/ssmod.html"
+                ),
+                "license": "GPL-2.0-or-later",
+            },
+            {
+                "kind": "sagejs-original",
+                "source": (
+                    "Immutable CSR Hecke operator, mass-weighted graph view, "
+                    "and bounded dense compatibility layer"
+                ),
+            },
+        ],
+        "limitations": [
+            "Characteristics 2 and 3 are not implemented.",
+            "Auxiliary levels greater than one are not implemented.",
+            "Only T_2 is implemented in the initial slice.",
         ],
     },
 )
