@@ -400,11 +400,13 @@ def print_for_in(self, output):
     print_loop_else(self, output)
 
 
-def _field_operation_mask(operations):
+def _field_operation_mask(operations, streaming=False):
     bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16}
     answer = 0
     for operation in operations:
         answer |= bits[operation]
+    if streaming:
+        answer |= 32
     return answer
 
 
@@ -435,11 +437,84 @@ def _print_region_expression(
     output,
     counter,
     suffix,
+    streaming=False,
 ):
     if expression.kind == "slot":
         return slot_names[expression.slot]
     if expression.kind == "sequence":
         base = context_name + ".sequences[" + str(expression.sequence) + "]"
+        if streaming:
+            element = _region_temp(counter, suffix)
+            _print_region_variable(output, element, base + "[" + index_name + "]")
+            valid = (
+                context_name
+                + ".elementBrand.has("
+                + element
+                + ") && "
+                + element
+                + "._parent === "
+                + context_name
+                + ".parent && Object.getPrototypeOf("
+                + element
+                + ") === "
+                + context_name
+                + ".prototype"
+            )
+            if representation == "prime":
+                valid += (
+                    " && Number.isInteger("
+                    + element
+                    + "._value) && "
+                    + element
+                    + "._value >= 0 && "
+                    + element
+                    + "._value < "
+                    + modulus_name
+                )
+            else:
+                coordinates = element + "._machineCoordinates"
+                valid += (
+                    " && Array.isArray("
+                    + coordinates
+                    + ") && Object.isFrozen("
+                    + coordinates
+                    + ") && "
+                    + coordinates
+                    + ".length === "
+                    + str(degree)
+                )
+                for component in range(degree):
+                    coordinate = coordinates + "[" + str(component) + "]"
+                    valid += (
+                        " && Number.isInteger("
+                        + coordinate
+                        + ") && "
+                        + coordinate
+                        + " >= 0 && "
+                        + coordinate
+                        + " < "
+                        + modulus_name
+                    )
+            output.indent()
+            output.print("if (!(" + valid + "))")
+            output.space()
+
+            def reject_stream_element():
+                output.indent()
+                output.assign("ρσ_FieldStreamValid" + suffix)
+                output.print("false")
+                output.end_statement()
+                output.indent()
+                output.print("break")
+                output.end_statement()
+
+            output.with_block(reject_stream_element)
+            if representation == "prime":
+                return element + "._value"
+            return [
+                element + "._machineCoordinates[" + str(component) + "]"
+                for component in range(degree)
+            ]
         if representation == "prime":
             return base + "[" + index_name + "]"
         return [
@@ -466,6 +541,7 @@ def _print_region_expression(
             output,
             counter,
             suffix,
+            streaming,
         )
         if representation == "prime":
             result = _region_temp(counter, suffix)
@@ -504,6 +580,7 @@ def _print_region_expression(
         output,
         counter,
         suffix,
+        streaming,
     )
     right = _print_region_expression(
         expression.right,
@@ -517,6 +594,7 @@ def _print_region_expression(
         output,
         counter,
         suffix,
+        streaming,
     )
     operator = expression.operator
     if representation == "prime":
@@ -663,6 +741,7 @@ def _print_region_statements(
     output,
     counter,
     suffix,
+    streaming=False,
 ):
     for statement in statements:
         if statement.kind == "assign":
@@ -678,6 +757,7 @@ def _print_region_statements(
                 output,
                 counter,
                 suffix,
+                streaming,
             )
             targets = slot_names[statement.target]
             if representation == "prime":
@@ -705,6 +785,7 @@ def _print_region_statements(
             output,
             counter,
             suffix,
+            streaming,
         )
         right = _print_region_expression(
             statement.condition.right,
@@ -718,6 +799,7 @@ def _print_region_statements(
             output,
             counter,
             suffix,
+            streaming,
         )
         if representation == "prime":
             condition = left + " === " + right
@@ -743,6 +825,7 @@ def _print_region_statements(
                 output,
                 counter,
                 suffix,
+                streaming,
             )
 
         output.with_block(consequent)
@@ -764,9 +847,29 @@ def _print_region_statements(
                     output,
                     counter,
                     suffix,
+                    streaming,
                 )
 
             output.with_block(alternative)
+
+
+def _print_closed_field_fallback(self, output, plan, names):
+    fallback_value = "ρσ_FieldFallback" + names["suffix"]
+    output.indent()
+    output.print("for")
+    output.space()
+    if plan.iteratorKind == "range":
+        output.print(
+            "(var " + fallback_value + " of ρσ_Iterable(" + names["range"] + "))"
+        )
+    else:
+        output.print(
+            "(var " + fallback_value + " of ρσ_Iterable(" + names["iterable"] + "))"
+        )
+    output.space()
+    self.simple_for_index = fallback_value
+    self._do_print_body(output)
+    output.newline()
 
 
 def _print_closed_field_fast_path(self, output, plan, names, representation, degree=1):
@@ -776,6 +879,7 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
     suffix = names["suffix"]
     modulus_name = names["modulus"]
     modulus_coefficients_name = names["modulus_coefficients"]
+    streaming = plan.affine is not None and plan.affine.kind == "sequence-increment"
     if representation == "extension":
         modulus_coefficients_name = []
         for component in range(degree):
@@ -813,6 +917,9 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                 coordinates.append(name)
             slot_names.append(coordinates)
 
+    if streaming:
+        _print_region_variable(output, "ρσ_FieldStreamValid" + suffix, "true")
+
     output.indent()
     output.print("for")
     output.space()
@@ -842,11 +949,16 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             output,
             [0],
             suffix,
+            streaming,
         )
 
     output.with_block(body)
     output.indent()
-    output.print("if (" + count_name + " > 0)")
+    output.print(
+        "if ("
+        + ("ρσ_FieldStreamValid" + suffix if streaming else count_name + " > 0")
+        + ")"
+    )
     output.space()
 
     def materialize():
@@ -867,6 +979,15 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                 output.print("]")
             output.print(")")
             output.end_statement()
+        if streaming:
+            output.indent()
+            output.assign(context_name + ".parent._lastCompilerOptimizationRoute")
+            output.print(
+                "'v8-number-residue-stream'"
+                if representation == "prime"
+                else "'v8-extension-tuple-stream'"
+            )
+            output.end_statement()
         output.indent()
         output.assign(self.init)
         if plan.iteratorKind == "range":
@@ -875,7 +996,18 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             output.print(names["iterable"] + "[" + count_name + " - 1]")
         output.end_statement()
 
-    output.with_block(materialize)
+    if streaming:
+        output.with_block(materialize)
+        output.space()
+        output.print("else")
+        output.space()
+
+        def streaming_fallback():
+            _print_closed_field_fallback(self, output, plan, names)
+
+        output.with_block(streaming_fallback)
+    else:
+        output.with_block(materialize)
 
 
 def print_closed_field_region(self, output):
@@ -948,7 +1080,15 @@ def print_closed_field_region(self, output):
         output.print("],")
         output.print(names["count"])
         output.comma()
-        output.print(str(_field_operation_mask(plan.operations)))
+        output.print(
+            str(
+                _field_operation_mask(
+                    plan.operations,
+                    plan.affine is not None
+                    and plan.affine.kind == "sequence-increment",
+                )
+            )
+        )
         output.print(")")
         output.end_statement()
         output.indent()
@@ -1022,7 +1162,7 @@ def print_closed_field_region(self, output):
 
                 output.with_block(extension)
 
-            if plan.affine:
+            if plan.affine and plan.affine.kind == "fixed-increment":
                 adaptive_result = "ρσ_FieldAdaptiveResult" + suffix
                 accumulator = plan.slots[plan.affine.accumulatorSlot]
                 multiplier = plan.slots[plan.affine.multiplierSlot]
@@ -1069,30 +1209,7 @@ def print_closed_field_region(self, output):
         output.space()
 
         def fallback():
-            fallback_value = "ρσ_FieldFallback" + suffix
-            output.indent()
-            output.print("for")
-            output.space()
-            if plan.iteratorKind == "range":
-                output.print(
-                    "(var "
-                    + fallback_value
-                    + " of ρσ_Iterable("
-                    + names["range"]
-                    + "))"
-                )
-            else:
-                output.print(
-                    "(var "
-                    + fallback_value
-                    + " of ρσ_Iterable("
-                    + names["iterable"]
-                    + "))"
-                )
-            output.space()
-            self.simple_for_index = fallback_value
-            self._do_print_body(output)
-            output.newline()
+            _print_closed_field_fallback(self, output, plan, names)
 
         output.with_block(fallback)
 

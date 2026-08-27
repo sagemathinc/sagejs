@@ -883,3 +883,27 @@ handwritten JavaScript and roughly 1,600--2,200 times faster than the projected
 generic object path.  The coarse native target is exact and independently
 useful, but V8 wins this small-word workload.  This is the intended cost-model
 outcome rather than a fixed preference for a particular backend.
+
+The next refinement generalized the affine witness from a fixed increment to
+an increment drawn from the loop's guarded immutable sequence.  This covers
+ordinary Horner evaluation without adding a Horner- or polynomial-named
+recognizer.  The verifier distinguishes the two dataflow shapes; fixed
+increments remain eligible for adaptive native/Wasm lowering, while sequence
+increments select a transactional V8 target.  That target validates each
+coefficient immediately before use, retains all evolving coordinates only in
+primitive scalar locals, and materializes public state only after the entire
+region succeeds.  If a late guard fails, it discards those private locals and
+restarts the untouched generic loop, preserving Python exceptions and loop
+effects without a partial commit.
+
+This also removed an important representation cost.  General operation graphs
+still prepack reusable sequence prefixes, but a single-use affine sequence is
+now consumed without allocating or retaining a duplicate coordinate buffer.
+`bench/optimizer-field-horner.cjs` independently checks degrees three and four
+against O0 and matched scalar JavaScript.  At 200,000 coefficients on the
+reference Node/V8 host, guarded public execution takes about 68 ms and 98 ms,
+respectively, versus projected generic-object times of about 13.9 s and 15.9 s.
+The measured scalar-JavaScript lower bounds are about 26 ms and 39 ms, making
+the remaining brand, parent, prototype, and coordinate guards visible rather
+than hiding them in a headline speedup.  Both routes retain zero native
+resources and the late-invalid-element differential proves exact restart.
