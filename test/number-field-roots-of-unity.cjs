@@ -2,20 +2,20 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
-const sagejs = process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
 
 function run(source, timeout = 120_000) {
-  const result = spawnSync(sagejs, ["--python", "-"], {
+  const result = spawnSagejsSync(root, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
     timeout,
   });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return result.stdout.trim();
 }

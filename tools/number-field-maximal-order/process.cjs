@@ -1,12 +1,16 @@
 "use strict";
 
 const { accessSync, constants, readFileSync } = require("node:fs");
-const { delimiter } = require("node:path");
+const { delimiter, isAbsolute, join } = require("node:path");
 const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const readline = require("node:readline");
 
 function resolveExecutable(command, env = process.env) {
-  if (command.includes("/")) {
+  if (
+    isAbsolute(command) ||
+    command.includes("/") ||
+    command.includes("\\")
+  ) {
     try {
       accessSync(command, constants.X_OK);
       return command;
@@ -15,7 +19,7 @@ function resolveExecutable(command, env = process.env) {
     }
   }
   for (const directory of String(env.PATH || "").split(delimiter)) {
-    const candidate = `${directory}/${command}`;
+    const candidate = join(directory, command);
     try {
       accessSync(candidate, constants.X_OK);
       return candidate;

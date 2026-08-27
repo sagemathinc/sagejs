@@ -7,19 +7,18 @@ const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const test = require("node:test");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const combineSource = process.env.SAGEJS_GLOBAL_ARITHMETIC_COMBINED === "1";
-const sagejs =
-  process.env.SAGEJS_TEST_EXECUTABLE ||
-  (combineSource
-    ? join(
-        root,
-        "build",
-        "sea",
-        process.platform === "win32" ? "sagejs.exe" : "sagejs",
-      )
-    : join(root, "bin", "sagejs"));
+const configuredSagejs = combineSource
+  ? join(
+      root,
+      "build",
+      "sea",
+      process.platform === "win32" ? "sagejs.exe" : "sagejs",
+    )
+  : process.env.SAGEJS_TEST_EXECUTABLE;
 
 function combinedSource(source) {
   const directory = join(root, "src", "lib", "sagejs", "number_fields");
@@ -45,11 +44,21 @@ function run(source) {
   try {
     const filename = directory === null ? "-" : join(directory, "test.py");
     if (directory !== null) writeFileSync(filename, combinedSource(source));
-    const result = spawnSync(sagejs, ["--python", filename], {
+    const environment = configuredSagejs
+      ? { ...process.env, SAGEJS_TEST_EXECUTABLE: configuredSagejs }
+      : process.env;
+    const [command, commandArguments] = sagejsInvocation(
+      root,
+      ["--python", filename],
+      environment,
+    );
+    const result = spawnSync(command, commandArguments, {
       cwd: root,
       encoding: "utf8",
+      env: environment,
       input: directory === null ? source : undefined,
     });
+    if (result.error) throw result.error;
     assert.equal(result.status, 0, result.stderr || result.stdout);
     return result.stdout.trim();
   } finally {

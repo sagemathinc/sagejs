@@ -11,7 +11,10 @@ const ROOT = resolve(__dirname, "..");
 const MANIFEST = resolve(ROOT, "bench/number-field-maximal-order-manifest.json");
 const CLI = resolve(ROOT, "tools/number-field-maximal-order/cli.cjs");
 const { canonicalBasis, polynomialDigest } = require("../tools/number-field-maximal-order/exact.cjs");
-const { PersistentLineProcess } = require("../tools/number-field-maximal-order/process.cjs");
+const {
+  PersistentLineProcess,
+  resolveExecutable,
+} = require("../tools/number-field-maximal-order/process.cjs");
 const {
   loadManifest,
   reportMarkdown,
@@ -94,6 +97,7 @@ test("independent verification checks containment, closure, index, and discrimin
 });
 
 test("persistent subprocesses expose unavailable and timeout states", async () => {
+  assert.equal(resolveExecutable(process.execPath), process.execPath);
   const unavailable = new PersistentLineProcess({
     name: "missing",
     command: "/definitely/not/a/maximal-order-oracle",

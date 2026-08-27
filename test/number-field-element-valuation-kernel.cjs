@@ -7,12 +7,24 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
 
 function run(executable, args, source, timeout = 120_000) {
   const result = spawnSync(executable, args, {
+    cwd: root,
+    encoding: "utf8",
+    input: source,
+    timeout,
+  });
+  if (result.error) throw result.error;
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
+function runSagejs(source, timeout = 120_000) {
+  const result = spawnSagejsSync(root, ["--python", "-"], {
     cwd: root,
     encoding: "utf8",
     input: source,
@@ -67,16 +79,14 @@ test("batched lattice membership matches in CPython and compiled Sage.js", () =>
     ["-c", `import sys; sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})\n${kernelDifferential}`],
     "",
   );
-  const output = run(
-    sagejs,
-    ["--python", "-"],
+  const output = runSagejs(
     `${kernelDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(packed))\n`,
   );
   assert.equal(output, "True");
 });
 
 test("packed element valuations agree with exact lattice membership", () => {
-  const output = run(sagejs, ["--python", "-"], String.raw`
+  const output = runSagejs(String.raw`
 import sagejs.number_fields.ideal_arithmetic as ideals
 import sagejs.runtime as runtime
 from sagejs.number_fields.class_group_relations import ExactRelationCollector
