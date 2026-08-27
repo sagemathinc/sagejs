@@ -511,6 +511,7 @@ test("unclosed generated resources are reclaimed by the V8 finalizer", {
   const source = `
 const m4ri = require(${JSON.stringify(root)});
 (async () => {
+  let warmedResidentMiB = 0;
   for (let batch = 0; batch < 10; batch += 1) {
     for (let index = 0; index < 20; index += 1) {
       // Large allocations bypass libc's small-block arenas, so RSS distinguishes
@@ -522,16 +523,23 @@ const m4ri = require(${JSON.stringify(root)});
     // gc() call. Give their queue an event-loop turn before allocating the next
     // wave, otherwise this test measures delayed scheduling rather than leaks.
     await new Promise(setImmediate);
+    if (batch === 1) {
+      warmedResidentMiB = process.memoryUsage().rss / (1024 * 1024);
+    }
   }
   global.gc();
   await new Promise(setImmediate);
   const residentMiB = process.memoryUsage().rss / (1024 * 1024);
-  // Darwin's allocator retains a somewhat larger post-GC high-water mark than
-  // glibc even after the native matrices are freed. The unreclaimed failure
-  // mode is over 400 MiB for this workload; 192 MiB leaves allocator headroom
-  // while still distinguishing that leak by more than a factor of two.
-  if (residentMiB > 192) {
-    throw new Error(\`M4RI finalizers left \${residentMiB.toFixed(1)} MiB resident\`);
+  // Compare steady-state growth after two warmup waves instead of imposing an
+  // absolute RSS ceiling. Darwin allocators may retain very different arena
+  // high-water marks across otherwise identical runners; an unreclaimed
+  // resource still grows by roughly 320 MiB over the remaining eight waves.
+  const growthMiB = residentMiB - warmedResidentMiB;
+  if (growthMiB > 128) {
+    throw new Error(
+      \`M4RI finalizers grew RSS by \${growthMiB.toFixed(1)} MiB after warmup \` +
+      \`(\${warmedResidentMiB.toFixed(1)} -> \${residentMiB.toFixed(1)} MiB)\`,
+    );
   }
 })().catch((error) => {
   console.error(error);
