@@ -113,12 +113,15 @@ function closeTwice(resource, close) {
     return elapsed;
   }
   const median = (values) => [...values].sort((left, right) => left - right)[1];
+  // A 4x size separation leaves enough room for scheduler noise while still
+  // distinguishing linear retained-size updates from an accidental quadratic
+  // scan (expected ratios near 4 and 16 respectively).
   fill(40_000);
-  const small = median([fill(20_000), fill(20_000), fill(20_000)]);
+  const small = median([fill(10_000), fill(10_000), fill(10_000)]);
   const large = median([fill(40_000), fill(40_000), fill(40_000)]);
   assert.ok(
-    large / small < 3.2,
-    `per-entry retained-size updates regressed: 2x input took ${large / small}x`,
+    large / small < 10,
+    `per-entry retained-size updates regressed: 4x input took ${large / small}x`,
   );
 }
 

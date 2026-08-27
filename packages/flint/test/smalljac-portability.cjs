@@ -85,6 +85,37 @@ function windowsCompilerRun(args) {
     );
   }
   candidates.push("C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat");
+  const programFilesX86 = process.env["ProgramFiles(x86)"];
+  if (programFilesX86) {
+    const vswhere = join(
+      programFilesX86,
+      "Microsoft Visual Studio",
+      "Installer",
+      "vswhere.exe",
+    );
+    if (existsSync(vswhere)) {
+      const result = spawnSync(vswhere, [
+        "-latest",
+        "-products",
+        "*",
+        "-requires",
+        "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-property",
+        "installationPath",
+      ], { encoding: "utf8" });
+      if (result.status === 0 && result.stdout.trim()) {
+        candidates.push(
+          join(
+            result.stdout.trim(),
+            "VC",
+            "Auxiliary",
+            "Build",
+            "vcvars64.bat",
+          ),
+        );
+      }
+    }
+  }
   const vcvars = candidates.find((candidate) => existsSync(candidate));
   assert.ok(vcvars, "Visual Studio vcvars64.bat is required on Windows");
   const compiler = process.env.CC || "clang-cl.exe";
