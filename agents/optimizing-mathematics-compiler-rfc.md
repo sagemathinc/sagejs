@@ -1016,10 +1016,19 @@ clears availability, so a value computed on only one path is never reused after
 the branch.  The recognizer, independent verifier, code-size estimator, and
 emitter implement the same version transition rules.
 
-`bench/optimizer-cross-statement-commoning.cjs` exercises a two-moment loop over
-both `Zmod(1009)` and `GF(5^3)`.  It checks exact results against independent
-JavaScript coordinate oracles, compares with a matched O0 prefix, ratchets the
-selected representation route, and requires zero retained native resources.
+`bench/optimizer-cross-statement-commoning.cjs` exercises a two-accumulator
+symmetric product loop over both `Zmod(1009)` and `GF(5^3)`.  It checks exact
+results against independent JavaScript coordinate oracles, compares with a
+matched O0 prefix, ratchets the selected representation route, and requires
+zero retained native resources.
+
+Value-numbering keys also use the guarded mathematical fact that these parents
+are commutative rings.  Binary addition and multiplication keys sort their two
+already-versioned operands, so `x*y` and `y*x` share a primitive result.  The
+first expression still evaluates in source order; this does not reorder Python
+effects.  Subtraction keys remain ordered, and no reassociation is performed.
+The recognizer, verifier, cost model, code-size model, and emitter independently
+apply the same narrow canonicalization.
 
 The region data-flow proof now distinguishes loop live-ins, modified live-outs,
 and iteration-local slots.  A local is admitted without an entry value only if

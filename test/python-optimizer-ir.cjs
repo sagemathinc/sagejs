@@ -440,6 +440,44 @@ def partial(values, zero, pivot):
   }
 });
 
+test("value numbering uses guarded commutativity but preserves subtraction order", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def symmetric(left_values, right_values, zero):
+    left = zero
+    right = zero
+    for x, y in zip(left_values, right_values):
+        left = left+x*y
+        right = right+y*x
+    return left, right
+
+def ordered(left_values, right_values, zero):
+    left = zero
+    right = zero
+    for x, y in zip(left_values, right_values):
+        left = left+(x-y)
+        right = right+(y-x)
+    return left, right
+`, optimizerOptions());
+    const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.operationCost),
+      [3, 4],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.targetCodeBytes),
+      [6144, 3072],
+    );
+    for (const plan of plans) {
+      assert.doesNotThrow(() => verifyInternalRegionPlan(plan));
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
 test("compact powers respect the advertised outlined-target code budget", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");

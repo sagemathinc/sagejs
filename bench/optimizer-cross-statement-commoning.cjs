@@ -33,8 +33,9 @@ function extensionMultiply(left, right) {
 function residueOracle(iterations) {
   let answer = 0;
   for (let index = 0; index < iterations; index += 1) {
-    const value = (index * index + 3) % 1009;
-    answer = (answer + value * value) % 1009;
+    const left = (index * index + 3) % 1009;
+    const right = (index * index * index + 7) % 1009;
+    answer = (answer + left * right) % 1009;
   }
   return [answer, answer];
 }
@@ -42,8 +43,9 @@ function residueOracle(iterations) {
 function cubicOracle(iterations) {
   let answer = [0, 0, 0];
   for (let index = 0; index < iterations; index += 1) {
-    const value = [index % 5, (index + 1) % 5, (index * index + 2) % 5];
-    const square = extensionMultiply(value, value);
+    const left = [index % 5, (index + 1) % 5, (index * index + 2) % 5];
+    const right = [(index + 2) % 5, (index * index + 3) % 5, (index * index * index + 1) % 5];
+    const square = extensionMultiply(left, right);
     answer = answer.map((component, position) =>
       (component + square[position]) % 5);
   }
@@ -60,6 +62,7 @@ const cases = [
       return `
 R=Zmod(1009)
 values=tuple(R(index^2+3) for index in range(${iterations}))
+other=tuple(R(index^3+7) for index in range(${iterations}))
 zero=R(0)
 parent=R`;
     },
@@ -75,6 +78,7 @@ P.<x>=PolynomialRing(GF(5))
 K.<a>=GF(5^3, modulus=x^3+x+1)
 aa=a*a
 values=tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(${iterations}))
+other=tuple(K(index+2)+((index^2+3)%5)*a+((index^3+1)%5)*aa for index in range(${iterations}))
 zero=K(0)
 parent=K`;
     },
@@ -96,17 +100,17 @@ function source(item, iterations, label) {
   return `
 import time
 ${item.setup(iterations)}
-def moment_pair(values, zero):
+def moment_pair(values, other, zero):
     left=zero
     right=zero+zero
-    for item in values:
-        left=left+item*item
-        right=right+item*item
+    for x,y in zip(values,other):
+        left=left+x*y
+        right=right+y*x
     return left,right
-moment_pair(values,zero)
+moment_pair(values,other,zero)
 for sample in range(${samples}):
     started=time.time()
-    left,right=moment_pair(values,zero)
+    left,right=moment_pair(values,other,zero)
     print('${label}',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))
 print('resources',len(parent._nativeResourceChildren) if hasattr(parent,'_nativeResourceChildren') else 0)
 `;

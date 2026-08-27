@@ -107,7 +107,13 @@ function expressionStructuralKey(
   if (value.kind === "power") {
     return `power:${value.exponent}(${expressionStructuralKey(value.value, versions)})`;
   }
-  return `binary:${value.operator}(${expressionStructuralKey(value.left, versions)},${expressionStructuralKey(value.right, versions)})`;
+  const left = expressionStructuralKey(value.left, versions);
+  const right = expressionStructuralKey(value.right, versions);
+  if (value.operator === "+" || value.operator === "*") {
+    const [first, second] = left <= right ? [left, right] : [right, left];
+    return `binary:${value.operator}(${first},${second})`;
+  }
+  return `binary:${value.operator}(${left},${right})`;
 }
 
 function expressionOperationCost(

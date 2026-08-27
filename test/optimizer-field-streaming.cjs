@@ -567,3 +567,47 @@ print(selected(cubic_values, K(0), cubic_values[129]), K._lastCompilerOptimizati
     await Promise.all([optimized.close(), generic.close()]);
   }
 });
+
+test("commuted products share values only after the commutative parent guard", async () => {
+  const source = String.raw`
+def symmetric(left_values, right_values, zero):
+    left = zero
+    right = zero + zero
+    for x, y in zip(left_values, right_values):
+        left = left+x*y
+        right = right+y*x
+    return left, right
+
+R = Zmod(1009)
+prime_left = tuple(R(index^2+3) for index in range(257))
+prime_right = tuple(R(index^3+7) for index in range(257))
+R._lastCompilerOptimizationRoute = 'generic'
+print(symmetric(prime_left, prime_right, R(0)), R._lastCompilerOptimizationRoute)
+
+P.<t> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=t^3+t+1)
+aa = a*a
+cubic_left = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(257))
+cubic_right = tuple(K(index+2)+((index^2+3)%5)*a+((index^3+1)%5)*aa for index in range(257))
+K._lastCompilerOptimizationRoute = 'generic'
+print(symmetric(cubic_left, cubic_right, K(0)), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic"),
+      slow.stdout,
+    );
+    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 1);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 1);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});

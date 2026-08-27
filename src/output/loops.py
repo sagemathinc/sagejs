@@ -539,15 +539,12 @@ def _region_expression_key(expression, slot_versions=None):
             + _region_expression_key(expression.value, slot_versions)
             + ")"
         )
-    return (
-        "binary:"
-        + expression.operator
-        + "("
-        + _region_expression_key(expression.left, slot_versions)
-        + ","
-        + _region_expression_key(expression.right, slot_versions)
-        + ")"
-    )
+    left = _region_expression_key(expression.left, slot_versions)
+    right = _region_expression_key(expression.right, slot_versions)
+    if expression.operator == "+" or expression.operator == "*":
+        if right < left:
+            left, right = right, left
+    return "binary:" + expression.operator + "(" + left + "," + right + ")"
 
 
 def _print_region_expression(
