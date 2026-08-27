@@ -37,6 +37,32 @@ def PythonInt.add (left right : PythonInt) : PythonInt := ⟨left.value + right.
 
 def SageZZ.add (left right : SageZZ) : SageZZ := ⟨left.value + right.value⟩
 
+/--
+Reading a result into a number system.
+
+Parameterizing on the system is the point: a theorem then has to say which
+integers, or which real field, it is about, and two systems that disagree
+cannot be proved about by accident.
+-/
+def Result.read {System : Type} (read : JsValue → Option System) : Result → Option System
+  | .ok value => read value
+  | .typeError _ => none
+  | .unsupported _ => none
+
+/--
+Soundness of a runtime operation against a specification **in a named system**.
+
+Read both operands into the system, do the operation there, and the runtime's
+result must read back as that answer.  Nothing is said about representation, so
+it holds whichever way an integer was stored -- and everything is said about
+which system's rules are being claimed.
+-/
+def Sound {System : Type} (read : JsValue → Option System)
+    (op : JsValue → JsValue → Result) (spec : System → System → System) : Prop :=
+  ∀ (left right : JsValue) (x y : System),
+    read left = some x → read right = some y →
+      (op left right).read read = some (spec x y)
+
 /-- Reading a runtime value as a Python `int`. -/
 def toPythonInt (value : JsValue) : Option PythonInt :=
   (denote value).map PythonInt.mk
@@ -45,31 +71,46 @@ def toPythonInt (value : JsValue) : Option PythonInt :=
 def toSageZZ (value : JsValue) : Option SageZZ :=
   (denote value).map SageZZ.mk
 
-/--
-The runtime's addition agrees with Python's `int` addition.
+/-- Reading a result as a Python `int` is reading its denotation as one. -/
+theorem Result.read_toPythonInt (result : Result) :
+    result.read toPythonInt = result.denote.map PythonInt.mk := by
+  cases result <;> rfl
 
-This is `addExact_sound` again, said in the vocabulary of the system it is
-about: read the operands as Python integers, add them there, and the runtime
-gives back a value that reads as the same integer.
+/-- And the same for Sage's `ZZ`. -/
+theorem Result.read_toSageZZ (result : Result) :
+    result.read toSageZZ = result.denote.map SageZZ.mk := by
+  cases result <;> rfl
+
+/--
+**The addition is sound for Python's integers.**
+
+For any two values that read as Python `int`s -- in either representation, in
+either order, booleans included, at any magnitude -- the runtime's sum reads
+back as the `int` Python would give.  The runtime lacked this until #66: a
+boolean operand reached a branch with no safe-integer recovery, so
+`True + (2^53 - 1)` came back a float.
 -/
-theorem addExact_agrees_with_python {left right : JsValue} {x y : PythonInt}
-    (hleft : toPythonInt left = some x) (hright : toPythonInt right = some y) :
-    (operatorAddExact left right).denote.map PythonInt.mk = some (x.add y) := by
+theorem addExact_sound_python : Sound toPythonInt operatorAddExact PythonInt.add := by
+  intro left right x y hleft hright
   simp only [toPythonInt, Option.map_eq_some_iff] at hleft hright
   obtain ⟨a, ha, rfl⟩ := hleft
   obtain ⟨b, hb, rfl⟩ := hright
-  rw [addExact_sound left right a b ha hb]
+  rw [Result.read_toPythonInt, addExact_denote left right a b ha hb]
   rfl
 
-/-- And with Sage's `ZZ` addition, which is the same statement because the two
-systems really are the same ring. -/
-theorem addExact_agrees_with_sageZZ {left right : JsValue} {x y : SageZZ}
-    (hleft : toSageZZ left = some x) (hright : toSageZZ right = some y) :
-    (operatorAddExact left right).denote.map SageZZ.mk = some (x.add y) := by
+/--
+**The addition is sound for Sage's `ZZ`.**
+
+The same statement in the other system.  It is the same proof because `ZZ` and
+Python's `int` really are the same ring -- which is a fact about those two
+systems, not a licence to assume it of the next pair.
+-/
+theorem addExact_sound_sageZZ : Sound toSageZZ operatorAddExact SageZZ.add := by
+  intro left right x y hleft hright
   simp only [toSageZZ, Option.map_eq_some_iff] at hleft hright
   obtain ⟨a, ha, rfl⟩ := hleft
   obtain ⟨b, hb, rfl⟩ := hright
-  rw [addExact_sound left right a b ha hb]
+  rw [Result.read_toSageZZ, addExact_denote left right a b ha hb]
   rfl
 
 /-! ## The real fields, which do not collapse

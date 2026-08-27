@@ -6,10 +6,9 @@ import SageSemantics.Spec.Abstraction
 The property wanted of every exact-integer operation: whatever representation
 the operands arrived in, the result denotes the mathematical answer.
 
-`addExact_sound` establishes it for the addition.  The property is worth
-stating carefully: it quantifies over the *denotations*, so it holds whichever
-representation an integer arrived in, which is exactly what a corpus of
-examples cannot establish.
+What is proved here is stated in Lean's `Int`, which is nobody's integers in
+particular.  It is the lemma the real claims rest on; `Spec/Systems.lean` names
+the system -- Python's `int`, Sage's `ZZ` -- and states soundness there.
 -/
 
 namespace SageSemantics
@@ -19,18 +18,6 @@ def Result.denote : Result → Option Int
   | .ok value => SageSemantics.denote value
   | .typeError _ => none
   | .unsupported _ => none
-
-/--
-Soundness of a binary operation against its specification on ℤ.
-
-Read it as: on any two values that denote integers, the operation denotes the
-integer the specification names.  Nothing is said about representation, which
-is what makes it the right property -- the runtime may store an integer either
-way and must still be right.
--/
-def Sound (op : JsValue → JsValue → Result) (spec : Int → Int → Int) : Prop :=
-  ∀ (left right : JsValue) (x y : Int),
-    ⟦left⟧ = some x → ⟦right⟧ = some y → (op left right).denote = some (spec x y)
 
 /-- Normalizing a boolean does not change what it means. -/
 theorem denote_normalizeBool (value : JsValue) :
@@ -167,16 +154,18 @@ theorem core_sound {left right : JsValue} {x y : Int}
     · subst hr; exact core_sound_num_num hlmin hlmax hrmin hrmax
 
 /--
-**The addition is sound.**
+The addition is faithful to the abstraction.
 
 For any two values that denote integers -- in either representation, in either
 order, booleans included, at any magnitude -- the sum denotes the integer sum.
-The runtime lacked this property until #66: a boolean operand reached a branch
-with no safe-integer recovery, so `True + (2^53 - 1)` came back a float.  It
-now holds for every input, rather than for the ones a corpus happened to try.
+
+This is the lemma, not the claim: it is stated in Lean's `Int`, which is nobody
+in particular.  `Spec/Systems.lean` says which number system is meant, and the
+theorems worth quoting are the ones there.
 -/
-theorem addExact_sound : Sound operatorAddExact (· + ·) := by
-  intro left right x y hleft hright
+theorem addExact_denote (left right : JsValue) (x y : Int)
+    (hleft : ⟦left⟧ = some x) (hright : ⟦right⟧ = some y) :
+    (operatorAddExact left right).denote = some (x + y) := by
   unfold operatorAddExact
   exact core_sound
     (by rw [denote_normalizeBool]; exact hleft)

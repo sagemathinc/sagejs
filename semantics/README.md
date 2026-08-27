@@ -42,7 +42,8 @@ $ LEAN_PATH=.lake/build/lib/lean lean -e '#print axioms SageSemantics.addExact_n
 | `SageSemantics/Js/Value.lean` | The JavaScript fragment: storage kinds, safe integers, what `+` does to two doubles, and the binary64 grid that decides when an integer sum stops being exact |
 | `SageSemantics/Model/Integers.lean` | The runtime's own algorithms, transliterated branch for branch from `src/baselib/builtins.py` and `src/baselib/algebra.py`, with each source function named above its model |
 | `SageSemantics/Spec/Abstraction.lean` | `⟦·⟧`, the integer a value denotes — partial, and defined exactly where the runtime's own `exactIntegerPrimitive` is |
-| `SageSemantics/Spec/Theorems.lean` | Agreement between the two |
+| `SageSemantics/Spec/Theorems.lean` | Agreement between the two, stated in Lean's `Int` |
+| `SageSemantics/Spec/Systems.lean` | The number systems kept apart — `PythonInt`, `SageZZ`, and why the real fields cannot be collapsed the same way |
 
 ## The representation being modeled
 
@@ -69,10 +70,12 @@ the error appears one operation later.
   rounded**, which is what makes the runtime's window test a sound test.
 - `core_sound_bigint_bigint`, `core_sound_bigint_num`, `core_sound_num_bigint` — those pairings add
   exactly, at any size.
-- **`addExact_sound` — the addition is sound.** For any two values that denote
-  integers, in either representation, in either order, booleans included, at any magnitude, the sum
-  denotes the integer sum. This is the property the runtime lacked, holding for every input rather
-  than for the ones a corpus happened to try.
+- `addExact_denote` — the addition is faithful to the abstraction, for any two values that denote
+  integers, in either representation, in either order, booleans included, at any magnitude.
+- **`addExact_sound_python` and `addExact_sound_sageZZ` — the addition is sound, in each system.**
+  These are the claims worth quoting: `Sound` is parameterized by *which* number system is being
+  read into, so a theorem has to name it. `addExact_denote` is stated in Lean's `Int`, which is
+  nobody's integers in particular, and is the lemma these rest on.
 
 ## The first bug this found
 
