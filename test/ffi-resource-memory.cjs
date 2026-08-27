@@ -145,7 +145,12 @@ function closeTwice(resource, close) {
     });
     poll();
   `);
-  if (process.platform !== "win32") {
+  // RSS after native free is only a useful reclamation oracle on Linux.  The
+  // Darwin malloc implementation commonly retains freed arenas in the process,
+  // while Windows has different allocator/accounting behavior.  Lifecycle and
+  // explicit-close correctness on those hosts are covered by the finalizer and
+  // sanitizer tests; do not confuse allocator caching with a native leak.
+  if (process.platform === "linux") {
     assert.ok(
       result.yieldedRss < 192 * MiB,
       `unreachable resources retained ${result.yieldedRss / MiB} MiB after yield`,
@@ -163,7 +168,7 @@ function closeTwice(resource, close) {
     }
     process.stdout.write(JSON.stringify({rss: process.memoryUsage.rss()}));
   `);
-  if (process.platform !== "win32") {
+  if (process.platform === "linux") {
     assert.ok(
       result.rss < 192 * MiB,
       `explicit-close loop retained ${result.rss / MiB} MiB`,
@@ -182,7 +187,7 @@ function closeTwice(resource, close) {
       rss: process.memoryUsage.rss(),
     })));
   `, ["--expose-gc"]);
-  if (process.platform !== "win32") assert.ok(direct.rss < 160 * MiB);
+  if (process.platform === "linux") assert.ok(direct.rss < 160 * MiB);
 
   const tokenRegistry = runChild(`
     const flint = require(${JSON.stringify(packagePath)});
