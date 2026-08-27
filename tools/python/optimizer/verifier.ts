@@ -214,7 +214,12 @@ export function verifyOptimizationDecision(decision: OptimizationDecision): void
   }
 }
 
-function verifyExpression(expression: any, slotCount: number, sequenceCount: number): void {
+function verifyExpression(
+  expression: any,
+  slotCount: number,
+  sequenceCount: number,
+  sequenceAccesses: Map<string, number>,
+): void {
   if (!expression || typeof expression !== "object") {
     throw new TypeError("optimizer internal expression must be an object");
   }
@@ -232,35 +237,42 @@ function verifyExpression(expression: any, slotCount: number, sequenceCount: num
         expression.indexOrder !== "reverse") {
       throw new TypeError("optimizer sequence index order is invalid");
     }
+    const key = `${expression.sequence}:${expression.indexOrder}`;
+    sequenceAccesses.set(key, (sequenceAccesses.get(key) ?? 0) + 1);
     return;
   }
   if (expression.kind === "neg") {
-    verifyExpression(expression.value, slotCount, sequenceCount);
+    verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
   if (expression.kind === "binary" && ["+", "-", "*"].includes(expression.operator)) {
-    verifyExpression(expression.left, slotCount, sequenceCount);
-    verifyExpression(expression.right, slotCount, sequenceCount);
+    verifyExpression(expression.left, slotCount, sequenceCount, sequenceAccesses);
+    verifyExpression(expression.right, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
   throw new TypeError(`optimizer target-independent expression ${expression.kind} is unhandled`);
 }
 
-function verifyStatements(statements: any, slotCount: number, sequenceCount: number): void {
+function verifyStatements(
+  statements: any,
+  slotCount: number,
+  sequenceCount: number,
+  sequenceAccesses: Map<string, number>,
+): void {
   if (!Array.isArray(statements)) throw new TypeError("optimizer statements must be an array");
   for (const statement of statements) {
     if (statement?.kind === "assign") {
       if (!Number.isSafeInteger(statement.target) || statement.target < 0 ||
           statement.target >= slotCount) throw new TypeError("optimizer assignment target is out of range");
-      verifyExpression(statement.value, slotCount, sequenceCount);
+      verifyExpression(statement.value, slotCount, sequenceCount, sequenceAccesses);
     } else if (statement?.kind === "if") {
       if (statement.condition?.kind !== "equal") {
         throw new TypeError("optimizer condition is unhandled");
       }
-      verifyExpression(statement.condition.left, slotCount, sequenceCount);
-      verifyExpression(statement.condition.right, slotCount, sequenceCount);
-      verifyStatements(statement.body, slotCount, sequenceCount);
-      verifyStatements(statement.alternative, slotCount, sequenceCount);
+      verifyExpression(statement.condition.left, slotCount, sequenceCount, sequenceAccesses);
+      verifyExpression(statement.condition.right, slotCount, sequenceCount, sequenceAccesses);
+      verifyStatements(statement.body, slotCount, sequenceCount, sequenceAccesses);
+      verifyStatements(statement.alternative, slotCount, sequenceCount, sequenceAccesses);
     } else {
       throw new TypeError(`optimizer target-independent statement ${statement?.kind} is unhandled`);
     }
@@ -291,7 +303,13 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         plan.operands.iterationOrder !== "forward") {
       throw new TypeError("optimizer non-sequence region reverses iteration");
     }
-    verifyStatements(plan.operands.statements, slots.length, sequences.length);
+    const observedSequenceAccesses = new Map<string, number>();
+    verifyStatements(
+      plan.operands.statements,
+      slots.length,
+      sequences.length,
+      observedSequenceAccesses,
+    );
     for (const slot of plan.operands.stateSlots ?? []) {
       if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
         throw new TypeError("optimizer state slot is out of range");
@@ -338,6 +356,50 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         plan.operands.sequenceUses.some((count: unknown) =>
           !Number.isSafeInteger(count) || Number(count) < 0)) {
       throw new TypeError("optimizer ring region has invalid sequence-use counts");
+    }
+    const observedSequenceUses = new Array(sequences.length).fill(0);
+    for (const [key, uses] of observedSequenceAccesses) {
+      observedSequenceUses[Number(key.split(":", 1)[0])] += uses;
+    }
+    if (observedSequenceUses.some((uses, index) =>
+      uses !== plan.operands.sequenceUses[index])) {
+      throw new TypeError("optimizer ring region has stale sequence-use counts");
+    }
+    if (!Array.isArray(plan.operands.sequenceAccesses)) {
+      throw new TypeError("optimizer ring region has invalid sequence accesses");
+    }
+    const claimedSequenceAccesses = new Map<string, number>();
+    for (const access of plan.operands.sequenceAccesses) {
+      if (!Number.isSafeInteger(access?.sequence) || access.sequence < 0 ||
+          access.sequence >= sequences.length ||
+          (access.indexOrder !== "forward" && access.indexOrder !== "reverse") ||
+          !Number.isSafeInteger(access.uses) || access.uses <= 0) {
+        throw new TypeError("optimizer ring region has an invalid sequence access");
+      }
+      const key = `${access.sequence}:${access.indexOrder}`;
+      if (claimedSequenceAccesses.has(key)) {
+        throw new TypeError("optimizer ring region repeats a sequence access");
+      }
+      claimedSequenceAccesses.set(key, access.uses);
+    }
+    if (claimedSequenceAccesses.size !== observedSequenceAccesses.size ||
+        [...observedSequenceAccesses].some(([key, uses]) =>
+          claimedSequenceAccesses.get(key) !== uses)) {
+      throw new TypeError("optimizer ring region has stale sequence accesses");
+    }
+    const expectedSequenceStrategy =
+      affine?.kind === "sequence-increment" ||
+      (observedSequenceAccesses.size > 0 &&
+       observedSequenceAccesses.size <= 2 &&
+       plan.operands.statements.every((statement: any) =>
+         statement.kind === "assign") &&
+       [...observedSequenceAccesses.values()].reduce(
+         (total, uses) => total + uses, 0
+       ) <= 8)
+        ? "stream"
+        : "pack";
+    if (plan.operands.sequenceStrategy !== expectedSequenceStrategy) {
+      throw new TypeError("optimizer ring region has a stale sequence strategy");
     }
     return;
   }

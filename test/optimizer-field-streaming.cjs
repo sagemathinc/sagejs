@@ -415,7 +415,7 @@ print(dot_product(left_ext, right_ext, K(0)), K._lastCompilerOptimizationRoute)
   }
 });
 
-test("repeated sequence reads retain the packed-prefix strategy", async () => {
+test("repeated immutable sequence reads share one guarded streaming load", async () => {
   const session = await sessionAtLevel("O2");
   try {
     const result = await session.evaluate(String.raw`
@@ -428,8 +428,7 @@ def sum_of_squares(values):
     return answer
 print(sum_of_squares(values), R._lastCompilerOptimizationRoute)
 `);
-    assert.match(result.stdout, /v8-number-residue-region/);
-    assert.doesNotMatch(result.stdout, /stream/);
+    assert.match(result.stdout, /v8-number-residue-stream/);
   } finally {
     await session.close();
   }

@@ -923,10 +923,13 @@ spelling.  Compact residue-ring results also retain the private representation
 brand, with a chained-block route ratchet preventing silent loss of subsequent
 optimization.
 
-Straight-line operation graphs now also carry per-sequence use counts.  The
-representation planner streams one or two immutable sequences when each is
-read at most once per iteration, which covers guarded dot products without a
-dot-product recognizer.  Repeated reads and control-flow graphs retain the
+Straight-line operation graphs now also carry verified per-sequence and
+per-index-view use counts.  The representation planner streams one or two
+immutable sequence views with up to eight static uses, which covers guarded
+dot products and repeated expressions such as `values[i] * values[i]` without
+workload-named recognizers.  Lowering validates and unboxes each distinct view
+once per iteration, then reuses its primitive scalar coordinates throughout
+the operation graph.  Three-or-more views and control-flow graphs retain the
 packed-prefix strategy.  `bench/optimizer-field-dot-product.cjs` ratchets the
 streaming choice over both a residue ring and a cubic extension field against
 independent coordinate oracles and projected O0 execution; an intentionally
@@ -945,3 +948,10 @@ evaluation no longer allocates a reversed list and second tuple per call.
 `bench/optimizer-polynomial-evaluation.cjs` compares that public path with a
 forced generic-list oracle and ratchets exact independent coordinates, route,
 tuple identity, resource closure, latency, and projected speedup.
+
+Per-iteration sequence commoning is covered separately by
+`bench/optimizer-sequence-commoning.cjs`.  It exercises a repeated-read sum of
+squares over both a word residue ring and a cubic extension field, with
+independent scalar-coordinate oracles.  The compiler test also inspects emitted
+JavaScript and requires exactly one sequence load in each fixed-shape target
+variant, so duplicate element/property guards cannot silently return.
