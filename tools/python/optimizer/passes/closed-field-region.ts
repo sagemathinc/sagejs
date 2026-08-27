@@ -194,11 +194,16 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   if (!(loop instanceof compiler.AST_ForIn) || loop.alternative ||
       loop.optimization_region) return null;
 
-  let iteratorKind: "range" | "sequence";
+  let iteratorKind: "range" | "sequence" | "zip";
   let count: any = null;
   let iterable: any = null;
+  let zipCall: any = null;
+  let zipStrict = false;
+  let zipIterables: any[] = [];
+  let zipTargets: any[] = [];
+  let zipSequenceBindings: number[] = [];
   let iterationOrder: "forward" | "reverse" = "forward";
-  let iteratorName: string;
+  let iteratorNames: string[];
   if (loop.init instanceof compiler.AST_SymbolRef &&
       loop.object instanceof compiler.AST_Call &&
       loop.object.expression instanceof compiler.AST_SymbolRef &&
@@ -208,12 +213,12 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       !loop.object.args.kwarg_items?.length) {
     iteratorKind = "range";
     count = loop.object.args[0];
-    iteratorName = loop.init.name;
+    iteratorNames = [loop.init.name];
   } else if (loop.init instanceof compiler.AST_SymbolRef &&
              loop.object instanceof compiler.AST_SymbolRef) {
     iteratorKind = "sequence";
     iterable = loop.object;
-    iteratorName = loop.init.name;
+    iteratorNames = [loop.init.name];
   } else if (loop.init instanceof compiler.AST_SymbolRef &&
              loop.object instanceof compiler.AST_Call &&
              loop.object.direct_call === true &&
@@ -226,7 +231,33 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     iteratorKind = "sequence";
     iterable = loop.object.args[0];
     iterationOrder = "reverse";
-    iteratorName = loop.init.name;
+    iteratorNames = [loop.init.name];
+  } else if (loop.init instanceof compiler.AST_Array &&
+             loop.init.elements?.length >= 2 &&
+             loop.init.elements.length <= 4 &&
+             loop.init.elements.every((target: any) =>
+               target instanceof compiler.AST_SymbolRef) &&
+             loop.object instanceof compiler.AST_Call &&
+             loop.object.direct_call === true &&
+             loop.object.expression instanceof compiler.AST_SymbolRef &&
+             loop.object.expression.name === "zip" &&
+             loop.object.args?.length === loop.init.elements.length &&
+             loop.object.args.every((source: any) =>
+               source instanceof compiler.AST_SymbolRef) &&
+             !loop.object.args.starargs &&
+             !loop.object.args.kwarg_items?.length) {
+    const keywords = loop.object.args.kwargs ?? [];
+    if (keywords.length > 1 ||
+        (keywords.length === 1 &&
+         (keywords[0]?.[0]?.name !== "strict" ||
+          !(keywords[0][1] instanceof compiler.AST_Boolean)))) return null;
+    iteratorKind = "zip";
+    zipCall = loop.object;
+    zipStrict = keywords.length === 1 && keywords[0][1].value === true;
+    zipIterables = [...loop.object.args];
+    zipTargets = [...loop.init.elements];
+    iteratorNames = zipTargets.map((target: any) => target.name);
+    if (new Set(iteratorNames).size !== iteratorNames.length) return null;
   } else {
     return null;
   }
@@ -252,7 +283,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     for (const statement of statements) {
       const value = assignment(statement);
       if (value) {
-        if (value.left.name === iteratorName) return false;
+        if (iteratorNames.includes(value.left.name)) return false;
         modified.add(value.left.name);
         continue;
       }
@@ -288,25 +319,44 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     }
     return index;
   };
-  if (iteratorKind === "sequence") sequence(iterable);
+  const iteratorBindings = new Map<string, {
+    sequence: number;
+    indexOrder: "forward" | "reverse";
+  }>();
+  if (iteratorKind === "sequence") {
+    iteratorBindings.set(iteratorNames[0], {
+      sequence: sequence(iterable),
+      indexOrder: iterationOrder,
+    });
+  } else if (iteratorKind === "zip") {
+    for (let index = 0; index < zipIterables.length; index += 1) {
+      const sequenceIndex = sequence(zipIterables[index]);
+      zipSequenceBindings.push(sequenceIndex);
+      iteratorBindings.set(iteratorNames[index], {
+        sequence: sequenceIndex,
+        indexOrder: "forward",
+      });
+    }
+  }
 
   const expression = (node: any): ExpressionPlan | null => {
     if (node instanceof compiler.AST_SymbolRef) {
-      if (iteratorKind === "sequence" && node.name === iteratorName) {
+      const binding = iteratorBindings.get(node.name);
+      if (binding) {
         return {
           kind: "sequence",
-          sequence: 0,
-          indexOrder: iterationOrder,
+          sequence: binding.sequence,
+          indexOrder: binding.indexOrder,
         };
       }
-      if (node.name === iteratorName) return null;
+      if (iteratorNames.includes(node.name)) return null;
       return { kind: "slot", slot: slot(node, true) };
     }
     if (node instanceof compiler.AST_ItemAccess &&
         iteratorKind === "range" &&
         node.expression instanceof compiler.AST_SymbolRef &&
         node.property instanceof compiler.AST_SymbolRef &&
-        node.property.name === iteratorName) {
+        node.property.name === iteratorNames[0]) {
       return {
         kind: "sequence",
         sequence: sequence(node.expression),
@@ -434,6 +484,11 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     iterationOrder,
     count,
     iterable,
+    zipCall,
+    zipStrict,
+    zipIterables,
+    zipTargets,
+    zipSequenceBindings,
     iterator: loop.init,
     slots,
     sequences,
@@ -487,6 +542,14 @@ export const closedRingRegionPass: OptimizationPass = {
         kind: "closed-ring-region",
         iteratorKind: operands.iteratorKind,
         iterationOrder: operands.iterationOrder,
+        zipStrict: operands.zipStrict,
+        zipSequences: operands.iteratorKind === "zip"
+          ? operands.zipIterables.map((source: any) => source.name)
+          : [],
+        zipTargets: operands.iteratorKind === "zip"
+          ? operands.zipTargets.map((target: any) => target.name)
+          : [],
+        zipSequenceBindings: operands.zipSequenceBindings,
         slots: operands.slots.map((slot: any) => slot.name),
         sequences: operands.sequences.map((sequence: any) => sequence.name),
         stateSlots: operands.stateSlots,
@@ -669,7 +732,7 @@ export const closedRingRegionPass: OptimizationPass = {
           guards: [
             "safe-iteration-count", "same-parent", "reviewed-representation",
             "prototype-and-used-method-identities", "canonical-values",
-            "sequence-prefix-bounds", "exact-machine-range",
+            "sequence-prefix-bounds", "zip-length-contract", "exact-machine-range",
           ],
           fallbackId: `semantic:${source.filename}:${source.line}:${source.column}`,
           cacheIdentityInputs: [

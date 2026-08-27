@@ -249,6 +249,7 @@
     "bench:optimizer-extension-degrees": "node bench/optimizer-extension-degrees.cjs",
     "bench:optimizer-field-horner": "node bench/optimizer-field-horner.cjs",
     "bench:optimizer-field-dot-product": "node bench/optimizer-field-dot-product.cjs",
+    "bench:optimizer-zip-region": "node bench/optimizer-zip-region.cjs",
     "bench:optimizer-polynomial-evaluation": "node bench/optimizer-polynomial-evaluation.cjs",
     "bench:optimizer-sequence-commoning": "node bench/optimizer-sequence-commoning.cjs",
     "bench:optimizer-branching-region": "node bench/optimizer-branching-region.cjs",

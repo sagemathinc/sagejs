@@ -16,6 +16,7 @@ const DIRECT_BUILTIN_CALLS = new Set([
   "range",
   "reversed",
   "sum",
+  "zip",
 ]);
 
 function unique(values: string[]): string[] {

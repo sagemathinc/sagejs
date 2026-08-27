@@ -944,6 +944,27 @@ grammar deliberately mixes both spellings across reviewed prime and extension
 fields, preventing a source-level inequality from silently falling out of the
 optimized region or acquiring a second representation-specific implementation.
 
+Natural tuple-unpacking loops now enter the same operation graph when their
+iterator is the compiler-proven builtin `zip`, has two through four plain
+symbol inputs and distinct plain symbol targets, and uses either default or an
+exact Boolean `strict` option.  The plan records target-to-sequence bindings
+instead of rewriting the source into an index loop.  Runtime versioning first
+evaluates every input in source order, accepts only branded immutable tuples,
+and proves either the shortest-prefix contract or equal lengths for strict
+iteration.  A failed contract executes the untouched `zip` loop, including its
+precise mismatch exception and partial-iteration effects; a late element guard
+also restarts transactionally.  Successful lowering materializes both ring
+state and final loop targets, while zero trips preserve unbound targets.
+
+`bench/optimizer-zip-region.cjs` compares the natural strict-zip spelling with
+the already-optimized indexed spelling over 100,000 terms.  On the reference
+Node/V8 host, `Zmod(1009)` took 18.51 ms versus 18.01 ms (1.03x), and
+`GF(5^3)` took 69.13 ms versus 69.15 ms (1.00x).  Thus recognizing the more
+idiomatic mathematical source introduces no material steady-state iterator
+tax.  Projected O0 zip execution was about 96x and 144x slower respectively;
+the benchmark separately checks both public answers against an independent
+JavaScript coordinate oracle.
+
 Immutable sequence views are now represented explicitly in the same IR rather
 than being materialized in mathematical source.  A compiler-known builtin
 `reversed(sequence)` contributes a reverse index map only when its operand is a
