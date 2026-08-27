@@ -70,6 +70,7 @@ window.__sagejsTest = {
       stderr: result.stderr,
       display: result.display ?? null,
       instrumentation: result.instrumentation ?? null,
+      optimization: result.optimization ?? null,
       duration_ms: performance.now() - started
     };
   },
