@@ -428,6 +428,7 @@ def power_sum(values, zero):
         answer = answer + values[index]^0 + values[index]^1
         answer = answer + values[index]^2 - values[index]^3
         answer = answer + values[index]^4 - values[index]^7 + values[index]^8
+        answer = answer + values[index]^19 + values[index]^65537
     return answer
 
 R = Zmod(100)
@@ -459,9 +460,9 @@ print(power_sum(extension_values, K(0)), getattr(K, '_lastCompilerOptimizationRo
     assert.deepEqual(
       fast.stdout.trim().split("\n").map((line) => line.split(" ").at(-1)),
       [
-        "v8-number-residue-stream",
-        "v8-number-residue-stream",
-        "v8-extension-tuple-stream",
+        "v8-number-residue-region",
+        "v8-number-residue-region",
+        "v8-extension-tuple-region",
       ],
     );
     assert.ok(slow.stdout.trim().split("\n").every((line) =>
@@ -480,7 +481,7 @@ test("static-power IR is explicit, bounded, and independently verified", async (
 def power_sum(values, zero):
     answer = zero
     for index in range(len(values)):
-        answer = answer + values[index]^0 + values[index]^4 - values[index]^8
+        answer = answer + values[index]^0 + values[index]^19 - values[index]^65537
     return answer
 `, parserOptions);
     const [region] = ast.optimization_ir.regions.filter((candidate) =>
@@ -495,6 +496,63 @@ def power_sum(values, zero):
     assert.ok(region.semantic.operations.includes("pow-dispatch"));
     assert.ok(region.cacheIdentityInputs.includes("operations:add,pow,sub"));
     assert.equal(region.target.selectedCandidate, "v8-closed-ring-program");
+    const plan = ast.body[0].body[1].optimization_region.operands;
+    assert.equal(plan.operationCost, 26);
+    assert.deepEqual(
+      plan.statements[0].value,
+      {
+        kind: "binary",
+        operator: "-",
+        left: {
+          kind: "binary",
+          operator: "+",
+          left: {
+            kind: "binary",
+            operator: "+",
+            left: { kind: "slot", slot: 0 },
+            right: {
+              kind: "power",
+              exponent: 0,
+              value: {
+                kind: "sequence",
+                sequence: 0,
+                indexOrder: "forward",
+              },
+            },
+          },
+          right: {
+            kind: "power",
+            exponent: 19,
+            value: {
+              kind: "sequence",
+              sequence: 0,
+              indexOrder: "forward",
+            },
+          },
+        },
+        right: {
+          kind: "power",
+          exponent: 65537,
+          value: {
+            kind: "sequence",
+            sequence: 0,
+            indexOrder: "forward",
+          },
+        },
+      },
+    );
+    const excessive = {
+      ...ast.body[0].body[1].optimization_region,
+      operands: {
+        ...plan,
+        statements: JSON.parse(JSON.stringify(plan.statements)),
+      },
+    };
+    excessive.operands.statements[0].value.right.exponent = 9007199254740991;
+    assert.throws(
+      () => verifyInternalRegionPlan(excessive),
+      /stale or excessive operation cost/,
+    );
   } finally {
     frontend.close();
   }
@@ -807,7 +865,8 @@ test("unsupported effects, aliases, callbacks, and source shapes are rejected", 
       "for i in range(n):\n    x = callback(x)\n",
       "for i in custom():\n    x = x*y+z\n",
       "for i in range(n):\n    x = x/y\n",
-      "for i in range(n):\n    x = x**9\n",
+      "for i in range(n):\n    x = x**9007199254740991\n",
+      "for i in range(n):\n    x = x**9007199254740992\n",
       "for i in range(n):\n    x = x**exponent\n",
       `for i in range(n):\n${Array(65).fill("    x = x*y").join("\n")}\n`,
     ];

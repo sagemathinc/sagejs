@@ -1006,14 +1006,25 @@ independent scalar-coordinate oracles.  The compiler test also inspects emitted
 JavaScript and requires exactly one sequence load in each fixed-shape target
 variant, so duplicate element/property guards cannot silently return.
 
-The target-independent expression graph also represents deliberately bounded
-static powers `x^e` for exact integer `0 <= e <= 8`.  These are not spelling
+The target-independent expression graph also represents statically bounded
+powers `x^e` for exact nonnegative safe-integer exponents.  These are not spelling
 rewrites to multiplication: the runtime guard authenticates the selected
 parent's `__pow__` implementation before the region enters primitive
 representation space.  Lowering evaluates the base once and constructs a
 binary-exponentiation DAG with shared squares through the same reviewed exact
-modular product generator.  Larger, negative, or dynamic exponents, changed
-power descriptors, and unreviewed parents execute the untouched source loop.
+modular product generator.  Admission is governed by the independently
+recomputed multiplication cost, not an arbitrary numeric exponent cutoff:
+`x^65537` needs only 17 products and is eligible, while a dense 53-bit exponent
+exceeds the 64-operation region budget.  Unsafe, negative, dynamic, or
+excessively costly exponents, changed power descriptors, and unreviewed parents
+execute the untouched source loop.
+
+`bench/optimizer-static-power.cjs` exercises this distinction with
+`x^19-x^65537` over `Zmod(1009)` and `GF(5^3)`.  The benchmark uses independent
+JavaScript binary-power coordinate oracles and a matched O0 prefix.  Fresh warm
+medians for 20,000 iterations were 2.59 ms and 35.41 ms respectively,
+approximately 312x and 575x faster than projected O0 execution; both guarded
+streams retained zero native resources.
 
 The pass now records an exact per-iteration operation cost derived from its
 target-independent graph.  The independent verifier recomputes that value and

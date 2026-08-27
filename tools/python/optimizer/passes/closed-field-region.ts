@@ -8,7 +8,6 @@ import { targetCandidate } from "../cost-model";
 import { stableRegionIdentity } from "../identity";
 
 export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
-const MAX_INLINE_POWER_EXPONENT = 8;
 const MAX_OPERATION_COST = 64;
 
 type ExpressionPlan =
@@ -175,7 +174,7 @@ function sourceRegion(node: any): SourceRegion {
 
 function boundedPowerExponent(compiler: any, node: any): number | null {
   if (node instanceof compiler.AST_Number && Number.isSafeInteger(node.value) &&
-      node.value >= 0 && node.value <= MAX_INLINE_POWER_EXPONENT) return node.value;
+      node.value >= 0) return node.value;
   if (!(node instanceof compiler.AST_Call) ||
       !(node.expression instanceof compiler.AST_SymbolRef) ||
       node.expression.name !== "Integer" || node.args?.length !== 1 ||
@@ -185,8 +184,7 @@ function boundedPowerExponent(compiler: any, node: any): number | null {
   const spelling = node.args[0].value;
   if (!/^[0-9](?:_?[0-9])*$/.test(spelling)) return null;
   const exponent = Number(spelling.replaceAll("_", ""));
-  return Number.isSafeInteger(exponent) &&
-    exponent <= MAX_INLINE_POWER_EXPONENT ? exponent : null;
+  return Number.isSafeInteger(exponent) ? exponent : null;
 }
 
 /**
