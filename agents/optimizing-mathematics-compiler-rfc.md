@@ -1000,3 +1000,21 @@ field against independent JavaScript coordinate oracles.  Fresh warm medians
 for 100,000 iterations were 6.08 ms and 44.33 ms respectively, approximately
 166x and 386x faster than projected O0 prefixes, with zero retained native
 resources.
+
+Within one assignment or equality condition, lowering now treats the verified
+ring expression as a DAG rather than a tree.  Structural value numbering
+evaluates identical subexpressions once, including repeated products and
+powers, then reuses their primitive coordinates.  This transformation is
+guarded by an explicit `referentially-transparent-used-operations` fact: it is
+only valid after the canonical parent, representation brand, and every used
+method identity have been authenticated.  Caches reset at each sequential
+assignment and branch body, so a slot redefinition cannot reuse a stale value;
+the generic fallback retains the source's original dispatch count.  Operation
+cost is computed from this same statement-local DAG, and the verifier derives
+it independently.  The sequence-commoning benchmark now repeats the same
+square twice per iteration, while emitted-code tests require the repeated form
+to contain exactly as many multiplication tokens as the single-square form.
+Fresh warm medians for 100,000 repeated-square iterations were 4.57 ms over
+`Zmod(1009)` and 27.66 ms over `GF(5^3)`, approximately 309x and 840x faster
+than projected O0 prefixes, with exact independent answers and zero retained
+native resources.

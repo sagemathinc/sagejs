@@ -32,11 +32,30 @@ type StatementPlan =
   | { kind: "assign"; target: number; value: ExpressionPlan }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
-function expressionOperationCost(value: ExpressionPlan): number {
+function expressionStructuralKey(value: ExpressionPlan): string {
+  if (value.kind === "slot") return `slot:${value.slot}`;
+  if (value.kind === "sequence") {
+    return `sequence:${value.sequence}:${value.indexOrder}`;
+  }
+  if (value.kind === "neg") return `neg(${expressionStructuralKey(value.value)})`;
+  if (value.kind === "power") {
+    return `power:${value.exponent}(${expressionStructuralKey(value.value)})`;
+  }
+  return `binary:${value.operator}(${expressionStructuralKey(value.left)},${expressionStructuralKey(value.right)})`;
+}
+
+function expressionOperationCost(
+  value: ExpressionPlan,
+  common: Set<string>,
+): number {
   if (value.kind === "slot" || value.kind === "sequence") return 0;
-  if (value.kind === "neg") return 1 + expressionOperationCost(value.value);
+  const key = expressionStructuralKey(value);
+  if (common.has(key)) return 0;
+  common.add(key);
+  if (value.kind === "neg") return 1 + expressionOperationCost(value.value, common);
   if (value.kind === "binary") {
-    return 1 + expressionOperationCost(value.left) + expressionOperationCost(value.right);
+    return 1 + expressionOperationCost(value.left, common) +
+      expressionOperationCost(value.right, common);
   }
   let exponent = value.exponent;
   let products = 0;
@@ -49,17 +68,18 @@ function expressionOperationCost(value: ExpressionPlan): number {
     exponent = Math.floor(exponent / 2);
     if (exponent > 0) products += 1;
   }
-  return products + expressionOperationCost(value.value);
+  return products + expressionOperationCost(value.value, common);
 }
 
 function statementsOperationCost(statements: StatementPlan[]): number {
   return statements.reduce((total, statement) => {
     if (statement.kind === "assign") {
-      return total + expressionOperationCost(statement.value);
+      return total + expressionOperationCost(statement.value, new Set());
     }
+    const conditionCommon = new Set<string>();
     return total + 1 +
-      expressionOperationCost(statement.condition.left) +
-      expressionOperationCost(statement.condition.right) +
+      expressionOperationCost(statement.condition.left, conditionCommon) +
+      expressionOperationCost(statement.condition.right, conditionCommon) +
       statementsOperationCost(statement.body) +
       statementsOperationCost(statement.alternative);
   }, 0);
@@ -435,7 +455,7 @@ export const closedRingRegionPass: OptimizationPass = {
   factsProduced: [
     "parent-identity", "parent-stable", "method-stability", "fixed-shape",
     "no-alias", "no-escape", "no-callback", "operation-closed", "exact-range",
-    "commutative-ring",
+    "commutative-ring", "referentially-transparent-used-operations",
   ],
   factsInvalidated: [],
   preserves: [
@@ -524,6 +544,7 @@ export const closedRingRegionPass: OptimizationPass = {
             { kind: "no-alias", authority: "static", evidence: "distinct lexical state bindings" },
             { kind: "no-escape", authority: "static", evidence: "only local state assignments and control flow occur in the region" },
             { kind: "no-callback", authority: "runtime-guard", evidence: "all used operator identities match reviewed immutable finite-field methods" },
+            { kind: "referentially-transparent-used-operations", authority: "runtime-guard", evidence: "reviewed canonical ring operations are pure after parent, brand, and method-identity guards" },
             { kind: "parent-identity", authority: "runtime-guard", evidence: "all scalar and sequence values share one parent" },
             { kind: "fixed-shape", authority: "runtime-guard", evidence: "the selected parent advertises a reviewed fixed representation" },
             { kind: "exact-range", authority: "runtime-guard", evidence: "the selected representation validates canonical values and machine intermediates" },

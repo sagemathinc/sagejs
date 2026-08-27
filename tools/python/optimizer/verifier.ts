@@ -287,12 +287,31 @@ function verifyStatements(
   }
 }
 
-function expressionOperationCost(expression: any): number {
+function expressionStructuralKey(expression: any): string {
+  if (expression.kind === "slot") return `slot:${expression.slot}`;
+  if (expression.kind === "sequence") {
+    return `sequence:${expression.sequence}:${expression.indexOrder}`;
+  }
+  if (expression.kind === "neg") {
+    return `neg(${expressionStructuralKey(expression.value)})`;
+  }
+  if (expression.kind === "power") {
+    return `power:${expression.exponent}(${expressionStructuralKey(expression.value)})`;
+  }
+  return `binary:${expression.operator}(${expressionStructuralKey(expression.left)},${expressionStructuralKey(expression.right)})`;
+}
+
+function expressionOperationCost(expression: any, common: Set<string>): number {
   if (expression.kind === "slot" || expression.kind === "sequence") return 0;
-  if (expression.kind === "neg") return 1 + expressionOperationCost(expression.value);
+  const key = expressionStructuralKey(expression);
+  if (common.has(key)) return 0;
+  common.add(key);
+  if (expression.kind === "neg") {
+    return 1 + expressionOperationCost(expression.value, common);
+  }
   if (expression.kind === "binary") {
-    return 1 + expressionOperationCost(expression.left) +
-      expressionOperationCost(expression.right);
+    return 1 + expressionOperationCost(expression.left, common) +
+      expressionOperationCost(expression.right, common);
   }
   let exponent = expression.exponent;
   let products = 0;
@@ -305,16 +324,18 @@ function expressionOperationCost(expression: any): number {
     exponent = Math.floor(exponent / 2);
     if (exponent > 0) products += 1;
   }
-  return products + expressionOperationCost(expression.value);
+  return products + expressionOperationCost(expression.value, common);
 }
 
 function statementsOperationCost(statements: any[]): number {
   return statements.reduce((total, statement) => {
     if (statement.kind === "assign") {
-      return total + expressionOperationCost(statement.value);
+      return total + expressionOperationCost(statement.value, new Set());
     }
-    return total + 1 + expressionOperationCost(statement.condition.left) +
-      expressionOperationCost(statement.condition.right) +
+    const conditionCommon = new Set<string>();
+    return total + 1 + expressionOperationCost(
+      statement.condition.left, conditionCommon
+    ) + expressionOperationCost(statement.condition.right, conditionCommon) +
       statementsOperationCost(statement.body) +
       statementsOperationCost(statement.alternative);
   }, 0);

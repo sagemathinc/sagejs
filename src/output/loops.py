@@ -498,6 +498,32 @@ def _print_region_product(
     return product[:degree]
 
 
+def _region_expression_key(expression):
+    if expression.kind == "slot":
+        return "slot:" + str(expression.slot)
+    if expression.kind == "sequence":
+        return "sequence:" + str(expression.sequence) + ":" + expression.indexOrder
+    if expression.kind == "neg":
+        return "neg(" + _region_expression_key(expression.value) + ")"
+    if expression.kind == "power":
+        return (
+            "power:"
+            + str(expression.exponent)
+            + "("
+            + _region_expression_key(expression.value)
+            + ")"
+        )
+    return (
+        "binary:"
+        + expression.operator
+        + "("
+        + _region_expression_key(expression.left)
+        + ","
+        + _region_expression_key(expression.right)
+        + ")"
+    )
+
+
 def _print_region_expression(
     expression,
     representation,
@@ -513,6 +539,7 @@ def _print_region_expression(
     suffix,
     streaming=False,
     sequence_values=None,
+    operation_values=None,
 ):
     if expression.kind == "slot":
         return slot_names[expression.slot]
@@ -613,6 +640,10 @@ def _print_region_expression(
             for component in range(degree)
         ]
 
+    operation_key = _region_expression_key(expression)
+    if operation_values is not None and operation_key in operation_values:
+        return operation_values[operation_key]
+
     if expression.kind == "power":
         value = _print_region_expression(
             expression.value,
@@ -629,12 +660,17 @@ def _print_region_expression(
             suffix,
             streaming,
             sequence_values,
+            operation_values,
         )
         exponent = expression.exponent
         if exponent == 0:
             if representation == "prime":
-                return "1"
-            return ["1"] + ["0" for _component in range(1, degree)]
+                result = "1"
+            else:
+                result = ["1"] + ["0" for _component in range(1, degree)]
+            if operation_values is not None:
+                operation_values[operation_key] = result
+            return result
         result = None
         factor = value
         while exponent:
@@ -667,6 +703,8 @@ def _print_region_expression(
                     counter,
                     suffix,
                 )
+        if operation_values is not None:
+            operation_values[operation_key] = result
         return result
 
     if expression.kind == "neg":
@@ -685,6 +723,7 @@ def _print_region_expression(
             suffix,
             streaming,
             sequence_values,
+            operation_values,
         )
         if representation == "prime":
             result = _region_temp(counter, suffix)
@@ -693,6 +732,8 @@ def _print_region_expression(
                 result,
                 "(" + value + " === 0 ? 0 : " + modulus_name + " - " + value + ")",
             )
+            if operation_values is not None:
+                operation_values[operation_key] = result
             return result
         answer = []
         for component in value:
@@ -709,6 +750,8 @@ def _print_region_expression(
                 + ")",
             )
             answer.append(result)
+        if operation_values is not None:
+            operation_values[operation_key] = answer
         return answer
 
     left = _print_region_expression(
@@ -726,6 +769,7 @@ def _print_region_expression(
         suffix,
         streaming,
         sequence_values,
+        operation_values,
     )
     right = _print_region_expression(
         expression.right,
@@ -742,10 +786,11 @@ def _print_region_expression(
         suffix,
         streaming,
         sequence_values,
+        operation_values,
     )
     operator = expression.operator
     if operator == "*":
-        return _print_region_product(
+        result = _print_region_product(
             left,
             right,
             representation,
@@ -756,6 +801,9 @@ def _print_region_expression(
             counter,
             suffix,
         )
+        if operation_values is not None:
+            operation_values[operation_key] = result
+        return result
     if representation == "prime":
         result = _region_temp(counter, suffix)
         if operator == "+":
@@ -789,6 +837,8 @@ def _print_region_expression(
                 + right
             )
         _print_region_variable(output, result, value)
+        if operation_values is not None:
+            operation_values[operation_key] = result
         return result
 
     answer = []
@@ -831,6 +881,8 @@ def _print_region_expression(
                 )
             _print_region_variable(output, result, value)
             answer.append(result)
+        if operation_values is not None:
+            operation_values[operation_key] = answer
         return answer
 
     raise RuntimeError("unhandled ring operation")
@@ -869,6 +921,7 @@ def _print_region_statements(
                 suffix,
                 streaming,
                 sequence_values,
+                {},
             )
             targets = slot_names[statement.target]
             if representation == "prime":
@@ -884,6 +937,7 @@ def _print_region_statements(
                     output.end_statement()
             continue
 
+        condition_values = {}
         left = _print_region_expression(
             statement.condition.left,
             representation,
@@ -899,6 +953,7 @@ def _print_region_statements(
             suffix,
             streaming,
             sequence_values,
+            condition_values,
         )
         right = _print_region_expression(
             statement.condition.right,
@@ -915,6 +970,7 @@ def _print_region_statements(
             suffix,
             streaming,
             sequence_values,
+            condition_values,
         )
         if representation == "prime":
             condition = left + " === " + right
