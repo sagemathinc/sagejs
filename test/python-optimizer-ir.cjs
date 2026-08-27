@@ -289,6 +289,43 @@ def squares(values, zero):
   }
 });
 
+test("compact powers respect the advertised outlined-target code budget", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+for index in range(count):
+    answer = answer + values[index]^19 - values[index]^65537
+`, optimizerOptions());
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: false,
+      keep_docstrings: true,
+      exact_integers: true,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    const loop = findLoops(compiler, ast)[0];
+    const pass = ast.optimization_ir.passes.find((candidate) =>
+      candidate.id === CLOSED_RING_REGION_PASS
+    );
+    assert.ok(loop.optimization_region);
+    assert.equal(loop.optimization_region.operands.targetCodeBytes, 4096);
+    assert.ok(Buffer.byteLength(javascript) <= pass.codeSizeBudget);
+    assert.equal(
+      javascript.match(/ρσ_machine_field_power\(/g)?.length,
+      8,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
 test("a direct builtin reversed call becomes an explicit guarded index view", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");

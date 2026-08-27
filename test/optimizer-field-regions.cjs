@@ -498,6 +498,7 @@ def power_sum(values, zero):
     assert.equal(region.target.selectedCandidate, "v8-closed-ring-program");
     const plan = ast.body[0].body[1].optimization_region.operands;
     assert.equal(plan.operationCost, 26);
+    assert.equal(plan.targetCodeBytes, 4608);
     assert.deepEqual(
       plan.statements[0].value,
       {
@@ -552,6 +553,14 @@ def power_sum(values, zero):
     assert.throws(
       () => verifyInternalRegionPlan(excessive),
       /stale or excessive operation cost/,
+    );
+    const staleCodeSize = {
+      ...ast.body[0].body[1].optimization_region,
+      operands: { ...plan, targetCodeBytes: plan.targetCodeBytes + 128 },
+    };
+    assert.throws(
+      () => verifyInternalRegionPlan(staleCodeSize),
+      /stale or excessive target code size/,
     );
   } finally {
     frontend.close();
@@ -869,6 +878,7 @@ test("unsupported effects, aliases, callbacks, and source shapes are rejected", 
       "for i in range(n):\n    x = x**9007199254740992\n",
       "for i in range(n):\n    x = x**exponent\n",
       `for i in range(n):\n${Array(65).fill("    x = x*y").join("\n")}\n`,
+      `for i in range(n):\n${Array(16).fill("    x = x*y+z").join("\n")}\n`,
     ];
     for (const source of rejected) {
       const ast = frontend.parse(source, parserOptions);

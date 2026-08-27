@@ -367,6 +367,56 @@ function statementsOperationCost(statements: any[]): number {
   }, 0);
 }
 
+function powerProductCount(exponent: number): number {
+  let products = 0;
+  let hasResult = false;
+  while (exponent > 0) {
+    if (exponent % 2 === 1) {
+      if (hasResult) products += 1;
+      hasResult = true;
+    }
+    exponent = Math.floor(exponent / 2);
+    if (exponent > 0) products += 1;
+  }
+  return products;
+}
+
+function expressionTargetCodeUnits(expression: any, common: Set<string>): number {
+  if (expression.kind === "slot" || expression.kind === "sequence") return 0;
+  const key = expressionStructuralKey(expression);
+  if (common.has(key)) return 0;
+  common.add(key);
+  if (expression.kind === "neg") {
+    return 4 + expressionTargetCodeUnits(expression.value, common);
+  }
+  if (expression.kind === "binary") {
+    return (expression.operator === "*" ? 32 : 4) +
+      expressionTargetCodeUnits(expression.left, common) +
+      expressionTargetCodeUnits(expression.right, common);
+  }
+  const products = powerProductCount(expression.exponent);
+  return (products > 1 ? 8 : 32 * products) +
+    expressionTargetCodeUnits(expression.value, common);
+}
+
+function statementsTargetCodeUnits(statements: any[]): number {
+  return statements.reduce((total, statement) => {
+    if (statement.kind === "assign") {
+      return total + expressionTargetCodeUnits(statement.value, new Set());
+    }
+    const conditionCommon = new Set<string>();
+    return total + 4 +
+      expressionTargetCodeUnits(statement.condition.left, conditionCommon) +
+      expressionTargetCodeUnits(statement.condition.right, conditionCommon) +
+      statementsTargetCodeUnits(statement.body) +
+      statementsTargetCodeUnits(statement.alternative);
+  }, 0);
+}
+
+function estimatedTargetCodeBytes(statements: any[]): number {
+  return 1024 + 128 * statementsTargetCodeUnits(statements);
+}
+
 export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   if (plan?.schema !== OPTIMIZER_IR_SCHEMA) {
     throw new TypeError(`unknown optimizer internal schema ${plan?.schema}`);
@@ -448,6 +498,16 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         plan.operands.operationCost !== observedOperationCost ||
         observedOperationCost > 64) {
       throw new TypeError("optimizer ring region has a stale or excessive operation cost");
+    }
+    const observedTargetCodeBytes = estimatedTargetCodeBytes(
+      plan.operands.statements,
+    );
+    if (!Number.isSafeInteger(plan.operands.targetCodeBytes) ||
+        plan.operands.targetCodeBytes !== observedTargetCodeBytes ||
+        observedTargetCodeBytes > 32768) {
+      throw new TypeError(
+        "optimizer ring region has a stale or excessive target code size",
+      );
     }
     for (const slot of plan.operands.stateSlots ?? []) {
       if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {

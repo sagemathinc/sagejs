@@ -9,6 +9,9 @@ import { stableRegionIdentity } from "../identity";
 
 export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
 const MAX_OPERATION_COST = 64;
+const TARGET_CODE_BASE_BYTES = 1024;
+const TARGET_CODE_BYTES_PER_UNIT = 128;
+const MAX_TARGET_CODE_BYTES = 32768;
 
 type ExpressionPlan =
   | { kind: "slot"; slot: number }
@@ -88,6 +91,61 @@ function statementsOperationCost(statements: StatementPlan[]): number {
       statementsOperationCost(statement.body) +
       statementsOperationCost(statement.alternative);
   }, 0);
+}
+
+function powerProductCount(exponent: number): number {
+  let products = 0;
+  let hasResult = false;
+  while (exponent > 0) {
+    if (exponent % 2 === 1) {
+      if (hasResult) products += 1;
+      hasResult = true;
+    }
+    exponent = Math.floor(exponent / 2);
+    if (exponent > 0) products += 1;
+  }
+  return products;
+}
+
+/** Conservatively price one outlined degree-four target compilation unit. */
+function expressionTargetCodeUnits(
+  value: ExpressionPlan,
+  common: Set<string>,
+): number {
+  if (value.kind === "slot" || value.kind === "sequence") return 0;
+  const key = expressionStructuralKey(value);
+  if (common.has(key)) return 0;
+  common.add(key);
+  if (value.kind === "neg") {
+    return 4 + expressionTargetCodeUnits(value.value, common);
+  }
+  if (value.kind === "binary") {
+    return (value.operator === "*" ? 32 : 4) +
+      expressionTargetCodeUnits(value.left, common) +
+      expressionTargetCodeUnits(value.right, common);
+  }
+  const products = powerProductCount(value.exponent);
+  return (products > 1 ? 8 : 32 * products) +
+    expressionTargetCodeUnits(value.value, common);
+}
+
+function statementsTargetCodeUnits(statements: StatementPlan[]): number {
+  return statements.reduce((total, statement) => {
+    if (statement.kind === "assign") {
+      return total + expressionTargetCodeUnits(statement.value, new Set());
+    }
+    const conditionCommon = new Set<string>();
+    return total + 4 +
+      expressionTargetCodeUnits(statement.condition.left, conditionCommon) +
+      expressionTargetCodeUnits(statement.condition.right, conditionCommon) +
+      statementsTargetCodeUnits(statement.body) +
+      statementsTargetCodeUnits(statement.alternative);
+  }, 0);
+}
+
+function estimatedTargetCodeBytes(statements: StatementPlan[]): number {
+  return TARGET_CODE_BASE_BYTES +
+    TARGET_CODE_BYTES_PER_UNIT * statementsTargetCodeUnits(statements);
 }
 
 type AffineTargetPlan =
@@ -450,6 +508,8 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       sequences.length > 4) return null;
   const operationCost = statementsOperationCost(program);
   if (operationCost > MAX_OPERATION_COST) return null;
+  const targetCodeBytes = estimatedTargetCodeBytes(program);
+  if (targetCodeBytes > MAX_TARGET_CODE_BYTES) return null;
   // Reading every output before its first materialization avoids introducing
   // a new entry-time NameError for assignment-only locals.
   if ([...modified].some((name) => !read.has(name))) return null;
@@ -525,6 +585,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     sequenceAccesses,
     sequenceStrategy,
     operationCost,
+    targetCodeBytes,
   };
 }
 
@@ -553,7 +614,7 @@ export const closedRingRegionPass: OptimizationPass = {
   supportedTargets: ["v8", "wasm", "native", "generic"],
   verifier: "verifyOptimizationDecision/v1",
   compilationCostBudget: 128,
-  codeSizeBudget: 16384,
+  codeSizeBudget: MAX_TARGET_CODE_BYTES,
   requiredEvidence: [
     "generated-enabled-disabled-differential", "held-out-source-corpus",
     "guard-and-alias-adversarial", "node-and-three-browser-route",
@@ -587,6 +648,7 @@ export const closedRingRegionPass: OptimizationPass = {
         sequenceAccesses: operands.sequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
         operationCost: operands.operationCost,
+        targetCodeBytes: operands.targetCodeBytes,
       });
       const id = identity.id;
       context.consider({

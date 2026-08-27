@@ -428,6 +428,20 @@ def _region_temp(counter, suffix):
     return name
 
 
+def _region_power_product_count(exponent):
+    products = 0
+    has_result = False
+    while exponent > 0:
+        if exponent % 2:
+            if has_result:
+                products += 1
+            has_result = True
+        exponent //= 2
+        if exponent > 0:
+            products += 1
+    return products
+
+
 def _print_region_product(
     left,
     right,
@@ -671,6 +685,38 @@ def _print_region_expression(
                 result = "1"
             else:
                 result = ["1"] + ["0" for _component in range(1, degree)]
+            if operation_values is not None:
+                operation_values[operation_key] = result
+            return result
+        # Repeating the fully scalar multiplication emitter for every bit of
+        # a sparse large exponent can turn a tiny source loop into hundreds of
+        # kilobytes of JavaScript across the fixed extension variants.  Keep
+        # squaring inline; use the guarded reusable primitive helper once
+        # binary exponentiation needs more than one product.
+        if _region_power_product_count(exponent) > 1:
+            result_name = _region_temp(counter, suffix)
+            if representation == "prime":
+                helper_value = value
+            else:
+                helper_value = "[" + ",".join(value) + "]"
+            _print_region_variable(
+                output,
+                result_name,
+                "ρσ_machine_field_power("
+                + context_name
+                + ","
+                + helper_value
+                + ","
+                + str(exponent)
+                + ")",
+            )
+            if representation == "prime":
+                result = result_name
+            else:
+                result = [
+                    result_name + "[" + str(component) + "]"
+                    for component in range(degree)
+                ]
             if operation_values is not None:
                 operation_values[operation_key] = result
             return result
