@@ -35,7 +35,9 @@ try {
   const executable = join(temporary, "genus3-jacobian-kernel");
   const libraries = process.platform === "win32"
     ? ["flint.lib", "mpfr.lib", "gmp.lib", "openblas.lib"]
-    : [
+    : process.platform === "darwin"
+      ? ["-lflint", "-lmpfr", "-lgmp", "-lopenblas", "-lm", "-lpthread"]
+      : [
         "-Wl,--start-group", "-lflint", "-lmpfr", "-lgmp", "-lopenblas",
         "-Wl,--end-group", "-lm", "-lpthread",
       ];

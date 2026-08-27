@@ -122,12 +122,14 @@ test(
     const directory = mkdtempSync(join(tmpdir(), "sagejs-gmp-word-"));
     const prefix = resolve(
       process.env.SAGEJS_FLINT_PREFIX ||
-        join(
-          packageRoot,
-          ".native",
-          "vcpkg-installed",
-          "x64-windows-static-md-release",
-        ),
+        (process.platform === "win32"
+          ? join(
+              packageRoot,
+              ".native",
+              "vcpkg-installed",
+              "x64-windows-static-md-release",
+            )
+          : join(packageRoot, ".native", "prefix")),
     );
     const executable = join(
       directory,
@@ -150,7 +152,9 @@ test(
         "-std=c99",
         "-O2",
         `-I${include}`,
+        `-I${join(prefix, "include")}`,
         gmpSource,
+        `-L${join(prefix, "lib")}`,
         "-lgmp",
         "-o",
         executable,
