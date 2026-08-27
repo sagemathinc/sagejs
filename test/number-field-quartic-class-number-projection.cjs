@@ -44,7 +44,9 @@ function runSource(source, timeout = 360_000) {
 test("quartic scalar projections retain exact resumable saturation state", () => {
   const output = runSource(String.raw`
 import sagejs.number_fields.class_group_factor_base as factor_base_module
+import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.class_unit_groups as class_unit_module
+import sagejs.number_fields.maximal_order as maximal_order_module
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -241,6 +243,62 @@ assert not class_unit_module.quartic_class_number_projection_pending(K, False)
 assert class_unit_module.quartic_class_number_projection(K, proof=False) == 2
 new_projection = class_unit_module._cached_class_number_projection(K, key, False)
 assert new_projection is not None and new_projection is not old_projection
+
+# The quartic scalar path screens the bounded integral-order box with one exact
+# multiplication table.  Its determinant selects exactly the norm-one field
+# elements, and the table is rebuilt independently of the shared mutable cache.
+K = NumberField(x**4 + 2, "norm_screen_control")
+O = K.maximal_order()
+basis = tuple(O.basis())
+cached_tables = list(maximal_order_module._order_multiplication_table_cache)
+maximal_order_module._order_multiplication_table_cache[:] = [
+    (O, tuple(tuple(tuple(0 for _row in range(4)) for _column in range(4))
+              for _left in range(4)))
+]
+try:
+    multiplication_table = (
+        analytic_module._exact_quartic_order_multiplication_table(O)
+    )
+finally:
+    maximal_order_module._order_multiplication_table_cache[:] = cached_tables
+expected_candidates = []
+forms = tuple(
+    tuple(multiplication_table[left][column][row] for left in range(4))
+    for row in range(4)
+    for column in range(4)
+)
+for coordinates in analytic_module._coordinate_vectors(1, 4):
+    value = K.zero()
+    for coefficient, basis_element in zip(coordinates, basis, strict=True):
+        value += coefficient * basis_element
+    c0, c1, c2, c3 = coordinates
+    entries = tuple(
+        c0 * form[0] + c1 * form[1] + c2 * form[2] + c3 * form[3]
+        for form in forms
+    )
+    norm = value.norm()
+    assert norm._denominator == 1
+    assert analytic_module._quartic_determinant(entries) == norm._numerator
+    if abs(norm) == 1:
+        expected_candidates.append(coordinates)
+assert analytic_module._quartic_unit_coordinate_candidates(
+    multiplication_table, 1, None
+) == tuple(expected_candidates)
+
+# On the higher-discriminant example, only the rare norm-one survivors reach
+# the expensive conjugate-based exact-unit verifier.
+K = NumberField(x**4 + 5*x**2 - 70*x - 190, "norm_screen")
+exact_unit_calls = [0]
+original_exact_unit = analytic_module._exact_unit
+def counted_exact_unit(field, order, value):
+    exact_unit_calls[0] += 1
+    return original_exact_unit(field, order, value)
+analytic_module._exact_unit = counted_exact_unit
+try:
+    assert K.class_number(proof=False) == 2
+finally:
+    analytic_module._exact_unit = original_exact_unit
+assert exact_unit_calls[0] <= 16, exact_unit_calls[0]
 
 # Cancellation-bearing engines are non-reusable and never publish a scalar
 # projection through this cache-only optimization boundary.

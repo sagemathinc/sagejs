@@ -1450,6 +1450,69 @@ def _exact_unit(field: Any, order: Any, value: Any) -> bool:
         return False
 
 
+def _exact_quartic_order_multiplication_table(
+    order: Any,
+) -> tuple[tuple[tuple[int, ...], ...], ...]:
+    """Build the exact quartic order table without trusting shared cache state."""
+    maximal_order = __import__(
+        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+    )
+    raw_table = maximal_order._nf_order_multiplication_table_reference(order)
+    if len(raw_table) != 4:
+        raise ValueError("the quartic unit screen requires an order of degree four")
+    table: list[tuple[tuple[int, ...], ...]] = []
+    for left in raw_table:
+        if len(left) != 4:
+            raise ArithmeticError("a quartic order table has the wrong shape")
+        products: list[tuple[int, ...]] = []
+        for product in left:
+            if len(product) != 4:
+                raise ArithmeticError("a quartic order product has the wrong shape")
+            products.append(tuple(int(value) for value in product))
+        table.append(tuple(products))
+    return tuple(table)
+
+
+def _quartic_determinant(entries: Sequence[int]) -> int:
+    """Evaluate one row-major `4 x 4` determinant with scalar exact arithmetic."""
+    if len(entries) != 16:
+        raise ValueError("a quartic multiplication matrix needs sixteen entries")
+    a, b, c, d, e, f, g, h, i, j, k, entry_l, m, n, p, q = entries
+    return (
+        a
+        * (f * (k * q - entry_l * p) - g * (j * q - entry_l * n) + h * (j * p - k * n))
+        - b
+        * (e * (k * q - entry_l * p) - g * (i * q - entry_l * m) + h * (i * p - k * m))
+        + c
+        * (e * (j * q - entry_l * n) - f * (i * q - entry_l * m) + h * (i * n - j * m))
+        - d * (e * (j * p - k * n) - f * (i * p - k * m) + g * (i * n - j * m))
+    )
+
+
+def _quartic_unit_coordinate_candidates(
+    table: Sequence[Sequence[Sequence[int]]],
+    coordinate_bound: int,
+    cancelled: Callable[[], Any] | None,
+) -> tuple[tuple[int, ...], ...]:
+    """Screen one bounded quartic box with exact integral multiplication."""
+    forms = tuple(
+        tuple(int(table[left][column][row]) for left in range(4))
+        for row in range(4)
+        for column in range(4)
+    )
+    candidates: list[tuple[int, ...]] = []
+    for coordinates in _coordinate_vectors(coordinate_bound, 4):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit p-saturation was cancelled")
+        c0, c1, c2, c3 = coordinates
+        entries = [
+            c0 * form[0] + c1 * form[1] + c2 * form[2] + c3 * form[3] for form in forms
+        ]
+        if abs(_quartic_determinant(entries)) == 1:
+            candidates.append(coordinates)
+    return tuple(candidates)
+
+
 def _target_element(
     field: Any,
     units: Sequence[Any],
@@ -1664,13 +1727,17 @@ def _local_pth_power_obstruction(
     rational_primes: Sequence[int],
     residue_candidate_cap: int,
     cancelled: Callable[[], Any] | None = None,
+    multiplication_table: Sequence[Sequence[Sequence[int]]] | None = None,
 ) -> int | None:
     if not rational_primes:
         return None
-    maximal_order = __import__(
-        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
-    )
-    table = maximal_order._nf_order_multiplication_table_frozen(order)
+    if multiplication_table is None:
+        maximal_order = __import__(
+            "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
+        )
+        table = maximal_order._nf_order_multiplication_table_frozen(order)
+    else:
+        table = multiplication_table
     one = _order_coordinates(order, order.number_field().one())
     target_coordinates = _order_coordinates(order, target)
     degree = len(one)
@@ -1733,6 +1800,11 @@ class UnitLocalPthPowerObstruction:
         torsion_elements: Sequence[Any],
         cancelled: Callable[[], Any] | None = None,
     ) -> bool:
+        multiplication_table = (
+            _exact_quartic_order_multiplication_table(order)
+            if int(field.degree()) == 4
+            else None
+        )
         expected = []
         for exponents in _residue_vectors(self.prime, len(units)):
             if callable(cancelled) and cancelled():
@@ -1755,6 +1827,7 @@ class UnitLocalPthPowerObstruction:
                 (modulus,),
                 self.residue_candidate_cap,
                 cancelled,
+                multiplication_table,
             )
             if obstruction != modulus:
                 return False
@@ -1788,9 +1861,33 @@ def _bounded_exact_pth_root(
     prime: int,
     coordinate_bound: int,
     cancelled: Callable[[], Any] | None,
+    multiplication_table: Sequence[Sequence[Sequence[int]]] | None = None,
 ) -> tuple[tuple[int, ...], int, Any] | None:
     basis = tuple(order.basis())
-    for coordinates in _coordinate_vectors(coordinate_bound, len(basis)):
+    targets: list[tuple[tuple[int, ...], int, Any]] = []
+    for exponents in _residue_vectors(prime, len(units)):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("unit p-saturation was cancelled")
+        if not any(exponents):
+            continue
+        for torsion in range(len(torsion_elements)):
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("unit p-saturation was cancelled")
+            targets.append(
+                (
+                    tuple(exponents),
+                    torsion,
+                    _target_element(field, units, torsion_elements, exponents, torsion),
+                )
+            )
+    coordinate_candidates = (
+        _quartic_unit_coordinate_candidates(
+            multiplication_table, coordinate_bound, cancelled
+        )
+        if multiplication_table is not None
+        else _coordinate_vectors(coordinate_bound, len(basis))
+    )
+    for coordinates in coordinate_candidates:
         if callable(cancelled) and cancelled():
             raise AnalyticResourceError("unit p-saturation was cancelled")
         root = field.zero()
@@ -1800,17 +1897,11 @@ def _bounded_exact_pth_root(
         if root.is_zero() or not _exact_unit(field, order, root):
             continue
         power = root**prime
-        for exponents in _residue_vectors(prime, len(units)):
-            if not any(exponents):
-                continue
-            for torsion in range(len(torsion_elements)):
-                if callable(cancelled) and cancelled():
-                    raise AnalyticResourceError("unit p-saturation was cancelled")
-                target = _target_element(
-                    field, units, torsion_elements, exponents, torsion
-                )
-                if power == target:
-                    return (tuple(exponents), torsion, root)
+        for exponents, torsion, target in targets:
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("unit p-saturation was cancelled")
+            if power == target:
+                return (exponents, torsion, root)
     return None
 
 
@@ -1824,6 +1915,7 @@ def _exact_local_obstruction(
     residue_candidate_cap: int,
     precision_history: Sequence[int],
     cancelled: Callable[[], Any] | None,
+    multiplication_table: Sequence[Sequence[Sequence[int]]] | None = None,
 ) -> UnitLocalPthPowerObstruction | None:
     records: list[tuple[Sequence[int], int, int]] = []
     for exponents in _residue_vectors(prime, len(units)):
@@ -1840,6 +1932,7 @@ def _exact_local_obstruction(
                 rational_primes,
                 residue_candidate_cap,
                 cancelled,
+                multiplication_table,
             )
             if modulus is None:
                 return None
@@ -2119,6 +2212,11 @@ def saturate_unit_lattice(
     precision_history: list[int] = []
     incomplete_reason: str | None = None
     degree = int(field.degree())
+    quartic_multiplication_table = (
+        _exact_quartic_order_multiplication_table(order)
+        if degree == 4 and required_primes
+        else None
+    )
     candidate_count = _checked_power_at_most(
         2 * coordinate_bound + 1,
         degree,
@@ -2220,6 +2318,7 @@ def saturate_unit_lattice(
                             prime,
                             coordinate_bound,
                             cancelled,
+                            quartic_multiplication_table,
                         )
                     break
                 except recoverable_errors:
@@ -2240,6 +2339,7 @@ def saturate_unit_lattice(
                     residue_candidate_cap,
                     attempt_history,
                     cancelled,
+                    quartic_multiplication_table,
                 )
                 if obstruction is not None and obstruction.verify(
                     field, order, selected_units, torsion_elements
