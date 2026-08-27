@@ -120,6 +120,7 @@ def resource_projection(resources: dict[str, Any]) -> dict[str, Any]:
         "presentation_extractions",
         "quartic_factor_base_seed_uses",
         "quartic_relation_seed_relations",
+        "quartic_class_number_relation_saturation_first_uses",
         "class_number_post_saturation_projections",
         "deferred_saturation_certificate_constructions",
         "deferred_minkowski_certificate_constructions",

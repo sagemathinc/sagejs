@@ -1991,6 +1991,7 @@ class ClassUnitGroupEngine:
             "cubic_specialized_seed_skips": 0,
             "quartic_factor_base_seed_uses": 0,
             "quartic_relation_seed_relations": 0,
+            "quartic_class_number_relation_saturation_first_uses": 0,
             "deferred_minkowski_certificate_constructions": 0,
             "class_number_post_saturation_projections": 0,
             "deferred_saturation_certificate_constructions": 0,
@@ -5362,9 +5363,20 @@ class ClassUnitGroupEngine:
         required_primes = set(_prime_divisors(initial_bound))
         attempts: list[Any] = []
         prefer_relation_saturation = bool(
-            int(self.field.degree()) == 3
-            and self._resource_usage["cubic_relation_seed_uses"] > 0
+            (
+                int(self.field.degree()) == 3
+                and self._resource_usage["cubic_relation_seed_uses"] > 0
+            )
+            or (int(self.field.degree()) == 4 and defer_record)
         )
+        if (
+            prefer_relation_saturation
+            and int(self.field.degree()) == 4
+            and defer_record
+        ):
+            self._resource_usage[
+                "quartic_class_number_relation_saturation_first_uses"
+            ] += 1
         relation_saturation_batch = self.limits.saturation_relation_batch
         if (
             prefer_relation_saturation

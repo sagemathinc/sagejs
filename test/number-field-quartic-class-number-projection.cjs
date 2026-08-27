@@ -250,10 +250,10 @@ assert body_builds[0] == before_cold_publication + 3, (
     "cold-body-builds", body_builds[0]
 )
 
-# An admitted saturation candidate is verified before use, but its nested
-# analytic certificate and producer result are not premises of the final
-# index-one theorem.  Keep only bounded audit diagnostics in the terminal
-# record instead of embedding and replaying that historical proof tree.
+# The quartic continuation first spends the already-authenticated relation
+# context against a nontrivial global index.  Here one bounded batch of twelve
+# exact relations shrinks the class lattice from order four to two, so no
+# unit-saturation certificate is constructed at all.
 K = NumberField(x**4 + 5*x**2 - 70*x - 190, "attempt_summary")
 assert class_unit_module.quartic_class_number_projection(K, proof=False) == 2
 result = class_unit_module.class_unit_context(K, proof=False, algorithm="auto")
@@ -262,12 +262,18 @@ unit_attempts = [
     attempt for attempt in record.attempts
     if attempt["schema"] == "sagejs.number-fields/unit-saturation-attempt-v1"
 ]
-assert len(unit_attempts) == 1
-unit_attempt = unit_attempts[0]
-assert unit_attempt["accepted"] and not unit_attempt["unit_basis_changed"]
-assert "index_certificate" not in unit_attempt and "result" not in unit_attempt
-assert len(unit_attempt["index_certificate_sha256"]) == 64
-assert unit_attempt["producer_result"]["complete"] is True
+assert unit_attempts == []
+class_attempts = [
+    attempt for attempt in record.attempts
+    if attempt["schema"] == "sagejs.number-fields/class-saturation-attempt-v1"
+]
+assert len(class_attempts) == 1
+assert class_attempts[0]["relations_admitted"] == 12
+assert class_attempts[0]["class_order_before"] == 4
+assert class_attempts[0]["class_order_after"] == 2
+assert class_attempts[0]["class_lattice_enlarged"]
+resources = result.diagnostics["resources"]
+assert resources["quartic_class_number_relation_saturation_first_uses"] == 1
 assert not hasattr(record, "_producer_artifacts")
 assert record.verify(K, K.maximal_order())
 
