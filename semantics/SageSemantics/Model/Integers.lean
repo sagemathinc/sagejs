@@ -88,9 +88,9 @@ The body of `ρσ_operator_add_exact` (`builtins.py:918`).
 
 The shape worth watching is the first branch: two numbers are added as
 doubles, and the exact answer is recovered in BigInt only when both operands
-were safe integers.  A boolean operand does not reach it -- it falls to the
-plain `native_add` further down, which is where the sum stopped being an
-integer.
+were safe integers.  Anything that does not reach it falls to the plain
+`native_add` further down, which does not recover the sum -- which is why the
+normalization in front of this body matters.
 -/
 def operatorAddExactCore (left right : JsValue) : Result :=
   let leftType := left.pythonJstype
@@ -138,20 +138,16 @@ def operatorAddExactCore (left right : JsValue) : Result :=
       | true, some leftValue, some rightValue => .ok (.bigint (leftValue + rightValue))
       | _, _, _ => .ok result
 
-/-- Giving a boolean the storage kind of the integer it is, which is what the
-fix adds ahead of the branches. -/
+/-- Giving a boolean the storage kind of the integer it is, ahead of the
+branches -- a `bool` is an `int` in Python, and the branches below divide on
+storage kind. -/
 def normalizeBool (value : JsValue) : JsValue :=
   match value with
   | .bool flag => .num (.ofInt (if flag then 1 else 0))
   | other => other
 
-/-- `ρσ_operator_add_exact` as it stood before the fix: the body, reached with
-a boolean still a boolean. -/
-def operatorAddExactBeforeFix (left right : JsValue) : Result :=
-  operatorAddExactCore left right
-
-/-- `ρσ_operator_add_exact` as it stands now.  The whole of the change is the
-normalization in front of it. -/
+/-- `ρσ_operator_add_exact` (`builtins.py:918`): the normalization, then the
+body. -/
 def operatorAddExact (left right : JsValue) : Result :=
   operatorAddExactCore (normalizeBool left) (normalizeBool right)
 

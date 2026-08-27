@@ -69,8 +69,7 @@ the error appears one operation later.
   rounded**, which is what makes the runtime's window test a sound test.
 - `core_sound_bigint_bigint`, `core_sound_bigint_num`, `core_sound_num_bigint` — those pairings add
   exactly, at any size.
-- `addExact_not_sound_before_fix` — **the addition was not sound**, with the witness. See below.
-- **`addExact_sound` — the addition as it now stands is sound.** For any two values that denote
+- **`addExact_sound` — the addition is sound.** For any two values that denote
   integers, in either representation, in either order, booleans included, at any magnitude, the sum
   denotes the integer sum. This is the property the runtime lacked, holding for every input rather
   than for the ones a corpus happened to try.
@@ -100,9 +99,13 @@ already stopped being an integer, and the *second* addition is where the value
 goes wrong.
 
 This is the same species as the multiplication bug in #42 and adjacent to it, found here from the
-proof obligation rather than from a corpus. Fixed in #66 by normalizing a boolean operand ahead of
-the branches — the difference between `operatorAddExactBeforeFix` and `operatorAddExact` in the
-model is exactly the difference the fix made in the runtime.
+proof obligation rather than from a corpus — writing out the branches in order to state what
+soundness would mean left the boolean operand with no recovery branch to state. Fixed in #66 by
+normalizing a boolean operand ahead of the branches, which is the `normalizeBool` in the model.
+
+The model tracks the runtime as it is, so it no longer carries the broken version. What that bug
+looked like is still checkable, and not by taking anyone's word for it: point the oracle below at
+the published release.
 
 ## The model as an oracle
 

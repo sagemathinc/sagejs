@@ -6,9 +6,10 @@ import SageSemantics.Spec.Abstraction
 The property wanted of every exact-integer operation: whatever representation
 the operands arrived in, the result denotes the mathematical answer.
 
-`addExact_not_sound_before_fix` records that the property *failed*, and names
-the witness that found it.  `addExact_sound` is the same property for the
-addition as it stands now.
+`addExact_sound` establishes it for the addition.  The property is worth
+stating carefully: it quantifies over the *denotations*, so it holds whichever
+representation an integer arrived in, which is exactly what a corpus of
+examples cannot establish.
 -/
 
 namespace SageSemantics
@@ -30,45 +31,6 @@ way and must still be right.
 def Sound (op : JsValue → JsValue → Result) (spec : Int → Int → Int) : Prop :=
   ∀ (left right : JsValue) (x y : Int),
     ⟦left⟧ = some x → ⟦right⟧ = some y → (op left right).denote = some (spec x y)
-
-/-! ## The bug this model was written to state -/
-
-/-- Before the fix, adding a boolean to the largest safe integer gave a double
-holding `2^53` -- one past the last integer a double can be trusted with. -/
-theorem addExact_bool_overflows_before_fix :
-    operatorAddExactBeforeFix (.bool true) (.num (.ofInt 9007199254740991))
-      = .ok (.num (.ofInt 9007199254740992)) := by
-  decide
-
-/-- And that value denotes nothing: it is a float from there on. -/
-theorem addExact_bool_overflow_denotes_nothing :
-    (operatorAddExactBeforeFix (.bool true) (.num (.ofInt 9007199254740991))).denote
-      = none := by
-  rw [addExact_bool_overflows_before_fix]
-  decide
-
-/--
-The addition **was not sound**, and this is the witness.
-
-`True + (2^53 - 1)` is `9007199254740992` in Python, an `int`.  A boolean
-operand took the branch that returns the raw sum of two doubles, with no
-safe-integer recovery, and the result was classified as a float.  The value
-printed still looked right; the next addition was where it went wrong.
-
-Confirmed against the runtime, including the published `@sagemath/sagejs@0.3.0`:
-`(True + a) + a` gave `1.8014398509481984e+16` where CPython gives
-`18014398509481983`.  Fixed upstream by normalizing a boolean operand ahead of
-the branches, which is the difference between `operatorAddExactBeforeFix` and
-`operatorAddExact`.
--/
-theorem addExact_not_sound_before_fix : ¬ Sound operatorAddExactBeforeFix (· + ·) := by
-  intro sound
-  have witness := sound (.bool true) (.num (.ofInt 9007199254740991)) 1 9007199254740991
-    (by decide) (by decide)
-  rw [addExact_bool_overflow_denotes_nothing] at witness
-  simp at witness
-
-/-! ## Soundness of the addition as it stands -/
 
 /-- Normalizing a boolean does not change what it means. -/
 theorem denote_normalizeBool (value : JsValue) :
@@ -209,9 +171,9 @@ theorem core_sound {left right : JsValue} {x y : Int}
 
 For any two values that denote integers -- in either representation, in either
 order, booleans included, at any magnitude -- the sum denotes the integer sum.
-This is the property `addExact_not_sound_before_fix` shows the runtime lacked,
-and it now holds for every input rather than for the ones a corpus happened to
-try.
+The runtime lacked this property until #66: a boolean operand reached a branch
+with no safe-integer recovery, so `True + (2^53 - 1)` came back a float.  It
+now holds for every input, rather than for the ones a corpus happened to try.
 -/
 theorem addExact_sound : Sound operatorAddExact (· + ·) := by
   intro left right x y hleft hright
