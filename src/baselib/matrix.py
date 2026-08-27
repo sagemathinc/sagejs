@@ -7950,7 +7950,28 @@ class Matrix(sage.Element):
             return MatrixSpace(
                 self.base_ring(), count, self.ncols()
             )._from_m4ri_matrix_resource(resource)
-        return self.matrix_from_rows(range(count))
+        if self._has_nmod_matrix_resource():
+            indices = _packed_uint64(range(count))
+            resource = _flint_ffi_module().nmod_matrix_select_rows(
+                self._nmod_resource(), indices, count
+            )
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_nmod_matrix_resource(resource)
+        if self._has_packed_prime_storage():
+            length = count * self.ncols()
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_canonical_uint64_residues(
+                _packed_uint64_prefix(self._prime_residues_cache, length)
+            )
+        native = runtime.flint_backend().matrixSelectRows(
+            self._native, list(range(count))
+        )
+        return Matrix(
+            MatrixSpace(self.base_ring(), count, self.ncols()),
+            native,
+        )
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
         indices = _matrix_selection_module().column_indices(
