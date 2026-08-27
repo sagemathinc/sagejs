@@ -170,15 +170,32 @@ SAGEJS_OPT_LEVEL=O2 sagejs --python strict-float.py
 SAGEJS_OPT_LEVEL=O0 sagejs --python strict-float.py
 ```
 
+In a Sage.js Jupyter notebook, the installed kernel defaults to Sage mode.
+Prefix this numerical example with `%%python`; otherwise decimal literals are
+Sage `RealLiteral` values and the strict Python-float guard correctly chooses
+the generic implementation. After rebuilding Sage.js, restart an already-open
+kernel before measuring. Use millions of iterations: spelling `5_000_0`, for
+example, means only 50,000 and makes call and timer overhead dominate.
+
 On the initial Node 26 x86-64 host, the guarded Number loop measured about
 2.0 ns per multiply-add step, versus about 273 ns through Sage.js's generic
 Python numeric dispatch and 27 ns in CPython 3.13. These are workload-specific
 warm medians, not general language rankings. The repository benchmark records
-the exact inputs and binary64 checksum:
+the exact inputs and binary64 checksum, and also ratchets the compiler's warm
+parse cost so runtime optimization cannot quietly turn into a long compilation
+pause:
 
 ```sh
 pnpm bench:optimizer-strict-float --check
 ```
+
+On the same x86-64 host, the identical strict recurrence measured 2.00 ns/step
+with Numba 0.67 and 2.03 ns/step with Julia 1.12.7; Sage.js/V8 measured about
+2.02 ns/step. All three produced identical binary64 bits. This loop is a serial
+dependency chain, so LLVM has essentially no additional arithmetic parallelism
+to expose. Numba's first compiled call took about 216 ms, while Julia's first
+call took about 4 ms after process startup. These measurements do not predict
+array, SIMD, or larger-kernel performance.
 
 The annotations are selection hints, not permission to change semantics. If a
 caller supplies integers or a relevant numeric intrinsic has changed, the

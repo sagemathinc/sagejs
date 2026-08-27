@@ -112,6 +112,12 @@ O0 and 27 ns in CPython 3.13. The ratcheted command is
 `pnpm bench:optimizer-strict-float --check`. These measurements establish that
 the architecture can also target strict numerical regions; they do not imply
 that arbitrary numerical Python is optimized or that fast-math is enabled.
+The benchmark also measures and bounds warm O2 frontend cost for the accepted
+source, so future passes cannot purchase runtime speed with an unreviewed
+Julia-like compilation pause. A same-host comparison measured approximately
+2.00 ns/step with Numba 0.67 and 2.03 ns/step with Julia 1.12.7, with the same
+binary64 checksum as Sage.js/V8. Numba's first compiled call took about 216 ms;
+Julia's first call took about 4 ms after process startup.
 
 ## Relationship to the existing architecture
 

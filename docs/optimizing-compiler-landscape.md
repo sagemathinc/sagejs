@@ -78,6 +78,15 @@ mode of numerical subset compilers; any future reassociation or fast-math must
 be an explicit, separately tested policy rather than a consequence of choosing
 V8, Wasm, or native code.
 
+The initial ordered multiply-add measurement illustrates the difference
+between backend reputation and a specific lowered graph. On one Node 26
+x86-64 host, Sage.js/V8, Numba 0.67/LLVM, and Julia 1.12.7/LLVM all took about
+2.0 ns per serial multiply-add step and produced identical binary64 bits. The
+loop-carried dependency, rather than dispatch or code generation, was the
+remaining limit. Numba paid roughly 216 ms on its first compiled call; the
+Sage.js optimizer added only a small AST-analysis cost before V8's ordinary
+tiering. Array loops and SIMD kernels can have a very different ordering.
+
 ## Mojo and MLIR: layered lowering
 
 Mojo is a new compiled language, not an implementation of Python. Its manual
