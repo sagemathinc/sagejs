@@ -165,7 +165,7 @@ test("deterministic grammar-generated regions agree with O0 across shapes", asyn
       ]);
       assert.equal(fast.stdout, slow.stdout, `generated GF(${prime}^2)`);
       const route = await optimized.evaluate("K._lastCompilerOptimizationRoute");
-      assert.equal(route.repr, "'v8-extension-tuple-region'");
+      assert.equal(route.repr, "'v8-extension-tuple-stream'");
     } finally {
       await Promise.all([optimized.close(), generic.close()]);
     }
@@ -549,13 +549,19 @@ proxy = runtime.reflect.construct(
     [K(3)+a, handler],
 )
 def guarded(values):
-    value = K(1)+2*a
-    point = K(7)+a
+    left = K(1)+2*a
+    right = K(7)+a
+    pivot = K(11)+3*a
     for coefficient in values:
-        value = value*point+coefficient
-    return value
+        if coefficient == pivot:
+            left = left + right
+            right = right - coefficient
+        else:
+            left = left*right+coefficient
+            right = right+left
+    return left, right
 K._lastCompilerOptimizationRoute = 'proxy-fallback'
-print(guarded(runtime.math_tuple([proxy])))
+print(guarded(runtime.math_tuple([K(2)+a, proxy])))
 print(events)
 print(K._lastCompilerOptimizationRoute)
 `;

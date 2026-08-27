@@ -1,0 +1,218 @@
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+
+const { createSage } = require("../dist/tools/kernel.js");
+
+const check = process.argv.includes("--check");
+const count = 100_000;
+const genericCount = 500;
+const samples = 5;
+
+function median(values) {
+  const ordered = [...values].sort((left, right) => left - right);
+  return ordered[Math.floor(ordered.length / 2)];
+}
+
+function extensionAdd(left, right, prime) {
+  return left.map((value, index) => (value + right[index]) % prime);
+}
+
+function extensionSub(left, right, prime) {
+  return left.map((value, index) => (value - right[index] + prime) % prime);
+}
+
+function extensionMultiply(left, right) {
+  const product = new Array(5).fill(0);
+  for (let i = 0; i < 3; i += 1) {
+    for (let j = 0; j < 3; j += 1) {
+      product[i + j] = (product[i + j] + left[i] * right[j]) % 5;
+    }
+  }
+  for (let exponent = 4; exponent >= 3; exponent -= 1) {
+    const factor = product[exponent];
+    product[exponent - 3] = (product[exponent - 3] - factor + 5) % 5;
+    product[exponent - 2] = (product[exponent - 2] - factor + 5) % 5;
+  }
+  return product.slice(0, 3);
+}
+
+function residueOracle(iterations) {
+  let left = 5;
+  let right = 7;
+  const pivot = 17;
+  for (let index = 0; index < iterations; index += 1) {
+    const value = (index * index + 3) % 1009;
+    if (value === pivot) {
+      left = (left + right) % 1009;
+      right = (right - value + 1009) % 1009;
+    } else {
+      left = (left * right + value * value) % 1009;
+      right = (right + left) % 1009;
+    }
+  }
+  return [left, right];
+}
+
+function cubicOracle(iterations) {
+  let left = [1, 2, 3];
+  let right = [4, 1, 2];
+  const pivot = [3, 4, 1];
+  for (let index = 0; index < iterations; index += 1) {
+    const value = [index % 5, (index + 1) % 5, (index * index + 2) % 5];
+    if (value.every((entry, position) => entry === pivot[position])) {
+      left = extensionAdd(left, right, 5);
+      right = extensionSub(right, value, 5);
+    } else {
+      left = extensionAdd(
+        extensionMultiply(left, right),
+        extensionMultiply(value, value),
+        5,
+      );
+      right = extensionAdd(right, left, 5);
+    }
+  }
+  return [...left, ...right];
+}
+
+const cases = [
+  {
+    name: "word-residue-ring",
+    route: "v8-number-residue-stream",
+    oracle: residueOracle,
+    answer: "tuple([int(answer[0]),int(answer[1])])",
+    setup(iterations) {
+      return `
+R=Zmod(1009)
+values=tuple(R(index^2+3) for index in range(${iterations}))
+pivot=R(17)
+left=R(5)
+right=R(7)
+parent=R`;
+    },
+  },
+  {
+    name: "cubic-extension-field",
+    route: "v8-extension-tuple-stream",
+    oracle: cubicOracle,
+    answer: "tuple(answer[0]._machineCoordinates+answer[1]._machineCoordinates)",
+    setup(iterations) {
+      return `
+P.<x>=PolynomialRing(GF(5))
+K.<a>=GF(5^3, modulus=x^3+x+1)
+aa=a*a
+values=tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(${iterations}))
+pivot=K(3)+4*a+aa
+left=K(1)+2*a+3*aa
+right=K(4)+a+2*aa
+parent=K`;
+    },
+  },
+];
+
+async function sessionAtLevel(level) {
+  const previous = process.env.SAGEJS_OPT_LEVEL;
+  process.env.SAGEJS_OPT_LEVEL = level;
+  try {
+    return await createSage();
+  } finally {
+    if (previous === undefined) delete process.env.SAGEJS_OPT_LEVEL;
+    else process.env.SAGEJS_OPT_LEVEL = previous;
+  }
+}
+
+function source(item, iterations, label) {
+  return `
+import time
+${item.setup(iterations)}
+def branching_checksum(values, pivot, left, right):
+    for index in range(len(values)):
+        if values[index] == pivot:
+            left=left+right
+            right=right-values[index]
+        else:
+            left=left*right+values[index]^2
+            right=right+left
+    return left,right
+branching_checksum(values,pivot,left,right)
+for sample in range(${samples}):
+    started=time.time()
+    answer=branching_checksum(values,pivot,left,right)
+    print('${label}',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))
+print('resources',len(parent._nativeResourceChildren) if hasattr(parent,'_nativeResourceChildren') else 0)
+`;
+}
+
+function parse(stdout, label) {
+  const observations = [];
+  const routes = new Set();
+  let answer;
+  let resources;
+  for (const line of stdout.trim().split(/\r?\n/)) {
+    const resource = line.match(/^resources (\d+)$/);
+    if (resource) {
+      resources = Number(resource[1]);
+      continue;
+    }
+    const match = line.match(new RegExp(
+      `^${label} ([0-9.eE+-]+) \\(([^)]*)\\) ([a-z0-9-]+)$`,
+    ));
+    assert.ok(match, line);
+    observations.push(Number(match[1]) * 1000);
+    answer = match[2].split(",").filter(Boolean).map((value) => Number(value.trim()));
+    routes.add(match[3]);
+  }
+  return { observations, routes: [...routes], answer, resources };
+}
+
+async function measure(item) {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const fast = parse((await optimized.evaluate(source(item, count, "fast"))).stdout, "fast");
+    const slow = parse(
+      (await generic.evaluate(source(item, genericCount, "generic"))).stdout,
+      "generic",
+    );
+    return { fast, slow };
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+}
+
+(async () => {
+  const report = { count, generic_count: genericCount, samples, cases: [] };
+  for (const item of cases) {
+    const result = await measure(item);
+    assert.deepEqual(result.fast.answer, item.oracle(count));
+    assert.deepEqual(result.slow.answer, item.oracle(genericCount));
+    const fastMedian = median(result.fast.observations);
+    const genericMedian = median(result.slow.observations);
+    const projectedGeneric = genericMedian * count / genericCount;
+    const entry = {
+      name: item.name,
+      answer: result.fast.answer,
+      route: result.fast.routes,
+      resources: result.fast.resources,
+      medians_ms: {
+        guarded_branch_stream: fastMedian,
+        generic_prefix: genericMedian,
+        projected_generic: projectedGeneric,
+      },
+      speedup_over_projected_generic: projectedGeneric / fastMedian,
+    };
+    if (check) {
+      assert.deepEqual(result.fast.routes, [item.route]);
+      assert.deepEqual(result.slow.routes, ["generic"]);
+      assert.equal(result.fast.resources, 0);
+      assert.ok(fastMedian <= 500, `${item.name}: ${fastMedian}ms`);
+      assert.ok(entry.speedup_over_projected_generic >= 10, item.name);
+    }
+    report.cases.push(entry);
+  }
+  console.log(JSON.stringify(report, null, 2));
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

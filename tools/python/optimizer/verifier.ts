@@ -396,8 +396,6 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       affine?.kind === "sequence-increment" ||
       (observedSequenceAccesses.size > 0 &&
        observedSequenceAccesses.size <= 2 &&
-       plan.operands.statements.every((statement: any) =>
-         statement.kind === "assign") &&
        [...observedSequenceAccesses.values()].reduce(
          (total, uses) => total + uses, 0
        ) <= 8)
