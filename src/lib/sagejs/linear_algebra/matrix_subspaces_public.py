@@ -29,7 +29,7 @@ def _same_base_ring(left: Any, right: Any) -> bool:
 def _basis_row_count(echelon: Any) -> int:
     """Return the number of leading canonical generator rows.
 
-    Fields and `ZZ` cache their increasing pivot tuple on the canonical matrix.
+    Fields and `ZZ` expose an exact bulk rank operation on the canonical matrix.
     Composite residue rings use Howell form, whose generator count can differ
     from rank, and retain the deliberately general leading-row scan.
     """
@@ -45,7 +45,7 @@ def _basis_row_count(echelon: Any) -> int:
             else:
                 found_zero = True
         return count
-    return len(echelon.pivots())
+    return echelon.rank()
 
 
 def _select_prefix_rows(echelon: Any, count: int) -> Any:

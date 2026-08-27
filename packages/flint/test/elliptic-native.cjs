@@ -293,12 +293,15 @@ test("parallel central grids cooperatively observe a shared cancellation flag", 
   );
   const coefficients = new Int32Array(probe.requiredCutoff + 1);
   coefficients.fill(7, 1);
-  const shared = new SharedArrayBuffer(Uint32Array.BYTES_PER_ELEMENT);
+  const shared = new SharedArrayBuffer(2 * Uint32Array.BYTES_PER_ELEMENT);
   const cancel = new Uint32Array(shared);
+  const sync = new Int32Array(shared);
   const worker = new Worker(
     `const { parentPort, workerData } = require("node:worker_threads");
      const flag = new Int32Array(workerData);
      parentPort.on("message", () => {
+       Atomics.store(flag, 1, 1);
+       Atomics.notify(flag, 1);
        Atomics.wait(flag, 0, 0, 5);
        Atomics.store(flag, 0, 1);
      });
@@ -308,12 +311,15 @@ test("parallel central grids cooperatively observe a shared cancellation flag", 
   try {
     await new Promise((resolve) => worker.once("message", resolve));
     worker.postMessage("go");
+    Atomics.wait(sync, 1, 0);
     const result = flint.hyperellipticCentralWeights(
       713n, 1, 2, coefficients, 64, 4, 4, cancel, null,
     );
     assert.equal(result.status, "cancelled");
     Atomics.store(cancel, 0, 0);
+    Atomics.store(sync, 1, 0);
     worker.postMessage("go");
+    Atomics.wait(sync, 1, 0);
     const tableConstruction = flint.hyperellipticCentralWeights(
       713n, 1, 2, coefficients, 64, 4, 4, cancel,
     );

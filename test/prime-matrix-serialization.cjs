@@ -18,7 +18,7 @@ function runSage(source) {
   const filename = join(directory, "exercise.py");
   try {
     writeFileSync(filename, source);
-    const result = spawnSync(resolve(root, "bin/sagejs"), [filename], {
+    const result = spawnSync(process.execPath, [resolve(root, "bin/sagejs"), filename], {
       cwd: root,
       encoding: "utf8",
     });

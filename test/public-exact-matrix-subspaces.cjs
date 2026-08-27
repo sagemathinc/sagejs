@@ -133,9 +133,9 @@ assert reduced_span.basis_matrix() == identity_matrix(GF(7), 2)
 assert reduced_span.gen(0).parent() is reduced_span
 assert reduced_span.gen(0) in reduced_span
 
-# The equal-ring exact path may scan only O(rank) pivot metadata and bulk-copy
-# rows. Full serialization, host exact values, scalar entries, and host rows
-# are forbidden after the canonical echelon matrix has been computed.
+# The equal-ring exact path may use exact bulk rank metadata and bulk-copy rows.
+# Full serialization, host exact values, scalar entries, and host rows are
+# forbidden after the canonical echelon matrix has been computed.
 for base in [ZZ, QQ]:
     source = matrix(base, [[2, 4, 6], [1, 2, 3], [0, 0, 0]])
     echelon = source.echelon_form()
