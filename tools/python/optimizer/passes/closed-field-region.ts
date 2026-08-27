@@ -23,7 +23,8 @@ type ExpressionPlan =
   | { kind: "power"; exponent: number; value: ExpressionPlan };
 
 type ConditionPlan = {
-  kind: "equal";
+  kind: "comparison";
+  operator: "==" | "!=";
   left: ExpressionPlan;
   right: ExpressionPlan;
 };
@@ -337,14 +338,15 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     return null;
   };
   const condition = (node: any): ConditionPlan | null => {
-    if (!(node instanceof compiler.AST_Binary) || node.operator !== "==") {
+    if (!(node instanceof compiler.AST_Binary) ||
+        (node.operator !== "==" && node.operator !== "!=")) {
       return null;
     }
     const left = expression(node.left);
     const right = expression(node.right);
     if (!left || !right) return null;
     operations.add("equal");
-    return { kind: "equal", left, right };
+    return { kind: "comparison", operator: node.operator, left, right };
   };
   const statements = (source: any[]): StatementPlan[] | null => {
     const output: StatementPlan[] = [];
