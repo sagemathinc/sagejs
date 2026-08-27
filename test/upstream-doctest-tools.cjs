@@ -2,6 +2,10 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
 const {
   extractSageDoctests,
   extractRstSageDoctests,
@@ -70,6 +74,31 @@ const filtered = filterSageDoctests(fixture, {
 });
 assert.deepEqual(filtered.summary, { groups: 1, examples: 3 });
 assert.equal(filtered.groups[0].owner, "Example");
+
+// Expected Python exceptions are ordinary doctest output.  The REPL normally
+// gives piped input a nonzero exit status after an uncaught exception, but the
+// doctest worker must keep running so the parent can compare the traceback.
+const exceptionFixture = filterSageDoctests(fixture, {
+  ownerPattern: /^Example$/,
+});
+exceptionFixture.groups[0].examples = [
+  exceptionFixture.groups[0].examples[2],
+];
+exceptionFixture.summary = { groups: 1, examples: 1 };
+const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-doctest-"));
+try {
+  const fixturePath = join(temporaryDirectory, "expected-exception.json");
+  writeFileSync(fixturePath, JSON.stringify(exceptionFixture));
+  const result = spawnSync(
+    process.execPath,
+    [resolve(__dirname, "../scripts/run-sage-doctests.cjs"), fixturePath],
+    { cwd: resolve(__dirname, ".."), encoding: "utf8" },
+  );
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /1 passed/);
+} finally {
+  rmSync(temporaryDirectory, { recursive: true, force: true });
+}
 
 assert.ok(matchesExpected("5\n", "5\n"));
 assert.ok(matchesExpected("prefix middle suffix\n", "prefix ... suffix\n"));

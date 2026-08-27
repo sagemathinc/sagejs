@@ -154,6 +154,11 @@ async function worker() {
 
   const repl = await Repl({
     console: capturingConsole,
+    // A doctest worker has interactive-REPL exception semantics even though
+    // its examples arrive over an internal JSON pipe.  Exceptions are output
+    // to compare with the expected traceback; they must not independently
+    // make the worker process fail before the parent can classify them.
+    input: { isTTY: true },
     mockReadline: () => readline,
     terminal: false,
     show_js: false,
