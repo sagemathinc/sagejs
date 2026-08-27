@@ -9,7 +9,7 @@ const { join, resolve } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
-const createCompiler = require("..");
+const { createCompiler } = require("..");
 const {
   generateHostCore,
 } = require("../tools/native-kernel/c-backend.cjs");

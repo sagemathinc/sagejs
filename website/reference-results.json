@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 176,
+    "pass": 180,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -1110,6 +1110,26 @@
       "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
       "status": "pass",
       "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#bfcaa180a823102e-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#4270aaccf86fac20-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/builtins.py#d181e8a0e9db5e6c-60ebc8787044b57f",
+      "status": "pass",
+      "actual": "sagejs.version/v1\n"
+    },
+    {
+      "id": "src/baselib/builtins.py#578a06e6e0f5f19c-546311dad70b3619",
+      "status": "pass",
+      "actual": "Sage.js\n"
     },
     {
       "id": "src/baselib/finite_fields.py#a4efb6c82ad07055-e3b0c44298fc1c14",

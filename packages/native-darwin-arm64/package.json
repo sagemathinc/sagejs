@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs-darwin-arm64",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Private workspace version anchor for Sage.js macOS arm64",
   "private": true,
   "license": "GPL-3.0-only",

@@ -12906,8 +12906,11 @@
       "consumers": [
         "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
+        "packages/flint-wasm/test/node-kernel.test.mjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
+        "scripts/test-npm-package.cjs",
+        "src/baselib/builtins.py",
         "test/ffi.cjs",
         "test/native-kernel.cjs",
         "tools/resources.ts"

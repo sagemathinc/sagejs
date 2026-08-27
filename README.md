@@ -1,6 +1,6 @@
 # Sage.js
 
-> **Early alpha:** Sage.js 0.4.0 is intended for outside experimentation.
+> **Early alpha:** Sage.js 0.4.1 is intended for outside experimentation.
 > Expect missing functionality, incompatible changes, and rough edges.
 
 > **Sage.js is open, portable, high-performance software for exploring
@@ -18,6 +18,57 @@
 
 Sage.js is a new implementation of Python and Sage semantics on JavaScript and
 Node. It does not embed or invoke the official CPython interpreter.
+
+## Quick start from Node.js
+
+Install the public package. Its optional platform package supplies the same
+native mathematics executable used by the command line:
+
+```sh
+pnpm add @sagemath/sagejs
+```
+
+In an ES module:
+
+```js
+import { createSage } from "@sagemath/sagejs";
+
+const sage = await createSage();
+const result = await sage.evaluate("factor(370309)");
+console.log(result.repr); // 67 * 5527
+await sage.close();
+```
+
+The same API works from CommonJS and the Node REPL:
+
+```js
+const { createSage } = require("@sagemath/sagejs");
+const sage = await createSage();
+console.log((await sage.evaluate("number_of_partitions(10)")).repr); // 42
+await sage.close();
+```
+
+Definitions persist between calls to `evaluate()`. Each session is isolated,
+interruptible, and owns a persistent native Sage.js worker. See
+[`EMBEDDING.md`](EMBEDDING.md) for output streaming, Python mode, timeouts,
+browser embedding, and rich graphics. The lower-level compiler is available
+explicitly as `createCompiler`; the package root is not itself a compiler
+function.
+
+Inside Sage mode, `version()` reports the human-readable release and target;
+`version(True)` or `version(json=True)` returns a stable
+`sagejs.version/v1` dictionary for scripts:
+
+```sage
+sage: version()
+'Sage.js v0.4.1 [linux-x64], Release Date: 2026-08-27'
+sage: version(json=True)
+{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.4.1', 'release_date': '2026-08-27', 'platform': 'linux-x64'}
+```
+
+- [npm package](https://www.npmjs.com/package/@sagemath/sagejs)
+- [Run Sage.js in a browser](https://app.sagejs.org/)
+- [Embed Sage.js in an application](EMBEDDING.md)
 
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
 [![Implementation dashboard](https://img.shields.io/badge/dashboard-capabilities%20%26%20roadmap-0d9488)](https://sagemathinc.github.io/sagejs/)
@@ -40,7 +91,7 @@ It installs into `~/.local/bin` by default and, when necessary, adds that
 directory to the current user's shell startup file. Restart the shell (or
 source the file named by the installer) after a first installation. When run
 as root it instead installs system-wide into `/usr/local/bin`; set
-`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.4.0` to
+`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.4.1` to
 pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
@@ -60,7 +111,7 @@ built on Ubuntu 24.04; a minimal Debian/Ubuntu image needs `curl`, `xz-utils`,
 and `libatomic1` for the one-command installer and official Node-based
 executable. Windows executables are intended for ordinary Windows
 10/11 x64 systems; Authenticode provisioning is still in progress, so the
-0.4.0 early-alpha executables may be unsigned. macOS executables use the hardened
+0.4.1 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
 submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
@@ -214,7 +265,7 @@ credentials can reproduce the signed, notarized macOS artifacts locally with:
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.4.0
+pnpm release:macos -- --publish v0.4.1
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
@@ -315,13 +366,13 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs@0.4.0
+npm install --global @sagemath/sagejs@0.4.1
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global --allow-build=zeromq @sagemath/sagejs@0.4.0
+pnpm add --global @sagemath/sagejs@0.4.1
 ```
 
 The public package keeps the Sage.js library and embedding APIs, while its
@@ -391,7 +442,7 @@ Applications can create a persistent, interruptible Sage session with a small
 public API:
 
 ```js
-const { createSage } = require("@sagemath/sagejs/kernel");
+const { createSage } = require("@sagemath/sagejs");
 
 const sage = await createSage();
 sage.on("stdout", (text) => process.stdout.write(text));
@@ -402,12 +453,11 @@ console.log(result.repr);
 await sage.close();
 ```
 
-The 0.4.0 npm embedding API includes the compiler, Sage/Python runtime, and
-pure-JavaScript libraries. The installed `sagejs` command uses the full native
-mathematics executable, but this early alpha does not yet expose its bundled
-native addons through `createSage()`; native-backed embedding is planned for a
-follow-up release. With pnpm 11, add `--allow-build=zeromq` to the install
-command so pnpm can install the Jupyter transport dependency.
+The 0.4.1 npm embedding API starts the installed platform executable behind a
+small JSON-lines protocol, so `createSage()` exposes the same full native
+mathematics runtime as the command line without a compiler or postinstall
+script. The explicit `@sagemath/sagejs/kernel` export remains available for
+applications that prefer it.
 
 Each session runs in an isolated worker. Definitions persist between
 evaluations, while interruption, timeouts, and reset reliably replace the
@@ -485,7 +535,7 @@ The `sagejs` command uses Sage-style syntax by default:
 
 ```py
 $ sagejs
-Welcome to Sage.js v0.4.0 [linux-x64].
+Welcome to Sage.js v0.4.1 [linux-x64].
 sage: 2^100
 1267650600228229401496703205376
 sage: sum([1..100])
@@ -773,7 +823,7 @@ Python mode retains Python's meaning of `^`:
 
 ```py
 $ sagejs --python
-Welcome to Sage.js v0.4.0 (Python mode) [linux-x64].
+Welcome to Sage.js v0.4.1 (Python mode) [linux-x64].
 >>> 2^3
 1
 >>> 2**3

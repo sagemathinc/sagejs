@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
@@ -24,13 +24,17 @@
   ],
   "type": "commonjs",
   "main": "index.cjs",
+  "types": "index.d.ts",
   "exports": {
-    ".": "./index.cjs",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.cjs"
+    },
     "./embedded": "./dist/tools/embedded_compiler.js",
     "./frontend": "./dist/tools/python/compiler-frontend.js",
     "./kernel": {
       "types": "./dist/tools/kernel.d.ts",
-      "default": "./dist/tools/kernel.js"
+      "default": "./tools/installed-kernel.cjs"
     },
     "./native": {
       "types": "./tools/native-kernel.d.ts",
@@ -72,6 +76,7 @@
     "TESTING.md",
     "RELEASING.md",
     "SERIALIZATION.md",
+    "sagejs-version.json",
     "pyrightconfig.json",
     "TYPING.md",
     "VENDORED-SOURCES.md",
@@ -81,6 +86,7 @@
     ".agents",
     "install.sh",
     "index.cjs",
+    "index.d.ts",
     "!**/__pycache__",
     "!**/*.py[cod]",
     "!src/**/.sagejs-native-kernels",
@@ -357,7 +363,8 @@
     "tree-sitter-cli": "0.26.11",
     "tree-sitter-macaulay2": "4.0.1",
     "tree-sitter-python": "0.25.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "zeromq": "6.5.0"
   },
   "publishConfig": {
     "access": "public"
@@ -371,8 +378,7 @@
     "numpy-ts": "1.6.0",
     "playwright-core": "1.62.0",
     "plotly.js-dist-min": "3.7.0",
-    "web-tree-sitter": "0.26.11",
-    "zeromq": "6.5.0"
+    "web-tree-sitter": "0.26.11"
   },
   "optionalDependencies": {
     "@sagemath/sagejs-darwin-arm64": "workspace:*",

@@ -5,7 +5,7 @@
 
 const { readFileSync } = require("node:fs");
 const { relative, resolve, sep } = require("node:path");
-const createCompiler = require("../..");
+const { createCompiler } = require("../..");
 const { canonicalJson } = require("./common.cjs");
 const {
   FAMILY_SCHEMA,

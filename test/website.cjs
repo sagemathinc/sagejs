@@ -7,9 +7,16 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
+const packageVersion = JSON.parse(
+  fs.readFileSync(path.join(root, "package.json"), "utf8"),
+).version;
 const website = path.join(root, "website");
-const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json"), "utf8"));
-const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
+const payload = JSON.parse(
+  fs.readFileSync(path.join(website, "capabilities.json"), "utf8"),
+);
+const examplePayload = JSON.parse(
+  fs.readFileSync(path.join(website, "examples.json"), "utf8"),
+);
 const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
 const pagesWorkflow = fs.readFileSync(
@@ -206,11 +213,16 @@ test("benchmark catalog inventories existing suites and future research cases", 
 });
 
 test("dashboard covers the three questions and all install paths", () => {
-  for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
+  for (const id of ["install", "capabilities", "roadmap"]) {
+    assert.match(html, new RegExp(`id=["']${id}["']`));
+  }
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /curl -fsSL https:\/\/sagejs\.org\/install\.sh \| sh/);
   assert.match(pagesWorkflow, /cp install\.sh website\/install\.sh/);
-  assert.match(html, /Early alpha · v0\.4\.0/);
+  assert.match(
+    html,
+    new RegExp(`Early alpha · v${packageVersion.replaceAll(".", "\\.")}`),
+  );
   assert.match(html, /sagejs-windows-x64\.zip/);
   assert.match(html, /GPL-3\.0/);
   assert.match(html, /does not embed or invoke CPython/);

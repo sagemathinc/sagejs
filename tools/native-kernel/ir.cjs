@@ -1,6 +1,6 @@
 "use strict";
 
-const createCompiler = require("../..");
+const { createCompiler } = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
 const {
   canonicalType,

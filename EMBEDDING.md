@@ -8,7 +8,7 @@ or resetting a session terminates that worker and starts a clean replacement.
 ## Node.js
 
 ```js
-const { createSage } = require("@sagemath/sagejs/kernel");
+const { createSage } = require("@sagemath/sagejs");
 
 const sage = await createSage();
 
@@ -22,11 +22,12 @@ console.log(result.repr);
 await sage.close();
 ```
 
-In the 0.4.0 npm alpha, this API includes the compiler and pure-JavaScript
-runtime. The platform package's standalone `sagejs` command has the full native
-mathematics stack; those bundled native addons are not yet connected to the npm
-`createSage()` session. A source checkout with its native workspace packages
-built also provides native-backed embedding.
+The public npm package automatically installs a platform package on Linux x64,
+Linux arm64, Apple Silicon macOS, and Windows x64. `createSage()` starts that
+package's native Sage.js runtime as an isolated child process and keeps one
+session alive across evaluations. Native addons and mathematical objects stay
+inside that process; the application receives clone-safe results and streamed
+text. No unpublished `@sagemath/sagejs-flint` package is required.
 
 Definitions persist between evaluations:
 
@@ -57,12 +58,15 @@ processes.
 
 ## Browser and WebAssembly
 
-Build the WebAssembly package as described in
+Sage.js already runs as a fully local WebAssembly application at
+[app.sagejs.org](https://app.sagejs.org/). The browser kernel is also an
+embeddable ES module. During this early alpha, build and self-host its
+receipt-verified static package as described in
 [`packages/flint-wasm/README.md`](packages/flint-wasm/README.md), then import
-the browser implementation:
+the copied browser implementation from your own origin:
 
 ```js
-import { createSage } from "@sagemath/sagejs-flint-wasm/kernel";
+import { createSage } from "./vendor/sagejs-wasm/kernel.mjs";
 
 const sage = await createSage();
 const result = await sage.evaluate("factor(2026)");
@@ -115,7 +119,7 @@ data. Plotting v0 uses `application/vnd.plotly.v1+json`:
 ```js
 import {
   renderSageDisplay,
-} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+} from "./vendor/sagejs-wasm/plotly-renderer.mjs";
 
 const result = await sage.evaluate(`
 plot(sin(x^2), (x, 0, 2*pi))
@@ -136,7 +140,7 @@ Browser hosts can also implement Sage's `Graphics.save()` operation:
 ```js
 import {
   downloadSageDisplay,
-} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+} from "./vendor/sagejs-wasm/plotly-renderer.mjs";
 
 const sage = await createSage({
   onGraphicsSave(request) {

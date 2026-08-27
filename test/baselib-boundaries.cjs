@@ -17,11 +17,47 @@ const strictBaselibModules = strictModules.filter((path) =>
 const strictTopLevelBaselibModules = strictBaselibModules.filter((path) =>
   !path.slice("src/baselib/".length).includes("/"),
 );
-const verbatimExpression =
-  /(?<!['"])\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
+function containsVerbatimExpression(source) {
+  for (let index = 0; index < source.length;) {
+    const character = source[index];
+    if (character === "#") {
+      while (index < source.length && source[index] !== "\n") index += 1;
+      continue;
+    }
+    if (character === "v" && !/[A-Za-z0-9_]/.test(source[index - 1] ?? "")) {
+      const quote = source[index + 1];
+      if (quote === "'" || quote === '"') return true;
+    }
+    if (character !== "'" && character !== '"') {
+      index += 1;
+      continue;
+    }
+    const delimiter = source.slice(index, index + 3) === character.repeat(3)
+      ? character.repeat(3)
+      : character;
+    index += delimiter.length;
+    while (index < source.length) {
+      if (source.slice(index, index + delimiter.length) === delimiter) {
+        index += delimiter.length;
+        break;
+      }
+      if (source[index] === "\\") index += 2;
+      else index += 1;
+    }
+  }
+  return false;
+}
 
-assert.match("answer = v'nativeCall()'", verbatimExpression);
-assert.doesNotMatch("answer = {'v': 'triangle-down'}", verbatimExpression);
+assert.equal(containsVerbatimExpression("answer = v'nativeCall()'"), true);
+assert.equal(containsVerbatimExpression('answer = v"nativeCall()"'), true);
+assert.equal(
+  containsVerbatimExpression("answer = {'v': 'triangle-down'}"),
+  false,
+);
+assert.equal(
+  containsVerbatimExpression('"""Documentation ending in Sage.js v"""'),
+  false,
+);
 const topLevelModules = readdirSync(join(root, "src", "baselib"))
   .filter((name) => name.endsWith(".py"))
   .map((name) => `src/baselib/${name}`)
@@ -40,9 +76,9 @@ assert.deepEqual(
 
 for (const relativePath of strictModules) {
   const source = readFileSync(join(root, relativePath), "utf8");
-  assert.doesNotMatch(
-    source,
-    verbatimExpression,
+  assert.equal(
+    containsVerbatimExpression(source),
+    false,
     `${relativePath} must not contain verbatim JavaScript`,
   );
   assert.ok(

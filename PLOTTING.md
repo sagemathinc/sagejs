@@ -105,7 +105,7 @@ The browser/WASM package exports the renderer separately:
 ```js
 import {
   renderSageDisplay,
-} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+} from "./vendor/sagejs-wasm/plotly-renderer.mjs";
 ```
 
 Plotly is injected by the embedding application. This keeps Plotly and its

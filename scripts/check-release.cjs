@@ -7,6 +7,26 @@ const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "..");
 const rootPackage = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+const versionInfo = JSON.parse(
+  readFileSync(join(root, "sagejs-version.json"), "utf8"),
+);
+assert.deepEqual(
+  Object.keys(versionInfo).sort(),
+  ["name", "release_date", "schema", "version"],
+  "the public Sage.js version record must have exactly the stable v1 fields",
+);
+assert.equal(versionInfo.schema, "sagejs.version/v1");
+assert.equal(versionInfo.name, "Sage.js");
+assert.equal(
+  versionInfo.version,
+  rootPackage.version,
+  "sagejs-version.json must match the npm package version",
+);
+assert.match(
+  versionInfo.release_date,
+  /^\d{4}-\d{2}-\d{2}$/,
+  "the Sage.js release date must use ISO YYYY-MM-DD form",
+);
 const releaseWorkflow = readFileSync(
   join(root, ".github", "workflows", "ci.yml"),
   "utf8",
