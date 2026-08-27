@@ -123,6 +123,23 @@ def recurrence(n, field):
     assert.match(optimized, /ρσ_ResidueResult\d+ !== null/);
     assert.match(optimized, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
 
+    const generic = (() => {
+      const ast = frontend.parse(`
+def recurrence(n, field):
+    value = field(1)
+    multiplier = field(12345)
+    increment = field(6789)
+    for index in range(n):
+        value = value * multiplier + increment
+    return value
+`, { ...parserOptions, optimization_level: "O0" });
+      const output = new compiler.OutputStream(outputOptions);
+      ast.print(output);
+      return output.get();
+    })();
+    assert.doesNotMatch(generic, /ρσ_fast_machine_residue_recurrence\(/);
+    assert.match(generic, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
+
     for (const source of [
       `for index in range(limit()):\n    value = value * multiplier + increment\n`,
       `for index in range(count):\n    value = value * value + increment\n`,

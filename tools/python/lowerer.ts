@@ -6,6 +6,7 @@ import {
   SAGEJS_RUNTIME_INTRINSICS,
 } from "./contract";
 import type { PythonSyntaxTree } from "./frontend";
+import { optimizePythonAst } from "./optimizer";
 import { PythonAstSemanticAnalyzer } from "./semantic";
 
 export class UnsupportedPythonCstNode extends Error {
@@ -259,6 +260,7 @@ export class PythonCstLowerer {
         this.options.scoped_flags?.sequential_definitions
       ),
     ).analyze(ast);
+    optimizePythonAst(this.compiler, ast, this.options);
     ast.intrinsic_modules = Object.fromEntries(this.intrinsicModules);
     return {
       ast,
@@ -892,7 +894,7 @@ export class PythonCstLowerer {
     const object = this.lowerExpression(this.field(node, "right"));
     const body = this.lowerBlock(this.field(node, "body"));
     this.invalidateIntrinsicBinding(left);
-    const loop = this.make(isAsync ? "AST_AsyncFor" : "AST_ForIn", node, {
+    return this.make(isAsync ? "AST_AsyncFor" : "AST_ForIn", node, {
       init,
       name: null,
       object,
@@ -901,69 +903,6 @@ export class PythonCstLowerer {
         ? this.lowerBlock(this.field(alternative, "body"))
         : null,
     });
-    if (!isAsync && !alternative) {
-      loop.machine_residue_recurrence = this.machineResidueRecurrence(
-        init,
-        object,
-        body,
-      );
-    }
-    return loop;
-  }
-
-  /**
-   * Recognize one deliberately tiny proof domain:
-   *
-   *     for index in range(count):
-   *         value = value * multiplier + increment
-   *
-   * All six operands must be direct locals, the loop body must contain only
-   * that assignment, and the loop target may not alias a recurrence operand.
-   * The emitter still installs a dynamic representation guard and retains the
-   * original loop as its exact fallback.  Keeping this recognizer structural
-   * makes its proof obligations enumerable; it never guesses from names or
-   * annotations.
-   */
-  private machineResidueRecurrence(init: any, object: any, body: any): any {
-    if (!(init instanceof this.compiler.AST_SymbolRef)) return null;
-    if (!(object instanceof this.compiler.AST_Call) ||
-        !(object.expression instanceof this.compiler.AST_SymbolRef) ||
-        object.expression.name !== "range" || object.args?.length !== 1 ||
-        object.args.starargs || object.args.kwargs?.length ||
-        object.args.kwarg_items?.length) return null;
-    const count = object.args[0];
-    if (!(count instanceof this.compiler.AST_SymbolRef) &&
-        !(count instanceof this.compiler.AST_Number)) return null;
-    if (!(body instanceof this.compiler.AST_BlockStatement) ||
-        body.body?.length !== 1) return null;
-    const statement = body.body[0];
-    if (!(statement instanceof this.compiler.AST_SimpleStatement)) return null;
-    const assignment = statement.body;
-    if (!(assignment instanceof this.compiler.AST_Assign) ||
-        assignment.operator !== "=" ||
-        !(assignment.left instanceof this.compiler.AST_SymbolRef)) return null;
-    const addition = assignment.right;
-    if (!(addition instanceof this.compiler.AST_Binary) ||
-        addition.operator !== "+" ||
-        !(addition.right instanceof this.compiler.AST_SymbolRef)) return null;
-    const multiplication = addition.left;
-    if (!(multiplication instanceof this.compiler.AST_Binary) ||
-        multiplication.operator !== "*" ||
-        !(multiplication.left instanceof this.compiler.AST_SymbolRef) ||
-        !(multiplication.right instanceof this.compiler.AST_SymbolRef)) return null;
-    const accumulator = assignment.left;
-    if (multiplication.left.name !== accumulator.name) return null;
-    const names = [
-      accumulator.name,
-      multiplication.right.name,
-      addition.right.name,
-    ];
-    if (new Set(names).size !== 3 || names.includes(init.name)) return null;
-    return {
-      accumulator,
-      multiplier: multiplication.right,
-      increment: addition.right,
-    };
   }
 
   private lowerBindingTarget(target: any, node: SyntaxNode): any {

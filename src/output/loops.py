@@ -281,12 +281,13 @@ def init_es6_itervar(output, itervar):
 
 def print_for_in(self, output):
     if (
-        self.machine_residue_recurrence
+        self.optimization_region
+        and self.optimization_region.kind == "closed-affine-recurrence"
         and self.builtin_range is not False
         and is_simple_for(self)
         and self.object.args.length is 1
     ):
-        return print_machine_residue_recurrence(self, output)
+        return print_optimization_region(self, output)
     prepare_loop_else(self, output)
 
     def write_object():
@@ -404,9 +405,12 @@ def print_for_in(self, output):
     print_loop_else(self, output)
 
 
-def print_machine_residue_recurrence(self, output):
-    """Emit a guarded scalar V8 loop and the untouched generic fallback."""
-    recurrence = self.machine_residue_recurrence
+def print_optimization_region(self, output):
+    """Lower one verified optimization-region plan to JavaScript."""
+    region = self.optimization_region
+    if region.kind != "closed-affine-recurrence":
+        raise TypeError("unsupported optimization region " + region.kind)
+    recurrence = region.operands
     suffix = output.index_counter
     output.index_counter += 1
     count_name = "ρσ_ResidueCount" + suffix
