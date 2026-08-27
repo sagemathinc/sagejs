@@ -14,6 +14,7 @@ const DIRECT_BUILTIN_CALLS = new Set([
   "list",
   "ord",
   "range",
+  "reversed",
   "sum",
 ]);
 

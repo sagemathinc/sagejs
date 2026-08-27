@@ -11,7 +11,11 @@ export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
 
 type ExpressionPlan =
   | { kind: "slot"; slot: number }
-  | { kind: "sequence"; sequence: number }
+  | {
+      kind: "sequence";
+      sequence: number;
+      indexOrder: "forward" | "reverse";
+    }
   | { kind: "binary"; operator: "+" | "-" | "*"; left: ExpressionPlan; right: ExpressionPlan }
   | { kind: "neg"; value: ExpressionPlan };
 
@@ -120,6 +124,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   let iteratorKind: "range" | "sequence";
   let count: any = null;
   let iterable: any = null;
+  let iterationOrder: "forward" | "reverse" = "forward";
   let iteratorName: string;
   if (loop.init instanceof compiler.AST_SymbolRef &&
       loop.object instanceof compiler.AST_Call &&
@@ -135,6 +140,19 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
              loop.object instanceof compiler.AST_SymbolRef) {
     iteratorKind = "sequence";
     iterable = loop.object;
+    iteratorName = loop.init.name;
+  } else if (loop.init instanceof compiler.AST_SymbolRef &&
+             loop.object instanceof compiler.AST_Call &&
+             loop.object.direct_call === true &&
+             loop.object.expression instanceof compiler.AST_SymbolRef &&
+             loop.object.expression.name === "reversed" &&
+             loop.object.args?.length === 1 &&
+             !loop.object.args.starargs && !loop.object.args.kwargs?.length &&
+             !loop.object.args.kwarg_items?.length &&
+             loop.object.args[0] instanceof compiler.AST_SymbolRef) {
+    iteratorKind = "sequence";
+    iterable = loop.object.args[0];
+    iterationOrder = "reverse";
     iteratorName = loop.init.name;
   } else {
     return null;
@@ -202,7 +220,11 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const expression = (node: any): ExpressionPlan | null => {
     if (node instanceof compiler.AST_SymbolRef) {
       if (iteratorKind === "sequence" && node.name === iteratorName) {
-        return { kind: "sequence", sequence: 0 };
+        return {
+          kind: "sequence",
+          sequence: 0,
+          indexOrder: iterationOrder,
+        };
       }
       if (node.name === iteratorName) return null;
       return { kind: "slot", slot: slot(node, true) };
@@ -212,7 +234,11 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
         node.expression instanceof compiler.AST_SymbolRef &&
         node.property instanceof compiler.AST_SymbolRef &&
         node.property.name === iteratorName) {
-      return { kind: "sequence", sequence: sequence(node.expression) };
+      return {
+        kind: "sequence",
+        sequence: sequence(node.expression),
+        indexOrder: "forward",
+      };
     }
     if (node instanceof compiler.AST_Binary &&
         ["+", "-", "*"].includes(node.operator)) {
@@ -301,6 +327,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       : "pack";
   return {
     iteratorKind,
+    iterationOrder,
     count,
     iterable,
     iterator: loop.init,
@@ -353,6 +380,7 @@ export const closedRingRegionPass: OptimizationPass = {
       const identity = stableRegionIdentity(CLOSED_RING_REGION_PASS, source, {
         kind: "closed-ring-region",
         iteratorKind: operands.iteratorKind,
+        iterationOrder: operands.iterationOrder,
         slots: operands.slots.map((slot: any) => slot.name),
         sequences: operands.sequences.map((sequence: any) => sequence.name),
         stateSlots: operands.stateSlots,

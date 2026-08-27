@@ -38,6 +38,14 @@ def horner(coefficients, point, initial):
     return value
 `;
 
+const reversedSequenceSource = `
+def reverse_horner(coefficients, point, initial):
+    value = initial
+    for coefficient in reversed(coefficients):
+        value = value * point + coefficient
+    return value
+`;
+
 function optimizerOptions(extra = {}) {
   return {
     filename: "optimizer-witness.sage",
@@ -176,6 +184,52 @@ def squares(values, zero):
   }
 });
 
+test("a direct builtin reversed call becomes an explicit guarded index view", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(reversedSequenceSource, optimizerOptions());
+    const [region] = ast.optimization_ir.regions;
+    assert.equal(region.selected, true);
+    const loop = findLoop(compiler, ast);
+    const plan = loop.optimization_region;
+    assert.equal(plan.operands.iteratorKind, "sequence");
+    assert.equal(plan.operands.iterationOrder, "reverse");
+    assert.equal(plan.operands.sequenceStrategy, "stream");
+    assert.deepEqual(
+      plan.operands.statements[0].value.right,
+      { kind: "sequence", sequence: 0, indexOrder: "reverse" },
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: { ...plan.operands, iterationOrder: "sideways" },
+      }),
+      /invalid iteration order/,
+    );
+    const malformedStatements = JSON.parse(JSON.stringify(plan.operands.statements));
+    malformedStatements[0].value.right.indexOrder = "sideways";
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: { ...plan.operands, statements: malformedStatements },
+      }),
+      /sequence index order is invalid/,
+    );
+
+    const shadowed = frontend.parse(`
+def not_optimized(values, reversed):
+    answer = values[0]
+    for value in reversed(values):
+        answer = answer + value
+    return answer
+`, optimizerOptions());
+    assert.equal(shadowed.optimization_ir.regions.length, 0);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("optimization levels, disable controls, and requirements fail closed", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
@@ -275,9 +329,13 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
         passId: "test.bad.v1",
         kind: "closed-ring-region",
         operands: {
+          iteratorKind: "range",
+          iterationOrder: "forward",
           slots: [{ name: "x" }],
           sequences: [],
           stateSlots: [0],
+          sequenceStrategy: "pack",
+          sequenceUses: [],
           statements: [{
             kind: "assign",
             target: 0,

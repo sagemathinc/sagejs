@@ -228,6 +228,10 @@ function verifyExpression(expression: any, slotCount: number, sequenceCount: num
         expression.sequence >= sequenceCount) {
       throw new TypeError("optimizer sequence is out of range");
     }
+    if (expression.indexOrder !== "forward" &&
+        expression.indexOrder !== "reverse") {
+      throw new TypeError("optimizer sequence index order is invalid");
+    }
     return;
   }
   if (expression.kind === "neg") {
@@ -278,6 +282,14 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
     const sequences = plan.operands.sequences;
     if (!Array.isArray(slots) || slots.length === 0 || !Array.isArray(sequences)) {
       throw new TypeError("optimizer ring region has invalid slots or sequences");
+    }
+    if (plan.operands.iterationOrder !== "forward" &&
+        plan.operands.iterationOrder !== "reverse") {
+      throw new TypeError("optimizer ring region has invalid iteration order");
+    }
+    if (plan.operands.iteratorKind !== "sequence" &&
+        plan.operands.iterationOrder !== "forward") {
+      throw new TypeError("optimizer non-sequence region reverses iteration");
     }
     verifyStatements(plan.operands.statements, slots.length, sequences.length);
     for (const slot of plan.operands.stateSlots ?? []) {

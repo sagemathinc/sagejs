@@ -24,17 +24,17 @@ _POLYNOMIAL_RESOURCE_CACHE_LIMIT = 64
 _polynomial_resource_cache = []
 
 
-def _closed_field_horner(base: Any, coefficients: list[Any], value: Any) -> Any:
-    """Evaluate by Horner over one immutable coefficient sequence.
+def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
+    """Evaluate by Horner over one low-to-high coefficient sequence.
 
     The source is intentionally ordinary and target-neutral.  The optimizer
     may scalar-replace the loop when `base`, `value`, and every coefficient
-    satisfy one reviewed finite-field representation contract; every other
-    parent executes this exact loop unchanged.
+    satisfy one reviewed finite-field representation contract.  Its guarded
+    reverse-view lowering reads a branded tuple in place; every other parent
+    executes the ordinary `reversed` iterator unchanged.
     """
-    descending = runtime.math_tuple(list(reversed(coefficients)))
     answer = base(0)
-    for coefficient in descending:
+    for coefficient in reversed(coefficients):
         answer = answer * value + coefficient
     return answer
 
@@ -3279,7 +3279,10 @@ class PolynomialElement(sage.Element):
         # incompatible numerical domains into Python `TypeError` instead of
         # leaking internal attribute lookup failures.
         runtime.coercion_model.resolveParents(base, value_parent)
-        return _closed_field_horner(base, self.coefficients(), value)
+        coefficients = self._machineFieldCoefficients
+        if coefficients is runtime.undefined:
+            coefficients = self.coefficients()
+        return _closed_field_horner(base, coefficients, value)
 
     def __repr__(self) -> str:
         base = self._parent.base_ring()
