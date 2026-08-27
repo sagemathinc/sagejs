@@ -115,6 +115,11 @@ ${item.setup(iterations)}
 def zip_dot(left, right, zero):
     answer=zero
     for first, second in zip(left, right, strict=True):
+        answer += first*second
+    return answer
+def plain_zip_dot(left, right, zero):
+    answer=zero
+    for first, second in zip(left, right, strict=True):
         answer=answer+first*second
     return answer
 def index_dot(left, right, zero):
@@ -123,22 +128,25 @@ def index_dot(left, right, zero):
         answer=answer+left[index]*right[index]
     return answer
 zip_dot(left,right,zero)
-${includeIndex ? "index_dot(left,right,zero)" : ""}
+${includeIndex ? "plain_zip_dot(left,right,zero)\nindex_dot(left,right,zero)" : ""}
 for sample in range(${samples}):
     started=time.time()
     answer=zip_dot(left,right,zero)
     print('zip',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))
 ${includeIndex ? `    started=time.time()
+    answer=plain_zip_dot(left,right,zero)
+    print('plain',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))
+    started=time.time()
     answer=index_dot(left,right,zero)
     print('index',time.time()-started,${item.answer},getattr(parent,'_lastCompilerOptimizationRoute','generic'))` : ""}
 `;
 }
 
 function parse(stdout) {
-  const result = { zip: [], index: [], answers: {}, routes: {} };
+  const result = { zip: [], plain: [], index: [], answers: {}, routes: {} };
   for (const line of stdout.trim().split(/\r?\n/)) {
     const match = line.match(
-      /^(zip|index) ([0-9.eE+-]+) \(([^)]*)\) ([a-z0-9-]+)$/,
+      /^(zip|plain|index) ([0-9.eE+-]+) \(([^)]*)\) ([a-z0-9-]+)$/,
     );
     assert.ok(match, line);
     const kind = match[1];
@@ -169,9 +177,11 @@ function parse(stdout) {
     const genericMeasured = parse(slow.stdout);
     const expected = oracle(count, item.extension);
     assert.deepEqual(measured.answers.zip, expected);
+    assert.deepEqual(measured.answers.plain, expected);
     assert.deepEqual(measured.answers.index, expected);
     assert.deepEqual(genericMeasured.answers.zip, oracle(genericCount, item.extension));
     const zipMedian = median(measured.zip);
+    const plainMedian = median(measured.plain);
     const indexMedian = median(measured.index);
     const genericMedian = median(genericMeasured.zip);
     const projectedGeneric = genericMedian * count / genericCount;
@@ -182,19 +192,23 @@ function parse(stdout) {
         ([name, routes]) => [name, [...routes]],
       )),
       medians_ms: {
-        guarded_zip: zipMedian,
+        guarded_augmented_zip: zipMedian,
+        guarded_plain_zip: plainMedian,
         guarded_index: indexMedian,
         generic_zip_prefix: genericMedian,
         projected_generic_zip: projectedGeneric,
       },
       zip_to_index_ratio: zipMedian / indexMedian,
+      augmented_to_plain_ratio: zipMedian / plainMedian,
       speedup_over_projected_generic: projectedGeneric / zipMedian,
     };
     if (check) {
       assert.deepEqual(entry.routes.zip, [item.route]);
+      assert.deepEqual(entry.routes.plain, [item.route]);
       assert.deepEqual(entry.routes.index, [item.route]);
       assert.ok(zipMedian <= 400, `${item.name}: ${zipMedian}ms`);
       assert.ok(entry.zip_to_index_ratio <= 2, item.name);
+      assert.ok(entry.augmented_to_plain_ratio <= 2, item.name);
       assert.ok(entry.speedup_over_projected_generic >= 10, item.name);
     }
     report.cases.push(entry);

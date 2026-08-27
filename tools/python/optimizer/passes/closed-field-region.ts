@@ -30,7 +30,12 @@ type ConditionPlan = {
 };
 
 type StatementPlan =
-  | { kind: "assign"; target: number; value: ExpressionPlan }
+  | {
+      kind: "assign";
+      assignmentOperator: "=" | "+=" | "-=" | "*=";
+      target: number;
+      value: ExpressionPlan;
+    }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
 function expressionStructuralKey(value: ExpressionPlan): string {
@@ -271,11 +276,13 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const modified = new Set<string>();
   const read = new Set<string>();
   const operations = new Set<string>();
+  const inplaceOperations = new Set<"add" | "sub" | "mul">();
 
   const assignment = (statement: any): any | null => {
     if (!(statement instanceof compiler.AST_SimpleStatement)) return null;
     const value = statement.body;
-    if (!(value instanceof compiler.AST_Assign) || value.operator !== "=" ||
+    if (!(value instanceof compiler.AST_Assign) ||
+        !["=", "+=", "-=", "*="].includes(value.operator) ||
         !(value.left instanceof compiler.AST_SymbolRef)) return null;
     return value;
   };
@@ -403,11 +410,28 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     for (const statement of source) {
       const value = assignment(statement);
       if (value) {
-        const rhs = expression(value.right);
+        const target = slot(value.left, value.operator !== "=");
+        const right = expression(value.right);
+        if (!right) return null;
+        let rhs = right;
+        if (value.operator !== "=") {
+          const operator = value.operator[0] as "+" | "-" | "*";
+          const operation = operator === "+" ? "add" :
+            operator === "-" ? "sub" : "mul";
+          operations.add(operation);
+          inplaceOperations.add(operation);
+          rhs = {
+            kind: "binary",
+            operator,
+            left: { kind: "slot", slot: target },
+            right,
+          };
+        }
         if (!rhs) return null;
         output.push({
           kind: "assign",
-          target: slot(value.left, false),
+          assignmentOperator: value.operator,
+          target,
           value: rhs,
         });
         continue;
@@ -434,7 +458,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
   const stateSlots = [...modified].map((name) => slotByName.get(name)!);
-  const affine = affineTarget(program, stateSlots);
+  const affine = inplaceOperations.size === 0
+    ? affineTarget(program, stateSlots)
+    : null;
   const sequenceUses = new Array(sequences.length).fill(0);
   const sequenceAccessMap = new Map<string, {
     sequence: number;
@@ -495,6 +521,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     stateSlots,
     statements: program,
     operations: [...operations].sort(),
+    inplaceOperations: [...inplaceOperations].sort(),
     affine,
     sequenceUses,
     sequenceAccesses,
@@ -513,6 +540,7 @@ export const closedRingRegionPass: OptimizationPass = {
     "parent-identity", "parent-stable", "method-stability", "fixed-shape",
     "no-alias", "no-escape", "no-callback", "operation-closed", "exact-range",
     "commutative-ring", "referentially-transparent-used-operations",
+    "inplace-fallback",
   ],
   factsInvalidated: [],
   preserves: [
@@ -522,7 +550,7 @@ export const closedRingRegionPass: OptimizationPass = {
   guardsIntroduced: [
     "safe-iteration-count", "same-parent", "reviewed-representation",
     "prototype-and-used-method-identities", "canonical-values",
-    "sequence-prefix-bounds", "exact-machine-range",
+    "absent-inplace-methods", "sequence-prefix-bounds", "exact-machine-range",
   ],
   supportedTargets: ["v8", "wasm", "native", "generic"],
   verifier: "verifyOptimizationDecision/v1",
@@ -555,6 +583,7 @@ export const closedRingRegionPass: OptimizationPass = {
         stateSlots: operands.stateSlots,
         statements: operands.statements,
         operations: operands.operations,
+        inplaceOperations: operands.inplaceOperations,
         affine: operands.affine,
         sequenceUses: operands.sequenceUses,
         sequenceAccesses: operands.sequenceAccesses,
@@ -588,6 +617,9 @@ export const closedRingRegionPass: OptimizationPass = {
               "iterate", "sequential-assign", ...operands.operations.map(
                 (operation: string) => `${operation}-dispatch`
               ),
+              ...operands.inplaceOperations.map(
+                (operation: string) => `inplace-${operation}-fallback-dispatch`
+              ),
             ],
             observableExits: [
               ...operands.stateSlots.map((slot: number) => operands.slots[slot].name),
@@ -610,6 +642,7 @@ export const closedRingRegionPass: OptimizationPass = {
             { kind: "no-escape", authority: "static", evidence: "only local state assignments and control flow occur in the region" },
             { kind: "no-callback", authority: "runtime-guard", evidence: "all used operator identities match reviewed immutable finite-field methods" },
             { kind: "referentially-transparent-used-operations", authority: "runtime-guard", evidence: "reviewed canonical ring operations are pure after parent, brand, and method-identity guards" },
+            ...(operands.inplaceOperations.length ? [{ kind: "inplace-fallback", authority: "runtime-guard" as const, evidence: "every live-in and reviewed prototype chain lacks the corresponding Python __i*__ descriptor" }] : []),
             { kind: "parent-identity", authority: "runtime-guard", evidence: "all scalar and sequence values share one parent" },
             { kind: "fixed-shape", authority: "runtime-guard", evidence: "the selected parent advertises a reviewed fixed representation" },
             { kind: "exact-range", authority: "runtime-guard", evidence: "the selected representation validates canonical values and machine intermediates" },
@@ -732,7 +765,8 @@ export const closedRingRegionPass: OptimizationPass = {
           guards: [
             "safe-iteration-count", "same-parent", "reviewed-representation",
             "prototype-and-used-method-identities", "canonical-values",
-            "sequence-prefix-bounds", "zip-length-contract", "exact-machine-range",
+            "absent-inplace-methods", "sequence-prefix-bounds",
+            "zip-length-contract", "exact-machine-range",
           ],
           fallbackId: `semantic:${source.filename}:${source.line}:${source.column}`,
           cacheIdentityInputs: [
