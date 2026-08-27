@@ -1742,6 +1742,71 @@ def _field_coercion(field: Any) -> Callable[[Any], Any]:
     return convert
 
 
+def _register_machine_integer_coercion(field: Any) -> Callable[[Any], Any]:
+    """Register and witness the canonical `ZZ -> field` embedding.
+
+    The optimizing compiler may replace repeated literal coercions only while
+    this complete live dispatch path is unchanged. The witness is descriptive
+    metadata; the guarded runtime independently checks every identity before
+    it unboxes a loop.
+    """
+    conversion = _field_coercion(field)
+    model = runtime.coercion_model
+    model.register(sage.ZZ, field, conversion)
+    left_plan = model.resolveParents(sage.ZZ, field)
+    right_plan = model.resolveParents(field, sage.ZZ)
+
+    call_owner = field
+    call_descriptor = runtime.undefined
+    while call_owner is not None:
+        call_descriptor = runtime.object.getOwnPropertyDescriptor(
+            call_owner, "__call__"
+        )
+        if call_descriptor is not runtime.undefined:
+            break
+        call_owner = runtime.object.getPrototypeOf(call_owner)
+
+    source_targets = model._maps.get(sage.ZZ)
+    operations = model._operations
+    field._machineIntegerCoercionReady = True
+    field._machineIntegerFastClosedBinary = runtime.fast_closed_binary
+    field._machineIntegerIsMathElement = runtime.is_math_element
+    field._machineIntegerCoercionModel = model
+    field._machineIntegerCoercionSource = sage.ZZ
+    field._machineIntegerCoercion = conversion
+    field._machineIntegerCoercionMaps = model._maps
+    field._machineIntegerCoercionTargets = source_targets
+    field._machineIntegerPlanCache = model._planCache
+    field._machineIntegerOperations = operations
+    field._machineIntegerOperationAdd = operations.get("add")
+    field._machineIntegerOperationSub = operations.get("sub")
+    field._machineIntegerOperationMul = operations.get("mul")
+    field._machineIntegerBinOp = runtime.reflect.get(model, "binOp")
+    field._machineIntegerEquals = runtime.reflect.get(model, "equals")
+    field._machineIntegerCoercePair = runtime.reflect.get(model, "coercePair")
+    field._machineIntegerResolveParents = runtime.reflect.get(model, "resolveParents")
+    field._machineIntegerParentOf = runtime.reflect.get(model, "parentOf")
+    field._machineIntegerApply = runtime.reflect.get(model, "_apply")
+    field._machineIntegerMap = runtime.reflect.get(model, "_map")
+    field._machineIntegerCache = runtime.reflect.get(model, "_cache")
+    field._machineIntegerIdentityMap = left_plan.rightMap
+    field._machineIntegerLeftPlanParent = left_plan.parent
+    field._machineIntegerRightPlanParent = right_plan.parent
+    field._machineIntegerCallOwner = call_owner
+    field._machineIntegerCallGetter = (
+        runtime.reflect.get(call_descriptor, "get")
+        if call_descriptor is not runtime.undefined
+        else runtime.undefined
+    )
+    field._machineIntegerCallValue = (
+        runtime.reflect.get(call_descriptor, "value")
+        if call_descriptor is not runtime.undefined
+        else runtime.undefined
+    )
+    field._machineIntegerCall = runtime.reflect.get(field, "__call__")
+    return conversion
+
+
 _prime_fields = runtime.map()
 _extension_fields = runtime.map()
 _residue_rings = runtime.map()
@@ -1904,8 +1969,7 @@ def _make_extension_field(
         generated_resource_backend,
     )
     _extension_fields.set(key, field)
-    conversion = _field_coercion(field)
-    runtime.coercion_model.register(sage.ZZ, field, conversion)
+    conversion = _register_machine_integer_coercion(field)
     runtime.coercion_model.register(prime_field, field, conversion)
     return field
 
@@ -1980,7 +2044,7 @@ def GF(
         generator = backend.wordPrimitiveRootPrime(order)
     field = FiniteField_prime_modn(order, generator)
     _prime_fields.set(key, field)
-    runtime.coercion_model.register(sage.ZZ, field, _field_coercion(field))
+    _register_machine_integer_coercion(field)
     return field
 
 
@@ -2015,7 +2079,7 @@ def Zmod(order: Any) -> IntegerModRing:
         return ring
     ring = IntegerModRing(order)
     _residue_rings.set(key, ring)
-    runtime.coercion_model.register(sage.ZZ, ring, _field_coercion(ring))
+    _register_machine_integer_coercion(ring)
     return ring
 
 

@@ -15,6 +15,7 @@ const MAX_TARGET_CODE_BYTES = 32768;
 
 type ExpressionPlan =
   | { kind: "slot"; slot: number }
+  | { kind: "integer-constant"; value: number }
   | {
       kind: "sequence";
       sequence: number;
@@ -49,6 +50,16 @@ function collectExpressionSlots(value: ExpressionPlan, slots: Set<number>): void
   } else if (value.kind === "neg" || value.kind === "power") {
     collectExpressionSlots(value.value, slots);
   }
+}
+
+function expressionContainsRingValue(value: ExpressionPlan): boolean {
+  if (value.kind === "slot" || value.kind === "sequence") return true;
+  if (value.kind === "integer-constant") return false;
+  if (value.kind === "neg" || value.kind === "power") {
+    return expressionContainsRingValue(value.value);
+  }
+  return expressionContainsRingValue(value.left) ||
+    expressionContainsRingValue(value.right);
 }
 
 function statementDataFlow(statements: StatementPlan[], slotCount: number): {
@@ -146,6 +157,9 @@ function expressionStructuralKey(
   if (value.kind === "sequence") {
     return `sequence:${value.sequence}:${value.indexOrder}`;
   }
+  if (value.kind === "integer-constant") {
+    return `integer:${value.value}`;
+  }
   if (value.kind === "neg") {
     return `neg(${expressionStructuralKey(value.value, versions)})`;
   }
@@ -177,7 +191,8 @@ function expressionOperationCost(
   common: Set<string>,
   versions: number[],
 ): number {
-  if (value.kind === "slot" || value.kind === "sequence") return 0;
+  if (value.kind === "slot" || value.kind === "sequence" ||
+      value.kind === "integer-constant") return 0;
   const key = expressionStructuralKey(value, versions);
   if (common.has(key)) return 0;
   common.add(key);
@@ -242,6 +257,7 @@ function expressionIsInvariant(
 ): boolean {
   if (value.kind === "slot") return invariantSlots.has(value.slot);
   if (value.kind === "sequence") return false;
+  if (value.kind === "integer-constant") return true;
   if (value.kind === "neg" || value.kind === "power") {
     return expressionIsInvariant(value.value, invariantSlots);
   }
@@ -269,7 +285,7 @@ function hoistedExpressions(
     if (value.kind === "binary") {
       markExpression(value.left, target, versions);
       markExpression(value.right, target, versions);
-    } else {
+    } else if (value.kind !== "integer-constant") {
       markExpression(value.value, target, versions);
     }
   };
@@ -294,7 +310,7 @@ function hoistedExpressions(
     if (value.kind === "binary") {
       visitExpression(value.left, common, versions);
       visitExpression(value.right, common, versions);
-    } else {
+    } else if (value.kind !== "integer-constant") {
       visitExpression(value.value, common, versions);
     }
   };
@@ -348,7 +364,8 @@ function expressionTargetCodeUnits(
   common: Set<string>,
   versions: number[],
 ): number {
-  if (value.kind === "slot" || value.kind === "sequence") return 0;
+  if (value.kind === "slot" || value.kind === "sequence" ||
+      value.kind === "integer-constant") return 0;
   const key = expressionStructuralKey(value, versions);
   if (common.has(key)) return 0;
   common.add(key);
@@ -505,7 +522,8 @@ function boundedPowerExponent(compiler: any, node: any): number | null {
       node.value >= 0) return node.value;
   if (!(node instanceof compiler.AST_Call) ||
       !(node.expression instanceof compiler.AST_SymbolRef) ||
-      node.expression.name !== "Integer" || node.args?.length !== 1 ||
+      node.expression.name !== "Integer" ||
+      node.expression.python_identifier === true || node.args?.length !== 1 ||
       node.args.starargs || node.args.kwargs?.length ||
       node.args.kwarg_items?.length ||
       !(node.args[0] instanceof compiler.AST_String)) return null;
@@ -513,6 +531,21 @@ function boundedPowerExponent(compiler: any, node: any): number | null {
   if (!/^[0-9](?:_?[0-9])*$/.test(spelling)) return null;
   const exponent = Number(spelling.replaceAll("_", ""));
   return Number.isSafeInteger(exponent) ? exponent : null;
+}
+
+/** Recognize only compiler-created exact integer literals, never a live call. */
+function exactIntegerLiteral(compiler: any, node: any): number | null {
+  if (!(node instanceof compiler.AST_Call) ||
+      !(node.expression instanceof compiler.AST_SymbolRef) ||
+      node.expression.name !== "Integer" ||
+      node.expression.python_identifier === true || node.args?.length !== 1 ||
+      node.args.starargs || node.args.kwargs?.length ||
+      node.args.kwarg_items?.length ||
+      !(node.args[0] instanceof compiler.AST_String)) return null;
+  const spelling = node.args[0].value;
+  if (!/^[0-9](?:_?[0-9])*$/.test(spelling)) return null;
+  const value = Number(spelling.replaceAll("_", ""));
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 /**
@@ -671,6 +704,11 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   }
 
   const expression = (node: any): ExpressionPlan | null => {
+    const literal = exactIntegerLiteral(compiler, node);
+    if (literal !== null) {
+      operations.add("coerce-integer");
+      return { kind: "integer-constant", value: literal };
+    }
     if (node instanceof compiler.AST_SymbolRef) {
       const binding = iteratorBindings.get(node.name);
       if (binding) {
@@ -699,6 +737,15 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       const left = expression(node.left);
       const right = expression(node.right);
       if (!left || !right) return null;
+      if (left.kind === "integer-constant" &&
+          right.kind === "integer-constant") {
+        const folded = node.operator === "+" ? left.value + right.value :
+          node.operator === "-" ? left.value - right.value :
+          left.value * right.value;
+        return Number.isSafeInteger(folded)
+          ? { kind: "integer-constant", value: folded }
+          : null;
+      }
       operations.add(node.operator === "+" ? "add" :
         node.operator === "-" ? "sub" : "mul");
       return { kind: "binary", operator: node.operator, left, right };
@@ -706,6 +753,12 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     if (node instanceof compiler.AST_Unary && node.operator === "-") {
       const value = expression(node.expression);
       if (!value) return null;
+      if (value.kind === "integer-constant") {
+        const folded = -value.value;
+        return Number.isSafeInteger(folded)
+          ? { kind: "integer-constant", value: folded }
+          : null;
+      }
       operations.add("neg");
       return { kind: "neg", value };
     }
@@ -725,7 +778,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     }
     const left = expression(node.left);
     const right = expression(node.right);
-    if (!left || !right) return null;
+    if (!left || !right ||
+        (!expressionContainsRingValue(left) &&
+         !expressionContainsRingValue(right))) return null;
     operations.add("equal");
     return { kind: "comparison", operator: node.operator, left, right };
   };
@@ -751,7 +806,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
             right,
           };
         }
-        if (!rhs) return null;
+        if (!rhs || !expressionContainsRingValue(rhs)) return null;
         output.push({
           kind: "assign",
           assignmentOperator: value.operator,
@@ -870,6 +925,28 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     affine?.kind === "sequence-increment" || transactionalStream
       ? "stream"
       : "pack";
+  const integerConstants = new Set<number>();
+  const collectIntegerConstants = (value: ExpressionPlan): void => {
+    if (value.kind === "integer-constant") {
+      integerConstants.add(value.value);
+    } else if (value.kind === "binary") {
+      collectIntegerConstants(value.left);
+      collectIntegerConstants(value.right);
+    } else if (value.kind === "neg" || value.kind === "power") {
+      collectIntegerConstants(value.value);
+    }
+  };
+  const collectStatementConstants = (statement: StatementPlan): void => {
+    if (statement.kind === "assign") {
+      collectIntegerConstants(statement.value);
+      return;
+    }
+    collectIntegerConstants(statement.condition.left);
+    collectIntegerConstants(statement.condition.right);
+    statement.body.forEach(collectStatementConstants);
+    statement.alternative.forEach(collectStatementConstants);
+  };
+  semanticProgram.forEach(collectStatementConstants);
   return {
     iteratorKind,
     iterationOrder,
@@ -898,6 +975,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     loweredSequenceUses,
     loweredSequenceAccesses,
     sequenceStrategy,
+    integerConstants: [...integerConstants].sort((left, right) => left - right),
     operationCost,
     preheaderOperationCost,
     targetCodeBytes,
@@ -915,6 +993,7 @@ export const closedRingRegionPass: OptimizationPass = {
     "no-alias", "no-escape", "no-callback", "operation-closed", "exact-range",
     "commutative-ring", "referentially-transparent-used-operations",
     "inplace-fallback", "loop-invariant", "dead-store-free",
+    "canonical-integer-coercion",
   ],
   factsInvalidated: [],
   preserves: [
@@ -925,6 +1004,7 @@ export const closedRingRegionPass: OptimizationPass = {
     "safe-iteration-count", "same-parent", "reviewed-representation",
     "prototype-and-used-method-identities", "canonical-values",
     "absent-inplace-methods", "sequence-prefix-bounds", "exact-machine-range",
+    "canonical-integer-coercion",
   ],
   supportedTargets: ["v8", "wasm", "native", "generic"],
   verifier: "verifyOptimizationDecision/v1",
@@ -969,6 +1049,7 @@ export const closedRingRegionPass: OptimizationPass = {
         loweredSequenceUses: operands.loweredSequenceUses,
         loweredSequenceAccesses: operands.loweredSequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
+        integerConstants: operands.integerConstants,
         operationCost: operands.operationCost,
         preheaderOperationCost: operands.preheaderOperationCost,
         targetCodeBytes: operands.targetCodeBytes,
@@ -1032,6 +1113,7 @@ export const closedRingRegionPass: OptimizationPass = {
             { kind: "commutative-ring", authority: "runtime-guard", evidence: "the selected machine parent explicitly advertises reviewed commutative multiplication" },
             ...(operands.eliminatedAssignments ? [{ kind: "dead-store-free", authority: "static" as const, evidence: "backward liveness over the semantic statement graph proves overwritten pure assignments unobservable" }] : []),
             ...(operands.hoistedExpressions.length ? [{ kind: "loop-invariant", authority: "static" as const, evidence: "hoisted expression slots are live-in and absent from the complete modified-slot set" }] : []),
+            ...(operands.integerConstants.length ? [{ kind: "canonical-integer-coercion", authority: "runtime-guard" as const, evidence: "the live ZZ-to-parent coercion plan and every transitive dispatch identity match the reviewed canonical embedding" }] : []),
           ],
           representation: {
             level: "representation",
@@ -1047,6 +1129,9 @@ export const closedRingRegionPass: OptimizationPass = {
                 : []),
               ...(operands.eliminatedAssignments
                 ? ["omit overwritten pure assignments from the lowered graph"]
+                : []),
+              ...(operands.integerConstants.length
+                ? ["embed guarded canonical integer residues once in the region preheader"]
                 : []),
               "materialize modified live-outs",
             ],
@@ -1158,6 +1243,9 @@ export const closedRingRegionPass: OptimizationPass = {
             "prototype-and-used-method-identities", "canonical-values",
             "absent-inplace-methods", "sequence-prefix-bounds",
             "zip-length-contract", "exact-machine-range",
+            ...(operands.integerConstants.length
+              ? ["canonical-integer-coercion"]
+              : []),
           ],
           fallbackId: `semantic:${source.filename}:${source.line}:${source.column}`,
           cacheIdentityInputs: [

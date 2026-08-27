@@ -156,6 +156,131 @@ test("generated GF(p^2) programs agree exactly with O0 across reviewed bounds", 
   }
 });
 
+test("natural integer constants preserve prime and extension-ring semantics", async () => {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  const source = `
+R = Zmod(1009)
+prime_values = tuple(R(index^2 + 3) for index in range(257))
+def square_plus_one(count, value):
+    for step in range(count):
+        value = value*value + 1
+    return value
+square_answer = square_plus_one(257, R(3))
+print(square_answer, getattr(R, '_lastCompilerOptimizationRoute', 'generic'))
+def natural_prime(values, value):
+    for coefficient in values:
+        value = value*value + 1
+        if value == -2:
+            value = value + 1_000_000
+        else:
+            value = value - 9_007_199_254_740_991
+        value = value + coefficient
+    return value
+prime_answer = natural_prime(prime_values, R(7))
+print(prime_answer, getattr(R, '_lastCompilerOptimizationRoute', 'generic'))
+
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+extension_values = tuple(
+    K(index) + ((index + 1) % 5)*a + ((index^2 + 2) % 5)*aa
+    for index in range(257)
+)
+def natural_extension(values, value):
+    for coefficient in values:
+        value = value*value + 1
+        if value == -2:
+            value = value + 1_000_000
+        else:
+            value = value - 9_007_199_254_740_991
+        value = value + coefficient
+    return value
+extension_answer = natural_extension(extension_values, K(2)+3*a+aa)
+print(extension_answer, getattr(K, '_lastCompilerOptimizationRoute', 'generic'))
+
+before = len(K._nativeResourceChildren)
+for repetition in range(32):
+    extension_answer = natural_extension(
+        extension_values, K(2)+3*a+aa
+    )
+after = len(K._nativeResourceChildren)
+print(extension_answer.parent() is K, after-before)
+
+def explicit_integer_call(values, value):
+    for coefficient in values:
+        value = value*coefficient + Integer(1)
+    return value
+K._lastCompilerOptimizationRoute = 'explicit-integer-call-fallback'
+print(
+    explicit_integer_call(extension_values, K(1)),
+    K._lastCompilerOptimizationRoute,
+)
+`;
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    const normalized = fast.stdout
+      .replace("v8-number-residue-region", "generic")
+      .replace("v8-number-residue-stream", "generic")
+      .replaceAll("v8-extension-tuple-stream", "generic");
+    assert.equal(normalized, slow.stdout);
+    assert.match(fast.stdout, /v8-number-residue-region/);
+    assert.match(fast.stdout, /v8-number-residue-stream/);
+    assert.match(fast.stdout, /v8-extension-tuple-stream/);
+    assert.match(fast.stdout, /True \d+/);
+    const retained = Number(fast.stdout.match(/True (\d+)/)?.[1]);
+    assert.ok(retained <= 34, fast.stdout);
+    assert.match(fast.stdout, /explicit-integer-call-fallback/);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("mutated integer coercion and operation dispatch force exact fallback", async () => {
+  const changedConversion = await sessionAtLevel("O2");
+  try {
+    const result = await changedConversion.evaluate(`
+import sagejs.runtime as runtime
+R = Zmod(101)
+def changed_integer_conversion(_value):
+    return R(17)
+runtime.coercion_model.register(ZZ, R, changed_integer_conversion)
+def recurrence(count, value):
+    for step in range(count):
+        value = value + 1
+    return value
+R._lastCompilerOptimizationRoute = 'coercion-guard-fallback'
+print(recurrence(4, R(0)), R._lastCompilerOptimizationRoute)
+`);
+    assert.equal(result.stdout, "68 coercion-guard-fallback\n");
+  } finally {
+    await changedConversion.close();
+  }
+
+  const changedOperation = await sessionAtLevel("O2");
+  try {
+    const result = await changedOperation.evaluate(`
+import sagejs.runtime as runtime
+R = Zmod(101)
+def changed_add(left, right):
+    return left._add_(right)._add_(R(3))
+runtime.coercion_model._operations.set('add', changed_add)
+def recurrence(count, value):
+    for step in range(count):
+        value = value + 1
+    return value
+R._lastCompilerOptimizationRoute = 'operation-guard-fallback'
+print(recurrence(2, R(0)), R._lastCompilerOptimizationRoute)
+`);
+    assert.equal(result.stdout, "8 operation-guard-fallback\n");
+  } finally {
+    await changedOperation.close();
+  }
+});
+
 test("deterministic grammar-generated regions agree with O0 across shapes", async () => {
   for (const [prime, constant] of [[2, 1], [3, 2], [97, 5], [199999, 3]]) {
     const source = generatedGrammarSource(prime, constant);
