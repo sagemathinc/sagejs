@@ -107,12 +107,23 @@ function expressionStructuralKey(
   if (value.kind === "power") {
     return `power:${value.exponent}(${expressionStructuralKey(value.value, versions)})`;
   }
+  if (value.operator === "+" || value.operator === "*") {
+    const operands: string[] = [];
+    const collect = (operand: ExpressionPlan): void => {
+      if (operand.kind === "binary" && operand.operator === value.operator) {
+        collect(operand.left);
+        collect(operand.right);
+      } else {
+        operands.push(expressionStructuralKey(operand, versions));
+      }
+    };
+    collect(value.left);
+    collect(value.right);
+    operands.sort();
+    return `associative:${value.operator}(${operands.join(",")})`;
+  }
   const left = expressionStructuralKey(value.left, versions);
   const right = expressionStructuralKey(value.right, versions);
-  if (value.operator === "+" || value.operator === "*") {
-    const [first, second] = left <= right ? [left, right] : [right, left];
-    return `binary:${value.operator}(${first},${second})`;
-  }
   return `binary:${value.operator}(${left},${right})`;
 }
 

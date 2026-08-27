@@ -1023,12 +1023,14 @@ matched O0 prefix, ratchets the selected representation route, and requires
 zero retained native resources.
 
 Value-numbering keys also use the guarded mathematical fact that these parents
-are commutative rings.  Binary addition and multiplication keys sort their two
-already-versioned operands, so `x*y` and `y*x` share a primitive result.  The
-first expression still evaluates in source order; this does not reorder Python
-effects.  Subtraction keys remain ordered, and no reassociation is performed.
-The recognizer, verifier, cost model, code-size model, and emitter independently
-apply the same narrow canonicalization.
+are commutative rings.  Addition and multiplication trees flatten their
+already-versioned operands and sort the resulting multiset, so `x*y` and `y*x`,
+as well as `(x*y)*z` and `x*(z*y)`, share a primitive result.  The first
+expression still evaluates with its source grouping and order; this canonical
+key does not reorder Python effects or change emitted arithmetic.  Subtraction
+keys remain ordered, and distributive expansion is deliberately absent.  The
+recognizer, verifier, cost model, code-size model, and emitter independently
+apply the same bounded associative-commutative normalization.
 
 The region data-flow proof now distinguishes loop live-ins, modified live-outs,
 and iteration-local slots.  A local is admitted without an entry value only if

@@ -578,11 +578,21 @@ def symmetric(left_values, right_values, zero):
         right = right+y*x
     return left, right
 
+def regrouped(values, zero, a, b):
+    left = zero
+    right = zero + zero
+    for x in values:
+        left = left+(x*a)*b
+        right = right+x*(b*a)
+    return left, right
+
 R = Zmod(1009)
 prime_left = tuple(R(index^2+3) for index in range(257))
 prime_right = tuple(R(index^3+7) for index in range(257))
 R._lastCompilerOptimizationRoute = 'generic'
 print(symmetric(prime_left, prime_right, R(0)), R._lastCompilerOptimizationRoute)
+R._lastCompilerOptimizationRoute = 'generic'
+print(regrouped(prime_left, R(0), R(37), R(11)), R._lastCompilerOptimizationRoute)
 
 P.<t> = PolynomialRing(GF(5))
 K.<a> = GF(5^3, modulus=t^3+t+1)
@@ -591,6 +601,8 @@ cubic_left = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in rang
 cubic_right = tuple(K(index+2)+((index^2+3)%5)*a+((index^3+1)%5)*aa for index in range(257))
 K._lastCompilerOptimizationRoute = 'generic'
 print(symmetric(cubic_left, cubic_right, K(0)), K._lastCompilerOptimizationRoute)
+K._lastCompilerOptimizationRoute = 'generic'
+print(regrouped(cubic_left, K(0), K(2)+a+aa, K(3)+4*a+2*aa), K._lastCompilerOptimizationRoute)
 `;
   const optimized = await sessionAtLevel("O2");
   const generic = await sessionAtLevel("O0");
@@ -605,8 +617,8 @@ print(symmetric(cubic_left, cubic_right, K(0)), K._lastCompilerOptimizationRoute
         .replaceAll("v8-extension-tuple-stream", "generic"),
       slow.stdout,
     );
-    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 1);
-    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 1);
+    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 2);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 2);
   } finally {
     await Promise.all([optimized.close(), generic.close()]);
   }

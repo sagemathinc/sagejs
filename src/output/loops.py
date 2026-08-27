@@ -539,11 +539,22 @@ def _region_expression_key(expression, slot_versions=None):
             + _region_expression_key(expression.value, slot_versions)
             + ")"
         )
+    if expression.operator == "+" or expression.operator == "*":
+        operands = []
+
+        def collect(operand):
+            if operand.kind == "binary" and operand.operator == expression.operator:
+                collect(operand.left)
+                collect(operand.right)
+            else:
+                operands.append(_region_expression_key(operand, slot_versions))
+
+        collect(expression.left)
+        collect(expression.right)
+        operands.sort()
+        return "associative:" + expression.operator + "(" + ",".join(operands) + ")"
     left = _region_expression_key(expression.left, slot_versions)
     right = _region_expression_key(expression.right, slot_versions)
-    if expression.operator == "+" or expression.operator == "*":
-        if right < left:
-            left, right = right, left
     return "binary:" + expression.operator + "(" + left + "," + right + ")"
 
 
