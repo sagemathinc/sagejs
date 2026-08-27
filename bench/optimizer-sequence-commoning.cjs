@@ -68,7 +68,7 @@ parent=R`;
     name: "cubic-extension-field",
     route: "v8-extension-tuple-stream",
     oracle: cubicOracle,
-    answer: "tuple(answer._machineCoordinates)",
+    answer: "tuple(answer._power_basis_coordinates())",
     setup(iterations) {
       return `
 P.<x>=PolynomialRing(GF(5))
@@ -99,7 +99,7 @@ ${item.setup(iterations)}
 def sum_of_squares(values, zero):
     answer=zero
     for index in range(len(values)):
-        answer=answer+values[index]*values[index]
+        answer=answer+values[index]^2
     return answer
 sum_of_squares(values,zero)
 for sample in range(${samples}):

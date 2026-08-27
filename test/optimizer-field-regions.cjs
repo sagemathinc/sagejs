@@ -200,6 +200,109 @@ print(recurrence(10000))
   }
 });
 
+test("small powers use one guarded ring operation graph across reviewed parents", async () => {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  const source = `
+def power_sum(values, zero):
+    answer = zero
+    for index in range(len(values)):
+        answer = answer + values[index]^2 - values[index]^3
+    return answer
+
+R = Zmod(100)
+residues = tuple(R(index^2 + 3) for index in range(257))
+print(power_sum(residues, R(0)), getattr(R, '_lastCompilerOptimizationRoute', 'generic'))
+
+F = GF(101)
+prime_values = tuple(F(index^2 + 3) for index in range(257))
+print(power_sum(prime_values, F(0)), getattr(F, '_lastCompilerOptimizationRoute', 'generic'))
+
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+extension_values = tuple(
+    K(index) + ((index+1)%5)*a + ((index^2+2)%5)*aa
+    for index in range(257)
+)
+print(power_sum(extension_values, K(0)), getattr(K, '_lastCompilerOptimizationRoute', 'generic'))
+`;
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.deepEqual(
+      fast.stdout.trim().split("\n").map((line) => line.split(" ")[0]),
+      slow.stdout.trim().split("\n").map((line) => line.split(" ")[0]),
+    );
+    assert.deepEqual(
+      fast.stdout.trim().split("\n").map((line) => line.split(" ").at(-1)),
+      [
+        "v8-number-residue-stream",
+        "v8-number-residue-stream",
+        "v8-extension-tuple-stream",
+      ],
+    );
+    assert.ok(slow.stdout.trim().split("\n").every((line) =>
+      line.endsWith(" generic")
+    ));
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("small-power IR is explicit, bounded, and independently verified", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def power_sum(values, zero):
+    answer = zero
+    for index in range(len(values)):
+        answer = answer + values[index]^2 - values[index]^3
+    return answer
+`, parserOptions);
+    const [region] = ast.optimization_ir.regions.filter((candidate) =>
+      candidate.passId === "math.closed-ring-region.v1" && candidate.selected
+    );
+    assert.ok(region);
+    assert.deepEqual(region.mathematical.operations.sort(), [
+      "math.ring.add",
+      "math.ring.pow",
+      "math.ring.sub",
+    ]);
+    assert.ok(region.semantic.operations.includes("pow-dispatch"));
+    assert.ok(region.cacheIdentityInputs.includes("operations:add,pow,sub"));
+    assert.equal(region.target.selectedCandidate, "v8-closed-ring-program");
+  } finally {
+    frontend.close();
+  }
+});
+
+test("ordinary extension powers retain the optimizer's fixed-shape shadow", async () => {
+  const session = await sessionAtLevel("O0");
+  try {
+    const result = await session.evaluate(`
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+values = tuple([a^0, a^2, a^3, (a+1)^19])
+print(tuple(tuple(value._machineCoordinates) for value in values))
+print(tuple(
+    value == K._from_machine_coordinates(value._machineCoordinates)
+    for value in values
+))
+`);
+    assert.equal(result.stdout, [
+      "((1, 0, 0), (0, 0, 1), (4, 4, 0), (4, 3, 3))",
+      "(True, True, True, True)",
+      "",
+    ].join("\n"));
+  } finally {
+    await session.close();
+  }
+});
+
 test("public polynomial evaluation composes the same extension-tuple region", async () => {
   const optimized = await sessionAtLevel("O2");
   const generic = await sessionAtLevel("O0");
@@ -403,6 +506,31 @@ print(negate(tuple([K(2),K(3)])), K._lastCompilerOptimizationRoute)
   }
 });
 
+test("a changed inherited power descriptor rejects the optimized region", async () => {
+  const session = await sessionAtLevel("O2");
+  try {
+    const result = await session.evaluate(String.raw`
+import sagejs.runtime as runtime
+P.<x> = PolynomialRing(GF(97))
+K.<a> = GF(97^2, modulus=x^2+x+5)
+prototype = runtime.object.getPrototypeOf(a)
+def changed_power(_self, _exponent):
+    return K(42)
+runtime.reflect.set(prototype, '__pow__', changed_power)
+def power_sum(values):
+    value = K(0)
+    for coefficient in values:
+        value = value + coefficient^2
+    return value
+K._lastCompilerOptimizationRoute = 'power-descriptor-fallback'
+print(power_sum(tuple([K(2),K(3)])), K._lastCompilerOptimizationRoute)
+`);
+    assert.equal(result.stdout, "84 power-descriptor-fallback\n");
+  } finally {
+    await session.close();
+  }
+});
+
 test("proxy elements are rejected before guard property access", async () => {
   const optimized = await sessionAtLevel("O2");
   const generic = await sessionAtLevel("O0");
@@ -453,7 +581,8 @@ test("unsupported effects, aliases, callbacks, and source shapes are rejected", 
       "for i in range(n):\n    x = callback(x)\n",
       "for i in custom():\n    x = x*y+z\n",
       "for i in range(n):\n    x = x/y\n",
-      "for i in range(n):\n    x = x**2\n",
+      "for i in range(n):\n    x = x**4\n",
+      "for i in range(n):\n    x = x**exponent\n",
     ];
     for (const source of rejected) {
       const ast = frontend.parse(source, parserOptions);

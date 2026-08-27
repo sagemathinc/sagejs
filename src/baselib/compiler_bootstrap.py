@@ -350,7 +350,8 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         if (sequences.some((source) =>
             !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
             source.length < count)) return null;
-        const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32;
+        const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32,
+              POW = 64;
         const required = (bit) => (operation_mask & bit) !== 0;
         const streaming = required(STREAM);
 
@@ -363,6 +364,7 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             (!required(SUB) || primePrototype?._sub_ === parent._closedScalarSub) &&
             (!required(MUL) || primePrototype?._mul_ === parent._closedScalarMul) &&
             (!required(NEG) || primePrototype?.__neg__ === parent._closedScalarNeg) &&
+            (!required(POW) || primePrototype?.__pow__ === parent._closedScalarPow) &&
             (!required(EQUAL) || primePrototype?._eq_ === parent._closedScalarEq)) {
             const modulus = parent._residueModulus;
             if (!Number.isSafeInteger(modulus) || modulus <= 1) return null;
@@ -425,7 +427,22 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
                 negOwner = Object.getPrototypeOf(negOwner);
             }
             if (negOwner !== parent._machineExtensionNegOwner ||
-                negDescriptor?.get !== parent._machineExtensionNegGetter) return null;
+                negDescriptor?.get !== parent._machineExtensionNegGetter ||
+                Reflect.get(negOwner, "__neg__", negOwner) !==
+                    parent._machineExtensionNeg) return null;
+        }
+        if (required(POW)) {
+            let powOwner = extensionPrototype;
+            let powDescriptor;
+            while (powOwner !== null) {
+                powDescriptor = Object.getOwnPropertyDescriptor(powOwner, "__pow__");
+                if (powDescriptor !== undefined) break;
+                powOwner = Object.getPrototypeOf(powOwner);
+            }
+            if (powOwner !== parent._machineExtensionPowOwner ||
+                powDescriptor?.get !== parent._machineExtensionPowGetter ||
+                Reflect.get(powOwner, "__pow__", powOwner) !==
+                    parent._machineExtensionPow) return null;
         }
         const modulus = parent._machineExtensionPrime;
         const exactBound = (degree + 2) * modulus * modulus + modulus;

@@ -245,6 +245,11 @@ function verifyExpression(
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
+  if (expression.kind === "power" &&
+      (expression.exponent === 2 || expression.exponent === 3)) {
+    verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
+    return;
+  }
   if (expression.kind === "binary" && ["+", "-", "*"].includes(expression.operator)) {
     verifyExpression(expression.left, slotCount, sequenceCount, sequenceAccesses);
     verifyExpression(expression.right, slotCount, sequenceCount, sequenceAccesses);

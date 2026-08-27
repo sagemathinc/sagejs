@@ -17,7 +17,8 @@ type ExpressionPlan =
       indexOrder: "forward" | "reverse";
     }
   | { kind: "binary"; operator: "+" | "-" | "*"; left: ExpressionPlan; right: ExpressionPlan }
-  | { kind: "neg"; value: ExpressionPlan };
+  | { kind: "neg"; value: ExpressionPlan }
+  | { kind: "power"; exponent: 2 | 3; value: ExpressionPlan };
 
 type ConditionPlan = {
   kind: "equal";
@@ -109,6 +110,20 @@ function sourceRegion(node: any): SourceRegion {
     endLine: Number(node.end?.line ?? node.start?.line ?? 0),
     endColumn: Number(node.end?.col ?? node.start?.col ?? 0),
   };
+}
+
+function smallPowerExponent(compiler: any, node: any): 2 | 3 | null {
+  if (node instanceof compiler.AST_Number && (node.value === 2 || node.value === 3)) {
+    return node.value;
+  }
+  if (!(node instanceof compiler.AST_Call) ||
+      !(node.expression instanceof compiler.AST_SymbolRef) ||
+      node.expression.name !== "Integer" || node.args?.length !== 1 ||
+      node.args.starargs || node.args.kwargs?.length ||
+      node.args.kwarg_items?.length ||
+      !(node.args[0] instanceof compiler.AST_String)) return null;
+  const spelling = node.args[0].value.replaceAll("_", "");
+  return spelling === "2" ? 2 : spelling === "3" ? 3 : null;
 }
 
 /**
@@ -255,6 +270,13 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       operations.add("neg");
       return { kind: "neg", value };
     }
+    if (node instanceof compiler.AST_Binary && node.operator === "**") {
+      const exponent = smallPowerExponent(compiler, node.right);
+      const value = expression(node.left);
+      if (!exponent || !value) return null;
+      operations.add("pow");
+      return { kind: "power", exponent, value };
+    }
     return null;
   };
   const condition = (node: any): ConditionPlan | null => {
@@ -322,7 +344,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     } else if (value.kind === "binary") {
       countSequenceUses(value.left);
       countSequenceUses(value.right);
-    } else if (value.kind === "neg") {
+    } else if (value.kind === "neg" || value.kind === "power") {
       countSequenceUses(value.value);
     }
   };

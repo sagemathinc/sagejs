@@ -412,6 +412,31 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
     );
 
     assert.throws(
+      () => verifyInternalRegionPlan({
+        schema: OPTIMIZER_IR_SCHEMA,
+        id: "bad-power",
+        passId: CLOSED_RING_REGION_PASS,
+        kind: "closed-ring-region",
+        operands: {
+          iteratorKind: "range",
+          iterationOrder: "forward",
+          slots: [{ name: "x" }],
+          sequences: [],
+          stateSlots: [0],
+          sequenceStrategy: "pack",
+          sequenceUses: [],
+          sequenceAccesses: [],
+          statements: [{
+            kind: "assign",
+            target: 0,
+            value: { kind: "power", exponent: 4, value: { kind: "slot", slot: 0 } },
+          }],
+        },
+      }),
+      /target-independent expression power is unhandled/,
+    );
+
+    assert.throws(
       () => verifyOptimizationPass({
         id: "test.incomplete.v1",
         inputSchema: OPTIMIZER_IR_SCHEMA,

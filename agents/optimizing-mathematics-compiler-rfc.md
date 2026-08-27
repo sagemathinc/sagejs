@@ -951,7 +951,30 @@ tuple identity, resource closure, latency, and projected speedup.
 
 Per-iteration sequence commoning is covered separately by
 `bench/optimizer-sequence-commoning.cjs`.  It exercises a repeated-read sum of
-squares over both a word residue ring and a cubic extension field, with
+squares over both a word residue ring and a cubic extension field using the
+source-level `x^2` operation, with
 independent scalar-coordinate oracles.  The compiler test also inspects emitted
 JavaScript and requires exactly one sequence load in each fixed-shape target
 variant, so duplicate element/property guards cannot silently return.
+
+The target-independent expression graph also represents the deliberately
+bounded small powers `x^2` and `x^3`.  These are not spelling rewrites to
+`x*x`: the runtime guard authenticates the selected parent's `__pow__`
+implementation before the region enters primitive representation space.  The
+lowering evaluates the base once, shares the square when forming a cube, and
+uses the same reviewed exact modular product lowering as explicit
+multiplication.  Exponents outside `{2,3}`, dynamic exponents, changed power
+descriptors, and unreviewed parents execute the untouched source loop.
+
+The generic extension-field power implementation now propagates its optional
+fixed-width coordinate shadow by exact binary exponentiation for every
+nonnegative exponent.  This is a composability invariant, not merely a local
+speed trick: a correct generic operation must not needlessly make its result
+ineligible for a later guarded region.  Negative powers retain their exact
+FLINT behavior without inventing an unproved coordinate inverse.  A focused
+test ratchets powers `0`, `2`, `3`, and `19` against rematerialized elements.
+With source-level squaring enabled, the commoning benchmark measured fresh
+warm medians of 6.36 ms for 100,000 residue-ring iterations and 40.26 ms for
+100,000 cubic-extension iterations on the development host, approximately
+142x and 315x faster than projected O0 prefixes respectively; both paths
+retained zero native resources.
