@@ -257,7 +257,7 @@ print(Q, negative_Q, len(xs), answer, route)
     ]);
     assert.equal(
       fast.stdout,
-      "(0 : 1 : 1) (0 : 96 : 1) 257 0 v8-extension-tuple-region\n",
+      "(0 : 1 : 1) (0 : 96 : 1) 257 0 v8-extension-tuple-stream\n",
     );
     assert.equal(
       slow.stdout,

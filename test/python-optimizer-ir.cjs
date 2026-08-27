@@ -168,16 +168,73 @@ def squares(values, zero):
     for index in range(len(values)):
         answer = answer + values[index] * values[index]
     return answer
+
+def three_streams(left, right, third, zero):
+    answer = zero
+    for index in range(len(left)):
+        answer = answer + left[index] * right[index] + third[index]
+    return answer
 `, optimizerOptions());
-    assert.equal(ast.optimization_ir.regions.length, 2);
+    assert.equal(ast.optimization_ir.regions.length, 3);
     const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceUses),
-      [[1, 1], [2]],
+      [[1, 1], [2], [1, 1, 1]],
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceStrategy),
-      ["stream", "pack"],
+      ["stream", "stream", "pack"],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.sequenceAccesses),
+      [
+        [
+          { sequence: 0, indexOrder: "forward", uses: 1 },
+          { sequence: 1, indexOrder: "forward", uses: 1 },
+        ],
+        [{ sequence: 0, indexOrder: "forward", uses: 2 }],
+        [
+          { sequence: 0, indexOrder: "forward", uses: 1 },
+          { sequence: 1, indexOrder: "forward", uses: 1 },
+          { sequence: 2, indexOrder: "forward", uses: 1 },
+        ],
+      ],
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("streaming commoning emits one load per target variant", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def squares(values, zero):
+    answer = zero
+    for index in range(len(values)):
+        answer = answer + values[index] * values[index]
+    return answer
+`, optimizerOptions());
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: true,
+      keep_docstrings: true,
+      exact_integers: true,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    // One prime-residue target plus fixed extension degrees two through four.
+    // Each target must load the immutable element once even though the graph
+    // consumes it twice.
+    assert.equal(
+      javascript.match(/\.sequences\[0\]\[ρσ_FieldIndex\d+\]/g)?.length,
+      4,
     );
   } finally {
     frontend.close();
@@ -206,6 +263,13 @@ test("a direct builtin reversed call becomes an explicit guarded index view", as
         operands: { ...plan.operands, iterationOrder: "sideways" },
       }),
       /invalid iteration order/,
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plan,
+        operands: { ...plan.operands, sequenceStrategy: "pack" },
+      }),
+      /stale sequence strategy/,
     );
     const malformedStatements = JSON.parse(JSON.stringify(plan.operands.statements));
     malformedStatements[0].value.right.indexOrder = "sideways";
@@ -336,6 +400,7 @@ test("verifiers reject incomplete costs, stale analyses, and unhandled operation
           stateSlots: [0],
           sequenceStrategy: "pack",
           sequenceUses: [],
+          sequenceAccesses: [],
           statements: [{
             kind: "assign",
             target: 0,

@@ -439,10 +439,14 @@ def _print_region_expression(
     counter,
     suffix,
     streaming=False,
+    sequence_values=None,
 ):
     if expression.kind == "slot":
         return slot_names[expression.slot]
     if expression.kind == "sequence":
+        cache_key = str(expression.sequence) + ":" + expression.indexOrder
+        if streaming and sequence_values is not None and cache_key in sequence_values:
+            return sequence_values[cache_key]
         base = context_name + ".sequences[" + str(expression.sequence) + "]"
         sequence_index = index_name
         if expression.indexOrder == "reverse":
@@ -514,11 +518,15 @@ def _print_region_expression(
 
             output.with_block(reject_stream_element)
             if representation == "prime":
-                return element + "._value"
-            return [
-                element + "._machineCoordinates[" + str(component) + "]"
-                for component in range(degree)
-            ]
+                value = element + "._value"
+            else:
+                value = [
+                    element + "._machineCoordinates[" + str(component) + "]"
+                    for component in range(degree)
+                ]
+            if sequence_values is not None:
+                sequence_values[cache_key] = value
+            return value
         if representation == "prime":
             return base + "[" + sequence_index + "]"
         return [
@@ -547,6 +555,7 @@ def _print_region_expression(
             counter,
             suffix,
             streaming,
+            sequence_values,
         )
         if representation == "prime":
             result = _region_temp(counter, suffix)
@@ -587,6 +596,7 @@ def _print_region_expression(
         counter,
         suffix,
         streaming,
+        sequence_values,
     )
     right = _print_region_expression(
         expression.right,
@@ -602,6 +612,7 @@ def _print_region_expression(
         counter,
         suffix,
         streaming,
+        sequence_values,
     )
     operator = expression.operator
     if representation == "prime":
@@ -750,6 +761,7 @@ def _print_region_statements(
     counter,
     suffix,
     streaming=False,
+    sequence_values=None,
 ):
     for statement in statements:
         if statement.kind == "assign":
@@ -767,6 +779,7 @@ def _print_region_statements(
                 counter,
                 suffix,
                 streaming,
+                sequence_values,
             )
             targets = slot_names[statement.target]
             if representation == "prime":
@@ -796,6 +809,7 @@ def _print_region_statements(
             counter,
             suffix,
             streaming,
+            sequence_values,
         )
         right = _print_region_expression(
             statement.condition.right,
@@ -811,6 +825,7 @@ def _print_region_statements(
             counter,
             suffix,
             streaming,
+            sequence_values,
         )
         if representation == "prime":
             condition = left + " === " + right
@@ -838,6 +853,7 @@ def _print_region_statements(
                 counter,
                 suffix,
                 streaming,
+                sequence_values,
             )
 
         output.with_block(consequent)
@@ -861,6 +877,7 @@ def _print_region_statements(
                     counter,
                     suffix,
                     streaming,
+                    sequence_values,
                 )
 
             output.with_block(alternative)
@@ -965,6 +982,7 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             [0],
             suffix,
             streaming,
+            {},
         )
 
     output.with_block(body)

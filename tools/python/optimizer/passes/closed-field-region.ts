@@ -303,9 +303,22 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const stateSlots = [...modified].map((name) => slotByName.get(name)!);
   const affine = affineTarget(program, stateSlots);
   const sequenceUses = new Array(sequences.length).fill(0);
+  const sequenceAccessMap = new Map<string, {
+    sequence: number;
+    indexOrder: "forward" | "reverse";
+    uses: number;
+  }>();
   const countSequenceUses = (value: ExpressionPlan): void => {
     if (value.kind === "sequence") {
       sequenceUses[value.sequence] += 1;
+      const key = `${value.sequence}:${value.indexOrder}`;
+      const access = sequenceAccessMap.get(key);
+      if (access) access.uses += 1;
+      else sequenceAccessMap.set(key, {
+        sequence: value.sequence,
+        indexOrder: value.indexOrder,
+        uses: 1,
+      });
     } else if (value.kind === "binary") {
       countSequenceUses(value.left);
       countSequenceUses(value.right);
@@ -313,16 +326,25 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       countSequenceUses(value.value);
     }
   };
-  for (const statement of program) {
-    if (statement.kind === "assign") countSequenceUses(statement.value);
-  }
-  const straightLineSingleUse =
-    sequences.length > 0 &&
+  const countStatementSequenceUses = (statement: StatementPlan): void => {
+    if (statement.kind === "assign") {
+      countSequenceUses(statement.value);
+      return;
+    }
+    countSequenceUses(statement.condition.left);
+    countSequenceUses(statement.condition.right);
+    statement.body.forEach(countStatementSequenceUses);
+    statement.alternative.forEach(countStatementSequenceUses);
+  };
+  program.forEach(countStatementSequenceUses);
+  const sequenceAccesses = [...sequenceAccessMap.values()];
+  const straightLineStream =
+    sequenceAccesses.length > 0 &&
+    sequenceAccesses.length <= 2 &&
     program.every((statement) => statement.kind === "assign") &&
-    sequenceUses.reduce((total, count) => total + count, 0) <= 2 &&
-    sequenceUses.every((count) => count <= 1);
+    sequenceUses.reduce((total, count) => total + count, 0) <= 8;
   const sequenceStrategy =
-    affine?.kind === "sequence-increment" || straightLineSingleUse
+    affine?.kind === "sequence-increment" || straightLineStream
       ? "stream"
       : "pack";
   return {
@@ -338,6 +360,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     operations: [...operations].sort(),
     affine,
     sequenceUses,
+    sequenceAccesses,
     sequenceStrategy,
   };
 }
@@ -388,6 +411,7 @@ export const closedRingRegionPass: OptimizationPass = {
         operations: operands.operations,
         affine: operands.affine,
         sequenceUses: operands.sequenceUses,
+        sequenceAccesses: operands.sequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
       });
       const id = identity.id;

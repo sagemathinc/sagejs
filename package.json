@@ -250,6 +250,7 @@
     "bench:optimizer-field-horner": "node bench/optimizer-field-horner.cjs",
     "bench:optimizer-field-dot-product": "node bench/optimizer-field-dot-product.cjs",
     "bench:optimizer-polynomial-evaluation": "node bench/optimizer-polynomial-evaluation.cjs",
+    "bench:optimizer-sequence-commoning": "node bench/optimizer-sequence-commoning.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
