@@ -166,7 +166,7 @@ def dot(left, right, zero):
 def squares(values, zero):
     answer = zero
     for index in range(len(values)):
-        answer = answer + values[index] * values[index]
+        answer = answer + values[index]^2 + values[index]^2
     return answer
 
 def three_streams(left, right, third, zero):
@@ -197,7 +197,7 @@ def branching(values, pivot, left, right):
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.operationCost),
-      [2, 2, 3, 7],
+      [2, 3, 3, 7],
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceAccesses),
@@ -230,7 +230,7 @@ def branching(values, pivot, left, right):
   }
 });
 
-test("streaming commoning emits one load per target variant", async () => {
+test("streaming commoning emits one load and one repeated product per target variant", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
   try {
@@ -238,7 +238,7 @@ test("streaming commoning emits one load per target variant", async () => {
 def squares(values, zero):
     answer = zero
     for index in range(len(values)):
-        answer = answer + values[index] * values[index]
+        answer = answer + values[index]^2 + values[index]^2
     return answer
 `, optimizerOptions());
     const output = new compiler.OutputStream({
@@ -260,6 +260,29 @@ def squares(values, zero):
     assert.equal(
       javascript.match(/\.sequences\[0\]\[ρσ_FieldIndex\d+\]/g)?.length,
       4,
+    );
+    const single = frontend.parse(`
+def squares(values, zero):
+    answer = zero
+    for index in range(len(values)):
+        answer = answer + values[index]^2
+    return answer
+`, optimizerOptions());
+    const singleOutput = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: true,
+      keep_docstrings: true,
+      exact_integers: true,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+    });
+    single.print(singleOutput);
+    assert.equal(
+      javascript.match(/ \* /g)?.length,
+      singleOutput.get().match(/ \* /g)?.length,
     );
   } finally {
     frontend.close();

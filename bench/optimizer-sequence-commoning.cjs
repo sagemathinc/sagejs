@@ -34,7 +34,7 @@ function residueOracle(iterations) {
   let answer = 0;
   for (let index = 0; index < iterations; index += 1) {
     const value = (index * index + 3) % 1009;
-    answer = (answer + value * value) % 1009;
+    answer = (answer + 2 * value * value) % 1009;
   }
   return [answer];
 }
@@ -45,7 +45,7 @@ function cubicOracle(iterations) {
     const value = [index % 5, (index + 1) % 5, (index * index + 2) % 5];
     const square = extensionMultiply(value, value);
     answer = answer.map((component, position) =>
-      (component + square[position]) % 5);
+      (component + 2 * square[position]) % 5);
   }
   return answer;
 }
@@ -99,7 +99,7 @@ ${item.setup(iterations)}
 def sum_of_squares(values, zero):
     answer=zero
     for index in range(len(values)):
-        answer=answer+values[index]^2
+        answer=answer+values[index]^2+values[index]^2
     return answer
 sum_of_squares(values,zero)
 for sample in range(${samples}):
