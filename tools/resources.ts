@@ -20,6 +20,10 @@ import { createHash } from "node:crypto";
 
 import { measureInitialization } from "./timing";
 import { configureImmutableUInt64KernelWrapper } from "./immutable-uint64-capsule";
+import {
+  NATIVE_KERNEL_ABI_VERSION,
+  NATIVE_KERNEL_PACK_ABI_VERSION,
+} from "./native-kernel/abi";
 
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
@@ -53,8 +57,6 @@ const NATIVE_KERNEL_ASSET_PREFIX = "native-kernels/";
 const NATIVE_KERNEL_PACK_ASSET =
   "native-kernels/pack/sagejs_native_kernel_pack.node";
 const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
-const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
-const NATIVE_KERNEL_COMPILER_ABI_VERSION = 22;
 const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-flint",
   "@sagemath/sagejs-fflas",
@@ -227,7 +229,7 @@ export function loadPrecompiledNativeKernel(
     if (
       manifest?.schema !== "sagejs.native-pack/v2" ||
       manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
-      manifest.nativeAbi !== NATIVE_KERNEL_COMPILER_ABI_VERSION ||
+      manifest.nativeAbi !== NATIVE_KERNEL_ABI_VERSION ||
       manifest.platform !== process.platform ||
       manifest.architecture !== process.arch ||
       manifest.nodeModulesAbi !== process.versions.modules ||
