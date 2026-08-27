@@ -5,6 +5,7 @@ import {
   SourceRegion,
 } from "../types";
 import { targetCandidate } from "../cost-model";
+import { nearestOwningFunction } from "../contracts";
 import { stableRegionIdentity } from "../identity";
 
 export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
@@ -1064,11 +1065,14 @@ export const closedRingRegionPass: OptimizationPass = {
           ancestor instanceof context.compiler.AST_Try && ancestor.bcatch
         ) ? ["catchable-interrupt-region"] : [],
         node,
+        ownerFunction: nearestOwningFunction(context.compiler, ancestors),
         internal: {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
           passId: CLOSED_RING_REGION_PASS,
           loweringId: "v8.closed-ring-loop.v1",
+          functionId: null,
+          guardFailure: "fallback",
           kind: "closed-ring-region",
           operands,
         },

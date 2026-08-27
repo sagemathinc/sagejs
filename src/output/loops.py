@@ -1309,7 +1309,8 @@ def _print_strict_float_statements(statements, slot_names, output, names):
 
 def print_strict_float_region(self, output):
     """Lower a verified ordered IEEE-754 program to primitive Number locals."""
-    plan = self.optimization_region.operands
+    region = self.optimization_region
+    plan = region.operands
     suffix = str(output.index_counter)
     output.index_counter += 1
     names = {
@@ -1408,7 +1409,16 @@ def print_strict_float_region(self, output):
         output.space()
 
         def fallback():
-            _print_closed_field_fallback(self, output, plan, names)
+            if region.guardFailure == "error":
+                output.indent()
+                output.print(
+                    "throw new RuntimeError("
+                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
+                    + ")"
+                )
+                output.end_statement()
+            else:
+                _print_closed_field_fallback(self, output, plan, names)
 
         output.with_block(fallback)
 
@@ -1638,7 +1648,19 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
         output.space()
 
         def streaming_fallback():
-            _print_closed_field_fallback(self, output, plan, names)
+            if self.optimization_region.guardFailure == "error":
+                output.indent()
+                output.print(
+                    "throw new RuntimeError("
+                    + JSON.stringify(
+                        "optimizer runtime guard failed for "
+                        + self.optimization_region.id
+                    )
+                    + ")"
+                )
+                output.end_statement()
+            else:
+                _print_closed_field_fallback(self, output, plan, names)
 
         output.with_block(streaming_fallback)
     else:
@@ -1647,7 +1669,8 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
 
 def print_closed_field_region(self, output):
     """Lower a verified field-operation graph without rediscovering meaning."""
-    plan = self.optimization_region.operands
+    region = self.optimization_region
+    plan = region.operands
     suffix = str(output.index_counter)
     output.index_counter += 1
     names = {
@@ -1896,7 +1919,16 @@ def print_closed_field_region(self, output):
         output.space()
 
         def fallback():
-            _print_closed_field_fallback(self, output, plan, names)
+            if region.guardFailure == "error":
+                output.indent()
+                output.print(
+                    "throw new RuntimeError("
+                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
+                    + ")"
+                )
+                output.end_statement()
+            else:
+                _print_closed_field_fallback(self, output, plan, names)
 
         output.with_block(fallback)
 
@@ -1917,7 +1949,16 @@ def print_closed_field_region(self, output):
         output.space()
 
         def invalid_zip():
-            _print_closed_field_fallback(self, output, plan, names)
+            if region.guardFailure == "error":
+                output.indent()
+                output.print(
+                    "throw new RuntimeError("
+                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
+                    + ")"
+                )
+                output.end_statement()
+            else:
+                _print_closed_field_fallback(self, output, plan, names)
 
         output.with_block(invalid_zip)
     else:

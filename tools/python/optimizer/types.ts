@@ -94,6 +94,7 @@ export interface OptimizationDecision {
   schema: typeof OPTIMIZER_IR_SCHEMA;
   id: string;
   passId: string;
+  functionId: string | null;
   source: SourceRegion;
   selected: boolean;
   rejectionReasons: string[];
@@ -113,7 +114,27 @@ export interface OptimizationProgram {
   disabledPasses: string[];
   requiredOptimizations: string[];
   passes: OptimizationPassRecord[];
+  contracts: FunctionOptimizationContract[];
   regions: OptimizationDecision[];
+}
+
+export type OptimizationCoverage = "at-least-one" | "all-loops";
+export type OptimizationGuardFailure = "fallback" | "error";
+export type OptimizationTargetRequirement =
+  | "auto" | "v8" | "wasm" | "native" | "library" | "generic";
+
+export interface FunctionOptimizationContract {
+  schema: typeof OPTIMIZER_IR_SCHEMA;
+  id: string;
+  functionName: string;
+  source: SourceRegion;
+  requiredPassId: string;
+  coverage: OptimizationCoverage;
+  target: OptimizationTargetRequirement;
+  guardFailure: OptimizationGuardFailure;
+  loopCount: number;
+  matchedRegionIds: string[];
+  status: "pending" | "satisfied";
 }
 
 export interface OptimizationPassRecord {
@@ -149,13 +170,19 @@ export interface InternalRegionPlan {
   id: string;
   passId: string;
   loweringId: string;
+  functionId: string | null;
+  guardFailure: OptimizationGuardFailure;
   kind: string;
   operands: Record<string, any>;
 }
 
 export interface OptimizationCandidate {
-  decision: Omit<OptimizationDecision, "selected" | "rejectionReasons">;
+  decision: Omit<
+    OptimizationDecision,
+    "selected" | "rejectionReasons" | "functionId"
+  >;
   node: any;
+  ownerFunction?: any;
   internal: InternalRegionPlan;
   minimumLevel: OptimizationLevel;
   staticRejectionReasons?: readonly string[];

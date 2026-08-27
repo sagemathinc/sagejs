@@ -145,6 +145,14 @@ if (argv.mode === "self") {
     console.error(error?.stack ?? error);
     process.exitCode = 1;
   });
+} else if (argv.mode === "optimize") {
+  load("optimizer-cli").runOptimizerCli(argv, {
+    srcPath,
+    compilerPath,
+  }).catch((error) => {
+    console.error(error?.message ?? String(error));
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "docs") {
   load("docs").runDocumentationCli(argv, basePath).catch((error) => {
     console.error(error?.message ?? String(error));

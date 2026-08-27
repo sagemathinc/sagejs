@@ -42,7 +42,10 @@ export function verifyOptimizerLowering(
   compiler: any,
   node: any,
   internal: InternalRegionPlan,
-  decision: Omit<OptimizationDecision, "selected" | "rejectionReasons">,
+  decision: Omit<
+    OptimizationDecision,
+    "selected" | "rejectionReasons" | "functionId"
+  >,
 ): void {
   const lowering = optimizerLoweringContract(internal.loweringId);
   if (!lowering) {

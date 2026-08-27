@@ -7,6 +7,7 @@ import {
   SourceRegion,
 } from "../types";
 import { recognizeClosedScalarProgram } from "./closed-field-region";
+import { nearestOwningFunction } from "../contracts";
 
 export const STRICT_FLOAT_REGION_PASS = "math.strict-float-region.v1";
 
@@ -120,11 +121,14 @@ export const strictFloatRegionPass: OptimizationPass = {
           ancestor instanceof context.compiler.AST_Try && ancestor.bcatch
         ) ? ["catchable-interrupt-region"] : [],
         node,
+        ownerFunction: nearestOwningFunction(context.compiler, ancestors),
         internal: {
           schema: OPTIMIZER_IR_SCHEMA,
           id,
           passId: STRICT_FLOAT_REGION_PASS,
           loweringId: "v8.strict-float-loop.v1",
+          functionId: null,
+          guardFailure: "fallback",
           kind: "strict-float-region",
           operands: {
             ...operands,
