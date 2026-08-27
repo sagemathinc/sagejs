@@ -5,6 +5,10 @@ const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const createCompiler = require("../dist/tools/compiler.js").default;
+const {
+  createPythonCompilerFrontend,
+} = require("../dist/tools/python/compiler-frontend.js");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const check = process.argv.includes("--check");
@@ -37,6 +41,71 @@ function oracle(iterations) {
     value = value * a + b;
   }
   return bits(value);
+}
+
+const compilerSource = `
+def recurrence(n: int, value: float, multiplier: float, increment: float) -> float:
+    for index in range(n):
+        value = value*multiplier + increment
+    return value
+`;
+
+function compilerOptions(level) {
+  return {
+    filename: "strict-float.py",
+    for_linting: true,
+    import_dirs: [],
+    exact_integer_literals: true,
+    strict_python_scopes: true,
+    scoped_flags: {
+      dict_literals: true,
+      overload_getitem: true,
+      bound_methods: true,
+      sequential_definitions: true,
+    },
+    optimization_level: level,
+  };
+}
+
+async function measureCompilerCost() {
+  const initializationStarted = process.hrtime.bigint();
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  const frontendReadyMs =
+    Number(process.hrtime.bigint() - initializationStarted) / 1_000_000;
+  const count = check ? 101 : 301;
+  const observations = { O0: [], O2: [] };
+  try {
+    for (let index = 0; index < 20; index += 1) {
+      frontend.parse(compilerSource, compilerOptions(index % 2 ? "O0" : "O2"));
+    }
+    for (let index = 0; index < count; index += 1) {
+      for (const level of index % 2 ? ["O0", "O2"] : ["O2", "O0"]) {
+        const started = process.hrtime.bigint();
+        const ast = frontend.parse(compilerSource, compilerOptions(level));
+        observations[level].push(
+          Number(process.hrtime.bigint() - started) / 1_000_000,
+        );
+        if (level === "O2") {
+          assert.equal(ast.optimization_ir.regions.length, 1);
+          assert.equal(
+            ast.optimization_ir.regions[0].passId,
+            "math.strict-float-region.v1",
+          );
+        }
+      }
+    }
+  } finally {
+    frontend.close();
+  }
+  return {
+    frontend_ready_ms: frontendReadyMs,
+    sources: count,
+    o0_median_ms: median(observations.O0),
+    o2_median_ms: median(observations.O2),
+    process_rss_bytes: process.memoryUsage().rss,
+    process_heap_used_bytes: process.memoryUsage().heapUsed,
+  };
 }
 
 async function sessionAtLevel(level) {
@@ -116,6 +185,7 @@ for sample in range(${samples}):
 }
 
 async function main() {
+  const compilerCost = await measureCompilerCost();
   const optimized = await measureSage("O2", optimizedIterations);
   const generic = await measureSage("O0", genericIterations);
   const cpython = measureCPython(optimizedIterations);
@@ -139,8 +209,10 @@ async function main() {
     cpython_median_ns_per_step: cpythonMedian,
     speedup_over_sagejs_o0: genericMedian / optimizedMedian,
     speedup_over_cpython: cpythonMedian / optimizedMedian,
+    compiler_cost: compilerCost,
     reviewed_maximum_optimized_ns_per_step: 30,
     reviewed_minimum_o0_speedup: 5,
+    reviewed_maximum_o2_compile_median_ms: 10,
   };
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (check) {
@@ -151,6 +223,11 @@ async function main() {
     assert.ok(
       report.speedup_over_sagejs_o0 >= report.reviewed_minimum_o0_speedup,
       `strict float lowering is only ${report.speedup_over_sagejs_o0.toFixed(2)}x faster than O0`,
+    );
+    assert.ok(
+      compilerCost.o2_median_ms <=
+        report.reviewed_maximum_o2_compile_median_ms,
+      `strict float compilation regressed to ${compilerCost.o2_median_ms.toFixed(3)} ms/source`,
     );
   }
 }
