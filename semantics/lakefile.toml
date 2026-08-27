@@ -1,0 +1,9 @@
+name = "sage-semantics"
+version = "0.1.0"
+defaultTargets = ["SageSemantics"]
+
+# Deliberately no mathlib: everything here rests on core `Int`, `Rat`, `omega`
+# and `decide`, so the project builds in seconds and needs no download.
+
+[[lean_lib]]
+name = "SageSemantics"
