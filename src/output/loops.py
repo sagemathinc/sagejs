@@ -281,10 +281,14 @@ def init_es6_itervar(output, itervar):
 
 def print_for_in(self, output):
     if self.optimization_region:
-        if self.optimization_region.kind == "strict-float-region":
+        if self.optimization_region.loweringId == "v8.strict-float-loop.v1":
             return print_strict_float_region(self, output)
-        if self.optimization_region.kind == "closed-ring-region":
+        if self.optimization_region.loweringId == "v8.closed-ring-loop.v1":
             return print_closed_field_region(self, output)
+        raise TypeError(
+            "selected optimizer region has no target lowering: "
+            + self.optimization_region.loweringId
+        )
     prepare_loop_else(self, output)
 
     def write_object():
