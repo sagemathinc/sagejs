@@ -529,6 +529,82 @@ def ρσ_materialize_machine_field_value(context, coefficients):
     })()"""
 
 
+def ρσ_machine_field_power(context, value, exponent):
+    """Evaluate one verified primitive ring power with bounded scratch."""
+    return r"""%js (() => {
+        if (context === null || !Number.isSafeInteger(exponent) || exponent < 0) {
+            throw new TypeError("invalid verified machine-field power");
+        }
+        const modulus = context.modulus;
+        let remaining = exponent;
+        if (context.kind === 1) {
+            let result = 1;
+            let factor = value;
+            while (remaining > 0) {
+                if (remaining % 2 === 1) result = (result * factor) % modulus;
+                remaining = Math.floor(remaining / 2);
+                if (remaining > 0) factor = (factor * factor) % modulus;
+            }
+            return result;
+        }
+        const degree = context.degree;
+        if (!Array.isArray(value) || value.length !== degree) {
+            throw new TypeError("invalid verified extension-field power");
+        }
+        const resultBuffers = [new Float64Array(degree), new Float64Array(degree)];
+        const factorBuffers = [Float64Array.from(value), new Float64Array(degree)];
+        const product = new Float64Array(2 * degree - 1);
+        resultBuffers[0][0] = 1;
+        let resultIndex = 0;
+        let factorIndex = 0;
+        const multiply = (left, right, output) => {
+            product.fill(0);
+            output.fill(0);
+            for (let i = 0; i < degree; i++) {
+                for (let j = 0; j < degree; j++) {
+                    const position = i + j;
+                    product[position] =
+                        (product[position] + left[i] * right[j]) % modulus;
+                }
+            }
+            for (let power = 2 * degree - 2; power >= degree; power--) {
+                const coefficient = product[power];
+                for (let index = 0; index < degree; index++) {
+                    const position = power - degree + index;
+                    let next = product[position] -
+                        coefficient * context.modulusCoefficients[index];
+                    next %= modulus;
+                    if (next < 0) next += modulus;
+                    product[position] = next;
+                }
+            }
+            for (let index = 0; index < degree; index++) output[index] = product[index];
+        };
+        while (remaining > 0) {
+            if (remaining % 2 === 1) {
+                const nextResult = 1 - resultIndex;
+                multiply(
+                    resultBuffers[resultIndex],
+                    factorBuffers[factorIndex],
+                    resultBuffers[nextResult],
+                );
+                resultIndex = nextResult;
+            }
+            remaining = Math.floor(remaining / 2);
+            if (remaining > 0) {
+                const nextFactor = 1 - factorIndex;
+                multiply(
+                    factorBuffers[factorIndex],
+                    factorBuffers[factorIndex],
+                    factorBuffers[nextFactor],
+                );
+                factorIndex = nextFactor;
+            }
+        }
+        return resultBuffers[resultIndex];
+    })()"""
+
+
 def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
     return r"""%js (() => {
         if (!Number.isSafeInteger(count) || count < 0 ||

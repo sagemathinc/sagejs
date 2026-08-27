@@ -1022,9 +1022,21 @@ execute the untouched source loop.
 `bench/optimizer-static-power.cjs` exercises this distinction with
 `x^19-x^65537` over `Zmod(1009)` and `GF(5^3)`.  The benchmark uses independent
 JavaScript binary-power coordinate oracles and a matched O0 prefix.  Fresh warm
-medians for 20,000 iterations were 2.59 ms and 35.41 ms respectively,
-approximately 312x and 575x faster than projected O0 execution; both guarded
+medians after compact lowering for 20,000 iterations were 3.73 ms and 150.33 ms
+respectively, approximately 120x and 142x faster than projected O0 execution;
+both guarded
 streams retained zero native resources.
+
+The code-size budget is now an analyzed IR property rather than descriptive
+pass metadata.  Each plan records a conservative degree-four outlined-target
+estimate: coordinatewise operations cost four units, scalar extension
+products cost 32, statement-local commoning is reflected exactly, and powers
+requiring more than one product use a constant-size shared helper.  The
+verifier recomputes the estimate and rejects any target over 32 KiB.  This
+closed a measured failure where a sparse large power expanded a 1.1 KiB O0
+loop to 167 KiB of generated JavaScript.  The compact form is 9.5 KiB; a
+16-statement affine graph that would emit roughly 169 KiB is rejected before
+lowering.
 
 The pass now records an exact per-iteration operation cost derived from its
 target-independent graph.  The independent verifier recomputes that value and
