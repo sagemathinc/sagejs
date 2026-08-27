@@ -371,6 +371,75 @@ def branching(values, left, right, value, step, pivot):
   }
 });
 
+test("definite assignment separates iteration locals from live ring state", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def staged(values, zero):
+    answer = zero
+    for item in values:
+        square = item*item
+        shifted = square+item
+        answer = answer+shifted*square
+    return answer, square, shifted
+
+def selected(values, zero, pivot):
+    answer = zero
+    for item in values:
+        if item == pivot:
+            temporary = item*item
+        else:
+            temporary = -item
+        answer = answer+temporary
+    return answer, temporary
+
+def partial(values, zero, pivot):
+    answer = zero
+    for item in values:
+        if item == pivot:
+            temporary = item*item
+        answer = answer+item
+    return answer, temporary
+`, optimizerOptions());
+    const loops = findLoops(compiler, ast);
+    assert.equal(loops.length, 3);
+    const staged = loops[0].optimization_region;
+    const selected = loops[1].optimization_region;
+    assert.ok(staged);
+    assert.ok(selected);
+    assert.equal(loops[2].optimization_region, undefined);
+    assert.deepEqual(staged.operands.inputSlots, [2]);
+    assert.deepEqual(staged.operands.stateSlots, [0, 1, 2]);
+    assert.deepEqual(staged.operands.localSlots, [0, 1]);
+    assert.equal(staged.operands.operationCost, 4);
+    assert.equal(staged.operands.targetCodeBytes, 10240);
+    assert.deepEqual(selected.operands.inputSlots, [0, 2]);
+    assert.deepEqual(selected.operands.stateSlots, [1, 2]);
+    assert.deepEqual(selected.operands.localSlots, [1]);
+    assert.equal(selected.operands.operationCost, 4);
+    assert.equal(selected.operands.targetCodeBytes, 6656);
+    assert.doesNotThrow(() => verifyInternalRegionPlan(staged));
+    assert.doesNotThrow(() => verifyInternalRegionPlan(selected));
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...staged,
+        operands: { ...staged.operands, inputSlots: [0, 2] },
+      }),
+      /stale input slots/,
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...staged,
+        operands: { ...staged.operands, localSlots: [1] },
+      }),
+      /stale local slots/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
 test("compact powers respect the advertised outlined-target code budget", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");

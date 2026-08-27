@@ -511,3 +511,59 @@ for function, arguments in (
     await Promise.all([optimized.close(), generic.close()]);
   }
 });
+
+test("definitely assigned ring locals need no entry value", async () => {
+  const source = String.raw`
+def staged(values, zero):
+    answer = zero
+    for item in values:
+        square = item*item
+        shifted = square+item
+        answer = answer+shifted*square
+    return answer, square, shifted
+
+def selected(values, zero, pivot):
+    answer = zero
+    for item in values:
+        if item == pivot:
+            temporary = item*item
+        else:
+            temporary = -item
+        answer = answer+temporary
+    return answer, temporary
+
+R = Zmod(1009)
+prime_values = tuple(R(index^2+3) for index in range(257))
+R._lastCompilerOptimizationRoute = 'generic'
+print(staged(prime_values, R(0)), R._lastCompilerOptimizationRoute)
+R._lastCompilerOptimizationRoute = 'generic'
+print(selected(prime_values, R(0), prime_values[129]), R._lastCompilerOptimizationRoute)
+
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+cubic_values = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(257))
+K._lastCompilerOptimizationRoute = 'generic'
+print(staged(cubic_values, K(0)), K._lastCompilerOptimizationRoute)
+K._lastCompilerOptimizationRoute = 'generic'
+print(selected(cubic_values, K(0), cubic_values[129]), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic"),
+      slow.stdout,
+    );
+    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 2);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 2);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});

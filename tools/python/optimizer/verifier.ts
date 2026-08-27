@@ -329,6 +329,57 @@ function expressionStructuralKey(expression: any, versions?: number[]): string {
   return `binary:${expression.operator}(${expressionStructuralKey(expression.left, versions)},${expressionStructuralKey(expression.right, versions)})`;
 }
 
+function collectExpressionSlots(expression: any, slots: Set<number>): void {
+  if (expression.kind === "slot") {
+    slots.add(expression.slot);
+  } else if (expression.kind === "binary") {
+    collectExpressionSlots(expression.left, slots);
+    collectExpressionSlots(expression.right, slots);
+  } else if (expression.kind === "neg" || expression.kind === "power") {
+    collectExpressionSlots(expression.value, slots);
+  }
+}
+
+function statementDataFlow(statements: any[], slotCount: number): {
+  inputSlots: number[];
+  stateSlots: number[];
+  localSlots: number[];
+  definitelyAssigned: Set<number>;
+} {
+  const inputs = new Set<number>();
+  const modified = new Set<number>();
+  const analyze = (source: any[], incoming: Set<number>): Set<number> => {
+    let assigned = new Set(incoming);
+    const readExpression = (expression: any): void => {
+      const reads = new Set<number>();
+      collectExpressionSlots(expression, reads);
+      for (const slot of reads) {
+        if (!assigned.has(slot)) inputs.add(slot);
+      }
+    };
+    for (const statement of source) {
+      if (statement.kind === "assign") {
+        readExpression(statement.value);
+        modified.add(statement.target);
+        assigned.add(statement.target);
+        continue;
+      }
+      readExpression(statement.condition.left);
+      readExpression(statement.condition.right);
+      const body = analyze(statement.body, assigned);
+      const alternative = analyze(statement.alternative, assigned);
+      assigned = new Set([...body].filter((slot) => alternative.has(slot)));
+    }
+    return assigned;
+  };
+  const definitelyAssigned = analyze(statements, new Set());
+  const inputSlots = [...inputs].sort((left, right) => left - right);
+  const stateSlots = [...modified].sort((left, right) => left - right);
+  const localSlots = Array.from({ length: slotCount }, (_value, slot) => slot)
+    .filter((slot) => !inputs.has(slot));
+  return { inputSlots, stateSlots, localSlots, definitelyAssigned };
+}
+
 function expressionOperationCost(
   expression: any,
   common: Set<string>,
@@ -559,10 +610,22 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         "optimizer ring region has a stale or excessive target code size",
       );
     }
-    for (const slot of plan.operands.stateSlots ?? []) {
-      if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
-        throw new TypeError("optimizer state slot is out of range");
+    const dataFlow = statementDataFlow(plan.operands.statements, slots.length);
+    for (const [name, claimed, observed] of [
+      ["input", plan.operands.inputSlots, dataFlow.inputSlots],
+      ["state", plan.operands.stateSlots, dataFlow.stateSlots],
+      ["local", plan.operands.localSlots, dataFlow.localSlots],
+    ] as Array<[string, unknown, number[]]>) {
+      if (!Array.isArray(claimed) || claimed.length !== observed.length ||
+          claimed.some((slot: unknown, index: number) =>
+            !Number.isSafeInteger(slot) || slot !== observed[index])) {
+        throw new TypeError(`optimizer ring region has stale ${name} slots`);
       }
+    }
+    if (dataFlow.inputSlots.length === 0 || dataFlow.localSlots.some((slot) =>
+      dataFlow.stateSlots.includes(slot) &&
+      !dataFlow.definitelyAssigned.has(slot))) {
+      throw new TypeError("optimizer ring region has unsafe local data flow");
     }
     const affine = plan.operands.affine;
     if (observedInplaceOperations.size > 0 && affine !== null &&

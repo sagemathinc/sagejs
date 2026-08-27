@@ -1021,6 +1021,24 @@ both `Zmod(1009)` and `GF(5^3)`.  It checks exact results against independent
 JavaScript coordinate oracles, compares with a matched O0 prefix, ratchets the
 selected representation route, and requires zero retained native resources.
 
+The region data-flow proof now distinguishes loop live-ins, modified live-outs,
+and iteration-local slots.  A local is admitted without an entry value only if
+structured definite-assignment analysis proves it is assigned on every path
+before use and on every path through one nonempty iteration.  Locals are emitted
+as uninitialized primitive slots, participate in versioned value numbering,
+and are materialized only once as ordinary Python variables after successful
+transactional completion.  This both accepts idiomatic named intermediates and
+fixes the old lowering's premature read of a body-defined Python local.
+
+The verifier independently derives the exact input, state, and local slot lists
+from the statement graph.  A stage-one compatibility default exists only in the
+self-hosting output generator so the immediately previous compiler can build
+the new compiler; every newly produced plan must carry and pass the exact data-
+flow claims.  `bench/optimizer-local-temporaries.cjs` measures a three-stage
+polynomial identity with two named intermediates over `Zmod(1009)` and
+`GF(5^3)`, using independent coordinate oracles, a matched O0 prefix, route and
+resource ratchets, and final temporary-value checks.
+
 The target-independent expression graph also represents statically bounded
 powers `x^e` for exact nonnegative safe-integer exponents.  These are not spelling
 rewrites to multiplication: the runtime guard authenticates the selected

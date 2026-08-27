@@ -40,6 +40,57 @@ type StatementPlan =
     }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
+function collectExpressionSlots(value: ExpressionPlan, slots: Set<number>): void {
+  if (value.kind === "slot") {
+    slots.add(value.slot);
+  } else if (value.kind === "binary") {
+    collectExpressionSlots(value.left, slots);
+    collectExpressionSlots(value.right, slots);
+  } else if (value.kind === "neg" || value.kind === "power") {
+    collectExpressionSlots(value.value, slots);
+  }
+}
+
+function statementDataFlow(statements: StatementPlan[], slotCount: number): {
+  inputSlots: number[];
+  stateSlots: number[];
+  localSlots: number[];
+  definitelyAssigned: Set<number>;
+} {
+  const inputs = new Set<number>();
+  const modified = new Set<number>();
+  const analyze = (source: StatementPlan[], incoming: Set<number>): Set<number> => {
+    let assigned = new Set(incoming);
+    const readExpression = (value: ExpressionPlan): void => {
+      const reads = new Set<number>();
+      collectExpressionSlots(value, reads);
+      for (const slot of reads) {
+        if (!assigned.has(slot)) inputs.add(slot);
+      }
+    };
+    for (const statement of source) {
+      if (statement.kind === "assign") {
+        readExpression(statement.value);
+        modified.add(statement.target);
+        assigned.add(statement.target);
+        continue;
+      }
+      readExpression(statement.condition.left);
+      readExpression(statement.condition.right);
+      const body = analyze(statement.body, assigned);
+      const alternative = analyze(statement.alternative, assigned);
+      assigned = new Set([...body].filter((slot) => alternative.has(slot)));
+    }
+    return assigned;
+  };
+  const definitelyAssigned = analyze(statements, new Set());
+  const inputSlots = [...inputs].sort((left, right) => left - right);
+  const stateSlots = [...modified].sort((left, right) => left - right);
+  const localSlots = Array.from({ length: slotCount }, (_value, slot) => slot)
+    .filter((slot) => !inputs.has(slot));
+  return { inputSlots, stateSlots, localSlots, definitelyAssigned };
+}
+
 function expressionStructuralKey(
   value: ExpressionPlan,
   versions?: number[],
@@ -380,7 +431,6 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const sequences: Array<{ name: string; node: any }> = [];
   const sequenceByName = new Map<string, number>();
   const modified = new Set<string>();
-  const read = new Set<string>();
   const operations = new Set<string>();
   const inplaceOperations = new Set<"add" | "sub" | "mul">();
 
@@ -420,7 +470,6 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       slotByName.set(node.name, index);
       slots.push({ name: node.name, node });
     }
-    if (isRead) read.add(node.name);
     return index;
   };
   const sequence = (node: any): number => {
@@ -560,12 +609,14 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   if (operationCost > MAX_OPERATION_COST) return null;
   const targetCodeBytes = estimatedTargetCodeBytes(program, slots.length);
   if (targetCodeBytes > MAX_TARGET_CODE_BYTES) return null;
-  // Reading every output before its first materialization avoids introducing
-  // a new entry-time NameError for assignment-only locals.
-  if ([...modified].some((name) => !read.has(name))) return null;
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
-  const stateSlots = [...modified].map((name) => slotByName.get(name)!);
+  const dataFlow = statementDataFlow(program, slots.length);
+  if (dataFlow.inputSlots.length === 0 || dataFlow.localSlots.some((slot) =>
+    dataFlow.stateSlots.includes(slot) && !dataFlow.definitelyAssigned.has(slot))) {
+    return null;
+  }
+  const { inputSlots, stateSlots, localSlots } = dataFlow;
   const affine = inplaceOperations.size === 0
     ? affineTarget(program, stateSlots)
     : null;
@@ -626,7 +677,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     iterator: loop.init,
     slots,
     sequences,
+    inputSlots,
     stateSlots,
+    localSlots,
     statements: program,
     operations: [...operations].sort(),
     inplaceOperations: [...inplaceOperations].sort(),
@@ -689,7 +742,9 @@ export const closedRingRegionPass: OptimizationPass = {
         zipSequenceBindings: operands.zipSequenceBindings,
         slots: operands.slots.map((slot: any) => slot.name),
         sequences: operands.sequences.map((sequence: any) => sequence.name),
+        inputSlots: operands.inputSlots,
         stateSlots: operands.stateSlots,
+        localSlots: operands.localSlots,
         statements: operands.statements,
         operations: operands.operations,
         inplaceOperations: operands.inplaceOperations,
