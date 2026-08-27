@@ -92,6 +92,30 @@ therefore useful, but it does not justify more representation machinery for
 this path; theorem/result checking and proof assembly remain the next measured
 bottleneck.
 
+A second deliberately narrow evaluation applies the same workspace only to
+canonical rational Mumford-row publication. It is recorded in
+`bench/hyperelliptic/competitive/rational-cantor-native-integer-vector-evaluation.json`.
+The existing rational group law already retains its exact state in a FLINT
+polynomial workspace, so adding a 16-entry live integer vector before packed
+egress regresses row publication by 15.9% and add-plus-publication by 9.6% in an
+A/B/A comparison. The probe is reverted. Rational Cantor optimization should
+therefore wait for a measured owned-result/lifecycle compiler facility or a
+mathematical/public-boundary improvement; this result does not justify another
+representation layer.
+
+The subsequent cold genus-2 proof-assembly pass is recorded in
+`bench/hyperelliptic/competitive/genus2-height-proof-assembly-evaluation.json`.
+It introduces no new representation: exact point bindings and encoded context
+diagnostics are reused within one authenticated transaction, and short
+certified correction expressions are assembled once from exact outward
+endpoints.  On the matched development host, the median object-cold rank-2 and
+rank-4 pairings improve by 17.4% and 16.3%; the shared certified height batch
+improves by 23.2% and 25.8%.  Single-point height is unchanged within 1%.
+All rigorous enclosures, exact small-step/logarithm oracles, hostile dependency
+checks, and cancellation/retry boundaries remain intact.  Pairwise divisor
+construction remains the dominant rank-4 cost outside the certified batch, so
+this improvement narrows but does not relabel the recorded Magma gap.
+
 This document is deliberately broader than that first project.  It defines a
 measured program for making Sage.js competitive with Magma and PARI across the
 hyperelliptic functionality that those systems actually provide.  It does not

@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.hyperelliptic/rational-cantor-native-integer-vector-evaluation-v1",
+  "recorded_at_utc": "2026-08-27T02:00:00.000Z",
+  "status": "measured-regression-reverted",
+  "scope": "assemble one canonical 16-entry rational Mumford row in a lexical NativeIntegerVector before publishing it to the existing IntegerBuffer",
+  "contract": {
+    "curve": "y^2=x^5+x+1",
+    "operation": "A + 2*A for A=(x,1)",
+    "iterations_per_sample": 10000,
+    "samples": 5,
+    "comparison_order": [
+      "existing packed publication",
+      "lexical live-exact row assembly",
+      "existing packed publication replay"
+    ],
+    "benchmark": "bench/hyperelliptic/benchmark-rational-cantor-live-vector.cjs",
+    "classification": "matched development-host compiler evaluation, not a competitor receipt"
+  },
+  "source": {
+    "commit": "00c80196677b278a92290ed0e424541aa54c9b2d",
+    "baseline_jacobian_rational_native_sha256": "a76f16b43ac4fd953516bb29b6fded29a337b99b3329e78ba21fc8ffd218ab66",
+    "experimental_jacobian_rational_native_sha256": "dc192793c42a5f5151b8bcd411c4eed60840ee041c67d506e83c3c6f087b3fe2",
+    "experimental_change": "replace direct zero-and-fill publication in _write_pair with one 16-entry NativeIntegerVector, then copy all 16 entries to the output buffer once",
+    "production_source_restored": true
+  },
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "note": "The A/B/A order controls for monotonic host drift; only the matched direction and magnitude are interpreted."
+  },
+  "baseline_before": {
+    "write_row_ns_per_operation": 8506.0608,
+    "retained_add_and_close_ns_per_operation": 19132.3392,
+    "add_write_and_close_ns_per_operation": 31595.2128
+  },
+  "live_vector": {
+    "write_row_ns_per_operation": 9717.1456,
+    "retained_add_and_close_ns_per_operation": 19966.8224,
+    "add_write_and_close_ns_per_operation": 34709.9392
+  },
+  "baseline_after": {
+    "write_row_ns_per_operation": 8267.648,
+    "retained_add_and_close_ns_per_operation": 19220.3776,
+    "add_write_and_close_ns_per_operation": 31765.6064
+  },
+  "live_vector_over_two_baseline_median": {
+    "write_row": 1.1586162268418538,
+    "retained_add_and_close_control": 1.0412207564914935,
+    "add_write_and_close": 1.0956278545085478
+  },
+  "exactness": {
+    "reference_equal": true,
+    "all_exact_row_digests_equal": true,
+    "exact_row_sha256": "7ce5edc7d070e3534da17cfb50a00d6b6fd0bbbe02ad52d3834803b0c19be2e6"
+  },
+  "conclusion": {
+    "accepted_workspace_api_is_suitable_for_rational_cantor_row_publication": false,
+    "write_row_regression": "15.9% against the median of the two surrounding baselines",
+    "add_and_publication_regression": "9.6% against the median of the two surrounding baselines",
+    "reason": "The rational group law already retains exact state in one FLINT polynomial workspace. A lexical integer vector adds a second GMP owner before the unavoidable packed egress and cannot accelerate polynomial gcd, division, reduction, or retained-result lifecycle.",
+    "production_probe_retained": false,
+    "new_representation_machinery_justified": false,
+    "next_bottleneck": "owned rational result creation/lifecycle and public validation/materialization, which require a later compiler facility or a mathematical/public-boundary change rather than NativeIntegerVector"
+  }
+}
