@@ -7215,6 +7215,10 @@ _STANDARD_PUBLIC_CLASS_GROUP_VIEW = (
 _STANDARD_PUBLIC_CLASS_GROUP_ADAPT_AND_SEAL = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.adapt_and_seal_public_class_group_projection
 )
+_STANDARD_PUBLIC_CLASS_GROUP_CONTEXT = __import__(
+    "sagejs.number_fields.class_unit_context", fromlist=["class_unit_context"]
+)
+_STANDARD_PUBLIC_CLASS_GROUP_CONSTRUCTION_CONSUMER = _STANDARD_PUBLIC_CLASS_GROUP_CONTEXT.ClassUnitGroupContext._consume_live_public_class_group_construction
 _STANDARD_BOUNDED_CLASS_GROUPS = __import__(
     "sagejs.number_fields.class_groups", fromlist=["class_groups"]
 )
@@ -7335,6 +7339,12 @@ def class_group(
     else:
         maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result
+        public_context = getattr(result, "context", None)
+        construction_consumer = getattr(
+            public_context,
+            "_consume_live_public_class_group_construction",
+            None,
+        )
         helpers_are_standard = bool(
             adapter is _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER
             and maps.seal_public_class_group_projection
@@ -7343,6 +7353,9 @@ def class_group(
             is _STANDARD_PUBLIC_CLASS_GROUP_VIEW
             and maps.adapt_and_seal_public_class_group_projection
             is _STANDARD_PUBLIC_CLASS_GROUP_ADAPT_AND_SEAL
+            and _STANDARD_PUBLIC_CLASS_GROUP_CONTEXT.ClassUnitGroupContext._consume_live_public_class_group_construction
+            is _STANDARD_PUBLIC_CLASS_GROUP_CONSTRUCTION_CONSUMER
+            and getattr(construction_consumer, "__self__", None) is public_context
         )
         context_module = __import__(
             "sagejs.number_fields.class_unit_context",

@@ -3115,7 +3115,9 @@ def _direct_minkowski_evidence(
     return tuple(records), progress_payload, progress_payload
 
 
-def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClassGroup:
+def _class_group_from_engine_result(
+    result: Any, construct_group: Any
+) -> IdealClassGroup:
     """Adapt one complete class/unit engine result to the public map contract."""
     if getattr(result, "complete", None) is not True:
         raise ValueError("an incomplete engine result has no public class group")
@@ -3294,7 +3296,7 @@ def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClas
         )
     else:
         raise ValueError("an incomplete proof label cannot expose a class group")
-    answer = IdealClassGroup(
+    return construct_group(
         order,
         invariants,
         generator_ideals,
@@ -3308,24 +3310,200 @@ def _class_group_from_engine_result(result: Any, verify_group: Any) -> IdealClas
         proof_record=proof_record,
         proof_context=replay,
         relation_count=relation_count,
+        _source=result,
+        _engine_group=engine_group,
     )
-    if verify_group(answer) is not True:
-        raise ArithmeticError("the adapted public class group failed proof replay")
-    return answer
 
 
-def _standard_public_class_group_adapter(implementation: Any, verify_group: Any) -> Any:
-    """Bind the exact verifier inside the public engine adapter."""
+def _consume_live_class_group_construction(
+    source: Any, engine_group: Any, public_group: Any
+) -> bool:
+    """Consume one context-owned construction receipt inside a reservation."""
+    context = getattr(source, "context", None)
+    consume = getattr(context, "_consume_live_public_class_group_construction", None)
+    if not callable(consume):
+        return False
+    context_module = __import__(
+        "sagejs.number_fields.class_unit_context", fromlist=["class_unit_context"]
+    )
+    token = getattr(context_module, "_LIVE_CLASS_UNIT_CONTEXT_TOKEN", None)
+    return bool(
+        token is not None and consume(token, source, engine_group, public_group) is True
+    )
+
+
+def _verify_after_live_group_construction(group: Any) -> bool:
+    """Replay every public theorem except authenticated shell equations."""
+    try:
+        if proof_label(group._proof_status) not in COMPLETE_PROOF_LABELS:
+            return False
+        for index, generator in enumerate(group._generators):
+            if generator.order() != group._invariants[index]:
+                return False
+            if group(generator.ideal()) != generator:
+                return False
+        proof_record = group._proof_record
+        if proof_record is not None:
+            if proof_label(proof_record.proof_status) != group._proof_status:
+                return False
+            if proof_record.verify(group, group._proof_context) is not True:
+                return False
+        return True
+    except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
+        return False
+
+
+def _standard_verified_engine_group_factory(
+    group_type: Any,
+    allocate: Any,
+    verify_group: Any,
+    element_type: Any,
+    map_type: Any,
+    witness_type: Any,
+    labeler: Any,
+    integer: Any,
+    nonzero_ideal: Any,
+    consume_live_construction: Any,
+    verify_after_live_construction: Any,
+) -> Any:
+    """Issue an engine group only after one exact final replay.
+
+    The ordinary public constructor remains eager and independently validates
+    its defining relations.  The standard engine adapter has already created
+    exact principal witnesses, so repeating that constructor replay immediately
+    before the mandatory final verifier only solves the same ideal equations
+    twice.  This closure retains the allocator, concrete types, normalizers,
+    and final verifier; its partially initialized shell never escapes.
+    """
+
+    def construct_verified_engine_group(
+        order: Any,
+        invariants: Any,
+        generator_ideals: Any,
+        relation_witnesses: Any,
+        ideal_log: Any,
+        *,
+        proof_status: Any,
+        algorithm: str = "auto",
+        factor_base_theorem: str | None = None,
+        factor_base_bound: Any = None,
+        presentation_evidence: Any = None,
+        proof_record: Any = None,
+        proof_context: Any = None,
+        relation_count: Any = None,
+        _source: Any = None,
+        _engine_group: Any = None,
+    ) -> IdealClassGroup:
+        label = labeler(proof_status)
+        if label not in COMPLETE_PROOF_LABELS:
+            raise ValueError(
+                "an incomplete or heuristic state has no complete class group"
+            )
+        values = tuple(integer(value, "class-group invariant") for value in invariants)
+        previous = 1
+        for value in values:
+            if value <= 1 or value % previous != 0:
+                raise ValueError(
+                    "class-group invariants must exceed one and divide successively"
+                )
+            previous = value
+        ideals = tuple(generator_ideals)
+        witnesses = tuple(relation_witnesses)
+        if len(ideals) != len(values) or len(witnesses) != len(values):
+            raise ValueError(
+                "each invariant needs one generator ideal and relation witness"
+            )
+        if any(type(witness) is not witness_type for witness in witnesses):
+            raise TypeError("the engine adapter needs exact principal witnesses")
+        if not callable(ideal_log):
+            raise TypeError("a class group needs an exact ideal discrete-log callback")
+        if not isinstance(algorithm, str) or algorithm == "":
+            raise ValueError("a class-group presentation must name its algorithm")
+        if label == EXACT_RELATIONS_CONDITIONAL_GRH and (
+            not isinstance(factor_base_theorem, str) or factor_base_theorem == ""
+        ):
+            raise ValueError(
+                "a GRH-conditional group must name its factor-base theorem"
+            )
+        for ideal in ideals:
+            nonzero_ideal(ideal, order)
+        normalized_relation_count = (
+            None
+            if relation_count is None
+            else integer(relation_count, "relation count")
+        )
+        if normalized_relation_count is not None and normalized_relation_count < 0:
+            raise ValueError("relation count must be nonnegative")
+
+        answer = allocate(group_type)
+        answer._order = order
+        answer._invariants = values
+        answer._generator_ideals = ideals
+        answer._relation_witnesses = witnesses
+        answer._ideal_log = ideal_log
+        answer._proof_status = label
+        answer._algorithm = algorithm
+        answer._factor_base_theorem = factor_base_theorem
+        answer._factor_base_bound = factor_base_bound
+        answer._presentation_evidence = presentation_evidence
+        answer._proof_record = proof_record
+        answer._proof_context = proof_context
+        answer._projection_core = None
+        answer._projection_ideals_materialized = True
+        answer._relation_count = normalized_relation_count
+        answer._generators = tuple(
+            element_type(
+                answer,
+                [1 if index == position else 0 for index in range(len(values))],
+            )
+            for position in range(len(values))
+        )
+        answer._one = element_type(answer, [0 for _value in values])
+        answer._map = map_type(answer)
+        live_construction = bool(
+            _source is not None
+            and _engine_group is not None
+            and consume_live_construction(_source, _engine_group, answer) is True
+        )
+        verified = (
+            verify_after_live_construction(answer)
+            if live_construction
+            else verify_group(answer)
+        )
+        if type(answer) is not group_type or verified is not True:
+            raise ArithmeticError("the adapted public class group failed proof replay")
+        return answer
+
+    return construct_verified_engine_group
+
+
+def _standard_public_class_group_adapter(
+    implementation: Any, construct_group: Any
+) -> Any:
+    """Bind the exact one-replay constructor inside the public adapter."""
 
     def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         """Adapt one complete class/unit engine result to the public map contract."""
-        return implementation(result, verify_group)
+        return implementation(result, construct_group)
 
     return class_group_from_engine_result
 
 
 class_group_from_engine_result = _standard_public_class_group_adapter(
-    _class_group_from_engine_result, IdealClassGroup.verify
+    _class_group_from_engine_result,
+    _standard_verified_engine_group_factory(
+        IdealClassGroup,
+        object.__new__,
+        IdealClassGroup.verify,
+        IdealClassElement,
+        IdealClassMap,
+        PrincipalIdealWitness,
+        proof_label,
+        _integer,
+        _nonzero_ideal,
+        _consume_live_class_group_construction,
+        _verify_after_live_group_construction,
+    ),
 )
 
 

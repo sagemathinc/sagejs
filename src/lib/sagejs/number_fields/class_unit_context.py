@@ -609,6 +609,7 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_source: Any = None
         self.public_saturation_payload_issued = False
         self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         self.sealed = False
 
     @staticmethod
@@ -1549,7 +1550,66 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_source = source
         self.public_saturation_payload_issued = False
         self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         return "reserved", None
+
+    def consume_public_class_group_construction(
+        self, source: Any, engine_group: Any, public_group: Any
+    ) -> bool:
+        """Authenticate one live public shell without replaying generator ideals.
+
+        The terminal context already authenticated the engine presentation and
+        its exact generator rows before sealing.  During the one reserved public
+        transaction, bind the standard adapter's shell back to that exact engine
+        group.  This receipt is consumed once and authorizes only omission of
+        the shell's redundant defining-relation/presentation replay; the final
+        completeness proof is still independently verified before publication.
+        """
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_class_group_construction_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+            or not self._terminal_source_matches(source, require_semantic_snapshot=True)
+        ):
+            return False
+        try:
+            retained_group = self.class_group
+            retained_ideals = tuple(getattr(retained_group, "_generator_ideals", ()))
+            public_ideals = tuple(getattr(public_group, "_generator_ideals", ()))
+            retained_invariants = tuple(
+                int(value) for value in getattr(retained_group, "_invariants", ())
+            )
+            public_invariants = tuple(getattr(public_group, "_invariants", ()))
+            proof_record = getattr(public_group, "_proof_record", None)
+            if (
+                engine_group is not retained_group
+                or source.class_group() is not retained_group
+                or getattr(public_group, "_order", None) is not self.order
+                or public_invariants != retained_invariants
+                or not self._same_identity_sequence(public_ideals, retained_ideals)
+                or getattr(public_group, "_presentation_evidence", None)
+                is not self.presentation
+                or getattr(public_group, "_proof_status", None)
+                != self.terminal_proof_status
+                or getattr(public_group, "_algorithm", None)
+                != getattr(source, "algorithm", None)
+                or getattr(public_group, "_factor_base_theorem", None)
+                != getattr(retained_group, "factor_base_theorem", None)
+                or getattr(public_group, "_relation_count", None) != len(self.relations)
+                or len(getattr(public_group, "_relation_witnesses", ()))
+                != len(retained_invariants)
+                or not callable(getattr(public_group, "_ideal_log", None))
+                or proof_record is None
+                or getattr(proof_record, "proof_status", None)
+                != self.terminal_proof_status
+                or getattr(public_group, "_proof_context", None) is None
+            ):
+                return False
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+        self.public_class_group_construction_issued = True
+        return True
 
     def consume_public_saturation_payload(
         self, source: Any
@@ -1638,6 +1698,7 @@ class _LiveClassUnitArtifacts:
         self.public_class_group_projection_source = None
         self.public_saturation_payload_issued = False
         self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         if not commit:
             return True
         if projection is None or self.public_class_group_projection is not None:
@@ -2194,6 +2255,19 @@ class ClassUnitGroupContext:
             raise TypeError("public generation payloads are engine-owned")
         live = self._live_artifacts
         return None if live is None else live.consume_public_generation_payload(source)
+
+    def _consume_live_public_class_group_construction(
+        self, token: Any, source: Any, engine_group: Any, public_group: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group construction is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.consume_public_class_group_construction(
+                source, engine_group, public_group
+            )
+        )
 
     def live_diagnostics(self) -> dict[str, Any]:
         """Describe retained in-process state without exposing its authority."""

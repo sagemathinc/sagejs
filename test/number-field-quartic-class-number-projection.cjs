@@ -234,9 +234,53 @@ assert not live.public_saturation_payload_issued
 assert not live.public_generation_payload_issued
 assert live.public_class_group_projection_source is None
 
+# Replacing the context-side receipt consumer disables the live transaction.
+# The standard adapter therefore takes its ordinary full-verification path and
+# cannot publish anything through a forged True result.
+original_construction_consumer = (
+    result.context._consume_live_public_class_group_construction
+)
+result.context._consume_live_public_class_group_construction = (
+    lambda *_args: True
+)
+try:
+    interposed = class_unit_module.class_group(K, proof=False)
+    assert interposed.order() == 2 and interposed.verify()
+finally:
+    result.context._consume_live_public_class_group_construction = (
+        original_construction_consumer
+    )
+assert live.public_class_group_projection is None
+assert not live.public_class_group_projection_reserved
+assert not live.public_class_group_construction_issued
+
 before_live_publication = body_builds[0]
-group = class_unit_module.class_group(K, proof=False)
-assert group.order() == 2 and group.verify()
+live_relation_replays = [0]
+live_presentation_replays = [0]
+original_relation_replay = class_group_maps.IdealClassGroup._verify_relations
+original_presentation_replay = (
+    class_group_maps.IdealClassGroup._verify_presentation_evidence
+)
+def counted_live_relation_replay(self):
+    live_relation_replays[0] += 1
+    return original_relation_replay(self)
+def counted_live_presentation_replay(self):
+    live_presentation_replays[0] += 1
+    return original_presentation_replay(self)
+class_group_maps.IdealClassGroup._verify_relations = counted_live_relation_replay
+class_group_maps.IdealClassGroup._verify_presentation_evidence = (
+    counted_live_presentation_replay
+)
+try:
+    group = class_unit_module.class_group(K, proof=False)
+finally:
+    class_group_maps.IdealClassGroup._verify_relations = original_relation_replay
+    class_group_maps.IdealClassGroup._verify_presentation_evidence = (
+        original_presentation_replay
+    )
+assert group.order() == 2
+assert live_relation_replays[0] == 0 and live_presentation_replays[0] == 0
+assert group.verify()
 # The one call belongs to the final independent public verifier.  The adapter
 # construction itself consumed the retained canonical body instead of calling
 # its serializer a second time.
@@ -244,8 +288,33 @@ assert body_builds[0] == before_live_publication + 1, (
     "live-body-builds", body_builds[0]
 )
 before_cold_publication = body_builds[0]
-cold = class_group_maps.class_group_from_engine_result(result)
-assert cold.order() == 2 and cold.verify()
+relation_replays = [0]
+presentation_replays = [0]
+original_relation_replay = class_group_maps.IdealClassGroup._verify_relations
+original_presentation_replay = (
+    class_group_maps.IdealClassGroup._verify_presentation_evidence
+)
+def counted_relation_replay(self):
+    relation_replays[0] += 1
+    return original_relation_replay(self)
+def counted_presentation_replay(self):
+    presentation_replays[0] += 1
+    return original_presentation_replay(self)
+class_group_maps.IdealClassGroup._verify_relations = counted_relation_replay
+class_group_maps.IdealClassGroup._verify_presentation_evidence = (
+    counted_presentation_replay
+)
+try:
+    cold = class_group_maps.class_group_from_engine_result(result)
+    assert cold.order() == 2
+    assert relation_replays[0] == 1 and presentation_replays[0] == 1
+    assert cold.verify()
+    assert relation_replays[0] == 2 and presentation_replays[0] == 2
+finally:
+    class_group_maps.IdealClassGroup._verify_relations = original_relation_replay
+    class_group_maps.IdealClassGroup._verify_presentation_evidence = (
+        original_presentation_replay
+    )
 assert body_builds[0] == before_cold_publication + 3, (
     "cold-body-builds", body_builds[0]
 )
