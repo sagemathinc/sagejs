@@ -34,28 +34,27 @@ out and only every second integer is representable, then every fourth, and so
 on -- which is why an integer sum that crosses `2^53` cannot be trusted to be
 the sum.
 -/
-def gridStep (magnitude : Nat) : Nat :=
+def gridStep (magnitude : Nat) : Int :=
   if magnitude < twoPow53 then 1
   else if magnitude < 2 * twoPow53 then 2
-  else 2 ^ (Nat.log2 magnitude - 52)
+  else ((2 ^ (Nat.log2 magnitude - 52) : Nat) : Int)
 
 /-- Round an integer to a multiple of `step`, halves going to the even
 multiple, which is what binary64 does with a value it cannot hold. -/
-def roundHalfEven (value : Int) (step : Nat) : Int :=
+def roundHalfEven (value step : Int) : Int :=
   if step ≤ 1 then
     value
   else
-    let divisor : Int := (step : Int)
-    let quotient := Int.ediv value divisor
-    let remainder := Int.emod value divisor
-    if 2 * remainder < divisor then
-      quotient * divisor
-    else if divisor < 2 * remainder then
-      (quotient + 1) * divisor
-    else if Int.emod quotient 2 = 0 then
-      quotient * divisor
+    let quotient := value / step
+    let remainder := value % step
+    if 2 * remainder < step then
+      quotient * step
+    else if step < 2 * remainder then
+      (quotient + 1) * step
+    else if quotient % 2 = 0 then
+      quotient * step
     else
-      (quotient + 1) * divisor
+      (quotient + 1) * step
 
 /-- The double nearest an integer: itself while the integer is small enough to
 be held, and a neighbour on the grid once it is not. -/
@@ -66,8 +65,45 @@ def roundIntToDouble (value : Int) : Int :=
 identity.  Every fast path in the integer layer rests on this. -/
 theorem roundIntToDouble_eq_self {value : Int} (h : value.natAbs < twoPow53) :
     roundIntToDouble value = value := by
-  unfold roundIntToDouble gridStep
-  simp [h, roundHalfEven]
+  simp [roundIntToDouble, gridStep, h, roundHalfEven]
+
+/-- Rounding to the grid above `2^53` cannot bring a value back below it: the
+boundary is itself on the grid, so the nearest grid point to anything at or
+past it is also at or past it. -/
+theorem roundHalfEven_two_abs {value : Int} (h : twoPow53 ≤ value.natAbs) :
+    twoPow53 ≤ (roundHalfEven value 2).natAbs := by
+  simp only [roundHalfEven, if_neg (by decide : ¬((2 : Int) ≤ 1))]
+  simp only [twoPow53] at *
+  split
+  · omega
+  · split
+    · omega
+    · split <;> omega
+
+/--
+A sum that lands inside the safe window was never rounded.
+
+This is what makes the window test a sound test, and every fast path in the
+integer layer rests on it: a result inside the window can only have come from a
+value that was already there, where the grid is the integers and rounding is
+the identity.
+
+The bound on the summand is what the callers supply -- two safe integers add to
+less than `2^54` in magnitude -- so the grid step is at most two and the
+argument stays elementary.
+-/
+theorem roundIntToDouble_eq_self_of_safe_result {value : Int}
+    (bounded : value.natAbs < 2 * twoPow53)
+    (low : minSafeInteger ≤ roundIntToDouble value)
+    (high : roundIntToDouble value ≤ maxSafeInteger) :
+    roundIntToDouble value = value := by
+  by_cases small : value.natAbs < twoPow53
+  · exact roundIntToDouble_eq_self small
+  · exfalso
+    have habs := roundHalfEven_two_abs (Nat.le_of_not_lt small)
+    rw [roundIntToDouble, gridStep, if_neg small, if_pos bounded] at low high
+    simp only [twoPow53, minSafeInteger, maxSafeInteger] at *
+    omega
 
 /--
 A binary64 value, seen from the exact-integer path.

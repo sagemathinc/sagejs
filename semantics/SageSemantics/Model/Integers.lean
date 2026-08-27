@@ -84,13 +84,15 @@ integer primitive. -/
 def bigintOf (value : JsValue) : Option Int := value.toBigInt
 
 /--
-`ρσ_operator_add_exact` (`builtins.py:918`).
+The body of `ρσ_operator_add_exact` (`builtins.py:918`).
 
 The shape worth watching is the first branch: two numbers are added as
-doubles, and the exact answer is recovered in BigInt *only* when both operands
-were safe integers.  Whether that is enough is what `addExact_sound` settles.
+doubles, and the exact answer is recovered in BigInt only when both operands
+were safe integers.  A boolean operand does not reach it -- it falls to the
+plain `native_add` further down, which is where the sum stopped being an
+integer.
 -/
-def operatorAddExact (left right : JsValue) : Result :=
+def operatorAddExactCore (left right : JsValue) : Result :=
   let leftType := left.pythonJstype
   let rightType := right.pythonJstype
   if leftType = rightType && (leftType = "number" || leftType = "bigint" || leftType = "string") then
@@ -135,5 +137,22 @@ def operatorAddExact (left right : JsValue) : Result :=
             bigintOf left, bigintOf right with
       | true, some leftValue, some rightValue => .ok (.bigint (leftValue + rightValue))
       | _, _, _ => .ok result
+
+/-- Giving a boolean the storage kind of the integer it is, which is what the
+fix adds ahead of the branches. -/
+def normalizeBool (value : JsValue) : JsValue :=
+  match value with
+  | .bool flag => .num (.ofInt (if flag then 1 else 0))
+  | other => other
+
+/-- `ρσ_operator_add_exact` as it stood before the fix: the body, reached with
+a boolean still a boolean. -/
+def operatorAddExactBeforeFix (left right : JsValue) : Result :=
+  operatorAddExactCore left right
+
+/-- `ρσ_operator_add_exact` as it stands now.  The whole of the change is the
+normalization in front of it. -/
+def operatorAddExact (left right : JsValue) : Result :=
+  operatorAddExactCore (normalizeBool left) (normalizeBool right)
 
 end SageSemantics

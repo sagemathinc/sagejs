@@ -7,3 +7,7 @@ defaultTargets = ["SageSemantics"]
 
 [[lean_lib]]
 name = "SageSemantics"
+
+[[lean_exe]]
+name = "oracle"
+root = "Oracle"

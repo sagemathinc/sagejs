@@ -64,8 +64,12 @@ the error appears one operation later.
 - `roundIntToDouble_eq_self` — below `2^53` a double holds an integer exactly.
   Every fast path rests on this.
 - `addExact_bigint_sound` — two bigints add exactly, at any size.
-- `addExact_not_sound` — **the current `ρσ_operator_add_exact` is not sound**,
-  with the witness. See below.
+- `roundHalfEven_two_abs` — rounding to the grid above `2^53` cannot bring a value back below it.
+- `roundIntToDouble_eq_self_of_safe_result` — **a sum that lands inside the safe window was never
+  rounded**, which is what makes the runtime's window test a sound test.
+- `core_sound_bigint_bigint`, `core_sound_bigint_num`, `core_sound_num_bigint` — those pairings add
+  exactly, at any size.
+- `addExact_not_sound_before_fix` — **the addition was not sound**, with the witness. See below.
 
 ## The first bug this found
 
@@ -91,14 +95,49 @@ The first sum still prints correctly, because `2^53` is representable. It has
 already stopped being an integer, and the *second* addition is where the value
 goes wrong.
 
-This is the same species as the multiplication bug in #42 and adjacent to it,
-found here from the proof obligation rather than from a corpus.
+This is the same species as the multiplication bug in #42 and adjacent to it, found here from the
+proof obligation rather than from a corpus. Fixed in #66 by normalizing a boolean operand ahead of
+the branches — the difference between `operatorAddExactBeforeFix` and `operatorAddExact` in the
+model is exactly the difference the fix made in the runtime.
+
+## The model as an oracle
+
+A model never run against the thing it models is a claim, not a check. `Oracle.lean` prints what the
+model says the runtime must do, for cases the model itself chooses — the boundaries its theorems are
+about — and `tools/check-oracle.cjs` puts the same cases to a real Sage.js and compares.
+
+```console
+$ lake build oracle
+
+$ node tools/check-oracle.cjs
+compared 100 sums against the model; 0 disagree
+
+$ node tools/check-oracle.cjs --runtime "npx -y @sagemath/sagejs@0.3.0"
+  True + 9007199254740991
+      model   int 9007199254740992
+      runtime float -
+  9007199254740991 + True
+      model   int 9007199254740992
+      runtime float -
+compared 100 sums against the model; 2 disagree
+```
+
+The second run is the published release, before the fix. The oracle finds the bug on its own, without
+reference to the proof — which is the point of having both. The proof says what must hold for every
+input; the oracle says whether the code in front of you actually does it, and would catch the model
+drifting away from the runtime it claims to describe.
+
+What it compares is *whether the sum is an integer at all*, not just its digits. At these magnitudes
+a wrong answer does not look wrong: `True + (2**53-1)` printed the right number while having already
+become a float.
 
 ## Next
 
-- Discharge soundness for the `number + number` branch, which needs: a sum that
-  lands inside the safe window was never rounded. The argument is that rounding
-  cannot carry a value from `≥ 2^53` down below it.
+- Discharge soundness for the `number + number` branch. The mathematical content is already proved
+  — `roundIntToDouble_eq_self_of_safe_result` (a sum inside the safe window was never rounded) and
+  `roundHalfEven_two_abs` (rounding cannot bring one back inside) — and what remains is bookkeeping
+  through the branch conditions in a form the simplifier will carry. Left open rather than closed
+  with `sorry`, so that what the file claims is what it proves.
 - The same treatment for `sub`, `mul`, `pow`, `floordiv`, `mod` and the
   comparisons, and for `int()`.
 - Extract the model to a CLI and diff it against the runtime over boundary
