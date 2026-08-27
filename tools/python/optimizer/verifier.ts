@@ -241,6 +241,12 @@ function verifyExpression(
     sequenceAccesses.set(key, (sequenceAccesses.get(key) ?? 0) + 1);
     return;
   }
+  if (expression.kind === "integer-constant") {
+    if (!Number.isSafeInteger(expression.value)) {
+      throw new TypeError("optimizer integer constant is not exact machine input");
+    }
+    return;
+  }
   if (expression.kind === "neg") {
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
@@ -260,6 +266,16 @@ function verifyExpression(
     return;
   }
   throw new TypeError(`optimizer target-independent expression ${expression.kind} is unhandled`);
+}
+
+function expressionContainsRingValue(expression: any): boolean {
+  if (expression.kind === "slot" || expression.kind === "sequence") return true;
+  if (expression.kind === "integer-constant") return false;
+  if (expression.kind === "neg" || expression.kind === "power") {
+    return expressionContainsRingValue(expression.value);
+  }
+  return expressionContainsRingValue(expression.left) ||
+    expressionContainsRingValue(expression.right);
 }
 
 function verifyStatements(
@@ -291,6 +307,9 @@ function verifyStatements(
         inplaceOperations.add(operation);
       }
       verifyExpression(statement.value, slotCount, sequenceCount, sequenceAccesses);
+      if (!expressionContainsRingValue(statement.value)) {
+        throw new TypeError("optimizer assignment loses its guarded ring parent");
+      }
     } else if (statement?.kind === "if") {
       if (statement.condition?.kind !== "comparison" ||
           (statement.condition.operator !== "==" &&
@@ -299,6 +318,10 @@ function verifyStatements(
       }
       verifyExpression(statement.condition.left, slotCount, sequenceCount, sequenceAccesses);
       verifyExpression(statement.condition.right, slotCount, sequenceCount, sequenceAccesses);
+      if (!expressionContainsRingValue(statement.condition.left) &&
+          !expressionContainsRingValue(statement.condition.right)) {
+        throw new TypeError("optimizer comparison has no guarded ring value");
+      }
       verifyStatements(
         statement.body, slotCount, sequenceCount, sequenceAccesses,
         inplaceOperations,
@@ -319,6 +342,9 @@ function expressionStructuralKey(expression: any, versions?: number[]): string {
   }
   if (expression.kind === "sequence") {
     return `sequence:${expression.sequence}:${expression.indexOrder}`;
+  }
+  if (expression.kind === "integer-constant") {
+    return `integer:${expression.value}`;
   }
   if (expression.kind === "neg") {
     return `neg(${expressionStructuralKey(expression.value, versions)})`;
@@ -437,6 +463,10 @@ function eliminateDeadStores(
 
 function expressionOperations(expression: any, operations: Set<string>): void {
   if (expression.kind === "slot" || expression.kind === "sequence") return;
+  if (expression.kind === "integer-constant") {
+    operations.add("coerce-integer");
+    return;
+  }
   if (expression.kind === "neg") {
     operations.add("neg");
     expressionOperations(expression.value, operations);
@@ -469,12 +499,39 @@ function statementOperations(statements: any[], operations: Set<string>): void {
   }
 }
 
+function statementIntegerConstants(statements: any[]): number[] {
+  const constants = new Set<number>();
+  const collectExpression = (expression: any): void => {
+    if (expression.kind === "integer-constant") {
+      constants.add(expression.value);
+    } else if (expression.kind === "binary") {
+      collectExpression(expression.left);
+      collectExpression(expression.right);
+    } else if (expression.kind === "neg" || expression.kind === "power") {
+      collectExpression(expression.value);
+    }
+  };
+  const collectStatement = (statement: any): void => {
+    if (statement.kind === "assign") {
+      collectExpression(statement.value);
+      return;
+    }
+    collectExpression(statement.condition.left);
+    collectExpression(statement.condition.right);
+    statement.body.forEach(collectStatement);
+    statement.alternative.forEach(collectStatement);
+  };
+  statements.forEach(collectStatement);
+  return [...constants].sort((left, right) => left - right);
+}
+
 function expressionOperationCost(
   expression: any,
   common: Set<string>,
   versions: number[],
 ): number {
-  if (expression.kind === "slot" || expression.kind === "sequence") return 0;
+  if (expression.kind === "slot" || expression.kind === "sequence" ||
+      expression.kind === "integer-constant") return 0;
   const key = expressionStructuralKey(expression, versions);
   if (common.has(key)) return 0;
   common.add(key);
@@ -539,6 +596,7 @@ function expressionIsInvariant(
 ): boolean {
   if (expression.kind === "slot") return invariantSlots.has(expression.slot);
   if (expression.kind === "sequence") return false;
+  if (expression.kind === "integer-constant") return true;
   if (expression.kind === "neg" || expression.kind === "power") {
     return expressionIsInvariant(expression.value, invariantSlots);
   }
@@ -566,7 +624,7 @@ function hoistedExpressions(
     if (expression.kind === "binary") {
       markExpression(expression.left, target, versions);
       markExpression(expression.right, target, versions);
-    } else {
+    } else if (expression.kind !== "integer-constant") {
       markExpression(expression.value, target, versions);
     }
   };
@@ -591,7 +649,7 @@ function hoistedExpressions(
     if (expression.kind === "binary") {
       visitExpression(expression.left, common, versions);
       visitExpression(expression.right, common, versions);
-    } else {
+    } else if (expression.kind !== "integer-constant") {
       visitExpression(expression.value, common, versions);
     }
   };
@@ -644,7 +702,8 @@ function expressionTargetCodeUnits(
   common: Set<string>,
   versions: number[],
 ): number {
-  if (expression.kind === "slot" || expression.kind === "sequence") return 0;
+  if (expression.kind === "slot" || expression.kind === "sequence" ||
+      expression.kind === "integer-constant") return 0;
   const key = expressionStructuralKey(expression, versions);
   if (common.has(key)) return 0;
   common.add(key);
@@ -802,6 +861,13 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         JSON.stringify(claimedOperations) !==
           JSON.stringify([...observedOperations].sort())) {
       throw new TypeError("optimizer ring region has stale operations");
+    }
+    const observedIntegerConstants = statementIntegerConstants(semanticStatements);
+    if (!Array.isArray(plan.operands.integerConstants) ||
+        plan.operands.integerConstants.length !== observedIntegerConstants.length ||
+        plan.operands.integerConstants.some((value: unknown, index: number) =>
+          !Number.isSafeInteger(value) || value !== observedIntegerConstants[index])) {
+      throw new TypeError("optimizer ring region has stale integer constants");
     }
     const claimedInplaceOperations = plan.operands.inplaceOperations ?? [];
     if (!Array.isArray(claimedInplaceOperations) ||

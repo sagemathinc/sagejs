@@ -401,7 +401,15 @@ def print_for_in(self, output):
 
 
 def _field_operation_mask(operations, streaming=False, inplace_operations=None):
-    bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16, "pow": 64}
+    bits = {
+        "add": 1,
+        "sub": 2,
+        "mul": 4,
+        "neg": 8,
+        "equal": 16,
+        "pow": 64,
+        "coerce-integer": 1024,
+    }
     inplace_bits = {"add": 128, "sub": 256, "mul": 512}
     answer = 0
     for operation in operations:
@@ -529,6 +537,8 @@ def _region_expression_key(expression, slot_versions=None):
         return "slot:" + str(expression.slot) + "@" + str(version)
     if expression.kind == "sequence":
         return "sequence:" + str(expression.sequence) + ":" + expression.indexOrder
+    if expression.kind == "integer-constant":
+        return "integer:" + str(expression.value)
     if expression.kind == "neg":
         return "neg(" + _region_expression_key(expression.value, slot_versions) + ")"
     if expression.kind == "power":
@@ -725,6 +735,22 @@ def _print_region_expression(
     operation_key = _region_expression_key(expression, slot_versions)
     if operation_values is not None and operation_key in operation_values:
         return operation_values[operation_key]
+
+    if expression.kind == "integer-constant":
+        constant = _region_temp(counter, suffix)
+        _print_region_variable(
+            output,
+            constant,
+            context_name + ".integerConstants[" + str(expression.value) + "]",
+        )
+        result = (
+            constant
+            if representation == "prime"
+            else [constant] + ["0" for _component in range(1, degree)]
+        )
+        if operation_values is not None:
+            operation_values[operation_key] = result
+        return result
 
     if expression.kind == "power":
         value = _print_region_expression(
@@ -1569,6 +1595,13 @@ def print_closed_field_region(self, output):
                 )
             )
         )
+        output.comma()
+        output.print("[")
+        for index, value in enumerate(plan.integerConstants):
+            if index:
+                output.comma()
+            output.print(str(value))
+        output.print("]")
         output.print(")")
         output.end_statement()
         output.indent()

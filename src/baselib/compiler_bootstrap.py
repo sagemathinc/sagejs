@@ -333,12 +333,15 @@ def ρσ_machine_field_sequence_length(source):
     })()"""
 
 
-def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
+def ρσ_prepare_machine_field_region(
+    values, sequences, count, operation_mask, integer_constants
+):
     """Validate and unbox one transactional finite-field region."""
     return r"""%js (() => {
         if (!Number.isSafeInteger(count) || count < 0 ||
             !Array.isArray(values) || values.length === 0 ||
-            !Array.isArray(sequences) || !Number.isSafeInteger(operation_mask)) {
+            !Array.isArray(sequences) || !Array.isArray(integer_constants) ||
+            !Number.isSafeInteger(operation_mask)) {
             return null;
         }
         const elementBrand = ρσ_brand_machine_field_element.__brand;
@@ -351,8 +354,12 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
             source.length < count)) return null;
         const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32,
-              POW = 64, IADD = 128, ISUB = 256, IMUL = 512;
+              POW = 64, IADD = 128, ISUB = 256, IMUL = 512,
+              INTEGER_COERCION = 1024;
         const required = (bit) => (operation_mask & bit) !== 0;
+        if (required(INTEGER_COERCION) !== (integer_constants.length !== 0)) {
+            return null;
+        }
         const streaming = required(STREAM);
         const inplaceNames = [];
         if (required(IADD)) inplaceNames.push("__iadd__");
@@ -373,6 +380,79 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         if (inplaceNames.length !== 0 &&
             values.some((value) => !hasNoInplaceDescriptor(value))) return null;
 
+        const validIntegerCoercion = () => {
+            if (!required(INTEGER_COERCION)) return true;
+            const model = parent._machineIntegerCoercionModel;
+            const source = parent._machineIntegerCoercionSource;
+            const conversion = parent._machineIntegerCoercion;
+            const maps = parent._machineIntegerCoercionMaps;
+            const targets = parent._machineIntegerCoercionTargets;
+            const operations = parent._machineIntegerOperations;
+            if (parent._machineIntegerCoercionReady !== true ||
+                ρσ_fast_closed_binary !==
+                    parent._machineIntegerFastClosedBinary ||
+                ρσ_is_math_element !==
+                    parent._machineIntegerIsMathElement ||
+                ρσ_coercion_model !== model || model?._maps !== maps ||
+                maps?.get(source) !== targets || targets?.get(parent) !== conversion ||
+                model?._planCache !== parent._machineIntegerPlanCache ||
+                model?._operations !== operations ||
+                (required(ADD) &&
+                    operations?.get("add") !== parent._machineIntegerOperationAdd) ||
+                (required(SUB) &&
+                    operations?.get("sub") !== parent._machineIntegerOperationSub) ||
+                (required(MUL) &&
+                    operations?.get("mul") !== parent._machineIntegerOperationMul) ||
+                model?.binOp !== parent._machineIntegerBinOp ||
+                model?.equals !== parent._machineIntegerEquals ||
+                model?.coercePair !== parent._machineIntegerCoercePair ||
+                model?.resolveParents !== parent._machineIntegerResolveParents ||
+                model?.parentOf !== parent._machineIntegerParentOf ||
+                model?._apply !== parent._machineIntegerApply ||
+                model?._map !== parent._machineIntegerMap ||
+                model?._cache !== parent._machineIntegerCache) return false;
+            let leftPlan, rightPlan;
+            try {
+                leftPlan = model.resolveParents(source, parent);
+                rightPlan = model.resolveParents(parent, source);
+            } catch (_error) {
+                return false;
+            }
+            const identity = parent._machineIntegerIdentityMap;
+            if (leftPlan?.parent !== parent || leftPlan?.leftMap !== conversion ||
+                leftPlan?.rightMap !== identity || rightPlan?.parent !== parent ||
+                rightPlan?.leftMap !== identity ||
+                rightPlan?.rightMap !== conversion ||
+                parent._machineIntegerLeftPlanParent !== parent ||
+                parent._machineIntegerRightPlanParent !== parent) return false;
+            let callOwner = parent;
+            let callDescriptor;
+            while (callOwner !== null) {
+                callDescriptor = Object.getOwnPropertyDescriptor(callOwner, "__call__");
+                if (callDescriptor !== undefined) break;
+                callOwner = Object.getPrototypeOf(callOwner);
+            }
+            return callOwner === parent._machineIntegerCallOwner &&
+                callDescriptor?.get === parent._machineIntegerCallGetter &&
+                callDescriptor?.value === parent._machineIntegerCallValue &&
+                Reflect.get(parent, "__call__") === parent._machineIntegerCall;
+        };
+        if (!validIntegerCoercion()) return null;
+        const canonicalIntegerConstants = (modulus) => {
+            const result = Object.create(null);
+            if (!required(INTEGER_COERCION)) return Object.freeze(result);
+            const bigModulus = BigInt(modulus);
+            for (const value of integer_constants) {
+                if (!(typeof value === "bigint" || Number.isSafeInteger(value))) {
+                    return null;
+                }
+                let residue = BigInt(value) % bigModulus;
+                if (residue < 0n) residue += bigModulus;
+                result[String(value)] = Number(residue);
+            }
+            return Object.freeze(result);
+        };
+
         const primePrototype = parent._closedScalarElementPrototype;
         if (parent._machineResidues === true &&
             parent._closedScalarArithmetic === true &&
@@ -386,6 +466,8 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             (!required(EQUAL) || primePrototype?._eq_ === parent._closedScalarEq)) {
             const modulus = parent._residueModulus;
             if (!Number.isSafeInteger(modulus) || modulus <= 1) return null;
+            const integerConstants = canonicalIntegerConstants(modulus);
+            if (integerConstants === null) return null;
             const scalar = (value) =>
                 elementBrand.has(value) &&
                 value._parent === parent &&
@@ -416,7 +498,7 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             }
             return { kind: 1, parent, prototype: primePrototype, modulus,
                      values: unboxed, sequences: packedSequences,
-                     elementBrand, streaming };
+                     elementBrand, streaming, integerConstants };
         }
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
@@ -469,6 +551,8 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
                 !Number.isInteger(coefficient) || coefficient < 0 ||
                 coefficient >= modulus) ||
             !Number.isSafeInteger(exactBound)) return null;
+        const integerConstants = canonicalIntegerConstants(modulus);
+        if (integerConstants === null) return null;
         const scalar = (value) => {
             if (!elementBrand.has(value) ||
                 value._parent !== parent ||
@@ -510,7 +594,8 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         }
         return { kind: 2, parent, prototype: extensionPrototype, modulus,
                  degree, modulusCoefficients, values: unboxed,
-                 sequences: packedSequences, elementBrand, streaming };
+                 sequences: packedSequences, elementBrand, streaming,
+                 integerConstants };
     })()"""
 
 

@@ -129,6 +129,74 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
   }
 });
 
+test("exact integer constants remain explicit guarded ring coercions", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def natural_constants(values, value):
+    for coefficient in values:
+        value = value*value + 1
+        if value == -2:
+            value = value + 1_000_000
+        else:
+            value = value - 9_007_199_254_740_991
+        value = value + coefficient
+    return value
+`, optimizerOptions());
+    const [region] = ast.optimization_ir.regions;
+    assert.equal(region.selected, true);
+    assert.deepEqual(region.mathematical.operations.sort(), [
+      "math.ring.add",
+      "math.ring.coerce-integer",
+      "math.ring.equal",
+      "math.ring.mul",
+      "math.ring.sub",
+    ]);
+    assert.ok(region.guards.includes("canonical-integer-coercion"));
+    assert.ok(region.facts.some((fact) =>
+      fact.kind === "canonical-integer-coercion" &&
+      fact.authority === "runtime-guard"
+    ));
+    const loop = findLoop(compiler, ast);
+    assert.deepEqual(loop.optimization_region.operands.integerConstants, [
+      -2,
+      1,
+      1_000_000,
+      9_007_199_254_740_991,
+    ]);
+    assert.doesNotThrow(() => verifyInternalRegionPlan(loop.optimization_region));
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...loop.optimization_region,
+        operands: {
+          ...loop.optimization_region.operands,
+          integerConstants: [-2, 1, 1_000_000],
+        },
+      }),
+      /stale integer constants/,
+    );
+
+    const explicitCall = frontend.parse(`
+def explicit_integer(values, value):
+    for coefficient in values:
+        value = value*coefficient + Integer(1)
+    return value
+`, optimizerOptions());
+    assert.deepEqual(explicitCall.optimization_ir.regions, []);
+
+    const floatingLiteral = frontend.parse(`
+def floating_literal(values, value):
+    for coefficient in values:
+        value = value*coefficient + 1.0
+    return value
+`, optimizerOptions());
+    assert.deepEqual(floatingLiteral.optimization_ir.regions, []);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("sequence-fed affine data flow selects the transactional V8 target", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
@@ -904,7 +972,7 @@ test("nearby effects and unsupported operations never receive region plans", asy
   try {
     for (const unsafe of [
       `for multiplier in range(count):\n    value = value * multiplier + increment\n`,
-      `for index in range(count):\n    value = value * multiplier + increment\n    seen += 1\n`,
+      `for index in range(count):\n    value = value * multiplier + increment\n    seen.append(1)\n`,
       `for index in range(count):\n    value = value * multiplier + increment\nelse:\n    finished = True\n`,
       `range = custom_range\nfor index in range(count):\n    value = value * multiplier + increment\n`,
     ]) {

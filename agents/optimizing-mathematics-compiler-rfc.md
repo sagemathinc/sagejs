@@ -1172,3 +1172,24 @@ Fresh warm medians for 100,000 repeated-square iterations were 4.57 ms over
 `Zmod(1009)` and 27.66 ms over `GF(5^3)`, approximately 309x and 840x faster
 than projected O0 prefixes, with exact independent answers and zero retained
 native resources.
+
+Exact integer literals inside a ring graph now remain explicit mathematical
+operations instead of forcing users to construct and thread a parent element
+manually.  The semantic graph records `coerce-integer`; the representation
+plan carries the distinct safe integer spellings; and the preheader reduces
+each value to one canonical residue.  That erasure is legal only after the
+entry guard authenticates the complete live `ZZ -> parent` coercion plan,
+coercion-operation table, relevant model methods, field call descriptor, and
+compiler intrinsics.  An explicit source call such as `Integer(1)` remains an
+ordinary dynamic call and is not confused with a compiler-created exact
+literal.  Mutating either the registered conversion or operation dispatch
+therefore runs the untouched loop with the changed semantics.
+
+`bench/optimizer-integer-constants.cjs` compares natural `x=x*x+1` source with
+the formerly necessary `one=R(1)` live-in over both `Zmod(1009)` and `GF(5^3)`.
+Fresh warm medians were 121.62 ms versus 121.97 ms for five million residue
+steps and 22.13 ms versus 22.32 ms for 200,000 cubic-extension steps.  Thus the
+natural spelling has no measured steady-state penalty.  Projected O0 execution
+was about 628x and 955x slower respectively; exact independent oracles, route
+selection, malformed-plan rejection, method/coercion mutation, and retained
+resource counts are ratcheted separately.

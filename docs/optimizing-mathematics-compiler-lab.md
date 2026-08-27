@@ -187,6 +187,7 @@ pnpm bench:optimizer-gf-p2 --check
 pnpm bench:optimizer-local-temporaries --check
 pnpm bench:optimizer-branching-region --check
 pnpm bench:optimizer-field-horner --check
+pnpm bench:optimizer-integer-constants --check
 ```
 
 ## What should and should not optimize
