@@ -932,3 +932,16 @@ streaming choice over both a residue ring and a cubic extension field against
 independent coordinate oracles and projected O0 execution; an intentionally
 packed upper-bound experiment remains documented only as diagnostic evidence,
 not as a matched headline comparison.
+
+Immutable sequence views are now represented explicitly in the same IR rather
+than being materialized in mathematical source.  A compiler-known builtin
+`reversed(sequence)` contributes a reverse index map only when its operand is a
+single symbol; runtime lowering then requires the same private immutable-tuple
+brand as every other sequence region.  Shadowed builtins, lists, proxies, and
+failed element guards execute the original `reversed` iterator, including
+transactional restart after a late failure.  Extension-field polynomials reuse
+their construction-time coefficient tuple, so repeated public Horner
+evaluation no longer allocates a reversed list and second tuple per call.
+`bench/optimizer-polynomial-evaluation.cjs` compares that public path with a
+forced generic-list oracle and ratchets exact independent coordinates, route,
+tuple identity, resource closure, latency, and projected speedup.

@@ -432,6 +432,7 @@ def _print_region_expression(
     slot_names,
     context_name,
     index_name,
+    count_name,
     modulus_name,
     modulus_coefficients_name,
     output,
@@ -443,9 +444,12 @@ def _print_region_expression(
         return slot_names[expression.slot]
     if expression.kind == "sequence":
         base = context_name + ".sequences[" + str(expression.sequence) + "]"
+        sequence_index = index_name
+        if expression.indexOrder == "reverse":
+            sequence_index = "(" + count_name + " - 1 - " + index_name + ")"
         if streaming:
             element = _region_temp(counter, suffix)
-            _print_region_variable(output, element, base + "[" + index_name + "]")
+            _print_region_variable(output, element, base + "[" + sequence_index + "]")
             valid = (
                 context_name
                 + ".elementBrand.has("
@@ -516,13 +520,13 @@ def _print_region_expression(
                 for component in range(degree)
             ]
         if representation == "prime":
-            return base + "[" + index_name + "]"
+            return base + "[" + sequence_index + "]"
         return [
             base
             + "["
             + str(degree)
             + " * "
-            + index_name
+            + sequence_index
             + ("" if component == 0 else " + " + str(component))
             + "]"
             for component in range(degree)
@@ -536,6 +540,7 @@ def _print_region_expression(
             slot_names,
             context_name,
             index_name,
+            count_name,
             modulus_name,
             modulus_coefficients_name,
             output,
@@ -575,6 +580,7 @@ def _print_region_expression(
         slot_names,
         context_name,
         index_name,
+        count_name,
         modulus_name,
         modulus_coefficients_name,
         output,
@@ -589,6 +595,7 @@ def _print_region_expression(
         slot_names,
         context_name,
         index_name,
+        count_name,
         modulus_name,
         modulus_coefficients_name,
         output,
@@ -736,6 +743,7 @@ def _print_region_statements(
     slot_names,
     context_name,
     index_name,
+    count_name,
     modulus_name,
     modulus_coefficients_name,
     output,
@@ -752,6 +760,7 @@ def _print_region_statements(
                 slot_names,
                 context_name,
                 index_name,
+                count_name,
                 modulus_name,
                 modulus_coefficients_name,
                 output,
@@ -780,6 +789,7 @@ def _print_region_statements(
             slot_names,
             context_name,
             index_name,
+            count_name,
             modulus_name,
             modulus_coefficients_name,
             output,
@@ -794,6 +804,7 @@ def _print_region_statements(
             slot_names,
             context_name,
             index_name,
+            count_name,
             modulus_name,
             modulus_coefficients_name,
             output,
@@ -820,6 +831,7 @@ def _print_region_statements(
                 slot_names,
                 context_name,
                 index_name,
+                count_name,
                 modulus_name,
                 modulus_coefficients_name,
                 output,
@@ -842,6 +854,7 @@ def _print_region_statements(
                     slot_names,
                     context_name,
                     index_name,
+                    count_name,
                     modulus_name,
                     modulus_coefficients_name,
                     output,
@@ -863,9 +876,10 @@ def _print_closed_field_fallback(self, output, plan, names):
             "(var " + fallback_value + " of ρσ_Iterable(" + names["range"] + "))"
         )
     else:
-        output.print(
-            "(var " + fallback_value + " of ρσ_Iterable(" + names["iterable"] + "))"
-        )
+        iterable = names["iterable"]
+        if plan.iterationOrder == "reverse":
+            iterable = "ρσ_reversed(" + iterable + ")"
+        output.print("(var " + fallback_value + " of ρσ_Iterable(" + iterable + "))")
     output.space()
     self.simple_for_index = fallback_value
     self._do_print_body(output)
@@ -944,6 +958,7 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             slot_names,
             context_name,
             index_name,
+            count_name,
             modulus_name,
             modulus_coefficients_name,
             output,
@@ -993,7 +1008,10 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
         if plan.iteratorKind == "range":
             output.print(count_name + " - 1")
         else:
-            output.print(names["iterable"] + "[" + count_name + " - 1]")
+            if plan.iterationOrder == "reverse":
+                output.print(names["iterable"] + "[0]")
+            else:
+                output.print(names["iterable"] + "[" + count_name + " - 1]")
         output.end_statement()
 
     if streaming:

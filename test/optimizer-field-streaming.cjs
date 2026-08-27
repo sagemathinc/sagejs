@@ -76,6 +76,116 @@ print(K4._lastCompilerOptimizationRoute)
   }
 });
 
+test("guarded reverse views preserve iteration order and final loop targets", async () => {
+  const source = String.raw`
+def reverse_horner(values, point, initial):
+    value = initial
+    for coefficient in reversed(values):
+        value = value*point+coefficient
+    return value, coefficient
+
+R = Zmod(1009)
+values = tuple(R(index^3+7) for index in range(257))
+R._lastCompilerOptimizationRoute = 'generic'
+print(reverse_horner(values, R(37), R(11)))
+print(R._lastCompilerOptimizationRoute)
+
+# An ordinary list is deliberately outside the private tuple contract.  The
+# failed guard must execute Python's original reversed iterator exactly.
+ordinary = [R(2), R(3), R(5), R(7)]
+R._lastCompilerOptimizationRoute = 'list-fallback'
+print(reverse_horner(ordinary, R(11), R(13)))
+print(R._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout.replace("v8-number-residue-stream", "generic"),
+      slow.stdout,
+    );
+    assert.deepEqual(fast.stdout.trim().split("\n").filter((_line, index) => index % 2), [
+      "v8-number-residue-stream",
+      "list-fallback",
+    ]);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("a late invalid reverse-view element restarts the original iterator", async () => {
+  const source = String.raw`
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+L.<b> = GF(5^3, modulus=x^3+x^2+1)
+aa = a*a
+# Reverse iteration sees the incompatible first entry only after consuming
+# every valid K entry through private scalar state.
+values = (L(1),) + tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(127))
+def reverse_horner(values):
+    value = K(1)+a+aa
+    point = K(2)+3*a+4*aa
+    for coefficient in reversed(values):
+        value = value*point+coefficient
+    return value
+K._lastCompilerOptimizationRoute = 'reverse-late-sentinel'
+try:
+    reverse_horner(values)
+except Exception:
+    print('caught', K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(fast.stdout, slow.stdout);
+    assert.equal(fast.stdout, "caught reverse-late-sentinel\n");
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("public extension polynomial evaluation reuses the immutable reverse view", async () => {
+  const source = String.raw`
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+R.<t> = PolynomialRing(K)
+polynomial = R([K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(1024)])
+stored = polynomial._machineFieldCoefficients
+point = K(2)+3*a+4*aa
+def reference(coefficients, point):
+    answer = K(0)
+    for coefficient in reversed(list(coefficients)):
+        answer = answer*point+coefficient
+    return answer
+expected = reference(stored, point)
+K._lastCompilerOptimizationRoute = 'generic'
+before = len(K._nativeResourceChildren)
+answers = tuple(polynomial(point) for repeat in range(8))
+after = len(K._nativeResourceChildren)
+print(answers[-1] == expected, answers[-1] == answers[0], stored is polynomial._machineFieldCoefficients)
+print(after-before, K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  try {
+    const fast = await optimized.evaluate(source);
+    assert.equal(
+      fast.stdout,
+      "True True True\n0 v8-extension-tuple-stream\n",
+    );
+  } finally {
+    await optimized.close();
+  }
+});
+
 test("the same ring IR preserves zero divisors over composite residue rings", async () => {
   const source = String.raw`
 def horner(values, point, initial):
