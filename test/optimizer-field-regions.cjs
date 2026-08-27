@@ -200,14 +200,16 @@ print(recurrence(10000))
   }
 });
 
-test("small powers use one guarded ring operation graph across reviewed parents", async () => {
+test("bounded static powers use one guarded ring operation graph across reviewed parents", async () => {
   const optimized = await sessionAtLevel("O2");
   const generic = await sessionAtLevel("O0");
   const source = `
 def power_sum(values, zero):
     answer = zero
     for index in range(len(values)):
+        answer = answer + values[index]^0 + values[index]^1
         answer = answer + values[index]^2 - values[index]^3
+        answer = answer + values[index]^4 - values[index]^7 + values[index]^8
     return answer
 
 R = Zmod(100)
@@ -252,7 +254,7 @@ print(power_sum(extension_values, K(0)), getattr(K, '_lastCompilerOptimizationRo
   }
 });
 
-test("small-power IR is explicit, bounded, and independently verified", async () => {
+test("static-power IR is explicit, bounded, and independently verified", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
   try {
@@ -260,7 +262,7 @@ test("small-power IR is explicit, bounded, and independently verified", async ()
 def power_sum(values, zero):
     answer = zero
     for index in range(len(values)):
-        answer = answer + values[index]^2 - values[index]^3
+        answer = answer + values[index]^0 + values[index]^4 - values[index]^8
     return answer
 `, parserOptions);
     const [region] = ast.optimization_ir.regions.filter((candidate) =>
@@ -587,8 +589,9 @@ test("unsupported effects, aliases, callbacks, and source shapes are rejected", 
       "for i in range(n):\n    x = callback(x)\n",
       "for i in custom():\n    x = x*y+z\n",
       "for i in range(n):\n    x = x/y\n",
-      "for i in range(n):\n    x = x**4\n",
+      "for i in range(n):\n    x = x**9\n",
       "for i in range(n):\n    x = x**exponent\n",
+      `for i in range(n):\n${Array(65).fill("    x = x*y").join("\n")}\n`,
     ];
     for (const source of rejected) {
       const ast = frontend.parse(source, parserOptions);

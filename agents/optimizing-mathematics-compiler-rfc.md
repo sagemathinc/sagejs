@@ -957,14 +957,22 @@ independent scalar-coordinate oracles.  The compiler test also inspects emitted
 JavaScript and requires exactly one sequence load in each fixed-shape target
 variant, so duplicate element/property guards cannot silently return.
 
-The target-independent expression graph also represents the deliberately
-bounded small powers `x^2` and `x^3`.  These are not spelling rewrites to
-`x*x`: the runtime guard authenticates the selected parent's `__pow__`
-implementation before the region enters primitive representation space.  The
-lowering evaluates the base once, shares the square when forming a cube, and
-uses the same reviewed exact modular product lowering as explicit
-multiplication.  Exponents outside `{2,3}`, dynamic exponents, changed power
-descriptors, and unreviewed parents execute the untouched source loop.
+The target-independent expression graph also represents deliberately bounded
+static powers `x^e` for exact integer `0 <= e <= 8`.  These are not spelling
+rewrites to multiplication: the runtime guard authenticates the selected
+parent's `__pow__` implementation before the region enters primitive
+representation space.  Lowering evaluates the base once and constructs a
+binary-exponentiation DAG with shared squares through the same reviewed exact
+modular product generator.  Larger, negative, or dynamic exponents, changed
+power descriptors, and unreviewed parents execute the untouched source loop.
+
+The pass now records an exact per-iteration operation cost derived from its
+target-independent graph.  The independent verifier recomputes that value and
+rejects stale plans or costs above 64 before lowering.  Power cost counts the
+actual multiplication DAG rather than the numeric exponent; branch cost
+includes both emitted alternatives.  This makes the pass's compile/code-size
+budget enforceable and prevents large generated source bodies from silently
+replicating across the four fixed-shape V8 variants.
 
 The generic extension-field power implementation now propagates its optional
 fixed-width coordinate shadow by exact binary exponentiation for every

@@ -245,8 +245,11 @@ function verifyExpression(
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
+  // This is intentionally independent of the recognizer's bound: malformed
+  // or stale internal plans must not manufacture an unbounded code generator.
   if (expression.kind === "power" &&
-      (expression.exponent === 2 || expression.exponent === 3)) {
+      Number.isSafeInteger(expression.exponent) &&
+      expression.exponent >= 0 && expression.exponent <= 8) {
     verifyExpression(expression.value, slotCount, sequenceCount, sequenceAccesses);
     return;
   }
@@ -284,6 +287,39 @@ function verifyStatements(
   }
 }
 
+function expressionOperationCost(expression: any): number {
+  if (expression.kind === "slot" || expression.kind === "sequence") return 0;
+  if (expression.kind === "neg") return 1 + expressionOperationCost(expression.value);
+  if (expression.kind === "binary") {
+    return 1 + expressionOperationCost(expression.left) +
+      expressionOperationCost(expression.right);
+  }
+  let exponent = expression.exponent;
+  let products = 0;
+  let hasResult = false;
+  while (exponent > 0) {
+    if (exponent % 2 === 1) {
+      if (hasResult) products += 1;
+      hasResult = true;
+    }
+    exponent = Math.floor(exponent / 2);
+    if (exponent > 0) products += 1;
+  }
+  return products + expressionOperationCost(expression.value);
+}
+
+function statementsOperationCost(statements: any[]): number {
+  return statements.reduce((total, statement) => {
+    if (statement.kind === "assign") {
+      return total + expressionOperationCost(statement.value);
+    }
+    return total + 1 + expressionOperationCost(statement.condition.left) +
+      expressionOperationCost(statement.condition.right) +
+      statementsOperationCost(statement.body) +
+      statementsOperationCost(statement.alternative);
+  }, 0);
+}
+
 export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   if (plan?.schema !== OPTIMIZER_IR_SCHEMA) {
     throw new TypeError(`unknown optimizer internal schema ${plan?.schema}`);
@@ -315,6 +351,12 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       sequences.length,
       observedSequenceAccesses,
     );
+    const observedOperationCost = statementsOperationCost(plan.operands.statements);
+    if (!Number.isSafeInteger(plan.operands.operationCost) ||
+        plan.operands.operationCost !== observedOperationCost ||
+        observedOperationCost > 64) {
+      throw new TypeError("optimizer ring region has a stale or excessive operation cost");
+    }
     for (const slot of plan.operands.stateSlots ?? []) {
       if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
         throw new TypeError("optimizer state slot is out of range");

@@ -8,6 +8,8 @@ import { targetCandidate } from "../cost-model";
 import { stableRegionIdentity } from "../identity";
 
 export const CLOSED_RING_REGION_PASS = "math.closed-ring-region.v1";
+const MAX_INLINE_POWER_EXPONENT = 8;
+const MAX_OPERATION_COST = 64;
 
 type ExpressionPlan =
   | { kind: "slot"; slot: number }
@@ -18,7 +20,7 @@ type ExpressionPlan =
     }
   | { kind: "binary"; operator: "+" | "-" | "*"; left: ExpressionPlan; right: ExpressionPlan }
   | { kind: "neg"; value: ExpressionPlan }
-  | { kind: "power"; exponent: 2 | 3; value: ExpressionPlan };
+  | { kind: "power"; exponent: number; value: ExpressionPlan };
 
 type ConditionPlan = {
   kind: "equal";
@@ -29,6 +31,39 @@ type ConditionPlan = {
 type StatementPlan =
   | { kind: "assign"; target: number; value: ExpressionPlan }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
+
+function expressionOperationCost(value: ExpressionPlan): number {
+  if (value.kind === "slot" || value.kind === "sequence") return 0;
+  if (value.kind === "neg") return 1 + expressionOperationCost(value.value);
+  if (value.kind === "binary") {
+    return 1 + expressionOperationCost(value.left) + expressionOperationCost(value.right);
+  }
+  let exponent = value.exponent;
+  let products = 0;
+  let hasResult = false;
+  while (exponent > 0) {
+    if (exponent % 2 === 1) {
+      if (hasResult) products += 1;
+      hasResult = true;
+    }
+    exponent = Math.floor(exponent / 2);
+    if (exponent > 0) products += 1;
+  }
+  return products + expressionOperationCost(value.value);
+}
+
+function statementsOperationCost(statements: StatementPlan[]): number {
+  return statements.reduce((total, statement) => {
+    if (statement.kind === "assign") {
+      return total + expressionOperationCost(statement.value);
+    }
+    return total + 1 +
+      expressionOperationCost(statement.condition.left) +
+      expressionOperationCost(statement.condition.right) +
+      statementsOperationCost(statement.body) +
+      statementsOperationCost(statement.alternative);
+  }, 0);
+}
 
 type AffineTargetPlan =
   | {
@@ -112,18 +147,20 @@ function sourceRegion(node: any): SourceRegion {
   };
 }
 
-function smallPowerExponent(compiler: any, node: any): 2 | 3 | null {
-  if (node instanceof compiler.AST_Number && (node.value === 2 || node.value === 3)) {
-    return node.value;
-  }
+function boundedPowerExponent(compiler: any, node: any): number | null {
+  if (node instanceof compiler.AST_Number && Number.isSafeInteger(node.value) &&
+      node.value >= 0 && node.value <= MAX_INLINE_POWER_EXPONENT) return node.value;
   if (!(node instanceof compiler.AST_Call) ||
       !(node.expression instanceof compiler.AST_SymbolRef) ||
       node.expression.name !== "Integer" || node.args?.length !== 1 ||
       node.args.starargs || node.args.kwargs?.length ||
       node.args.kwarg_items?.length ||
       !(node.args[0] instanceof compiler.AST_String)) return null;
-  const spelling = node.args[0].value.replaceAll("_", "");
-  return spelling === "2" ? 2 : spelling === "3" ? 3 : null;
+  const spelling = node.args[0].value;
+  if (!/^[0-9](?:_?[0-9])*$/.test(spelling)) return null;
+  const exponent = Number(spelling.replaceAll("_", ""));
+  return Number.isSafeInteger(exponent) &&
+    exponent <= MAX_INLINE_POWER_EXPONENT ? exponent : null;
 }
 
 /**
@@ -271,9 +308,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
       return { kind: "neg", value };
     }
     if (node instanceof compiler.AST_Binary && node.operator === "**") {
-      const exponent = smallPowerExponent(compiler, node.right);
+      const exponent = boundedPowerExponent(compiler, node.right);
       const value = expression(node.left);
-      if (!exponent || !value) return null;
+      if (exponent === null || !value) return null;
       operations.add("pow");
       return { kind: "power", exponent, value };
     }
@@ -317,6 +354,8 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const program = statements(loop.body.body);
   if (!program || operations.size === 0 || slots.length > 16 ||
       sequences.length > 4) return null;
+  const operationCost = statementsOperationCost(program);
+  if (operationCost > MAX_OPERATION_COST) return null;
   // Reading every output before its first materialization avoids introducing
   // a new entry-time NameError for assignment-only locals.
   if ([...modified].some((name) => !read.has(name))) return null;
@@ -383,6 +422,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
     sequenceUses,
     sequenceAccesses,
     sequenceStrategy,
+    operationCost,
   };
 }
 
@@ -434,6 +474,7 @@ export const closedRingRegionPass: OptimizationPass = {
         sequenceUses: operands.sequenceUses,
         sequenceAccesses: operands.sequenceAccesses,
         sequenceStrategy: operands.sequenceStrategy,
+        operationCost: operands.operationCost,
       });
       const id = identity.id;
       context.consider({
