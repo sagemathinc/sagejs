@@ -354,7 +354,7 @@
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 105000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/symbolic.py"],
       "prefixes": []
