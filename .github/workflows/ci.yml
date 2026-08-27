@@ -357,10 +357,13 @@ jobs:
       - name: Run strict baselib checks
         run: pnpm test:baselib:strict
 
-      - name: Run unit, host integration, and native tests
+      # The exhaustive host-integration tier runs on Linux x64 and macOS.
+      # Repeating its 312 files after a full ARM native bootstrap cannot fit
+      # this job's release budget; keep ARM focused on cross-platform source
+      # behavior and the complete architecture-specific native suite.
+      - name: Run portable and native tests
         run: |
-          pnpm test:unit
-          pnpm test:integration
+          pnpm test:portable
           pnpm test:native
 
       - name: Build and relocation-test both SEA executables
