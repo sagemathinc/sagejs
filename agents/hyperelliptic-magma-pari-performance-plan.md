@@ -92,6 +92,17 @@ therefore useful, but it does not justify more representation machinery for
 this path; theorem/result checking and proof assembly remain the next measured
 bottleneck.
 
+A second deliberately narrow evaluation applies the same workspace only to
+canonical rational Mumford-row publication. It is recorded in
+`bench/hyperelliptic/competitive/rational-cantor-native-integer-vector-evaluation.json`.
+The existing rational group law already retains its exact state in a FLINT
+polynomial workspace, so adding a 16-entry live integer vector before packed
+egress regresses row publication by 15.9% and add-plus-publication by 9.6% in an
+A/B/A comparison. The probe is reverted. Rational Cantor optimization should
+therefore wait for a measured owned-result/lifecycle compiler facility or a
+mathematical/public-boundary improvement; this result does not justify another
+representation layer.
+
 This document is deliberately broader than that first project.  It defines a
 measured program for making Sage.js competitive with Magma and PARI across the
 hyperelliptic functionality that those systems actually provide.  It does not
