@@ -106,16 +106,8 @@ try {
   assert.equal(report.merge, "exact");
   assert.equal(report.worker_failure, "clean");
   assert.equal(report.delayed_order, "identity");
-  assert.equal(
-    report.platform_capability,
-    process.platform === "win32"
-      ? "sequential-correctness-fallback"
-      : "pthread-parallel",
-  );
-  assert.equal(
-    report.schedule,
-    process.platform === "win32" ? "sequential" : "dynamic",
-  );
+  assert.equal(report.platform_capability, "pthread-parallel");
+  assert.equal(report.schedule, "dynamic");
   if (process.platform !== "win32") {
     const staticExecutable = join(temporary, "static-witness");
     const staticCompiled = compileUnix(staticExecutable, [
