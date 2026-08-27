@@ -40,7 +40,7 @@
       "requires": [
         { "id": "kernel:packed-gf-p2-affine-production", "route": "receipt-backed-wasm-artifact" }
       ],
-      "source": "P.<x> = PolynomialRing(GF(97))\nK.<a> = GF(97^2, modulus=x^2 + x + 5)\nvalue = K(1) + 2*a\nmultiplier = K(3) + 4*a\nincrement = K(5) + 6*a\nfor index in range(10000):\n    value = value * multiplier + increment\nprint(value, index, K._lastCompilerOptimizationRoute)",
+      "source": "P.<x> = PolynomialRing(GF(97))\nK.<a> = GF(97^2, modulus=x^2 + x + 5)\ndef optimized(count):\n    value = K(1) + 2*a\n    multiplier = K(3) + 4*a\n    increment = K(5) + 6*a\n    for index in range(count):\n        value = value * multiplier + increment\n    return value, index\nanswer = optimized(10000)\nprint(answer[0], answer[1], K._lastCompilerOptimizationRoute)",
       "timeout_ms": 30000,
       "expect": {
         "stdout": "15*a + 81 9999 wasm-compiled-source\n",
