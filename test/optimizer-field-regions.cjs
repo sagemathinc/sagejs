@@ -75,7 +75,7 @@ function generatedGrammarSource(prime, constant) {
       : [
           `        ${right} = ${right} * ${left} - ${iterable}`,
           `        ${left} = ${left} + ${right}`,
-          `        if ${left} == ${iterable}:`,
+          `        if ${left} ${index % 4 === 1 ? "!=" : "=="} ${iterable}:`,
           `            ${right} = ${right} - ${left}`,
           "        else:",
           `            ${right} = ${right} + ${left}`,

@@ -936,6 +936,14 @@ independent coordinate oracles and projected O0 execution; an intentionally
 packed upper-bound experiment remains documented only as diagnostic evidence,
 not as a matched headline comparison.
 
+Equality control flow is represented as one canonical mathematical predicate
+plus an explicit branch polarity.  Both `==` and `!=` therefore consume the
+same guarded pure ring-equality operation, while the target-neutral verifier
+rejects unknown comparison kinds or polarities.  The generated differential
+grammar deliberately mixes both spellings across reviewed prime and extension
+fields, preventing a source-level inequality from silently falling out of the
+optimized region or acquiring a second representation-specific implementation.
+
 Immutable sequence views are now represented explicitly in the same IR rather
 than being materialized in mathematical source.  A compiler-known builtin
 `reversed(sequence)` contributes a reverse index map only when its operand is a

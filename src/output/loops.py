@@ -979,6 +979,8 @@ def _print_region_statements(
                 left[component] + " === " + right[component]
                 for component in range(degree)
             )
+        if statement.condition.operator == "!=":
+            condition = "!(" + condition + ")"
         output.indent()
         output.print("if (" + condition + ")")
         output.space()

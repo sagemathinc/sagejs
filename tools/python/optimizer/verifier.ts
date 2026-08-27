@@ -274,7 +274,9 @@ function verifyStatements(
           statement.target >= slotCount) throw new TypeError("optimizer assignment target is out of range");
       verifyExpression(statement.value, slotCount, sequenceCount, sequenceAccesses);
     } else if (statement?.kind === "if") {
-      if (statement.condition?.kind !== "equal") {
+      if (statement.condition?.kind !== "comparison" ||
+          (statement.condition.operator !== "==" &&
+           statement.condition.operator !== "!=")) {
         throw new TypeError("optimizer condition is unhandled");
       }
       verifyExpression(statement.condition.left, slotCount, sequenceCount, sequenceAccesses);
