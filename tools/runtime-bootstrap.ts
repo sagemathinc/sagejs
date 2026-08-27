@@ -35,7 +35,6 @@ import {
 } from "./resources";
 import { loadSagejsCapabilityApi } from "./capability-api";
 import { installImmutableUInt64CapsuleRuntime } from "./immutable-uint64-capsule";
-import { NATIVE_KERNEL_ABI_VERSION } from "./native-kernel/abi";
 import { basePath, getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 import {
   beginInitializationTiming,
@@ -121,7 +120,7 @@ function precompiledLazyModuleMatchesSource(
 // `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet the two
 // values together. Keeping the expected value in the runtime makes an old
 // cache fail closed even when its Python source has not changed.
-export { NATIVE_KERNEL_ABI_VERSION };
+export const NATIVE_KERNEL_ABI_VERSION = 23;
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
