@@ -26789,16 +26789,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 8965,
+        "line": 8994,
         "excerpt": {
-          "start_line": 8953,
+          "start_line": 8982,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 8976,
+          "line": 9005,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -26814,7 +26814,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 8977,
+          "line": 9006,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -26830,7 +26830,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 8979,
+          "line": 9008,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -32407,16 +32407,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9837,
+        "line": 9866,
         "excerpt": {
-          "start_line": 9825,
+          "start_line": 9854,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9861,
+          "line": 9890,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -32432,7 +32432,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9862,
+          "line": 9891,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -32448,7 +32448,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9864,
+          "line": 9893,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -33257,16 +33257,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 9071,
+        "line": 9100,
         "excerpt": {
-          "start_line": 9059,
+          "start_line": 9088,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 9082,
+          "line": 9111,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -33282,7 +33282,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 9088,
+          "line": 9117,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
