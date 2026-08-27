@@ -1,7 +1,6 @@
 ---
 title: "Optimizing mathematics compiler laboratory"
 ---
-
 # Optimizing mathematics compiler laboratory
 
 These examples make Sage.js's guarded mathematical optimizer visible from
@@ -132,6 +131,62 @@ The expected route is `v8-extension-tuple-stream`. Degree, characteristic,
 modulus, element shape, and all used methods are guarded before this lowering
 is legal.
 
+## Ordered IEEE-754 arithmetic
+
+Floating-point arithmetic is deliberately **not** modeled as a commutative
+ring: addition is not associative, NaNs do not equal themselves, signed zero
+is observable, and overflow and underflow round at specific source operations.
+The numerical pass therefore has a distinct contract. Its first slice accepts
+only range loops whose live scalar inputs have exact `float` annotations, then
+authenticates the actual Python float values at runtime. It emits one binary64
+operation for each source expression-tree node, in source order, with no
+reassociation, contraction, or fast-math.
+
+Save this as `strict-float.py`:
+
+```python
+import time
+
+def recurrence(n: int, x: float, a: float, b: float) -> float:
+    for index in range(n):
+        x = x*a + b
+    return x
+
+n = 5_000_000
+x, a, b = 0.125, 1.0000001192092896, 1e-9
+
+recurrence(100_000, x, a, b)
+for sample in range(7):
+    started = time.perf_counter()
+    answer = recurrence(n, x, a, b)
+    elapsed = time.perf_counter() - started
+    print(sample, answer, elapsed, 1e9*elapsed/n, "ns/step")
+```
+
+Run fresh optimized and generic processes:
+
+```sh
+SAGEJS_OPT_LEVEL=O2 sagejs --python strict-float.py
+SAGEJS_OPT_LEVEL=O0 sagejs --python strict-float.py
+```
+
+On the initial Node 26 x86-64 host, the guarded Number loop measured about
+2.0 ns per multiply-add step, versus about 273 ns through Sage.js's generic
+Python numeric dispatch and 27 ns in CPython 3.13. These are workload-specific
+warm medians, not general language rankings. The repository benchmark records
+the exact inputs and binary64 checksum:
+
+```sh
+pnpm bench:optimizer-strict-float --check
+```
+
+The annotations are selection hints, not permission to change semantics. If a
+caller supplies integers or a relevant numeric intrinsic has changed, the
+guard runs the untouched Python loop. Division, powers, float literals inside
+the loop, sequences, calls, and reassociation remain generic in this first
+slice. A future explicitly named fast-math policy would require a separate
+semantic contract; ordinary `O2` does not enable one.
+
 ## Compare with the exact generic implementation
 
 Optimization level is fixed when a Sage.js runtime is created. Put one of the
@@ -188,6 +243,7 @@ pnpm bench:optimizer-local-temporaries --check
 pnpm bench:optimizer-branching-region --check
 pnpm bench:optimizer-field-horner --check
 pnpm bench:optimizer-integer-constants --check
+pnpm bench:optimizer-strict-float --check
 ```
 
 ## What should and should not optimize

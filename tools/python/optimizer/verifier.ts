@@ -785,7 +785,8 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   if (!plan.operands || typeof plan.operands !== "object") {
     throw new TypeError(`optimizer region ${plan.id} has no operands`);
   }
-  if (plan.kind === "closed-ring-region") {
+  if (plan.kind === "closed-ring-region" || plan.kind === "strict-float-region") {
+    const strictFloat = plan.kind === "strict-float-region";
     const slots = plan.operands.slots;
     const sequences = plan.operands.sequences;
     if (!Array.isArray(slots) || slots.length === 0 || !Array.isArray(sequences)) {
@@ -1089,6 +1090,30 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         : "pack";
     if (plan.operands.sequenceStrategy !== expectedSequenceStrategy) {
       throw new TypeError("optimizer ring region has a stale sequence strategy");
+    }
+    if (strictFloat) {
+      if (plan.passId !== "math.strict-float-region.v1" ||
+          plan.operands.iteratorKind !== "range" || sequences.length !== 0 ||
+          plan.operands.integerConstants.length !== 0 ||
+          claimedInplaceOperations.length !== 0 ||
+          claimedOperations.some((operation: string) =>
+            operation !== "add" && operation !== "sub" &&
+            operation !== "mul" && operation !== "neg" &&
+            operation !== "equal")) {
+        throw new TypeError("optimizer strict-float region exceeds its operation domain");
+      }
+      const annotations = plan.operands.annotatedFloatArguments;
+      if (!Array.isArray(annotations) ||
+          annotations.length !== dataFlow.inputSlots.length ||
+          annotations.some((witness: any, index: number) => {
+            const slot = dataFlow.inputSlots[index];
+            return witness?.slot !== slot ||
+              witness.argument?.name !== slots[slot]?.name ||
+              witness.argument?.annotation?.name !== "float" ||
+              witness.argument?.annotation_text !== "float";
+          })) {
+        throw new TypeError("optimizer strict-float region has stale annotations");
+      }
     }
     return;
   }

@@ -75,6 +75,44 @@ scale. Sage.js instead needs compiler structure that can support many
 mathematical domains without turning the frontend into a list of benchmark
 patterns.
 
+## Implemented strict numerical slice
+
+The first numerical region is intentionally separate from the exact-ring
+pipeline. IEEE-754 values do not form a commutative ring: arithmetic is not
+associative, NaNs and signed zero are observable, overflow and underflow round,
+and contraction can change an answer. The versioned
+`math.strict-float-region.v1` pass therefore recognizes an ordered binary64
+operation graph and explicitly forbids reassociation, contraction, and
+fast-math.
+
+Its initial accepted domain is deliberately narrow:
+
+- a one-argument `range` loop inside a function;
+- every live scalar input is a parameter with the exact `float` annotation;
+- runtime values authenticate as primitive nonintegral Python floats or the
+  canonical frozen representation of an integral Python float;
+- only `+`, `-`, `*`, unary negation, and equality branches;
+- no calls, sequences, division, powers, in-place operators, or literals in
+  the region; and
+- one emitted JavaScript Number operation per source expression node, in
+  source order.
+
+Annotations are hints, not trusted type assertions. The entry guard also
+checks the numeric intrinsic used to unbox canonical boxed floats. A mismatch
+runs the untouched semantic loop before any optimized effect. Modified
+live-outs are materialized back into genuine Python float values, including
+integral values and signed zero.
+
+The O0/O2 corpus compares exact binary64 bits for finite values, signed zero,
+NaN, infinity, overflow, and subnormals; checks zero-trip identity and
+wrong-runtime-type fallback; and mutates the unboxing intrinsic adversarially.
+On the first Node 26 x86-64 measurement, the ordered multiply-add recurrence
+ran at a warm median of about 2.0 ns/step, compared with 273 ns through Sage.js
+O0 and 27 ns in CPython 3.13. The ratcheted command is
+`pnpm bench:optimizer-strict-float --check`. These measurements establish that
+the architecture can also target strict numerical regions; they do not imply
+that arbitrary numerical Python is optimized or that fast-math is enabled.
+
 ## Relationship to the existing architecture
 
 This RFC is subordinate to [`ARCHITECTURE.md`](../ARCHITECTURE.md). In

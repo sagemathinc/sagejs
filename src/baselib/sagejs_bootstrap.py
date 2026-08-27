@@ -1421,6 +1421,24 @@ def ρσ_machine_field_sequence_length(source):
     })()"""
 
 
+def ρσ_prepare_strict_float_region(values, count):
+    """Validate and unbox one transactional strict-binary64 region."""
+    return r"""%js (() => {
+        if (!Number.isSafeInteger(count) || count < 0 ||
+            !Array.isArray(values) || values.length === 0) return null;
+        const unboxed = [];
+        for (const value of values) {
+            const number = ρσ_strict_float_unbox(value);
+            if (number === null) return null;
+            unboxed.push(number);
+        }
+        return Object.freeze({
+            values: Object.freeze(unboxed),
+            materialize: ρσ_float_result,
+        });
+    })()"""
+
+
 def ρσ_prepare_machine_field_region(
     values, sequences, count, operation_mask, integer_constants
 ):

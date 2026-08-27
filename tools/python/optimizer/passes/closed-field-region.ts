@@ -554,7 +554,10 @@ function exactIntegerLiteral(compiler: any, node: any): number | null {
  * loop made solely from closed field assignments and equality branches maps to
  * the same operation graph.
  */
-function recognize(compiler: any, loop: any): null | Record<string, any> {
+export function recognizeClosedScalarProgram(
+  compiler: any,
+  loop: any,
+): null | Record<string, any> {
   if (!(loop instanceof compiler.AST_ForIn) || loop.alternative ||
       loop.optimization_region) return null;
 
@@ -1017,7 +1020,7 @@ export const closedRingRegionPass: OptimizationPass = {
   ],
   run(root: any, context: OptimizationPassContext): void {
     context.walk(root, (node, ancestors) => {
-      const operands = recognize(context.compiler, node);
+      const operands = recognizeClosedScalarProgram(context.compiler, node);
       if (!operands) return;
       const source = sourceRegion(node);
       const identity = stableRegionIdentity(CLOSED_RING_REGION_PASS, source, {
