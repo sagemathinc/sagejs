@@ -391,7 +391,12 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
         const parentPrototype = Object.getPrototypeOf(parent);
-        if (parent._machineExtensionDegree2 !== true ||
+        const degree = parent._machineExtensionDegree;
+        const modulusCoefficients = parent._machineExtensionModulusCoefficients;
+        if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
+            !(tupleBrand instanceof WeakSet) ||
+            !tupleBrand.has(modulusCoefficients) ||
+            modulusCoefficients.length !== degree ||
             parentPrototype?._from_machine_coordinates !==
                 parent._machineExtensionMaterialize) return null;
         if ((required(ADD) && extensionPrototype?._add_ !== parent._machineExtensionAdd) ||
@@ -412,13 +417,11 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
                 negDescriptor?.get !== parent._machineExtensionNegGetter) return null;
         }
         const modulus = parent._machineExtensionPrime;
-        const modulusC0 = parent._machineExtensionModulusC0;
-        const modulusC1 = parent._machineExtensionModulusC1;
-        const exactBound = modulus * modulus * modulus +
-            2 * modulus * modulus + modulus;
+        const exactBound = (degree + 2) * modulus * modulus + modulus;
         if (!Number.isSafeInteger(modulus) || modulus < 2 || modulus > 200000 ||
-            !Number.isInteger(modulusC0) || modulusC0 < 0 || modulusC0 >= modulus ||
-            !Number.isInteger(modulusC1) || modulusC1 < 0 || modulusC1 >= modulus ||
+            modulusCoefficients.some((coefficient) =>
+                !Number.isInteger(coefficient) || coefficient < 0 ||
+                coefficient >= modulus) ||
             !Number.isSafeInteger(exactBound)) return null;
         const scalar = (value) => {
             if (!elementBrand.has(value) ||
@@ -426,45 +429,48 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
                 Object.getPrototypeOf(value) !== extensionPrototype) return false;
             const coordinates = value._machineCoordinates;
             return Array.isArray(coordinates) && Object.isFrozen(coordinates) &&
-                coordinates.length === 2 &&
-                Number.isInteger(coordinates[0]) && coordinates[0] >= 0 &&
-                coordinates[0] < modulus &&
-                Number.isInteger(coordinates[1]) && coordinates[1] >= 0 &&
-                coordinates[1] < modulus;
+                coordinates.length === degree &&
+                coordinates.every((coefficient) =>
+                    Number.isInteger(coefficient) && coefficient >= 0 &&
+                    coefficient < modulus);
         };
         if (!values.every(scalar)) return null;
-        const unboxed = new Float64Array(2 * values.length);
+        const unboxed = new Float64Array(degree * values.length);
         for (let index = 0; index < values.length; index++) {
-            unboxed[2 * index] = values[index]._machineCoordinates[0];
-            unboxed[2 * index + 1] = values[index]._machineCoordinates[1];
+            for (let component = 0; component < degree; component++) {
+                unboxed[degree * index + component] =
+                    values[index]._machineCoordinates[component];
+            }
         }
         const packedSequences = [];
         for (const source of sequences) {
-            const packed = new Float64Array(2 * count);
+            const packed = new Float64Array(degree * count);
             for (let index = 0; index < count; index++) {
                 if (!scalar(source[index])) return null;
-                packed[2 * index] = source[index]._machineCoordinates[0];
-                packed[2 * index + 1] = source[index]._machineCoordinates[1];
+                for (let component = 0; component < degree; component++) {
+                    packed[degree * index + component] =
+                        source[index]._machineCoordinates[component];
+                }
             }
             packedSequences.push(packed);
         }
         parent._lastCompilerOptimizationRoute = "v8-extension-tuple-region";
-        return { kind: 2, parent, modulus, modulusC0, modulusC1,
+        return { kind: 2, parent, modulus, degree, modulusCoefficients,
                  values: unboxed, sequences: packedSequences };
     })()"""
 
 
-def ρσ_materialize_machine_field_value(context, coefficient0, coefficient1=0):
+def ρσ_materialize_machine_field_value(context, coefficients):
     """Materialize one public value at a verified region exit."""
     return r"""%js (() => {
         if (context.kind === 1) {
             const result = Object.create(context.prototype);
             result._parent = context.parent;
-            result._value = coefficient0;
+            result._value = coefficients;
             return ρσ_brand_machine_field_element(result);
         }
         return context.parent._machineExtensionMaterialize.call(
-            context.parent, coefficient0, coefficient1
+            context.parent, coefficients
         );
     })()"""
 
@@ -524,7 +530,13 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
         const parentPrototype = Object.getPrototypeOf(parent);
         const materialize = parent._machineExtensionMaterialize;
         const isolated = parent._machineExtensionIsolated;
-        if (parent._machineExtensionDegree2 !== true ||
+        const modulusCoefficients = parent._machineExtensionModulusCoefficients;
+        const tupleBrand = ρσ_math_tuple.__machineFieldSequenceBrand;
+        const degree = parent._machineExtensionDegree;
+        if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
+            !(tupleBrand instanceof WeakSet) ||
+            !tupleBrand.has(modulusCoefficients) ||
+            modulusCoefficients.length !== degree ||
             Object.getPrototypeOf(accumulator) !== extensionPrototype ||
             Object.getPrototypeOf(multiplier) !== extensionPrototype ||
             Object.getPrototypeOf(increment) !== extensionPrototype ||
@@ -535,19 +547,19 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             return null;
         }
         const prime = parent._machineExtensionPrime;
-        const modulusC0 = parent._machineExtensionModulusC0;
-        const modulusC1 = parent._machineExtensionModulusC1;
         const left = accumulator._machineCoordinates;
         const factor = multiplier._machineCoordinates;
         const addend = increment._machineCoordinates;
         const validCoordinates = (value) =>
-            Array.isArray(value) && Object.isFrozen(value) && value.length === 2 &&
-            Number.isInteger(value[0]) && value[0] >= 0 && value[0] < prime &&
-            Number.isInteger(value[1]) && value[1] >= 0 && value[1] < prime;
-        const exactBound = prime * prime * prime + 2 * prime * prime + prime;
+            Array.isArray(value) && Object.isFrozen(value) &&
+            value.length === degree && value.every((coefficient) =>
+                Number.isInteger(coefficient) && coefficient >= 0 &&
+                coefficient < prime);
+        const exactBound = (degree + 2) * prime * prime + prime;
         if (!Number.isSafeInteger(prime) || prime < 2 || prime > 200000 ||
-            !Number.isInteger(modulusC0) || modulusC0 < 0 || modulusC0 >= prime ||
-            !Number.isInteger(modulusC1) || modulusC1 < 0 || modulusC1 >= prime ||
+            modulusCoefficients.some((coefficient) =>
+                !Number.isInteger(coefficient) || coefficient < 0 ||
+                coefficient >= prime) ||
             !Number.isSafeInteger(exactBound) ||
             !validCoordinates(left) || !validCoordinates(factor) ||
             !validCoordinates(addend)) {
@@ -563,6 +575,162 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             );
             if (result !== undefined) return result;
         }
+        if (degree === 3) {
+            const modulusC0 = modulusCoefficients[0];
+            const modulusC1 = modulusCoefficients[1];
+            const modulusC2 = modulusCoefficients[2];
+            let valueC0 = left[0];
+            let valueC1 = left[1];
+            let valueC2 = left[2];
+            const factorC0 = factor[0];
+            const factorC1 = factor[1];
+            const factorC2 = factor[2];
+            const addendC0 = addend[0];
+            const addendC1 = addend[1];
+            const addendC2 = addend[2];
+            for (let index = 0; index < count; index++) {
+                let productC0 = (valueC0 * factorC0) % prime;
+                let productC1 = (
+                    valueC0 * factorC1 + valueC1 * factorC0
+                ) % prime;
+                let productC2 = (
+                    valueC0 * factorC2 + valueC1 * factorC1 +
+                    valueC2 * factorC0
+                ) % prime;
+                let productC3 = (
+                    valueC1 * factorC2 + valueC2 * factorC1
+                ) % prime;
+                const productC4 = (valueC2 * factorC2) % prime;
+
+                let correction = (productC4 * modulusC0) % prime;
+                productC1 = productC1 >= correction ?
+                    productC1 - correction : productC1 + prime - correction;
+                correction = (productC4 * modulusC1) % prime;
+                productC2 = productC2 >= correction ?
+                    productC2 - correction : productC2 + prime - correction;
+                correction = (productC4 * modulusC2) % prime;
+                productC3 = productC3 >= correction ?
+                    productC3 - correction : productC3 + prime - correction;
+
+                correction = (productC3 * modulusC0) % prime;
+                productC0 = productC0 >= correction ?
+                    productC0 - correction : productC0 + prime - correction;
+                correction = (productC3 * modulusC1) % prime;
+                productC1 = productC1 >= correction ?
+                    productC1 - correction : productC1 + prime - correction;
+                correction = (productC3 * modulusC2) % prime;
+                productC2 = productC2 >= correction ?
+                    productC2 - correction : productC2 + prime - correction;
+
+                let sum = productC0 + addendC0;
+                valueC0 = sum >= prime ? sum - prime : sum;
+                sum = productC1 + addendC1;
+                valueC1 = sum >= prime ? sum - prime : sum;
+                sum = productC2 + addendC2;
+                valueC2 = sum >= prime ? sum - prime : sum;
+            }
+            const result = materialize.call(
+                parent, [valueC0, valueC1, valueC2]
+            );
+            parent._lastCompilerOptimizationRoute = "v8-extension-tuple";
+            return result;
+        }
+        if (degree === 4) {
+            const modulusC0 = modulusCoefficients[0];
+            const modulusC1 = modulusCoefficients[1];
+            const modulusC2 = modulusCoefficients[2];
+            const modulusC3 = modulusCoefficients[3];
+            let valueC0 = left[0];
+            let valueC1 = left[1];
+            let valueC2 = left[2];
+            let valueC3 = left[3];
+            const factorC0 = factor[0];
+            const factorC1 = factor[1];
+            const factorC2 = factor[2];
+            const factorC3 = factor[3];
+            const addendC0 = addend[0];
+            const addendC1 = addend[1];
+            const addendC2 = addend[2];
+            const addendC3 = addend[3];
+            for (let index = 0; index < count; index++) {
+                let productC0 = (valueC0 * factorC0) % prime;
+                let productC1 = (
+                    valueC0 * factorC1 + valueC1 * factorC0
+                ) % prime;
+                let productC2 = (
+                    valueC0 * factorC2 + valueC1 * factorC1 +
+                    valueC2 * factorC0
+                ) % prime;
+                let productC3 = (
+                    valueC0 * factorC3 + valueC1 * factorC2 +
+                    valueC2 * factorC1 + valueC3 * factorC0
+                ) % prime;
+                let productC4 = (
+                    valueC1 * factorC3 + valueC2 * factorC2 +
+                    valueC3 * factorC1
+                ) % prime;
+                let productC5 = (
+                    valueC2 * factorC3 + valueC3 * factorC2
+                ) % prime;
+                const productC6 = (valueC3 * factorC3) % prime;
+
+                let correction = (productC6 * modulusC0) % prime;
+                productC2 = productC2 >= correction ?
+                    productC2 - correction : productC2 + prime - correction;
+                correction = (productC6 * modulusC1) % prime;
+                productC3 = productC3 >= correction ?
+                    productC3 - correction : productC3 + prime - correction;
+                correction = (productC6 * modulusC2) % prime;
+                productC4 = productC4 >= correction ?
+                    productC4 - correction : productC4 + prime - correction;
+                correction = (productC6 * modulusC3) % prime;
+                productC5 = productC5 >= correction ?
+                    productC5 - correction : productC5 + prime - correction;
+
+                correction = (productC5 * modulusC0) % prime;
+                productC1 = productC1 >= correction ?
+                    productC1 - correction : productC1 + prime - correction;
+                correction = (productC5 * modulusC1) % prime;
+                productC2 = productC2 >= correction ?
+                    productC2 - correction : productC2 + prime - correction;
+                correction = (productC5 * modulusC2) % prime;
+                productC3 = productC3 >= correction ?
+                    productC3 - correction : productC3 + prime - correction;
+                correction = (productC5 * modulusC3) % prime;
+                productC4 = productC4 >= correction ?
+                    productC4 - correction : productC4 + prime - correction;
+
+                correction = (productC4 * modulusC0) % prime;
+                productC0 = productC0 >= correction ?
+                    productC0 - correction : productC0 + prime - correction;
+                correction = (productC4 * modulusC1) % prime;
+                productC1 = productC1 >= correction ?
+                    productC1 - correction : productC1 + prime - correction;
+                correction = (productC4 * modulusC2) % prime;
+                productC2 = productC2 >= correction ?
+                    productC2 - correction : productC2 + prime - correction;
+                correction = (productC4 * modulusC3) % prime;
+                productC3 = productC3 >= correction ?
+                    productC3 - correction : productC3 + prime - correction;
+
+                let sum = productC0 + addendC0;
+                valueC0 = sum >= prime ? sum - prime : sum;
+                sum = productC1 + addendC1;
+                valueC1 = sum >= prime ? sum - prime : sum;
+                sum = productC2 + addendC2;
+                valueC2 = sum >= prime ? sum - prime : sum;
+                sum = productC3 + addendC3;
+                valueC3 = sum >= prime ? sum - prime : sum;
+            }
+            const result = materialize.call(
+                parent, [valueC0, valueC1, valueC2, valueC3]
+            );
+            parent._lastCompilerOptimizationRoute = "v8-extension-tuple";
+            return result;
+        }
+        if (degree !== 2) return null;
+        const modulusC0 = modulusCoefficients[0];
+        const modulusC1 = modulusCoefficients[1];
         let valueC0 = left[0];
         let valueC1 = left[1];
         for (let index = 0; index < count; index++) {
@@ -579,7 +747,7 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
             valueC0 = nextC0;
             valueC1 = nextC1;
         }
-        const result = materialize.call(parent, valueC0, valueC1);
+        const result = materialize.call(parent, [valueC0, valueC1]);
         parent._lastCompilerOptimizationRoute = "v8-extension-tuple";
         return result;
     })()"""

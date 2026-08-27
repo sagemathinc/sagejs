@@ -97,12 +97,14 @@ _fq_element_resource_cache = []
 # residues, so this representation choice never changes exact semantics.
 _MACHINE_RESIDUE_MAX_MODULUS = runtime.bigint(94906266)
 
-# For a quadratic polynomial-basis product, the largest unreduced Number
-# intermediate is bounded by `p^3 + 2*p^2 + p`.  The reviewed ceiling below
-# keeps that expression below Number.MAX_SAFE_INTEGER while leaving margin for
-# the fused affine increment.  Larger extension fields remain on their exact
-# boxed resource representation.
+# Machine extension products reduce every convolution term modulo `p` before
+# it participates in polynomial reduction.  For the reviewed degrees below,
+# every intermediate is therefore bounded by a small multiple of `p^2`.
+# The conservative prime ceiling keeps those operations far below
+# `Number.MAX_SAFE_INTEGER`; larger parents retain their exact boxed resource
+# representation.
 _MACHINE_EXTENSION_NUMBER_MAX_PRIME = runtime.bigint(200000)
+_MACHINE_EXTENSION_NUMBER_MAX_DEGREE = 4
 _MACHINE_EXTENSION_ISOLATED_MIN_STEPS = 4096
 
 
@@ -783,14 +785,22 @@ class FiniteFieldExtensionElement(sage.Element):
 
     def is_zero(self) -> bool:
         if self._machineCoordinates is not runtime.undefined:
-            return self._machineCoordinates[0] == 0 and self._machineCoordinates[1] == 0
+            for coefficient in self._machineCoordinates:
+                if coefficient != 0:
+                    return False
+            return True
         if self._parent._generatedResourceBackend:
             return bool(_flint_ffi_module().fq_element_is_zero(self._native))
         return runtime.flint_backend().fqIsZero(self._native)
 
     def is_one(self) -> bool:
         if self._machineCoordinates is not runtime.undefined:
-            return self._machineCoordinates[0] == 1 and self._machineCoordinates[1] == 0
+            if self._machineCoordinates[0] != 1:
+                return False
+            for coefficient in self._machineCoordinates[1:]:
+                if coefficient != 0:
+                    return False
+            return True
         if self._parent._generatedResourceBackend:
             return bool(_flint_ffi_module().fq_element_is_one(self._native))
         return runtime.flint_backend().fqIsOne(self._native)
@@ -799,8 +809,8 @@ class FiniteFieldExtensionElement(sage.Element):
         """Return one host-owned coordinate copy for conversion and display."""
         if self._machineCoordinates is not runtime.undefined:
             return [
-                runtime.normalize_integer(self._machineCoordinates[0]),
-                runtime.normalize_integer(self._machineCoordinates[1]),
+                runtime.normalize_integer(coefficient)
+                for coefficient in self._machineCoordinates
             ]
         if not self._parent._generatedResourceBackend:
             raise TypeError("power-basis export requires generated `fq` resources")
@@ -1114,10 +1124,9 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._variable = variable
         self._explicitModulus = explicit_modulus
         self._generatedResourceBackend = generated_resource_backend
-        self._machineExtensionDegree2 = False
+        self._machineExtensionDegree = 0
         self._machineExtensionPrime = runtime.undefined
-        self._machineExtensionModulusC0 = runtime.undefined
-        self._machineExtensionModulusC1 = runtime.undefined
+        self._machineExtensionModulusCoefficients = runtime.undefined
         self._machineExtensionElementPrototype = runtime.undefined
         self._machineExtensionMul = runtime.undefined
         self._machineExtensionAdd = runtime.undefined
@@ -1131,26 +1140,30 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._machineExtensionIsolatedMinSteps = _MACHINE_EXTENSION_ISOLATED_MIN_STEPS
         self._lastCompilerOptimizationRoute = "generic"
         if (
-            degree == 2
+            degree >= 2
+            and degree <= _MACHINE_EXTENSION_NUMBER_MAX_DEGREE
             and prime <= _MACHINE_EXTENSION_NUMBER_MAX_PRIME
-            and len(modulus_coefficients) == 3
+            and len(modulus_coefficients) == degree + 1
         ):
-            modulus_c0 = runtime.integer_bigint(modulus_coefficients[0])
-            modulus_c1 = runtime.integer_bigint(modulus_coefficients[1])
-            modulus_leading = runtime.integer_bigint(modulus_coefficients[2])
-            if (
-                modulus_leading == runtime.bigint(1)
-                and modulus_c0 >= 0
-                and modulus_c0 < prime
-                and modulus_c1 >= 0
-                and modulus_c1 < prime
+            machine_modulus = [
+                runtime.integer_bigint(coefficient)
+                for coefficient in modulus_coefficients
+            ]
+            modulus_leading = machine_modulus[degree]
+            if modulus_leading == runtime.bigint(1) and all(
+                coefficient >= 0 and coefficient < prime
+                for coefficient in machine_modulus[:degree]
             ):
                 element_prototype = runtime.reflect.get(element_type, "prototype")
                 parent_prototype = runtime.object.getPrototypeOf(self)
-                self._machineExtensionDegree2 = True
+                self._machineExtensionDegree = degree
                 self._machineExtensionPrime = runtime.number(prime)
-                self._machineExtensionModulusC0 = runtime.number(modulus_c0)
-                self._machineExtensionModulusC1 = runtime.number(modulus_c1)
+                self._machineExtensionModulusCoefficients = runtime.math_tuple(
+                    [
+                        runtime.number(coefficient)
+                        for coefficient in machine_modulus[:degree]
+                    ]
+                )
                 self._machineExtensionElementPrototype = element_prototype
                 self._machineExtensionMul = runtime.reflect.get(
                     element_prototype, "_mul_"
@@ -1215,85 +1228,104 @@ class FiniteFieldExtensionParent(sage.Parent):
         right: Any,
         operation: str,
     ) -> Any:
-        """Propagate the optional two-Number shadow representation exactly."""
+        """Propagate an optional fixed-width Number shadow exactly."""
         if (
-            not self._machineExtensionDegree2
+            self._machineExtensionDegree == 0
             or left is runtime.undefined
             or right is runtime.undefined
         ):
             return runtime.undefined
+        degree = self._machineExtensionDegree
         prime = self._machineExtensionPrime
-        left_c0 = left[0]
-        left_c1 = left[1]
-        right_c0 = right[0]
-        right_c1 = right[1]
+        if len(left) != degree or len(right) != degree:
+            return runtime.undefined
+        result = [0 for _index in range(degree)]
         if operation == "add":
-            result_c0 = (left_c0 + right_c0) % prime
-            result_c1 = (left_c1 + right_c1) % prime
+            for index in range(degree):
+                result[index] = (left[index] + right[index]) % prime
         elif operation == "sub":
-            result_c0 = (left_c0 - right_c0) % prime
-            result_c1 = (left_c1 - right_c1) % prime
+            for index in range(degree):
+                value = (left[index] - right[index]) % prime
+                if value < 0:
+                    value += prime
+                result[index] = value
         elif operation == "mul":
-            quadratic = left_c1 * right_c1
-            result_c0 = (
-                left_c0 * right_c0 - quadratic * self._machineExtensionModulusC0
-            ) % prime
-            result_c1 = (
-                left_c0 * right_c1
-                + left_c1 * right_c0
-                - quadratic * self._machineExtensionModulusC1
-            ) % prime
+            product = [0 for _index in range(2 * degree - 1)]
+            for left_index in range(degree):
+                for right_index in range(degree):
+                    product_index = left_index + right_index
+                    product[product_index] = (
+                        product[product_index] + left[left_index] * right[right_index]
+                    ) % prime
+            modulus = self._machineExtensionModulusCoefficients
+            for exponent in range(2 * degree - 2, degree - 1, -1):
+                factor = product[exponent]
+                for modulus_index in range(degree):
+                    result_index = exponent - degree + modulus_index
+                    value = (
+                        product[result_index] - factor * modulus[modulus_index]
+                    ) % prime
+                    if value < 0:
+                        value += prime
+                    product[result_index] = value
+            for index in range(degree):
+                result[index] = product[index]
         else:
-            raise ValueError("unknown quadratic finite-field operation")
-        if result_c0 < 0:
-            result_c0 += prime
-        if result_c1 < 0:
-            result_c1 += prime
-        return runtime.math_tuple([result_c0, result_c1])
+            raise ValueError("unknown finite-field machine operation")
+        return runtime.math_tuple(result)
 
     def _machine_extension_neg_coordinates(self, coordinates: Any) -> Any:
-        if not self._machineExtensionDegree2 or coordinates is runtime.undefined:
+        if self._machineExtensionDegree == 0 or coordinates is runtime.undefined:
             return runtime.undefined
         prime = self._machineExtensionPrime
-        return runtime.math_tuple(
-            [(-coordinates[0]) % prime, (-coordinates[1]) % prime]
-        )
+        result = []
+        for coefficient in coordinates:
+            value = (-coefficient) % prime
+            if value < 0:
+                value += prime
+            result.append(value)
+        return runtime.math_tuple(result)
 
     def _from_machine_coordinates(
         self,
-        coefficient0: Any,
-        coefficient1: Any,
+        coordinates: Any,
     ) -> FiniteFieldExtensionElement:
         """Materialize one public element from guarded canonical coefficients."""
+        degree = self._machineExtensionDegree
         prime = self._machineExtensionPrime
-        if (
-            not self._machineExtensionDegree2
-            or runtime.jstype(coefficient0) != "number"
-            or runtime.jstype(coefficient1) != "number"
-            or not runtime.number.isInteger(coefficient0)
-            or not runtime.number.isInteger(coefficient1)
-            or coefficient0 < 0
-            or coefficient0 >= prime
-            or coefficient1 < 0
-            or coefficient1 >= prime
-        ):
-            raise ValueError("invalid canonical quadratic finite-field coordinates")
-        coordinates = runtime.math_tuple([coefficient0, coefficient1])
+        if degree == 0 or len(coordinates) != degree:
+            raise ValueError("invalid finite-field machine coordinate width")
+        canonical = []
+        for coefficient in coordinates:
+            if (
+                runtime.jstype(coefficient) != "number"
+                or not runtime.number.isInteger(coefficient)
+                or coefficient < 0
+                or coefficient >= prime
+            ):
+                raise ValueError("invalid canonical finite-field machine coordinates")
+            canonical.append(coefficient)
+        machine_coordinates = runtime.math_tuple(canonical)
         if self._generatedResourceBackend:
             return _new_extension_field_element(
                 self,
                 _flint_ffi_module().fq_element(
                     self._nativeContext,
-                    runtime.uint64_buffer(coordinates),
-                    2,
+                    runtime.uint64_buffer(machine_coordinates),
+                    degree,
                 ),
-                coordinates,
+                machine_coordinates,
             )
-        constant = self(runtime.integer_bigint(coefficient0))
-        if coefficient1 == 0:
-            return constant
-        linear = self(runtime.integer_bigint(coefficient1))._mul_(self.gen())
-        return constant._add_(linear)
+        result = self(runtime.integer_bigint(0))
+        generator = self.gen()
+        power = self(runtime.integer_bigint(1))
+        for coefficient in machine_coordinates:
+            if coefficient != 0:
+                result = result._add_(
+                    self(runtime.integer_bigint(coefficient))._mul_(power)
+                )
+            power = power._mul_(generator)
+        return result
 
     def _machine_extension_affine_isolated(
         self,
@@ -1303,15 +1335,18 @@ class FiniteFieldExtensionParent(sage.Parent):
         count: int,
     ) -> Any:
         """Run one fused region through a compiled native or Wasm kernel."""
-        if count > 4294967295:
+        degree = self._machineExtensionDegree
+        if degree < 2 or degree > 4 or count > 4294967295:
             return runtime.undefined
         kernel_module, native_module = _machine_extension_kernel_modules()
         if kernel_module is None or native_module is None:
             return runtime.undefined
-        kernel = runtime.reflect.get(
-            kernel_module,
-            "packed_gf_p2_affine_recurrence",
+        kernel_name = (
+            "packed_gf_p2_affine_recurrence"
+            if degree == 2
+            else "packed_gf_pk_affine_recurrence"
         )
+        kernel = runtime.reflect.get(kernel_module, kernel_name)
         native_is_compiled = runtime.reflect.get(native_module, "is_compiled")
         if not bool(runtime.reflect.apply(native_is_compiled, native_module, [kernel])):
             return runtime.undefined
@@ -1322,27 +1357,70 @@ class FiniteFieldExtensionParent(sage.Parent):
         output = runtime.reflect.apply(
             kernel_uint64_zeros,
             native_module,
-            [kernel, 2],
+            [kernel, degree],
         )
         left = accumulator._machineCoordinates
         factor = multiplier._machineCoordinates
         addend = increment._machineCoordinates
-        status = kernel(
-            output,
-            left[0],
-            left[1],
-            factor[0],
-            factor[1],
-            addend[0],
-            addend[1],
-            count,
-            self._machineExtensionPrime,
-            self._machineExtensionModulusC0,
-            self._machineExtensionModulusC1,
-        )
+        modulus = self._machineExtensionModulusCoefficients
+        if degree == 2:
+            status = kernel(
+                output,
+                left[0],
+                left[1],
+                factor[0],
+                factor[1],
+                addend[0],
+                addend[1],
+                count,
+                self._machineExtensionPrime,
+                modulus[0],
+                modulus[1],
+            )
+        else:
+            kernel_uint64_buffer = runtime.reflect.get(
+                native_module,
+                "kernel_uint64_buffer",
+            )
+            scratch = runtime.reflect.apply(
+                kernel_uint64_zeros,
+                native_module,
+                [kernel, 2 * degree - 1],
+            )
+            left_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, left],
+            )
+            factor_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, factor],
+            )
+            addend_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, addend],
+            )
+            modulus_buffer = runtime.reflect.apply(
+                kernel_uint64_buffer,
+                native_module,
+                [kernel, modulus],
+            )
+            status = kernel(
+                output,
+                scratch,
+                left_buffer,
+                factor_buffer,
+                addend_buffer,
+                modulus_buffer,
+                degree,
+                count,
+                self._machineExtensionPrime,
+            )
         if int(status) != 0:
             raise RuntimeError(
-                "compiled quadratic finite-field region rejected valid input"
+                "compiled fixed-degree finite-field region rejected valid input"
             )
         execution_target = getattr(kernel, "executionTarget", None)
         if execution_target == "wasm":
@@ -1352,8 +1430,9 @@ class FiniteFieldExtensionParent(sage.Parent):
         else:
             self._lastCompilerOptimizationRoute = "javascript-compiled-source"
         return self._from_machine_coordinates(
-            runtime.number(output[0]),
-            runtime.number(output[1]),
+            runtime.math_tuple(
+                [runtime.number(output[index]) for index in range(degree)]
+            )
         )
 
     def __call__(
@@ -1374,13 +1453,13 @@ class FiniteFieldExtensionParent(sage.Parent):
             return numerator._truediv_(denominator)
         value = runtime.integer_bigint(value)
         machine_coordinates = runtime.undefined
-        if self._machineExtensionDegree2:
+        if self._machineExtensionDegree != 0:
             machine_reduced = runtime.native_mod(value, self._prime)
             if machine_reduced < 0:
                 machine_reduced += self._prime
-            machine_coordinates = runtime.math_tuple(
-                [runtime.number(machine_reduced), 0]
-            )
+            machine_values = [0 for _index in range(self._machineExtensionDegree)]
+            machine_values[0] = runtime.number(machine_reduced)
+            machine_coordinates = runtime.math_tuple(machine_values)
         if self._generatedResourceBackend:
             reduced = runtime.native_mod(value, self._prime)
             if reduced < 0:
@@ -1418,9 +1497,9 @@ class FiniteFieldExtensionParent(sage.Parent):
         if len(coordinates) != self._degree:
             raise ValueError("finite-field coordinate width does not match degree")
         machine_coordinates = runtime.undefined
-        if self._machineExtensionDegree2:
+        if self._machineExtensionDegree != 0:
             machine_coordinates = runtime.math_tuple(
-                [runtime.number(coordinates[0]), runtime.number(coordinates[1])]
+                [runtime.number(coefficient) for coefficient in coordinates]
             )
         return _new_extension_field_element(
             self,
@@ -1465,11 +1544,11 @@ class FiniteFieldExtensionParent(sage.Parent):
         if self._generatedResourceBackend:
             coordinates = [runtime.bigint(0) for _index in range(self._degree)]
             coordinates[1] = runtime.bigint(1)
-            machine_coordinates = (
-                runtime.math_tuple([0, 1])
-                if self._machineExtensionDegree2
-                else runtime.undefined
-            )
+            machine_coordinates = runtime.undefined
+            if self._machineExtensionDegree != 0:
+                machine_values = [0 for _index in range(self._machineExtensionDegree)]
+                machine_values[1] = 1
+                machine_coordinates = runtime.math_tuple(machine_values)
             return _new_extension_field_element(
                 self,
                 _flint_ffi_module().fq_element(
@@ -1482,11 +1561,11 @@ class FiniteFieldExtensionParent(sage.Parent):
         return _new_extension_field_element(
             self,
             runtime.flint_backend().fqGen(self._nativeContext),
-            (
-                runtime.math_tuple([0, 1])
-                if self._machineExtensionDegree2
-                else runtime.undefined
-            ),
+            runtime.math_tuple(
+                [0, 1] + [0 for _index in range(self._machineExtensionDegree - 2)]
+            )
+            if self._machineExtensionDegree != 0
+            else runtime.undefined,
         )
 
     def _first_ngens(

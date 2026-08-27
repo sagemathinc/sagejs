@@ -51,6 +51,14 @@
           "bench/optimizer-gf-p2.cjs"
         ]
       },
+      "optimizer-extension-degree-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-extension-degrees.cjs",
+          "bench/optimizer-extension-degrees.cjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
       "runtime-intrinsic-contract": {
         "differential": true,
         "paths": [
@@ -482,6 +490,9 @@
     ],
     "optimizer-gf-p2-affine": [
       "kernel:packed-gf-p2-affine-production"
+    ],
+    "optimizer-gf-pk-affine": [
+      "kernel:packed-gf-pk-affine-production"
     ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
@@ -11543,6 +11554,32 @@
       ],
       "tests": [
         "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-gf-pk-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-pk-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded fixed-degree finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-extension-degree-differential"
       ],
       "status": "available",
       "reviewed": true,

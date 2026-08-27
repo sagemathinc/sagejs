@@ -273,14 +273,6 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
   if (!plan.operands || typeof plan.operands !== "object") {
     throw new TypeError(`optimizer region ${plan.id} has no operands`);
   }
-  if (plan.kind === "closed-affine-recurrence") {
-    for (const name of ["accumulator", "multiplier", "increment", "count", "index"] as const) {
-      if (!plan.operands[name] || typeof plan.operands[name] !== "object") {
-        throw new TypeError(`optimizer affine region has no ${name}`);
-      }
-    }
-    return;
-  }
   if (plan.kind === "closed-field-region") {
     const slots = plan.operands.slots;
     const sequences = plan.operands.sequences;
@@ -291,6 +283,23 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
     for (const slot of plan.operands.stateSlots ?? []) {
       if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
         throw new TypeError("optimizer state slot is out of range");
+      }
+    }
+    const affine = plan.operands.affine;
+    if (affine !== null && affine !== undefined) {
+      const indices = [
+        affine.accumulatorSlot,
+        affine.multiplierSlot,
+        affine.incrementSlot,
+      ];
+      for (const slot of indices) {
+        if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
+          throw new TypeError("optimizer affine target slot is out of range");
+        }
+      }
+      if (new Set(indices).size !== indices.length ||
+          !(plan.operands.stateSlots ?? []).includes(affine.accumulatorSlot)) {
+        throw new TypeError("optimizer affine target has invalid data flow");
       }
     }
     return;

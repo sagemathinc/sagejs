@@ -95,11 +95,11 @@ K._machineExtensionMul = original_mul
 Q.<y> = PolynomialRing(GF(200003))
 L.<b> = GF(200003^2, modulus=y^2 + y + 1)
 print(changed[0], changed[1], K._lastCompilerOptimizationRoute)
-print(L._machineExtensionDegree2)
+print(L._machineExtensionDegree)
 `);
     assert.deepEqual(result.stdout.trim().split("\n"), [
       "8*a + 89 9 guard-sentinel",
-      "False",
+      "0",
     ]);
   } finally {
     session.close();

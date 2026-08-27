@@ -4,7 +4,7 @@
 
 **Policy status:** failed
 
-Heavy workloads: 0/49 accelerated; 49 failed closed.
+Heavy workloads: 0/50 accelerated; 50 failed closed.
 
 Trusted route receipts: 0; rejected receipts: 0.
 
@@ -13,7 +13,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
 | `wasm-library` | 92 | 0 |
-| `wasm-compiled-source` | 15 | 0 |
+| `wasm-compiled-source` | 16 | 0 |
 | `portable-orchestration` | 5 | 0 |
 | `portable-computation` | 0 | 0 |
 
@@ -31,7 +31,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | enumerative-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
 | extension-fields | 3 | 3 | 0 | 3 | 0 | 0 |
-| finite-fields | 1 | 1 | 0 | 1 | 0 | 0 |
+| finite-fields | 2 | 2 | 0 | 2 | 0 | 0 |
 | graphs | 4 | 4 | 0 | 4 | 0 | 0 |
 | groups-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | hyperelliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
@@ -52,6 +52,7 @@ Trusted route receipts: 0; rejected receipts: 0.
 | `parity:exact-big-integer` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
 | `parity:partition-count-and-ranking` | enumerative-combinatorics | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:optimizer-gf-p2-affine` | finite-fields | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
+| `parity:optimizer-gf-pk-affine` | finite-fields | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:capability-report-api` | runtime | no | unmeasured | `portable-orchestration` | — |
 | `parity:python-float-underscore-separators` | python-compatibility | no | unmeasured | `portable-orchestration` | — |
 | `parity:exact-matrix-and-finite-field-polynomial` | exact-arithmetic | no | unmeasured | `wasm-library` | — |

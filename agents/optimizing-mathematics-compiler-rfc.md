@@ -865,6 +865,21 @@ The completion criteria were met on 2026-08-27:
 8. An elliptic-curve batch is a held-out application consumer and receives the
    optimization without an elliptic-curve-named compiler branch.
 
-The implementation deliberately leaves higher extension degrees, resident
-Wasm handles, and broader application profiling as later measured extensions;
-they are not required by the completion criteria above.
+The implementation deliberately left higher extension degrees, resident Wasm
+handles, and broader application profiling beyond the initial completion
+criteria.  The first post-RFC refinement, also completed on 2026-08-27,
+generalized the same field-operation IR and guarded machine representation to
+fixed extension degrees two through four.  Affine operation graphs now select
+compact degree-specific V8 emitters or one source-transparent isolated
+native/Wasm call; Horner, multi-state, equality-branch, polynomial, and held-out
+graphs continue through the general emitter.  No second syntax recognizer was
+added: the former affine pass was removed, and target selection is derived from
+the general field dataflow plan.
+
+`bench/optimizer-extension-degrees.cjs` records the resulting crossover.  For
+one million degree-three and degree-four recurrence steps on the reference
+Node/V8 host, public compiled V8 runs within about 5--8% of matched dynamic
+handwritten JavaScript and roughly 1,600--2,200 times faster than the projected
+generic object path.  The coarse native target is exact and independently
+useful, but V8 wins this small-word workload.  This is the intended cost-model
+outcome rather than a fixed preference for a particular backend.

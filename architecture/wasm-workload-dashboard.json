@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-workload-dashboard/v1",
   "status": "failed",
   "policy_result": {
-    "heavy_workloads": 49,
+    "heavy_workloads": 50,
     "accelerated_heavy_workloads": 0,
-    "failed_heavy_workloads": 49,
+    "failed_heavy_workloads": 50,
     "required_browser_engines": [
       "chromium",
       "firefox",
@@ -20,15 +20,15 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "78bbbfe63ade8cb6c1f7f8f6c4e438e5b1feca2c8572a0bc543417129e880be7"
+      "sha256": "f524a3db80fb18289fa7247e8115710d06ccc3acaeac4e4302beac29858a29c3"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "67b675bec35d49f1433726ded0888f6613b8d1656472de24303dd8619f96e9c0"
+      "sha256": "5b66f3b0bba72fa075911daa0d1bd095015be4cf71cb923bb9832d03962c81f8"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "c90aa298c41ed41316c5fd60576a149cf9be7c5dc0b06490cd6d7c86159ddf16"
+      "sha256": "b39074f35338bbc493be03d28827eb18863efd826ebd3c210f5250feab5d37c2"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -39,35 +39,35 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 37,
+    "parity_workloads": 38,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1016,
+      "total": 1017,
       "by_kind": {
         "declared-ffi-function": 440,
         "declared-ffi-resource": 32,
         "napi-export": 325,
-        "production-kernel": 48,
+        "production-kernel": 49,
         "runtime-intrinsic": 145,
         "specialist-capability": 26
       },
       "by_disposition": {
-        "compiled-source": 48,
+        "compiled-source": 49,
         "desktop-only": 47,
         "generated-wasm": 321,
         "portable-fallback": 555,
         "shared-core": 45
       },
       "by_status": {
-        "available": 554,
+        "available": 555,
         "desktop-only": 47,
         "fallback": 415
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 48,
-      "production_kernels": 41,
-      "compiled_functions": 274,
+      "registered_kernels": 49,
+      "production_kernels": 42,
+      "compiled_functions": 275,
       "unsupported_production_functions": 0,
       "non_production_functions": 30,
       "same_source_fallback_functions": 30
@@ -76,7 +76,7 @@
   "route_classes": {
     "expected_requirements": {
       "wasm-library": 92,
-      "wasm-compiled-source": 15,
+      "wasm-compiled-source": 16,
       "portable-orchestration": 5,
       "portable-computation": 0
     },
@@ -169,10 +169,10 @@
       "unmeasured_or_review_required": 0
     },
     "finite-fields": {
-      "workloads": 1,
-      "heavy_workloads": 1,
+      "workloads": 2,
+      "heavy_workloads": 2,
       "accelerated": 0,
-      "failed": 1,
+      "failed": 2,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
     },
@@ -365,6 +365,53 @@
       "expected_routes": [
         {
           "capability_id": "kernel:packed-gf-p2-affine-production",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-compiled-source",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "compiled-source"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "chromium"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "firefox"
+        },
+        {
+          "code": "missing-trusted-route-telemetry",
+          "engine": "webkit"
+        }
+      ]
+    },
+    {
+      "id": "parity:optimizer-gf-pk-affine",
+      "public_workflow": "optimizer-gf-pk-affine",
+      "family": "finite-fields",
+      "tier": "release",
+      "heavy": true,
+      "status": "failed",
+      "expected_routes": [
+        {
+          "capability_id": "kernel:packed-gf-pk-affine-production",
           "legacy_route": "receipt-backed-wasm-artifact",
           "route_class": "wasm-compiled-source",
           "reviewed": true,

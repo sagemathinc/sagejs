@@ -3655,7 +3655,7 @@ class PolynomialRingParent(sage.Parent):
                 coordinates.extend(values[index]._power_basis_coordinates())
             machine_coefficients = (
                 runtime.math_tuple(values[:length])
-                if runtime.reflect.get(self._base, "_machineExtensionDegree2")
+                if runtime.reflect.get(self._base, "_machineExtensionDegree") != 0
                 else runtime.undefined
             )
             return self._from_fq_polynomial_resource(
@@ -3671,8 +3671,9 @@ class PolynomialRingParent(sage.Parent):
         generator = self.gen()
         for coefficient in reversed(coefficients):
             result = result._mul_(generator)._add_(self(coefficient))
-        if self._base._kind == "GF_EXTENSION" and runtime.reflect.get(
-            self._base, "_machineExtensionDegree2"
+        if (
+            self._base._kind == "GF_EXTENSION"
+            and runtime.reflect.get(self._base, "_machineExtensionDegree") != 0
         ):
             values = [self._base(value) for value in coefficients]
             length = len(values)
