@@ -129,24 +129,96 @@ theorem core_sound_num_bigint {a b : Int}
     Result.denote, denote, exactIntegerPrimitive, Num.isSafeInteger, bigintOf,
     JsValue.toBigInt, ha, ha']
 
-/-!
-### The remaining obligation
+/--
+What the addition reduces to on two safe integers held as numbers.
 
-`core_sound_num_num` -- two safe integers held as numbers -- is not yet
-discharged.  The mathematical content it needs *is* proved:
-`roundIntToDouble_eq_self_of_safe_result` says a sum inside the safe window was
-never rounded, and `roundHalfEven_two_abs` says rounding cannot bring a sum
-back inside it.  Between them the two branches of that case are settled:
-
-* inside the window, the double never rounded, so the number returned is the
-  sum;
-* outside it, the window test fails and the branch that redoes the addition in
-  BigInt is taken.
-
-What is left is bookkeeping through the branch conditions of
-`operatorAddExactCore` -- the float tests, the zero test, the window test -- in
-a form the simplifier will carry.  It is deliberately left open rather than
-closed with `sorry`, so that what this file claims is exactly what it proves.
+Both branches of the runtime's own test appear on the right: the number it
+computed when the window test passes, and the BigInt sum when it does not.  The
+zero case it tests separately coincides with the first, since zero is inside the
+window.
 -/
+theorem addExactCore_num_num {a b : Int}
+    (ha : minSafeInteger ≤ a) (ha' : a ≤ maxSafeInteger)
+    (hb : minSafeInteger ≤ b) (hb' : b ≤ maxSafeInteger) :
+    operatorAddExactCore (.num (.ofInt a)) (.num (.ofInt b))
+      = if withinSafeWindow (Num.ofInt (roundIntToDouble (a + b)))
+        then .ok (.num (.ofInt (roundIntToDouble (a + b))))
+        else .ok (.bigint (a + b)) := by
+  have hsafeA : (Num.ofInt a).isSafeInteger = true := by
+    simp only [Num.isSafeInteger, Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨ha, ha'⟩
+  have hsafeB : (Num.ofInt b).isSafeInteger = true := by
+    simp only [Num.isSafeInteger, Bool.and_eq_true, decide_eq_true_eq]
+    exact ⟨hb, hb'⟩
+  by_cases zero : roundIntToDouble (a + b) = 0
+  · simp [operatorAddExactCore, JsValue.pythonJstype, JsValue.jstype, nativeAdd,
+      JsValue.toDouble, Num.add, isPythonFloat, hsafeA, hsafeB, zero, withinSafeWindow,
+      minSafeInteger, maxSafeInteger]
+  · simp [operatorAddExactCore, JsValue.pythonJstype, JsValue.jstype, nativeAdd,
+      JsValue.toDouble, Num.add, isPythonFloat, hsafeA, hsafeB, bigintOf,
+      JsValue.toBigInt, zero]
+
+/--
+Two safe integers held as numbers add exactly.
+
+The two cases are the whole of the argument.  Inside the window the double never
+rounded, by `roundIntToDouble_eq_self_of_safe_result`, so the number returned is
+the sum.  Outside it, rounding cannot have brought the sum back inside, so the
+window test fails and the branch that redoes the addition in BigInt is taken.
+-/
+theorem core_sound_num_num {a b : Int}
+    (ha : minSafeInteger ≤ a) (ha' : a ≤ maxSafeInteger)
+    (hb : minSafeInteger ≤ b) (hb' : b ≤ maxSafeInteger) :
+    (operatorAddExactCore (.num (.ofInt a)) (.num (.ofInt b))).denote = some (a + b) := by
+  have bound : (a + b).natAbs < 2 * twoPow53 := by
+    simp only [minSafeInteger, maxSafeInteger] at ha ha' hb hb'
+    simp only [twoPow53]
+    omega
+  rw [addExactCore_num_num ha ha' hb hb']
+  by_cases win : withinSafeWindow (Num.ofInt (roundIntToDouble (a + b))) = true
+  · have bounds : minSafeInteger ≤ roundIntToDouble (a + b) ∧
+        roundIntToDouble (a + b) ≤ maxSafeInteger := by
+      simp only [withinSafeWindow, Bool.and_eq_true, decide_eq_true_eq] at win
+      exact win
+    have exact := roundIntToDouble_eq_self_of_safe_result bound bounds.1 bounds.2
+    rw [exact] at bounds ⊢
+    have win' : withinSafeWindow (Num.ofInt (a + b)) = true := by
+      simp only [withinSafeWindow, Bool.and_eq_true, decide_eq_true_eq]
+      exact bounds
+    simp [win', Result.denote, denote, bounds.1, bounds.2]
+  · simp [win, Result.denote, denote]
+
+/-- The body is sound on every pair of denoting values that are not booleans. -/
+theorem core_sound {left right : JsValue} {x y : Int}
+    (hleft : denote left = some x) (hright : denote right = some y)
+    (leftNotBool : ∀ flag, left ≠ .bool flag)
+    (rightNotBool : ∀ flag, right ≠ .bool flag) :
+    (operatorAddExactCore left right).denote = some (x + y) := by
+  rcases denote_cases hleft leftNotBool with hl | ⟨hl, hlmin, hlmax⟩
+  · subst hl
+    rcases denote_cases hright rightNotBool with hr | ⟨hr, hrmin, hrmax⟩
+    · subst hr; exact core_sound_bigint_bigint x y
+    · subst hr; exact core_sound_bigint_num hrmin hrmax
+  · subst hl
+    rcases denote_cases hright rightNotBool with hr | ⟨hr, hrmin, hrmax⟩
+    · subst hr; exact core_sound_num_bigint hlmin hlmax
+    · subst hr; exact core_sound_num_num hlmin hlmax hrmin hrmax
+
+/--
+**The addition is sound.**
+
+For any two values that denote integers -- in either representation, in either
+order, booleans included, at any magnitude -- the sum denotes the integer sum.
+This is the property `addExact_not_sound_before_fix` shows the runtime lacked,
+and it now holds for every input rather than for the ones a corpus happened to
+try.
+-/
+theorem addExact_sound : Sound operatorAddExact (· + ·) := by
+  intro left right x y hleft hright
+  unfold operatorAddExact
+  exact core_sound
+    (by rw [denote_normalizeBool]; exact hleft)
+    (by rw [denote_normalizeBool]; exact hright)
+    (normalizeBool_ne_bool left) (normalizeBool_ne_bool right)
 
 end SageSemantics

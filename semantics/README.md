@@ -70,6 +70,10 @@ the error appears one operation later.
 - `core_sound_bigint_bigint`, `core_sound_bigint_num`, `core_sound_num_bigint` — those pairings add
   exactly, at any size.
 - `addExact_not_sound_before_fix` — **the addition was not sound**, with the witness. See below.
+- **`addExact_sound` — the addition as it now stands is sound.** For any two values that denote
+  integers, in either representation, in either order, booleans included, at any magnitude, the sum
+  denotes the integer sum. This is the property the runtime lacked, holding for every input rather
+  than for the ones a corpus happened to try.
 
 ## The first bug this found
 
@@ -133,11 +137,9 @@ become a float.
 
 ## Next
 
-- Discharge soundness for the `number + number` branch. The mathematical content is already proved
-  — `roundIntToDouble_eq_self_of_safe_result` (a sum inside the safe window was never rounded) and
-  `roundHalfEven_two_abs` (rounding cannot bring one back inside) — and what remains is bookkeeping
-  through the branch conditions in a form the simplifier will carry. Left open rather than closed
-  with `sorry`, so that what the file claims is what it proves.
+- The same treatment for `sub`, `mul`, `pow`, `floordiv` and `mod`, and for the comparisons. `mul`
+  is the one to take next: #42 shows it raises on a boolean operand, and the same model would say
+  whether the fix is complete.
 - The same treatment for `sub`, `mul`, `pow`, `floordiv`, `mod` and the
   comparisons, and for `int()`.
 - Extract the model to a CLI and diff it against the runtime over boundary
