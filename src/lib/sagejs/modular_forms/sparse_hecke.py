@@ -221,6 +221,31 @@ class SparseHeckeOperator:
             )
         return tuple(answer)
 
+    def _product_row(self, other: SparseHeckeOperator, row: int) -> dict[int, int]:
+        if self._ncols != other._nrows:
+            raise ValueError("sparse operator dimensions do not compose")
+        answer: dict[int, int] = {}
+        for middle, left_value in self.row(row):
+            for column, right_value in other.row(middle):
+                value = answer.get(column, 0) + left_value * right_value
+                if value == 0:
+                    answer.pop(column, None)
+                else:
+                    answer[column] = value
+        return answer
+
+    def commutes_with(self, other: SparseHeckeOperator) -> bool:
+        if (
+            self._nrows != self._ncols
+            or other._nrows != other._ncols
+            or self._nrows != other._nrows
+        ):
+            return False
+        for row in range(self._nrows):
+            if self._product_row(other, row) != other._product_row(self, row):
+                return False
+        return True
+
     def matrix(self, max_entries: Any = None, force: bool = False) -> Any:
         limit = (
             self._dense_entry_limit

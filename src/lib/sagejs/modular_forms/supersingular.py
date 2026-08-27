@@ -15,6 +15,7 @@ from typing import Any, Iterator, Sequence
 import sagejs as sage
 import sagejs.runtime as runtime
 
+from .modular_polynomial import classical_modular_polynomial
 from .sparse_hecke import SparseHeckeOperator
 
 
@@ -363,7 +364,7 @@ class SupersingularModule:
         self._points = points
         self._point_index = SupersingularPointIndex(points)
         self._operators[2] = operator
-        self._verify_t2()
+        self._verify_operator(2)
 
     def _automorphism_weight(self, point: Any) -> int:
         if point == self._field(0):
@@ -372,10 +373,18 @@ class SupersingularModule:
             return 2
         return 1
 
-    def _verify_t2(self) -> None:
-        operator = self._operators[2]
-        if operator.row_sums() != tuple(3 for _ in range(self._dimension)):
-            raise ArithmeticError("T_2 does not have constant row sum 3")
+    def _verify_operator(self, index: int) -> None:
+        operator = self._operators[index]
+        expected_sum = index + 1
+        if operator.row_sums() != tuple(
+            expected_sum for _row in range(self._dimension)
+        ):
+            raise ArithmeticError(
+                "T_"
+                + str(index)
+                + " does not have constant row sum "
+                + str(expected_sum)
+            )
         points = self._points
         if points is None:
             raise RuntimeError("supersingular points were not published")
@@ -385,8 +394,54 @@ class SupersingularModule:
                 opposite = int(operator[column, row])
                 if multiplicity * weights[column] != opposite * weights[row]:
                     raise ArithmeticError(
-                        "T_2 violates the exact mass adjoint relation"
+                        "T_" + str(index) + " violates the exact mass adjoint relation"
                     )
+        if index != 2:
+            t2 = self._operators[2]
+            if not operator.commutes_with(t2):
+                raise ArithmeticError("good Hecke operators do not commute")
+
+    def _construct_general_operator(self, index: int) -> None:
+        if index in self._operators:
+            return
+        self._construct_t2()
+        polynomial = classical_modular_polynomial(index)
+        points = self._points
+        if points is None:
+            raise RuntimeError("supersingular points were not published")
+        row_offsets = [0]
+        columns = []
+        values = []
+        for point in points:
+            roots = polynomial.specialize_y(self._field, point).roots()
+            row: dict[int, int] = {}
+            for root, multiplicity in roots:
+                target = _find_equal(points, root)
+                if target < 0:
+                    raise ArithmeticError(
+                        "a modular-polynomial root is outside the supersingular set"
+                    )
+                row[target] = row.get(target, 0) + int(multiplicity)
+            if sum(row.values()) != index + 1:
+                raise ArithmeticError(
+                    "a T_" + str(index) + " row has the wrong multiplicity"
+                )
+            for target in sorted(row):
+                columns.append(target)
+                values.append(row[target])
+            row_offsets.append(len(columns))
+        self._operators[index] = SparseHeckeOperator(
+            self._base_ring,
+            self._dimension,
+            self._dimension,
+            row_offsets,
+            columns,
+            values,
+            index=index,
+            name="Sparse Hecke operator T_" + str(index),
+            dense_entry_limit=self._dense_entry_limit,
+        )
+        self._verify_operator(index)
 
     def supersingular_points(self) -> tuple[list[Any], SupersingularPointIndex]:
         self._construct_t2()
@@ -396,10 +451,17 @@ class SupersingularModule:
 
     def hecke_operator(self, index: Any) -> SparseHeckeOperator:
         ell = _integer(index, "Hecke index")
-        if ell != 2:
-            raise NotImplementedError("the first supersingular slice implements T_2")
-        self._construct_t2()
-        return self._operators[2]
+        if ell < 2 or not bool(sage.is_prime(ell)):
+            raise NotImplementedError(
+                "only prime-index good Hecke operators are implemented"
+            )
+        if ell == self._prime:
+            raise NotImplementedError("the bad-prime operator T_p is not implemented")
+        if ell == 2:
+            self._construct_t2()
+        else:
+            self._construct_general_operator(ell)
+        return self._operators[ell]
 
     T = hecke_operator
 

@@ -44,8 +44,9 @@ def SupersingularModule(
     (3, 3, 3)
     ```
 
-    The initial implementation supports prime characteristic at least five,
-    auxiliary level one, and the $T_2$ operator.
+    The implementation supports prime characteristic at least five,
+    auxiliary level one, and good prime-index Hecke operators under an
+    explicit modular-polynomial construction bound.
     """
     module = _supersingular_module()
     return module.SupersingularModule(
@@ -5128,8 +5129,9 @@ runtime.register_doc(
             "status": "partial",
             "notes": (
                 "Prime characteristic at least five, auxiliary level one, "
-                "and T_2 are supported. The Hecke operator itself is sparse; "
-                "dense matrix materialization is explicitly bounded."
+                "and good prime-index Hecke operators are supported. The "
+                "Hecke operator itself is sparse; dense matrix materialization "
+                "and modular-polynomial construction are explicitly bounded."
             ),
         },
         "provenance": [
@@ -5153,7 +5155,7 @@ runtime.register_doc(
         "limitations": [
             "Characteristics 2 and 3 are not implemented.",
             "Auxiliary levels greater than one are not implemented.",
-            "Only T_2 is implemented in the initial slice.",
+            "Composite-index and bad-prime Hecke operators are not implemented.",
         ],
     },
 )

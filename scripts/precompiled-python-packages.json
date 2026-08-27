@@ -35,6 +35,7 @@
     "sagejs.linear_algebra.combinatorial",
     "sagejs.linear_algebra.sparse_random_m4ri",
     "sagejs.modular_forms",
+    "sagejs.modular_forms.modular_polynomial",
     "sagejs.modular_forms.sparse_hecke",
     "sagejs.modular_forms.supersingular",
     "sagejs.number_fields.analytic_zeta",

@@ -10,13 +10,21 @@ corpus covers Sage's exact level-$37$ example, structural checks through
 $p=389$, and an independent Sage.js modular-symbol characteristic-polynomial
 comparison.
 
-The remaining first-slice portability gate is a uniform canonical
+The second classical slice also constructs exact classical modular
+polynomials from the symmetric Laurent-series relation between $j(q)$ and
+$j(q^\ell)$, under an explicit relation-size bound. This supplies sparse
+$T_\ell$ for good prime indices, with exact row sums, mass adjointness, and
+commutativity verification. The checked $T_3$ and $T_5$ operators agree with
+Magma's Gram/theta and neighboring-ideal Brandt modes and with pinned LMFDB
+newform data.
+
+The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
 but cross-platform coordinate sorting must land before the basis digest is
-declared stable. General $T_\ell$, verified Krylov algorithms, Mestre
-reconstruction, and the Hilbert modules remain later implementation stages in
-this plan.
+declared stable. Optimized large-index modular-polynomial construction,
+verified Krylov algorithms, Mestre reconstruction, and the Hilbert modules
+remain later implementation stages in this plan.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

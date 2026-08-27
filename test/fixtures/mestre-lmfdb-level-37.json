@@ -1,0 +1,28 @@
+{
+  "schema": "sagejs.mestre-lmfdb-newforms-oracle.v1",
+  "source_url": "https://www.lmfdb.org/api/mf_newforms/?level=37&weight=2&char_order=1&_format=json",
+  "retrieved_at": "2026-08-27T23:50:36.892606Z",
+  "raw_response_sha256": "33eddee004c8bbf97a0a2c9d4dd6cd86e2467c33987b1150a3cf96ca74416745",
+  "query_contract": {
+    "level": 37,
+    "weight": 2,
+    "character_order": 1,
+    "record_count": 2
+  },
+  "newforms": [
+    {
+      "label": "37.2.a.a",
+      "dimension": 1,
+      "hecke_eigenvalues": {"2": -2, "3": -3, "5": -2, "7": -1},
+      "related_objects": ["EllipticCurve/Q/37/a"]
+    },
+    {
+      "label": "37.2.a.b",
+      "dimension": 1,
+      "hecke_eigenvalues": {"2": 0, "3": 1, "5": 0, "7": -1},
+      "related_objects": ["EllipticCurve/Q/37/b"]
+    }
+  ],
+  "interpretation": "The two rational newform orbits account for the two-dimensional cuspidal quotient. For ell=2,3,5 their eigenvalues are exactly the roots of the Brandt characteristic polynomial after removing x-(ell+1)."
+}
+
