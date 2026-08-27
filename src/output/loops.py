@@ -558,6 +558,21 @@ def _region_expression_key(expression, slot_versions=None):
     return "binary:" + expression.operator + "(" + left + "," + right + ")"
 
 
+def _copy_region_operation_values(values):
+    """Copy the emitter's compile-time value table as a plain object.
+
+    The self-hosted emitter stores generated-expression keys as direct
+    JavaScript properties.  Python's runtime `dict(values)` uses a different
+    backing store after transpilation, so direct writes were not visible to
+    later membership checks.  An object literal plus explicit copies preserves
+    the intended compiler-internal representation.
+    """
+    answer = {}
+    for key in values:
+        answer[key] = values[key]
+    return answer
+
+
 def _print_region_expression(
     expression,
     representation,
@@ -976,11 +991,14 @@ def _print_region_statements(
     sequence_values=None,
     operation_values=None,
     slot_versions=None,
+    persistent_operation_values=None,
 ):
     if operation_values is None:
         operation_values = {}
     if slot_versions is None:
         slot_versions = [0 for _slot in slot_names]
+    if persistent_operation_values is None:
+        persistent_operation_values = {}
     for statement in statements:
         if statement.kind == "assign":
             value = _print_region_expression(
@@ -1084,8 +1102,9 @@ def _print_region_statements(
                 suffix,
                 streaming,
                 sequence_values,
-                dict(operation_values),
+                _copy_region_operation_values(operation_values),
                 body_versions,
+                persistent_operation_values,
             )
 
         output.with_block(consequent)
@@ -1110,8 +1129,9 @@ def _print_region_statements(
                     suffix,
                     streaming,
                     sequence_values,
-                    dict(operation_values),
+                    _copy_region_operation_values(operation_values),
                     alternative_versions,
+                    persistent_operation_values,
                 )
 
             output.with_block(alternative)
@@ -1120,7 +1140,7 @@ def _print_region_statements(
         # A conditional join creates a new availability scope.  Rebinding is
         # intentional: compiler-internal dictionaries lower to plain objects,
         # not Python runtime dictionaries with a `clear` method.
-        operation_values = {}
+        operation_values = _copy_region_operation_values(persistent_operation_values)
 
 
 def _print_closed_field_fallback(self, output, plan, names):
@@ -1178,6 +1198,9 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
     input_slots = getattr(plan, "inputSlots", None)
     if input_slots is None:
         input_slots = list(range(len(plan.slots)))
+    hoisted_expressions = getattr(plan, "hoistedExpressions", None)
+    if hoisted_expressions is None:
+        hoisted_expressions = []
     if representation == "extension":
         modulus_coefficients_name = []
         for component in range(degree):
@@ -1231,6 +1254,29 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                 coordinates.append(name)
             slot_names.append(coordinates)
 
+    expression_counter = [0]
+    hoisted_values = {}
+    hoisted_versions = [0 for _slot in slot_names]
+    for expression in hoisted_expressions:
+        _print_region_expression(
+            expression,
+            representation,
+            degree,
+            slot_names,
+            context_name,
+            index_name,
+            count_name,
+            modulus_name,
+            modulus_coefficients_name,
+            output,
+            expression_counter,
+            suffix,
+            streaming,
+            {},
+            hoisted_values,
+            hoisted_versions,
+        )
+
     if streaming:
         _print_region_variable(output, "ρσ_FieldStreamValid" + suffix, "true")
 
@@ -1262,12 +1308,13 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             modulus_name,
             modulus_coefficients_name,
             output,
-            [0],
+            expression_counter,
             suffix,
             streaming,
             {},
-            {},
+            _copy_region_operation_values(hoisted_values),
             [0 for _slot in slot_names],
+            hoisted_values,
         )
 
     output.with_block(body)

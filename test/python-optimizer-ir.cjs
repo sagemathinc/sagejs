@@ -486,6 +486,67 @@ def regrouped(values, zero, a, b):
   }
 });
 
+test("pure invariant ring subgraphs move to the guarded preheader", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def scaled(values, zero, a, b):
+    answer = zero
+    for x in values:
+        answer = answer+x*(a*b)
+    return answer
+
+def conditional(values, zero, a, b, pivot):
+    answer = zero
+    for x in values:
+        if x == pivot:
+            answer = answer+x*(a*b)
+        else:
+            answer = answer-x*(b*a)
+    return answer
+`, optimizerOptions());
+    const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.preheaderOperationCost),
+      [1, 1],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.operationCost),
+      [2, 5],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.targetCodeBytes),
+      [9728, 14848],
+    );
+    for (const plan of plans) {
+      assert.equal(plan.operands.hoistedExpressions.length, 1);
+      assert.equal(plan.operands.hoistedExpressions[0].kind, "binary");
+      assert.equal(plan.operands.hoistedExpressions[0].operator, "*");
+      assert.doesNotThrow(() => verifyInternalRegionPlan(plan));
+    }
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plans[0],
+        operands: { ...plans[0].operands, hoistedExpressions: [] },
+      }),
+      /stale hoisted expressions/,
+    );
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        ...plans[0],
+        operands: {
+          ...plans[0].operands,
+          preheaderOperationCost: plans[0].operands.preheaderOperationCost + 1,
+        },
+      }),
+      /stale preheader operation cost/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
 test("compact powers respect the advertised outlined-target code budget", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");

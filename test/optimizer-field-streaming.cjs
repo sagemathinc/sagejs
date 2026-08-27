@@ -623,3 +623,62 @@ print(regrouped(cubic_left, K(0), K(2)+a+aa, K(3)+4*a+2*aa), K._lastCompilerOpti
     await Promise.all([optimized.close(), generic.close()]);
   }
 });
+
+test("guarded loop invariants agree with O0 across ring representations", async () => {
+  const source = String.raw`
+def scaled(values, zero, a, b):
+    answer = zero
+    for x in values:
+        answer = answer+x*(a*b)
+    return answer
+
+def conditional(values, zero, a, b, pivot):
+    answer = zero
+    for x in values:
+        if x == pivot:
+            answer = answer+x*(a*b)
+        else:
+            answer = answer-x*(b*a)
+    return answer
+
+R = Zmod(1009)
+prime_values = tuple(R(index^2+3) for index in range(257))
+for function, arguments in (
+    (scaled, (prime_values, R(0), R(37), R(11))),
+    (conditional, (prime_values, R(0), R(37), R(11), prime_values[129])),
+):
+    R._lastCompilerOptimizationRoute = 'generic'
+    print(function(*arguments), R._lastCompilerOptimizationRoute)
+
+P.<t> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=t^3+t+1)
+aa = a*a
+cubic_values = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(257))
+factor_a = K(2)+a+aa
+factor_b = K(3)+4*a+2*aa
+for function, arguments in (
+    (scaled, (cubic_values, K(0), factor_a, factor_b)),
+    (conditional, (cubic_values, K(0), factor_a, factor_b, cubic_values[129])),
+):
+    K._lastCompilerOptimizationRoute = 'generic'
+    print(function(*arguments), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic"),
+      slow.stdout,
+    );
+    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 2);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 2);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
