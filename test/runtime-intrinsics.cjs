@@ -7,7 +7,7 @@ const { spawnSync } = require("node:child_process");
 const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const createCompiler = require("..");
+const { createCompiler } = require("..");
 const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");

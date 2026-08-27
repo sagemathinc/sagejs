@@ -8,6 +8,7 @@ const {
   contentAddressedExampleId,
   examplesForEntry,
   normalizedExampleText,
+  sourceForEntry,
 } = require("../scripts/reference-examples.cjs");
 const { extractSageDoctests } = require("../tools/sage-doctest-fixture.cjs");
 
@@ -110,4 +111,40 @@ def square(n):
   assert.equal(example.line, fixture.groups[0].examples[0].line);
   assert.equal(example.provenance_id, fixture.groups[0].examples[0].id);
   assert.equal(example.id, referenceId(fixture.groups[0].examples[0]));
+});
+
+test("private Sage.js implementations can document their public builtin name", () => {
+  const source = `
+def _sagejs_version():
+    """
+    sage: version().startswith("Sage.js v")
+    True
+    """
+`;
+  const fixture = extractSageDoctests(source, {
+    repository: "https://example.invalid/sagejs",
+    revision: "working-tree",
+    path: "src/baselib/builtins.py",
+  });
+  const sources = {
+    definitions: [{
+      name: "_sagejs_version",
+      qualified: "_sagejs_version",
+      path: "src/baselib/builtins.py",
+    }],
+    groups: fixture.groups.map((group) => ({
+      ...group,
+      path: fixture.source.path,
+      origin: "sagejs",
+    })),
+  };
+  const entry = {
+    name: "version",
+    aliases: [],
+    module: "sagejs._baselib.builtins",
+    tags: [],
+  };
+
+  assert.equal(examplesForEntry(entry, sources).length, 1);
+  assert.equal(sourceForEntry(entry, sources).name, "_sagejs_version");
 });

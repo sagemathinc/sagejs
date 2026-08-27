@@ -65,6 +65,9 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     })
     .concat(compiler_only ? ["compiler_bootstrap.py"] : []);
   var ans = { pretty: "" };
+  var version_info = JSON.parse(
+    fs.readFileSync(path.join(src_path, "..", "sagejs-version.json"), "utf-8"),
+  );
 
   // The concatenated baselib is the compiler prologue.  Its low-level Python
   // object helpers must exist before another module finalizes its first class.
@@ -227,6 +230,9 @@ async function compile_baselib(PyLang, src_path, compiler_only = false) {
     });
 
     ans.pretty +=
+      "globalThis.__sagejs_version_info__ = Object.freeze(" +
+      JSON.stringify(version_info) +
+      ");\n" +
       "var ρσ_baselib_modules = Object.create(null);\n" +
       "var ρσ_baselib_facade = Object.create(null);\n";
     // Install the registry before module initialization.  This is the
@@ -364,6 +370,7 @@ function check_for_changes(base_path, src_path, signatures) {
   });
   var compiler_files = [
     module.filename,
+    path.join(base_path, "sagejs-version.json"),
     path.join(base_path, "tools", "baselib-modules.cjs"),
     path.join(base_path, "tools", "compiler.ts"),
     path.join(base_path, "tools", "runtime-bootstrap.ts"),

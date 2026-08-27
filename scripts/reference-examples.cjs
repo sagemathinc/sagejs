@@ -170,15 +170,21 @@ function tailName(value) {
   return value.split(".").at(-1).toLowerCase();
 }
 
+function publicImplementationName(value) {
+  const name = tailName(value);
+  return name.startsWith("_sagejs_") ? name.slice("_sagejs_".length) : name;
+}
+
 function examplesForEntry(entry, sources) {
   const names = new Set([entry.name, ...entry.aliases].map(tailName));
   const exactNames = new Set([entry.name, ...entry.aliases]);
   const matches = sources.groups.filter((group) => {
     if ((group.covers ?? []).some((name) => exactNames.has(name))) return true;
     const owner = String(group.owner);
-    if (exactNames.has(owner)) return true;
+    const implementationName = publicImplementationName(owner);
+    if (exactNames.has(owner) || exactNames.has(implementationName)) return true;
     const ownerParts = owner.split(".");
-    if (!names.has(tailName(owner))) return false;
+    if (!names.has(implementationName)) return false;
     // An unqualified owner (the common shape for an extracted module-level
     // function) can safely match a namespaced public entry.  Qualified method
     // owners must also agree on their class/namespace, otherwise Graph.order
@@ -217,7 +223,7 @@ function examplesForEntry(entry, sources) {
 function sourceForEntry(entry, sources) {
   const names = new Set([entry.name, ...entry.aliases].map(tailName));
   let candidates = sources.definitions.filter(
-    (definition) => names.has(definition.name.toLowerCase()),
+    (definition) => names.has(publicImplementationName(definition.name)),
   );
   if (!candidates.length) return null;
   if (entry.tags.includes("graph theory")) {

@@ -6,7 +6,7 @@
 
 const { existsSync, readFileSync, readdirSync } = require("node:fs");
 const { basename, join, resolve } = require("node:path");
-const createCompiler = require("../..");
+const { createCompiler } = require("../..");
 const { loadCatalog } = require("./abi-catalog.cjs");
 const { loadDeclarationDocument } = require("./declarations.cjs");
 

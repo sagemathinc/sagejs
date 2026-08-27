@@ -92,11 +92,12 @@ frontend and CST lowerer as Node. The three small parser WASM assets and a
 browser bundle of the frontend are local package resources; the historical
 stage-zero parser is not part of this path.
 
-The public `@sagemath/sagejs-flint-wasm/kernel` entry point packages this
-architecture as an embeddable session:
+The package-shaped production directory exposes this architecture as an
+embeddable session. During the early alpha it is built from the Sage.js source
+tree and copied to the embedding site's own origin:
 
 ```js
-import { createSage } from "@sagemath/sagejs-flint-wasm/kernel";
+import { createSage } from "./vendor/sagejs-wasm/kernel.mjs";
 
 const sage = await createSage();
 sage.on("stdout", (text) => appendOutput(text));
@@ -109,7 +110,7 @@ installs a narrow `worker_threads` adapter and a local-file fetch adapter; it
 does not load the native Node addon:
 
 ```js
-import { createSage } from "@sagemath/sagejs-flint-wasm/node";
+import { createSage } from "./packages/flint-wasm/node-kernel.mjs";
 
 const sage = await createSage();
 console.log((await sage.evaluate("factor(2026)")).stdout);
@@ -184,7 +185,7 @@ Rich graphics can be rendered with the separate adapter:
 ```js
 import {
   renderSageDisplay,
-} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+} from "./vendor/sagejs-wasm/plotly-renderer.mjs";
 
 const result = await sage.evaluate(
   "plot(lambda x: x*x, (-2, 2), title='Squares')",

@@ -33,6 +33,10 @@ try {
     join(temporaryRoot, "package.json"),
     `${JSON.stringify(manifest, null, 2)}\n`,
   );
+  writeFileSync(
+    join(temporaryRoot, "pnpm-workspace.yaml"),
+    `overrides:\n  "@sagemath/sagejs-linux-x64": "file:${nativeArchive}"\n`,
+  );
   runPnpm(["install", "--ignore-scripts"], {
     cwd: temporaryRoot,
     stdio: "inherit",
@@ -45,30 +49,60 @@ try {
     ),
   );
   assert.equal(installedManifest.version, expectedVersion);
-  const embeddingOutput = execFileSync(
+  const commonJsOutput = execFileSync(
     process.execPath,
     [
       "-e",
       [
-        'const { createSage } = require("@sagemath/sagejs/kernel");',
+        'const api = require("@sagemath/sagejs");',
+        'const kernel = require("@sagemath/sagejs/kernel");',
+        'if (typeof api.createCompiler !== "function") throw new Error("missing createCompiler");',
+        'if (api.createSage !== kernel.createSage) throw new Error("kernel export disagrees with package root");',
+        'try { require.resolve("@sagemath/sagejs-flint"); throw new Error("private FLINT workspace leaked"); }',
+        'catch (error) { if (error.code !== "MODULE_NOT_FOUND") throw error; }',
         "(async () => {",
-        "  const sage = await createSage();",
-        '  const result = await sage.evaluate("sum([1..100])");',
+        "  const sage = await api.createSage();",
+        '  const result = await sage.evaluate("factor(370309)");',
         "  console.log(result.repr);",
+        '  console.log((await sage.evaluate("version()")).repr);',
+        '  console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
         "  await sage.close();",
         "})().catch((error) => { console.error(error); process.exitCode = 1; });",
       ].join("\n"),
     ],
     { cwd: temporaryRoot, encoding: "utf8" },
   );
-  assert.equal(embeddingOutput.trim(), "5050");
+  assert.equal(
+    commonJsOutput.trim(),
+    [
+      "67 * 5527",
+      `'Sage.js v${expectedVersion} [linux-x64], Release Date: ` +
+        `${require(join(root, "sagejs-version.json")).release_date}'`,
+      "'sagejs.version/v1'",
+    ].join("\n"),
+  );
+  const esmOutput = execFileSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "-e",
+      [
+        'import { createSage } from "@sagemath/sagejs";',
+        "const sage = await createSage();",
+        'console.log((await sage.evaluate("number_of_partitions(10)")).repr);',
+        "await sage.close();",
+      ].join("\n"),
+    ],
+    { cwd: temporaryRoot, encoding: "utf8" },
+  );
+  assert.equal(esmOutput.trim(), "42");
   const executable = join(temporaryRoot, "node_modules", ".bin", "sagejs");
   const output = execFileSync(executable, ["--jupyter-kernel-self-test"], {
     cwd: temporaryRoot,
     encoding: "utf8",
   });
   assert.equal(output.trim(), "Sage.js Jupyter SEA runtime passed.");
-  console.log("Native npm dispatcher and documented kernel export tests passed");
+  console.log("Isolated CommonJS, ESM, native mathematics, and CLI npm tests passed");
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
 }

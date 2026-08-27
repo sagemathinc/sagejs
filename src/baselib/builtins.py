@@ -18,6 +18,69 @@ _Int = int
 _Str = str
 
 
+def _sagejs_version(json: _Bool = False) -> Any:
+    """Return the Sage.js release string or its machine-readable record.
+
+    `version()` returns a concise human-readable string. `version(True)` and
+    `version(json=True)` return a detached dictionary with stable field names.
+
+    ### Examples
+
+    ```sage
+    sage: version().startswith("Sage.js v")
+    True
+    sage: info = version(json=True)
+    sage: info["schema"]
+    sagejs.version/v1
+    sage: info["name"]
+    Sage.js
+    ```
+    """
+
+    info = runtime.reflect.get(runtime.global_object, "__sagejs_version_info__")
+    if info is runtime.undefined:
+        raise RuntimeError("the Sage.js host did not install version metadata")
+    platform = runtime.reflect.get(info, "platform")
+    if platform is runtime.undefined:
+        process = runtime.reflect.get(runtime.global_object, "process")
+        host_platform = runtime.reflect.get(process, "platform")
+        architecture = runtime.reflect.get(process, "arch")
+        if host_platform == "darwin":
+            host_platform = "macos"
+        elif host_platform == "win32":
+            host_platform = "windows"
+        elif host_platform is runtime.undefined:
+            host_platform = "unknown"
+        if architecture is runtime.undefined:
+            architecture = "wasm32" if host_platform == "browser" else "unknown"
+        platform = host_platform + "-" + architecture
+    answer = {
+        "schema": runtime.reflect.get(info, "schema"),
+        "name": runtime.reflect.get(info, "name"),
+        "version": runtime.reflect.get(info, "version"),
+        "release_date": runtime.reflect.get(info, "release_date"),
+        "platform": platform,
+    }
+    if json:
+        return answer
+    release = "v" + answer["version"]
+    return (
+        answer["name"]
+        + " "
+        + release
+        + " ["
+        + answer["platform"]
+        + "], Release Date: "
+        + answer["release_date"]
+    )
+
+
+runtime.reflect.set(_sagejs_version, "__name__", "version")
+if runtime.reflect.get(runtime.global_object, "__sagejs_sage_mode__") is True:
+    runtime.reflect.set(runtime.global_object, "version", _sagejs_version)
+    runtime.register_doc("version", _sagejs_version)
+
+
 def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
     """Return checked WebAssembly capabilities or one public workflow.
 

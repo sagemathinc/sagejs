@@ -26,9 +26,6 @@ importers:
       web-tree-sitter:
         specifier: 0.26.11
         version: 0.26.11
-      zeromq:
-        specifier: 6.5.0
-        version: 6.5.0
     devDependencies:
       '@astral-sh/ruff-wasm-nodejs':
         specifier: 0.16.0
@@ -90,6 +87,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      zeromq:
+        specifier: 6.5.0
+        version: 6.5.0
     optionalDependencies:
       '@sagemath/sagejs-darwin-arm64':
         specifier: workspace:*

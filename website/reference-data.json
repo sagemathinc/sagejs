@@ -11757,6 +11757,24 @@
       },
       {
         "schema_version": 1,
+        "name": "version",
+        "aliases": [],
+        "kind": "function",
+        "module": "sagejs._baselib.builtins",
+        "signature": "version(json: _Bool=False) -> Any",
+        "summary": "Return the Sage.js release string or its machine-readable record.",
+        "doc": "Return the Sage.js release string or its machine-readable record.\n\n`version()` returns a concise human-readable string. `version(True)` and\n`version(json=True)` return a detached dictionary with stable field names.\n\n### Examples\n\n```sage\nsage: version().startswith(\"Sage.js v\")\nTrue\nsage: info = version(json=True)\nsage: info[\"schema\"]\nsagejs.version/v1\nsage: info[\"name\"]\nSage.js\n```",
+        "tags": [],
+        "backends": [],
+        "sage_compatibility": {
+          "status": "compatible"
+        },
+        "provenance": [],
+        "references": [],
+        "limitations": []
+      },
+      {
+        "schema_version": 1,
         "name": "Zmod",
         "aliases": [],
         "kind": "function",
@@ -31979,16 +31997,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6394,
+        "line": 6457,
         "excerpt": {
-          "start_line": 6382,
+          "start_line": 6445,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6405,
+          "line": 6468,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -32004,7 +32022,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6407,
+          "line": 6470,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -32020,7 +32038,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6409,
+          "line": 6472,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -32280,9 +32298,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8153,
+        "line": 8216,
         "excerpt": {
-          "start_line": 8141,
+          "start_line": 8204,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -33514,6 +33532,100 @@
     },
     {
       "schema_version": 1,
+      "name": "version",
+      "aliases": [],
+      "kind": "function",
+      "module": "sagejs._baselib.builtins",
+      "signature": "version(json: _Bool=False) -> Any",
+      "summary": "Return the Sage.js release string or its machine-readable record.",
+      "doc": "Return the Sage.js release string or its machine-readable record.\n\n`version()` returns a concise human-readable string. `version(True)` and\n`version(json=True)` return a detached dictionary with stable field names.\n\n### Examples\n\n```sage\nsage: version().startswith(\"Sage.js v\")\nTrue\nsage: info = version(json=True)\nsage: info[\"schema\"]\nsagejs.version/v1\nsage: info[\"name\"]\nSage.js\n```",
+      "tags": [],
+      "backends": [],
+      "sage_compatibility": {
+        "status": "compatible"
+      },
+      "provenance": [],
+      "references": [],
+      "limitations": [],
+      "source": {
+        "name": "_sagejs_version",
+        "qualified": "_sagejs_version",
+        "path": "src/baselib/builtins.py",
+        "line": 21,
+        "excerpt": {
+          "start_line": 9,
+          "text": "\nfrom typing import Any, Callable, Iterator\n\nimport sagejs.runtime as runtime\n\n_builtins_number_class = runtime.native_number_class\n_Bool = bool\n_Float = float\n_Int = int\n_Str = str\n\n\ndef _sagejs_version(json: _Bool = False) -> Any:\n    \"\"\"Return the Sage.js release string or its machine-readable record.\n\n    `version()` returns a concise human-readable string. `version(True)` and\n    `version(json=True)` return a detached dictionary with stable field names.\n\n    ### Examples\n\n    ```sage\n    sage: version().startswith(\"Sage.js v\")\n    True\n    sage: info = version(json=True)\n    sage: info[\"schema\"]"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/builtins.py#bfcaa180a823102e-3cbc87c7681f34db",
+          "line": 30,
+          "source": "version().startswith(\"Sage.js v\")",
+          "want": "True\n",
+          "tags": [],
+          "owner": "_sagejs_version",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#bfcaa180a823102e-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#4270aaccf86fac20-e3b0c44298fc1c14",
+          "line": 32,
+          "source": "info = version(json=True)",
+          "want": "",
+          "tags": [],
+          "owner": "_sagejs_version",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#4270aaccf86fac20-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#d181e8a0e9db5e6c-60ebc8787044b57f",
+          "line": 33,
+          "source": "info[\"schema\"]",
+          "want": "sagejs.version/v1\n",
+          "tags": [],
+          "owner": "_sagejs_version",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#d181e8a0e9db5e6c-60ebc8787044b57f",
+            "status": "pass",
+            "actual": "sagejs.version/v1\n"
+          }
+        },
+        {
+          "id": "src/baselib/builtins.py#578a06e6e0f5f19c-546311dad70b3619",
+          "line": 35,
+          "source": "info[\"name\"]",
+          "want": "Sage.js\n",
+          "tags": [],
+          "owner": "_sagejs_version",
+          "path": "src/baselib/builtins.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/builtins.py#578a06e6e0f5f19c-546311dad70b3619",
+            "status": "pass",
+            "actual": "Sage.js\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "Zmod",
       "aliases": [],
       "kind": "function",
@@ -33633,23 +33745,25 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 290,
-      "with_docstring": 290,
-      "with_summary": 290,
+      "registry_entries": 291,
+      "with_docstring": 291,
+      "with_summary": 291,
       "with_tags": 290,
       "with_backend": 290,
       "with_provenance": 290,
       "with_compatibility_notes": 290,
       "with_references": 88,
-      "markdown_docstrings": 290,
+      "markdown_docstrings": 291,
       "invalid_markdown_entries": [],
-      "incomplete_entries": []
+      "incomplete_entries": [
+        "version"
+      ]
     },
     "examples": {
-      "entries_with_examples": 195,
+      "entries_with_examples": 196,
       "entries_without_examples": 95,
-      "documented": 182,
-      "verified": 176,
+      "documented": 186,
+      "verified": 180,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

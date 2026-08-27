@@ -13,6 +13,8 @@ import { runPytestCli } from "./pytest";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
 import { basename, dirname, extname } from "path";
+import { runStdioKernel } from "./stdio-kernel";
+import { SAGEJS_VERSION_INFO } from "./version-info";
 
 const executable = basename(process.argv[1]);
 const executableStem = basename(executable, extname(executable)).toLowerCase();
@@ -30,6 +32,7 @@ interface SeaArguments {
     | "jupyter-uninstall"
     | "jupyter-kernel"
     | "jupyter-self-test"
+    | "embedded-kernel"
     | "pytest";
   execute: boolean;
   sage: boolean;
@@ -105,6 +108,18 @@ function parseArguments(): SeaArguments {
     tokens: false,
   };
   const rawArguments = process.argv.slice(2);
+  if (rawArguments.includes("--embedded-kernel")) {
+    const allowed = new Set(["--embedded-kernel", "--python", "--sage"]);
+    const unexpected = rawArguments.find((argument) => !allowed.has(argument));
+    if (unexpected !== undefined) {
+      throw new Error(
+        `unknown embedded-kernel option ${JSON.stringify(unexpected)}`,
+      );
+    }
+    args.mode = "embedded-kernel";
+    args.sage = !rawArguments.includes("--python");
+    return args;
+  }
   if (rawArguments.includes("--jupyter-kernel-self-test")) {
     if (rawArguments.length !== 1) {
       throw new Error("--jupyter-kernel-self-test takes no other arguments");
@@ -256,8 +271,7 @@ function parseArguments(): SeaArguments {
       !optionsEnded &&
       (argument === "--version" || argument === "-V")
     ) {
-      const packageJson = require("../../package.json");
-      console.log(`sagejs ${packageJson.version}`);
+      console.log(`sagejs ${SAGEJS_VERSION_INFO.version}`);
       process.exit(0);
     } else if (!optionsEnded && argument.startsWith("-")) {
       throw new Error(`unknown option ${JSON.stringify(argument)}`);
@@ -276,6 +290,10 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
+  if (argv.mode === "embedded-kernel") {
+    await runStdioKernel(argv.sage ? "sage" : "python");
+    return;
+  }
   if (argv.mode === "jupyter-install" || argv.mode === "jupyter-uninstall") {
     const jupyter = await import("./jupyter-kernel.js");
     const jupyterArguments = argv.jupyter_args ?? [];

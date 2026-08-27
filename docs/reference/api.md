@@ -8145,6 +8145,35 @@ sage: (x^2 + y).derivative(x)
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
 
+## `version`
+
+```sage
+version(json: _Bool=False) -> Any
+```
+
+Return the Sage.js release string or its machine-readable record.
+
+`version()` returns a concise human-readable string. `version(True)` and
+`version(json=True)` return a detached dictionary with stable field names.
+
+### Examples
+
+```sage
+sage: version().startswith("Sage.js v")
+True
+sage: info = version(json=True)
+sage: info["schema"]
+sagejs.version/v1
+sage: info["name"]
+Sage.js
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs._baselib.builtins`
+- Sage compatibility: compatible
+
 ## `Zmod`
 
 ```sage

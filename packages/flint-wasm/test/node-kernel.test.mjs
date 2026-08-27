@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createSage } from "../node-kernel.mjs";
+
+const sagejsVersion = JSON.parse(
+  readFileSync(new URL("../../../sagejs-version.json", import.meta.url), "utf8"),
+);
 
 test("the Node host runs the isolated WebAssembly Sage kernel", async () => {
   const session = await createSage();
@@ -15,6 +20,13 @@ test("the Node host runs the isolated WebAssembly Sage kernel", async () => {
       result.instrumentation.routes.some(
         (route) => route.execution_target === "wasm-artifact",
       ),
+    );
+    const version = await session.evaluate("version(True)");
+    assert.match(version.repr, /'schema': 'sagejs\.version\/v1'/);
+    assert.match(version.repr, /'platform': 'browser-wasm32'/);
+    assert.match(
+      version.repr,
+      new RegExp(`'version': '${sagejsVersion.version.replaceAll(".", "\\.")}'`),
     );
   } finally {
     await session.close();

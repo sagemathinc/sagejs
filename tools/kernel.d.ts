@@ -24,10 +24,22 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  language?:
+    | "sage"
+    | "python"
+    | "magma"
+    | "macaulay2"
+    | "maple"
+    | "matlab"
+    | "wolfram";
 }
 
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
+}
+
+export interface SageLanguageOptions {
+  language?: SageEvaluationOptions["language"];
 }
 
 export interface SageCompletion {
@@ -112,7 +124,10 @@ export class SageSession extends EventEmitter {
   complete(source: string, cursorPosition: number): Promise<SageCompletion>;
   inspect(source: string, cursorPosition: number): Promise<SageInspection>;
   documentation(): Promise<DocumentationCatalog>;
-  isComplete(source: string): Promise<SageCompleteness>;
+  isComplete(
+    source: string,
+    options?: SageLanguageOptions,
+  ): Promise<SageCompleteness>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;
