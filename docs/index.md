@@ -17,6 +17,7 @@ Start with:
 - [Embedding](../EMBEDDING.md)
 - [Jupyter](../JUPYTER.md)
 - [Measuring execution](timing.md)
+- [Optimizing mathematics compiler laboratory](optimizing-mathematics-compiler-lab.md)
 - [Polyglot execution](../POLYGLOT.md)
 - [Python standard library compatibility](python-standard-library.md)
 - [Certified number-field maximal orders](number-field-maximal-orders.md)
