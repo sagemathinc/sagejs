@@ -367,6 +367,39 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
         plan.operands.iterationOrder !== "forward") {
       throw new TypeError("optimizer non-sequence region reverses iteration");
     }
+    if (plan.operands.iteratorKind !== "range" &&
+        plan.operands.iteratorKind !== "sequence" &&
+        plan.operands.iteratorKind !== "zip") {
+      throw new TypeError("optimizer ring region has invalid iterator kind");
+    }
+    if (plan.operands.iteratorKind === "zip" &&
+        typeof plan.operands.zipStrict !== "boolean") {
+      throw new TypeError("optimizer ring region has invalid zip strictness");
+    }
+    if (plan.operands.iteratorKind === "zip") {
+      const iterables = plan.operands.zipIterables;
+      const targets = plan.operands.zipTargets;
+      const bindings = plan.operands.zipSequenceBindings;
+      if (!Array.isArray(iterables) || !Array.isArray(targets) ||
+          !Array.isArray(bindings) ||
+          iterables.length < 2 || iterables.length > 4 ||
+          targets.length !== iterables.length ||
+          bindings.length !== iterables.length ||
+          iterables.some((source: any) =>
+            !source || typeof source.name !== "string") ||
+          targets.some((target: any) =>
+            !target || typeof target.name !== "string") ||
+          new Set(targets.map((target: any) => target.name)).size !== targets.length) {
+        throw new TypeError("optimizer zip region has invalid bindings");
+      }
+      if (iterables.some((source: any, index: number) => {
+        const sequence = bindings[index];
+        return !Number.isSafeInteger(sequence) || sequence < 0 ||
+          sequence >= sequences.length || sequences[sequence]?.name !== source.name;
+      })) {
+        throw new TypeError("optimizer zip region has stale sequence bindings");
+      }
+    }
     const observedSequenceAccesses = new Map<string, number>();
     verifyStatements(
       plan.operands.statements,

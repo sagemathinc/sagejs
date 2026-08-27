@@ -1039,12 +1039,32 @@ def _print_closed_field_fallback(self, output, plan, names):
         output.print(
             "(var " + fallback_value + " of ρσ_Iterable(" + names["range"] + "))"
         )
+    elif plan.iteratorKind == "zip":
+        output.print("(var " + fallback_value + " of ρσ_Iterable(")
+        plan.zipCall.print(output)
+        output.print("))")
     else:
         iterable = names["iterable"]
         if plan.iterationOrder == "reverse":
             iterable = "ρσ_reversed(" + iterable + ")"
         output.print("(var " + fallback_value + " of ρσ_Iterable(" + iterable + "))")
     output.space()
+    if plan.iteratorKind == "zip":
+
+        def zip_body():
+            output.indent()
+            output.assign("ρσ_unpack")
+            output.print(fallback_value)
+            output.end_statement()
+            unpack_tuple(plan.zipTargets, output)
+            for statement in self.body.body:
+                output.indent()
+                statement.print(output)
+                output.newline()
+
+        output.with_block(zip_body)
+        output.newline()
+        return
     self.simple_for_index = fallback_value
     self._do_print_body(output)
     output.newline()
@@ -1168,16 +1188,30 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                 else "'v8-extension-tuple-stream'"
             )
             output.end_statement()
-        output.indent()
-        output.assign(self.init)
         if plan.iteratorKind == "range":
+            output.indent()
+            output.assign(self.init)
             output.print(count_name + " - 1")
-        else:
+            output.end_statement()
+        elif plan.iteratorKind == "sequence":
+            output.indent()
+            output.assign(self.init)
             if plan.iterationOrder == "reverse":
                 output.print(names["iterable"] + "[0]")
             else:
                 output.print(names["iterable"] + "[" + count_name + " - 1]")
-        output.end_statement()
+            output.end_statement()
+        else:
+            # The reviewed zip region has plain symbol targets and immutable
+            # branded tuple inputs, so left-to-right scalar assignment is the
+            # exact final successful unpacking effect.
+            for target_index, target in enumerate(plan.zipTargets):
+                output.indent()
+                output.assign(target)
+                output.print(
+                    names["zip_iterables"][target_index] + "[" + count_name + " - 1]"
+                )
+                output.end_statement()
 
     if streaming:
         output.with_block(materialize)
@@ -1207,6 +1241,9 @@ def print_closed_field_region(self, output):
         "range": "ρσ_FieldRange" + suffix,
         "modulus": "ρσ_FieldModulus" + suffix,
         "modulus_coefficients": "ρσ_FieldModulusCoefficients" + suffix,
+        "zip_eligible": "ρσ_FieldZipEligible" + suffix,
+        "zip_iterables": [],
+        "zip_lengths": [],
     }
     if plan.iteratorKind == "sequence":
         output.print("var")
@@ -1220,7 +1257,7 @@ def print_closed_field_region(self, output):
             names["count"],
             "ρσ_machine_field_sequence_length(" + names["iterable"] + ")",
         )
-    else:
+    elif plan.iteratorKind == "range":
         output.print("var")
         output.space()
         output.assign(names["range"])
@@ -1234,13 +1271,45 @@ def print_closed_field_region(self, output):
             names["count"],
             names["range"] + "._length",
         )
+    else:
+        for index, source in enumerate(plan.zipIterables):
+            iterable_name = "ρσ_FieldZipIterable" + suffix + "_" + str(index)
+            length_name = "ρσ_FieldZipLength" + suffix + "_" + str(index)
+            names["zip_iterables"].append(iterable_name)
+            names["zip_lengths"].append(length_name)
+            output.print("var")
+            output.space()
+            output.assign(iterable_name)
+            source.print(output)
+            output.end_statement()
+            output.indent()
+            _print_region_variable(
+                output,
+                length_name,
+                "ρσ_machine_field_sequence_length(" + iterable_name + ")",
+            )
+        _print_region_variable(
+            output,
+            names["count"],
+            names["zip_lengths"][0]
+            if plan.zipStrict
+            else "Math.min(" + ",".join(names["zip_lengths"]) + ")",
+        )
+        eligibility = " && ".join(length + " >= 0" for length in names["zip_lengths"])
+        if plan.zipStrict:
+            eligibility += " && " + " && ".join(
+                length + " === " + names["zip_lengths"][0]
+                for length in names["zip_lengths"][1:]
+            )
+        _print_region_variable(output, names["zip_eligible"], eligibility)
 
     # A zero-trip loop must not read body-only names or sequence elements.
     # Versioning therefore occurs only after the ordinary iterable/count
     # expression has been evaluated and a nonzero trip is established.
-    output.indent()
-    output.print("if (" + names["count"] + " !== 0)")
-    output.space()
+    if plan.iteratorKind != "zip":
+        output.indent()
+        output.print("if (" + names["count"] + " !== 0)")
+        output.space()
 
     def nonempty_region():
         output.indent()
@@ -1258,6 +1327,13 @@ def print_closed_field_region(self, output):
                 output.comma()
             if plan.iteratorKind == "sequence" and index == 0:
                 output.print(names["iterable"])
+            elif plan.iteratorKind == "zip":
+                source_index = 0
+                for binding_index, binding in enumerate(plan.zipSequenceBindings):
+                    if binding == index:
+                        source_index = binding_index
+                        break
+                output.print(names["zip_iterables"][source_index])
             else:
                 sequence.node.print(output)
         output.print("],")
@@ -1395,7 +1471,28 @@ def print_closed_field_region(self, output):
 
         output.with_block(fallback)
 
-    output.with_block(nonempty_region)
+    if plan.iteratorKind == "zip":
+        output.indent()
+        output.print("if (" + names["zip_eligible"] + ")")
+        output.space()
+
+        def eligible_zip():
+            output.indent()
+            output.print("if (" + names["count"] + " !== 0)")
+            output.space()
+            output.with_block(nonempty_region)
+
+        output.with_block(eligible_zip)
+        output.space()
+        output.print("else")
+        output.space()
+
+        def invalid_zip():
+            _print_closed_field_fallback(self, output, plan, names)
+
+        output.with_block(invalid_zip)
+    else:
+        output.with_block(nonempty_region)
 
 
 def print_async_for(self, output):

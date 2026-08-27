@@ -11,6 +11,9 @@ const createCompiler = require("../dist/tools/compiler.js").default;
 const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
+const {
+  verifyInternalRegionPlan,
+} = require("../dist/tools/python/optimizer/verifier.js");
 
 const fixture = JSON.parse(readFileSync(join(
   __dirname,
@@ -169,6 +172,105 @@ test("deterministic grammar-generated regions agree with O0 across shapes", asyn
     } finally {
       await Promise.all([optimized.close(), generic.close()]);
     }
+  }
+});
+
+test("builtin zip tuple loops retain strictness, unpacking, and exact fallback", async () => {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  const source = String.raw`
+P.<x> = PolynomialRing(GF(97))
+K.<a> = GF(97^3, modulus=x^3+x+4)
+def strict_dot(left, right):
+    value = K(0)
+    adjustment = K(3)+a
+    for first, second in zip(left, right, strict=True):
+        value = value + first*second
+        if first != second:
+            adjustment = adjustment + first-second
+    return value, adjustment, first, second
+def shortest_dot(left, right):
+    value = K(0)
+    for first, second in zip(left, right):
+        value = value + first*second
+    return value, first, second
+left = tuple(K(i+1)+(i^2+2)*a for i in range(9))
+right = tuple(K(i^2+3)+(2*i+1)*a for i in range(9))
+short = tuple(right[i] for i in range(6))
+print(strict_dot(left, right))
+print(shortest_dot(left, short))
+try:
+    strict_dot(left, short)
+except ValueError as error:
+    print(type(error).__name__, str(error))
+print(K._lastCompilerOptimizationRoute)
+`;
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    const fastLines = fast.stdout.trim().split("\n");
+    const slowLines = slow.stdout.trim().split("\n");
+    assert.deepEqual(fastLines.slice(0, 3), slowLines.slice(0, 3));
+    assert.match(fastLines[2], /zip\(\) argument 2 is shorter than argument 1/);
+    assert.equal(fastLines[3], "v8-extension-tuple-stream");
+    assert.equal(slowLines[3], "generic");
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
+test("zip regions record explicit bindings and reject shadowed zip", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const accepted = frontend.parse(`
+def dot(left, right, K):
+    value = K(0)
+    for first, second in zip(left, right, strict=True):
+        value = value + first*second
+    return value
+`, parserOptions);
+    const [region] = accepted.optimization_ir.regions.filter((candidate) =>
+      candidate.passId === "math.closed-ring-region.v1"
+    );
+    assert.equal(region.selected, true);
+    const plan = accepted.body[0].body[1].optimization_region.operands;
+    assert.equal(plan.iteratorKind, "zip");
+    assert.equal(plan.zipStrict, true);
+    assert.deepEqual(plan.zipSequenceBindings, [0, 1]);
+    assert.deepEqual(plan.zipTargets.map((target) => target.name), [
+      "first", "second",
+    ]);
+    assert.throws(() => verifyInternalRegionPlan({
+      ...accepted.body[0].body[1].optimization_region,
+      operands: { ...plan, zipSequenceBindings: [0, 99] },
+    }), /stale sequence bindings/);
+
+    const shadowed = frontend.parse(`
+def dot(zip, left, right, K):
+    value = K(0)
+    for first, second in zip(left, right, strict=True):
+        value = value + first*second
+    return value
+`, parserOptions);
+    assert.equal(shadowed.optimization_ir.regions.some((candidate) =>
+      candidate.passId === "math.closed-ring-region.v1"
+    ), false);
+
+    const duplicateTarget = frontend.parse(`
+def dot(left, right, K):
+    value = K(0)
+    for item, item in zip(left, right, strict=True):
+        value = value + item
+    return value
+`, parserOptions);
+    assert.equal(duplicateTarget.optimization_ir.regions.some((candidate) =>
+      candidate.passId === "math.closed-ring-region.v1"
+    ), false);
+  } finally {
+    frontend.close();
   }
 });
 
