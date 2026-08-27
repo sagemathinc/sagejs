@@ -3213,12 +3213,15 @@ class ClassUnitGroupEngine:
                 return collector
             if packed_factor_base is not None:
                 self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
-            selected: Any = select(
+            selected_result: Any = select(
                 matrix,
                 tuple(proposal[1] for proposal in initial_proposals),
                 candidates,
                 len(factor_base),
             )
+            if not isinstance(selected_result, tuple) or len(selected_result) != 2:
+                return collector
+            selected, _selected_rank = selected_result
             if selected is None or len(selected) > remaining:
                 return collector
             dependency_candidates: Any = select_dependencies(

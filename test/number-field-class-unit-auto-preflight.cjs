@@ -101,6 +101,12 @@ for index, (polynomial, proof, order, invariants, mode) in enumerate(cases):
         assert result.proof_status == "exact-relations-conditional-grh"
         assert resources["cubic_specialized_seed_skips"] == 1
         assert resources["cubic_relation_seed_uses"] == 0
+        # The ordinary engine consumes the packed cubic prefix after the
+        # deliberately bounded class-number producer declines.  In
+        # particular, the selector's retained-rank metadata must not be
+        # mistaken for a pair of relation rows at this handoff.
+        assert resources["cubic_integral_sieve_uses"] == 1
+        assert resources["cubic_integral_sieve_relations"] > 0
         assert resources["relation_attempts"] == 0
     else:
         assert artifact.complete and artifact.diagnostics["factor_base_size"] == 0

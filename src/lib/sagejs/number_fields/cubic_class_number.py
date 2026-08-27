@@ -168,40 +168,6 @@ def _is_integral_cubic_power_basis(order: Any) -> bool:
     return scale is not None and int(runtime.integer_bigint(scale)) == 1
 
 
-def _power_basis_cubic_element_norm(
-    order: Any, coordinates: tuple[Any, ...]
-) -> int | None:
-    """Evaluate an integral power-basis cubic norm with integer arithmetic."""
-    if len(coordinates) != 3 or not _is_integral_cubic_power_basis(order):
-        return None
-    values: list[int] = []
-    for value in coordinates:
-        rational = sage.QQ(value)
-        if rational._denominator != 1:
-            return None
-        values.append(int(rational._numerator))
-    maximal_module = __import__(
-        "sagejs.number_fields.maximal_order", fromlist=["maximal_order"]
-    )
-    polynomial = maximal_module.integral_equation_polynomial(order.number_field())
-    coefficients = tuple(int(value) for value in polynomial.list())
-    if len(coefficients) != 4 or coefficients[3] != 1:
-        return None
-    c0, c1, c2, _leading = coefficients
-    u, v, w = values
-    column0 = (u, v, w)
-    column1 = (-w * c0, u - w * c1, v - w * c2)
-    column2 = (
-        -v * c0 + w * c2 * c0,
-        -v * c1 + w * (-c0 + c2 * c1),
-        u - v * c2 + w * (-c1 + c2 * c2),
-    )
-    a, d, g = column0
-    b, e, h = column1
-    c, f, i = column2
-    return a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
-
-
 class PackedCubicFactorRecord:
     """One exact factor-base prime retained as HNF integers, not an ideal."""
 
@@ -1843,11 +1809,14 @@ def _packed_principal_factor_proposals(
         selected_coordinates: tuple[int, ...] | None = None
         algorithm: str | None = None
         for candidate, candidate_algorithm in coordinate_candidates:
-            exact_norm = _power_basis_cubic_element_norm(order, candidate)
-            if exact_norm is None:
-                if norm_form is None:
-                    norm_form = _order_cubic_norm_form_coefficients(order)
-                exact_norm = _cubic_norm_form_value(norm_form, *candidate)
+            # Every candidate uses coordinates in this one retained order
+            # basis.  Build its exact cubic norm form once for the whole
+            # factor base instead of rechecking the power basis and decoding
+            # the defining polynomial for every tiny modular lift.  The same
+            # cached norm form is consumed by the packed relation sieve below.
+            if norm_form is None:
+                norm_form = _order_cubic_norm_form_coefficients(order)
+            exact_norm = _cubic_norm_form_value(norm_form, *candidate)
             if abs(exact_norm) == int(record.norm_value):
                 selected_coordinates = candidate
                 algorithm = candidate_algorithm
@@ -1893,7 +1862,10 @@ def _select_cubic_relation_candidates(
     initial_rows: tuple[tuple[int, ...], ...],
     candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
     width: int,
-) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+) -> tuple[
+    tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None,
+    int,
+]:
     """Select original rows supporting the exact HNF lattice basis.
 
     The provisional packed rows are not proof evidence. We extract their
@@ -1903,7 +1875,7 @@ def _select_cubic_relation_candidates(
     independent ideal-containment admission boundary.
     """
     if not candidates:
-        return ()
+        return (), 0
     source_rows = list(initial_rows) + [entry[0] for entry in candidates]
     try:
         basis, source_support = matrix_module.exact_relation_hnf_support(
@@ -1911,13 +1883,13 @@ def _select_cubic_relation_candidates(
         )
         rank = len(basis)
         if rank < 1:
-            return None
+            return None, 0
         initial_count = len(initial_rows)
         selected_indices = sorted(
             index - initial_count for index in source_support if index >= initial_count
         )
         if any(index < 0 or index >= len(candidates) for index in selected_indices):
-            return None
+            return None, 0
         target_index = (
             abs(matrix_module._determinant_exact(basis)) if rank == width else None
         )
@@ -1950,9 +1922,9 @@ def _select_cubic_relation_candidates(
         # selected source rows, while those rows are a subset of the original
         # lattice. The deletion pass keeps that basis identical while
         # removing individually redundant proposals.
-        return tuple(candidates[index] for index in selected_indices)
+        return tuple(candidates[index] for index in selected_indices), rank
     except (ArithmeticError, TypeError, ValueError):
-        return None
+        return None, 0
 
 
 def _select_cubic_dependency_candidates(
@@ -4206,6 +4178,7 @@ def bounded_cubic_minkowski_class_number(
         sieve_candidates = ()
     raw_sieve_count = 0 if sieve_candidates is None else len(sieve_candidates)
     selected_sieve_candidates: Any = None
+    selected_sieve_rank = 0
     planned_presentation: Any = None
     planned_line_specs: tuple[dict[str, Any], ...] | None = None
     planned_obstructions: tuple[dict[str, Any], ...] | None = None
@@ -4213,11 +4186,13 @@ def bounded_cubic_minkowski_class_number(
     planned_obstruction_seconds = 0.0
     planned_validated_batch: Any = None
     if sieve_candidates is not None:
-        selected_sieve_candidates = _select_cubic_relation_candidates(
-            matrix_module,
-            tuple(proposal[1] for proposal in initial_proposals),
-            sieve_candidates,
-            len(factor_base),
+        selected_sieve_candidates, selected_sieve_rank = (
+            _select_cubic_relation_candidates(
+                matrix_module,
+                tuple(proposal[1] for proposal in initial_proposals),
+                sieve_candidates,
+                len(factor_base),
+            )
         )
         # Valuating every norm-smooth coefficient vector can force large
         # prime-power ideal chains which the exact HNF selector immediately
@@ -4228,7 +4203,11 @@ def bounded_cubic_minkowski_class_number(
         # rows.  If the prefix cannot finish, widen before admission so the
         # coupled class/unit fallback receives the unchanged full relation
         # seed.
-        if selected_sieve_candidates is not None and not trivial_quotient:
+        if (
+            selected_sieve_candidates is not None
+            and selected_sieve_rank == len(factor_base)
+            and not trivial_quotient
+        ):
             try:
                 proposed_rows = tuple(proposal[1] for proposal in initial_proposals)
                 proposed_rows += tuple(
@@ -4307,11 +4286,13 @@ def bounded_cubic_minkowski_class_number(
             if widened_candidates is not None:
                 sieve_candidates = widened_candidates
                 raw_sieve_count = len(sieve_candidates)
-                selected_sieve_candidates = _select_cubic_relation_candidates(
-                    matrix_module,
-                    tuple(proposal[1] for proposal in initial_proposals),
-                    sieve_candidates,
-                    len(factor_base),
+                selected_sieve_candidates, selected_sieve_rank = (
+                    _select_cubic_relation_candidates(
+                        matrix_module,
+                        tuple(proposal[1] for proposal in initial_proposals),
+                        sieve_candidates,
+                        len(factor_base),
+                    )
                 )
     sieve_admitted = 0
     validated_sieve_batch_used = False
