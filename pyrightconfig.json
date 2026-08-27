@@ -209,6 +209,7 @@
     "src/lib/sagejs/kernels/graph/components.py",
     "src/lib/sagejs/kernels/arithmetic/__init__.py",
     "src/lib/sagejs/kernels/arithmetic/moebius.py",
+    "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
     "src/lib/sagejs/kernels/graph/shortest_paths.py",
     "src/lib/sagejs/kernels/groups/__init__.py",
     "src/lib/sagejs/kernels/groups/permutation.py",

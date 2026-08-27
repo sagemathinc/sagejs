@@ -64,6 +64,15 @@ let foreignGrammarUrls;
 let foreignFrontendModulePromise;
 const configuredForeignGrammars = new Set();
 const foreignFrontends = new Map();
+const configuredOptimizationLevel = new URL(
+  typeof self.location?.href === "string" ? self.location.href : import.meta.url,
+).searchParams.get("sagejsOptimizationLevel") ?? undefined;
+if (
+  configuredOptimizationLevel !== undefined &&
+  !["O0", "O1", "O2", "O3", "Os"].includes(configuredOptimizationLevel)
+) {
+  throw new TypeError("invalid Sage.js compiler-worker optimization level");
+}
 
 function compileWithFrontend(source, filename, frontend, language) {
   const classes = toplevel?.classes;
@@ -84,6 +93,7 @@ function compileWithFrontend(source, filename, frontend, language) {
     jsage: language === "sage",
     exact_integer_literals: true,
     strict_python_scopes: true,
+    optimization_level: configuredOptimizationLevel,
   });
   const javascript = outputJavaScript(
     compiler,

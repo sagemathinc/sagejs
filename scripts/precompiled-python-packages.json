@@ -26,6 +26,7 @@
     "sagejs.hyperelliptic_curves.tamagawa",
     "sagejs.hyperelliptic_curves.torsion",
     "sagejs.kernels.arithmetic.moebius",
+    "sagejs.kernels.arithmetic.gf_p2",
     "sagejs.kernels.graph",
     "sagejs.kernels.graph.components",
     "sagejs.kernels.graph.shortest_paths",

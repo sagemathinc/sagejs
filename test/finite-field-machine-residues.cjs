@@ -211,9 +211,11 @@ test("closed-scalar compiler guards stay native and branch directly", () => {
   assert.notEqual(recurrenceStop, -1);
   const recurrence = generated.slice(recurrenceStart, recurrenceStop);
   assert.match(recurrence, /Number\.isSafeInteger\(count\)/);
-  assert.match(recurrence, /parent\._machineResidues !== true/);
-  assert.match(recurrence, /prototype\?\._mul_ !== parent\._closedScalarMul/);
+  assert.match(recurrence, /elementBrand instanceof WeakSet/);
+  assert.match(recurrence, /elementBrand\.has\(accumulator\)/);
+  assert.match(recurrence, /parent\._machineResidues === true/);
+  assert.match(recurrence, /primePrototype\?\._mul_ === parent\._closedScalarMul/);
   assert.match(recurrence, /value \* factor \+ addend/);
-  assert.match(recurrence, /Object\.create\(prototype\)/);
+  assert.match(recurrence, /Object\.create\(primePrototype\)/);
   assert.doesNotMatch(recurrence, /ρσ_operator|ρσ_resolve_callable/);
 });

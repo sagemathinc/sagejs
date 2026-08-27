@@ -14,7 +14,9 @@ const {
   OPTIMIZER_IR_SCHEMA,
   explainOptimizationProgram,
   formatOptimizationExplanation,
+  verifyInternalRegionPlan,
   verifyOptimizationDecision,
+  verifyOptimizationPass,
   verifyOptimizationProgram,
 } = require("../dist/tools/python/optimizer/index.js");
 
@@ -82,6 +84,7 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     assert.equal(program.regions.length, 1);
     assert.deepEqual(program.passes.map((pass) => pass.id), [
       CLOSED_AFFINE_RECURRENCE_PASS,
+      "math.closed-field-region.v1",
     ]);
     const [region] = program.regions;
     assert.equal(region.passId, CLOSED_AFFINE_RECURRENCE_PASS);
@@ -89,7 +92,7 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     assert.equal(region.semantic.kind, "sage.for-range.closed-affine-recurrence");
     assert.equal(region.mathematical.kind, "math.closed-affine-recurrence");
     assert.equal(region.representation.kind, "guarded-unboxed-affine-state");
-    assert.equal(region.target.kind, "v8");
+    assert.equal(region.target.kind, "adaptive");
     assert.match(region.id, /optimizer-witness\.sage:6:/);
     assert.doesNotThrow(() => JSON.stringify(program));
     assert.doesNotThrow(() => verifyOptimizationProgram(program));
@@ -172,13 +175,83 @@ test("IR verification rejects malformed optimizer claims", () => {
   );
 });
 
-test("nearby unsafe source shapes never receive region plans", async () => {
+test("verifiers reject incomplete costs, stale analyses, and unhandled operations", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(source, optimizerOptions());
+    const program = JSON.parse(JSON.stringify(ast.optimization_ir));
+    const incompleteCost = JSON.parse(JSON.stringify(program.regions[0]));
+    delete incompleteCost.target.candidates[0].cost.copiedBytes;
+    assert.throws(
+      () => verifyOptimizationDecision(incompleteCost),
+      /does not contain every cost component/,
+    );
+
+    const rejectedWithoutReason = JSON.parse(JSON.stringify(program.regions[0]));
+    rejectedWithoutReason.target.candidates[0].availability = "rejected";
+    assert.throws(
+      () => verifyOptimizationDecision(rejectedWithoutReason),
+      /rejectionReason must be a nonempty string/,
+    );
+
+    const stale = JSON.parse(JSON.stringify(program));
+    stale.passes[1].analysisRevisionBefore = 0;
+    assert.throws(
+      () => verifyOptimizationProgram(stale),
+      /stale analysis revision/,
+    );
+
+    assert.throws(
+      () => verifyInternalRegionPlan({
+        schema: OPTIMIZER_IR_SCHEMA,
+        id: "bad-operation",
+        passId: "test.bad.v1",
+        kind: "closed-field-region",
+        operands: {
+          slots: [{ name: "x" }],
+          sequences: [],
+          stateSlots: [0],
+          statements: [{
+            kind: "assign",
+            target: 0,
+            value: { kind: "binary", operator: "/", left: { kind: "slot", slot: 0 }, right: { kind: "slot", slot: 0 } },
+          }],
+        },
+      }),
+      /target-independent expression .* unhandled/,
+    );
+
+    assert.throws(
+      () => verifyOptimizationPass({
+        id: "test.incomplete.v1",
+        inputSchema: OPTIMIZER_IR_SCHEMA,
+        acceptedLevel: "sage-semantic",
+        producedLevel: "target",
+        factsConsumed: [],
+        factsProduced: ["fact"],
+        factsInvalidated: [],
+        preserves: ["semantics"],
+        guardsIntroduced: ["guard"],
+        supportedTargets: ["v8"],
+        verifier: "",
+        compilationCostBudget: 1,
+        codeSizeBudget: 1,
+        requiredEvidence: ["test"],
+        run() {},
+      }),
+      /verifier must be a nonempty string/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("nearby effects and unsupported operations never receive region plans", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
   try {
     for (const unsafe of [
-      `for index in range(limit()):\n    value = value * multiplier + increment\n`,
-      `for index in range(count):\n    value = value * value + increment\n`,
       `for multiplier in range(count):\n    value = value * multiplier + increment\n`,
       `for index in range(count):\n    value = value * multiplier + increment\n    seen += 1\n`,
       `for index in range(count):\n    value = value * multiplier + increment\nelse:\n    finished = True\n`,

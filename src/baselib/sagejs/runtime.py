@@ -19,7 +19,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
-# globals: ρσ_fast_machine_residue_recurrence
+# globals: ρσ_brand_machine_field_element, ρσ_fast_machine_residue_recurrence
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_json_scalar_sequence
 # globals: ρσ_canonical_json_exact
@@ -694,6 +694,7 @@ list_contains = ρσ_list_contains
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
+brand_machine_field_element = ρσ_brand_machine_field_element
 named_tuple = ρσ_named_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power

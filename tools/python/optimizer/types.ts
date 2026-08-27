@@ -4,6 +4,39 @@ export type OptimizationLevel = "O0" | "O1" | "O2" | "O3" | "Os";
 
 export type FactAuthority = "static" | "runtime-guard" | "contract";
 
+export type OptimizerIrLevel =
+  | "sage-semantic"
+  | "mathematical"
+  | "representation"
+  | "target";
+
+export type CostQuantity = number | "runtime-dependent" | "not-applicable";
+
+export interface CompleteTargetCost {
+  arithmeticOperations: CostQuantity;
+  representationConversions: CostQuantity;
+  boundaryCrossings: CostQuantity;
+  copiedBytes: CostQuantity;
+  allocations: CostQuantity;
+  cleanupOperations: CostQuantity;
+  compileMilliseconds: CostQuantity;
+  instantiateMilliseconds: CostQuantity;
+  loadMilliseconds: CostQuantity;
+  materializations: CostQuantity;
+  emittedBytes: CostQuantity;
+  totalUnits: CostQuantity;
+}
+
+export interface TargetCandidatePlan {
+  id: string;
+  kind: "v8" | "wasm" | "native" | "library" | "generic";
+  representation: string;
+  availability: "selected" | "available" | "runtime-gated" | "rejected";
+  rejectionReason: string | null;
+  cost: CompleteTargetCost;
+  evidence: string;
+}
+
 export interface OptimizationFact {
   kind: string;
   authority: FactAuthority;
@@ -19,6 +52,8 @@ export interface SourceRegion {
 }
 
 export interface SemanticRegion {
+  level: "sage-semantic";
+  revision: number;
   kind: string;
   operations: string[];
   observableExits: string[];
@@ -26,6 +61,8 @@ export interface SemanticRegion {
 }
 
 export interface MathematicalRegion {
+  level: "mathematical";
+  revision: number;
   kind: string;
   domain: string;
   operations: string[];
@@ -33,6 +70,8 @@ export interface MathematicalRegion {
 }
 
 export interface RepresentationPlan {
+  level: "representation";
+  revision: number;
   kind: string;
   candidates: string[];
   conversions: string[];
@@ -40,10 +79,15 @@ export interface RepresentationPlan {
 }
 
 export interface TargetPlan {
-  kind: "v8" | "wasm" | "native" | "library" | "generic";
+  level: "target";
+  revision: number;
+  kind: "v8" | "wasm" | "native" | "library" | "adaptive" | "generic";
   lowering: string;
-  boundaryCrossings: number;
+  boundaryCrossings: number | "runtime-dependent";
   copiedBytes: number | "runtime-dependent";
+  selectedCandidate: string;
+  candidates: TargetCandidatePlan[];
+  policy: string;
 }
 
 export interface OptimizationDecision {
@@ -60,6 +104,7 @@ export interface OptimizationDecision {
   target: TargetPlan;
   guards: string[];
   fallbackId: string;
+  cacheIdentityInputs: string[];
 }
 
 export interface OptimizationProgram {
@@ -76,7 +121,18 @@ export interface OptimizationPassRecord {
   inputSchema: typeof OPTIMIZER_IR_SCHEMA;
   factsConsumed: readonly string[];
   factsProduced: readonly string[];
+  factsInvalidated: readonly string[];
   preserves: readonly string[];
+  acceptedLevel: OptimizerIrLevel;
+  producedLevel: OptimizerIrLevel;
+  guardsIntroduced: readonly string[];
+  supportedTargets: readonly TargetCandidatePlan["kind"][];
+  verifier: string;
+  compilationCostBudget: number;
+  codeSizeBudget: number;
+  requiredEvidence: readonly string[];
+  analysisRevisionBefore: number;
+  analysisRevisionAfter: number;
   regionsBefore: number;
   regionsAfter: number;
 }
@@ -101,12 +157,13 @@ export interface OptimizationCandidate {
   node: any;
   internal: InternalRegionPlan;
   minimumLevel: OptimizationLevel;
+  staticRejectionReasons?: readonly string[];
 }
 
 export interface OptimizationPassContext {
   readonly compiler: any;
   readonly controls: OptimizationControls;
-  walk(root: any, visitor: (node: any) => void): void;
+  walk(root: any, visitor: (node: any, ancestors: readonly any[]) => void): void;
   consider(candidate: OptimizationCandidate): void;
 }
 
@@ -115,6 +172,15 @@ export interface OptimizationPass {
   readonly inputSchema: typeof OPTIMIZER_IR_SCHEMA;
   readonly factsConsumed: readonly string[];
   readonly factsProduced: readonly string[];
+  readonly factsInvalidated: readonly string[];
   readonly preserves: readonly string[];
+  readonly acceptedLevel: OptimizerIrLevel;
+  readonly producedLevel: OptimizerIrLevel;
+  readonly guardsIntroduced: readonly string[];
+  readonly supportedTargets: readonly TargetCandidatePlan["kind"][];
+  readonly verifier: string;
+  readonly compilationCostBudget: number;
+  readonly codeSizeBudget: number;
+  readonly requiredEvidence: readonly string[];
   run(root: any, context: OptimizationPassContext): void;
 }

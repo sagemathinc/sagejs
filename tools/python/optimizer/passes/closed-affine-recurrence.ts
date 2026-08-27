@@ -4,6 +4,8 @@ import {
   OptimizationPassContext,
   SourceRegion,
 } from "../types";
+import { targetCandidate } from "../cost-model";
+import { stableRegionIdentity } from "../identity";
 
 export const CLOSED_AFFINE_RECURRENCE_PASS =
   "math.closed-affine-recurrence.v1";
@@ -16,11 +18,6 @@ function sourceRegion(node: any): SourceRegion {
     endLine: Number(node.end?.line ?? node.start?.line ?? 0),
     endColumn: Number(node.end?.col ?? node.start?.col ?? 0),
   };
-}
-
-function regionId(source: SourceRegion): string {
-  return `${CLOSED_AFFINE_RECURRENCE_PASS}@${source.filename}:` +
-    `${source.line}:${source.column}`;
 }
 
 function recognize(compiler: any, loop: any): null | Record<string, any> {
@@ -75,23 +72,50 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
 export const closedAffineRecurrencePass: OptimizationPass = {
   id: CLOSED_AFFINE_RECURRENCE_PASS,
   inputSchema: OPTIMIZER_IR_SCHEMA,
+  acceptedLevel: "sage-semantic",
+  producedLevel: "target",
   factsConsumed: ["builtin-range", "lexical-binding"],
   factsProduced: [
     "no-alias", "no-escape", "no-callback", "operation-closed",
     "parent-identity", "method-stability", "exact-range",
   ],
+  factsInvalidated: [],
   preserves: [
     "python-range-evaluation", "final-loop-target", "exceptions",
     "generic-fallback",
   ],
+  guardsIntroduced: [
+    "nonnegative-safe-integer-count", "same-parent", "reviewed-representation",
+    "prototype-and-method-identities", "canonical-values", "exact-machine-range",
+  ],
+  supportedTargets: ["v8", "wasm", "native", "generic"],
+  verifier: "verifyOptimizationDecision/v1",
+  compilationCostBudget: 64,
+  codeSizeBudget: 4096,
+  requiredEvidence: [
+    "enabled-disabled-differential", "guard-adversarial",
+    "node-and-browser-route", "matched-representation-benchmark",
+  ],
   run(root: any, context: OptimizationPassContext): void {
-    context.walk(root, (node) => {
+    context.walk(root, (node, ancestors) => {
       const operands = recognize(context.compiler, node);
       if (!operands) return;
       const source = sourceRegion(node);
-      const id = regionId(source);
+      const identity = stableRegionIdentity(CLOSED_AFFINE_RECURRENCE_PASS, source, {
+        kind: "closed-affine-recurrence",
+        accumulator: operands.accumulator.name,
+        multiplier: operands.multiplier.name,
+        increment: operands.increment.name,
+        index: operands.index.name,
+        count: operands.count.name ?? operands.count.value,
+        operations: ["math.ring.mul", "math.ring.add"],
+      });
+      const id = identity.id;
       context.consider({
         minimumLevel: "O2",
+        staticRejectionReasons: ancestors.some((ancestor) =>
+          ancestor instanceof context.compiler.AST_Try && ancestor.bcatch
+        ) ? ["catchable-interrupt-region"] : [],
         node,
         internal: {
           schema: OPTIMIZER_IR_SCHEMA,
@@ -106,12 +130,16 @@ export const closedAffineRecurrencePass: OptimizationPass = {
           passId: CLOSED_AFFINE_RECURRENCE_PASS,
           source,
           semantic: {
+            level: "sage-semantic",
+            revision: 1,
             kind: "sage.for-range.closed-affine-recurrence",
             operations: ["range", "mul-dispatch", "add-dispatch", "assign"],
             observableExits: ["accumulator", "loop-index"],
             exceptionPolicy: "entry guards precede optimized effects; exact loop fallback",
           },
           mathematical: {
+            level: "mathematical",
+            revision: 1,
             kind: "math.closed-affine-recurrence",
             domain: "one guarded closed parent",
             operations: ["math.ring.mul", "math.ring.add"],
@@ -150,6 +178,8 @@ export const closedAffineRecurrencePass: OptimizationPass = {
             },
           ],
           representation: {
+            level: "representation",
+            revision: 1,
             kind: "guarded-unboxed-affine-state",
             candidates: [
               "number-residue",
@@ -160,10 +190,85 @@ export const closedAffineRecurrencePass: OptimizationPass = {
             materializations: 1,
           },
           target: {
-            kind: "v8",
-            lowering: "runtime-versioned primitive numeric loop",
-            boundaryCrossings: 0,
-            copiedBytes: 0,
+            level: "target",
+            revision: 1,
+            kind: "adaptive",
+            lowering: "guarded v8 tuple or fused source-transparent isolated kernel",
+            boundaryCrossings: "runtime-dependent",
+            copiedBytes: "runtime-dependent",
+            selectedCandidate: "runtime-adaptive",
+            policy: "trip-count and authenticated isolated-target availability",
+            candidates: [
+              targetCandidate({
+                id: "v8-number-or-tuple-affine",
+                kind: "v8",
+                representation: "number-residue or extension-tuple-number",
+                availability: "runtime-gated",
+                cost: {
+                  arithmeticOperations: "runtime-dependent",
+                  representationConversions: 4,
+                  boundaryCrossings: 0,
+                  copiedBytes: 0,
+                  allocations: 1,
+                  cleanupOperations: 0,
+                  compileMilliseconds: 0,
+                  instantiateMilliseconds: 0,
+                  loadMilliseconds: 0,
+                  materializations: 1,
+                  emittedBytes: 768,
+                },
+                evidence: "finite-field boundary benchmark and guarded Number exactness",
+              }),
+              targetCandidate({
+                id: "wasm-fused-affine",
+                kind: "wasm",
+                representation: "packed extension-tuple-uint64",
+                availability: "runtime-gated",
+                cost: {
+                  arithmeticOperations: "runtime-dependent",
+                  representationConversions: 2,
+                  boundaryCrossings: 1,
+                  copiedBytes: 16,
+                  allocations: 1,
+                  cleanupOperations: 1,
+                  materializations: 1,
+                  emittedBytes: 0,
+                },
+                evidence: "source-transparent packed kernel in authenticated Wasm pack",
+              }),
+              targetCandidate({
+                id: "native-fused-affine",
+                kind: "native",
+                representation: "packed extension-tuple-uint64",
+                availability: "runtime-gated",
+                cost: {
+                  arithmeticOperations: "runtime-dependent",
+                  representationConversions: 2,
+                  boundaryCrossings: 1,
+                  copiedBytes: 16,
+                  allocations: 1,
+                  cleanupOperations: 1,
+                  materializations: 1,
+                  emittedBytes: 0,
+                },
+                evidence: "source-transparent packed kernel in production native pack",
+              }),
+              targetCandidate({
+                id: "generic-affine-fallback",
+                kind: "generic",
+                representation: "boxed-sage-value",
+                availability: "available",
+                cost: {
+                  arithmeticOperations: "runtime-dependent",
+                  representationConversions: 0,
+                  boundaryCrossings: 0,
+                  copiedBytes: 0,
+                  materializations: 0,
+                  emittedBytes: 0,
+                },
+                evidence: "untouched semantic loop",
+              }),
+            ],
           },
           guards: [
             "nonnegative-safe-integer-count",
@@ -174,6 +279,14 @@ export const closedAffineRecurrencePass: OptimizationPass = {
             "exact-machine-range",
           ],
           fallbackId: `semantic:${source.filename}:${source.line}:${source.column}`,
+          cacheIdentityInputs: [
+            `schema:${OPTIMIZER_IR_SCHEMA}`,
+            `pass:${CLOSED_AFFINE_RECURRENCE_PASS}`,
+            `source:${source.filename}:${source.line}:${source.column}:${source.endLine}:${source.endColumn}`,
+            "operations:math.ring.mul,math.ring.add",
+            `semantic-fingerprint:${identity.fingerprint}`,
+            `level:${context.controls.level}`,
+          ],
         },
       });
     });

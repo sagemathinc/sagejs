@@ -60,8 +60,21 @@ export class SageSession {
       wolfram: new URL("./dist/tree-sitter-wolfram.wasm", import.meta.url),
     }),
     capabilityReport = new URL("./dist/wasm-capabilities-report.json", import.meta.url),
+    optimizationLevel,
     onGraphicsSave,
   } = {}) {
+    if (
+      optimizationLevel !== undefined &&
+      !["O0", "O1", "O2", "O3", "Os"].includes(optimizationLevel)
+    ) {
+      throw new TypeError("Sage.js optimizationLevel must be O0, O1, O2, O3, or Os");
+    }
+    let configuredCompilerWorker = String(compilerWorker);
+    if (optimizationLevel !== undefined) {
+      const compilerWorkerUrl = new URL(configuredCompilerWorker, import.meta.url);
+      compilerWorkerUrl.searchParams.set("sagejsOptimizationLevel", optimizationLevel);
+      configuredCompilerWorker = String(compilerWorkerUrl);
+    }
     this.resources = {
       worker: String(worker),
       compiler: String(compiler),
@@ -75,7 +88,7 @@ export class SageSession {
       nativeKernels: String(nativeKernels),
       m4ri: String(m4ri),
       symbolic: String(symbolic),
-      compilerWorker: String(compilerWorker),
+      compilerWorker: configuredCompilerWorker,
       compilerFrontend: String(compilerFrontend),
       foreignFrontend: String(foreignFrontend),
       treeSitterRuntime: String(treeSitterRuntime),

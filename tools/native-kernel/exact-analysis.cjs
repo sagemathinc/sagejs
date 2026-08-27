@@ -300,6 +300,7 @@ function executionProfile(fn) {
     arithmeticOperations: 0,
     integerGrowthOperations: 0,
     integerBufferLoads: 0,
+    uint64ArithmeticOperations: 0,
     uint64BitwiseOperations: 0,
     nativeCalls: 0,
     rangeLoops: 0,
@@ -343,6 +344,9 @@ function executionProfile(fn) {
         isUint64Bitwise(operation.operation)
       ) {
         profile.uint64BitwiseOperations += 1;
+      }
+      if (operation.kind === "uint64.binary") {
+        profile.uint64ArithmeticOperations += 1;
       }
       if (operation.kind === "native.call" || operation.kind === "ffi.call") {
         profile.nativeCalls += 1;
@@ -909,6 +913,17 @@ function backendPolicy(fn, profile, recursive) {
     return {
       kind: "tagged",
       reason: "bounded uint64 operations execute in the isolated native core",
+    };
+  }
+  if (
+    profile.uint64ArithmeticOperations > 0 &&
+    profile.rangeLoops + profile.whileLoops > 0 &&
+    fn.params.every((param) => param.type !== "Integer")
+  ) {
+    return {
+      kind: "tagged",
+      reason:
+        "a bounded uint64 arithmetic loop amortizes one isolated native entry",
     };
   }
   if (
