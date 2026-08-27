@@ -253,6 +253,7 @@
     "bench:optimizer-polynomial-evaluation": "node bench/optimizer-polynomial-evaluation.cjs",
     "bench:optimizer-sequence-commoning": "node bench/optimizer-sequence-commoning.cjs",
     "bench:optimizer-cross-statement-commoning": "node bench/optimizer-cross-statement-commoning.cjs",
+    "bench:optimizer-local-temporaries": "node bench/optimizer-local-temporaries.cjs",
     "bench:optimizer-branching-region": "node bench/optimizer-branching-region.cjs",
     "bench:optimizer-static-power": "node bench/optimizer-static-power.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",

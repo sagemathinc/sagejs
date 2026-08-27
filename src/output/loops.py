@@ -422,6 +422,14 @@ def _print_region_variable(output, name, value):
     output.end_statement()
 
 
+def _print_region_declaration(output, name):
+    output.indent()
+    output.print("var")
+    output.space()
+    output.print(name)
+    output.end_statement()
+
+
 def _region_temp(counter, suffix):
     name = "ρσ_FieldTemp" + suffix + "_" + str(counter[0])
     counter[0] += 1
@@ -1155,6 +1163,13 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
     modulus_name = names["modulus"]
     modulus_coefficients_name = names["modulus_coefficients"]
     streaming = plan.sequenceStrategy == "stream"
+    # The stage-one self-hosting compiler can supply the immediately previous
+    # plan schema.  Its plans treated every slot as a live-in.  The newly built
+    # compiler always supplies `inputSlots`, and its independent verifier makes
+    # that field exact before lowering.
+    input_slots = getattr(plan, "inputSlots", None)
+    if input_slots is None:
+        input_slots = list(range(len(plan.slots)))
     if representation == "extension":
         modulus_coefficients_name = []
         for component in range(degree):
@@ -1174,21 +1189,37 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             modulus_coefficients_name.append(coefficient_name)
     slot_names = []
     for slot in range(len(plan.slots)):
+        input_position = -1
+        for position, input_slot in enumerate(input_slots):
+            if input_slot == slot:
+                input_position = position
+                break
         if representation == "prime":
             name = "ρσ_FieldValue" + suffix + "_" + str(slot)
-            _print_region_variable(
-                output, name, context_name + ".values[" + str(slot) + "]"
-            )
+            if input_position == -1:
+                _print_region_declaration(output, name)
+            else:
+                _print_region_variable(
+                    output,
+                    name,
+                    context_name + ".values[" + str(input_position) + "]",
+                )
             slot_names.append(name)
         else:
             coordinates = []
             for component in range(degree):
                 name = "ρσ_FieldValue" + suffix + "_" + str(slot) + "_" + str(component)
-                _print_region_variable(
-                    output,
-                    name,
-                    context_name + ".values[" + str(degree * slot + component) + "]",
-                )
+                if input_position == -1:
+                    _print_region_declaration(output, name)
+                else:
+                    _print_region_variable(
+                        output,
+                        name,
+                        context_name
+                        + ".values["
+                        + str(degree * input_position + component)
+                        + "]",
+                    )
                 coordinates.append(name)
             slot_names.append(coordinates)
 
@@ -1391,15 +1422,18 @@ def print_closed_field_region(self, output):
         output.space()
 
     def nonempty_region():
+        input_slots = getattr(plan, "inputSlots", None)
+        if input_slots is None:
+            input_slots = list(range(len(plan.slots)))
         output.indent()
         output.print("var")
         output.space()
         output.assign(names["context"])
         output.print("ρσ_prepare_machine_field_region([")
-        for index, slot in enumerate(plan.slots):
+        for index, input_slot in enumerate(input_slots):
             if index:
                 output.comma()
-            slot.node.print(output)
+            plan.slots[input_slot].node.print(output)
         output.print("],[")
         for index, sequence in enumerate(plan.sequences):
             if index:
