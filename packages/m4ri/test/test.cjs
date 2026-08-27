@@ -526,7 +526,11 @@ const m4ri = require(${JSON.stringify(root)});
   global.gc();
   await new Promise(setImmediate);
   const residentMiB = process.memoryUsage().rss / (1024 * 1024);
-  if (residentMiB > 128) {
+  // Darwin's allocator retains a somewhat larger post-GC high-water mark than
+  // glibc even after the native matrices are freed. The unreclaimed failure
+  // mode is over 400 MiB for this workload; 192 MiB leaves allocator headroom
+  // while still distinguishing that leak by more than a factor of two.
+  if (residentMiB > 192) {
     throw new Error(\`M4RI finalizers left \${residentMiB.toFixed(1)} MiB resident\`);
   }
 })().catch((error) => {
