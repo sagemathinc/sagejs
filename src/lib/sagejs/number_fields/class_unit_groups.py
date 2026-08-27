@@ -414,7 +414,6 @@ class ClassUnitSaturationRecord:
         analytic_validation: dict[str, Any],
         analytic_certificate: Any = None,
         analytic_generation_verifier: Any = None,
-        producer_artifacts: Sequence[tuple[Any, Sequence[Any], Any, Any]] = (),
         analytic_module: Any = None,
         analytic_workspace: Any = None,
         reason: str = "",
@@ -478,10 +477,6 @@ class ClassUnitSaturationRecord:
                 analytic_certificate
             )
         self._analytic_generation_verifier = analytic_generation_verifier
-        self._producer_artifacts = tuple(
-            (artifact, tuple(before), torsion, generation_verifier)
-            for artifact, before, torsion, generation_verifier in producer_artifacts
-        )
         self._analytic_module = analytic_module
         self._analytic_workspace = analytic_workspace
         self.rigorous = bool(self._analytic_validation.get("rigorous"))
@@ -674,36 +669,6 @@ class ClassUnitSaturationRecord:
                 return False
             if any(unit.principal_ideal(selected_order) != one for unit in self.units):
                 return False
-            for (
-                artifact,
-                before,
-                _torsion,
-                generation_verifier,
-            ) in self._producer_artifacts:
-                verifier = getattr(
-                    self._analytic_module, "verify_saturation_record", None
-                )
-                if callable(verifier):
-                    accepted = verifier(
-                        selected_field,
-                        selected_order,
-                        before,
-                        artifact.to_dict(),
-                        generation_verifier=generation_verifier,
-                        workspace=self._analytic_workspace,
-                    )
-                    if not bool(accepted):
-                        return False
-                    continue
-                replay = getattr(artifact, "verify", None)
-                if not callable(replay):
-                    return False
-                try:
-                    accepted = replay()
-                except TypeError:
-                    accepted = replay(selected_field, selected_order, before)
-                if not bool(accepted):
-                    return False
         except (AttributeError, TypeError, ValueError, ArithmeticError):
             return False
         return self.complete
@@ -1359,7 +1324,6 @@ class _AdaptiveSaturationState:
         initial_bound: int,
         required_primes: Iterable[int],
         attempts: Iterable[Any],
-        artifacts: Iterable[tuple[Any, Sequence[Any], Any, Any]],
     ) -> None:
         if token is not _ADAPTIVE_SATURATION_STATE_TOKEN:
             raise TypeError("adaptive saturation state is engine-issued")
@@ -1368,25 +1332,12 @@ class _AdaptiveSaturationState:
         self.initial_bound = int(initial_bound)
         self.required_primes = tuple(sorted({int(value) for value in required_primes}))
         self.attempts = tuple(_component_payload(value) for value in attempts)
-        self.artifacts = tuple(
-            (artifact, tuple(before), torsion, verifier)
-            for artifact, before, torsion, verifier in artifacts
-        )
         self._snapshot = (
             id(engine),
             tuple(id(value) for value in self.original_units),
             self.initial_bound,
             self.required_primes,
             _canonical_payload_hash(self.attempts),
-            tuple(
-                (
-                    id(artifact),
-                    tuple(id(value) for value in before),
-                    id(torsion),
-                    id(verifier),
-                )
-                for artifact, before, torsion, verifier in self.artifacts
-            ),
         )
 
     def authority_snapshot(self) -> tuple[Any, ...]:
@@ -1396,15 +1347,6 @@ class _AdaptiveSaturationState:
             int(self.initial_bound),
             tuple(self.required_primes),
             _canonical_payload_hash(self.attempts),
-            tuple(
-                (
-                    id(artifact),
-                    tuple(id(value) for value in before),
-                    id(torsion),
-                    id(verifier),
-                )
-                for artifact, before, torsion, verifier in self.artifacts
-            ),
         )
 
     def matches(self, engine: Any) -> bool:
@@ -5196,7 +5138,6 @@ class ClassUnitGroupEngine:
                     "no authenticated class/unit index certificate producer is installed"
                 )
                 return units, None, attempt
-            attempt["index_certificate"] = _component_payload(authority)
             result = producer(
                 self.field,
                 self.order,
@@ -5211,7 +5152,6 @@ class ClassUnitGroupEngine:
             )
             attempt["producer"] = type(result).__name__
             result_payload = _component_payload(result)
-            attempt["result"] = result_payload
             module_verifier = getattr(
                 self.components.analytic, "verify_saturation_record", None
             )
@@ -5238,11 +5178,34 @@ class ClassUnitGroupEngine:
             if not replayed:
                 attempt["reason"] = "unit saturation producer replay failed"
                 return units, None, attempt
+            certificate_payload = result_payload.get("global_index_certificate")
+            if isinstance(certificate_payload, dict):
+                certificate_hash = certificate_payload.get("content_sha256")
+                if isinstance(certificate_hash, str):
+                    attempt["index_certificate_sha256"] = certificate_hash
+            attempt["producer_result"] = {
+                name: result_payload.get(name)
+                for name in (
+                    "schema",
+                    "initial_index_bound",
+                    "remaining_index_bound",
+                    "complete",
+                    "rigorous",
+                    "proof_status",
+                )
+            }
             updated = tuple(_value(result, ("units", "generators"), ()))
             if len(updated) != unit_rank:
                 attempt["reason"] = "unit saturation returned the wrong free rank"
                 return units, None, attempt
             self._verify_exact_units(updated)
+            attempt["unit_basis_changed"] = bool(
+                len(updated) != len(units)
+                or any(
+                    retained is not candidate
+                    for retained, candidate in zip(units, updated, strict=True)
+                )
+            )
             logarithmic_rank = self._unit_logarithmic_rank_from_units(
                 updated, unit_rank
             )
@@ -5398,7 +5361,6 @@ class ClassUnitGroupEngine:
         initial_bound = max(1, int(index.upper_index))
         required_primes = set(_prime_divisors(initial_bound))
         attempts: list[Any] = []
-        artifacts: list[tuple[Any, Sequence[Any], Any, Any]] = []
         prefer_relation_saturation = bool(
             int(self.field.degree()) == 3
             and self._resource_usage["cubic_relation_seed_uses"] > 0
@@ -5433,7 +5395,6 @@ class ClassUnitGroupEngine:
 
         def try_unit_saturation(round_index: int) -> bool:
             nonlocal units, torsion, regulator, index
-            before_units = units
             generation_evidence, generation_verifier = current_generation_authority()
             saturated_units, artifact, attempt = self._try_unit_saturation(
                 units,
@@ -5449,7 +5410,6 @@ class ClassUnitGroupEngine:
             attempts.append(attempt)
             self._checkpoint_capture({"saturation": attempt})
             if artifact is not None:
-                artifacts.append((artifact, before_units, torsion, generation_verifier))
                 units = saturated_units
                 torsion, regulator, index = self._analytic_index(
                     presentation, units, unit_rank
@@ -5552,7 +5512,6 @@ class ClassUnitGroupEngine:
             initial_bound,
             required_primes,
             attempts,
-            artifacts,
         )
         if defer_record and self._bind_context_deferred_saturation_state(state):
             self._stage(
@@ -5648,7 +5607,6 @@ class ClassUnitGroupEngine:
             analytic_validation=analytic_validation,
             analytic_certificate=analytic_certificate,
             analytic_generation_verifier=final_generation_verifier,
-            producer_artifacts=state.artifacts,
             analytic_module=self.components.analytic,
             analytic_workspace=self._analytic_workspace,
             reason=(
@@ -6584,9 +6542,6 @@ def _clone_terminal_saturation(
         analytic_generation_verifier=getattr(
             source, "_analytic_generation_verifier", None
         ),
-        # Producer artifacts and workspaces are acceleration state.  The
-        # detached final index-one certificate is the semantic authority.
-        producer_artifacts=(),
         analytic_module=analytic_module,
         analytic_workspace=None,
         reason=str(payload.get("reason")),

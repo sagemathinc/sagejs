@@ -2751,7 +2751,6 @@ def _clone_detached_conditional_saturation(
         analytic_validation=payload.get("analytic_validation", {}),
         analytic_certificate=certificate,
         analytic_generation_verifier=generation_verifier,
-        producer_artifacts=(),
         analytic_module=analytic,
         analytic_workspace=None,
         reason=str(payload.get("reason")),

@@ -147,6 +147,7 @@ K = NumberField(x**4 - 2*x**3 - x**2 - 3*x + 1, "payload")
 result = class_unit_module.class_unit_context(K, proof=False, algorithm="auto")
 assert result.complete and result.class_number() == 2
 record = result.saturation_record
+assert not hasattr(record, "_producer_artifacts")
 body_builds = [0]
 original_body_dict = record._body_dict
 def counted_body_dict():
@@ -248,6 +249,27 @@ assert cold.order() == 2 and cold.verify()
 assert body_builds[0] == before_cold_publication + 3, (
     "cold-body-builds", body_builds[0]
 )
+
+# An admitted saturation candidate is verified before use, but its nested
+# analytic certificate and producer result are not premises of the final
+# index-one theorem.  Keep only bounded audit diagnostics in the terminal
+# record instead of embedding and replaying that historical proof tree.
+K = NumberField(x**4 + 5*x**2 - 70*x - 190, "attempt_summary")
+assert class_unit_module.quartic_class_number_projection(K, proof=False) == 2
+result = class_unit_module.class_unit_context(K, proof=False, algorithm="auto")
+record = result.saturation_record
+unit_attempts = [
+    attempt for attempt in record.attempts
+    if attempt["schema"] == "sagejs.number-fields/unit-saturation-attempt-v1"
+]
+assert len(unit_attempts) == 1
+unit_attempt = unit_attempts[0]
+assert unit_attempt["accepted"] and not unit_attempt["unit_basis_changed"]
+assert "index_certificate" not in unit_attempt and "result" not in unit_attempt
+assert len(unit_attempt["index_certificate_sha256"]) == 64
+assert unit_attempt["producer_result"]["complete"] is True
+assert not hasattr(record, "_producer_artifacts")
+assert record.verify(K, K.maximal_order())
 
 # A class-number-one scalar stops after the exact live principal-witness
 # checks.  It defers certificate construction/replay, serves either proof
