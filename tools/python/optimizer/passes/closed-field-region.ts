@@ -40,30 +40,40 @@ type StatementPlan =
     }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
-function expressionStructuralKey(value: ExpressionPlan): string {
-  if (value.kind === "slot") return `slot:${value.slot}`;
+function expressionStructuralKey(
+  value: ExpressionPlan,
+  versions?: number[],
+): string {
+  if (value.kind === "slot") {
+    return `slot:${value.slot}@${versions?.[value.slot] ?? 0}`;
+  }
   if (value.kind === "sequence") {
     return `sequence:${value.sequence}:${value.indexOrder}`;
   }
-  if (value.kind === "neg") return `neg(${expressionStructuralKey(value.value)})`;
-  if (value.kind === "power") {
-    return `power:${value.exponent}(${expressionStructuralKey(value.value)})`;
+  if (value.kind === "neg") {
+    return `neg(${expressionStructuralKey(value.value, versions)})`;
   }
-  return `binary:${value.operator}(${expressionStructuralKey(value.left)},${expressionStructuralKey(value.right)})`;
+  if (value.kind === "power") {
+    return `power:${value.exponent}(${expressionStructuralKey(value.value, versions)})`;
+  }
+  return `binary:${value.operator}(${expressionStructuralKey(value.left, versions)},${expressionStructuralKey(value.right, versions)})`;
 }
 
 function expressionOperationCost(
   value: ExpressionPlan,
   common: Set<string>,
+  versions: number[],
 ): number {
   if (value.kind === "slot" || value.kind === "sequence") return 0;
-  const key = expressionStructuralKey(value);
+  const key = expressionStructuralKey(value, versions);
   if (common.has(key)) return 0;
   common.add(key);
-  if (value.kind === "neg") return 1 + expressionOperationCost(value.value, common);
+  if (value.kind === "neg") {
+    return 1 + expressionOperationCost(value.value, common, versions);
+  }
   if (value.kind === "binary") {
-    return 1 + expressionOperationCost(value.left, common) +
-      expressionOperationCost(value.right, common);
+    return 1 + expressionOperationCost(value.left, common, versions) +
+      expressionOperationCost(value.right, common, versions);
   }
   let exponent = value.exponent;
   let products = 0;
@@ -76,21 +86,39 @@ function expressionOperationCost(
     exponent = Math.floor(exponent / 2);
     if (exponent > 0) products += 1;
   }
-  return products + expressionOperationCost(value.value, common);
+  return products + expressionOperationCost(value.value, common, versions);
 }
 
-function statementsOperationCost(statements: StatementPlan[]): number {
-  return statements.reduce((total, statement) => {
+function statementsOperationCost(
+  statements: StatementPlan[],
+  slotCount: number,
+  versions = new Array(slotCount).fill(0),
+  common = new Set<string>(),
+): number {
+  let total = 0;
+  for (const statement of statements) {
     if (statement.kind === "assign") {
-      return total + expressionOperationCost(statement.value, new Set());
+      total += expressionOperationCost(statement.value, common, versions);
+      versions[statement.target] += 1;
+      continue;
     }
-    const conditionCommon = new Set<string>();
-    return total + 1 +
-      expressionOperationCost(statement.condition.left, conditionCommon) +
-      expressionOperationCost(statement.condition.right, conditionCommon) +
-      statementsOperationCost(statement.body) +
-      statementsOperationCost(statement.alternative);
-  }, 0);
+    total += 1 + expressionOperationCost(
+      statement.condition.left, common, versions,
+    ) + expressionOperationCost(statement.condition.right, common, versions);
+    const bodyVersions = [...versions];
+    const alternativeVersions = [...versions];
+    total += statementsOperationCost(
+      statement.body, slotCount, bodyVersions, new Set(common),
+    );
+    total += statementsOperationCost(
+      statement.alternative, slotCount, alternativeVersions, new Set(common),
+    );
+    for (let slot = 0; slot < slotCount; slot += 1) {
+      versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+    }
+    common.clear();
+  }
+  return total;
 }
 
 function powerProductCount(exponent: number): number {
@@ -111,41 +139,63 @@ function powerProductCount(exponent: number): number {
 function expressionTargetCodeUnits(
   value: ExpressionPlan,
   common: Set<string>,
+  versions: number[],
 ): number {
   if (value.kind === "slot" || value.kind === "sequence") return 0;
-  const key = expressionStructuralKey(value);
+  const key = expressionStructuralKey(value, versions);
   if (common.has(key)) return 0;
   common.add(key);
   if (value.kind === "neg") {
-    return 4 + expressionTargetCodeUnits(value.value, common);
+    return 4 + expressionTargetCodeUnits(value.value, common, versions);
   }
   if (value.kind === "binary") {
     return (value.operator === "*" ? 32 : 4) +
-      expressionTargetCodeUnits(value.left, common) +
-      expressionTargetCodeUnits(value.right, common);
+      expressionTargetCodeUnits(value.left, common, versions) +
+      expressionTargetCodeUnits(value.right, common, versions);
   }
   const products = powerProductCount(value.exponent);
   return (products > 1 ? 8 : 32 * products) +
-    expressionTargetCodeUnits(value.value, common);
+    expressionTargetCodeUnits(value.value, common, versions);
 }
 
-function statementsTargetCodeUnits(statements: StatementPlan[]): number {
-  return statements.reduce((total, statement) => {
+function statementsTargetCodeUnits(
+  statements: StatementPlan[],
+  slotCount: number,
+  versions = new Array(slotCount).fill(0),
+  common = new Set<string>(),
+): number {
+  let total = 0;
+  for (const statement of statements) {
     if (statement.kind === "assign") {
-      return total + expressionTargetCodeUnits(statement.value, new Set());
+      total += expressionTargetCodeUnits(statement.value, common, versions);
+      versions[statement.target] += 1;
+      continue;
     }
-    const conditionCommon = new Set<string>();
-    return total + 4 +
-      expressionTargetCodeUnits(statement.condition.left, conditionCommon) +
-      expressionTargetCodeUnits(statement.condition.right, conditionCommon) +
-      statementsTargetCodeUnits(statement.body) +
-      statementsTargetCodeUnits(statement.alternative);
-  }, 0);
+    total += 4 + expressionTargetCodeUnits(
+      statement.condition.left, common, versions,
+    ) + expressionTargetCodeUnits(statement.condition.right, common, versions);
+    const bodyVersions = [...versions];
+    const alternativeVersions = [...versions];
+    total += statementsTargetCodeUnits(
+      statement.body, slotCount, bodyVersions, new Set(common),
+    );
+    total += statementsTargetCodeUnits(
+      statement.alternative, slotCount, alternativeVersions, new Set(common),
+    );
+    for (let slot = 0; slot < slotCount; slot += 1) {
+      versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+    }
+    common.clear();
+  }
+  return total;
 }
 
-function estimatedTargetCodeBytes(statements: StatementPlan[]): number {
+function estimatedTargetCodeBytes(
+  statements: StatementPlan[],
+  slotCount: number,
+): number {
   return TARGET_CODE_BASE_BYTES +
-    TARGET_CODE_BYTES_PER_UNIT * statementsTargetCodeUnits(statements);
+    TARGET_CODE_BYTES_PER_UNIT * statementsTargetCodeUnits(statements, slotCount);
 }
 
 type AffineTargetPlan =
@@ -506,9 +556,9 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   const program = statements(loop.body.body);
   if (!program || operations.size === 0 || slots.length > 16 ||
       sequences.length > 4) return null;
-  const operationCost = statementsOperationCost(program);
+  const operationCost = statementsOperationCost(program, slots.length);
   if (operationCost > MAX_OPERATION_COST) return null;
-  const targetCodeBytes = estimatedTargetCodeBytes(program);
+  const targetCodeBytes = estimatedTargetCodeBytes(program, slots.length);
   if (targetCodeBytes > MAX_TARGET_CODE_BYTES) return null;
   // Reading every output before its first materialization avoids introducing
   // a new entry-time NameError for assignment-only locals.

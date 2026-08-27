@@ -1006,6 +1006,21 @@ independent scalar-coordinate oracles.  The compiler test also inspects emitted
 JavaScript and requires exactly one sequence load in each fixed-shape target
 variant, so duplicate element/property guards cannot silently return.
 
+Value numbering now extends across adjacent statements in the same straight-line
+block.  Every slot carries a compiler-only version that advances after a write;
+structural expression keys include those versions.  Thus two accumulators can
+share an expensive `item*item`, while an intervening update of `item` makes the
+second square distinct.  Conditional arms inherit independent copies of the
+incoming versions and available expressions, and the join advances epochs and
+clears availability, so a value computed on only one path is never reused after
+the branch.  The recognizer, independent verifier, code-size estimator, and
+emitter implement the same version transition rules.
+
+`bench/optimizer-cross-statement-commoning.cjs` exercises a two-moment loop over
+both `Zmod(1009)` and `GF(5^3)`.  It checks exact results against independent
+JavaScript coordinate oracles, compares with a matched O0 prefix, ratchets the
+selected representation route, and requires zero retained native resources.
+
 The target-independent expression graph also represents statically bounded
 powers `x^e` for exact nonnegative safe-integer exponents.  These are not spelling
 rewrites to multiplication: the runtime guard authenticates the selected
