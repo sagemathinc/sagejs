@@ -25,11 +25,19 @@ type StatementPlan =
   | { kind: "assign"; target: number; value: ExpressionPlan }
   | { kind: "if"; condition: ConditionPlan; body: StatementPlan[]; alternative: StatementPlan[] };
 
-type AffineTargetPlan = {
-  accumulatorSlot: number;
-  multiplierSlot: number;
-  incrementSlot: number;
-};
+type AffineTargetPlan =
+  | {
+      kind: "fixed-increment";
+      accumulatorSlot: number;
+      multiplierSlot: number;
+      incrementSlot: number;
+    }
+  | {
+      kind: "sequence-increment";
+      accumulatorSlot: number;
+      multiplierSlot: number;
+      incrementSequence: number;
+    };
 
 function affineTarget(
   statements: StatementPlan[],
@@ -40,19 +48,26 @@ function affineTarget(
   if (statement.kind !== "assign" || statement.target !== stateSlots[0]) return null;
   const addition = statement.value;
   if (addition.kind !== "binary" || addition.operator !== "+" ||
-      addition.right.kind !== "slot") return null;
+      (addition.right.kind !== "slot" &&
+       addition.right.kind !== "sequence")) return null;
   const multiplication = addition.left;
   if (multiplication.kind !== "binary" || multiplication.operator !== "*" ||
       multiplication.left.kind !== "slot" ||
       multiplication.right.kind !== "slot" ||
       multiplication.left.slot !== statement.target) return null;
-  const slots = [
-    statement.target,
-    multiplication.right.slot,
-    addition.right.slot,
-  ];
+  if (statement.target === multiplication.right.slot) return null;
+  if (addition.right.kind === "sequence") {
+    return {
+      kind: "sequence-increment",
+      accumulatorSlot: statement.target,
+      multiplierSlot: multiplication.right.slot,
+      incrementSequence: addition.right.sequence,
+    };
+  }
+  const slots = [statement.target, multiplication.right.slot, addition.right.slot];
   if (new Set(slots).size !== slots.length) return null;
   return {
+    kind: "fixed-increment",
     accumulatorSlot: statement.target,
     multiplierSlot: multiplication.right.slot,
     incrementSlot: addition.right.slot,
@@ -237,9 +252,7 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   if ([...modified].some((name) => sequenceByName.has(name))) return null;
 
   const stateSlots = [...modified].map((name) => slotByName.get(name)!);
-  const affine = iteratorKind === "range"
-    ? affineTarget(program, stateSlots)
-    : null;
+  const affine = affineTarget(program, stateSlots);
   return {
     iteratorKind,
     count,
@@ -355,30 +368,43 @@ export const closedFieldRegionPass: OptimizationPass = {
             revision: 1,
             kind: "guarded-unboxed-field-program",
             candidates: ["number-residue", "extension-tuple-number", "boxed-sage-value"],
-            conversions: ["unbox live-ins and sequence prefixes", "materialize modified live-outs"],
+            conversions: [
+              operands.affine?.kind === "sequence-increment"
+                ? "unbox live-ins and validate sequence elements while streaming"
+                : "unbox live-ins and sequence prefixes",
+              "materialize modified live-outs",
+            ],
             materializations: operands.stateSlots.length,
           },
           target: {
             level: "target",
             revision: 1,
-            kind: operands.affine ? "adaptive" : "v8",
-            lowering: operands.affine
+            kind: operands.affine?.kind === "fixed-increment" ? "adaptive" : "v8",
+            lowering: operands.affine?.kind === "fixed-increment"
               ? "trip-count-gated isolated affine target or monomorphic scalar operation graph"
+              : operands.affine?.kind === "sequence-increment"
+                ? "transactional streaming affine target over guarded sequence elements"
               : "monomorphic scalar locals generated from target-neutral field operations",
-            boundaryCrossings: operands.affine ? "runtime-dependent" : 0,
+            boundaryCrossings: operands.affine?.kind === "fixed-increment"
+              ? "runtime-dependent"
+              : 0,
             copiedBytes: "runtime-dependent",
-            selectedCandidate: operands.affine
+            selectedCandidate: operands.affine?.kind === "fixed-increment"
               ? "runtime-adaptive"
               : "v8-closed-field-program",
-            policy: operands.affine
+            policy: operands.affine?.kind === "fixed-increment"
               ? "guarded representation, trip count, and authenticated isolated-target availability"
+              : operands.affine?.kind === "sequence-increment"
+                ? "guarded streaming sequence with transactional materialization and exact restart fallback"
               : "bounded monomorphic scalar region with one entry validation",
             candidates: [
               targetCandidate({
                 id: "v8-closed-field-program",
                 kind: "v8",
                 representation: "number-residue or extension-tuple-number",
-                availability: operands.affine ? "runtime-gated" : "selected",
+                availability: operands.affine?.kind === "fixed-increment"
+                  ? "runtime-gated"
+                  : "selected",
                 cost: {
                   arithmeticOperations: "runtime-dependent",
                   representationConversions: "runtime-dependent",
@@ -398,8 +424,10 @@ export const closedFieldRegionPass: OptimizationPass = {
                 id: "wasm-resident-field-program",
                 kind: "wasm",
                 representation: "packed or resident field values",
-                availability: operands.affine ? "runtime-gated" : "rejected",
-                rejectionReason: operands.affine
+                availability: operands.affine?.kind === "fixed-increment"
+                  ? "runtime-gated"
+                  : "rejected",
+                rejectionReason: operands.affine?.kind === "fixed-increment"
                   ? null
                   : "resident-general-region-lowering-unimplemented",
                 cost: {
@@ -408,7 +436,7 @@ export const closedFieldRegionPass: OptimizationPass = {
                   copiedBytes: "runtime-dependent",
                   materializations: operands.stateSlots.length,
                 },
-                evidence: operands.affine
+                evidence: operands.affine?.kind === "fixed-increment"
                   ? "source-transparent packed quadratic kernel in the authenticated Wasm pack"
                   : "candidate retained for the same Mathematical IR; no general resident lowering yet",
               }),
@@ -416,8 +444,10 @@ export const closedFieldRegionPass: OptimizationPass = {
                 id: "native-isolated-field-program",
                 kind: "native",
                 representation: "packed fixed-shape field values",
-                availability: operands.affine ? "runtime-gated" : "rejected",
-                rejectionReason: operands.affine
+                availability: operands.affine?.kind === "fixed-increment"
+                  ? "runtime-gated"
+                  : "rejected",
+                rejectionReason: operands.affine?.kind === "fixed-increment"
                   ? null
                   : "general-operation-graph-native-lowering-unimplemented",
                 cost: {
@@ -426,7 +456,7 @@ export const closedFieldRegionPass: OptimizationPass = {
                   copiedBytes: "runtime-dependent",
                   materializations: operands.stateSlots.length,
                 },
-                evidence: operands.affine
+                evidence: operands.affine?.kind === "fixed-increment"
                   ? "source-transparent packed quadratic kernel in the production native pack"
                   : "isolated affine witness exists; general operation graph is not silently substituted",
               }),

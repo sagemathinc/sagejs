@@ -219,7 +219,7 @@ print(polynomial(point))
     ]);
     assert.equal(fast.stdout, slow.stdout);
     const route = await optimized.evaluate("K._lastCompilerOptimizationRoute");
-    assert.equal(route.repr, "'v8-extension-tuple-region'");
+    assert.equal(route.repr, "'v8-extension-tuple-stream'");
     const parent = await optimized.evaluate("polynomial(point).parent() is K");
     assert.equal(parent.repr, "True");
   } finally {
@@ -284,7 +284,7 @@ after = len(K._nativeResourceChildren)
 print(value.parent() is K, K._lastCompilerOptimizationRoute, after-before)
 `);
     const match = result.stdout.trim().match(
-      /^True v8-extension-tuple-region (\d+)$/,
+      /^True v8-extension-tuple-stream (\d+)$/,
     );
     assert.ok(match, result.stdout);
     assert.ok(Number(match[1]) <= 66, result.stdout);

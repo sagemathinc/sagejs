@@ -30,6 +30,14 @@ def recurrence(n, field):
     return value
 `;
 
+const sequenceAffineSource = `
+def horner(coefficients, point, initial):
+    value = initial
+    for coefficient in coefficients:
+        value = value * point + coefficient
+    return value
+`;
+
 function optimizerOptions(extra = {}) {
   return {
     filename: "optimizer-witness.sage",
@@ -104,6 +112,28 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     const loop = findLoop(compiler, ast);
     assert.equal(loop.optimization_region.id, region.id);
     assert.equal(loop.optimization_region.kind, "closed-field-region");
+  } finally {
+    frontend.close();
+  }
+});
+
+test("sequence-fed affine data flow selects the transactional V8 target", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(sequenceAffineSource, optimizerOptions());
+    const [region] = ast.optimization_ir.regions;
+    assert.equal(region.selected, true);
+    assert.equal(region.target.kind, "v8");
+    assert.match(region.target.lowering, /streaming affine/);
+    const loop = findLoop(compiler, ast);
+    assert.deepEqual(loop.optimization_region.operands.affine, {
+      kind: "sequence-increment",
+      accumulatorSlot: 0,
+      multiplierSlot: 1,
+      incrementSequence: 0,
+    });
+    assert.doesNotThrow(() => verifyInternalRegionPlan(loop.optimization_region));
   } finally {
     frontend.close();
   }

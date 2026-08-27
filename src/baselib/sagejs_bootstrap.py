@@ -1438,8 +1438,9 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         if (sequences.some((source) =>
             !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
             source.length < count)) return null;
-        const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16;
+        const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32;
         const required = (bit) => (operation_mask & bit) !== 0;
+        const streaming = required(STREAM);
 
         const primePrototype = parent._closedScalarElementPrototype;
         if (parent._machineResidues === true &&
@@ -1465,6 +1466,10 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             }
             const packedSequences = [];
             for (const source of sequences) {
+                if (streaming) {
+                    packedSequences.push(source);
+                    continue;
+                }
                 const packed = new Float64Array(count);
                 for (let index = 0; index < count; index++) {
                     if (!scalar(source[index])) return null;
@@ -1472,9 +1477,13 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
                 }
                 packedSequences.push(packed);
             }
-            parent._lastCompilerOptimizationRoute = "v8-number-residue-region";
+            if (!streaming) {
+                parent._lastCompilerOptimizationRoute =
+                    "v8-number-residue-region";
+            }
             return { kind: 1, parent, prototype: primePrototype, modulus,
-                     values: unboxed, sequences: packedSequences };
+                     values: unboxed, sequences: packedSequences,
+                     elementBrand, streaming };
         }
 
         const extensionPrototype = parent._machineExtensionElementPrototype;
@@ -1532,6 +1541,10 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
         }
         const packedSequences = [];
         for (const source of sequences) {
+            if (streaming) {
+                packedSequences.push(source);
+                continue;
+            }
             const packed = new Float64Array(degree * count);
             for (let index = 0; index < count; index++) {
                 if (!scalar(source[index])) return null;
@@ -1542,9 +1555,13 @@ def ρσ_prepare_machine_field_region(values, sequences, count, operation_mask):
             }
             packedSequences.push(packed);
         }
-        parent._lastCompilerOptimizationRoute = "v8-extension-tuple-region";
-        return { kind: 2, parent, modulus, degree, modulusCoefficients,
-                 values: unboxed, sequences: packedSequences };
+        if (!streaming) {
+            parent._lastCompilerOptimizationRoute =
+                "v8-extension-tuple-region";
+        }
+        return { kind: 2, parent, prototype: extensionPrototype, modulus,
+                 degree, modulusCoefficients, values: unboxed,
+                 sequences: packedSequences, elementBrand, streaming };
     })()"""
 
 

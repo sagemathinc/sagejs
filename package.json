@@ -247,6 +247,7 @@
     "bench:finite-field-native": "node bench/finite-field-boundary/benchmark-native-recurrence.cjs",
     "bench:optimizer-gf-p2": "node bench/optimizer-gf-p2.cjs",
     "bench:optimizer-extension-degrees": "node bench/optimizer-extension-degrees.cjs",
+    "bench:optimizer-field-horner": "node bench/optimizer-field-horner.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",

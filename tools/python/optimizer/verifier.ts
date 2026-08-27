@@ -287,11 +287,12 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
     }
     const affine = plan.operands.affine;
     if (affine !== null && affine !== undefined) {
-      const indices = [
-        affine.accumulatorSlot,
-        affine.multiplierSlot,
-        affine.incrementSlot,
-      ];
+      if (affine.kind !== "fixed-increment" &&
+          affine.kind !== "sequence-increment") {
+        throw new TypeError("optimizer affine target has an invalid kind");
+      }
+      const indices = [affine.accumulatorSlot, affine.multiplierSlot];
+      if (affine.kind === "fixed-increment") indices.push(affine.incrementSlot);
       for (const slot of indices) {
         if (!Number.isSafeInteger(slot) || slot < 0 || slot >= slots.length) {
           throw new TypeError("optimizer affine target slot is out of range");
@@ -300,6 +301,12 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
       if (new Set(indices).size !== indices.length ||
           !(plan.operands.stateSlots ?? []).includes(affine.accumulatorSlot)) {
         throw new TypeError("optimizer affine target has invalid data flow");
+      }
+      if (affine.kind === "sequence-increment" &&
+          (!Number.isSafeInteger(affine.incrementSequence) ||
+           affine.incrementSequence < 0 ||
+           affine.incrementSequence >= sequences.length)) {
+        throw new TypeError("optimizer affine target sequence is out of range");
       }
     }
     return;
