@@ -35,10 +35,11 @@ medians were approximately 0.095 seconds for 588, 0.284/0.348 seconds for 4027
 on the pinned cubic family takes roughly 1--3 milliseconds warm. This is a real
 gap, but it is not explained by one uniformly slow arithmetic primitive.
 
-The complete pinned 10-field, 20-policy Sage/PARI run matched every exact class
-number. Its Sage.js/PARI geometric-mean ratio was 52.5, median 86.6, and worst
-105.3. The empty-factor-base discriminant-23 case was only 6--7 times slower,
-while the harder scalar paths were commonly 85--105 times slower. Matched O0
+The complete pinned 10-field, 20-policy Sage/PARI run on clean commit
+`cb7b06fe` matched every exact class number. Its Sage.js/PARI geometric-mean
+ratio was 53.5, median 84.9, and worst 113.6. The empty-factor-base
+discriminant-23 case was only 7 times slower, while the harder scalar paths
+were commonly 85--110 times slower. Matched O0
 and O2 process runs were within about 1--2% on the three hard representatives;
 the current optimizer neither helps nor materially harms this scalar path.
 
