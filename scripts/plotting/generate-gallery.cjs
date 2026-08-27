@@ -131,8 +131,11 @@ angles = [2.0 * math.pi * index / (count - 1) for index in range(count)]
 line_3d = make_layer(
     kind="line",
     data={
-        "x": [math.cos(value) for value in angles],
-        "y": [math.sin(value) for value in angles],
+        # libm is permitted to differ in its final bit across platforms. The
+        # gallery is checked byte-for-byte, so retain ample display precision
+        # while canonicalizing those irrelevant differences.
+        "x": [round(math.cos(value), 14) for value in angles],
+        "y": [round(math.sin(value), 14) for value in angles],
         "z": [value / (2.0 * math.pi) for value in angles],
     },
     ordinal=0,

@@ -178,7 +178,10 @@ async function testPathCompatibilityAndUnavailableHost() {
         "    print('unavailable' in str(error))",
       ].join("\n"),
     );
-    assert.equal(output.join("").trim(), "/b\nTrue");
+    assert.equal(
+      output.join("").trim(),
+      `${process.platform === "win32" ? "\\b" : "/b"}\nTrue`,
+    );
   } finally {
     evaluator.close();
   }
