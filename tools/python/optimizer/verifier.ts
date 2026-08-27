@@ -326,12 +326,23 @@ function expressionStructuralKey(expression: any, versions?: number[]): string {
   if (expression.kind === "power") {
     return `power:${expression.exponent}(${expressionStructuralKey(expression.value, versions)})`;
   }
+  if (expression.operator === "+" || expression.operator === "*") {
+    const operands: string[] = [];
+    const collect = (operand: any): void => {
+      if (operand.kind === "binary" && operand.operator === expression.operator) {
+        collect(operand.left);
+        collect(operand.right);
+      } else {
+        operands.push(expressionStructuralKey(operand, versions));
+      }
+    };
+    collect(expression.left);
+    collect(expression.right);
+    operands.sort();
+    return `associative:${expression.operator}(${operands.join(",")})`;
+  }
   const left = expressionStructuralKey(expression.left, versions);
   const right = expressionStructuralKey(expression.right, versions);
-  if (expression.operator === "+" || expression.operator === "*") {
-    const [first, second] = left <= right ? [left, right] : [right, left];
-    return `binary:${expression.operator}(${first},${second})`;
-  }
   return `binary:${expression.operator}(${left},${right})`;
 }
 

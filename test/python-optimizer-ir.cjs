@@ -460,15 +460,23 @@ def ordered(left_values, right_values, zero):
         left = left+(x-y)
         right = right+(y-x)
     return left, right
+
+def regrouped(values, zero, a, b):
+    left = zero
+    right = zero
+    for x in values:
+        left = left+(x*a)*b
+        right = right+x*(b*a)
+    return left, right
 `, optimizerOptions());
     const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
     assert.deepEqual(
       plans.map((plan) => plan.operands.operationCost),
-      [3, 4],
+      [3, 4, 4],
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.targetCodeBytes),
-      [6144, 3072],
+      [6144, 3072, 10240],
     );
     for (const plan of plans) {
       assert.doesNotThrow(() => verifyInternalRegionPlan(plan));
