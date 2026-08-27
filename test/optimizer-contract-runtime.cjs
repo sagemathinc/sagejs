@@ -35,6 +35,10 @@ except RuntimeError as error:
     assert.match(result.stdout, /^54\.0\n/);
     assert.match(result.stdout, /'guard_failure': 'error'/);
     assert.match(result.stdout, /RuntimeError True\n$/);
+    assert.equal(result.optimization.authority, "compiler-verified-static");
+    assert.equal(result.optimization.program.contracts.length, 1);
+    assert.equal(result.optimization.program.contracts[0].status, "satisfied");
+    assert.equal(result.optimization.program.regions[0].target.kind, "v8");
   } finally {
     await session.close();
   }

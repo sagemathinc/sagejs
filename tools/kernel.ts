@@ -13,6 +13,7 @@ import {
   KernelCompletion,
   KernelCompleteness,
   KernelInspection,
+  SageOptimizationReport,
 } from "./kernel-evaluator";
 import {
   isSageSourceLanguage,
@@ -33,6 +34,8 @@ export interface SageEvaluationResult {
   stdout: string;
   durationMs: number;
   display?: SageDisplayData;
+  /** Compiler-verified static optimizer decisions for this evaluation. */
+  optimization: SageOptimizationReport;
 }
 
 export interface SageEvaluationOptions {

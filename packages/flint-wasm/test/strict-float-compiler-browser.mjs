@@ -74,6 +74,23 @@ try {
       ]);
       const optimizedFields = optimized.stdout.trim().split(/\s+/);
       const genericFields = generic.stdout.trim().split(/\s+/);
+      assert.equal(
+        optimized.optimization.authority,
+        "compiler-verified-static",
+      );
+      assert.equal(
+        optimized.optimization.program.regions.filter(
+          (region) => region.selected &&
+            region.passId === "math.strict-float-region.v1",
+        ).length,
+        1,
+        `${engine} selected strict-float receipt`,
+      );
+      assert.equal(
+        generic.optimization.program.regions.some((region) => region.selected),
+        false,
+        `${engine} O0 receipt`,
+      );
       assert.deepEqual(
         optimizedFields.slice(0, 2),
         genericFields.slice(0, 2),

@@ -436,6 +436,12 @@ export class SageJupyterKernel {
           );
         },
       });
+      const optimizerMetadata = {
+        sagejs: {
+          language: cell.language,
+          optimization: result.optimization,
+        },
+      };
       await outputTail;
       if (!silent && (result.repr || result.display)) {
         const data: Record<string, unknown> = {};
@@ -449,8 +455,8 @@ export class SageJupyterKernel {
         await this.publish("execute_result", request, {
           execution_count: executionCount,
           data,
-          metadata: {},
-        }, { sagejs: { language: cell.language } });
+          metadata: optimizerMetadata,
+        }, optimizerMetadata);
       }
       await this.sendRouterReply(
         this.shellQueue,
@@ -462,6 +468,7 @@ export class SageJupyterKernel {
           user_expressions: {},
           payload: [],
         },
+        optimizerMetadata,
       );
     } catch (error) {
       await outputTail;

@@ -36,6 +36,23 @@ function serializeError(error) {
   };
 }
 
+function optimizationReport(program, filename) {
+  if (
+    program?.schema !== "sagejs.optimizing-mathematics/v1" ||
+    !Array.isArray(program.passes) ||
+    !Array.isArray(program.contracts) ||
+    !Array.isArray(program.regions)
+  ) {
+    throw new TypeError("browser compiler produced invalid optimizer IR");
+  }
+  return JSON.parse(JSON.stringify({
+    schema: "sagejs.optimizer-evaluation/v1",
+    authority: "compiler-verified-static",
+    filename,
+    program,
+  }));
+}
+
 async function fetchText(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -120,7 +137,12 @@ function compileWithFrontend(source, filename, frontend, language) {
   const dynamicImports = imports
     .filter((module) => module?.dynamic === true)
     .map((module) => module.module_id);
-  return { javascript, dynamicImports, moduleImports };
+  return {
+    javascript,
+    dynamicImports,
+    moduleImports,
+    optimization: optimizationReport(toplevel.optimization_ir, filename),
+  };
 }
 
 async function foreignModule() {

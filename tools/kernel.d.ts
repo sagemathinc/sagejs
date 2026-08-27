@@ -9,6 +9,21 @@ export interface SageDisplayData {
   data: unknown;
 }
 
+export interface SageOptimizationReport {
+  schema: "sagejs.optimizer-evaluation/v1";
+  authority: "compiler-verified-static";
+  filename: string;
+  program: {
+    schema: "sagejs.optimizing-mathematics/v1";
+    level: "O0" | "O1" | "O2" | "O3" | "Os";
+    disabledPasses: string[];
+    requiredOptimizations: string[];
+    passes: unknown[];
+    contracts: unknown[];
+    regions: unknown[];
+  };
+}
+
 export interface SageEvaluationResult {
   /** Python/Sage representation of the final expression, or empty text. */
   repr: string;
@@ -18,6 +33,8 @@ export interface SageEvaluationResult {
   durationMs: number;
   /** Optional rich representation of the final value. */
   display?: SageDisplayData;
+  /** Compiler-verified static optimizer decisions for this evaluation. */
+  optimization: SageOptimizationReport;
 }
 
 export interface SageEvaluationOptions {

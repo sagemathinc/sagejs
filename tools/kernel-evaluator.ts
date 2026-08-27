@@ -21,6 +21,10 @@ import {
 } from "./python/compiler-frontend";
 import { PYTHON_KEYWORDS } from "./python/contract";
 import {
+  explainOptimizationProgram,
+  OptimizationProgram,
+} from "./python/optimizer";
+import {
   formatExecutionTiming,
   installTimingHooks,
   measureExecution,
@@ -40,6 +44,14 @@ export interface KernelEvaluation {
   repr: string;
   durationMs: number;
   display?: SageDisplayData;
+  optimization: SageOptimizationReport;
+}
+
+export interface SageOptimizationReport {
+  schema: "sagejs.optimizer-evaluation/v1";
+  authority: "compiler-verified-static";
+  filename: string;
+  program: OptimizationProgram;
 }
 
 export interface KernelCompletion {
@@ -161,6 +173,7 @@ export function createKernelEvaluator({
   let finalStatementIsAssignment = false;
   let sourceEndsWithSemicolon = false;
   let numericLiteralPoolCounter = 0;
+  let optimizationReport: SageOptimizationReport | undefined;
   const scopedFlagsByLanguage = new Map<
     SageLanguageMode,
     Record<string, boolean>
@@ -254,6 +267,12 @@ export function createKernelEvaluator({
       source,
       parserOptions(filename, false, language),
     );
+    optimizationReport = {
+      schema: "sagejs.optimizer-evaluation/v1",
+      authority: "compiler-verified-static",
+      filename,
+      program: explainOptimizationProgram(toplevel.optimization_ir),
+    };
     if (timeitOptions) {
       const statements = toplevel.body;
       const body = statements.length === 1
@@ -467,6 +486,7 @@ export function createKernelEvaluator({
         repr,
         durationMs,
         display,
+        optimization: optimizationReport!,
       };
     },
 
