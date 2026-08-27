@@ -360,13 +360,12 @@ function recognize(compiler: any, loop: any): null | Record<string, any> {
   };
   program.forEach(countStatementSequenceUses);
   const sequenceAccesses = [...sequenceAccessMap.values()];
-  const straightLineStream =
+  const transactionalStream =
     sequenceAccesses.length > 0 &&
     sequenceAccesses.length <= 2 &&
-    program.every((statement) => statement.kind === "assign") &&
     sequenceUses.reduce((total, count) => total + count, 0) <= 8;
   const sequenceStrategy =
-    affine?.kind === "sequence-increment" || straightLineStream
+    affine?.kind === "sequence-increment" || transactionalStream
       ? "stream"
       : "pack";
   return {

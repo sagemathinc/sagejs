@@ -174,16 +174,26 @@ def three_streams(left, right, third, zero):
     for index in range(len(left)):
         answer = answer + left[index] * right[index] + third[index]
     return answer
+
+def branching(values, pivot, left, right):
+    for index in range(len(values)):
+        if values[index] == pivot:
+            left = left + right
+            right = right - values[index]
+        else:
+            left = left * right + values[index]^2
+            right = right + left
+    return left, right
 `, optimizerOptions());
-    assert.equal(ast.optimization_ir.regions.length, 3);
+    assert.equal(ast.optimization_ir.regions.length, 4);
     const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceUses),
-      [[1, 1], [2], [1, 1, 1]],
+      [[1, 1], [2], [1, 1, 1], [3]],
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceStrategy),
-      ["stream", "stream", "pack"],
+      ["stream", "stream", "pack", "stream"],
     );
     assert.deepEqual(
       plans.map((plan) => plan.operands.sequenceAccesses),
@@ -198,6 +208,7 @@ def three_streams(left, right, third, zero):
           { sequence: 1, indexOrder: "forward", uses: 1 },
           { sequence: 2, indexOrder: "forward", uses: 1 },
         ],
+        [{ sequence: 0, indexOrder: "forward", uses: 3 }],
       ],
     );
   } finally {

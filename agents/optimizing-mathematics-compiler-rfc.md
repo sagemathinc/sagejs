@@ -978,3 +978,17 @@ warm medians of 6.36 ms for 100,000 residue-ring iterations and 40.26 ms for
 100,000 cubic-extension iterations on the development host, approximately
 142x and 315x faster than projected O0 prefixes respectively; both paths
 retained zero native resources.
+
+Structured equality branches now use the same transactional sequence streamer
+as straight-line graphs when there are at most two immutable index views and
+eight static sequence uses.  This does not speculate through arbitrary Python
+control flow: conditions remain exact guarded ring equality, branch bodies are
+verified local ring assignments, and a late element failure discards primitive
+locals and restarts the untouched loop from its original live-ins.  The
+independent verifier derives the streaming decision from the operation graph.
+`bench/optimizer-branching-region.cjs` ratchets a mixed equality/add/subtract/
+multiply/square state machine over both a residue ring and a cubic extension
+field against independent JavaScript coordinate oracles.  Fresh warm medians
+for 100,000 iterations were 6.08 ms and 44.33 ms respectively, approximately
+166x and 386x faster than projected O0 prefixes, with zero retained native
+resources.
