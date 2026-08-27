@@ -99,19 +99,19 @@ ${calls.join("\n")}
 `;
 }
 
-test("field-region IR is operation based and retains exact fallback provenance", async () => {
+test("ring-region IR is operation based and retains exact fallback provenance", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");
   try {
     const source = corpusSource(97, 5);
     const ast = frontend.parse(source, parserOptions);
     const regions = ast.optimization_ir.regions.filter((region) =>
-      region.passId === "math.closed-field-region.v1"
+      region.passId === "math.closed-ring-region.v1"
     );
     assert.equal(regions.length, 4);
     assert.deepEqual(
       regions.map((region) => region.mathematical.kind),
-      Array(4).fill("math.closed-field-program"),
+      Array(4).fill("math.closed-commutative-ring-program"),
     );
     assert.ok(regions.every((region) => region.selected));
     assert.ok(regions.every((region) =>
@@ -121,10 +121,10 @@ test("field-region IR is operation based and retains exact fallback provenance",
       region.mathematical.operations
     ));
     for (const operation of [
-      "math.field.add",
-      "math.field.sub",
-      "math.field.mul",
-      "math.field.equal",
+      "math.ring.add",
+      "math.ring.sub",
+      "math.ring.mul",
+      "math.ring.equal",
     ]) assert.ok(operations.has(operation), operation);
     assert.ok(regions.some((region) => region.representation.materializations === 2));
   } finally {
@@ -459,7 +459,7 @@ test("unsupported effects, aliases, callbacks, and source shapes are rejected", 
       const ast = frontend.parse(source, parserOptions);
       assert.equal(
         ast.optimization_ir.regions.some((region) =>
-          region.passId === "math.closed-field-region.v1" && region.selected
+          region.passId === "math.closed-ring-region.v1" && region.selected
         ),
         false,
         source,

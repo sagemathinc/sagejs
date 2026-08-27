@@ -8,7 +8,7 @@ const test = require("node:test");
 
 const root = join(__dirname, "..");
 const executable = join(root, "bin", "sagejs");
-const passId = "math.closed-field-region.v1";
+const passId = "math.closed-ring-region.v1";
 const source = [
   "for index in range(count):",
   "    value = value * multiplier + increment",
