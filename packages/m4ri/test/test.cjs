@@ -510,20 +510,28 @@ test("unclosed generated resources are reclaimed by the V8 finalizer", {
 }, () => {
   const source = `
 const m4ri = require(${JSON.stringify(root)});
-for (let batch = 0; batch < 10; batch += 1) {
-  for (let index = 0; index < 20; index += 1) {
-    // Large allocations bypass libc's small-block arenas, so RSS distinguishes
-    // native finalization from allocator retention after free.
-    m4ri.ffiM4riMatrixCreate(4096n, 4096n);
+(async () => {
+  for (let batch = 0; batch < 10; batch += 1) {
+    for (let index = 0; index < 20; index += 1) {
+      // Large allocations bypass libc's small-block arenas, so RSS distinguishes
+      // native finalization from allocator retention after free.
+      m4ri.ffiM4riMatrixCreate(4096n, 4096n);
+    }
+    global.gc();
+    // V8 does not promise to run weak native finalizers inside the synchronous
+    // gc() call. Give their queue an event-loop turn before allocating the next
+    // wave, otherwise this test measures delayed scheduling rather than leaks.
+    await new Promise(setImmediate);
   }
   global.gc();
-}
-setImmediate(() => {
-  global.gc();
+  await new Promise(setImmediate);
   const residentMiB = process.memoryUsage().rss / (1024 * 1024);
   if (residentMiB > 128) {
     throw new Error(\`M4RI finalizers left \${residentMiB.toFixed(1)} MiB resident\`);
   }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
 });
 `;
   const run = spawnSync(process.execPath, ["--expose-gc", "-e", source], {
