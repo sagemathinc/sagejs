@@ -779,9 +779,17 @@ class FiniteFieldExtensionElement(sage.Element):
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0 and self.is_zero():
             raise sage.ZeroDivisionError("cannot invert zero in a finite field")
+        coordinates = self._parent._machine_extension_pow_coordinates(
+            self._machineCoordinates, exponent
+        )
         if self._parent._generatedResourceBackend:
-            return self._new(_flint_ffi_module().fq_element_pow(self._native, exponent))
-        return self._new(runtime.flint_backend().fqPow(self._native, exponent))
+            return self._new(
+                _flint_ffi_module().fq_element_pow(self._native, exponent),
+                coordinates,
+            )
+        return self._new(
+            runtime.flint_backend().fqPow(self._native, exponent), coordinates
+        )
 
     def is_zero(self) -> bool:
         if self._machineCoordinates is not runtime.undefined:
@@ -885,6 +893,9 @@ class FiniteField_prime_modn(sage.Parent):
         )
         self._closedScalarNeg = runtime.reflect.get(
             _finite_field_element_prototype, "__neg__"
+        )
+        self._closedScalarPow = runtime.reflect.get(
+            _finite_field_element_prototype, "__pow__"
         )
         self._closedScalarEq = runtime.reflect.get(
             _finite_field_element_prototype, "_eq_"
@@ -1015,6 +1026,9 @@ class IntegerModRing(sage.Parent):
         self._closedScalarNeg = runtime.reflect.get(
             _integer_mod_element_prototype, "__neg__"
         )
+        self._closedScalarPow = runtime.reflect.get(
+            _integer_mod_element_prototype, "__pow__"
+        )
         self._closedScalarEq = runtime.reflect.get(
             _integer_mod_element_prototype, "_eq_"
         )
@@ -1137,6 +1151,9 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._machineExtensionNeg = runtime.undefined
         self._machineExtensionNegOwner = runtime.undefined
         self._machineExtensionNegGetter = runtime.undefined
+        self._machineExtensionPow = runtime.undefined
+        self._machineExtensionPowOwner = runtime.undefined
+        self._machineExtensionPowGetter = runtime.undefined
         self._machineExtensionEq = runtime.undefined
         self._machineExtensionMaterialize = runtime.undefined
         self._machineExtensionIsolated = runtime.undefined
@@ -1194,6 +1211,23 @@ class FiniteFieldExtensionParent(sage.Parent):
                     )
                     self._machineExtensionNeg = runtime.reflect.get(
                         neg_owner, "__neg__", neg_owner
+                    )
+                pow_owner = element_prototype
+                pow_descriptor = runtime.undefined
+                while pow_owner is not None:
+                    pow_descriptor = runtime.object.getOwnPropertyDescriptor(
+                        pow_owner, "__pow__"
+                    )
+                    if pow_descriptor is not runtime.undefined:
+                        break
+                    pow_owner = runtime.object.getPrototypeOf(pow_owner)
+                if pow_owner is not None and pow_descriptor is not runtime.undefined:
+                    self._machineExtensionPowOwner = pow_owner
+                    self._machineExtensionPowGetter = runtime.reflect.get(
+                        pow_descriptor, "get"
+                    )
+                    self._machineExtensionPow = runtime.reflect.get(
+                        pow_owner, "__pow__", pow_owner
                     )
                 self._machineExtensionEq = runtime.reflect.get(
                     element_prototype, "_eq_"
@@ -1289,6 +1323,29 @@ class FiniteFieldExtensionParent(sage.Parent):
                 value += prime
             result.append(value)
         return runtime.math_tuple(result)
+
+    def _machine_extension_pow_coordinates(
+        self,
+        coordinates: Any,
+        exponent: Any,
+    ) -> Any:
+        """Propagate a nonnegative power through the fixed-width shadow."""
+        degree = self._machineExtensionDegree
+        if degree == 0 or coordinates is runtime.undefined or exponent < 0:
+            return runtime.undefined
+        if len(coordinates) != degree:
+            return runtime.undefined
+        one = [0 for _index in range(degree)]
+        one[0] = 1
+        result = runtime.math_tuple(one)
+        base = coordinates
+        while exponent:
+            if exponent % runtime.bigint(2):
+                result = self._machine_extension_binary_coordinates(result, base, "mul")
+            exponent //= runtime.bigint(2)
+            if exponent:
+                base = self._machine_extension_binary_coordinates(base, base, "mul")
+        return result
 
     def _from_machine_coordinates(
         self,

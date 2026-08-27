@@ -401,7 +401,7 @@ def print_for_in(self, output):
 
 
 def _field_operation_mask(operations, streaming=False):
-    bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16}
+    bits = {"add": 1, "sub": 2, "mul": 4, "neg": 8, "equal": 16, "pow": 64}
     answer = 0
     for operation in operations:
         answer |= bits[operation]
@@ -423,6 +423,79 @@ def _region_temp(counter, suffix):
     name = "ρσ_FieldTemp" + suffix + "_" + str(counter[0])
     counter[0] += 1
     return name
+
+
+def _print_region_product(
+    left,
+    right,
+    representation,
+    degree,
+    modulus_name,
+    modulus_coefficients_name,
+    output,
+    counter,
+    suffix,
+):
+    if representation == "prime":
+        result = _region_temp(counter, suffix)
+        _print_region_variable(
+            output,
+            result,
+            "(" + left + " * " + right + ") % " + modulus_name,
+        )
+        return result
+
+    product = []
+    for exponent in range(2 * degree - 1):
+        terms = []
+        for left_index in range(degree):
+            right_index = exponent - left_index
+            if right_index < 0 or right_index >= degree:
+                continue
+            terms.append(left[left_index] + " * " + right[right_index])
+        coefficient = _region_temp(counter, suffix)
+        _print_region_variable(
+            output,
+            coefficient,
+            "(" + " + ".join(terms) + ") % " + modulus_name,
+        )
+        product.append(coefficient)
+
+    for exponent in range(2 * degree - 2, degree - 1, -1):
+        factor = product[exponent]
+        for modulus_index in range(degree):
+            result_index = exponent - degree + modulus_index
+            correction = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                correction,
+                "("
+                + factor
+                + " * "
+                + modulus_coefficients_name[modulus_index]
+                + ") % "
+                + modulus_name,
+            )
+            coefficient = _region_temp(counter, suffix)
+            _print_region_variable(
+                output,
+                coefficient,
+                product[result_index]
+                + " >= "
+                + correction
+                + " ? "
+                + product[result_index]
+                + " - "
+                + correction
+                + " : "
+                + product[result_index]
+                + " + "
+                + modulus_name
+                + " - "
+                + correction,
+            )
+            product[result_index] = coefficient
+    return product[:degree]
 
 
 def _print_region_expression(
@@ -540,6 +613,48 @@ def _print_region_expression(
             for component in range(degree)
         ]
 
+    if expression.kind == "power":
+        value = _print_region_expression(
+            expression.value,
+            representation,
+            degree,
+            slot_names,
+            context_name,
+            index_name,
+            count_name,
+            modulus_name,
+            modulus_coefficients_name,
+            output,
+            counter,
+            suffix,
+            streaming,
+            sequence_values,
+        )
+        square = _print_region_product(
+            value,
+            value,
+            representation,
+            degree,
+            modulus_name,
+            modulus_coefficients_name,
+            output,
+            counter,
+            suffix,
+        )
+        if expression.exponent == 2:
+            return square
+        return _print_region_product(
+            square,
+            value,
+            representation,
+            degree,
+            modulus_name,
+            modulus_coefficients_name,
+            output,
+            counter,
+            suffix,
+        )
+
     if expression.kind == "neg":
         value = _print_region_expression(
             expression.value,
@@ -615,6 +730,18 @@ def _print_region_expression(
         sequence_values,
     )
     operator = expression.operator
+    if operator == "*":
+        return _print_region_product(
+            left,
+            right,
+            representation,
+            degree,
+            modulus_name,
+            modulus_coefficients_name,
+            output,
+            counter,
+            suffix,
+        )
     if representation == "prime":
         result = _region_temp(counter, suffix)
         if operator == "+":
@@ -631,7 +758,7 @@ def _print_region_expression(
                 + " : "
                 + total
             )
-        elif operator == "-":
+        else:
             value = (
                 left
                 + " >= "
@@ -647,8 +774,6 @@ def _print_region_expression(
                 + " - "
                 + right
             )
-        else:
-            value = "(" + left + " * " + right + ") % " + modulus_name
         _print_region_variable(output, result, value)
         return result
 
@@ -694,57 +819,7 @@ def _print_region_expression(
             answer.append(result)
         return answer
 
-    product = []
-    for exponent in range(2 * degree - 1):
-        terms = []
-        for left_index in range(degree):
-            right_index = exponent - left_index
-            if right_index < 0 or right_index >= degree:
-                continue
-            terms.append(left[left_index] + " * " + right[right_index])
-        coefficient = _region_temp(counter, suffix)
-        _print_region_variable(
-            output,
-            coefficient,
-            "(" + " + ".join(terms) + ") % " + modulus_name,
-        )
-        product.append(coefficient)
-
-    for exponent in range(2 * degree - 2, degree - 1, -1):
-        factor = product[exponent]
-        for modulus_index in range(degree):
-            result_index = exponent - degree + modulus_index
-            correction = _region_temp(counter, suffix)
-            _print_region_variable(
-                output,
-                correction,
-                "("
-                + factor
-                + " * "
-                + modulus_coefficients_name[modulus_index]
-                + ") % "
-                + modulus_name,
-            )
-            coefficient = _region_temp(counter, suffix)
-            _print_region_variable(
-                output,
-                coefficient,
-                product[result_index]
-                + " >= "
-                + correction
-                + " ? "
-                + product[result_index]
-                + " - "
-                + correction
-                + " : "
-                + product[result_index]
-                + " + "
-                + modulus_name
-                + " - "
-                + correction,
-            )
-            product[result_index] = coefficient
-    return product[:degree]
+    raise RuntimeError("unhandled ring operation")
 
 
 def _print_region_statements(
