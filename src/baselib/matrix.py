@@ -7935,6 +7935,14 @@ class Matrix(sage.Element):
             return MatrixSpace(
                 self.base_ring(), count, self.ncols()
             )._from_fmpq_matrix_resource(resource)
+        if self._has_packed_rational_storage():
+            length = count * self.ncols()
+            return MatrixSpace(
+                self.base_ring(), count, self.ncols()
+            )._from_canonical_rational_entries(
+                runtime.integer_buffer_prefix(self._rational_numerators(), length),
+                runtime.integer_buffer_prefix(self._rational_denominators(), length),
+            )
         if self._has_m4ri_matrix_resource():
             resource = _m4ri_ffi_module().matrix_prefix_rows(
                 self._m4ri_resource(), count

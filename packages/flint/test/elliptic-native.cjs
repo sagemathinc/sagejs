@@ -267,7 +267,10 @@ test("paired central grids retain the independent-grid numerical oracle", () => 
     713n, 1, 2, coefficients, 64, 4, 4, null, null,
   );
   assert.equal(parallel.status, "ok");
-  assert.equal(parallel.coefficientWorkerCount, 4);
+  assert.equal(
+    parallel.coefficientWorkerCount,
+    process.platform === "win32" ? 1 : 4,
+  );
   assert.equal(
     parallel.rawDerivatives[0].realMidpoint.slice(0, 26),
     result.rawDerivatives[0].realMidpoint.slice(0, 26),
