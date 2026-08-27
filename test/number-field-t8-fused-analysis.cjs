@@ -138,8 +138,8 @@ test("new compact proof kernels remain source transparent", () => {
     "packed_integer_square_root",
     "packed_order_lattice_is_valid",
   ]) {
-    const result = spawnSync(
-      sagejs,
+    const result = spawnSagejsSync(
+      root,
       ["native", "explain", source, "--function", name],
       { cwd: root, encoding: "utf8", timeout: 120_000 },
     );
