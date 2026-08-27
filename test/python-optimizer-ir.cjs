@@ -289,6 +289,88 @@ def squares(values, zero):
   }
 });
 
+test("versioned value numbering shares across statements and invalidates on writes", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+def moments(values, zero):
+    left = zero
+    right = zero
+    for item in values:
+        left = left + item*item
+        right = right + item*item
+    return left, right
+
+def evolving(count, left, right, value, step):
+    for index in range(count):
+        left = left + value*value
+        value = value + step
+        right = right + value*value
+    return left, right, value
+
+def branching(values, left, right, value, step, pivot):
+    for item in values:
+        left = left + value*value
+        if left == pivot:
+            value = value + step
+        right = right + value*value
+    return left, right, value
+`, optimizerOptions());
+    const plans = findLoops(compiler, ast).map((loop) => loop.optimization_region);
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.operationCost),
+      [3, 5, 6],
+    );
+    assert.deepEqual(
+      plans.map((plan) => plan.operands.targetCodeBytes),
+      [6144, 10752, 11264],
+    );
+    for (const plan of plans) {
+      assert.doesNotThrow(() => verifyInternalRegionPlan(plan));
+    }
+
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: true,
+      keep_docstrings: true,
+      exact_integers: true,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    // Restrict the count to the prime target: the first region emits one
+    // square, while the write and branch join each force a second square.
+    const moments = javascript.slice(
+      javascript.indexOf("$ρσ$py$moments = function"),
+      javascript.indexOf("$ρσ$py$evolving = function"),
+    );
+    const evolving = javascript.slice(
+      javascript.indexOf("$ρσ$py$evolving = function"),
+      javascript.indexOf("$ρσ$py$branching = function"),
+    );
+    const branching = javascript.slice(
+      javascript.indexOf("$ρσ$py$branching = function"),
+    );
+    const primeSquares = (target) => {
+      const prime = target.slice(
+        target.indexOf(".kind === 1"),
+        target.indexOf("var ρσ_FieldModulusCoefficients"),
+      );
+      return prime.match(/\([^;\n]* \* [^;\n]*\) % ρσ_FieldModulus/g)?.length ?? 0;
+    };
+    assert.equal(primeSquares(moments), 1);
+    assert.equal(primeSquares(evolving), 2);
+    assert.equal(primeSquares(branching), 2);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("compact powers respect the advertised outlined-target code budget", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "sage");

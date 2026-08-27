@@ -515,28 +515,29 @@ def _print_region_product(
     return product[:degree]
 
 
-def _region_expression_key(expression):
+def _region_expression_key(expression, slot_versions=None):
     if expression.kind == "slot":
-        return "slot:" + str(expression.slot)
+        version = 0 if slot_versions is None else slot_versions[expression.slot]
+        return "slot:" + str(expression.slot) + "@" + str(version)
     if expression.kind == "sequence":
         return "sequence:" + str(expression.sequence) + ":" + expression.indexOrder
     if expression.kind == "neg":
-        return "neg(" + _region_expression_key(expression.value) + ")"
+        return "neg(" + _region_expression_key(expression.value, slot_versions) + ")"
     if expression.kind == "power":
         return (
             "power:"
             + str(expression.exponent)
             + "("
-            + _region_expression_key(expression.value)
+            + _region_expression_key(expression.value, slot_versions)
             + ")"
         )
     return (
         "binary:"
         + expression.operator
         + "("
-        + _region_expression_key(expression.left)
+        + _region_expression_key(expression.left, slot_versions)
         + ","
-        + _region_expression_key(expression.right)
+        + _region_expression_key(expression.right, slot_versions)
         + ")"
     )
 
@@ -557,6 +558,7 @@ def _print_region_expression(
     streaming=False,
     sequence_values=None,
     operation_values=None,
+    slot_versions=None,
 ):
     if expression.kind == "slot":
         return slot_names[expression.slot]
@@ -657,7 +659,7 @@ def _print_region_expression(
             for component in range(degree)
         ]
 
-    operation_key = _region_expression_key(expression)
+    operation_key = _region_expression_key(expression, slot_versions)
     if operation_values is not None and operation_key in operation_values:
         return operation_values[operation_key]
 
@@ -678,6 +680,7 @@ def _print_region_expression(
             streaming,
             sequence_values,
             operation_values,
+            slot_versions,
         )
         exponent = expression.exponent
         if exponent == 0:
@@ -773,6 +776,7 @@ def _print_region_expression(
             streaming,
             sequence_values,
             operation_values,
+            slot_versions,
         )
         if representation == "prime":
             result = _region_temp(counter, suffix)
@@ -819,6 +823,7 @@ def _print_region_expression(
         streaming,
         sequence_values,
         operation_values,
+        slot_versions,
     )
     right = _print_region_expression(
         expression.right,
@@ -836,6 +841,7 @@ def _print_region_expression(
         streaming,
         sequence_values,
         operation_values,
+        slot_versions,
     )
     operator = expression.operator
     if operator == "*":
@@ -952,7 +958,13 @@ def _print_region_statements(
     suffix,
     streaming=False,
     sequence_values=None,
+    operation_values=None,
+    slot_versions=None,
 ):
+    if operation_values is None:
+        operation_values = {}
+    if slot_versions is None:
+        slot_versions = [0 for _slot in slot_names]
     for statement in statements:
         if statement.kind == "assign":
             value = _print_region_expression(
@@ -970,7 +982,8 @@ def _print_region_statements(
                 suffix,
                 streaming,
                 sequence_values,
-                {},
+                operation_values,
+                slot_versions,
             )
             targets = slot_names[statement.target]
             if representation == "prime":
@@ -984,9 +997,9 @@ def _print_region_statements(
                     output.assign(targets[component])
                     output.print(value[component])
                     output.end_statement()
+            slot_versions[statement.target] += 1
             continue
 
-        condition_values = {}
         left = _print_region_expression(
             statement.condition.left,
             representation,
@@ -1002,7 +1015,8 @@ def _print_region_statements(
             suffix,
             streaming,
             sequence_values,
-            condition_values,
+            operation_values,
+            slot_versions,
         )
         right = _print_region_expression(
             statement.condition.right,
@@ -1019,7 +1033,8 @@ def _print_region_statements(
             suffix,
             streaming,
             sequence_values,
-            condition_values,
+            operation_values,
+            slot_versions,
         )
         if representation == "prime":
             condition = left + " === " + right
@@ -1033,6 +1048,9 @@ def _print_region_statements(
         output.indent()
         output.print("if (" + condition + ")")
         output.space()
+
+        body_versions = list(slot_versions)
+        alternative_versions = list(slot_versions)
 
         def consequent():
             _print_region_statements(
@@ -1050,6 +1068,8 @@ def _print_region_statements(
                 suffix,
                 streaming,
                 sequence_values,
+                dict(operation_values),
+                body_versions,
             )
 
         output.with_block(consequent)
@@ -1074,9 +1094,17 @@ def _print_region_statements(
                     suffix,
                     streaming,
                     sequence_values,
+                    dict(operation_values),
+                    alternative_versions,
                 )
 
             output.with_block(alternative)
+        for slot in range(len(slot_versions)):
+            slot_versions[slot] = max(body_versions[slot], alternative_versions[slot])
+        # A conditional join creates a new availability scope.  Rebinding is
+        # intentional: compiler-internal dictionaries lower to plain objects,
+        # not Python runtime dictionaries with a `clear` method.
+        operation_values = {}
 
 
 def _print_closed_field_fallback(self, output, plan, names):
@@ -1199,6 +1227,8 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
             suffix,
             streaming,
             {},
+            {},
+            [0 for _slot in slot_names],
         )
 
     output.with_block(body)

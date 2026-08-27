@@ -313,31 +313,37 @@ function verifyStatements(
   }
 }
 
-function expressionStructuralKey(expression: any): string {
-  if (expression.kind === "slot") return `slot:${expression.slot}`;
+function expressionStructuralKey(expression: any, versions?: number[]): string {
+  if (expression.kind === "slot") {
+    return `slot:${expression.slot}@${versions?.[expression.slot] ?? 0}`;
+  }
   if (expression.kind === "sequence") {
     return `sequence:${expression.sequence}:${expression.indexOrder}`;
   }
   if (expression.kind === "neg") {
-    return `neg(${expressionStructuralKey(expression.value)})`;
+    return `neg(${expressionStructuralKey(expression.value, versions)})`;
   }
   if (expression.kind === "power") {
-    return `power:${expression.exponent}(${expressionStructuralKey(expression.value)})`;
+    return `power:${expression.exponent}(${expressionStructuralKey(expression.value, versions)})`;
   }
-  return `binary:${expression.operator}(${expressionStructuralKey(expression.left)},${expressionStructuralKey(expression.right)})`;
+  return `binary:${expression.operator}(${expressionStructuralKey(expression.left, versions)},${expressionStructuralKey(expression.right, versions)})`;
 }
 
-function expressionOperationCost(expression: any, common: Set<string>): number {
+function expressionOperationCost(
+  expression: any,
+  common: Set<string>,
+  versions: number[],
+): number {
   if (expression.kind === "slot" || expression.kind === "sequence") return 0;
-  const key = expressionStructuralKey(expression);
+  const key = expressionStructuralKey(expression, versions);
   if (common.has(key)) return 0;
   common.add(key);
   if (expression.kind === "neg") {
-    return 1 + expressionOperationCost(expression.value, common);
+    return 1 + expressionOperationCost(expression.value, common, versions);
   }
   if (expression.kind === "binary") {
-    return 1 + expressionOperationCost(expression.left, common) +
-      expressionOperationCost(expression.right, common);
+    return 1 + expressionOperationCost(expression.left, common, versions) +
+      expressionOperationCost(expression.right, common, versions);
   }
   let exponent = expression.exponent;
   let products = 0;
@@ -350,21 +356,39 @@ function expressionOperationCost(expression: any, common: Set<string>): number {
     exponent = Math.floor(exponent / 2);
     if (exponent > 0) products += 1;
   }
-  return products + expressionOperationCost(expression.value, common);
+  return products + expressionOperationCost(expression.value, common, versions);
 }
 
-function statementsOperationCost(statements: any[]): number {
-  return statements.reduce((total, statement) => {
+function statementsOperationCost(
+  statements: any[],
+  slotCount: number,
+  versions = new Array(slotCount).fill(0),
+  common = new Set<string>(),
+): number {
+  let total = 0;
+  for (const statement of statements) {
     if (statement.kind === "assign") {
-      return total + expressionOperationCost(statement.value, new Set());
+      total += expressionOperationCost(statement.value, common, versions);
+      versions[statement.target] += 1;
+      continue;
     }
-    const conditionCommon = new Set<string>();
-    return total + 1 + expressionOperationCost(
-      statement.condition.left, conditionCommon
-    ) + expressionOperationCost(statement.condition.right, conditionCommon) +
-      statementsOperationCost(statement.body) +
-      statementsOperationCost(statement.alternative);
-  }, 0);
+    total += 1 + expressionOperationCost(
+      statement.condition.left, common, versions,
+    ) + expressionOperationCost(statement.condition.right, common, versions);
+    const bodyVersions = [...versions];
+    const alternativeVersions = [...versions];
+    total += statementsOperationCost(
+      statement.body, slotCount, bodyVersions, new Set(common),
+    );
+    total += statementsOperationCost(
+      statement.alternative, slotCount, alternativeVersions, new Set(common),
+    );
+    for (let slot = 0; slot < slotCount; slot += 1) {
+      versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+    }
+    common.clear();
+  }
+  return total;
 }
 
 function powerProductCount(exponent: number): number {
@@ -381,40 +405,62 @@ function powerProductCount(exponent: number): number {
   return products;
 }
 
-function expressionTargetCodeUnits(expression: any, common: Set<string>): number {
+function expressionTargetCodeUnits(
+  expression: any,
+  common: Set<string>,
+  versions: number[],
+): number {
   if (expression.kind === "slot" || expression.kind === "sequence") return 0;
-  const key = expressionStructuralKey(expression);
+  const key = expressionStructuralKey(expression, versions);
   if (common.has(key)) return 0;
   common.add(key);
   if (expression.kind === "neg") {
-    return 4 + expressionTargetCodeUnits(expression.value, common);
+    return 4 + expressionTargetCodeUnits(expression.value, common, versions);
   }
   if (expression.kind === "binary") {
     return (expression.operator === "*" ? 32 : 4) +
-      expressionTargetCodeUnits(expression.left, common) +
-      expressionTargetCodeUnits(expression.right, common);
+      expressionTargetCodeUnits(expression.left, common, versions) +
+      expressionTargetCodeUnits(expression.right, common, versions);
   }
   const products = powerProductCount(expression.exponent);
   return (products > 1 ? 8 : 32 * products) +
-    expressionTargetCodeUnits(expression.value, common);
+    expressionTargetCodeUnits(expression.value, common, versions);
 }
 
-function statementsTargetCodeUnits(statements: any[]): number {
-  return statements.reduce((total, statement) => {
+function statementsTargetCodeUnits(
+  statements: any[],
+  slotCount: number,
+  versions = new Array(slotCount).fill(0),
+  common = new Set<string>(),
+): number {
+  let total = 0;
+  for (const statement of statements) {
     if (statement.kind === "assign") {
-      return total + expressionTargetCodeUnits(statement.value, new Set());
+      total += expressionTargetCodeUnits(statement.value, common, versions);
+      versions[statement.target] += 1;
+      continue;
     }
-    const conditionCommon = new Set<string>();
-    return total + 4 +
-      expressionTargetCodeUnits(statement.condition.left, conditionCommon) +
-      expressionTargetCodeUnits(statement.condition.right, conditionCommon) +
-      statementsTargetCodeUnits(statement.body) +
-      statementsTargetCodeUnits(statement.alternative);
-  }, 0);
+    total += 4 + expressionTargetCodeUnits(
+      statement.condition.left, common, versions,
+    ) + expressionTargetCodeUnits(statement.condition.right, common, versions);
+    const bodyVersions = [...versions];
+    const alternativeVersions = [...versions];
+    total += statementsTargetCodeUnits(
+      statement.body, slotCount, bodyVersions, new Set(common),
+    );
+    total += statementsTargetCodeUnits(
+      statement.alternative, slotCount, alternativeVersions, new Set(common),
+    );
+    for (let slot = 0; slot < slotCount; slot += 1) {
+      versions[slot] = Math.max(bodyVersions[slot], alternativeVersions[slot]);
+    }
+    common.clear();
+  }
+  return total;
 }
 
-function estimatedTargetCodeBytes(statements: any[]): number {
-  return 1024 + 128 * statementsTargetCodeUnits(statements);
+function estimatedTargetCodeBytes(statements: any[], slotCount: number): number {
+  return 1024 + 128 * statementsTargetCodeUnits(statements, slotCount);
 }
 
 export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
@@ -493,7 +539,10 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
           !observedInplaceOperations.has(operation))) {
       throw new TypeError("optimizer ring region has stale inplace operations");
     }
-    const observedOperationCost = statementsOperationCost(plan.operands.statements);
+    const observedOperationCost = statementsOperationCost(
+      plan.operands.statements,
+      slots.length,
+    );
     if (!Number.isSafeInteger(plan.operands.operationCost) ||
         plan.operands.operationCost !== observedOperationCost ||
         observedOperationCost > 64) {
@@ -501,6 +550,7 @@ export function verifyInternalRegionPlan(plan: InternalRegionPlan): void {
     }
     const observedTargetCodeBytes = estimatedTargetCodeBytes(
       plan.operands.statements,
+      slots.length,
     );
     if (!Number.isSafeInteger(plan.operands.targetCodeBytes) ||
         plan.operands.targetCodeBytes !== observedTargetCodeBytes ||

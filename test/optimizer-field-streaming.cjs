@@ -433,3 +433,81 @@ print(sum_of_squares(values), R._lastCompilerOptimizationRoute)
     await session.close();
   }
 });
+
+test("cross-statement commoning preserves writes and control-flow joins", async () => {
+  const source = String.raw`
+def moments(values, zero):
+    left = zero
+    right = zero + zero
+    for item in values:
+        left = left + item*item
+        right = right + item*item
+    return left, right
+
+def evolving(values, zero, step):
+    left = zero
+    right = zero + zero
+    value = zero + step
+    for item in values:
+        left = left + value*value
+        value = value + step
+        right = right + value*value
+    return left, right, value
+
+def branching(values, zero, step, pivot):
+    left = zero
+    right = zero + zero
+    value = zero + step
+    for item in values:
+        left = left + value*value
+        if item == pivot:
+            value = value + step
+        right = right + value*value
+    return left, right, value
+
+R = Zmod(1009)
+prime_values = tuple(R(index^2+3) for index in range(257))
+for function, arguments in (
+    (moments, (prime_values, R(0))),
+    (evolving, (prime_values, R(0), R(17))),
+    (branching, (prime_values, R(0), R(17), prime_values[129])),
+):
+    R._lastCompilerOptimizationRoute = 'generic'
+    print(function(*arguments), R._lastCompilerOptimizationRoute)
+
+P.<x> = PolynomialRing(GF(5))
+K.<a> = GF(5^3, modulus=x^3+x+1)
+aa = a*a
+cubic_values = tuple(K(index)+((index+1)%5)*a+((index^2+2)%5)*aa for index in range(257))
+step = K(2)+3*a+aa
+for function, arguments in (
+    (moments, (cubic_values, K(0))),
+    (evolving, (cubic_values, K(0), step)),
+    (branching, (cubic_values, K(0), step, cubic_values[129])),
+):
+    K._lastCompilerOptimizationRoute = 'generic'
+    print(function(*arguments), K._lastCompilerOptimizationRoute)
+`;
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source),
+      generic.evaluate(source),
+    ]);
+    assert.equal(
+      fast.stdout
+        .replaceAll("v8-number-residue-stream", "generic")
+        .replaceAll("v8-extension-tuple-stream", "generic")
+        .replaceAll("v8-number-residue-region", "generic")
+        .replaceAll("v8-extension-tuple-region", "generic"),
+      slow.stdout,
+    );
+    assert.equal(fast.stdout.match(/v8-number-residue-stream/g)?.length, 2);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-stream/g)?.length, 2);
+    assert.equal(fast.stdout.match(/v8-number-residue-region/g)?.length, 1);
+    assert.equal(fast.stdout.match(/v8-extension-tuple-region/g)?.length, 1);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
