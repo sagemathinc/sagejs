@@ -244,6 +244,15 @@ values = prefix.through(80)
 assert isinstance(values, list) and isinstance(prefix.values, tuple)
 values[2] = 999
 assert prefix.through(80)[2] != 999
+smalljac_prefix = GlobalCoefficientPrefix(C, local_factor_algorithm="smalljac")
+assert smalljac_prefix.through(80) == prefix.through(80)
+assert smalljac_prefix.diagnostics()["local_factor_algorithm"] == "smalljac"
+assert "smalljac" in smalljac_prefix.diagnostics()["backend_counts"]
+try:
+    GlobalCoefficientPrefix(C, local_factor_algorithm="unchecked")
+    raise AssertionError("an unknown local-factor algorithm was accepted")
+except ValueError:
+    pass
 C_same = HyperellipticCurve(x, x**3-x+1)
 HyperellipticLSeries(C_same, prefix)
 C_other = HyperellipticCurve(x, x**3-x+2)

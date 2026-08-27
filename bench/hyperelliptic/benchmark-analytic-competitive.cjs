@@ -16,6 +16,7 @@ function option(name, fallback) {
 const evaluationTimeoutMilliseconds = Number(
   option("evaluation-timeout-ms", "600000"),
 );
+const progressEnabled = option("progress", "0") === "1";
 if (
   !Number.isSafeInteger(evaluationTimeoutMilliseconds) ||
   evaluationTimeoutMilliseconds < 1_000 ||
@@ -77,6 +78,24 @@ function coldAmortizationCount(cold, direct, warm) {
     return null;
   }
   return Math.ceil(cold / (direct - warm));
+}
+
+function progress(stage, state) {
+  if (!progressEnabled) return;
+  const memory = process.memoryUsage();
+  process.stderr.write(
+    `${JSON.stringify({
+      type: "sagejs-analytic-benchmark-progress",
+      stage,
+      state,
+      elapsed_ms: Number(performance.now().toFixed(3)),
+      rss_bytes: memory.rss,
+      heap_used_bytes: memory.heapUsed,
+      external_bytes: memory.external,
+      array_buffer_bytes: memory.arrayBuffers,
+      maximum_rss_kib: process.resourceUsage().maxRSS,
+    })}\n`,
+  );
 }
 
 function performanceGates(sageRows, pariRows, precisionBits) {
@@ -205,6 +224,7 @@ async function sageMeasurement(
   warmups = 0,
   residentBatchSize = 1,
 ) {
+  progress(stage, "start");
   let result;
   for (let index = 0; index < warmups; index += 1) {
     result = await session.evaluate(source, {
@@ -220,6 +240,7 @@ async function sageMeasurement(
     timings.push((performance.now() - started) / residentBatchSize);
   }
   const representation = result.repr;
+  progress(stage, "complete");
   return {
     system: "sagejs",
     stage,
@@ -441,18 +462,18 @@ async function main() {
       await sageMeasurement(
         session,
         "coefficient_prefix_5000_cold",
-        "prefix=GlobalCoefficientPrefix(C); values=prefix.through(5000); stream=prefix.diagnostics()['coefficient_stream'] if hasattr(prefix,'diagnostics') else 'unreported'; (len(values),stream,sum(values[:21]))",
+        "prefix=GlobalCoefficientPrefix(C,local_factor_algorithm='smalljac'); values=prefix.through(5000); stream=prefix.diagnostics()['coefficient_stream'] if hasattr(prefix,'diagnostics') else 'unreported'; (len(values),stream,sum(values[:21]))",
         samples,
       ),
     );
     await session.evaluate(
-      "prepared_prefix=GlobalCoefficientPrefix(C); prepared_prefix.through(5000)",
+      "prepared_prefix=GlobalCoefficientPrefix(C,local_factor_algorithm='smalljac'); prepared_prefix.through(5000)",
       { timeout: evaluationTimeoutMilliseconds },
     );
     await session.evaluate(
       [
         "def isolated_prefix2():",
-        "    snapshot = GlobalCoefficientPrefix(C)",
+        "    snapshot = GlobalCoefficientPrefix(C,local_factor_algorithm='smalljac')",
         "    snapshot._seed_exact_values(list(prepared_prefix.values), prepared_prefix.backend_counts)",
         "    return snapshot",
         "True",
@@ -586,20 +607,16 @@ async function main() {
         await sageMeasurement(
           session,
           `central_derivative_order${order}_native_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}] for _repeat in range(3))[-1]`,
+          `HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='native')[${order}]`,
           samples,
-          0,
-          3,
         ),
       );
       rows.push(
         await sageMeasurement(
           session,
           `central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
+          `HyperellipticLSeries(C,isolated_prefix2()).central_jet(${order},prec=${precisionBits},algorithm='inverse_mellin')[${order}]`,
           samples,
-          0,
-          3,
         ),
       );
     }
@@ -607,13 +624,13 @@ async function main() {
       "assert genus3_candidate_kernel_available(), 'the genus-3 derivative gate requires the production exact-candidate kernel'",
     );
     await session.evaluate(
-      `prepared_L3=HyperellipticLSeries(C3); prepared_L3.init(prec=16,max_order=4,algorithm='native'); prepared_prefix3=prepared_L3._coefficient_prefix`,
+      `prepared_prefix3=GlobalCoefficientPrefix(C3,local_factor_algorithm='rforest'); prepared_L3=HyperellipticLSeries(C3,prepared_prefix3); prepared_L3.init(prec=16,max_order=4,algorithm='native')`,
       { timeout: evaluationTimeoutMilliseconds },
     );
     await session.evaluate(
       [
         "def isolated_prefix3():",
-        "    snapshot = GlobalCoefficientPrefix(C3)",
+        "    snapshot = GlobalCoefficientPrefix(C3,local_factor_algorithm='rforest')",
         "    snapshot._seed_exact_values(list(prepared_prefix3.values), prepared_prefix3.backend_counts)",
         "    return snapshot",
         "True",
@@ -634,20 +651,16 @@ async function main() {
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_native_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='native')[${order}] for _repeat in range(3))[-1]`,
+          `HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='native')[${order}]`,
           samples,
-          0,
-          3,
         ),
       );
       rows.push(
         await sageMeasurement(
           session,
           `genus3_central_derivative_order${order}_inverse_mellin_coefficients_warm`,
-          `tuple(HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}] for _repeat in range(3))[-1]`,
+          `HyperellipticLSeries(C3,isolated_prefix3()).central_jet(${order},prec=16,algorithm='inverse_mellin')[${order}]`,
           samples,
-          0,
-          3,
         ),
       );
     }

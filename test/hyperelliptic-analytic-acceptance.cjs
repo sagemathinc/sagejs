@@ -2,6 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
 const test = require("node:test");
 
 const {
@@ -271,5 +272,25 @@ test("failed runs preserve accepted preflight separately from noisy postflight",
   assert.deepEqual(
     validateFailureReceipt(receipt, { currentSources: sourceIdentity(ROOT) }),
     { passed: true, failures: [] },
+  );
+});
+
+test("Phase-9 sources make exact local-factor and single-call timing contracts explicit", () => {
+  const benchmark = readFileSync(
+    `${ROOT}/bench/hyperelliptic/benchmark-analytic-competitive.cjs`,
+    "utf8",
+  );
+  const evidence = readFileSync(
+    `${ROOT}/bench/hyperelliptic/analytic-acceptance/evidence.cjs`,
+    "utf8",
+  );
+  for (const source of [benchmark, evidence]) {
+    assert.match(source, /local_factor_algorithm=["']smalljac["']/u);
+    assert.match(source, /local_factor_algorithm=["']rforest["']/u);
+  }
+  assert.doesNotMatch(
+    benchmark,
+    /central_jet\([^\n]*for _repeat in range\(3\)/u,
+    "one public derivative call, not a hidden inner batch, must define a sample",
   );
 });
