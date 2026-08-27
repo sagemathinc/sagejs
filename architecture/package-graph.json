@@ -326,6 +326,24 @@
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
     },
     {
+      "id": "mathematical-databases",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 57000,
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "hyperelliptic-curves-algorithms"
+      ],
+      "modules": ["sage.databases.lmfdb"],
+      "files": [
+        "src/lib/sage/databases/_lmfdb_bundled.py",
+        "src/lib/sage/databases/lmfdb.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "linear-algebra-algorithms",
       "layer": 4,
       "startup": "lazy",

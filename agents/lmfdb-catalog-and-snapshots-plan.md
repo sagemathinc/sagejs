@@ -2,7 +2,15 @@
 
 ## Status
 
-**Proposed architecture and implementation specification, 2026-08-27.**
+**Architecture specification with the first vertical slice implemented,
+2026-08-27.**
+
+The implemented slice provides bundled and explicit-online providers for
+genus-2 curves and number fields, typed immutable records, equality and
+inclusive-range searches, exact object construction, provenance, and atomic
+validated user-local SQLite snapshots. The release-signed installed provider,
+R2 publication pipeline, larger datasets, and remaining collections are still
+future phases of this plan.
 
 This document specifies a research-facing Sage.js interface to records from the
 [L-functions and Modular Forms Database](https://www.lmfdb.org/). It covers a

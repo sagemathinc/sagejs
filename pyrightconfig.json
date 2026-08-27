@@ -92,6 +92,8 @@
     "src/lib/sage/rings/puiseux_series_ring_element.py",
     "src/lib/sage/databases/__init__.py",
     "src/lib/sage/databases/conway.py",
+    "src/lib/sage/databases/_lmfdb_bundled.py",
+    "src/lib/sage/databases/lmfdb.py",
     "src/lib/sage/combinat/__init__.py",
     "src/lib/sage/combinat/partition.py",
     "src/lib/sage/graphs/__init__.py",

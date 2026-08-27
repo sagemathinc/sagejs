@@ -3,6 +3,7 @@
     "conway_polynomials",
     "mpmath",
     "sage.databases.conway",
+    "sage.databases.lmfdb",
     "sagejs_elliptic_advanced",
     "sagejs_elliptic_descent",
     "sagejs.elliptic_curves.analytic_rank",
