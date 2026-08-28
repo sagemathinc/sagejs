@@ -320,12 +320,13 @@ class SparseWiedemannCertificate:
 class SparseCharacteristicPolynomialCertificate:
     """An exact integer characteristic polynomial reconstructed sparsely.
 
-    Each modular record contains a projected Wiedemann recurrence of full
-    degree. A degree-$n$ scalar recurrence divides the operator minimal
-    polynomial, whose degree is at most $n$; it is therefore simultaneously
-    the modular minimal and characteristic polynomial. CRT reconstruction is
-    unique once the product of the recorded primes exceeds twice the rigorous
-    row-norm coefficient bound.
+    A modular record uses the fast full-degree Wiedemann proof when the action
+    is cyclic.  Otherwise it obtains all power traces by sparse basis-vector
+    propagation and applies Newton's identities over a prime larger than the
+    dimension.  The latter route is slower but proves the characteristic
+    polynomial for arbitrary multiplicities without dense materialization.
+    CRT reconstruction is unique once the product of the recorded primes
+    exceeds twice the rigorous row-norm coefficient bound.
     """
 
     def __init__(
@@ -383,14 +384,21 @@ class SparseCharacteristicPolynomialCertificate:
         residues = [0 for _index in range(dimension + 1)]
         modulus_product = 1
         for record in self._prime_records:
-            prime, seed, projection_count, expected = record
-            coefficients, _products = _full_degree_modular_characteristic(
-                operator,
-                int(prime),
-                int(seed),
-                int(projection_count),
-                None,
-            )
+            prime, seed, projection_count, method, expected = record
+            if method == "cyclic-wiedemann":
+                coefficients, _products = _full_degree_modular_characteristic(
+                    operator,
+                    int(prime),
+                    int(seed),
+                    int(projection_count),
+                    None,
+                )
+            elif method == "trace-newton":
+                coefficients, _products = _trace_newton_modular_characteristic(
+                    operator, int(prime), None
+                )
+            else:
+                return False
             if coefficients is None or tuple(coefficients) != expected:
                 return False
             residues, modulus_product = _crt_polynomial_update(
@@ -417,7 +425,7 @@ class SparseCharacteristicPolynomialCertificate:
 
     def structural_data(self) -> dict[str, Any]:
         return {
-            "algorithm": "full-degree-projected-wiedemann-crt",
+            "algorithm": "hybrid-wiedemann-trace-newton-crt",
             "dimension": self._dimension,
             "row_norm_bound": self._row_norm_bound,
             "coefficient_bound": self._coefficient_bound,
@@ -497,6 +505,40 @@ def _full_degree_modular_characteristic(
     return (None, products)
 
 
+def _trace_newton_modular_characteristic(
+    operator: Any,
+    prime: int,
+    product_limit: int | None,
+) -> tuple[list[int], int]:
+    """Prove the modular characteristic polynomial from sparse power traces."""
+    dimension = int(operator.nrows())
+    if prime <= dimension:
+        raise ValueError(
+            "trace--Newton characteristic primes must exceed the dimension"
+        )
+    required_products = dimension * dimension
+    if product_limit is not None and required_products > product_limit:
+        raise MemoryError("sparse characteristic-polynomial work limit exceeded")
+
+    traces = [0 for _index in range(dimension + 1)]
+    for basis_index in range(dimension):
+        vector = [0 for _index in range(dimension)]
+        vector[basis_index] = 1
+        for power in range(1, dimension + 1):
+            vector = _matvec(operator, vector, prime)
+            traces[power] = (traces[power] + vector[basis_index]) % prime
+
+    # If det(xI-A)=x^n+c_1*x^(n-1)+...+c_n and s_k=tr(A^k),
+    # Newton's identities give k*c_k + sum(c_(k-i)*s_i)=0.
+    descending = [1]
+    for degree in range(1, dimension + 1):
+        total = 0
+        for power in range(1, degree + 1):
+            total = (total + descending[degree - power] * traces[power]) % prime
+        descending.append((-total * pow(degree, prime - 2, prime)) % prime)
+    return (list(reversed(descending)), required_products)
+
+
 def _crt_polynomial_update(
     residues: list[int],
     modulus_product: int,
@@ -532,11 +574,11 @@ def sparse_characteristic_polynomial_certificate(
 ) -> SparseCharacteristicPolynomialCertificate:
     """Return an exact integer characteristic polynomial from sparse matvecs.
 
-    A modular prime is accepted only when deterministic projected Wiedemann
-    proves a full-degree recurrence. Primes at which eigenvalues collide, or
-    projections miss a cyclic vector, are skipped. The result fails closed if
-    the explicit prime or matvec budget expires before the CRT modulus exceeds
-    twice the rigorous coefficient bound.
+    At each modular prime, deterministic projected Wiedemann first attempts a
+    full-degree recurrence.  If multiplicities prevent a cyclic proof, sparse
+    power traces and Newton's identities provide a universal exact fallback.
+    The result fails closed if the explicit prime or matvec budget expires
+    before the CRT modulus exceeds twice the rigorous coefficient bound.
     """
     dimension = _machine_integer(operator.nrows(), "operator dimension")
     if dimension != _machine_integer(operator.ncols(), "operator dimension"):
@@ -576,11 +618,20 @@ def sparse_characteristic_polynomial_certificate(
         products += used
         trials += 1
         if coefficients is None:
-            continue
+            remaining_products = product_limit - products
+            coefficients, used = _trace_newton_modular_characteristic(
+                operator, prime, remaining_products
+            )
+            products += used
+            method = "trace-newton"
+        else:
+            method = "cyclic-wiedemann"
         residues, modulus_product = _crt_polynomial_update(
             residues, modulus_product, coefficients, prime
         )
-        prime_records.append((prime, trial_seed, projection_limit, tuple(coefficients)))
+        prime_records.append(
+            (prime, trial_seed, projection_limit, method, tuple(coefficients))
+        )
     if modulus_product <= 2 * coefficient_bound:
         raise ArithmeticError(
             "full-degree modular recurrences did not provide enough CRT precision"

@@ -112,20 +112,49 @@ for p in [37, 67, 389]:
     assert certificate.degree() == S.dimension()
     assert certificate.modulus_product() > 2*certificate.coefficient_bound()
     data = certificate.structural_data()
-    assert data["algorithm"] == "full-degree-projected-wiedemann-crt"
+    assert data["algorithm"] == "hybrid-wiedemann-trace-newton-crt"
     assert data["exact"]
     assert data["matrix_vector_products"] > 0
     assert len(data["prime_records"]) > 0
     rows.append((p, S.dimension(), len(data["prime_records"]), certificate.verify(T)))
 
 # Repeated eigenvalues make the minimal polynomial smaller than the
-# characteristic polynomial. The full-degree proof must reject this case
-# instead of guessing multiplicities.
+# characteristic polynomial.  The universal sparse trace--Newton fallback
+# must recover the multiplicities without dense materialization.
 identity = SparseHeckeOperator(
     ZZ, 3, 3, [0,1,2,3], [0,1,2], [1,1,1], index=2
 )
+identity_certificate = identity.characteristic_polynomial_certificate(
+    max_prime_trials=8
+)
+assert identity_certificate.polynomial() == PolynomialRing(ZZ,"x")([-1,3,-3,1])
+assert identity_certificate.verify(identity)
+assert all(
+    record[3] == "trace-newton"
+    for record in identity_certificate.structural_data()["prime_records"]
+)
+
+# A nonsemisimple repeated-spectrum example exercises traces rather than an
+# accidental diagonal shortcut.
+jordan = SparseHeckeOperator(
+    ZZ,
+    4,
+    4,
+    [0,2,4,6,7],
+    [0,1,1,2,2,3,3],
+    [2,1,2,1,2,1,2],
+    index=2,
+)
+jordan_certificate = jordan.characteristic_polynomial_certificate(
+    max_prime_trials=8
+)
+assert jordan_certificate.polynomial() == PolynomialRing(ZZ,"x")([16,-32,24,-8,1])
+assert jordan_certificate.verify(jordan)
+
 for operation in [
-    lambda: identity.characteristic_polynomial_certificate(max_prime_trials=2),
+    lambda: identity.characteristic_polynomial_certificate(
+        max_matrix_vector_products=1
+    ),
     lambda: SupersingularModule(389).T(2).characteristic_polynomial_certificate(
         max_matrix_vector_products=1
     ),

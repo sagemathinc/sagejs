@@ -30,13 +30,16 @@ mass-normalized self-adjoint adjacency operator used for spectral and
 Ramanujan checks.
 
 The sparse layer now also certifies exact integer characteristic polynomials
-without dense materialization when the modular action is cyclic. A projected
-recurrence of full degree $n$ proves that the modular minimal and
-characteristic polynomials coincide. Deterministic CRT records are accumulated
-until their product exceeds twice the rigorous $(1+\lVert T\rVert_\infty)^n$
-coefficient bound, and the complete calculation is replayable. Primes with
-eigenvalue collisions are skipped; an operator whose reductions never yield a
-full-degree recurrence fails closed rather than guessing multiplicities.
+without dense materialization for arbitrary spectra.  When the modular action
+is cyclic, a projected recurrence of full degree $n$ proves that the modular
+minimal and characteristic polynomials coincide.  When eigenvalue
+multiplicities prevent that proof, sparse propagation of the standard basis
+computes $\operatorname{tr}(T^k)$ for $1\leq k\leq n$, and Newton's identities
+recover the modular characteristic polynomial exactly.  Deterministic CRT
+records are accumulated until their product exceeds twice the rigorous
+$(1+\lVert T\rVert_\infty)^n$ coefficient bound, and the complete calculation
+is replayable.  Repeated diagonal and nonsemisimple Jordan witnesses exercise
+the universal fallback under explicit work limits.
 
 Higher-dimensional classical packets are now reconstructed over exact number
 fields.  An irreducible simple factor of a cuspidal $T_\ell$ characteristic
@@ -131,8 +134,7 @@ revalidates every edge and publishes transactionally. Final Windows, Linux
 x64/ARM64, and macOS receipts remain a release-stage gate rather than an
 unverified portability claim.
 
-Optimized large-index modular-polynomial construction, universal
-repeated-spectrum characteristic-polynomial recovery, fast large-precision
+Optimized large-index modular-polynomial construction, fast large-precision
 Mestre evaluation, and broader real-quadratic arithmetic constructors remain
 later implementation stages in this plan. Phase 6's required second field, multi-component
 prime-power compatibility, degeneracy traces, and exact old/new decomposition
