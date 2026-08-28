@@ -26,7 +26,7 @@ from sagejs.compiler import optimize
 @optimize(
     require="math.closed-ring-region.v1",
     coverage="all-loops",
-    target="v8",
+    target="auto",
     guard_failure="error",
 )
 def recurrence(count, value, multiplier, increment):
@@ -57,7 +57,7 @@ from sagejs.compiler import optimize
 @optimize(
     require="math.closed-ring-region.v1",
     coverage="all-loops",
-    target="v8",
+    target="auto",
     guard_failure="error",
 )
 def recurrence(count, value, multiplier, increment):
@@ -81,9 +81,12 @@ for sample in range(7):
 
 On a warm contemporary x86-64 V8, the guarded loop has measured about
 5--10 ns per iteration. The exact number is machine-, V8-, and thermal-state
-dependent. `sagejs optimize explain` should report the `v8-number-residue`
-representation and V8 target. The contract prevents this example from
-silently becoming generic after a source edit.
+dependent. `sagejs optimize explain` reports a guarded unboxed ring
+representation and an adaptive target with V8 and isolated candidates. The
+runtime cost policy normally chooses the primitive V8 loop for small scalar
+work and may choose a coarse isolated call for a sufficiently large supported
+region. The contract prevents this example from silently becoming generic
+after a source edit.
 
 ## A general multi-state operation graph
 
