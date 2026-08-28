@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c60ecb5b534b884aa00a080de05f26ef005b0ba76a216e6a47dc2d5b7230735d",
+  "source_sha256": "d44f7253420f7b98d0be5db4c0d230455e89b91e1e58d2f8c447b901ff811894",
   "counts": {
-    "total": 1019,
+    "total": 1020,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 325,
-      "production-kernel": 49,
+      "production-kernel": 50,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 49,
+      "compiled-source": 50,
       "desktop-only": 47,
       "generated-wasm": 321,
       "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 557,
+      "available": 558,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -6057,6 +6057,18 @@
         "number-field-ideal-products"
       ],
       "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:class-group-resident-hnf-production",
+      "family": "class-group-resident-hnf",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",

@@ -44,9 +44,16 @@ MAX_PACKED_PRESENTATION_DIMENSION = 256
 MAX_PACKED_PRESENTATION_VALUES = 65_536
 MAX_PACKED_PRESENTATION_ENTRY_BITS = 16_384
 MAX_PACKED_PRESENTATION_OUTPUT_WORDS = 1_000_000
+MAX_RESIDENT_HNF_ROWS = 64
+MAX_RESIDENT_HNF_COLUMNS = 16
+MAX_RESIDENT_HNF_VALUES = 1_024
+MAX_RESIDENT_HNF_ENTRY_BITS = 4_096
+MAX_RESIDENT_HNF_DELETION_TRIALS = 64
+MAX_RESIDENT_HNF_WORK = 1_000_000
 
 _presentation_replay_kernel_override: Any = None
 _presentation_forms_kernel_override: Any = None
+_resident_hnf_kernel_override: Any = None
 
 
 class RelationMatrixError(ValueError):
@@ -1873,6 +1880,90 @@ def _product(values: Iterable[int]) -> int:
     return answer
 
 
+class ResidentRelationHNFSelection:
+    """Exact result of one resident HNF selection boundary."""
+
+    def __init__(
+        self,
+        basis: Iterable[Iterable[int]],
+        source_support: Iterable[int],
+        selected_candidate_indices: Iterable[int],
+        *,
+        rank: int,
+        deletion_trials: int,
+        hnf_calls: int,
+        deletion_complete: bool,
+        backend: str,
+        boundary_calls: int,
+        packed_input_bytes: int,
+        published_output_values: int,
+        work_units: int,
+    ) -> None:
+        self.basis = tuple(tuple(int(value) for value in row) for row in basis)
+        self.source_support = tuple(int(index) for index in source_support)
+        self.selected_candidate_indices = tuple(
+            int(index) for index in selected_candidate_indices
+        )
+        self.rank = int(rank)
+        self.deletion_trials = int(deletion_trials)
+        self.hnf_calls = int(hnf_calls)
+        self.deletion_complete = bool(deletion_complete)
+        self.backend = str(backend)
+        self.boundary_calls = int(boundary_calls)
+        self.packed_input_bytes = int(packed_input_bytes)
+        self.published_output_values = int(published_output_values)
+        self.work_units = int(work_units)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return deterministic exact data suitable for benchmark receipts."""
+        return {
+            "basis": [list(row) for row in self.basis],
+            "source_support": list(self.source_support),
+            "selected_candidate_indices": list(self.selected_candidate_indices),
+            "rank": self.rank,
+            "deletion_trials": self.deletion_trials,
+            "hnf_calls": self.hnf_calls,
+            "deletion_complete": self.deletion_complete,
+            "backend": self.backend,
+            "boundary_calls": self.boundary_calls,
+            "packed_input_bytes": self.packed_input_bytes,
+            "published_output_values": self.published_output_values,
+            "work_units": self.work_units,
+        }
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, ResidentRelationHNFSelection) and (
+            self.basis,
+            self.source_support,
+            self.selected_candidate_indices,
+            self.rank,
+            self.deletion_trials,
+            self.deletion_complete,
+        ) == (
+            other.basis,
+            other.source_support,
+            other.selected_candidate_indices,
+            other.rank,
+            other.deletion_trials,
+            other.deletion_complete,
+        )
+
+    def __repr__(self) -> str:
+        return (
+            "ResidentRelationHNFSelection(basis="
+            + repr(self.basis)
+            + ", source_support="
+            + repr(self.source_support)
+            + ", selected_candidate_indices="
+            + repr(self.selected_candidate_indices)
+            + ", rank="
+            + repr(self.rank)
+            + ", backend="
+            + repr(self.backend)
+            + ")"
+        )
+
+
 def extract_relation_presentation(
     rows: Iterable[Any],
     column_count: int | None = None,
@@ -2039,6 +2130,331 @@ def exact_relation_hnf_basis(
         return tuple(tuple(int(value) for value in row) for row in hnf if any(row))
 
 
+def _resident_hnf_rows(
+    rows: Iterable[Any], columns: int, label: str, maximum_rows: int
+) -> tuple[tuple[int, ...], ...]:
+    answer: list[tuple[int, ...]] = []
+    for raw_row in rows:
+        if len(answer) >= maximum_rows:
+            raise RelationMatrixError("resident HNF matrix exceeds its shape bound")
+        try:
+            sparse = SparseRelationRow(columns, raw_row)
+        except (TypeError, ValueError) as error:
+            raise RelationMatrixError(label + " contains an invalid row") from error
+        answer.append(tuple(sparse.dense()))
+    return tuple(answer)
+
+
+def _resident_hnf_cancelled(cancelled: Any) -> None:
+    try:
+        runtime_module = __import__("sagejs.runtime", fromlist=["runtime"])
+        runtime_module.check_interrupt()
+    except ImportError:
+        # Ordinary CPython intentionally has no Sage.js host runtime.
+        pass
+    if cancelled is not None and cancelled():
+        raise RuntimeError("class/unit computation cancelled")
+
+
+def _python_resident_relation_hnf_selection(
+    initial: tuple[tuple[int, ...], ...],
+    candidates: tuple[tuple[int, ...], ...],
+    columns: int,
+    maximum_trials: int,
+    cancelled: Any,
+) -> ResidentRelationHNFSelection:
+    """Ordinary exact oracle for resident HNF support and deletion."""
+    _resident_hnf_cancelled(cancelled)
+    source = [list(row) for row in initial + candidates]
+    if not source:
+        return ResidentRelationHNFSelection(
+            (),
+            (),
+            (),
+            rank=0,
+            deletion_trials=0,
+            hnf_calls=0,
+            deletion_complete=True,
+            backend="python",
+            boundary_calls=0,
+            packed_input_bytes=0,
+            published_output_values=0,
+            work_units=0,
+        )
+    hnf, left = _python_hnf_transform(source, columns)
+    if _matrix_multiply(left, source) != hnf:
+        raise ArithmeticError("resident HNF transform failed exact replay")
+    if abs(_determinant_exact(left)) != 1:
+        raise ArithmeticError("resident HNF transform is not unimodular")
+    nonzero = [index for index, row in enumerate(hnf) if any(row)]
+    basis = tuple(tuple(int(value) for value in hnf[index]) for index in nonzero)
+    support = tuple(
+        sorted(
+            {
+                source_index
+                for index in nonzero
+                for source_index, coefficient in enumerate(left[index])
+                if coefficient != 0
+            }
+        )
+    )
+    initial_count = len(initial)
+    selected = sorted(
+        index - initial_count for index in support if index >= initial_count
+    )
+    cursor = 0
+    trials = 0
+    while cursor < len(selected) and trials < maximum_trials:
+        _resident_hnf_cancelled(cancelled)
+        trial_indices = selected[:cursor] + selected[cursor + 1 :]
+        trial_rows = list(initial) + [candidates[index] for index in trial_indices]
+        if len(trial_rows) < len(basis):
+            cursor += 1
+            continue
+        trial_hnf, _trial_left = _python_hnf_transform(trial_rows, columns)
+        trial_basis = tuple(tuple(row) for row in trial_hnf if any(row))
+        trials += 1
+        if trial_basis == basis:
+            selected = trial_indices
+        else:
+            cursor += 1
+    _resident_hnf_cancelled(cancelled)
+    row_count = len(source)
+    row_entries = row_count * columns
+    work_units = (
+        3 * row_entries + row_count * row_count + trials * (row_entries + 2 * columns)
+    )
+    return ResidentRelationHNFSelection(
+        basis,
+        support,
+        selected,
+        rank=len(basis),
+        deletion_trials=trials,
+        hnf_calls=1 + trials,
+        deletion_complete=cursor >= len(selected),
+        backend="python",
+        boundary_calls=0,
+        packed_input_bytes=0,
+        published_output_values=(
+            len(basis) * columns + len(support) + len(selected) + 7
+        ),
+        work_units=work_units,
+    )
+
+
+def resident_exact_relation_hnf_selection(
+    initial_rows: Iterable[Any],
+    candidate_rows: Iterable[Any],
+    column_count: int,
+    *,
+    backend: str = "auto",
+    maximum_deletion_trials: int = MAX_RESIDENT_HNF_DELETION_TRIALS,
+    work_limit: int = MAX_RESIDENT_HNF_WORK,
+    cancelled: Any = None,
+) -> ResidentRelationHNFSelection:
+    """Return canonical HNF support, retained candidates, and exact rank.
+
+    The accelerated path packs the full source once and performs support
+    extraction plus the stable deletion schedule in one isolated call.  The
+    independent `python` backend uses the ordinary exact HNF implementation.
+    A cancellation callback selects that interruptible backend and is polled
+    before every HNF deletion trial.
+    """
+    if backend not in ("auto", "native", "javascript", "python"):
+        raise RelationMatrixError(
+            "resident HNF backend must be auto, native, javascript, or python"
+        )
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    columns = _nonnegative_integer(column_count, "column_count")
+    maximum_trials = _nonnegative_integer(
+        maximum_deletion_trials, "maximum_deletion_trials"
+    )
+    maximum_work = _nonnegative_integer(work_limit, "work_limit")
+    if columns < 1 or columns > MAX_RESIDENT_HNF_COLUMNS:
+        raise RelationMatrixError("resident HNF column count exceeds its bound")
+    if maximum_trials > MAX_RESIDENT_HNF_DELETION_TRIALS:
+        raise RelationMatrixError("resident HNF deletion-trial bound is too large")
+    if maximum_work > MAX_RESIDENT_HNF_WORK:
+        raise RelationMatrixError("resident HNF work bound is too large")
+
+    _resident_hnf_cancelled(cancelled)
+    initial = _resident_hnf_rows(
+        initial_rows, columns, "initial_rows", MAX_RESIDENT_HNF_ROWS
+    )
+    candidates = _resident_hnf_rows(
+        candidate_rows,
+        columns,
+        "candidate_rows",
+        MAX_RESIDENT_HNF_ROWS - len(initial),
+    )
+    source = initial + candidates
+    row_count = len(source)
+    row_entries = row_count * columns
+    if row_count > MAX_RESIDENT_HNF_ROWS or row_entries > MAX_RESIDENT_HNF_VALUES:
+        raise RelationMatrixError("resident HNF matrix exceeds its shape bound")
+    maximum_bits = max(
+        (abs(value).bit_length() for row in source for value in row), default=1
+    )
+    if maximum_bits > MAX_RESIDENT_HNF_ENTRY_BITS:
+        raise RelationMatrixError("resident HNF entry exceeds its bit bound")
+    bounded_trials = min(maximum_trials, len(candidates))
+    required_work = (
+        3 * row_entries
+        + row_count * row_count
+        + bounded_trials * (row_entries + 2 * columns)
+    )
+    if required_work > maximum_work:
+        raise RelationMatrixError("resident HNF work limit is insufficient")
+
+    largest_dimension = max(row_count, columns)
+    output_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    word_capacity = max(8, (output_bits + 63) // 64 + 2)
+    input_word_capacity = max(8, (maximum_bits + 63) // 64)
+    output_entries = (
+        3 * row_entries + row_count * row_count + row_count + len(candidates) + 8
+    )
+    if output_entries * word_capacity > MAX_PACKED_PRESENTATION_OUTPUT_WORDS:
+        raise RelationMatrixError("resident HNF output exceeds its storage bound")
+    if backend == "python" or cancelled is not None or not source:
+        return _python_resident_relation_hnf_selection(
+            initial, candidates, columns, bounded_trials, cancelled
+        )
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.class_group_hnf",
+            fromlist=["class_group_hnf"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        base_kernel: Any = (
+            _resident_hnf_kernel_override
+            if callable(_resident_hnf_kernel_override)
+            else kernel_module.resident_exact_relation_hnf_select
+        )
+        if backend == "javascript":
+            kernel = base_kernel.javascript
+        else:
+            kernel = base_kernel
+        if backend == "native" and not native_module.is_compiled(kernel):
+            raise RuntimeError("resident HNF native kernel is unavailable")
+        packing_kernel = base_kernel if backend == "javascript" else kernel
+
+        def zeros(length: int, words: int = word_capacity) -> Any:
+            return native_module.kernel_integer_zeros(packing_kernel, length, words)
+
+        flat = [value for row in source for value in row]
+        metadata_buffer = zeros(7, 2)
+        basis_buffer = zeros(row_entries)
+        transform_buffer = zeros(row_count * row_count)
+        support_buffer = zeros(row_count, 2)
+        selected_buffer = zeros(len(candidates), 2)
+        trial_hnf_buffer = zeros(row_entries)
+        replay_buffer = zeros(row_entries)
+        # Exact replay is complete before deletion starts, so one bounded
+        # workspace can safely serve as both replay output and trial source.
+        trial_source_buffer = replay_buffer
+        determinant_buffer = zeros(1)
+        source_buffer = native_module.kernel_integer_buffer(packing_kernel, flat)
+        status = kernel(
+            metadata_buffer,
+            basis_buffer,
+            transform_buffer,
+            support_buffer,
+            selected_buffer,
+            trial_source_buffer,
+            trial_hnf_buffer,
+            replay_buffer,
+            determinant_buffer,
+            source_buffer,
+            row_count,
+            len(initial),
+            columns,
+            bounded_trials,
+            maximum_work,
+            1,
+        )
+        if status == 0:
+            raise ArithmeticError("resident HNF kernel failed exact replay")
+        if status != 1:
+            raise RuntimeError("resident HNF kernel declined its packed input")
+        metadata = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata_buffer)
+        )
+        basis_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(basis_buffer)
+        )
+        support_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(support_buffer)
+        )
+        selected_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(selected_buffer)
+        )
+        mode = native_module.execution_mode(kernel)
+        _resident_hnf_cancelled(None)
+    except ArithmeticError:
+        raise
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        if backend != "auto":
+            raise
+        return _python_resident_relation_hnf_selection(
+            initial, candidates, columns, bounded_trials, cancelled
+        )
+
+    if len(metadata) != 7:
+        raise ArithmeticError("resident HNF metadata has the wrong size")
+    rank = metadata[0]
+    if rank < 0 or rank > min(row_count, columns):
+        raise ArithmeticError("resident HNF rank is outside its bounds")
+    if any(value not in (0, 1) for value in support_values + selected_values):
+        raise ArithmeticError("resident HNF support masks are not boolean")
+    basis = tuple(
+        basis_values[index * columns : (index + 1) * columns] for index in range(rank)
+    )
+    source_support = tuple(
+        index for index, value in enumerate(support_values) if value == 1
+    )
+    selected_indices = tuple(
+        index for index, value in enumerate(selected_values) if value == 1
+    )
+    if metadata[1] != len(source_support) or metadata[2] != len(selected_indices):
+        raise ArithmeticError("resident HNF support counts failed replay")
+    if any(index + len(initial) not in source_support for index in selected_indices):
+        raise ArithmeticError("resident HNF selected a row outside exact support")
+    if metadata[3] < 0 or metadata[3] > bounded_trials:
+        raise ArithmeticError("resident HNF deletion count is outside its bound")
+    if metadata[4] != metadata[3] + 1:
+        raise ArithmeticError("resident HNF call count failed replay")
+    if metadata[5] < 0 or metadata[5] > maximum_work:
+        raise ArithmeticError("resident HNF work count is outside its bound")
+    if metadata[6] not in (0, 1):
+        raise ArithmeticError("resident HNF completion flag is invalid")
+    reported_backend = mode
+    if backend == "javascript":
+        reported_backend = backend
+    elif mode == "native-capable":
+        reported_backend = "native"
+    published_values = (
+        7 + len(basis_values) + len(support_values) + len(selected_values)
+    )
+    return ResidentRelationHNFSelection(
+        basis,
+        source_support,
+        selected_indices,
+        rank=rank,
+        deletion_trials=metadata[3],
+        hnf_calls=metadata[4],
+        deletion_complete=metadata[6] == 1,
+        backend=reported_backend,
+        boundary_calls=1,
+        packed_input_bytes=row_entries * (4 + 8 * input_word_capacity),
+        published_output_values=published_values,
+        work_units=metadata[5],
+    )
+
+
 def modular_rank_and_pivots(
     rows: Iterable[Any],
     column_count: int,
@@ -2064,6 +2480,12 @@ __all__ = [
     "DeferredPresentationPolicy",
     "ModularInsertion",
     "ModularPivotScreen",
+    "MAX_RESIDENT_HNF_COLUMNS",
+    "MAX_RESIDENT_HNF_DELETION_TRIALS",
+    "MAX_RESIDENT_HNF_ENTRY_BITS",
+    "MAX_RESIDENT_HNF_ROWS",
+    "MAX_RESIDENT_HNF_VALUES",
+    "MAX_RESIDENT_HNF_WORK",
     "PRESENTATION_DECISION_SCHEMA",
     "PRESENTATION_POLICY_SCHEMA",
     "PRESENTATION_SCHEMA",
@@ -2073,10 +2495,12 @@ __all__ = [
     "RelationMatrixAccumulator",
     "RelationMatrixError",
     "RelationPresentation",
+    "ResidentRelationHNFSelection",
     "SparseRelationRow",
     "exact_relation_hnf_basis",
     "exact_relation_hnf_support",
     "extend_relation_presentation_with_duplicate_rows",
     "extract_relation_presentation",
     "modular_rank_and_pivots",
+    "resident_exact_relation_hnf_selection",
 ]

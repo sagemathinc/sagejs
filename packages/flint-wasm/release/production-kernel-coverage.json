@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 49,
-    "production_kernels": 42,
-    "compiled_functions": 275,
+    "registered_kernels": 50,
+    "production_kernels": 43,
+    "compiled_functions": 276,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -26,6 +26,15 @@
       "compiled_functions": 9,
       "fallback_functions": 0,
       "total_functions": 9,
+      "fallback_reasons": []
+    },
+    {
+      "id": "class-group-resident-hnf-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {

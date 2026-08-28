@@ -117,6 +117,12 @@
           "test/native-kernel.cjs"
         ]
       },
+      "class-group-resident-hnf-differential": {
+        "differential": true,
+        "paths": [
+          "test/number-field-class-group-resident-hnf.cjs"
+        ]
+      },
       "hyperelliptic-native-kummer": {
         "differential": true,
         "paths": [
@@ -10713,6 +10719,33 @@
       ],
       "tests": [
         "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:class-group-resident-hnf-production",
+      "kind": "production-kernel",
+      "family": "class-group-resident-hnf",
+      "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "tests": [
+        "production-kernel-differential",
+        "class-group-resident-hnf-differential"
       ],
       "status": "available",
       "reviewed": true,

@@ -461,6 +461,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "class-group-resident-hnf-production",
+      "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+      "functions": ["resident_exact_relation_hnf_select"],
+      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through declared FLINT FFI",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint"],
+      "benchmark": "bench:number-field-resident-hnf",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [

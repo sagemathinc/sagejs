@@ -165,6 +165,7 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
         "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
@@ -260,7 +261,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1565000,
+      "max_source_bytes": 1585000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

@@ -387,6 +387,7 @@
       "capabilities": [],
       "additionalCapabilities": [
         "kernel:arbitrary-prime-polynomial-resource-production",
+        "kernel:class-group-resident-hnf-production",
         "kernel:dense-integer-flint-production",
         "kernel:dense-prime-flint-production",
         "kernel:dense-prime-production",

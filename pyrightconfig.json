@@ -86,6 +86,7 @@
     "src/lib/sagejs/number_fields/quadratic_narrow_relations.py",
     "src/lib/sagejs/number_fields/zeta_coefficients.py",
     "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
+    "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
     "src/lib/sage/__init__.py",
     "src/lib/sage/rings/__init__.py",
     "src/lib/sage/rings/puiseux_series_ring.py",
