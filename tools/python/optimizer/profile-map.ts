@@ -141,6 +141,15 @@ export function semanticAstFingerprint(node: unknown): string {
   return profileSemanticFingerprint(semanticAstDescriptor(node));
 }
 
+/** Compiler-decision-independent syntax family for one semantic region. */
+export function semanticRegionKind(node: unknown): string {
+  const name = String((node as any)?.constructor?.name ?? "");
+  if (!name.startsWith("AST_")) {
+    throw new TypeError("semantic region kind requires a compiler AST node");
+  }
+  return name;
+}
+
 /** Key for a zero-based occurrence count among equal semantic siblings. */
 export function semanticOccurrenceKey(value: {
   ownerId: string;
@@ -286,7 +295,7 @@ export class CompilerProfileMapCollector {
     ].includes(type)) {
       category = "loop";
       const fingerprint = semanticAstFingerprint(node);
-      const regionKind = String(node?.optimization_region?.kind ?? `python.${type}`);
+      const regionKind = semanticRegionKind(node);
       const occurrenceKey = semanticOccurrenceKey({
         ownerId: parentFunction.id,
         kind: regionKind,
