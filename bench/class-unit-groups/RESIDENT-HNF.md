@@ -126,10 +126,26 @@ The integration lane must also:
    }
    ```
 
-That registry drives both production and Wasm pack generation; no separate
-pack descriptor is needed.  The caller integration should update the shared
-cubic profiler attribution for the new coarse boundary and run the pinned
-10-field cubic smoke corpus before the broader stratified corpus.  No
+5. Classify `kernel:class-group-resident-hnf-production` in
+   `architecture/wasm-capabilities.json` as a reviewed `compiled-source`
+   production kernel owned by `kernel-flint`, with
+   `same-source-dynamic-python` fallback, public consumer
+   `number-field-cubic-class-number`, and test evidence
+   `production-kernel-differential`.  Direct compiler inventory classifies the
+   one registered function as WebAssembly-supported.
+6. Run `node scripts/generate-wasm-kernel-coverage.cjs`.  The generated update
+   must add one available compiled function to
+   `packages/flint-wasm/release/production-kernel-coverage.json`, add the
+   capability under `kernel-flint.additionalCapabilities` in
+   `packages/flint-wasm/release/production-capabilities.json`, and refresh the
+   compiled coverage in `architecture/wasm-capabilities.json` plus
+   `architecture/wasm-capabilities-report.json`.
+
+The native registry drives the source-pack inventory; no hand-written pack
+descriptor is needed beyond the reviewed WebAssembly capability classification
+and generated receipts above.  The caller integration should update the
+shared cubic profiler attribution for the new coarse boundary and run the
+pinned 10-field cubic smoke corpus before the broader stratified corpus.  No
 handwritten native file or `architecture/native-code.json` exception is
 needed.  This lane does not consume an optimizer-packed-container API; its
 declared parallel dependency is ordering-only for final integration.

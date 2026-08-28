@@ -83,7 +83,7 @@
     ],
     "next_steps": [
       "Integration lane: apply the documented narrow _select_cubic_relation_candidates replacement and retain its empty-input guard and exception policy.",
-      "Integration lane: add class_group_hnf.py to architecture/package-graph.json and pyrightconfig.json, add the production witness to architecture/native-kernels.json, and add the benchmark package script exactly as documented in RESIDENT-HNF.md.",
+      "Integration lane: add class_group_hnf.py to architecture/package-graph.json and pyrightconfig.json, add the production witness to architecture/native-kernels.json, classify its WebAssembly capability and regenerate the coverage/capability receipts, and add the benchmark package script exactly as documented in RESIDENT-HNF.md.",
       "After shared registration, rerun pnpm architecture:check, pnpm test:changed, the pinned ten-field cubic smoke corpus, the stratified 100-field corpus, and the clean-host pnpm test:native gate; collect Linux arm64, Windows x64 fallback, and macOS arm64 receipts."
     ]
   }
