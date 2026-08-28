@@ -354,6 +354,264 @@ def ρσ_brand_machine_field_element(value):
     })()"""
 
 
+def ρσ_bind_rectangular_binary64_dataflow_runtime():
+    """Capture the immutable host capabilities used by rectangular fast paths."""
+    return r"""%js (() => {
+        if (ρσ_bind_rectangular_binary64_dataflow_runtime.__context !== undefined) {
+            return false;
+        }
+        const context = Object.freeze({
+            id: "rectangular-binary64-dataflow-runtime.v1",
+            isArray: Array.isArray,
+            getPrototypeOf: Object.getPrototypeOf,
+            getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor,
+            hasOwn: Object.hasOwn,
+            isSafeInteger: Number.isSafeInteger,
+            strictUnbox: ρσ_strict_float_unbox,
+            floatResult: ρσ_float_result,
+            listDecorate: ρσ_list_decorate,
+            checkInterrupt: ρσ_check_interrupt,
+            intrinsicBrands: new WeakMap(),
+            intrinsicsByIdentity: new Map(),
+        });
+        Object.defineProperty(ρσ_bind_rectangular_binary64_dataflow_runtime,
+            "__context", {
+                value: context,
+                enumerable: false,
+                configurable: false,
+                writable: false,
+            });
+        return true;
+    })()"""
+
+
+def ρσ_brand_optimizer_list(value):
+    """Privately brand one genuine runtime list for callback-free guards."""
+    return r"""%js (() => {
+        const decorator = globalThis.ρσ_list_decorate;
+        if (typeof decorator !== "function" || !Array.isArray(value)) return value;
+        let brand = decorator.__optimizerExactListBrand;
+        let prototype = decorator.__optimizerExactListPrototype;
+        if (!(brand instanceof WeakSet)) {
+            brand = new WeakSet();
+            prototype = Object.getPrototypeOf(value);
+            Object.defineProperties(decorator, {
+                __optimizerExactListBrand: {
+                    value: brand, configurable: false, enumerable: false,
+                    writable: false,
+                },
+                __optimizerExactListPrototype: {
+                    value: prototype, configurable: false, enumerable: false,
+                    writable: false,
+                },
+            });
+        }
+        if (Object.getPrototypeOf(value) === prototype) brand.add(value);
+        return value;
+    })()"""
+
+
+def ρσ_register_optimizer_intrinsic(value, identity):
+    """Bind an imported pure intrinsic to a private optimizer identity."""
+    return r"""%js (() => {
+        const context = ρσ_bind_rectangular_binary64_dataflow_runtime.__context;
+        if (context?.id !== "rectangular-binary64-dataflow-runtime.v1" ||
+            (typeof value !== "function" &&
+             (value === null || typeof value !== "object")) ||
+            typeof identity !== "string" || identity.length === 0) return false;
+        const current = context.intrinsicsByIdentity.get(identity);
+        if (current !== undefined) return current === value;
+        context.intrinsicsByIdentity.set(identity, value);
+        context.intrinsicBrands.set(value, identity);
+        return true;
+    })()"""
+
+
+def ρσ_fast_arrow_segment_geometry_region(
+    x_values,
+    y_values,
+    u_values,
+    v_values,
+    maximum_value,
+    extent_value,
+    pivot_value,
+    head_length_value,
+    head_width_value,
+    hypot_function,
+    poll_interrupts,
+    maximum_output_entries,
+):
+    """Execute one completely preflighted private arrow geometry transaction."""
+    return r"""%js (() => {
+        const reject = (reason) => Object.freeze({ ok: false, reason });
+        const context = ρσ_bind_rectangular_binary64_dataflow_runtime.__context;
+        if (context?.id !== "rectangular-binary64-dataflow-runtime.v1" ||
+            context.strictUnbox !== ρσ_strict_float_unbox ||
+            context.floatResult !== ρσ_float_result ||
+            context.checkInterrupt !== ρσ_check_interrupt) {
+            return reject("runtime-intrinsic-identity-mismatch");
+        }
+        if (context.intrinsicsByIdentity.get(
+                "python.math.hypot.strict-binary64.v1") !== hypot_function ||
+            context.intrinsicBrands.get(hypot_function) !==
+                "python.math.hypot.strict-binary64.v1") {
+            return reject("math-hypot-identity-mismatch");
+        }
+        if (poll_interrupts !== true && poll_interrupts !== false) {
+            return reject("interrupt-contract-mismatch");
+        }
+        if (!context.isSafeInteger(maximum_output_entries) ||
+            maximum_output_entries !== 7000000) {
+            return reject("output-capacity-contract-mismatch");
+        }
+        const listDecorator = globalThis.ρσ_list_decorate;
+        const listBrand = listDecorator?.__optimizerExactListBrand;
+        const listPrototype = listDecorator?.__optimizerExactListPrototype;
+        if (typeof listDecorator !== "function" || !(listBrand instanceof WeakSet) ||
+            listPrototype === undefined) {
+            return reject("list-brand-unavailable");
+        }
+        const denseList = (value) => {
+            if (!listBrand.has(value) || !context.isArray(value) ||
+                context.getPrototypeOf(value) !== listPrototype) return false;
+            for (let index = 0; index < value.length; index += 1) {
+                const descriptor = context.getOwnPropertyDescriptor(value, index);
+                if (!descriptor || !context.hasOwn(descriptor, "value") ||
+                    descriptor.get !== undefined || descriptor.set !== undefined) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (!denseList(x_values) || !denseList(y_values) ||
+            !denseList(u_values) || !denseList(v_values) ||
+            u_values.length !== y_values.length ||
+            v_values.length !== y_values.length ||
+            (pivot_value !== "tail" && pivot_value !== "middle" &&
+             pivot_value !== "tip")) {
+            return reject("grid-or-pivot-representation-mismatch");
+        }
+        const maximum = context.strictUnbox(maximum_value);
+        const extent = context.strictUnbox(extent_value);
+        const headLength = context.strictUnbox(head_length_value);
+        const headWidth = context.strictUnbox(head_width_value);
+        if (maximum === null || extent === null || headLength === null ||
+            headWidth === null) return reject("live-in-not-strict-binary64");
+
+        const rowCount = y_values.length;
+        const columnCount = x_values.length;
+        for (let xIndex = 0; xIndex < columnCount; xIndex += 1) {
+            if (context.strictUnbox(x_values[xIndex]) === null) {
+                return reject("x-coordinate-not-strict-binary64");
+            }
+        }
+        for (let yIndex = 0; yIndex < rowCount; yIndex += 1) {
+            const uRow = u_values[yIndex];
+            const vRow = v_values[yIndex];
+            if (!denseList(uRow) || !denseList(vRow) ||
+                uRow.length < columnCount || vRow.length < columnCount ||
+                context.strictUnbox(y_values[yIndex]) === null) {
+                return reject("parallel-grid-row-mismatch");
+            }
+            for (let xIndex = 0; xIndex < columnCount; xIndex += 1) {
+                const uValue = uRow[xIndex];
+                const vValue = vRow[xIndex];
+                if (uValue === null || vValue === null) {
+                    if (uValue !== null || vValue !== null) {
+                        return reject("unpaired-null-component");
+                    }
+                } else if (context.strictUnbox(uValue) === null ||
+                           context.strictUnbox(vValue) === null) {
+                    return reject("component-not-strict-binary64");
+                }
+            }
+        }
+        const withHead = headWidth > 0 && headLength > 0;
+        const capacity = rowCount * columnCount * (withHead ? 7 : 3);
+        if (!context.isSafeInteger(capacity) || capacity < 0 ||
+            capacity > maximum_output_entries) {
+            return reject("output-capacity-exceeded");
+        }
+
+        const xs = new Array(capacity);
+        const ys = new Array(capacity);
+        let outputIndex = 0;
+        for (let yIndex = 0; yIndex < rowCount; yIndex += 1) {
+            if (poll_interrupts && ((++ρσ_interrupt_counter & 255) === 0)) {
+                context.checkInterrupt();
+            }
+            const uRow = u_values[yIndex];
+            const vRow = v_values[yIndex];
+            const y = context.strictUnbox(y_values[yIndex]);
+            for (let xIndex = 0; xIndex < columnCount; xIndex += 1) {
+                if (poll_interrupts && ((++ρσ_interrupt_counter & 255) === 0)) {
+                    context.checkInterrupt();
+                }
+                const uValue = uRow[xIndex];
+                const vValue = vRow[xIndex];
+                if (uValue === null) continue;
+                const x = context.strictUnbox(x_values[xIndex]);
+                const u = context.strictUnbox(uValue);
+                const v = context.strictUnbox(vValue);
+                const magnitude = context.strictUnbox(hypot_function(u, v));
+                if (magnitude === null) {
+                    throw new TypeError("authenticated math.hypot returned non-float");
+                }
+                if (magnitude === 0 || maximum === 0) continue;
+                const dx = u / maximum * extent;
+                const dy = v / maximum * extent;
+                let x0, y0;
+                if (pivot_value === "middle") {
+                    x0 = x - dx / 2;
+                    y0 = y - dy / 2;
+                } else if (pivot_value === "tip") {
+                    x0 = x - dx;
+                    y0 = y - dy;
+                } else {
+                    x0 = x;
+                    y0 = y;
+                }
+                const x1 = x0 + dx;
+                const y1 = y0 + dy;
+                xs[outputIndex] = context.floatResult(x0);
+                ys[outputIndex++] = context.floatResult(y0);
+                xs[outputIndex] = context.floatResult(x1);
+                ys[outputIndex++] = context.floatResult(y1);
+                xs[outputIndex] = null;
+                ys[outputIndex++] = null;
+                if (withHead) {
+                    const unitX = u / magnitude;
+                    const unitY = v / magnitude;
+                    const backX = x1 - dx * headLength;
+                    const backY = y1 - dy * headLength;
+                    const arrowLength = context.strictUnbox(hypot_function(dx, dy));
+                    if (arrowLength === null) {
+                        throw new TypeError("authenticated math.hypot returned non-float");
+                    }
+                    const sideX = -unitY * arrowLength * headWidth;
+                    const sideY = unitX * arrowLength * headWidth;
+                    xs[outputIndex] = context.floatResult(backX + sideX);
+                    ys[outputIndex++] = context.floatResult(backY + sideY);
+                    xs[outputIndex] = context.floatResult(x1);
+                    ys[outputIndex++] = context.floatResult(y1);
+                    xs[outputIndex] = context.floatResult(backX - sideX);
+                    ys[outputIndex++] = context.floatResult(backY - sideY);
+                    xs[outputIndex] = null;
+                    ys[outputIndex++] = null;
+                }
+            }
+        }
+        xs.length = outputIndex;
+        ys.length = outputIndex;
+        return Object.freeze({
+            ok: true,
+            zeroTrip: rowCount === 0 || columnCount === 0,
+            xs: listDecorator(xs),
+            ys: listDecorator(ys),
+        });
+    })()"""
+
+
 def ρσ_fast_closed_binary(left, right, operation, missing):
     return r"""%js (() => {
         if (left !== null && right !== null &&

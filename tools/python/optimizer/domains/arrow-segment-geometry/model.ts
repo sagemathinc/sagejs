@@ -9,6 +9,18 @@ export const ARROW_SEGMENT_GEOMETRY_RECONNAISSANCE_VERIFIER =
   "verify.closed-transactional-rectangular-binary64-dataflow-reconnaissance.v1";
 export const ARROW_SEGMENT_GEOMETRY_RECONNAISSANCE_PRIORITY = 147;
 
+export const ARROW_SEGMENT_GEOMETRY_PASS =
+  "math.closed-transactional-rectangular-binary64-dataflow.v1";
+export const ARROW_SEGMENT_GEOMETRY_DOMAIN =
+  "closed-transactional-rectangular-binary64-dataflow";
+export const ARROW_SEGMENT_GEOMETRY_LOWERING =
+  "v8.closed-transactional-rectangular-binary64-dataflow.v1";
+export const ARROW_SEGMENT_GEOMETRY_INTERNAL_KIND =
+  "closed-transactional-rectangular-binary64-dataflow";
+export const ARROW_SEGMENT_GEOMETRY_VERIFIER =
+  "verify.closed-transactional-rectangular-binary64-dataflow-plan.v1";
+export const ARROW_SEGMENT_GEOMETRY_PRIORITY = 148;
+
 export const ARROW_SEGMENT_GEOMETRY_REASONS = Object.freeze({
   binary64ResultBoxing:
     "rectangular-binary64-dataflow.strict-binary64-result-boxing-and-arithmetic-grouping-unproved",
@@ -96,8 +108,29 @@ export interface ArrowSegmentGeometryProgram {
   proofGaps: readonly string[];
 }
 
+export interface ArrowSegmentGeometryOperands {
+  iterable: any;
+  xSequence: any;
+  ySequence: any;
+  uGrid: any;
+  vGrid: any;
+  maximum: any;
+  extent: any;
+  pivot: any;
+  headLength: any;
+  headWidth: any;
+  hypot: any;
+  xOutput: any;
+  yOutput: any;
+}
+
 export type ArrowSegmentGeometryRecognition =
-  | { recognized: true; program: ArrowSegmentGeometryProgram; outerLoop: any }
+  | {
+      recognized: true;
+      program: ArrowSegmentGeometryProgram;
+      operands: ArrowSegmentGeometryOperands;
+      outerLoop: any;
+    }
   | { recognized: false; reason: string };
 
 export function arrowSegmentGeometryOperations(): readonly string[] {

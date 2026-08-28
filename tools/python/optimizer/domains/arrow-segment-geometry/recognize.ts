@@ -80,6 +80,61 @@ function simpleBody(compiler: any, node: any): any | null {
   return node instanceof compiler.AST_SimpleStatement ? node.body : null;
 }
 
+function lexicalReferences(
+  compiler: any,
+  value: any,
+  names: ReadonlySet<string>,
+): boolean {
+  const seen = new Set<any>();
+  const visit = (node: any): boolean => {
+    if (!node || typeof node !== "object" || seen.has(node)) return false;
+    seen.add(node);
+    if (Array.isArray(node)) return node.some(visit);
+    if (!(node instanceof compiler.AST_Node)) return false;
+    if (node instanceof compiler.AST_SymbolRef &&
+        node.python_lexical_binding === true && names.has(node.name)) return true;
+    for (const [key, child] of Object.entries(node)) {
+      if (["start", "end", "scope", "thedef", "imports", "globals", "classes",
+        "baselib", "optimization_ir", "optimization_region"].includes(key) ||
+          typeof child === "function") continue;
+      if (visit(child)) return true;
+    }
+    return false;
+  };
+  return visit(value);
+}
+
+function freshOutputBeforeLoop(
+  compiler: any,
+  ownerBody: any[],
+  outerIndex: number,
+  name: string,
+): boolean {
+  let assignmentIndex = -1;
+  for (let index = outerIndex - 1; index >= 0; index -= 1) {
+    const statement = simpleBody(compiler, ownerBody[index]);
+    if (statement instanceof compiler.AST_AnnotatedAssignment &&
+        lexicalName(compiler, statement.target) === name) {
+      if (!(statement.value instanceof compiler.AST_Array) ||
+          statement.value.elements?.length !== 0) return false;
+      assignmentIndex = index;
+      break;
+    }
+    if (statement instanceof compiler.AST_Assign &&
+        statement.operator === "=" && statement.native_operator !== true &&
+        lexicalName(compiler, statement.left) === name) {
+      if (!(statement.right instanceof compiler.AST_Array) ||
+          statement.right.elements?.length !== 0) return false;
+      assignmentIndex = index;
+      break;
+    }
+  }
+  if (assignmentIndex < 0) return false;
+  const nameSet = new Set([name]);
+  return ownerBody.slice(assignmentIndex + 1, outerIndex).every((statement) =>
+    !lexicalReferences(compiler, statement, nameSet));
+}
+
 function symbolAssignment(
   compiler: any,
   statement: any,
@@ -686,9 +741,39 @@ export function recognizeArrowSegmentGeometryProgram(
   if (new Set(roleNames).size !== roleNames.length) {
     return { recognized: false, reason: "not-arrow-segment-geometry-shape" };
   }
+  const ownerFunction = [...ancestors].reverse().find((ancestor) =>
+    ancestor instanceof compiler.AST_Function
+  );
+  const ownerBody = ownerFunction?.body;
+  const outerIndex = Array.isArray(ownerBody) ? ownerBody.indexOf(outerLoop) : -1;
+  const loopTargets = new Set([
+    outer.indexName, outer.valueName, inner.indexName, inner.valueName,
+  ]);
+  if (outerIndex < 0 ||
+      !freshOutputBeforeLoop(compiler, ownerBody, outerIndex, xOutputName) ||
+      !freshOutputBeforeLoop(compiler, ownerBody, outerIndex, yOutputName) ||
+      ownerBody.slice(outerIndex + 1).some((statement: any) =>
+        lexicalReferences(compiler, statement, loopTargets))) {
+    return { recognized: false, reason: "not-transactionally-private-output-shape" };
+  }
   return {
     recognized: true,
     outerLoop,
+    operands: {
+      iterable: outerLoop.object,
+      xSequence: node.object.args[0],
+      ySequence: outerLoop.object.args[0],
+      uGrid: uRow.value.expression,
+      vGrid: vRow.value.expression,
+      maximum: body[4].condition.right.left,
+      extent: dx.value.right,
+      pivot: body[7].condition.left,
+      headLength: body[11].condition.right.left,
+      headWidth: body[11].condition.left.left,
+      hypot: magnitude.value.expression,
+      xOutput: body[9].body.expression.expression,
+      yOutput: body[10].body.expression.expression,
+    },
     program: {
       version: 1,
       kind: "closed-transactional-rectangular-binary64-dataflow",

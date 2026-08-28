@@ -19,6 +19,13 @@ function loweringContract(
 
 const LOWERING_CONTRACTS: readonly OptimizerLoweringContract[] = Object.freeze([
   loweringContract({
+    id: "v8.closed-transactional-rectangular-binary64-dataflow.v1",
+    passId: "math.closed-transactional-rectangular-binary64-dataflow.v1",
+    internalKind: "closed-transactional-rectangular-binary64-dataflow",
+    targetKinds: ["v8"],
+    nodeKind: "AST_ForIn",
+  }),
+  loweringContract({
     id: "v8.bounded-integer-loop.v1",
     passId: "math.bounded-integer-region.v1",
     internalKind: "bounded-integer-region",

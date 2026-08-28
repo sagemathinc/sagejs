@@ -11,6 +11,8 @@ import {
 import { modularBatchPlugin } from "./passes/modular-batch-region";
 import { arrowSegmentGeometryReconnaissancePlugin } from
   "./passes/arrow-segment-geometry-region";
+import { arrowSegmentGeometryPlugin } from
+  "./passes/arrow-segment-geometry-executable";
 import { binary64NestedAllReconnaissancePlugin } from "./passes/binary64-nested-all-region";
 import { modularSequenceReconnaissancePlugin } from "./passes/modular-sequence-region";
 
@@ -88,6 +90,7 @@ export const optimizerCatalog = createOptimizerCatalog([
     pass: strictFloatRegionPass,
   },
   modularBatchPlugin,
+  arrowSegmentGeometryPlugin,
   arrowSegmentGeometryReconnaissancePlugin,
   binary64NestedAllReconnaissancePlugin,
   modularSequenceReconnaissancePlugin,
