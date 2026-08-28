@@ -17,6 +17,7 @@ const {
   catalogInsertion,
   consumerObligations,
   deriveCandidateSource,
+  deriveDirectV8Source,
   deriveFloatMaterializationSource,
   expectedOrder,
   helperSource,
@@ -76,6 +77,49 @@ test("the feasibility module changes only the two reviewed nested all expression
   assert.match(helper, /current_isfinite is not _CAMPAIGN1_EXPECTED_ISFINITE/);
   assert.match(helper, /_campaign1_strict_float_unbox/);
   assert.match(helper, /visited % 1024 == 0/);
+  assert.match(helper, /return _campaign1_original_nested_all/);
+});
+
+test("the direct V8 lower bound changes the same two expressions only", () => {
+  const candidate = deriveDirectV8Source(publicSource, profileSource);
+  const helper = helperSource(profileSource);
+  const candidatePublic = candidate.slice(
+    0,
+    candidate.lastIndexOf("# BEGIN CAMPAIGN1 CHECKED NESTED BINARY64 ALL"),
+  ).trimEnd();
+  const restored = candidatePublic
+    .replace(
+      `if numeric_values is not None and _campaign1_direct_v8_nested_binary64_all(
+            numeric_values, all, math.isfinite, False
+        ):`,
+      `if numeric_values is not None and all(
+            math.isfinite(value) for row in numeric_values for value in row
+        ):`,
+    )
+    .replace(
+      `if numeric_pairs is not None and _campaign1_direct_v8_nested_binary64_all(
+            numeric_pairs, all, math.isfinite, True
+        ):`,
+      `if numeric_pairs is not None and all(
+            math.isfinite(pair[0]) and math.isfinite(pair[1])
+            for row in numeric_pairs
+            for pair in row
+        ):`,
+    );
+  assert.equal(restored, publicSource.trimEnd());
+  assert.equal(candidate.endsWith(`${helper}\n`), true);
+  assert.match(helper, /runtime\.reflect\.construct/);
+  assert.match(helper, /return function\(source, fixedPair\)/);
+  assert.match(helper, /globalThis\.ρσ_strict_float_unbox !== trustedUnbox/);
+  assert.match(helper, /globalThis\.ρσ_check_interrupt !== trustedInterrupt/);
+  assert.match(helper, /globalThis\.ρσ_list_decorate !== trustedList/);
+  assert.match(helper, /getOwnPropertyDescriptor\(source, rowIndex\)/);
+  assert.match(helper, /getOwnPropertyDescriptor\(row, column\)/);
+  assert.match(helper, /getOwnPropertyDescriptor\(value, 0\)/);
+  assert.match(helper, /getOwnPropertyDescriptor\(value, 1\)/);
+  assert.match(helper, /if \(!isFiniteNumber\(first\)\) return 2;/);
+  assert.match(helper, /if \(!isFiniteNumber\(scalar\)\) return 2;/);
+  assert.match(helper, /if answer == 0:/);
   assert.match(helper, /return _campaign1_original_nested_all/);
 });
 
@@ -183,6 +227,14 @@ test("the exact catalog document has a deterministic sorted insertion", () => {
     afterId:
       "sha256:ac4f25a1636552870e352c39de5046ebdf2cbc058e10a5d9ad2955582ff426c0",
   });
+  const catalogWithWorkload = {
+    ...catalog,
+    workloads: [...catalog.workloads, workload],
+  };
+  assert.deepEqual(
+    catalogInsertion(catalogWithWorkload, workload),
+    catalogInsertion(catalog, workload),
+  );
 });
 
 test("standard evidence refuses the non-promotable smoke escape hatch", async () => {
@@ -214,6 +266,10 @@ test("the real smoke run is exact, guarded, and mechanically non-promotable", {
     report.exactDifferential.checkedV8,
   );
   assert.deepEqual(
+    report.exactDifferential.currentGeneric,
+    report.exactDifferential.pythonSourceFeasibility,
+  );
+  assert.deepEqual(
     report.exactDifferential.sagejsO0,
     report.exactDifferential.currentGeneric,
   );
@@ -225,5 +281,18 @@ test("the real smoke run is exact, guarded, and mechanically non-promotable", {
   assert.equal(
     report.comparisons.scalarFloatMaterializationNegative.rawPairs.length,
     1,
+  );
+  assert.equal(
+    report.comparisons.scalarPythonSourceFeasibility.rawPairs.length,
+    1,
+  );
+  assert.equal(
+    report.opportunityEvidenceAdapter.phaseReceiptData.negativeTargets[0]
+      .priorStandardEvidence.reportId,
+    "sha256:a297acf1e70a1684f476020660e47603041b92e1ed43a8e14b3c5338df7b6364",
+  );
+  assert.equal(
+    report.guardAudit.direct_nonfinite_before_later_hole_sentinel,
+    2,
   );
 });
