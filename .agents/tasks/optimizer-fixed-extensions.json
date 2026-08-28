@@ -1,0 +1,116 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimizer-fixed-extensions",
+  "title": "Fixed extension-field optimizer regions",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Generalize verified fixed-degree extension-field regions beyond the proof-of-concept while keeping each admitted degree/modulus shape isolated and monomorphic; enforce exact intermediate and code-size bounds, dynamic fallback, independent verification, adversarial tests, and compile/warm benchmarks; leave shared catalog, dispatcher, and bootstrap edits to integration.",
+  "base_commit": "b25134fdc2b103d77ac51ca21f3134399043e581",
+  "claims": [
+    "tools/python/optimizer/domains/fixed-extension/",
+    "tools/python/optimizer/passes/fixed-extension-region.ts",
+    "tools/python/optimizer/representations/fixed-extension.ts",
+    "tools/python/optimizer/targets/v8-fixed-extension.ts",
+    "tools/python/optimizer/verifiers/fixed-extension.ts",
+    "src/output/optimizer/fixed_extension.py",
+    "test/optimizer-fixed-extension.cjs",
+    "bench/optimizer-fixed-extension/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/optimizing-mathematics-compiler-rfc.md",
+    "agents/optimizing-mathematics-compiler-parallel-program.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "sagejs-o0",
+      "exact-polynomial-reduction",
+      "flint"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 342.603,
+      "started_at": "2026-08-28T01:22:06.147Z",
+      "commit": "b25134fdc2b103d77ac51ca21f3134399043e581",
+      "workspace_fingerprint": "e83465e54bf249b5ce04b160ca2c6f7ea4d2dee8f126b1ad15fd70696ce333d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.436,
+      "started_at": "2026-08-28T01:27:59.625Z",
+      "commit": "b25134fdc2b103d77ac51ca21f3134399043e581",
+      "workspace_fingerprint": "e83465e54bf249b5ce04b160ca2c6f7ea4d2dee8f126b1ad15fd70696ce333d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 431.084,
+      "started_at": "2026-08-28T01:28:49.237Z",
+      "commit": "b25134fdc2b103d77ac51ca21f3134399043e581",
+      "workspace_fingerprint": "e83465e54bf249b5ce04b160ca2c6f7ea4d2dee8f126b1ad15fd70696ce333d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 438.583,
+      "started_at": "2026-08-28T01:36:18.140Z",
+      "commit": "b25134fdc2b103d77ac51ca21f3134399043e581",
+      "workspace_fingerprint": "e83465e54bf249b5ce04b160ca2c6f7ea4d2dee8f126b1ad15fd70696ce333d9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 569.628,
+      "started_at": "2026-08-28T01:44:05.121Z",
+      "commit": "861a8ddb0334ee30105bbf31a39f8d7bb9c50eba",
+      "workspace_fingerprint": "36807184fb94458c0488180ffcd2d40b3921b244e671260030b5686825763056",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Commit 861a8ddb adds the explicit-contract-only math.fixed-extension-region.v1 plugin without editing integration-owned registries. It plans and independently verifies isolated monomorphic V8 outlines for degrees 2, 3, and 4; proves exact Number intermediates at the reviewed modulus ceiling; rejects any over-budget variant transactionally; retains the untouched source loop for O0 and every failed guard; and hard-requires the shared immutable construction-time modulus identity interface. Focused tests cover proof, shape, and budget mutation; hostile same-shape modulus replacement; aliases, powers, branches, method mutation, zero-trip behavior, two modulus shapes per degree, O0 differentials, and an independent polynomial-reduction oracle. The benchmark covers frontend/planner compilation, estimated emitted bytes and compile units per degree, public cold evaluation, first-call and warm timing, and projected O0 speedup.",
+    "risks": [
+      "The plugin is intentionally not registered in the central catalog, lowering table, verifier catalog, or Python dispatcher in this lane, so its public decorator path becomes executable only after the integration edits below.",
+      "The emitter requires the construction-context interface integrated by f568bfbc: parent._machineExtensionImmutableContext, runtime.machine_extension_context_matches / ρσ_machine_extension_context_matches, and the prepare result's constructionContext plus construction-time-modulus-identity.v1 authentication token.",
+      "pnpm test:integration was attempted three times and stopped in batch 3 only at the unrelated load-sensitive test/dense-prime-host-boundary.cjs timing ceiling: GF(2) scalar read 26.45us, scalar write 50.15us, and serialized scalar read 26.14us against 25us/50us limits. The identical file passed standalone. pnpm test:changed also passed merge, build, architecture, and five unit batches before an unrelated browser fixture 404 for dist/wasi-runtime.mjs in test/wasm-group-computation.cjs. The contract remains active rather than review because no passing full integration receipt was obtained."
+    ],
+    "next_steps": [
+      "Cherry-pick 861a8ddb onto an integration commit containing f568bfbc.",
+      "In tools/python/optimizer/catalog.ts import FIXED_EXTENSION_DOMAIN and fixedExtensionRegionPass from ./passes/fixed-extension-region, then register { id: fixedExtensionRegionPass.id, domainId: FIXED_EXTENSION_DOMAIN, priority: 125, claimSemantics: 'exclusive', loweringIds: ['v8.fixed-extension-loop.v1'], pass: fixedExtensionRegionPass }. Priority 125 places this explicit-only specialization below strict scalar 200 and modular batch 150 but above closed ring 100; exact contract reservation prevents unannotated competition.",
+      "In tools/python/optimizer/lowerings.ts register v8.fixed-extension-loop.v1 with passId math.fixed-extension-region.v1, internalKind fixed-extension-region, targetKinds ['v8', 'adaptive'], and nodeKind AST_ForIn.",
+      "In tools/python/optimizer/verifiers/catalog.ts import verifyFixedExtensionInternalRegionPlan and give fixed-extension-region its own verify.fixed-extension-plan.v1 plugin; do not add it to the scalar verifier kind list.",
+      "In src/output/optimizer/dispatcher.py import print_fixed_extension_region and map v8.fixed-extension-loop.v1 to it. Update test/optimizer-architecture.cjs catalog, lowering, emitter, and one-verifier expectations for the new identities.",
+      "After registration, add the explicit @optimize(require='math.fixed-extension-region.v1', coverage='all-loops', target='auto', guard_failure='fallback') decorator to the O2/O0 runtime differential source in test/optimizer-fixed-extension.cjs, retain the hostile branded same-shape mutation regression, and run node bench/optimizer-fixed-extension/index.cjs --check --integrated.",
+      "Rerun the full integration receipt on an uncontended host; do not relax the unrelated dense-prime timing ceilings as part of this optimizer integration."
+    ]
+  }
+}
