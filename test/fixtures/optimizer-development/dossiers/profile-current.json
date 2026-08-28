@@ -1,0 +1,49 @@
+{
+  "schema": "sagejs.optimizer-profile-receipt/v1",
+  "identity": { "id": "profile:current" },
+  "dashboardIdentity": { "id": "dashboard:current" },
+  "workloadIdentity": { "id": "workload:authentic", "importance": 5 },
+  "output": { "exact": true },
+  "attributionCoverageThreshold": 0.8,
+  "samples": { "total": 100, "unmatched": 9, "ambiguous": 1 },
+  "observations": [
+    {
+      "regionIdentity": { "id": "region:hot" },
+      "selfSamples": 50,
+      "inclusiveMilliseconds": 80,
+      "exclusiveMilliseconds": 50,
+      "phases": { "factor": 80 },
+      "removableWallTimeLowerBoundMilliseconds": 20,
+      "workloadImportance": 5,
+      "evidenceQuality": "high",
+      "routes": { "generic": 7 },
+      "observedCosts": { "allocations": 2000, "coercions": 1000 }
+    },
+    {
+      "regionIdentity": { "id": "region:selected" },
+      "selfSamples": 20,
+      "inclusiveMilliseconds": 25,
+      "exclusiveMilliseconds": 20,
+      "workloadImportance": 5,
+      "evidenceQuality": "high",
+      "routes": { "selected": 7 }
+    },
+    {
+      "regionIdentity": { "id": "region:negative" },
+      "selfSamples": 15,
+      "inclusiveMilliseconds": 15,
+      "exclusiveMilliseconds": 15,
+      "workloadImportance": 5,
+      "evidenceQuality": "high",
+      "negativeEvidence": [{ "candidate": "generated-js", "disposition": "reject", "inclusiveRatio": 26 }]
+    },
+    {
+      "regionIdentity": { "id": "region:algorithm" },
+      "selfSamples": 5,
+      "inclusiveMilliseconds": 35,
+      "exclusiveMilliseconds": 5,
+      "workloadImportance": 5,
+      "evidenceQuality": "high"
+    }
+  ]
+}
