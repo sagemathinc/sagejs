@@ -121,7 +121,7 @@ export interface OptimizationProgram {
 export type OptimizationCoverage = "at-least-one" | "all-loops";
 export type OptimizationGuardFailure = "fallback" | "error";
 export type OptimizationTargetRequirement =
-  | "auto" | "v8" | "wasm" | "native" | "library" | "generic";
+  | "auto" | "v8" | "wasm" | "native" | "library" | "adaptive" | "generic";
 
 export interface FunctionOptimizationContract {
   schema: typeof OPTIMIZER_IR_SCHEMA;

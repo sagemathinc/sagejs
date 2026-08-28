@@ -163,7 +163,9 @@ function contractForFunction(
     throw new SyntaxError(`@optimize on ${definition.name.name} has invalid coverage`);
   }
   const target = (options.get("target") ?? "auto") as OptimizationTargetRequirement;
-  if (!["auto", "v8", "wasm", "native", "library", "generic"].includes(target)) {
+  if (!["auto", "v8", "wasm", "native", "library", "adaptive", "generic"].includes(
+    target,
+  )) {
     throw new SyntaxError(`@optimize on ${definition.name.name} has invalid target`);
   }
   const guardFailure = (options.get("guard_failure") ?? "fallback") as

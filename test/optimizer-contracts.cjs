@@ -222,6 +222,33 @@ test("an exact contract reserves ambiguous loops for its named domain", async ()
   }
 });
 
+test("a closed-ring contract can require its adaptive target plan", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse(`
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.closed-ring-region.v1",
+    coverage="all-loops",
+    target="adaptive",
+    guard_failure="error",
+)
+def recurrence(count, value, multiplier, increment):
+    for _index in range(count):
+        value = value * multiplier + increment
+    return value
+`, options());
+    const [contract] = ast.optimization_ir.contracts;
+    assert.equal(contract.status, "satisfied");
+    assert.equal(contract.target, "adaptive");
+    assert.equal(ast.optimization_ir.regions[0].target.kind, "adaptive");
+  } finally {
+    frontend.close();
+  }
+});
+
 test("contract recognition is tied to exact import provenance and literal syntax", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

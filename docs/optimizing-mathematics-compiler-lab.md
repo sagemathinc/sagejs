@@ -26,7 +26,7 @@ from sagejs.compiler import optimize
 @optimize(
     require="math.closed-ring-region.v1",
     coverage="all-loops",
-    target="auto",
+    target="adaptive",
     guard_failure="error",
 )
 def recurrence(count, value, multiplier, increment):
@@ -57,7 +57,7 @@ from sagejs.compiler import optimize
 @optimize(
     require="math.closed-ring-region.v1",
     coverage="all-loops",
-    target="auto",
+    target="adaptive",
     guard_failure="error",
 )
 def recurrence(count, value, multiplier, increment):

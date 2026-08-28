@@ -27,7 +27,15 @@ from __future__ import annotations
 from typing import Any
 
 _COVERAGE = ("all-loops", "at-least-one")
-_TARGETS = ("auto", "v8", "wasm", "native", "library", "generic")
+_TARGETS = (
+    "auto",
+    "v8",
+    "wasm",
+    "native",
+    "library",
+    "adaptive",
+    "generic",
+)
 _GUARD_FAILURE = ("fallback", "error")
 
 

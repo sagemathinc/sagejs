@@ -111,7 +111,7 @@ function verifyFunctionContract(contract: FunctionOptimizationContract): void {
   if (contract.coverage !== "all-loops" && contract.coverage !== "at-least-one") {
     throw new TypeError(`optimizer contract ${contract.id} has invalid coverage`);
   }
-  if (!["auto", "v8", "wasm", "native", "library", "generic"].includes(
+  if (!["auto", "v8", "wasm", "native", "library", "adaptive", "generic"].includes(
     contract.target,
   )) throw new TypeError(`optimizer contract ${contract.id} has invalid target`);
   if (contract.guardFailure !== "fallback" && contract.guardFailure !== "error") {
