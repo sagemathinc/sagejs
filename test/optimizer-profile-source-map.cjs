@@ -183,3 +183,35 @@ test("map collector detects an unbalanced compiler callback", () => {
   });
   assert.throws(() => collector.finish("", "fixture.js"), /not balanced/);
 });
+
+test("empty modules have a source-owned identity despite sentinel ranges", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("", {
+      filename: "src/lib/empty-profile-module.py",
+      for_linting: true,
+      import_dirs: [],
+      strict_python_scopes: true,
+    });
+    const collector = new CompilerProfileMapCollector(
+      "",
+      "src/lib/empty-profile-module.py",
+      process.cwd(),
+    );
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      beautify: true,
+      source_map: collector,
+      python_attributes: true,
+      exact_integers: true,
+    });
+    ast.print(output);
+    const map = collector.finish(output.get(), "sagejs-profile:///empty.js");
+    assert.ok(validOptimizerProfileMap(map));
+    assert.equal(collector.moduleIdentity.semanticFingerprint,
+      semanticSourceFingerprint(ast, ""));
+  } finally {
+    frontend.close();
+  }
+});
