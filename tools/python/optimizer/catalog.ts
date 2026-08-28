@@ -4,6 +4,11 @@ import { closedRingRegionPass } from "./passes/closed-field-region";
 import { strictFloatRegionPass } from "./passes/strict-float-region";
 import { boundedIntegerPlugin } from "./passes/bounded-integer-region";
 import { strictFloatArrayPlugin } from "./passes/strict-float-array-region";
+import {
+  FIXED_EXTENSION_DOMAIN,
+  fixedExtensionRegionPass,
+} from "./passes/fixed-extension-region";
+import { modularBatchPlugin } from "./passes/modular-batch-region";
 
 export interface OptimizerPassPlugin {
   readonly id: string;
@@ -77,6 +82,15 @@ export const optimizerCatalog = createOptimizerCatalog([
     claimSemantics: "exclusive",
     loweringIds: ["v8.strict-float-loop.v1"],
     pass: strictFloatRegionPass,
+  },
+  modularBatchPlugin,
+  {
+    id: fixedExtensionRegionPass.id,
+    domainId: FIXED_EXTENSION_DOMAIN,
+    priority: 125,
+    claimSemantics: "exclusive",
+    loweringIds: ["v8.fixed-extension-loop.v1"],
+    pass: fixedExtensionRegionPass,
   },
   {
     id: closedRingRegionPass.id,

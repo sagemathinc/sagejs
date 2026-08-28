@@ -40,6 +40,20 @@ const LOWERING_CONTRACTS: readonly OptimizerLoweringContract[] = Object.freeze([
     nodeKind: "AST_ForIn",
   }),
   loweringContract({
+    id: "v8.modular-batch-loop.v1",
+    passId: "math.modular-batch-region.v1",
+    internalKind: "modular-batch-region",
+    targetKinds: ["v8"],
+    nodeKind: "AST_ForIn",
+  }),
+  loweringContract({
+    id: "v8.fixed-extension-loop.v1",
+    passId: "math.fixed-extension-region.v1",
+    internalKind: "fixed-extension-region",
+    targetKinds: ["v8"],
+    nodeKind: "AST_ForIn",
+  }),
+  loweringContract({
     id: "v8.closed-ring-loop.v1",
     passId: "math.closed-ring-region.v1",
     internalKind: "closed-ring-region",

@@ -2,6 +2,8 @@ import { InternalRegionPlan } from "../types";
 import { verifyScalarInternalRegionPlan } from "./scalar-plan";
 import { verifyBoundedIntegerPlan } from "./bounded-integer";
 import { verifyStrictFloatArrayPlan } from "./strict-float-array";
+import { verifyFixedExtensionInternalRegionPlan } from "./fixed-extension";
+import { verifyModularBatchInternalRegionPlan } from "./modular-batch";
 
 export interface InternalPlanVerifierPlugin {
   readonly id: string;
@@ -19,6 +21,16 @@ const plugins: readonly InternalPlanVerifierPlugin[] = Object.freeze([
     id: "verify.strict-float-array-plan.v1",
     internalKinds: Object.freeze(["strict-float-array-region"]),
     verify: verifyStrictFloatArrayPlan,
+  }),
+  Object.freeze({
+    id: "verify.modular-batch-plan.v1",
+    internalKinds: Object.freeze(["modular-batch-region"]),
+    verify: verifyModularBatchInternalRegionPlan,
+  }),
+  Object.freeze({
+    id: "verify.fixed-extension-plan.v1",
+    internalKinds: Object.freeze(["fixed-extension-region"]),
+    verify: verifyFixedExtensionInternalRegionPlan,
   }),
   Object.freeze({
     id: "verify.scalar-plan.v1",
