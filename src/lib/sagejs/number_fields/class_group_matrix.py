@@ -2150,7 +2150,7 @@ def _resident_hnf_cancelled(cancelled: Any) -> None:
         runtime_module = __import__("sagejs.runtime", fromlist=["runtime"])
         runtime_module.check_interrupt()
     except ImportError:
-        # Ordinary CPython intentionally has no Sage.js host runtime.
+        # Ordinary CPython intentionally has no Sage.js host runtime boundary.
         pass
     if cancelled is not None and cancelled():
         raise RuntimeError("class/unit computation cancelled")

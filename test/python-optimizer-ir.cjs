@@ -10,8 +10,12 @@ const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
 const {
+  BOUNDED_INTEGER_REGION_PASS,
   CLOSED_RING_REGION_PASS,
+  FIXED_EXTENSION_REGION_PASS,
+  MODULAR_BATCH_REGION_PASS,
   OPTIMIZER_IR_SCHEMA,
+  STRICT_FLOAT_ARRAY_PASS,
   STRICT_FLOAT_REGION_PASS,
   explainOptimizationProgram,
   formatOptimizationExplanation,
@@ -104,7 +108,11 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
     assert.equal(program.level, "O2");
     assert.equal(program.regions.length, 1);
     assert.deepEqual(program.passes.map((pass) => pass.id), [
+      BOUNDED_INTEGER_REGION_PASS,
+      STRICT_FLOAT_ARRAY_PASS,
       STRICT_FLOAT_REGION_PASS,
+      MODULAR_BATCH_REGION_PASS,
+      FIXED_EXTENSION_REGION_PASS,
       CLOSED_RING_REGION_PASS,
     ]);
     const [region] = program.regions;
