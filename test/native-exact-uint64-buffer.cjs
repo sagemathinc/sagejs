@@ -112,8 +112,8 @@ test("compiled, JavaScript, tagged, GMP, and CPython paths agree", async () => {
       }
     }
 
-    const python = spawnSync(process.platform === "win32"
-      ? "python" : "/usr/local/bin/python3", ["-c", [
+    const python = spawnSync(process.env.PYTHON || (process.platform === "win32"
+      ? "python" : "python3"), ["-c", [
       "import sys",
       `sys.path.insert(0, ${JSON.stringify(join(root, "src", "lib"))})`,
       `sys.path.insert(0, ${JSON.stringify(join(root, "bench"))})`,
@@ -126,8 +126,12 @@ test("compiled, JavaScript, tagged, GMP, and CPython paths agree", async () => {
       encoding: "utf8",
       env: { ...process.env, PYTHONPATH: "" },
     });
-    assert.equal(python.status, 0, python.stderr);
-    assert.deepEqual(python.stdout.trim().split("\n"), [
+    assert.equal(
+      python.status,
+      0,
+      python.stderr || python.error?.message || "CPython oracle failed",
+    );
+    assert.deepEqual(python.stdout.trim().split(/\r?\n/), [
       "18 18", "1273372977659915 1273372977659915",
     ]);
 

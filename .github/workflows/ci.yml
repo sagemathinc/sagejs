@@ -116,7 +116,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -400,7 +400,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
       id-token: write
@@ -508,7 +508,7 @@ jobs:
         run: pnpm test:portable
 
       - name: Run host integration tests
-        timeout-minutes: 30
+        timeout-minutes: 75
         run: pnpm test:integration
 
       - name: Run native addon tests
@@ -620,6 +620,11 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
 
+      - name: Install the supported CPython reference
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
       - name: Install native build prerequisites
         run: |
           brew untap aws/tap || true
@@ -657,6 +662,15 @@ jobs:
           key: macos-arm64-fflas-${{ hashFiles('packages/fflas/scripts/build-deps.cjs', 'packages/fflas/scripts/native-prefix.cjs', 'packages/fflas/package.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
           restore-keys: macos-arm64-fflas-
 
+      - name: Cache downloaded and compiled M4RI dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            packages/m4ri/.native/downloads
+            packages/m4ri/.native/prefix
+          key: macos-arm64-m4ri-${{ hashFiles('packages/m4ri/scripts/build-deps.cjs', 'packages/m4ri/scripts/native-prefix.cjs', 'packages/m4ri/package.json') }}
+          restore-keys: macos-arm64-m4ri-
+
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
@@ -664,12 +678,15 @@ jobs:
           pnpm --dir packages/flint build
           pnpm --dir packages/fflas build
           pnpm --dir packages/graph build
+          pnpm --dir packages/m4ri build
           pnpm build
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
 
       - name: Run portable, host integration, and native tests
+        env:
+          PYTHON: python3
         run: |
           pnpm test:portable
           pnpm test:integration

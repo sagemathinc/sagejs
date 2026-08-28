@@ -16,6 +16,7 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { PassThrough } = require("node:stream");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const {
@@ -186,7 +187,7 @@ assert moebius.range(2097153, 2097152) == []
 const toolchain = discoverToolchain();
 
 test("the same-source linear sieve agrees with independent scalar factorization", () => {
-  const oracle = spawnSync("python3", ["-c", String.raw`
+  const oracle = spawnSync(pythonExecutable(), ["-c", String.raw`
 import json
 import sys
 sys.path.insert(0, "src/lib")

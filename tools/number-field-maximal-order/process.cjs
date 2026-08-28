@@ -1,40 +1,84 @@
 "use strict";
 
 const { accessSync, constants, readFileSync } = require("node:fs");
-const { delimiter } = require("node:path");
-const { spawn, spawnSync } = require("node:child_process");
+const { delimiter, extname, isAbsolute, join } = require("node:path");
+const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const readline = require("node:readline");
 
 function resolveExecutable(command, env = process.env) {
-  if (command.includes("/")) {
-    try {
-      accessSync(command, constants.X_OK);
-      return command;
-    } catch {
-      return null;
+  const accessMode =
+    process.platform === "win32" ? constants.F_OK : constants.X_OK;
+  const extensions =
+    process.platform === "win32" && !extname(command)
+      ? String(env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";")
+      : [""];
+  const candidates = (base) => [
+    base,
+    ...extensions
+      .filter((extension) => extension)
+      .map((extension) => `${base}${extension}`),
+  ];
+  if (isAbsolute(command) || command.includes("/") || command.includes("\\")) {
+    for (const candidate of candidates(command)) {
+      try {
+        accessSync(candidate, accessMode);
+        return candidate;
+      } catch {
+        // Continue through platform executable suffixes.
+      }
     }
+    return null;
   }
   for (const directory of String(env.PATH || "").split(delimiter)) {
-    const candidate = `${directory}/${command}`;
-    try {
-      accessSync(candidate, constants.X_OK);
-      return candidate;
-    } catch {
-      // Continue searching PATH.
+    for (const candidate of candidates(join(directory, command))) {
+      try {
+        accessSync(candidate, accessMode);
+        return candidate;
+      } catch {
+        // Continue searching PATH.
+      }
     }
   }
   return null;
 }
 
 function readRssKilobytes(pid) {
-  if (process.platform !== "linux" || !pid) return null;
+  const numericPid = Number(pid);
+  if (!Number.isSafeInteger(numericPid) || numericPid <= 0) return null;
   try {
-    const status = readFileSync(`/proc/${pid}/status`, "utf8");
-    const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status);
-    return match ? Number(match[1]) : null;
+    if (process.platform === "linux") {
+      const status = readFileSync(`/proc/${numericPid}/status`, "utf8");
+      const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status);
+      return match ? Number(match[1]) : null;
+    }
+    if (process.platform === "darwin") {
+      const value = Number(execFileSync(
+        "ps",
+        ["-o", "rss=", "-p", String(numericPid)],
+        { encoding: "utf8", timeout: 2_000 },
+      ).trim());
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+    if (process.platform === "win32") {
+      const bytes = Number(execFileSync(
+        "powershell.exe",
+        [
+          "-NoLogo",
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          `(Get-Process -Id ${numericPid} -ErrorAction Stop).WorkingSet64`,
+        ],
+        { encoding: "utf8", timeout: 5_000 },
+      ).trim());
+      return Number.isFinite(bytes) && bytes > 0
+        ? Math.ceil(bytes / 1024)
+        : null;
+    }
   } catch {
-    return null;
+    // The process may have exited between enumeration and sampling.
   }
+  return null;
 }
 
 function processChildren(pid) {

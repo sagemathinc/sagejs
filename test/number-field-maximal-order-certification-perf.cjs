@@ -7,6 +7,7 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const manifest = JSON.parse(
@@ -72,9 +73,18 @@ function run(command, args, environment = {}) {
   assert.match(result.stdout, /maximal-order-certification-perf-ok/);
 }
 
+function runSagejs(args, environment = {}) {
+  const [command, commandArguments] = sagejsInvocation(
+    root,
+    args,
+    { ...process.env, ...environment },
+  );
+  run(command, commandArguments, environment);
+}
+
 test("fraction-free maximal-order certification rejects corruptions", () => {
   run(pythonExecutable(), ["-c", source]);
-  run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  runSagejs(["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });
 });

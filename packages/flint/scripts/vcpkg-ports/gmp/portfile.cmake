@@ -1,6 +1,6 @@
 # Based verbatim on the GMP 6.3.0 port at vcpkg baseline
 # 39344dff01c5a5a0134caf2624cdd492f05d30ea, except for the documented
-# durable autoconf 2.71 source URLs below.
+# durable Sage.js source URLs below.
 
 if(EXISTS "${CURRENT_INSTALLED_DIR}/include/gmp.h" OR "${CURRENT_INSTALLED_DIR}/include/gmpxx.h")
     message(FATAL_ERROR "Can't build ${PORT} if mpir is installed. Please remove mpir, and try install ${PORT} again if you need it.")
@@ -9,6 +9,7 @@ endif()
 vcpkg_download_distfile(
     ARCHIVE
     URLS
+        "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/gmp-${VERSION}.tar.xz"
         "https://ftpmirror.gnu.org/gmp/gmp-${VERSION}.tar.xz"
         "https://ftp.gnu.org/gnu/gmp/gmp-${VERSION}.tar.xz"
         "https://gmplib.org/download/gmp/gmp-${VERSION}.tar.xz"

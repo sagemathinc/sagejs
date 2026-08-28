@@ -3314,6 +3314,18 @@ ${wrappers}
 SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(
     napi_env env, napi_value exports)
 {
+#if defined(_WIN32)
+    /*
+     * clang-cl's first call through node-gyp's delay-load thunk can clobber
+     * the XMM register carrying napi_create_double's value argument.  Resolve
+     * that thunk while the value is intentionally disposable so the first
+     * public binary64 result is not corrupted.
+     */
+    napi_value sagejs_native_double_warmup;
+    if (!sagejs_native_check_napi(env,
+        napi_create_double(env, 0.0, &sagejs_native_double_warmup)))
+        return NULL;
+#endif
     napi_property_descriptor properties[] = {
 ${properties}
     };

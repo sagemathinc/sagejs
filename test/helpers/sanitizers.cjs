@@ -21,4 +21,18 @@ function sanitizerEnvironment({ strictStringChecks = false } = {}) {
   };
 }
 
-module.exports = { sanitizerEnvironment };
+/**
+ * Select the sanitizer set supported reliably by the current host runtime.
+ *
+ * Apple AddressSanitizer can deadlock while initializing its allocator on
+ * supported macOS hosts, before the test executable reaches `main`. Retain
+ * UndefinedBehaviorSanitizer there; Linux additionally supplies address and
+ * leak coverage for the same native witnesses.
+ */
+function sanitizerCompilerFlag() {
+  return process.platform === "darwin"
+    ? "-fsanitize=undefined"
+    : "-fsanitize=address,undefined";
+}
+
+module.exports = { sanitizerCompilerFlag, sanitizerEnvironment };

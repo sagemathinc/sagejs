@@ -86,22 +86,33 @@ const dependencies = [
   {
     name: "gmp",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
-    url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
-    mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/gmp-6.3.0.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+      "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
+    ],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
     archive: process.env.SAGEJS_GMP_TARBALL,
   },
   {
     name: "mpfr",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpfr,
-    url: "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/mpfr-4.2.2.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz",
+      "https://ftpmirror.gnu.org/mpfr/mpfr-4.2.2.tar.xz",
+    ],
     sha256: "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
     archive: process.env.SAGEJS_MPFR_TARBALL,
   },
   {
     name: "mpc",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpc,
-    url: "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/mpc-1.4.1.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
+      "https://ftpmirror.gnu.org/mpc/mpc-1.4.1.tar.xz",
+    ],
     sha256: "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
     archive: process.env.SAGEJS_MPC_TARBALL,
   },

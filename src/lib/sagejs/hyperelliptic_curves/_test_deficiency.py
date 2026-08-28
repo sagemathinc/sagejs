@@ -98,7 +98,8 @@ def run() -> dict[str, int | bool]:
 
     fixture = _fixture()
     json_module = __import__("json")
-    fixture_path = __file__.rsplit("/", 1)[0] + "/testdata/deficiency.json"
+    module_directory = __file__.replace("\\", "/").rsplit("/", 1)[0]
+    fixture_path = module_directory + "/testdata/deficiency.json"
     with open(fixture_path, encoding="utf-8") as handle:
         disk_fixture = json_module.load(handle)
     assert disk_fixture == fixture

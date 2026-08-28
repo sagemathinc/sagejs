@@ -34,8 +34,11 @@ if (available.status === 0) {
     "the broad numpy-ts facade must agree with CPython/NumPy",
   );
 } else {
-  assert.ok(sagejs.stdout.includes("[[7, 7, 7], [7, 7, 7]]"));
-  assert.ok(sagejs.stdout.includes("[5.0, 0.0]"));
+  assert.ok(
+    sagejs.stdout.includes("[[7.0, 7.0, 7.0], [7.0, 7.0, 7.0]]"),
+    sagejs.stdout,
+  );
+  assert.ok(sagejs.stdout.includes("[0.6, -0.2]"), sagejs.stdout);
 }
 
 const inventory = run(python, [

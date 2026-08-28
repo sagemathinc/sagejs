@@ -265,6 +265,10 @@ assert.doesNotMatch(
   /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
 );
 assert.match(integerAlgorithmsAdapterC, /#include "kernel_core\.c"/);
+assert.match(
+  integerAlgorithmsAdapterC,
+  /napi_create_double\(env, 0\.0, &sagejs_native_double_warmup\)/,
+);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
   primeFieldMatrixPath,

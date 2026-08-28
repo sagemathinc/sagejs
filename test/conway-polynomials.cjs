@@ -235,8 +235,10 @@ test("Conway data access fails deterministically without filesystem capability",
 });
 
 test("ordinary CPython uses the portable Conway JSON fallback", () => {
+  const python = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
   const result = spawnSync(
-    "python3",
+    python,
     [
       "-c",
       [
@@ -253,6 +255,10 @@ test("ordinary CPython uses the portable Conway JSON fallback", () => {
       env: process.env,
     },
   );
-  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.status,
+    0,
+    result.stderr || result.error?.message || "CPython oracle failed",
+  );
   assert.equal(result.stdout.trim(), "47090 10453 (60867, 2, 0, 1)");
 });

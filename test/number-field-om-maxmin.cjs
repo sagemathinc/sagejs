@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const fixture = JSON.parse(
@@ -22,7 +23,7 @@ const v429Polynomial = JSON.parse(
 const witness = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 
 from sagejs.number_fields.om_maxmin import (
     LocalNumeratorTable,
@@ -277,7 +278,7 @@ function checkWitness(output) {
 }
 
 test("bounded OM/MaxMin agrees with frozen Sage/PARI-family fixtures in CPython", () => {
-  const output = run("python3", ["-"]);
+  const output = run(pythonExecutable(), ["-"]);
   checkWitness(output);
 });
 
@@ -289,7 +290,7 @@ test("the same strict OM/MaxMin mathematics runs through Sage.js", () => {
 test("certificate records are immutable under CPython and Sage.js", () => {
   const script = String.raw`
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 r = regular_local_basis((-8, 0, 1), 2, local_discriminant_valuation=5)
 try:
@@ -298,7 +299,7 @@ except AttributeError:
     print("IMMUTABLE")
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -314,7 +315,7 @@ except AttributeError:
 test("independent checking rejects a corrupted index and a composite modulus", () => {
   const script = String.raw`
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import (
     TriangularBasisElement,
     regular_local_basis,
@@ -389,7 +390,7 @@ except OMDomainError:
     print("REJECTED")
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -406,7 +407,7 @@ test("the degree-16 deep-index family has a certified refined quotient basis", (
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 polynomial = tuple([-(3 * 2 ** 16)] + [0] * 15 + [1])
 result = regular_local_basis(
@@ -426,7 +427,7 @@ print(json.dumps({
 }))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -449,7 +450,7 @@ test("nonmonic residual polynomials use their monic associate", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 from sagejs.number_fields.om_types import build_om_type_tree, validate_type_tree
 polynomial = (
@@ -473,7 +474,7 @@ if rejected.status != "rejected" or rejected.certificate is None:
 print(json.dumps(answer))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -493,7 +494,7 @@ test("degree-one residual extensions use exact scalable factorization", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_types import factor_residual_polynomial
 
 residual = tuple((value,) for value in (4, 5, 2, 5, 5, 2, 1, 1, 4, 2, 1, 5, 1, 4, 2, 6, 1))
@@ -510,7 +511,7 @@ print(json.dumps([
     [[4, 4, 5, 3, 1], 1],
   ];
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -528,7 +529,7 @@ test("higher residual fields use scalable DDF and deterministic splitting", () =
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_higher_residue import next_residue_field
 from sagejs.number_fields.om_types import (
     OMLevel,
@@ -624,7 +625,7 @@ print(json.dumps({
     [[ [0, 0, 2], [1] ], 1],
   ];
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -646,7 +647,7 @@ test("OM auto-eligibility is limited to a measured complete native region", () =
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import selector_metrics
 from sagejs.number_fields.om_types import build_om_type_tree
 
@@ -673,7 +674,7 @@ print(json.dumps({
 }))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -697,7 +698,7 @@ test("packed MaxMin proof exhausts and rejects a nonmaximal selection", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
 
 degrees = [1, 1]
@@ -712,7 +713,7 @@ corrupt = packed_maxmin_valuations_are_maximal(
 print(json.dumps([valid, corrupt]))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -732,7 +733,7 @@ test("OM stress matrix is stable under equivalent translated generators", () => 
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 
 def binomial(n, k):
@@ -798,7 +799,7 @@ for polynomial, discriminant_valuation, expected_index, offsets, selection_kind 
 print(json.dumps(answer))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {
@@ -819,7 +820,7 @@ test("scalable bad generators factor quickly and fail closed without MaxMin proo
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 
 def bad_generator_polynomial(degree, coefficient):
@@ -870,7 +871,7 @@ print(json.dumps([
 ]))
 `;
   for (const [command, args] of [
-    ["python3", ["-"]],
+    [pythonExecutable(), ["-"]],
     [process.execPath, [join(root, "bin/sagejs"), "--python"]],
   ]) {
     const result = spawnSync(command, args, {

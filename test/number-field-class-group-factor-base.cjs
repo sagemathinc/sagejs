@@ -10,12 +10,10 @@ const {
 } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
-const sagejs =
-  process.env.SAGEJS_TEST_EXECUTABLE || join(root, "bin", "sagejs");
 const fixturePath = join(
   __dirname,
   "fixtures",
@@ -28,7 +26,7 @@ function run(source) {
   try {
     const filename = join(directory, "test.py");
     writeFileSync(filename, source);
-    const result = spawnSync(sagejs, ["--python", filename], {
+    const result = spawnSagejsSync(root, ["--python", filename], {
       cwd: root,
       encoding: "utf8",
       timeout: 180_000,

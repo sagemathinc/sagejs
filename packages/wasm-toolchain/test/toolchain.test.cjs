@@ -9,7 +9,7 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join } = require("node:path");
+const { join, resolve } = require("node:path");
 const test = require("node:test");
 
 const {
@@ -57,7 +57,7 @@ test("the v2 lock and neutral source catalog are complete", () => {
     assert.match(object.sha256, /^[0-9a-f]{64}$/);
     assert.ok(object.upstreamUrls.every((url) => url.startsWith("https://")));
   }
-  assert.match(toolchainDigest(lock, catalog), /^[0-9a-f]{64}$/);
+  assert.match(toolchainDigest(lock, catalog, "linux-x64"), /^[0-9a-f]{64}$/);
 });
 
 test("the lock loader rejects unknown and malformed policy", () => {
@@ -98,16 +98,27 @@ test("the selected toolchain contains only the SDK and mathematical sources", ()
 });
 
 test("semantic paths depend only on the resolved Sage.js root", () => {
-  const paths = pathsForRoot("/prepared/sagejs-wasm");
-  assert.equal(paths.clang, "/prepared/sagejs-wasm/sdk/bin/clang");
-  assert.equal(paths.sysroot, "/prepared/sagejs-wasm/sdk/share/wasi-sysroot");
-  assert.equal(paths.libraries.flint.prefix, "/prepared/sagejs-wasm/prefixes/flint");
-  assert.equal(paths.libraries.smalljac.prefix, "/prepared/sagejs-wasm/prefixes/smalljac");
+  const preparedRoot = resolve("/prepared/sagejs-wasm");
+  const paths = pathsForRoot(preparedRoot);
+  assert.equal(paths.clang, join(preparedRoot, "sdk", "bin", "clang"));
+  assert.equal(
+    paths.sysroot,
+    join(preparedRoot, "sdk", "share", "wasi-sysroot"),
+  );
+  assert.equal(
+    paths.libraries.flint.prefix,
+    join(preparedRoot, "prefixes", "flint"),
+  );
+  assert.equal(
+    paths.libraries.smalljac.prefix,
+    join(preparedRoot, "prefixes", "smalljac"),
+  );
 });
 
 test("the direct compiler policy is explicit and contains no compatibility driver", () => {
   const lock = loadLock();
-  const paths = pathsForRoot("/prepared/sagejs-wasm", lock);
+  const preparedRoot = resolve("/prepared/sagejs-wasm");
+  const paths = pathsForRoot(preparedRoot, lock);
   const environment = compilerEnvironment(
     { lock, paths },
     "/temporary/upstream-source",
@@ -118,8 +129,11 @@ test("the direct compiler policy is explicit and contains no compatibility drive
   assert.match(environment.CFLAGS, /-ffile-prefix-map=.*=\/sagejs\/native-source/);
   assert.match(environment.CFLAGS, /-fdebug-prefix-map=.*=\/sagejs\/toolchain/);
   assert.match(environment.CFLAGS, /-fmacro-prefix-map=.*=\/sagejs\/wasm-toolchain/);
-  assert.equal(environment.AR, "/prepared/sagejs-wasm/sdk/bin/llvm-ar");
-  assert.equal(environment.RANLIB, "/prepared/sagejs-wasm/sdk/bin/llvm-ranlib");
+  assert.equal(environment.AR, join(preparedRoot, "sdk", "bin", "llvm-ar"));
+  assert.equal(
+    environment.RANLIB,
+    join(preparedRoot, "sdk", "bin", "llvm-ranlib"),
+  );
   assert.equal(environment.SOURCE_DATE_EPOCH, "1704067200");
   assert.equal(environment.ABI, "standard");
 });
@@ -171,11 +185,15 @@ test("library recipes do not inherit ambient compiler or configure policy", () =
 test("only the new explicit root is recognized and incomplete roots fail closed", () => {
   assert.equal(explicitRoot({}), null);
   assert.equal(explicitRoot({ LEGACY_TOOLCHAIN_ROOT: "/legacy" }), null);
-  assert.equal(explicitRoot({ SAGEJS_WASM_TOOLCHAIN_ROOT: "/new" }), "/new");
+  assert.equal(
+    explicitRoot({ SAGEJS_WASM_TOOLCHAIN_ROOT: "/new" }),
+    resolve("/new"),
+  );
   const root = mkdtempSync(join(tmpdir(), "sagejs-wasm-toolchain-v2-test-"));
   try {
     const status = inspectToolchain({
       environment: { SAGEJS_WASM_TOOLCHAIN_ROOT: root },
+      platform: "linux-x64",
     });
     assert.equal(status.ready, false);
     assert.equal(status.source, "explicit-override");
@@ -184,6 +202,20 @@ test("only the new explicit root is recognized and incomplete roots fail closed"
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("unsupported local compiler hosts are unavailable without throwing", () => {
+  const status = inspectToolchain({
+    platform: "win32-x64",
+    environment: {},
+  });
+  assert.equal(status.ready, false);
+  assert.equal(status.source, "unsupported-platform");
+  assert.equal(status.platform, "win32-x64");
+  assert.equal(status.lockDigest, null);
+  assert.deepEqual(status.problems, [
+    "WASI SDK 33.0 does not support win32-x64",
+  ]);
 });
 
 test("source objects are content addressed and tampering is rejected", () => {
@@ -214,15 +246,17 @@ test("the portable ffpoly and smalljac closure remains reviewed", () => {
   ]) assert.ok(smalljacSources.includes(required), `missing ${required}`);
   for (const excluded of ["smalljac_parallel.c", "smalljac_moments.c", "STgroups.c"])
     assert.equal(smalljacSources.includes(excluded), false);
-  assert.deepEqual(reproducibleSourceFlags("/tmp/source"), [
-    "-ffile-prefix-map=/tmp/source=/sagejs/native-source",
-    "-fdebug-prefix-map=/tmp/source=/sagejs/native-source",
-    "-fmacro-prefix-map=/tmp/source=/sagejs/native-source",
+  const sourceRoot = resolve("/tmp/source");
+  assert.deepEqual(reproducibleSourceFlags(sourceRoot), [
+    `-ffile-prefix-map=${sourceRoot}=/sagejs/native-source`,
+    `-fdebug-prefix-map=${sourceRoot}=/sagejs/native-source`,
+    `-fmacro-prefix-map=${sourceRoot}=/sagejs/native-source`,
   ]);
-  assert.deepEqual(reproduciblePathFlags("/tmp/toolchain", "/sagejs/toolchain"), [
-    "-ffile-prefix-map=/tmp/toolchain=/sagejs/toolchain",
-    "-fdebug-prefix-map=/tmp/toolchain=/sagejs/toolchain",
-    "-fmacro-prefix-map=/tmp/toolchain=/sagejs/toolchain",
+  const toolchainRoot = resolve("/tmp/toolchain");
+  assert.deepEqual(reproduciblePathFlags(toolchainRoot, "/sagejs/toolchain"), [
+    `-ffile-prefix-map=${toolchainRoot}=/sagejs/toolchain`,
+    `-fdebug-prefix-map=${toolchainRoot}=/sagejs/toolchain`,
+    `-fmacro-prefix-map=${toolchainRoot}=/sagejs/toolchain`,
   ]);
 });
 

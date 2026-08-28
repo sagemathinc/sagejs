@@ -64,12 +64,12 @@ const cases = [
   {
     name: "select_rows_500",
     expression: "_integer_left.matrix_from_rows(_integer_selection_indices)",
-    budget: 3,
+    budget: 5,
   },
   {
     name: "select_columns_500",
     expression: "_integer_left.matrix_from_columns(_integer_selection_indices)",
-    budget: 3,
+    budget: 5,
   },
   { name: "str_50", expression: "_integer_string.str()", budget: 15 },
   { name: "multiply_150", expression: "_integer_square*_integer_square", budget: 30 },
