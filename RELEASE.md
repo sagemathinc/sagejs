@@ -156,7 +156,8 @@ pnpm view @sagemath/sagejs-windows-x64 version --json
 ```
 
 In fresh CommonJS and ESM projects, create an embedded kernel and evaluate at
-least `factor(370309)`, `version()`, `version(True)`, and `partitions(10)`.
+least `factor(370309)`, `version()`, `version(True)`,
+`number_of_partitions(10)`, and `Partitions(10).cardinality()`.
 Confirm that installation selects the correct platform package and never asks
 the user to install an unpublished internal addon.
 
@@ -165,8 +166,9 @@ checksums, run `sagejs --version`, and evaluate the same smoke corpus. Verify
 the signed/notarized state on macOS and the declared signing state on Windows.
 
 Finally, open `https://app.sagejs.org` in a fresh browser context, confirm its
-runtime receipt names the release SHA, evaluate `partitions(10)` (which must
-return `42`), and check that the npm/embed documentation links are live.
+runtime receipt names the release SHA, evaluate `number_of_partitions(10)` and
+`Partitions(10).cardinality()` (both must return `42`), and check that the
+npm/embed documentation links are live.
 
 ## Improvements to make before the next release
 
@@ -184,7 +186,14 @@ simpler and faster:
   require one source file.
 - Preflight Wasm/browser release workloads on a persistent browser host.
 - Preserve dependency caches across candidates, while keeping the final
-  GitHub build clean and authenticated.
+  GitHub build clean and authenticated. Key native artifacts by the actual
+  lowered source, dependency lock, compiler, ABI, and target—not by an
+  unrelated repository commit—so a documentation or TypeScript-only fix does
+  not rebuild GMP, FLINT, or an unchanged native pack.
+- Build generated `dist/`, module-cache, and SEA inputs in candidate
+  directories, validate them, and atomically rename them into place. An
+  interrupted build must leave the previous complete cache usable instead of
+  exposing a partially refreshed compiler/runtime tree.
 - Split release correctness from broad research/performance evidence. Keep
   catastrophic performance ceilings in the blocking release path; run large
   benchmark campaigns on schedule or explicitly before a public milestone.
