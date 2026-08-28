@@ -1,0 +1,58 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-arrow-workload",
+  "title": "Arrow segment optimizer workload evidence",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Provide authentic public vector-field, slope-field, and independent rectangular-surface workloads with exact differential oracles and complete-boundary guarded V8 feasibility evidence for the _arrow_segments and _bounds compiler candidates",
+  "base_commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+  "claims": [
+    "bench/optimizer-workloads/arrow-field.py",
+    "bench/optimizer-workloads/arrow-field.cjs",
+    "test/optimizer-arrow-field-workload.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/compiler-development-engine-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython exact serialized output",
+      "Independent import-free mathematical construction",
+      "Generated JavaScript O0/O2 differential output"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "node --check bench/optimizer-workloads/arrow-field.cjs",
+    "python3 -m py_compile bench/optimizer-workloads/arrow-field.py",
+    "node --test test/optimizer-arrow-field-workload.cjs"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Adds content-addressed public vector-field and slope-field workloads plus an independent rectangular-surface heldout. The source-anchored checked V8 targets preflight all guards before interruption or private output allocation, retain untouched exact fallbacks, publish transactionally, and report complete CPython/O0/O2/independent oracles, ABBA pairs, crossover and resource accounting, and a same-workload copy/rematerialization negative without claiming a production route.",
+    "risks": [
+      "The V8 closures are feasibility scaffolding; production requires structural compiler recognition, independent proof facts, emitted provenance, and unforgeable runtime list brands.",
+      "The sample_vector_grid projection is deferred because its explored fused fallback did not yet preserve the exact original post-callback statement order."
+    ],
+    "next_steps": [
+      "Integrate the returned workload document into architecture/optimizer-workloads.json in the integration lane.",
+      "Use the exact _arrow_segments and independent _bounds source identities to construct the opportunity dossier and proof/implementation contracts.",
+      "Keep Wasm and native routes inconclusive until a complete resident representation and copy/materialization boundary is measured."
+    ]
+  }
+}
