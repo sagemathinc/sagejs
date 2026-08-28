@@ -793,9 +793,10 @@ test("platform validation producer exposes the fixed named command plan", () => 
 });
 
 test("platform validation check execution records representative RSS and exact argv", async () => {
+  const holdMilliseconds = process.platform === "win32" ? 1_500 : 80;
   const check = await runCheck(
     "representative_performance",
-    [process.execPath, "-e", "setTimeout(() => {}, 80)"],
+    [process.execPath, "-e", `setTimeout(() => {}, ${holdMilliseconds})`],
     { timeoutMs: 5_000 },
   );
   assert.equal(check.status, "pass", check.failure_output_tail);
