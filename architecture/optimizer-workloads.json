@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-workload-catalog/v1",
-  "id": "sha256:ae1110def261664ed55b4ff13b5c0b16e4190e02938ae58629f8ae877cb41714",
+  "id": "sha256:0a138611fe952ee65b13ebfcec5b32c01a3739a2a6bb270a777142b5589ec370",
   "workloads": [
     {
       "capabilities": [
@@ -1265,6 +1265,175 @@
         "wasm"
       ],
       "title": "Public exact modular fold compiler control"
+    },
+    {
+      "schema": "sagejs.optimizer-workload/v1",
+      "id": "sha256:abf5e3e0adb55ed60551d3a8c7f4c45004b6cc1b56f2efa6813de4a9a52ce169",
+      "title": "Public nested binary64 scalar and vector grid reductions",
+      "class": "representative",
+      "owner": "optimizer-development",
+      "runner": {
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/binary64-nested-all.cjs",
+        "argv": [
+          "binary64-nested-all"
+        ],
+        "environment": []
+      },
+      "input": {
+        "kind": "deterministic-generator",
+        "digest": "7e510042c6c735c8b958658b61991dcbb65845b3d4bf543186b09c8937495455",
+        "seed": null,
+        "value": {
+          "encoding": "canonical JSON SHA-256 of every published scalar/vector grid field",
+          "expected": {
+            "scalarCompleteOutputDigest": "86e417db19f71fde2b9333516cb8d03c8be8f7e94f95feb340c4cb87be79a46e",
+            "vectorCompleteOutputDigest": "bc1f40169c03e0a4491c7ba6fd2284c8dc139fa32522cb72c22a5dd0009d730e"
+          },
+          "fixture": null,
+          "input": {
+            "scalar": {
+              "field": "float(x + 2*y)",
+              "plotPoints": [
+                400,
+                400
+              ],
+              "ranges": [
+                [
+                  0,
+                  399
+                ],
+                [
+                  0,
+                  399
+                ]
+              ]
+            },
+            "vector": {
+              "fields": [
+                "float(x + 0.25)",
+                "0.0"
+              ],
+              "plotPoints": [
+                100,
+                100
+              ],
+              "ranges": [
+                [
+                  0,
+                  99
+                ],
+                [
+                  0,
+                  99
+                ]
+              ]
+            }
+          },
+          "mode": "binary64-nested-all",
+          "oracleContract": {
+            "scalarCompleteOutputDigest": "86e417db19f71fde2b9333516cb8d03c8be8f7e94f95feb340c4cb87be79a46e",
+            "vectorCompleteOutputDigest": "bc1f40169c03e0a4491c7ba6fd2284c8dc139fa32522cb72c22a5dd0009d730e"
+          },
+          "policy": {
+            "compilerRouteClaim": "none-feasibility-evidence-only",
+            "pairing": "repeating-AB-BA-BA-AB",
+            "positiveHeldout": "vector-grid-100x100",
+            "primary": "scalar-grid-400x400"
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 1,
+              "scalar_points": 16,
+              "timeout_seconds": 120,
+              "vector_points": 8,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 11,
+              "scalar_points": 400,
+              "timeout_seconds": 900,
+              "vector_points": 100,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/binary64-nested-all.py",
+            "src/lib/sagejs/plotting/grid_sampling.py"
+          ]
+        }
+      },
+      "corpus": {
+        "id": "binary64-grid-sampling",
+        "digest": "ffec2873973142a1035dd442c3cc8a7c4df798034da2b5ea05c12df675e60b17"
+      },
+      "oracles": [
+        {
+          "id": "checked-v8-feasibility",
+          "kind": "invariant",
+          "runnerPath": "bench/optimizer-workloads/binary64-nested-all.cjs",
+          "expectedDigest": "69ff2806ccbeeafc7770e46a2f62af39544b45ad400c22690d6eda890a4cbd79"
+        },
+        {
+          "id": "cpython-complete-output",
+          "kind": "cpython",
+          "runnerPath": "bench/optimizer-workloads/binary64-nested-all.cjs",
+          "expectedDigest": "69ff2806ccbeeafc7770e46a2f62af39544b45ad400c22690d6eda890a4cbd79"
+        },
+        {
+          "id": "sagejs-o0-complete-output",
+          "kind": "invariant",
+          "runnerPath": null,
+          "expectedDigest": "69ff2806ccbeeafc7770e46a2f62af39544b45ad400c22690d6eda890a4cbd79"
+        },
+        {
+          "id": "sagejs-o2-complete-output",
+          "kind": "invariant",
+          "runnerPath": null,
+          "expectedDigest": "69ff2806ccbeeafc7770e46a2f62af39544b45ad400c22690d6eda890a4cbd79"
+        }
+      ],
+      "phases": [
+        {
+          "id": "heldout-vector-complete-public",
+          "label": "complete public 100x100 vector-grid call with exact published output"
+        },
+        {
+          "id": "primary-scalar-complete-public",
+          "label": "complete public 400x400 scalar-grid call with exact published output"
+        }
+      ],
+      "protocol": {
+        "warmupRuns": 3,
+        "repetitions": 11,
+        "timeoutMilliseconds": 900000,
+        "reset": "evaluator"
+      },
+      "capabilities": [
+        "binary64",
+        "nested-reduction",
+        "optimizer-evidence",
+        "plotting"
+      ],
+      "targets": [
+        "generic",
+        "library",
+        "native",
+        "v8",
+        "wasm"
+      ],
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ]
     },
     {
       "capabilities": [
