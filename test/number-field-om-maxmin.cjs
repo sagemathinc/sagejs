@@ -23,7 +23,7 @@ const v429Polynomial = JSON.parse(
 const witness = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 
 from sagejs.number_fields.om_maxmin import (
     LocalNumeratorTable,
@@ -290,7 +290,7 @@ test("the same strict OM/MaxMin mathematics runs through Sage.js", () => {
 test("certificate records are immutable under CPython and Sage.js", () => {
   const script = String.raw`
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 r = regular_local_basis((-8, 0, 1), 2, local_discriminant_valuation=5)
 try:
@@ -315,7 +315,7 @@ except AttributeError:
 test("independent checking rejects a corrupted index and a composite modulus", () => {
   const script = String.raw`
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import (
     TriangularBasisElement,
     regular_local_basis,
@@ -407,7 +407,7 @@ test("the degree-16 deep-index family has a certified refined quotient basis", (
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 polynomial = tuple([-(3 * 2 ** 16)] + [0] * 15 + [1])
 result = regular_local_basis(
@@ -450,7 +450,7 @@ test("nonmonic residual polynomials use their monic associate", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 from sagejs.number_fields.om_types import build_om_type_tree, validate_type_tree
 polynomial = (
@@ -494,7 +494,7 @@ test("degree-one residual extensions use exact scalable factorization", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_types import factor_residual_polynomial
 
 residual = tuple((value,) for value in (4, 5, 2, 5, 5, 2, 1, 1, 4, 2, 1, 5, 1, 4, 2, 6, 1))
@@ -529,7 +529,7 @@ test("higher residual fields use scalable DDF and deterministic splitting", () =
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_higher_residue import next_residue_field
 from sagejs.number_fields.om_types import (
     OMLevel,
@@ -647,7 +647,7 @@ test("OM auto-eligibility is limited to a measured complete native region", () =
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import selector_metrics
 from sagejs.number_fields.om_types import build_om_type_tree
 
@@ -698,7 +698,7 @@ test("packed MaxMin proof exhausts and rejects a nonmaximal selection", () => {
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import packed_maxmin_valuations_are_maximal
 
 degrees = [1, 1]
@@ -733,7 +733,7 @@ test("OM stress matrix is stable under equivalent translated generators", () => 
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 
 def binomial(n, k):
@@ -820,7 +820,7 @@ test("scalable bad generators factor quickly and fail closed without MaxMin proo
   const script = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 from sagejs.number_fields.om_maxmin import regular_local_basis
 
 def bad_generator_polynomial(degree, coefficient):

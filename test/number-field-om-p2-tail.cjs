@@ -25,7 +25,7 @@ const oracleDenominator = vector.basis.denominator;
 const common = String.raw`
 import json
 import sys
-sys.path.append("${join(root, "src/lib")}")
+sys.path.append(${JSON.stringify(join(root, "src/lib"))})
 
 from sagejs.number_fields.om_maxmin import (
     TriangularBasisElement,
