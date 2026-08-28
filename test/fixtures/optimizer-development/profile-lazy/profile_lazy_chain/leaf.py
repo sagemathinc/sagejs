@@ -3,4 +3,3 @@ def hot_fold(count):
     for index in range(count):
         value = (value + index) % 65537
     return value
-
