@@ -193,6 +193,7 @@ test("only the new explicit root is recognized and incomplete roots fail closed"
   try {
     const status = inspectToolchain({
       environment: { SAGEJS_WASM_TOOLCHAIN_ROOT: root },
+      platform: "linux-x64",
     });
     assert.equal(status.ready, false);
     assert.equal(status.source, "explicit-override");
