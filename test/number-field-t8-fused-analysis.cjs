@@ -5,11 +5,10 @@
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
-const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { spawnSagejsSync } = require("./helpers/sagejs-cli.cjs");
 
 const root = resolve(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
 const fixture = JSON.parse(
   readFileSync(
     join(root, "test", "fixtures", "number-field-buchmann-lenstra.json"),
@@ -18,7 +17,7 @@ const fixture = JSON.parse(
 ).t8_2pow32;
 
 function run(source, timeout = 180_000) {
-  const result = spawnSync(sagejs, [], {
+  const result = spawnSagejsSync(root, [], {
     cwd: root,
     input: source,
     encoding: "utf8",
@@ -138,8 +137,8 @@ test("new compact proof kernels remain source transparent", () => {
     "packed_integer_square_root",
     "packed_order_lattice_is_valid",
   ]) {
-    const result = spawnSync(
-      sagejs,
+    const result = spawnSagejsSync(
+      root,
       ["native", "explain", source, "--function", name],
       { cwd: root, encoding: "utf8", timeout: 120_000 },
     );

@@ -7,6 +7,7 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 const { pythonExecutable } = require("../tools/python-executable.cjs");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = join(__dirname, "..");
 const fixture = JSON.parse(
@@ -360,8 +361,18 @@ function run(command, args, environment = {}) {
     input: source,
     timeout: 120_000,
   });
+  if (result.error) throw result.error;
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout.trim());
+}
+
+function runSagejs(args, environment = {}) {
+  const [command, commandArguments] = sagejsInvocation(
+    root,
+    args,
+    { ...process.env, ...environment },
+  );
+  return run(command, commandArguments, environment);
 }
 
 test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
@@ -372,7 +383,7 @@ test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
     "-c",
     `import decimal\nimport math\n${source}`,
   ]);
-  const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
+  const sagejs = runSagejs(["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });
   for (const result of Object.values(python.prime_results)) {

@@ -3,14 +3,17 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
+const {
+  removeLoadedNativeCache,
+} = require("./helpers/native-cache-cleanup.cjs");
 
 const root = resolve(__dirname, "..");
-const sagejs = join(root, "bin", "sagejs");
 const source = join(
   root,
   "src/lib/sagejs/number_fields/field_analysis_resource.py",
@@ -20,7 +23,7 @@ function run(args, options = {}) {
   const result = spawnSync(args[0], args.slice(1), {
     cwd: root,
     encoding: "utf8",
-    timeout: 180_000,
+    timeout: process.platform === "win32" ? 300_000 : 180_000,
     ...options,
     env: { ...process.env, ...(options.env || {}) },
   });
@@ -32,9 +35,18 @@ function run(args, options = {}) {
   return result.stdout.trim();
 }
 
+function runSagejs(args, options = {}) {
+  const environment = { ...process.env, ...(options.env || {}) };
+  const [command, commandArguments] = sagejsInvocation(
+    root,
+    args,
+    environment,
+  );
+  return run([command, ...commandArguments], options);
+}
+
 test("packed analysis projection has one isolated crossing", () => {
-  const explanation = run([
-    sagejs,
+  const explanation = runSagejs([
     "native",
     "explain",
     source,
@@ -51,7 +63,7 @@ test("compiled and dynamic projections agree with the generic proof oracle", () 
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-nf-projection-test-"));
   try {
     const cache = join(temporary, "native-cache");
-    run([sagejs, "native", "compile", source, "--cache-root", cache]);
+    runSagejs(["native", "compile", source, "--cache-root", cache]);
     const script = join(temporary, "projection.py");
     writeFileSync(script, String.raw`
 import json
@@ -138,11 +150,11 @@ print(json.dumps({
 }))
 `);
     const compiled = JSON.parse(
-      run([sagejs, script], { env: { SAGEJS_NATIVE_CACHE_DIR: cache } })
+      runSagejs([script], { env: { SAGEJS_NATIVE_CACHE_DIR: cache } })
         .split(/\r?\n/).at(-1),
     );
     const dynamic = JSON.parse(
-      run([sagejs, script], { env: { SAGEJS_NATIVE_MODE: "dynamic" } })
+      runSagejs([script], { env: { SAGEJS_NATIVE_MODE: "dynamic" } })
         .split(/\r?\n/).at(-1),
     );
     assert.equal(compiled.compiled, true);
@@ -156,6 +168,6 @@ print(json.dumps({
     }
     assert.deepEqual(compiled.records, dynamic.records);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    removeLoadedNativeCache(temporary);
   }
 });
