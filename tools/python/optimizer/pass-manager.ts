@@ -1,4 +1,5 @@
 import { optimizationLevelRank } from "./controls";
+import { OptimizerCatalog, OptimizerPassPlugin } from "./catalog";
 import {
   collectOptimizationContracts,
   CollectedOptimizationContracts,
@@ -9,7 +10,6 @@ import {
   OptimizationCandidate,
   OptimizationControls,
   OptimizationDecision,
-  OptimizationPass,
   OptimizationPassContext,
   OptimizationProgram,
 } from "./types";
@@ -30,12 +30,13 @@ export class OptimizerPassManager implements OptimizationPassContext {
   private readonly claimedNodes = new WeakSet<object>();
   private readonly decisionByNode = new WeakMap<object, OptimizationDecision>();
   private contracts!: CollectedOptimizationContracts;
+  private activePlugin?: OptimizerPassPlugin;
   private analysisRevision = 0;
 
   constructor(
     readonly compiler: any,
     readonly controls: OptimizationControls,
-    private readonly passes: readonly OptimizationPass[],
+    private readonly catalog: OptimizerCatalog,
   ) {
     this.program = {
       schema: OPTIMIZER_IR_SCHEMA,
@@ -69,12 +70,23 @@ export class OptimizerPassManager implements OptimizationPassContext {
   }
 
   consider(candidate: OptimizationCandidate): void {
+    const plugin = this.activePlugin;
+    if (!plugin || candidate.decision.passId !== plugin.id ||
+        candidate.internal.passId !== plugin.id) {
+      throw new TypeError("optimizer candidate was submitted outside its registered plugin");
+    }
+    if (!plugin.loweringIds.includes(candidate.internal.loweringId)) {
+      throw new TypeError(
+        `optimizer plugin ${plugin.id} submitted unowned lowering ` +
+          candidate.internal.loweringId,
+      );
+    }
     // Pass ordering is deterministic.  Once an earlier, more specific pass
     // has considered a semantic region, a broader pass may not reinterpret
     // the same node under a different contract merely because the first pass
     // was disabled or rejected by the selected optimization level.
     if (this.claimedNodes.has(candidate.node)) return;
-    this.claimedNodes.add(candidate.node);
+    if (plugin.claimSemantics === "exclusive") this.claimedNodes.add(candidate.node);
     const functionContract = candidate.ownerFunction
       ? this.contracts.byFunction.get(candidate.ownerFunction)
       : undefined;
@@ -112,7 +124,8 @@ export class OptimizerPassManager implements OptimizationPassContext {
     this.contracts = collectOptimizationContracts(this.compiler, root);
     this.program.contracts = this.contracts.contracts;
     const passIds = new Set<string>();
-    for (const pass of this.passes) {
+    for (const plugin of this.catalog.plugins) {
+      const pass = plugin.pass;
       verifyOptimizationPass(pass);
       if (pass.inputSchema !== OPTIMIZER_IR_SCHEMA) {
         throw new TypeError(
@@ -123,10 +136,18 @@ export class OptimizerPassManager implements OptimizationPassContext {
       passIds.add(pass.id);
       const regionsBefore = this.program.regions.length;
       const analysisRevisionBefore = this.analysisRevision;
-      pass.run(root, this);
+      this.activePlugin = plugin;
+      try {
+        pass.run(root, this);
+      } finally {
+        this.activePlugin = undefined;
+      }
       this.analysisRevision += 1;
       this.program.passes.push({
         id: pass.id,
+        domainId: plugin.domainId,
+        priority: plugin.priority,
+        claimSemantics: plugin.claimSemantics,
         inputSchema: pass.inputSchema,
         factsConsumed: [...pass.factsConsumed],
         factsProduced: [...pass.factsProduced],

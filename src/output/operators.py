@@ -27,7 +27,7 @@ from ast_types import (
     AST_Unary,
     is_node_type,
 )
-from output.loops import print_target_assignment, unpack_tuple
+from output.loop_common import print_target_assignment, unpack_tuple
 
 
 def print_getattr(self, output, skip_expression):  # AST_Dot

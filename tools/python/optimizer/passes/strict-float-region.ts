@@ -6,10 +6,11 @@ import {
   OptimizationPassContext,
   SourceRegion,
 } from "../types";
-import { recognizeClosedScalarProgram } from "./closed-field-region";
+import { recognizeClosedScalarProgram } from "../canonicalize/scalar-loop";
 import { nearestOwningFunction } from "../contracts";
+import { STRICT_FLOAT_REGION_PASS } from "../domains/ids";
+import { planV8ScalarCost } from "../targets/v8-scalar-cost";
 
-export const STRICT_FLOAT_REGION_PASS = "math.strict-float-region.v1";
 
 function sourceRegion(node: any): SourceRegion {
   return {
@@ -87,8 +88,10 @@ export const strictFloatRegionPass: OptimizationPass = {
   ],
   run(root: any, context: OptimizationPassContext): void {
     context.walk(root, (node, ancestors) => {
-      const operands = recognizeClosedScalarProgram(context.compiler, node);
-      if (!operands || operands.iteratorKind !== "range" ||
+      const canonical = recognizeClosedScalarProgram(context.compiler, node);
+      if (!canonical || canonical.iteratorKind !== "range") return;
+      const operands = planV8ScalarCost(canonical);
+      if (
           operands.sequences.length !== 0 ||
           operands.integerConstants.length !== 0 ||
           operands.inplaceOperations.length !== 0 ||

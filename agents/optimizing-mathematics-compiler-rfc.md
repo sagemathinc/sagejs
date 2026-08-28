@@ -1,6 +1,6 @@
 # RFC: A multi-level optimizing compiler for Sage.js mathematics
 
-**Status:** Implemented
+**Status:** Accepted — implementation in progress
 **Date:** 2026-08-27  
 **Scope:** Sage/Python-to-JavaScript compilation, mathematical representation
 selection, guarded V8 regions, WebAssembly regions, and source-transparent
