@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-static-control-inventory/v1",
-  "id": "sha256:c152e5ec8c70019cecc45fda6c1f5df1032a087011e5bd589a8641eadea80247",
+  "id": "sha256:394e5034ba60bf6c8e41911337b286cb4ba76e6dec54f1de1b7caf39f1f555cf",
   "controls": [
     {
       "expectedPass": "math.bounded-integer-region.v1",
@@ -16,7 +16,7 @@
       "qualifiedName": "fixed_extension_control",
       "selection": "required",
       "selector": "fixed-extension",
-      "sha256": "5a34d0b6499889a7d5697d01b9dd1c22a4836e5faab6f2ac38adcb35ed54e950"
+      "sha256": "8ad7bf0525a502ab6d43842707702aa2065eb5c1b9951187a2220449a3e460f6"
     },
     {
       "expectedPass": null,
@@ -24,7 +24,7 @@
       "qualifiedName": "packed_container_control",
       "selection": "forbidden",
       "selector": "packed-container",
-      "sha256": "8bf10077364291f4e3f9e4cd9069f7aaa30438e1c6df405ee64477245b735821"
+      "sha256": "fc763e01d45c42707cb4ceb582ed8796361c4ace0db3c7df784ccc0a161579cb"
     },
     {
       "expectedPass": "math.modular-batch-region.v1",
@@ -32,7 +32,7 @@
       "qualifiedName": "prime_residue_batch_control",
       "selection": "required",
       "selector": "prime-residue-batch",
-      "sha256": "fa69c3a32320ce0d4d0b3da9bc9f9c2ed34a594d3f6c48616304c81621cee9b2"
+      "sha256": "7e9f04a093f7d3744985d3ed7f42d7eca69c8fe2052ff5b9286d97f40b0dd5a7"
     },
     {
       "expectedPass": "math.strict-float-array-region.v1",
@@ -40,7 +40,7 @@
       "qualifiedName": "strict_binary64_tuple_control",
       "selection": "required",
       "selector": "strict-binary64-array",
-      "sha256": "8ca0144fd5436608a406bc49742f5fb14e24c5c557b13589b76d484efb7e0f05"
+      "sha256": "fe3d8bab905961a2dd43cee2c5951580ecbf4a772c6349285d88aeeafa01e524"
     }
   ]
 }

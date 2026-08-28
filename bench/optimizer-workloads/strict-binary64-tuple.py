@@ -24,7 +24,7 @@ def __profile_run__():
     for _repeat in range(200):
         accumulator = strict_binary64_tuple_control(
             values,
-            0.125,
-            0.9999999403953552,
+            float(0.125),
+            float(0.9999999403953552),
         )
     return accumulator
