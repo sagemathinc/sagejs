@@ -1,0 +1,65 @@
+{
+  "schema": "sagejs.optimizer-adversarial-schema-corpus/v1",
+  "cases": [
+    {
+      "id": "campaign-duplicate-claim",
+      "documentSchema": "sagejs.optimizer-campaign/v1",
+      "violation": "two lanes claim the same repository path",
+      "expectedError": "claim .* is shared"
+    },
+    {
+      "id": "dossier-counterfeit-ir",
+      "documentSchema": "sagejs.optimizer-dossier/v1",
+      "violation": "copied selection disagrees with the full optimizer program",
+      "expectedError": "copied pass and selection do not match"
+    },
+    {
+      "id": "profile-counterfeit-authority",
+      "documentSchema": "sagejs.optimizer-profile-receipt/v1",
+      "violation": "unrecognized telemetry authority",
+      "expectedError": "authority"
+    },
+    {
+      "id": "profile-forged-source-map",
+      "documentSchema": "sagejs.optimizer-profile-receipt/v1",
+      "violation": "attributed sample has no authenticated script bytes",
+      "expectedError": "no authenticated source bytes"
+    },
+    {
+      "id": "profile-unconserved-samples",
+      "documentSchema": "sagejs.optimizer-profile-receipt/v1",
+      "violation": "declared function-sample total differs from observations",
+      "expectedError": "must be 0"
+    },
+    {
+      "id": "promotion-forged-statistic",
+      "documentSchema": "sagejs.optimizer-promotion-receipt/v1",
+      "violation": "claimed speedup differs from deterministic paired bootstrap",
+      "expectedError": "does not match paired bootstrap"
+    },
+    {
+      "id": "promotion-missing-current-bindings",
+      "documentSchema": "sagejs.optimizer-promotion-receipt/v1",
+      "violation": "accepted decision lacks current checkout/build/artifact/browser bindings",
+      "expectedError": "independently recomputed decision"
+    },
+    {
+      "id": "unknown-reason-code",
+      "documentSchema": "sagejs.optimizer-hotness-overlay/v1",
+      "violation": "reason code is absent from the reviewed registry",
+      "expectedError": "unknown reason code"
+    },
+    {
+      "id": "workload-stale-content-id",
+      "documentSchema": "sagejs.optimizer-workload/v1",
+      "violation": "payload changed after content addressing",
+      "expectedError": "is stale"
+    },
+    {
+      "id": "workload-unknown-field",
+      "documentSchema": "sagejs.optimizer-workload/v1",
+      "violation": "unreviewed field added to a versioned document",
+      "expectedError": "fields must be exactly"
+    }
+  ]
+}
