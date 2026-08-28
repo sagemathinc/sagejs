@@ -81,6 +81,13 @@
       "rationale": "Standalone packed genus-2 smalljac timing and exact-stream checksum baseline; it is not linked into Sage.js."
     },
     {
+      "path": "bench/optimizer-workloads/modular-scan-target.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone C-to-Wasm feasibility target for the reviewed bounded modular character scan; compiled only by the optimizer evidence harness, not linked into Sage.js or selected as a production mathematical implementation."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
