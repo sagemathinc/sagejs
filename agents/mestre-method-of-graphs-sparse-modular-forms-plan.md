@@ -78,6 +78,18 @@ rational packet with $a_2=-2$ is verified through $q^{65}$ against the
 $32$-dimensional modular-symbol cusp space; at level $67$, both quadratic
 packets are verified through $q^{11}$ over their exact coefficient fields.
 
+The classical competitive receipt is now durable and equal-contract. Each
+Sage.js prime/sample runs in a fresh process, and the comparison uses public
+module construction plus first $T_2$ because Magma's `BrandtModule` is eager
+while Sage.js is lazy. At level $389$, the three-sample medians are $204.913$
+ms for Sage.js, $1.460$ s for Magma's Gram/theta mode, and $0.870$ s for
+Magma's neighboring-ideal mode; dimensions, row sums, and the complete degree-
+$33$ characteristic polynomial agree in every sample. The raw receipt keeps
+first and timer-resolved warm operations, process-tree RSS, source hashes, and
+both Magma mode names. An exploratory Magma level-$10007$ run produced no
+accepted record within $586.097$ s and is labeled as a bounded diagnostic,
+while Sage.js proves the exact degree-$835$ modular minimal polynomial there.
+
 The first reconstruction slice now publishes one-dimensional rational
 simultaneous eigenpackets only after exact kernel, cuspidality, primitivity,
 and commuting-Hecke scalar checks. It evaluates Mestre's identity directly as
