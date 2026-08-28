@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const { existsSync, readFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const test = require("node:test");
 
@@ -179,7 +180,7 @@ test("the CLI validates the checked manifest", () => {
 test("live GP adapter produces a verified bounded quick record when available", {
   skip: !existsSync("/usr/bin/gp"),
 }, () => {
-  const output = resolve(process.env.TMPDIR || "/tmp", `nfmo-test-${process.pid}.json`);
+  const output = resolve(tmpdir(), `nfmo-test-${process.pid}.json`);
   const result = spawnSync(process.execPath, [
     CLI, "run", "--profile", "quick", "--systems", "pari",
     "--samples", "1", "--warmups", "0", "--output", output,
