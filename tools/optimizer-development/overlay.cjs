@@ -96,6 +96,7 @@ function mergeObservedRegion(staticRegion, evidence) {
     loopId: staticRegion.loopId,
     staticDecisions: copy(staticRegion.staticDecisions),
     opportunityEvidenceIds: copy(staticRegion.opportunityEvidenceIds || []),
+    opportunityDecisionIds: copy(staticRegion.opportunityDecisionIds || []),
     observations: observations.map((item) => ({
       profileId: item.profileId,
       workloadId: item.workloadId,
@@ -145,6 +146,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       ranking: copy(region.ranking),
       removableFraction: copy(region.removableFraction),
       opportunityEvidenceIds: [],
+      opportunityDecisionIds: [],
     });
   }
 
@@ -169,6 +171,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
     assert(region && !duplicateIds.has(opportunity.scope.primaryRegionId),
       `reviewed opportunity ${opportunity.id} does not resolve one dashboard region`);
     region.opportunityEvidenceIds.push(opportunity.id);
+    region.opportunityDecisionIds.push(opportunity.compilerDecision.decisionId);
     if (opportunity.status === "eligible") {
       region.classification = opportunity.classification.primary;
       region.matureAlgorithmDisposition = opportunity.matureAlgorithm.disposition;
@@ -186,11 +189,16 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       id: opportunity.id,
       regionId: opportunity.scope.primaryRegionId,
       workloadId: opportunity.workload.id,
+      decisionId: opportunity.compilerDecision.decisionId,
+      passId: opportunity.compilerDecision.passId,
       status: opportunity.status,
     });
   }
   opportunities.sort((left, right) => left.id.localeCompare(right.id));
-  for (const region of staticById.values()) region.opportunityEvidenceIds.sort();
+  for (const region of staticById.values()) {
+    region.opportunityEvidenceIds.sort();
+    region.opportunityDecisionIds = [...new Set(region.opportunityDecisionIds)].sort();
+  }
 
   const profiles = [];
   const unmatched = [];

@@ -10,6 +10,7 @@
     "status",
     "dashboard",
     "compiler",
+    "compilerDecision",
     "source",
     "scope",
     "workload",
@@ -54,6 +55,15 @@
         "frontendDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
         "catalogDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
         "optionsDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" }
+      }
+    },
+    "compilerDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decisionId", "passId"],
+      "properties": {
+        "decisionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "passId": { "$ref": "wire-definitions-v1.schema.json#/$defs/stableName" }
       }
     },
     "source": {
@@ -161,7 +171,7 @@
       "required": ["method", "scope", "pairs", "statistics"],
       "properties": {
         "method": { "const": "paired-abba-minimum-observed-improvement-v1" },
-        "scope": { "const": "complete-warm-workload" },
+        "scope": { "enum": ["complete-warm-workload", "reviewed-phase"] },
         "pairs": {
           "type": "array",
           "minItems": 11,
