@@ -86,8 +86,11 @@ const dependencies = [
   {
     name: "gmp",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
-    url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
-    mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/gmp-6.3.0.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+      "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
+    ],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
     archive: process.env.SAGEJS_GMP_TARBALL,
   },
