@@ -16,7 +16,7 @@ const {
   fastIntegerPerformanceGuard,
   independentCpythonOracle,
   runFeasibility,
-  validateDenseCubicInput,
+  validateDenseGenusOneInput,
   validateReport,
 } = require(
   "../bench/optimizer-workloads/modular-scan-target-feasibility.cjs"
@@ -60,7 +60,7 @@ test("the reviewed phase uses deterministic 11-pair ABBA evidence", () => {
 });
 
 test("checked V8 guards fail before publication and preserve one fallback", () => {
-  assert.deepEqual(validateDenseCubicInput(SOURCE_VALUES, 5_003, {
+  assert.deepEqual(validateDenseGenusOneInput(SOURCE_VALUES, 5_003, {
     primeAuthenticated: true,
   }), { ok: true, canonical: SOURCE_VALUES });
   assert.equal(exactNumberProductGuard(94_906_266), true);
@@ -70,7 +70,7 @@ test("checked V8 guards fail before publication and preserve one fallback", () =
 
   let fallbackCalls = 0;
   const sentinel = Object.freeze({ untouched: true });
-  const answer = checkedV8NormalizationFactor([1, 0, 0, 1n], 5_003, {
+  const answer = checkedV8NormalizationFactor([0, 4, 12, 12, 8n], 5_003, {
     primeAuthenticated: true,
     fallback(_values, _prime, reason) {
       fallbackCalls += 1;
@@ -159,7 +159,7 @@ test("the real smoke harness compares current generic, V8, and honest Wasm", asy
   if (report.targets.wasm.availability === "available") {
     assert.deepEqual(report.exactDifferential.checkedWasm, report.oracle.normalizationFactors);
     assert.equal(report.comparisons.wasm.rawPairs.length, 1);
-    assert.equal(report.targets.wasm.execution.inputCopiedBytesPerPhase, 48);
+    assert.equal(report.targets.wasm.execution.inputCopiedBytesPerPhase, 60);
     assert.equal(
       report.targets.wasm.execution.wasmToHostInterruptCallbacksPerPhase,
       136,

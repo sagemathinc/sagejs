@@ -24,7 +24,7 @@ const ADAPTER_SCHEMA =
   "sagejs.campaign1-reviewed-phase-opportunity-adapter/v1";
 const PRIMARY_PRIMES = Object.freeze([5_003, 10_009, 20_011]);
 const CROSSOVER_PRIMES = Object.freeze([46_301, 46_349]);
-const SOURCE_VALUES = Object.freeze([1, 0, 0, 1]);
+const SOURCE_VALUES = Object.freeze([0, 4, 12, 12, 8]);
 const STANDARD_SAMPLES = 11;
 const STANDARD_WARMUPS = 3;
 const FAST_INTEGER_MAX_PRIME = 46_340;
@@ -90,7 +90,7 @@ function fastIntegerPerformanceGuard(prime) {
     prime * (prime - 1) <= 0x7fff_ffff;
 }
 
-function validateDenseCubicInput(
+function validateDenseGenusOneInput(
   values,
   prime,
   { primeAuthenticated = false, wasm = false } = {},
@@ -111,11 +111,11 @@ function validateDenseCubicInput(
       Object.getPrototypeOf(values) !== Array.prototype) {
     return { ok: false, reason: "coefficient-storage-not-ordinary-array" };
   }
-  if (values.length !== 4) {
-    return { ok: false, reason: "coefficient-length-not-four" };
+  if (values.length !== 4 && values.length !== 5) {
+    return { ok: false, reason: "coefficient-length-not-dense-genus-one" };
   }
   const canonical = [];
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < values.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(values, index);
     if (!descriptor || !Object.hasOwn(descriptor, "value")) {
       return { ok: false, reason: "coefficient-not-dense-own-data" };
@@ -127,8 +127,8 @@ function validateDenseCubicInput(
     if (coefficient < 0) coefficient += prime;
     canonical.push(coefficient);
   }
-  if (canonical[3] === 0) {
-    return { ok: false, reason: "degree-three-leading-residue-zero" };
+  if (canonical.at(-1) === 0) {
+    return { ok: false, reason: "leading-residue-zero" };
   }
   return { ok: true, canonical };
 }
@@ -155,25 +155,34 @@ function checkedV8NormalizationFactor(
     },
   } = {},
 ) {
-  const guard = validateDenseCubicInput(values, prime, {
+  const guard = validateDenseGenusOneInput(values, prime, {
     primeAuthenticated,
     wasm: false,
   });
   if (!guard.ok) return fallback(values, prime, guard.reason);
-  const [c0, c1, c2, c3] = guard.canonical;
   const exponent = (prime - 1) / 2;
+  const degree = guard.canonical.length - 1;
+  let infinityPoints = 1;
+  if (degree % 2 === 0) {
+    const leadingCharacter = powModNumber(
+      guard.canonical.at(-1),
+      exponent,
+      prime,
+    );
+    infinityPoints = leadingCharacter === 1 ? 2 : 0;
+  }
   let characterSum = 0;
   for (let xValue = 0; xValue < prime; xValue += 1) {
     if ((xValue + 1) % 256 === 0) checkInterrupt();
-    let evaluation = c3;
-    evaluation = (evaluation * xValue + c2) % prime;
-    evaluation = (evaluation * xValue + c1) % prime;
-    evaluation = (evaluation * xValue + c0) % prime;
+    let evaluation = 0;
+    for (let index = guard.canonical.length - 1; index >= 0; index -= 1) {
+      evaluation = (evaluation * xValue + guard.canonical[index]) % prime;
+    }
     if (evaluation === 0) continue;
     characterSum +=
       powModNumber(evaluation, exponent, prime) === 1 ? 1 : -1;
   }
-  return [1, characterSum, prime];
+  return [1, infinityPoints + characterSum - 1, prime];
 }
 
 function checkedWasmNormalizationFactor(
@@ -187,7 +196,7 @@ function checkedWasmNormalizationFactor(
     },
   } = {},
 ) {
-  const guard = validateDenseCubicInput(values, prime, {
+  const guard = validateDenseGenusOneInput(values, prime, {
     primeAuthenticated,
     wasm: true,
   });
@@ -203,7 +212,17 @@ function checkedWasmNormalizationFactor(
     guard.canonical.length,
     prime,
   );
-  return [1, middle, prime];
+  const exponent = (prime - 1) / 2;
+  let infinityPoints = 1;
+  if ((guard.canonical.length - 1) % 2 === 0) {
+    const leadingCharacter = powModNumber(
+      guard.canonical.at(-1),
+      exponent,
+      prime,
+    );
+    infinityPoints = leadingCharacter === 1 ? 2 : 0;
+  }
+  return [1, infinityPoints + middle - 1, prime];
 }
 
 function timeOperation(operation) {
@@ -407,12 +426,20 @@ function independentCpythonOracle(primes) {
 import json
 
 primes = ${JSON.stringify(primes)}
+values = ${JSON.stringify(SOURCE_VALUES)}
 normalization = []
 public_factors = []
 for prime in primes:
-    points = 1
+    degree = len(values) - 1
+    if degree % 2 == 1:
+        points = 1
+    else:
+        leading_character = pow(values[-1] % prime, (prime - 1) // 2, prime)
+        points = 2 if leading_character == 1 else 0
     for x_value in range(prime):
-        value = (x_value * x_value * x_value + 1) % prime
+        value = 0
+        for coefficient in reversed(values):
+            value = (value * x_value + coefficient) % prime
         if value == 0:
             points += 1
         elif pow(value, (prime - 1) // 2, prime) == 1:
@@ -436,7 +463,8 @@ print(json.dumps({"normalization": normalization, "public_factors": public_facto
   }
   return {
     executable,
-    method: "direct finite-field point count of y^2=x^3+1",
+    method:
+      "direct finite-field point count of the authenticated public normalization polynomial",
     ...JSON.parse(result.stdout),
   };
 }
@@ -464,7 +492,7 @@ async function createCurrentGenericRunner(root, warmups) {
   const source = String.raw`
 from sagejs.hyperelliptic_curves.bad_reduction import _normalization_factor
 
-_campaign1_values = [1, 0, 0, 1]
+_campaign1_values = [0, 4, 12, 12, 8]
 _campaign1_primes = [5003, 10009, 20011]
 
 def __campaign1_normalization_phase():
@@ -533,7 +561,8 @@ def __campaign1_normalization_one(prime):
       optimizationLevel: "O2",
       measuredBoundary:
         "direct prepared function call plus transient generated call-shell JS parse/execute; Python lowering, import, warmup, and result repr are excluded",
-      inputState: "one prepared ordinary list [1,0,0,1] and fixed prime vector",
+      inputState:
+        "one prepared ordinary list [0,4,12,12,8] from the public normalization certificate and a fixed prime vector",
       outputPublication: "fresh Python list returned by _normalization_factor",
       compilerRouteClaim: "none",
       publicAutoReceiptPolicy: "off-reviewed-phase-does-not-select-public-route",
@@ -622,11 +651,11 @@ function runGuardAudit(wasmTarget) {
     ["prime-contract", SOURCE_VALUES, 5_003, false],
     ["even-prime", SOURCE_VALUES, 5_004, true],
     ["short-vector", [1, 0, 1], 5_003, true],
-    ["late-bigint", [1, 0, 0, 1n], 5_003, true],
-    ["negative-zero", [1, 0, 0, -0], 5_003, true],
-    ["zero-leading-residue", [1, 0, 0, 5_003], 5_003, true],
+    ["late-bigint", [0, 4, 12, 12, 8n], 5_003, true],
+    ["negative-zero", [0, 4, 12, 12, -0], 5_003, true],
+    ["zero-leading-residue", [0, 4, 12, 12, 5_003], 5_003, true],
   ];
-  const sparse = [1, 0, 0, 1];
+  const sparse = [...SOURCE_VALUES];
   delete sparse[2];
   cases.push(["sparse-vector", sparse, 5_003, true]);
   const v8 = cases.map(([id, values, prime, primeAuthenticated]) => {
@@ -701,7 +730,8 @@ function runGuardAudit(wasmTarget) {
     wasmInterrupt = {
       status: "pass",
       interruptCalls: calls,
-      inputCopiedBytesBeforeInterrupt: 16,
+      inputCopiedBytesBeforeInterrupt:
+        SOURCE_VALUES.length * Uint32Array.BYTES_PER_ELEMENT,
       publications: 0,
     };
   } else {
@@ -854,9 +884,13 @@ function targetAccounting() {
         exactProductBounds: 3,
         signedCharacterSumBounds: 3,
       },
-      coefficientCopy: "four canonical u32 values copied per prime",
-      inputCopiedBytesPerPrime: 16,
-      inputCopiedBytesPerPhase: 48,
+      coefficientCopy:
+        "the complete canonical dense genus-one coefficient vector copied per prime",
+      inputCopiedBytesPerPrime:
+        SOURCE_VALUES.length * Uint32Array.BYTES_PER_ELEMENT,
+      inputCopiedBytesPerPhase:
+        PRIMARY_PRIMES.length * SOURCE_VALUES.length *
+          Uint32Array.BYTES_PER_ELEMENT,
       outputCopiedBytesPerPhase: 0,
       allocationsPerPhase: {
         guardCanonicalArrays: 3,
@@ -1421,7 +1455,7 @@ module.exports = {
   independentCpythonOracle,
   parseArguments,
   runFeasibility,
-  validateDenseCubicInput,
+  validateDenseGenusOneInput,
   validateReport,
 };
 
