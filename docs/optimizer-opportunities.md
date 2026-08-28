@@ -4,11 +4,13 @@ title: "Optimization opportunity dashboard"
 
 # Optimization opportunity dashboard
 
-This generated dashboard compiles every ordinary Python module under `src/lib` at `O2`
-without executing it. Imports are stubbed, optimizer IR is independently verified, and
-every loop-bearing function or method is retained with its exact source location.
+This generated dashboard compiles every ordinary Python module under `src/lib` and each
+explicit control source under `bench/optimizer-workloads` at `O2` without executing it.
+Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
+function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `8eae8befa12ff0298580abe3a757b72b6e4fcaac924111e5aa49d5bdbc68579b` (475 files, 10248421 bytes).
+Input identity: `35e7b82213ab409725fafd7b46a801b6fe05ad536405e7d2c1dc4e281d626f82` (482 files, 10412521 bytes).
+Analyzed source bundle: `sha256:8dce91a4f3b19672dd71b94f34a6fbd759acd103197c01a6ebad5f309610d3f1`; compiler identity: `sha256:de96d4c44607da56e1bdd3c705b77b4dda3065af957fbbdd9d0f80df5d9f5222`.
 
 Regenerate or verify it with:
 
@@ -16,6 +18,7 @@ Regenerate or verify it with:
 pnpm optimizer:opportunities
 pnpm optimizer:opportunities:check
 pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_groups.py:1
+pnpm optimizer:opportunities:query -- sha256:<digest>
 ```
 
 ## Summary
@@ -23,6 +26,8 @@ pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_gr
 | Measure | Count |
 | --- | ---: |
 | Source modules compiled | 415 / 415 |
+| Library modules compiled | 415 / 415 |
+| Explicit control sources compiled | 0 / 0 |
 | Functions and methods compiled | 11454 |
 | Loop-bearing functions and methods | 3636 |
 | Loops in functions | 10259 |

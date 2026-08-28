@@ -6,9 +6,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { performance } = require("node:perf_hooks");
 
+const {
+  canonicalJson,
+  contentIdentity,
+  documentIdentity,
+  sha256,
+} = require("../tools/optimizer-development/common.cjs");
+const {
+  canonicalCompilerIdentity,
+  compilerIdentity,
+  decisionIdentity,
+  functionIdentity,
+  semanticFingerprint,
+  semanticRegionIdentity,
+  sourceBundleFromRecords,
+  sourceUnitIdentity,
+} = require("../tools/optimizer-development/identity.cjs");
+
 const ROOT = path.resolve(__dirname, "..");
-const SCHEMA = "sagejs.optimizer-opportunity-dashboard/v1";
-const GENERATOR = "optimizer-opportunity-dashboard/v1";
+const SCHEMA = "sagejs.optimizer-opportunity-dashboard/v2";
+const GENERATOR = "optimizer-opportunity-dashboard/v2";
 const DEFAULT_JSON = path.join(
   ROOT,
   "architecture",
@@ -23,6 +40,7 @@ const DEFAULT_MARKDOWN = path.join(
 const IGNORED_AST_KEYS = new Set([
   "start",
   "end",
+  "filename",
   "scope",
   "thedef",
   "imports",
@@ -32,6 +50,18 @@ const IGNORED_AST_KEYS = new Set([
   "optimization_ir",
   "optimization_region",
   "optimization_contract",
+]);
+
+const SEMANTIC_LOOP_KINDS = new Set([
+  "AST_ForIn",
+  "AST_AsyncFor",
+  "AST_ForJS",
+  "AST_While",
+  "AST_Do",
+  "AST_ListComprehension",
+  "AST_SetComprehension",
+  "AST_DictComprehension",
+  "AST_GeneratorComprehension",
 ]);
 
 const COERCION_NAMES = new Set([
@@ -87,9 +117,6 @@ const REASON_REMEDIATIONS = Object.freeze({
     "Prove a finite progress measure and transactional exits before lowering a `while` loop.",
 });
 
-function sha256(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
 
 function plainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -110,6 +137,18 @@ function repositoryPath(root, filename) {
   return slash(absolute);
 }
 
+function normalizedRepositoryPath(value) {
+  if (typeof value !== "string" || value.length === 0 || path.isAbsolute(value)) {
+    throw new Error("source path must be a nonempty repository-relative path");
+  }
+  const normalized = slash(path.normalize(value)).replace(/^\.\//, "");
+  if (normalized === ".." || normalized.startsWith("../")) {
+    throw new Error("source path must stay inside the repository");
+  }
+  return normalized;
+}
+
+
 function recursiveFiles(directory, predicate) {
   if (!fs.existsSync(directory)) return [];
   const result = [];
@@ -125,8 +164,16 @@ function dashboardInputFiles(root = ROOT) {
   const candidates = [
     ...recursiveFiles(path.join(root, "src", "lib"), (name) => name.endsWith(".py")),
     ...recursiveFiles(
+      path.join(root, "bench", "optimizer-workloads"),
+      (name) => name.endsWith(".py"),
+    ),
+    ...recursiveFiles(
       path.join(root, "tools", "python", "optimizer"),
       (name) => name.endsWith(".ts"),
+    ),
+    ...recursiveFiles(
+      path.join(root, "tools", "optimizer-development"),
+      (name) => name.endsWith(".cjs"),
     ),
     path.join(root, "src", "ast_types.py"),
     path.join(root, "tools", "compiler.ts"),
@@ -135,6 +182,7 @@ function dashboardInputFiles(root = ROOT) {
     path.join(root, "tools", "python", "lowerer.ts"),
     path.join(root, "tools", "python", "module-resolver.ts"),
     path.join(root, "scripts", "optimizer-opportunity-dashboard.cjs"),
+    path.join(root, "architecture", "optimizer-reason-codes.json"),
   ];
   return [...new Set(candidates.map((filename) => path.resolve(filename)))]
     .filter((filename) => fs.existsSync(filename))
@@ -162,6 +210,36 @@ function inputIdentity(root = ROOT) {
   };
 }
 
+function compilerControlIdentity() {
+  return {
+    mode: "python",
+    for_linting: true,
+    runtime_imports: false,
+    exact_integer_literals: true,
+    strict_python_scopes: true,
+    scoped_flags: {
+      dict_literals: true,
+      overload_getitem: true,
+      bound_methods: true,
+      sequential_definitions: true,
+    },
+    optimization_level: "O2",
+    optimization_explain: true,
+    optimization_contract_policy: "diagnose",
+    disabled_passes: [],
+    required_passes: [],
+  };
+}
+
+function createCompilerIdentity(root, irSchema, optimizerCatalog) {
+  return canonicalCompilerIdentity({
+    root,
+    irSchema,
+    optimizerCatalog,
+    optionsDigest: sha256(canonicalJson(compilerControlIdentity())),
+  });
+}
+
 function sourceRegion(root, node, fallbackPath) {
   const start = node?.start ?? {};
   const end = node?.end ?? start;
@@ -187,6 +265,10 @@ function nodeChildren(value) {
     .filter(([key, child]) =>
       !IGNORED_AST_KEYS.has(key) && typeof child !== "function")
     .map(([, child]) => child);
+}
+
+function isSemanticLoop(value) {
+  return SEMANTIC_LOOP_KINDS.has(value?.constructor?.name ?? "");
 }
 
 function expressionName(compiler, expression) {
@@ -229,8 +311,7 @@ function loopMetrics(compiler, loop) {
         value instanceof compiler.AST_Method || value instanceof compiler.AST_Class)) {
       return;
     }
-    if (!root && (value instanceof compiler.AST_ForIn ||
-        value instanceof compiler.AST_While)) {
+    if (!root && isSemanticLoop(value)) {
       metrics.nestedLoopSites += 1;
       return;
     }
@@ -290,11 +371,58 @@ function sourceLine(source, line) {
   return (source.split("\n")[line - 1] ?? "").trim().slice(0, 240);
 }
 
-function inventoryAst({ compiler, ast, root, filename, relativePath, source }) {
+function sourceExcerpt(source, region) {
+  if (!Number.isSafeInteger(region.line) || region.line < 1 ||
+      !Number.isSafeInteger(region.endLine) || region.endLine < region.line) {
+    return "";
+  }
+  const lines = source.split("\n");
+  const first = region.line - 1;
+  const last = region.endLine - 1;
+  if (first >= lines.length) return "";
+  if (first === last) {
+    return (lines[first] ?? "").slice(region.column, region.endColumn);
+  }
+  return [
+    (lines[first] ?? "").slice(region.column),
+    ...lines.slice(first + 1, last),
+    (lines[last] ?? "").slice(0, region.endColumn),
+  ].join("\n");
+}
+
+function nextLexicalOrdinal(ordinals, key) {
+  const ordinal = ordinals.get(key) ?? 0;
+  ordinals.set(key, ordinal + 1);
+  return ordinal;
+}
+
+function identityRange(region) {
+  return {
+    startLine: region.line,
+    startColumn: region.column,
+    endLine: region.endLine,
+    endColumn: region.endColumn,
+  };
+}
+
+function inventoryAst({ compiler, ast, root, filename, relativePath, source,
+  sourceUnitId, semanticAstFingerprint: astFingerprint, semanticOccurrenceKey,
+  semanticRegionKind }) {
   const functions = [];
   const loops = [];
   const functionById = new Map();
+  const functionOrdinals = new Map();
+  const loopOrdinals = new Map();
   const seen = new Set();
+  const moduleRegion = sourceRegion(root, ast, filename);
+  const moduleIdentity = functionIdentity({
+    sourceUnitId,
+    qualifiedName: "<module>",
+    kind: "module",
+    semanticFingerprint: astFingerprint(ast),
+    range: identityRange(moduleRegion),
+    ordinal: 0,
+  });
 
   const visit = (value, state) => {
     if (!value || typeof value !== "object" || seen.has(value)) return;
@@ -305,31 +433,50 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source }) {
     }
     if (!(value instanceof compiler.AST_Node)) return;
 
-    if (value instanceof compiler.AST_Function || value instanceof compiler.AST_Method) {
+    const isMethod = value instanceof compiler.AST_Method;
+    const isFunction = value instanceof compiler.AST_Function;
+    const isLambda = value.is_lambda === true ||
+      (value instanceof compiler.AST_Lambda && !isFunction && !isMethod);
+    if (isFunction || isMethod || isLambda) {
       const name = String(value.name?.name ?? value.name ?? "<anonymous>");
       const qualifier = [...state.qualifier, name];
       const region = sourceRegion(root, value, filename);
-      const id = stableId("function", {
-        path: relativePath,
-        qualifier,
-        line: region.line,
-        column: region.column,
+      const kind = isMethod ? "method" : isLambda ? "lambda" : "function";
+      const fingerprint = astFingerprint(value);
+      const ordinalKey = semanticOccurrenceKey({
+        ownerId: state.functionId ?? moduleIdentity.id,
+        qualifiedName: qualifier.join("."),
+        kind,
+        semanticFingerprint: fingerprint,
+      });
+      const ordinal = nextLexicalOrdinal(functionOrdinals, ordinalKey);
+      const identity = functionIdentity({
+        sourceUnitId,
+        qualifiedName: qualifier.join("."),
+        kind,
+        semanticFingerprint: fingerprint,
+        range: identityRange(region),
+        ordinal,
       });
       const record = {
-        id,
+        id: identity.id,
+        sourceUnitId,
         path: relativePath,
         qualifiedName: qualifier.join("."),
-        kind: value instanceof compiler.AST_Method ? "method" : "function",
+        kind,
+        semanticFingerprint: fingerprint,
+        excerptDigest: sha256(sourceExcerpt(source, region)),
+        ordinal,
         source: region,
         sourceLine: sourceLine(source, region.line),
         annotations: annotationSummary(value),
         loopIds: [],
       };
       functions.push(record);
-      functionById.set(id, record);
+      functionById.set(identity.id, record);
       visit(value.body, {
         qualifier,
-        functionId: id,
+        functionId: identity.id,
         loopDepth: 0,
       });
       return;
@@ -344,21 +491,32 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source }) {
       return;
     }
 
-    const isLoop = value instanceof compiler.AST_ForIn ||
-      value instanceof compiler.AST_While;
+    const isLoop = isSemanticLoop(value);
     let childState = state;
     if (isLoop) {
       const region = sourceRegion(root, value, filename);
-      const kind = value.constructor?.name ?? "AST_Loop";
-      const id = stableId("loop", {
-        path: relativePath,
-        line: region.line,
-        column: region.column,
+      const kind = semanticRegionKind(value);
+      const fingerprint = astFingerprint(value);
+      const ordinalKey = semanticOccurrenceKey({
+        ownerId: state.functionId ?? moduleIdentity.id,
         kind,
+        semanticFingerprint: fingerprint,
+      });
+      const ordinal = nextLexicalOrdinal(loopOrdinals, ordinalKey);
+      const identity = semanticRegionIdentity({
+        functionId: state.functionId ?? moduleIdentity.id,
+        kind,
+        semanticFingerprint: fingerprint,
+        range: identityRange(region),
+        ordinal,
       });
       const record = {
-        id,
+        id: identity.id,
+        sourceUnitId,
         functionId: state.functionId,
+        semanticFingerprint: fingerprint,
+        excerptDigest: sha256(sourceExcerpt(source, region)),
+        ordinal,
         source: region,
         sourceLine: sourceLine(source, region.line),
         kind,
@@ -370,7 +528,7 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source }) {
         suggestedContracts: [],
       };
       loops.push(record);
-      if (state.functionId) functionById.get(state.functionId).loopIds.push(id);
+      if (state.functionId) functionById.get(state.functionId).loopIds.push(identity.id);
       childState = { ...state, loopDepth: state.loopDepth + 1 };
     }
 
@@ -378,7 +536,7 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source }) {
   };
 
   visit(ast, { qualifier: [], functionId: null, loopDepth: 0 });
-  return { functions, loops };
+  return { functions, loops, moduleIdentity };
 }
 
 function normalizeQuantity(value) {
@@ -431,7 +589,7 @@ function rejectedTargetsForReason(decision, reason) {
   return matching.length > 0 ? matching : rejected;
 }
 
-function normalizeDecision(root, decision) {
+function normalizeDecision(root, decision, loopId, compilerId) {
   const detailed = decision.selected || decision.rejectionReasons.length === 1;
   const candidates = decision.target.candidates.map((candidate) => ({
     id: candidate.id,
@@ -444,18 +602,18 @@ function normalizeDecision(root, decision) {
   const selectedCandidate = candidates.find(
     (candidate) => candidate.id === decision.target.selectedCandidate,
   ) ?? null;
-  return {
-    id: decision.id,
+  const source = {
+    path: repositoryPath(root, decision.source.filename),
+    line: decision.source.line,
+    column: decision.source.column,
+    endLine: decision.source.endLine,
+    endColumn: decision.source.endColumn,
+  };
+  const normalized = {
     passId: decision.passId,
     selected: decision.selected,
     detailLevel: detailed ? "full" : "summary",
-    source: {
-      path: repositoryPath(root, decision.source.filename),
-      line: decision.source.line,
-      column: decision.source.column,
-      endLine: decision.source.endLine,
-      endColumn: decision.source.endColumn,
-    },
+    source,
     rejectionReasons: [...decision.rejectionReasons].sort(),
     mathematicalDomain: decision.mathematical.domain,
     mathematicalKind: decision.mathematical.kind,
@@ -471,7 +629,21 @@ function normalizeDecision(root, decision) {
     candidates,
     facts: detailed ? decision.facts.map((fact) => ({ ...fact })) : [],
     guards: detailed ? [...decision.guards].sort() : [],
-    fallbackId: decision.fallbackId,
+  };
+  const evidenceDigest = sha256(canonicalJson(normalized));
+  const identity = decisionIdentity({
+    regionId: loopId,
+    passId: normalized.passId,
+    compilerId,
+  });
+  return {
+    id: identity.id,
+    evidenceDigest,
+    ...normalized,
+    fallbackId: contentIdentity("sagejs.optimizer-fallback-identity/v1", {
+      regionId: loopId,
+      passId: normalized.passId,
+    }),
   };
 }
 
@@ -502,7 +674,7 @@ function reasonRemediation(reason) {
   return `Resolve the stable compiler rejection ${JSON.stringify(reason)} and rerun the dashboard.`;
 }
 
-function correlateDecisions({ root, functions, loops, program }) {
+function correlateDecisions({ root, functions, loops, program, compilerId }) {
   const loopByLocation = new Map();
   for (const loop of loops) {
     const key = locationKey(loop.source);
@@ -510,13 +682,26 @@ function correlateDecisions({ root, functions, loops, program }) {
     loopByLocation.get(key).push(loop);
   }
   const orphans = [];
-  for (const decision of program.regions.map((region) =>
-    normalizeDecision(root, region))) {
-    const matching = loopByLocation.get(locationKey(decision.source)) ?? [];
+  for (const region of program.regions) {
+    const decisionSource = {
+      path: repositoryPath(root, region.source.filename),
+      line: region.source.line,
+      column: region.source.column,
+    };
+    const matching = loopByLocation.get(locationKey(decisionSource)) ?? [];
     if (matching.length !== 1) {
-      orphans.push(decision);
+      const orphan = {
+        source: decisionSource,
+        passId: region.passId,
+        error: `expected one semantic region, found ${matching.length}`,
+      };
+      orphans.push({
+        id: contentIdentity("sagejs.optimizer-orphan-decision/v1", orphan),
+        ...orphan,
+      });
       continue;
     }
+    const decision = normalizeDecision(root, region, matching[0].id, compilerId);
     matching[0].decisions.push(decision);
   }
 
@@ -607,7 +792,11 @@ function buildNearMisses(loops, functionById) {
       if (targets.length === 0) continue;
       const owner = functionById.get(loop.functionId);
       result.push({
-        id: stableId("near-miss", { loop: loop.id, pass: decision.passId, reason }),
+        id: contentIdentity("sagejs.optimizer-near-miss/v1", {
+          loopId: loop.id,
+          passId: decision.passId,
+          reason,
+        }),
         loopId: loop.id,
         functionId: loop.functionId,
         qualifiedName: owner?.qualifiedName ?? null,
@@ -636,7 +825,8 @@ function sumMetric(loops, field) {
   return loops.reduce((sum, loop) => sum + loop.metrics[field], 0);
 }
 
-function finalizeDashboard({ root, identity, files, functions, loops, orphans }) {
+function finalizeDashboard({ root, identity, sourceBundle, compilerIdentity: compiler,
+  files, functions, loops, orphans }) {
   functions.sort((left, right) =>
     left.path.localeCompare(right.path) || left.source.line - right.source.line ||
     left.qualifiedName.localeCompare(right.qualifiedName));
@@ -656,21 +846,34 @@ function finalizeDashboard({ root, identity, files, functions, loops, orphans })
     `${decision.passId}:${decision.selected ? "selected" : "rejected"}`));
   const nearMisses = buildNearMisses(inFunctions, functionById);
 
-  return {
+  const dashboard = {
     schema: SCHEMA,
     generator: GENERATOR,
     optimizationLevel: "O2",
     scope: {
-      root: "src/lib",
+      roots: ["bench/optimizer-workloads", "src/lib"],
       policy:
         "ordinary CPython-parseable modules are lowered with imports stubbed; " +
-        "every function/method is compiled, and loop-bearing functions are retained",
+        "library and explicit control sources are counted separately, every " +
+        "function/method/lambda identity is retained, and loops remain separately queryable",
     },
     inputs: identity,
+    sourceBundle,
+    compilerIdentity: compiler,
     summary: {
       sourceFilesDiscovered: files.length,
       sourceFilesCompiled: files.filter((file) => file.status === "compiled").length,
       sourceFilesFailed: files.filter((file) => file.status !== "compiled").length,
+      librarySourceFilesDiscovered: files.filter((file) => file.scope === "library").length,
+      librarySourceFilesCompiled: files.filter((file) =>
+        file.scope === "library" && file.status === "compiled").length,
+      librarySourceFilesFailed: files.filter((file) =>
+        file.scope === "library" && file.status !== "compiled").length,
+      controlSourceFilesDiscovered: files.filter((file) => file.scope === "control").length,
+      controlSourceFilesCompiled: files.filter((file) =>
+        file.scope === "control" && file.status === "compiled").length,
+      controlSourceFilesFailed: files.filter((file) =>
+        file.scope === "control" && file.status !== "compiled").length,
       functionsCompiled: functions.length,
       suitableFunctions: suitable.length,
       loopsInFunctions: inFunctions.length,
@@ -699,9 +902,15 @@ function finalizeDashboard({ root, identity, files, functions, loops, orphans })
     passDecisionCounts: passDecisions,
     nearMisses,
     files,
-    functions: suitable,
+    functions,
     loops,
     orphanDecisions: orphans.sort((left, right) => left.id.localeCompare(right.id)),
+  };
+  const { schema, ...payload } = dashboard;
+  return {
+    schema,
+    id: documentIdentity(dashboard),
+    ...payload,
   };
 }
 
@@ -727,22 +936,47 @@ function parserOptions(root, filename) {
   };
 }
 
-async function analyzeSources({ root = ROOT, sources, identity }) {
-  const createCompiler = require(path.join(root, "dist", "tools", "compiler.js")).default;
+async function analyzeSources({ root = ROOT, compilerRoot = root, sources, identity }) {
+  const createCompiler = require(path.join(
+    compilerRoot,
+    "dist",
+    "tools",
+    "compiler.js",
+  )).default;
   const { createPythonCompilerFrontend } = require(path.join(
-    root,
+    compilerRoot,
     "dist",
     "tools",
     "python",
     "compiler-frontend.js",
   ));
   const { explainOptimizationProgram, verifyOptimizationProgram } = require(path.join(
-    root,
+    compilerRoot,
     "dist",
     "tools",
     "python",
     "optimizer",
     "index.js",
+  ));
+  const { optimizerCatalog } = require(path.join(
+    compilerRoot,
+    "dist",
+    "tools",
+    "python",
+    "optimizer",
+    "catalog.js",
+  ));
+  const {
+    semanticAstFingerprint,
+    semanticOccurrenceKey,
+    semanticRegionKind,
+  } = require(path.join(
+    compilerRoot,
+    "dist",
+    "tools",
+    "python",
+    "optimizer",
+    "profile-map.js",
   ));
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -750,12 +984,24 @@ async function analyzeSources({ root = ROOT, sources, identity }) {
   const functions = [];
   const loops = [];
   const orphans = [];
+  let compilerDocument = null;
   try {
     for (const item of [...sources].sort((left, right) =>
       left.relativePath.localeCompare(right.relativePath))) {
+      const relativePath = normalizedRepositoryPath(item.relativePath);
+      const sourceDigest = sha256(item.source);
+      const sourceUnit = sourceUnitIdentity({
+        path: relativePath,
+        digest: sourceDigest,
+        language: "python",
+      });
       const fileRecord = {
-        path: item.relativePath,
-        sha256: sha256(item.source),
+        id: sourceUnit.id,
+        path: relativePath,
+        sourceDigest,
+        scope: item.scope ?? (relativePath.startsWith("bench/optimizer-workloads/")
+          ? "control"
+          : "library"),
         bytes: Buffer.byteLength(item.source),
         status: "compiled",
         error: null,
@@ -770,19 +1016,34 @@ async function analyzeSources({ root = ROOT, sources, identity }) {
         );
         verifyOptimizationProgram(ast.optimization_ir);
         const program = explainOptimizationProgram(ast.optimization_ir);
+        if (compilerDocument === null) {
+          compilerDocument = createCompilerIdentity(
+            compilerRoot,
+            program.schema,
+            optimizerCatalog,
+          );
+        } else if (compilerDocument.irSchema !== program.schema) {
+          throw new Error("compiler IR schema changed during dashboard analysis");
+        }
         const inventory = inventoryAst({
           compiler,
           ast,
           root,
           filename: item.filename,
-          relativePath: item.relativePath,
+          relativePath,
           source: item.source,
+          sourceUnitId: sourceUnit.id,
+          semanticAstFingerprint,
+          semanticOccurrenceKey,
+          semanticRegionKind,
         });
+        fileRecord.moduleIdentity = inventory.moduleIdentity;
         const unmatched = correlateDecisions({
           root,
           functions: inventory.functions,
           loops: inventory.loops,
           program,
+          compilerId: compilerDocument.id,
         });
         fileRecord.functions = inventory.functions.length;
         fileRecord.loops = inventory.loops.length;
@@ -799,14 +1060,25 @@ async function analyzeSources({ root = ROOT, sources, identity }) {
   } finally {
     frontend.close();
   }
+  if (compilerDocument === null) {
+    throw new Error("optimizer opportunity analysis requires at least one compiled source");
+  }
+  const sourceBundle = sourceBundleFromRecords(files.map((file) => ({
+    path: file.path,
+    digest: file.sourceDigest,
+    bytes: file.bytes,
+  })));
   return finalizeDashboard({
     root,
     identity: identity ?? {
-      digest: sha256(sources.map((item) =>
-        `${item.relativePath}\0${item.source}`).join("\0")),
+      digest: sha256([...sources].sort((left, right) =>
+        left.relativePath.localeCompare(right.relativePath)).map((item) =>
+        `${normalizedRepositoryPath(item.relativePath)}\0${item.source}`).join("\0")),
       files: sources.length,
       bytes: sources.reduce((sum, item) => sum + Buffer.byteLength(item.source), 0),
     },
+    sourceBundle,
+    compilerIdentity: compilerDocument,
     files,
     functions,
     loops,
@@ -815,12 +1087,22 @@ async function analyzeSources({ root = ROOT, sources, identity }) {
 }
 
 async function analyzeRepository(root = ROOT) {
-  const sourceRoot = path.join(root, "src", "lib");
-  const filenames = recursiveFiles(sourceRoot, (name) => name.endsWith(".py"));
+  const libraryFiles = recursiveFiles(
+    path.join(root, "src", "lib"),
+    (name) => name.endsWith(".py"),
+  );
+  const controlFiles = recursiveFiles(
+    path.join(root, "bench", "optimizer-workloads"),
+    (name) => name.endsWith(".py"),
+  );
+  const filenames = [...libraryFiles, ...controlFiles];
   const sources = filenames.map((filename) => ({
     filename,
     relativePath: repositoryPath(root, filename),
     source: fs.readFileSync(filename, "utf8"),
+    scope: filename.startsWith(`${path.join(root, "bench", "optimizer-workloads")}${path.sep}`)
+      ? "control"
+      : "library",
   }));
   const dashboard = await analyzeSources({
     root,
@@ -866,12 +1148,15 @@ function renderMarkdown(dashboard) {
     "",
     "# Optimization opportunity dashboard",
     "",
-    "This generated dashboard compiles every ordinary Python module under `src/lib` at `O2`",
-    "without executing it. Imports are stubbed, optimizer IR is independently verified, and",
-    "every loop-bearing function or method is retained with its exact source location.",
+    "This generated dashboard compiles every ordinary Python module under `src/lib` and each",
+    "explicit control source under `bench/optimizer-workloads` at `O2` without executing it.",
+    "Imports are stubbed, optimizer IR is independently verified, and every loop-bearing",
+    "function, method, or lambda is retained with its exact source location and portable identity.",
     "",
     `Input identity: \`${dashboard.inputs.digest}\` (${dashboard.inputs.files} files, ` +
       `${dashboard.inputs.bytes} bytes).`,
+    `Analyzed source bundle: \`${dashboard.sourceBundle.id}\`; compiler identity: ` +
+      `\`${dashboard.compilerIdentity.id}\`.`,
     "",
     "Regenerate or verify it with:",
     "",
@@ -879,6 +1164,7 @@ function renderMarkdown(dashboard) {
     "pnpm optimizer:opportunities",
     "pnpm optimizer:opportunities:check",
     "pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_groups.py:1",
+    "pnpm optimizer:opportunities:query -- sha256:<digest>",
     "```",
     "",
     "## Summary",
@@ -887,6 +1173,10 @@ function renderMarkdown(dashboard) {
     "| --- | ---: |",
     `| Source modules compiled | ${dashboard.summary.sourceFilesCompiled} / ` +
       `${dashboard.summary.sourceFilesDiscovered} |`,
+    `| Library modules compiled | ${dashboard.summary.librarySourceFilesCompiled} / ` +
+      `${dashboard.summary.librarySourceFilesDiscovered} |`,
+    `| Explicit control sources compiled | ${dashboard.summary.controlSourceFilesCompiled} / ` +
+      `${dashboard.summary.controlSourceFilesDiscovered} |`,
     `| Functions and methods compiled | ${dashboard.summary.functionsCompiled} |`,
     `| Loop-bearing functions and methods | ${dashboard.summary.suitableFunctions} |`,
     `| Loops in functions | ${dashboard.summary.loopsInFunctions} |`,
@@ -965,6 +1255,44 @@ function validateCounter(value, label) {
   }
 }
 
+function requireDigest(value, label) {
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
+    throw new Error(`${label} must be a SHA-256 digest`);
+  }
+}
+
+function requireContentId(value, label) {
+  if (typeof value !== "string" || !/^sha256:[0-9a-f]{64}$/.test(value)) {
+    throw new Error(`${label} must be a schema-addressed SHA-256 identity`);
+  }
+}
+
+function sameIdentity(actual, expected, label) {
+  if (!plainObject(actual) || canonicalJson(actual) !== canonicalJson(expected)) {
+    throw new Error(`${label} has inconsistent portable identity`);
+  }
+}
+
+function validateDecisionIdentity(decision, loopId, compilerId) {
+  requireDigest(decision.evidenceDigest, `decision ${decision.id} evidenceDigest`);
+  const { id, evidenceDigest, fallbackId, ...payload } = decision;
+  if (sha256(canonicalJson(payload)) !== evidenceDigest) {
+    throw new Error(`decision ${id} has inconsistent semantic evidence`);
+  }
+  const expected = decisionIdentity({
+    regionId: loopId,
+    passId: decision.passId,
+    compilerId,
+  });
+  const expectedFallback = contentIdentity("sagejs.optimizer-fallback-identity/v1", {
+    regionId: loopId,
+    passId: decision.passId,
+  });
+  if (id !== expected.id || fallbackId !== expectedFallback) {
+    throw new Error(`decision ${id} has inconsistent portable identity`);
+  }
+}
+
 function validateDashboard(dashboard, { expectedInput } = {}) {
   if (!plainObject(dashboard) || dashboard.schema !== SCHEMA ||
       dashboard.generator !== GENERATOR || dashboard.optimizationLevel !== "O2") {
@@ -983,28 +1311,110 @@ function validateDashboard(dashboard, { expectedInput } = {}) {
   for (const name of ["files", "functions", "loops", "nearMisses", "reasonCounts"]) {
     if (!Array.isArray(dashboard[name])) throw new Error(`dashboard ${name} must be an array`);
   }
+  const expectedSourceBundle = sourceBundleFromRecords(dashboard.files.map((file) => ({
+    path: file.path,
+    digest: file.sourceDigest,
+    bytes: file.bytes,
+  })));
+  sameIdentity(
+    dashboard.sourceBundle,
+    expectedSourceBundle,
+    "dashboard source bundle",
+  );
+  const expectedCompiler = compilerIdentity({
+    irSchema: dashboard.compilerIdentity?.irSchema,
+    compilerSourceBundleId: dashboard.compilerIdentity?.compilerSourceBundleId,
+    frontendDigest: dashboard.compilerIdentity?.frontendDigest,
+    catalogDigest: dashboard.compilerIdentity?.catalogDigest,
+    optionsDigest: dashboard.compilerIdentity?.optionsDigest,
+  });
+  sameIdentity(dashboard.compilerIdentity, expectedCompiler, "dashboard compiler identity");
+  requireContentId(dashboard.compilerIdentity.id, "dashboard compiler identity id");
+  const sourceUnits = new Map();
+  for (const file of dashboard.files) {
+    if (!plainObject(file)) throw new Error("dashboard has an invalid source unit");
+    if (!["library", "control"].includes(file.scope)) {
+      throw new Error(`source unit ${file.path} has invalid dashboard scope`);
+    }
+    requireDigest(file.sourceDigest, `source unit ${file.path} sourceDigest`);
+    const expected = sourceUnitIdentity({
+      path: file.path,
+      digest: file.sourceDigest,
+      language: "python",
+    });
+    if (file.id !== expected.id || sourceUnits.has(file.id)) {
+      throw new Error("dashboard has invalid or duplicate source-unit identity");
+    }
+    const expectedModule = functionIdentity({
+      sourceUnitId: file.id,
+      qualifiedName: "<module>",
+      kind: "module",
+      semanticFingerprint: file.moduleIdentity?.semanticFingerprint,
+      range: file.moduleIdentity?.range,
+      ordinal: 0,
+    });
+    sameIdentity(file.moduleIdentity, expectedModule, `source unit ${file.path} module`);
+    sourceUnits.set(file.id, file);
+  }
   const functionIds = new Set();
   for (const record of dashboard.functions) {
-    if (!plainObject(record) || typeof record.id !== "string" || functionIds.has(record.id)) {
+    if (!plainObject(record)) throw new Error("dashboard has an invalid function");
+    requireContentId(
+      record.semanticFingerprint,
+      `function ${record.id} semanticFingerprint`,
+    );
+    requireDigest(record.excerptDigest, `function ${record.id} excerptDigest`);
+    const expected = functionIdentity({
+      sourceUnitId: record.sourceUnitId,
+      qualifiedName: record.qualifiedName,
+      kind: record.kind,
+      semanticFingerprint: record.semanticFingerprint,
+      range: identityRange(record.source),
+      ordinal: record.ordinal,
+    });
+    if (record.id !== expected.id || !sourceUnits.has(record.sourceUnitId) ||
+        sourceUnits.get(record.sourceUnitId).path !== record.path ||
+        functionIds.has(record.id)) {
       throw new Error("dashboard has invalid or duplicate function identity");
     }
     functionIds.add(record.id);
   }
   const loopIds = new Set();
   for (const loop of dashboard.loops) {
-    if (!plainObject(loop) || typeof loop.id !== "string" || loopIds.has(loop.id) ||
+    if (!plainObject(loop)) throw new Error("dashboard has an invalid loop");
+    requireContentId(loop.semanticFingerprint, `loop ${loop.id} semanticFingerprint`);
+    requireDigest(loop.excerptDigest, `loop ${loop.id} excerptDigest`);
+    const sourceUnit = sourceUnits.get(loop.sourceUnitId);
+    const identityFunctionId = loop.functionId ?? sourceUnit?.moduleIdentity?.id;
+    const expected = semanticRegionIdentity({
+      functionId: identityFunctionId,
+      kind: loop.kind,
+      semanticFingerprint: loop.semanticFingerprint,
+      range: identityRange(loop.source),
+      ordinal: loop.ordinal,
+    });
+    if (loop.id !== expected.id || !sourceUnit ||
+        loop.source.path !== sourceUnits.get(loop.sourceUnitId).path ||
+        loopIds.has(loop.id) ||
         !["selected", "rejected", "unrecognized", "module-scope"].includes(loop.status)) {
       throw new Error("dashboard has invalid or duplicate loop identity");
     }
     if (loop.functionId !== null && !functionIds.has(loop.functionId)) {
-      // Zero-loop functions are omitted from dashboard.functions, but a loop owner never is.
       throw new Error(`loop ${loop.id} names an unknown function`);
+    }
+    for (const decision of loop.decisions) {
+      validateDecisionIdentity(decision, loop.id, dashboard.compilerIdentity.id);
     }
     loopIds.add(loop.id);
   }
   for (const item of dashboard.nearMisses) {
     if (!loopIds.has(item.loopId) || !functionIds.has(item.functionId) ||
-        typeof item.reason !== "string") {
+        typeof item.reason !== "string" ||
+        item.id !== contentIdentity("sagejs.optimizer-near-miss/v1", {
+          loopId: item.loopId,
+          passId: item.passId,
+          reason: item.reason,
+        })) {
       throw new Error("dashboard near miss has invalid references");
     }
   }
@@ -1013,8 +1423,28 @@ function validateDashboard(dashboard, { expectedInput } = {}) {
     sourceFilesDiscovered: dashboard.files.length,
     sourceFilesCompiled: dashboard.files.filter((file) => file.status === "compiled").length,
     sourceFilesFailed: dashboard.files.filter((file) => file.status !== "compiled").length,
+    librarySourceFilesDiscovered: dashboard.files.filter(
+      (file) => file.scope === "library",
+    ).length,
+    librarySourceFilesCompiled: dashboard.files.filter(
+      (file) => file.scope === "library" && file.status === "compiled",
+    ).length,
+    librarySourceFilesFailed: dashboard.files.filter(
+      (file) => file.scope === "library" && file.status !== "compiled",
+    ).length,
+    controlSourceFilesDiscovered: dashboard.files.filter(
+      (file) => file.scope === "control",
+    ).length,
+    controlSourceFilesCompiled: dashboard.files.filter(
+      (file) => file.scope === "control" && file.status === "compiled",
+    ).length,
+    controlSourceFilesFailed: dashboard.files.filter(
+      (file) => file.scope === "control" && file.status !== "compiled",
+    ).length,
     functionsCompiled: dashboard.files.reduce((sum, file) => sum + file.functions, 0),
-    suitableFunctions: dashboard.functions.length,
+    suitableFunctions: dashboard.functions.filter(
+      (record) => record.loopIds.length > 0,
+    ).length,
     loopsInFunctions: inFunctions.length,
     moduleScopeLoops: dashboard.loops.length - inFunctions.length,
     selectedLoops: inFunctions.filter((loop) => loop.status === "selected").length,
@@ -1038,6 +1468,10 @@ function validateDashboard(dashboard, { expectedInput } = {}) {
   }
   if (dashboard.summary.orphanOptimizerDecisions !== 0) {
     throw new Error("optimizer opportunity dashboard contains orphan decisions");
+  }
+  requireContentId(dashboard.id, "dashboard.id");
+  if (dashboard.id !== documentIdentity(dashboard)) {
+    throw new Error("optimizer opportunity dashboard identity is stale");
   }
   return dashboard;
 }
@@ -1080,9 +1514,18 @@ function writeDashboard(dashboard, {
 }
 
 function parseQuery(value) {
+  const identity = /^(sha256:[0-9a-f]{64})$/
+    .exec(value ?? "");
+  if (identity) return { kind: "identity", id: value };
+  if ((value ?? "").startsWith("sha256:")) {
+    throw new Error("exact identity must be sha256 followed by 64 lowercase hex digits");
+  }
   const match = /^(.*?)(?::([0-9]+))?$/.exec(value ?? "");
-  if (!match || !match[1]) throw new Error("query requires path or path:line");
+  if (!match || !match[1]) {
+    throw new Error("query requires an exact identity, path, or path:line");
+  }
   return {
+    kind: "location",
     path: slash(match[1].replace(/^\.\//, "")),
     line: match[2] === undefined ? null : Number(match[2]),
   };
@@ -1090,18 +1533,67 @@ function parseQuery(value) {
 
 function queryDashboard(dashboard, value) {
   const query = parseQuery(value);
-  const loops = dashboard.loops.filter((loop) => {
-    const pathMatch = loop.source.path === query.path ||
-      loop.source.path.endsWith(`/${query.path}`);
-    if (!pathMatch) return false;
-    return query.line === null ||
-      (loop.source.line <= query.line && loop.source.endLine >= query.line);
-  });
+  let loops;
+  const exactFunctionIds = new Set();
+  const exactSourceUnitIds = new Set();
+  let exactIdentityFound = false;
+  if (query.kind === "identity") {
+    if (dashboard.files.some((file) => file.id === query.id)) {
+      exactIdentityFound = true;
+      exactSourceUnitIds.add(query.id);
+      loops = dashboard.loops.filter((loop) => loop.sourceUnitId === query.id);
+    } else if (dashboard.functions.some((record) => record.id === query.id)) {
+      exactIdentityFound = true;
+      exactFunctionIds.add(query.id);
+      loops = dashboard.loops.filter((loop) => loop.functionId === query.id);
+    } else if (dashboard.loops.some((loop) => loop.id === query.id)) {
+      exactIdentityFound = true;
+      loops = dashboard.loops.filter((loop) => loop.id === query.id);
+    } else if (dashboard.loops.some((loop) =>
+      loop.decisions.some((decision) => decision.id === query.id))) {
+      exactIdentityFound = true;
+      loops = dashboard.loops.filter((loop) =>
+        loop.decisions.some((decision) => decision.id === query.id));
+    } else {
+      const nearMiss = dashboard.nearMisses.find((item) => item.id === query.id);
+      exactIdentityFound = nearMiss !== undefined;
+      loops = nearMiss === undefined
+        ? []
+        : dashboard.loops.filter((loop) => loop.id === nearMiss.loopId);
+    }
+    if (!exactIdentityFound) {
+      throw new Error(`no optimizer opportunity has exact identity ${query.id}`);
+    }
+  } else {
+    loops = dashboard.loops.filter((loop) => {
+      const pathMatch = loop.source.path === query.path ||
+        loop.source.path.endsWith(`/${query.path}`);
+      if (!pathMatch) return false;
+      return query.line === null ||
+        (loop.source.line <= query.line && loop.source.endLine >= query.line);
+    });
+    if (query.line !== null && loops.length > 1) {
+      throw new Error(
+        `ambiguous optimizer opportunity location ${query.path}:${query.line}; ` +
+        `${loops.length} loops contain that line (${loops.map((loop) => loop.id).join(", ")}); ` +
+        "query an exact loop identity",
+      );
+    }
+  }
   const functionIds = new Set(loops.map((loop) => loop.functionId).filter(Boolean));
+  for (const id of exactFunctionIds) functionIds.add(id);
+  if (exactSourceUnitIds.size > 0) {
+    for (const record of dashboard.functions) {
+      if (exactSourceUnitIds.has(record.sourceUnitId)) functionIds.add(record.id);
+    }
+  }
+  const sourceUnitIds = new Set(loops.map((loop) => loop.sourceUnitId));
+  for (const id of exactSourceUnitIds) sourceUnitIds.add(id);
   return {
-    schema: "sagejs.optimizer-opportunity-query/v1",
+    schema: "sagejs.optimizer-opportunity-query/v2",
     inputDigest: dashboard.inputs.digest,
     query,
+    files: dashboard.files.filter((file) => sourceUnitIds.has(file.id)),
     functions: dashboard.functions.filter((record) => functionIds.has(record.id)),
     loops,
     nearMisses: dashboard.nearMisses.filter((item) =>
@@ -1111,8 +1603,10 @@ function queryDashboard(dashboard, value) {
 
 function formatQuery(result) {
   const lines = [
-    `optimizer opportunities for ${result.query.path}` +
-      `${result.query.line === null ? "" : `:${result.query.line}`}`,
+    result.query.kind === "identity"
+      ? `optimizer opportunity ${result.query.id}`
+      : `optimizer opportunities for ${result.query.path}` +
+        `${result.query.line === null ? "" : `:${result.query.line}`}`,
   ];
   if (result.loops.length === 0) lines.push("no matching compiled loops");
   const functionById = new Map(result.functions.map((record) => [record.id, record]));
