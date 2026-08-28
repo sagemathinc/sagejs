@@ -8,6 +8,7 @@ const {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -1631,7 +1632,14 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
 
 test("public kernels borrow and transfer generated FLINT resources", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-public-resource-"));
+  const aliasRoot = mkdtempSync(join(tmpdir(), "sagejs-ffi-public-alias-"));
+  const temporaryAlias = join(aliasRoot, "source");
   try {
+    symlinkSync(
+      temporary,
+      temporaryAlias,
+      process.platform === "win32" ? "junction" : "dir",
+    );
     const sourcePath = join(temporary, "resource_kernel.py");
     writeFileSync(sourcePath, [
       "from sagejs.ffi.flint import (",
@@ -1749,7 +1757,11 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
         ),
       );
       assert.equal(
-        runSage([runnerPath], undefined, env).trim(),
+        runSage(
+          [join(temporaryAlias, "exercise_resource_kernel.py")],
+          undefined,
+          env,
+        ).trim(),
         "owned-resource-result-ok",
       );
     }
@@ -1803,6 +1815,7 @@ function unreachableHolder() {
     );
     assert.equal(lifecycle.stdout, "owned-resource-lifecycle-ok");
   } finally {
+    rmSync(aliasRoot, { recursive: true, force: true });
     removeLoadedNativeCache(temporary);
   }
 });

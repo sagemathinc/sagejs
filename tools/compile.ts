@@ -6,7 +6,7 @@
  */
 
 import { dirname, join, normalize, resolve } from "path";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, realpathSync, writeFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { runInThisContext } from "vm";
 import { getImportDirs, once } from "./utils";
@@ -350,7 +350,12 @@ export default async function Compile({
       const executionImportDirs = getImportDirs(argv.import_path);
       for (const filename of files) {
         if (filename === "-") continue;
-        const directory = dirname(resolve(filename));
+        // Imported modules must see the same physical source identity as the
+        // native compiler.  macOS exposes /tmp and /var through /private, and
+        // user entry points may also be reached through a symlinked project
+        // root.  Seeding sys.path with a lexical alias makes a valid compiled
+        // artifact undiscoverable even though both paths name one file.
+        const directory = dirname(realpathSync(resolve(filename)));
         if (!executionImportDirs.includes(directory)) {
           executionImportDirs.unshift(directory);
         }
