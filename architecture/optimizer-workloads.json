@@ -1,7 +1,142 @@
 {
   "schema": "sagejs.optimizer-workload-catalog/v1",
-  "id": "sha256:315ad937f3606e35ee4f3811c8a702f3a2c8e67538aac374b7ee36b311919946",
+  "id": "sha256:a711c357396a268b0b098759d3084b41a0378dc0c057b7fe9f0ffa873b151fb9",
   "workloads": [
+    {
+      "capabilities": [
+        "class-groups",
+        "exact-arithmetic",
+        "number-fields",
+        "optimizer-evidence",
+        "prime-field"
+      ],
+      "class": "representative",
+      "corpus": {
+        "digest": "e4580877b355c52d0e41baba793ba743e608bc4e05741b80ddb2c042fb94c6f7",
+        "id": "cubic-factor-base-1009"
+      },
+      "id": "sha256:26176b4e2bbf0a79db1ff12dcc5fae8bc0b0d25adbc254a7aad154f22473ac51",
+      "input": {
+        "digest": "9ffddcac5c975959a2e8c850fca492389bc6c1ecbcc80e1279c6696613f504e3",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "exact packed record count and canonical JSON SHA-256",
+          "expected": [
+            94,
+            91,
+            "4de40d4659dadeda0b2e2ce8d06362bc15de9367bc173273cd0c74bd0e28fc04",
+            true
+          ],
+          "fixture": null,
+          "input": {
+            "classNumberCostGatePrimes": [
+              2,
+              3,
+              5
+            ],
+            "definingPolynomial": "x^3-1009",
+            "theorem": "minkowski"
+          },
+          "mode": "number-field-cubic-factor-base",
+          "oracleContract": {
+            "classNumberCostGate": [
+              1,
+              1,
+              1
+            ],
+            "fastGenericFactorReplay": {
+              "matched": true,
+              "rationalPrimes": 94
+            },
+            "packedFactorRecords": 91,
+            "packedPayloadSha256": "4de40d4659dadeda0b2e2ce8d06362bc15de9367bc173273cd0c74bd0e28fc04"
+          },
+          "policy": {
+            "optimizerSelectionClaim": "none-workload-evidence-only",
+            "timingBoundary": "production-and-exact-oracle-are-separate-uninstrumented-phases"
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "timeout_seconds": 300,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 11,
+              "timeout_seconds": 900,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/number-field-cubic-factor-base.py"
+          ]
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "68e24c8bed06843387a71044a0bae59c9c7ab676b22606a65e78a6b45911b126",
+          "id": "exact-generic-factor-replay",
+          "kind": "invariant",
+          "runnerPath": "bench/optimizer-workloads/production-modular-candidates.cjs"
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "cost-gate",
+          "label": "three tiny public class-number calls timed separately from the factor-base candidate phase"
+        },
+        {
+          "id": "exact-oracle",
+          "label": "canonical payload digest and exact fast-versus-generic factor replay outside production timing"
+        },
+        {
+          "id": "prepare",
+          "label": "field, maximal order, factor-base plan, and rational-prime construction outside production timing"
+        },
+        {
+          "id": "production",
+          "label": "uninstrumented packed cubic factor-record production phase"
+        },
+        {
+          "id": "top-level-setup",
+          "label": "source evaluation and module imports outside production timing"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 11,
+        "reset": "process",
+        "timeoutMilliseconds": 900000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "number-field-cubic-factor-base"
+        ],
+        "environment": [
+          "SAGEJS_BENCH_ROOT"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/production-modular-candidates.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic"
+      ],
+      "title": "Cubic number-field packed factor-base production phase"
+    },
     {
       "capabilities": [
         "optimizer-evidence"
@@ -672,6 +807,168 @@
     },
     {
       "capabilities": [
+        "exact-arithmetic",
+        "hyperelliptic-curves",
+        "optimizer-evidence",
+        "prime-field"
+      ],
+      "class": "held-out",
+      "corpus": {
+        "digest": "db5849a9285c9d55d5189a537414a65700dfa72b9c5b0a46a35f5b2b3b738cf8",
+        "id": "hyperelliptic-local-reduction"
+      },
+      "id": "sha256:8933c121be5198cd10927cd0461386e05dd3fc3d718947623fd3faa3c9ec0906",
+      "input": {
+        "digest": "1e42997b9371a824986384fdf0312e29498bf1f554f13d67705d188c62bd8e14",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "exact local Euler factors with independent finite-field point counts",
+          "expected": [
+            [
+              1,
+              -1,
+              5003,
+              -5003
+            ],
+            [
+              1,
+              -183,
+              10191,
+              -10009
+            ],
+            [
+              1,
+              111,
+              19899,
+              -20011
+            ]
+          ],
+          "fixture": null,
+          "input": {
+            "curves": "y^2=x^5+x^2+p",
+            "normalizationCurve": "y^2=x^3+1",
+            "primes": [
+              5003,
+              10009,
+              20011
+            ]
+          },
+          "mode": "hyperelliptic-local-reduction",
+          "oracleContract": {
+            "certified": true,
+            "eulerFactors": [
+              [
+                1,
+                -1,
+                5003,
+                -5003
+              ],
+              [
+                1,
+                -183,
+                10191,
+                -10009
+              ],
+              [
+                1,
+                111,
+                19899,
+                -20011
+              ]
+            ],
+            "independentCpythonPointCount": true,
+            "normalizationCurve": "y^2=x^3+1",
+            "primes": [
+              5003,
+              10009,
+              20011
+            ]
+          },
+          "policy": {
+            "optimizerSelectionClaim": "none-workload-evidence-only",
+            "timingBoundary": "production-and-exact-oracle-are-separate-uninstrumented-phases"
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 11,
+              "timeout_seconds": 600,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/hyperelliptic-local-reduction.py"
+          ]
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "ea10a46b48f72354b5d6ffe19eb0eb900547167f3d8ecea1efe8152fc42176ad",
+          "id": "independent-cpython-point-count",
+          "kind": "cpython",
+          "runnerPath": "bench/optimizer-workloads/production-modular-candidates.cjs"
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "exact-oracle",
+          "label": "exact certified Euler-factor projection outside production timing"
+        },
+        {
+          "id": "prepare",
+          "label": "polynomial ring and public curve construction outside production timing"
+        },
+        {
+          "id": "production",
+          "label": "uninstrumented public local-reduction operations"
+        },
+        {
+          "id": "top-level-setup",
+          "label": "source evaluation outside production timing"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 11,
+        "reset": "process",
+        "timeoutMilliseconds": 600000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "hyperelliptic-local-reduction"
+        ],
+        "environment": [
+          "SAGEJS_BENCH_ROOT",
+          "SAGEJS_REFERENCE_PYTHON"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/production-modular-candidates.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic"
+      ],
+      "title": "Hyperelliptic local reduction normalization workload"
+    },
+    {
+      "capabilities": [
         "optimizer-evidence"
       ],
       "class": "positive-control",
@@ -794,8 +1091,6 @@
       "title": "Small-prime residue batch"
     },
     {
-      "schema": "sagejs.optimizer-workload/v1",
-      "id": "sha256:95c54d3ec3da97334bc810a684ac85edf8f0da6cd6df1d54236d97fb48a546d5",
       "capabilities": [
         "optimizer-evidence",
         "prime-field"
@@ -805,6 +1100,7 @@
         "digest": "1dcfcbcd173ea76a60a6278ce311bed41c3dc2ea3d4c09983ef2003c072ab0df",
         "id": "public-modular-fold"
       },
+      "id": "sha256:95c54d3ec3da97334bc810a684ac85edf8f0da6cd6df1d54236d97fb48a546d5",
       "input": {
         "digest": "1b2d3ffb969fd145c5ed8098f93b37a55530e1005a48a25ea587e3e5ec00ccc2",
         "kind": "deterministic-generator",
@@ -956,6 +1252,7 @@
         "kind": "node-script",
         "path": "bench/optimizer-workloads/public-modular-fold.cjs"
       },
+      "schema": "sagejs.optimizer-workload/v1",
       "targets": [
         "generic",
         "library",
@@ -964,6 +1261,153 @@
         "wasm"
       ],
       "title": "Public exact modular fold compiler control"
+    },
+    {
+      "capabilities": [
+        "exact-arithmetic",
+        "optimizer-evidence",
+        "polynomial-calculus",
+        "prime-field"
+      ],
+      "class": "representative",
+      "corpus": {
+        "digest": "5867b3787f4c3ffdbabfa0a7535b748a1ea32957512e096c42883cbcf8fcbc08",
+        "id": "public-prime-polynomial-integral"
+      },
+      "id": "sha256:ac4f25a1636552870e352c39de5046ebdf2cbc058e10a5d9ad2955582ff426c0",
+      "input": {
+        "digest": "625da9e98ed3bda868ca2b27b2bf7066bebf248d80431e26ee3f75d5bcd9dcf3",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "exact degree, derivative replay, and canonical residue samples",
+          "expected": [
+            70000,
+            true,
+            [
+              0,
+              65530,
+              32767,
+              9,
+              0,
+              65530,
+              52453
+            ]
+          ],
+          "fixture": null,
+          "input": {
+            "coefficientRule": "(i*i+3*i-7) modulo 65537 except coefficient 65536 is zero",
+            "degree": 69999,
+            "modulus": 65537,
+            "zeroCoefficientIndex": 65536
+          },
+          "mode": "public-prime-polynomial-integral",
+          "oracleContract": {
+            "derivativeReplay": true,
+            "integralDegree": 70000,
+            "sampleIndices": [
+              0,
+              1,
+              2,
+              65536,
+              65537,
+              65538,
+              70000
+            ],
+            "sampleResidues": [
+              0,
+              65530,
+              32767,
+              9,
+              0,
+              65530,
+              52453
+            ],
+            "sourceZeroCoefficient": [
+              65536,
+              0
+            ]
+          },
+          "policy": {
+            "optimizerSelectionClaim": "none-workload-evidence-only",
+            "timingBoundary": "production-and-exact-oracle-are-separate-uninstrumented-phases"
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 11,
+              "timeout_seconds": 600,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/public-prime-polynomial-integral.py"
+          ]
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "5d86bc746f1335185e62afc58af05509f2b9475a030744f16035e1f05e729de8",
+          "id": "exact-derivative-replay",
+          "kind": "invariant",
+          "runnerPath": "bench/optimizer-workloads/production-modular-candidates.cjs"
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "exact-oracle",
+          "label": "exact derivative replay and stable residue projection outside production timing"
+        },
+        {
+          "id": "prepare",
+          "label": "prime field, polynomial ring, coefficients, and public polynomial construction outside production timing"
+        },
+        {
+          "id": "production",
+          "label": "uninstrumented public polynomial integral operation"
+        },
+        {
+          "id": "top-level-setup",
+          "label": "source evaluation outside production timing"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 11,
+        "reset": "process",
+        "timeoutMilliseconds": 600000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "public-prime-polynomial-integral"
+        ],
+        "environment": [
+          "SAGEJS_BENCH_ROOT"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/production-modular-candidates.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic"
+      ],
+      "title": "Public GF(65537) degree-69999 polynomial integral"
     },
     {
       "capabilities": [
@@ -1220,6 +1664,458 @@
         "v8"
       ],
       "title": "Cubic relation sieve generated-JavaScript target"
+    },
+    {
+      "capabilities": [
+        "exact-arithmetic",
+        "number-fields",
+        "optimizer-evidence",
+        "prime-field"
+      ],
+      "class": "held-out",
+      "corpus": {
+        "digest": "ce0ac77bb14fddcbbcb9f75b519c90d1845dd753f40adcc8690d7b1675b9099c",
+        "id": "number-field-local-polygons"
+      },
+      "id": "sha256:d74a454e4ce061ef0c6f320c5a221256725d25b63829ae4b8c80d5b7c5c4ff83",
+      "input": {
+        "digest": "94a8cf1270c5fc266a8240ca34e36d13d992767096a557daa964b14be21ef5b2",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "six exact local-polygon summaries plus repeated degree-32 summary",
+          "expected": null,
+          "fixture": null,
+          "input": {
+            "degree32Coefficients": [
+              4,
+              2,
+              "thirty-zero-coefficients",
+              1
+            ],
+            "degree32Prime": 2,
+            "fixtureNames": [
+              "sage-essential-discriminant-cubic",
+              "deep-cubic-index-four",
+              "totally-ramified-seven-cubic",
+              "lmfdb-quintic-index-two",
+              "irregular-two-adic-fallback",
+              "irregular-three-adic-second-layer"
+            ]
+          },
+          "mode": "number-field-local-polygons",
+          "oracleContract": {
+            "degree32Repetitions": {
+              "smoke": 2,
+              "standard": 20
+            },
+            "degree32Summary": [
+              "regular-enlargement",
+              1,
+              2,
+              true,
+              32,
+              63
+            ],
+            "fixtureSummaries": [
+              [
+                "regular-enlargement",
+                1,
+                [
+                  [
+                    2,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    2,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    1
+                  ]
+                ],
+                2,
+                true,
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  1
+                ],
+                [
+                  [
+                    [
+                      0,
+                      3
+                    ],
+                    [
+                      1,
+                      1
+                    ],
+                    [
+                      2,
+                      0
+                    ],
+                    [
+                      3,
+                      0
+                    ]
+                  ]
+                ]
+              ],
+              [
+                "regular-enlargement",
+                3,
+                [
+                  [
+                    4,
+                    0,
+                    0
+                  ],
+                  [
+                    2,
+                    2,
+                    0
+                  ],
+                  [
+                    3,
+                    0,
+                    1
+                  ]
+                ],
+                4,
+                true,
+                [
+                  1
+                ],
+                [
+                  3
+                ],
+                [
+                  [
+                    [
+                      0,
+                      3
+                    ],
+                    [
+                      3,
+                      0
+                    ]
+                  ]
+                ]
+              ],
+              [
+                "regular-enlargement",
+                1,
+                [
+                  [
+                    7,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    7,
+                    0
+                  ],
+                  [
+                    4,
+                    3,
+                    1
+                  ]
+                ],
+                7,
+                true,
+                [
+                  1
+                ],
+                [
+                  3
+                ],
+                [
+                  [
+                    [
+                      0,
+                      2
+                    ],
+                    [
+                      3,
+                      0
+                    ]
+                  ]
+                ]
+              ],
+              [
+                "regular-enlargement",
+                1,
+                [
+                  [
+                    2,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    2,
+                    0,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    2,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    0,
+                    0,
+                    2,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    0,
+                    0,
+                    1
+                  ]
+                ],
+                2,
+                true,
+                [
+                  1,
+                  1,
+                  2
+                ],
+                [
+                  1,
+                  2,
+                  1
+                ],
+                [
+                  [
+                    [
+                      0,
+                      2
+                    ],
+                    [
+                      2,
+                      0
+                    ],
+                    [
+                      5,
+                      0
+                    ]
+                  ]
+                ]
+              ],
+              [
+                "fallback-required",
+                1,
+                [
+                  [
+                    2,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    2,
+                    0
+                  ],
+                  [
+                    0,
+                    1,
+                    1
+                  ]
+                ],
+                2,
+                false,
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  1
+                ],
+                [
+                  [
+                    [
+                      0,
+                      2
+                    ],
+                    [
+                      2,
+                      0
+                    ],
+                    [
+                      3,
+                      0
+                    ]
+                  ]
+                ]
+              ],
+              [
+                "fallback-required",
+                1,
+                [
+                  [
+                    3,
+                    0,
+                    0
+                  ],
+                  [
+                    0,
+                    3,
+                    0
+                  ],
+                  [
+                    2,
+                    0,
+                    1
+                  ]
+                ],
+                3,
+                false,
+                [
+                  1,
+                  1
+                ],
+                [
+                  2,
+                  1
+                ],
+                [
+                  [
+                    [
+                      0,
+                      2
+                    ],
+                    [
+                      2,
+                      0
+                    ],
+                    [
+                      3,
+                      0
+                    ]
+                  ]
+                ]
+              ]
+            ],
+            "sameSourceCpythonDifferential": true
+          },
+          "policy": {
+            "optimizerSelectionClaim": "none-workload-evidence-only",
+            "timingBoundary": "production-and-exact-oracle-are-separate-uninstrumented-phases"
+          },
+          "profiles": {
+            "smoke": {
+              "degree_32_repetitions": 2,
+              "samples": 3,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "degree_32_repetitions": 20,
+              "samples": 11,
+              "timeout_seconds": 600,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/number-field-local-polygons.py"
+          ]
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "f11537f37e0d367092cf626e4beec3ae3bca9db0d9bc2d35e62e4558d32b1ea5",
+          "id": "same-source-cpython",
+          "kind": "cpython",
+          "runnerPath": "bench/optimizer-workloads/production-modular-candidates.cjs"
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "cpython-exact-oracle",
+          "label": "CPython exact fixture verification and stable projection outside CPython production timing"
+        },
+        {
+          "id": "cpython-prepare",
+          "label": "CPython module loading outside CPython production timing"
+        },
+        {
+          "id": "cpython-production",
+          "label": "uninstrumented CPython local-polygon production operations"
+        },
+        {
+          "id": "cpython-top-level-setup",
+          "label": "CPython source evaluation outside CPython production timing"
+        },
+        {
+          "id": "exact-oracle",
+          "label": "Sage.js exact fixture verification and stable projection outside production timing"
+        },
+        {
+          "id": "prepare",
+          "label": "Sage.js module loading outside production timing"
+        },
+        {
+          "id": "production",
+          "label": "uninstrumented Sage.js local-polygon production operations"
+        },
+        {
+          "id": "top-level-setup",
+          "label": "Sage.js source evaluation outside production timing"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 11,
+        "reset": "process",
+        "timeoutMilliseconds": 600000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "number-field-local-polygons"
+        ],
+        "environment": [
+          "SAGEJS_BENCH_ROOT",
+          "SAGEJS_REFERENCE_PYTHON"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/production-modular-candidates.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic"
+      ],
+      "title": "Number-field local-polygon production analysis"
     },
     {
       "capabilities": [
