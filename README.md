@@ -530,6 +530,7 @@ call. This is complemented by a sparse prime-level supersingular
 implementation of Mestre's graph method, exact Wiedemann/CRT certificates,
 Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
 Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
+[Brandt modules over the rational numbers](docs/brandt-modules.md) and
 [Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md).
 
 ## Sage mode
