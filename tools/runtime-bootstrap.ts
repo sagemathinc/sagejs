@@ -69,6 +69,7 @@ export interface RuntimeBootstrapController {
 
 export interface RuntimeOptimizerProfileSession {
   seal(): void;
+  assertNoLateImports(): void;
   end(): void;
 }
 
@@ -421,6 +422,7 @@ export function runRuntimeBootstrap(
   let activeOptimizerProfile: (RuntimeOptimizerProfileSessionOptions & {
     profiledModules: Set<string>;
     sealed: boolean;
+    lateImportAttempt: string | null;
   }) | undefined;
   let optimizerProfileContaminated = false;
   // Module ``__dict__`` is a live writable mapping in CPython.  Keep an
@@ -883,6 +885,7 @@ export function runRuntimeBootstrap(
       return Reflect.get(registry, name);
     }
     if (activeOptimizerProfile?.sealed) {
+      activeOptimizerProfile.lateImportAttempt ??= name;
       throw new OptimizerProfileLateImportError(name);
     }
 
@@ -1222,6 +1225,7 @@ export function runRuntimeBootstrap(
         ...options,
         profiledModules: new Set<string>(),
         sealed: false,
+        lateImportAttempt: null as string | null,
       };
       activeOptimizerProfile = session;
       let ended = false;
@@ -1237,6 +1241,12 @@ export function runRuntimeBootstrap(
             throw new Error("optimizer profile runtime session is already sealed");
           }
           session.sealed = true;
+        },
+        assertNoLateImports(): void {
+          assertActive();
+          if (session.lateImportAttempt !== null) {
+            throw new OptimizerProfileLateImportError(session.lateImportAttempt);
+          }
         },
         end(): void {
           assertActive();

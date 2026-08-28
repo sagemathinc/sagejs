@@ -722,6 +722,9 @@ export function createKernelEvaluator({
                 try {
                   global.ρσ_check_interrupt();
                   execution = measureExecution(sampledEntry);
+                  // A Python workload may catch the lazy-loader exception.
+                  // The host-owned latch still invalidates the receipt.
+                  runtimeProfile!.assertNoLateImports();
                   return execution.value;
                 } finally {
                   if (interruptState) Atomics.store(interruptState, 1, 0);

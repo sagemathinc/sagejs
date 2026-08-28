@@ -797,6 +797,26 @@ test("sampling channels conserve independently and authenticate only attributed 
   forged.authority = "host-collector-with-private-evaluator-evidence";
   forged.sampling.kind = "v8-cpu";
   forged.sampling.rawProfileDigest = rawDigest("f");
+  forged.sampling.scripts = [{
+    url: "sagejs-profile://nonce/authenticated.js",
+    sha256: rawDigest("a"),
+    bytes: 1,
+    authenticatedScriptIds: ["authenticated"],
+    rejectedSameUrlScriptIds: [],
+  }];
+  forged.sampling.protocol = {
+    scope: "cold-generated-javascript-load-and-execution",
+    preparationMicroseconds: 0,
+    warmupRuns: 0,
+    repetitions: 1,
+    declaredArtifactCount: 1,
+    authenticatedArtifactCount: 1,
+    lateArtifactCount: 0,
+    closureDigest: common.sha256(common.canonicalJson({
+      scripts: forged.sampling.scripts,
+      mapBindings: forged.sampling.mapBindings,
+    })),
+  };
   forged.sampling.functionSampleCounts = { total: 1, attributed: 0, ambiguous: 0, unmatched: 1 };
   forged.sampling.functionSamples = [{
     nodeId: 1,
