@@ -1,0 +1,94 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-warm-profiler",
+  "title": "Warm sealed optimizer profiling",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement warm prepared source profiling that authenticates and seals the lazy-module closure before CPU sampling, clears warmup telemetry, and fails on late imports without changing ordinary evaluation.",
+  "base_commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+  "claims": [
+    "tools/optimizer-profiler.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "scripts/optimizer-profile.cjs",
+    "test/optimizer-profile-warm.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact profile-off/profile-on output and route conservation",
+      "Authenticated source map and dashboard identity equality"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimizer-profile-warm.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.958,
+      "started_at": "2026-08-28T11:55:49.973Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7ed38415a5292b067f73baf195c510c60234549e7cea1cecbe87cfae00cbf091",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 343.202,
+      "started_at": "2026-08-28T11:56:43.499Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7ed38415a5292b067f73baf195c510c60234549e7cea1cecbe87cfae00cbf091",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.478,
+      "started_at": "2026-08-28T12:02:42.348Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7ed38415a5292b067f73baf195c510c60234549e7cea1cecbe87cfae00cbf091",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.375,
+      "started_at": "2026-08-28T12:03:31.689Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7ed38415a5292b067f73baf195c510c60234549e7cea1cecbe87cfae00cbf091",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds a prepared optimizer-profile lifecycle: root load, optional prepare entry, lazy closure compilation, warmups, route reset, exact Inspector source authentication, closure sealing, and repeated sampled entry calls. The CLI exposes --prepare, --entry, --warmups, and --repetitions. Late lazy imports fail before module resolution or compilation, while profiles without an entry retain the existing cold behavior.",
+    "risks": [
+      "The shared profile sampling schema does not yet carry the prepared protocol. Integration must add and independently validate {scope, preparationMicroseconds, warmupRuns, repetitions, declaredArtifactCount, authenticatedArtifactCount, lateArtifactCount, closureDigest} before promotion receipts can prove warm sealing.",
+      "OptimizerProfileLateImportError is raised before late import effects, but evaluated Python can catch it. Integration should add a host-owned late-attempt counter and post-entry assertion if caught attempts must invalidate the whole profile rather than only the import operation."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into integration and extend the shared sampling schema/assembler with the agreed prepared protocol object.",
+      "Collect the three production workload profiles using --prepare __profile_prepare__ --entry __profile_run__ with catalog-matched warmups and repetitions.",
+      "Run final platform and broad repository gates from integration after shared schema changes."
+    ]
+  }
+}

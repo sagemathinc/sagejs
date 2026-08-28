@@ -52,6 +52,7 @@ export interface PrivateProfileEventCollector {
     outcome: OptimizerProfileEventOutcome,
     rawGuardReason?: string | null,
   ): void;
+  clear(): void;
   snapshot(): OptimizerProfileEventSnapshot;
 }
 
@@ -99,12 +100,16 @@ export type OptimizerProfileObservation = Readonly<{
   sampling: Readonly<{
     scope:
       | "cold-generated-javascript-load-and-execution"
-      | "cold-generated-javascript-and-current-source-lazy-modules";
+      | "cold-generated-javascript-and-current-source-lazy-modules"
+      | "warm-prepared-sealed-generated-javascript-execution";
     requestedIntervalMicros: number;
     startTimeMicros: number;
     endTimeMicros: number;
     sampledDurationMicros: number;
     wallMicros: number;
+    preparationMicros: number;
+    warmupRuns: number;
+    repetitions: number;
   }>;
   raw: Readonly<{
     sha256: string;
@@ -306,7 +311,11 @@ export function createPrivateProfileEventCollector(): PrivateProfileEventCollect
       }))),
     });
   };
-  return Object.freeze({ observer, snapshot });
+  const clear = (): void => {
+    aggregates.clear();
+    count = 0;
+  };
+  return Object.freeze({ observer, clear, snapshot });
 }
 
 export function nodeProfileCapabilities() {
@@ -493,6 +502,10 @@ function buildReceipt(options: {
   profile: InspectorProfile;
   requestedIntervalMicros: number;
   wallMicros: number;
+  preparationMicros: number;
+  prepared: boolean;
+  warmupRuns: number;
+  repetitions: number;
   privateEvents: OptimizerProfileEventSnapshot;
   actionThrew: boolean;
   actionError?: unknown;
@@ -744,14 +757,19 @@ function buildReceipt(options: {
       mapDigest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
     }))),
     sampling: Object.freeze({
-      scope: artifacts.length === 1
-        ? "cold-generated-javascript-load-and-execution"
-        : "cold-generated-javascript-and-current-source-lazy-modules",
+      scope: options.prepared
+        ? "warm-prepared-sealed-generated-javascript-execution"
+        : artifacts.length === 1
+          ? "cold-generated-javascript-load-and-execution"
+          : "cold-generated-javascript-and-current-source-lazy-modules",
       requestedIntervalMicros: options.requestedIntervalMicros,
       startTimeMicros: profile.startTime,
       endTimeMicros: profile.endTime,
       sampledDurationMicros: Math.max(0, profile.endTime - profile.startTime),
       wallMicros: options.wallMicros,
+      preparationMicros: options.preparationMicros,
+      warmupRuns: options.warmupRuns,
+      repetitions: options.repetitions,
     }),
     raw: Object.freeze({
       sha256: profileSha256(rawJson),
@@ -805,14 +823,22 @@ function authenticateCandidate(
 export async function runAuthenticatedNodeProfile({
   map,
   javascript,
+  prepare,
+  seal,
   execute,
   samplingIntervalMicros = 500,
+  warmupRuns = prepare === undefined ? 0 : 1,
+  repetitions = 1,
   privateEvents = createPrivateProfileEventCollector(),
 }: {
   map: OptimizerProfileMap;
   javascript: string;
+  prepare?: (artifacts: OptimizerProfileArtifactRegistry) => unknown;
+  seal?: () => unknown;
   execute: (artifacts: OptimizerProfileArtifactRegistry) => unknown;
   samplingIntervalMicros?: number;
+  warmupRuns?: number;
+  repetitions?: number;
   privateEvents?: PrivateProfileEventCollector;
 }): Promise<OptimizerProfileObservation> {
   const declarations: DeclaredArtifact[] = [];
@@ -854,6 +880,17 @@ export async function runAuthenticatedNodeProfile({
       samplingIntervalMicros < 50 || samplingIntervalMicros > 100_000) {
     throw new RangeError("samplingIntervalMicros must be an integer from 50 through 100000");
   }
+  if (!Number.isSafeInteger(warmupRuns) || warmupRuns < 0) {
+    throw new RangeError("warmupRuns must be a nonnegative safe integer");
+  }
+  if (!Number.isSafeInteger(repetitions) || repetitions < 1) {
+    throw new RangeError("repetitions must be a positive safe integer");
+  }
+  if (!prepare && (seal || warmupRuns !== 0 || repetitions !== 1)) {
+    throw new TypeError(
+      "warmupRuns, repetitions, and seal require a prepared optimizer profile",
+    );
+  }
   const session = new Session();
   const candidatePromisesByUrl = new Map<string, Promise<ScriptCandidate>[]>();
   let connected = false;
@@ -870,7 +907,34 @@ export async function runAuthenticatedNodeProfile({
   let actionError: unknown;
   let actionThrew = false;
   let wallMicros = 0;
+  let preparationMicros = 0;
+  const requireSynchronousResult = (result: unknown, phase: string): void => {
+    if (result !== null && typeof result === "object" &&
+        typeof Reflect.get(result, "then") === "function") {
+      throw new TypeError(`profile ${phase} callback must be synchronous`);
+    }
+  };
   try {
+    if (prepare) {
+      const preparationStart = process.hrtime.bigint();
+      try {
+        requireSynchronousResult(prepare(artifacts), "prepare");
+        for (let run = 0; run < warmupRuns; run += 1) {
+          requireSynchronousResult(execute(artifacts), "warmup");
+        }
+        // Preparation and warmup are deliberately outside both evidence
+        // channels. Route counts describe exactly the sampled repetitions.
+        privateEvents.clear();
+        if (seal) requireSynchronousResult(seal(), "seal");
+      } finally {
+        preparationMicros = Number(
+          process.hrtime.bigint() - preparationStart,
+        ) / 1_000;
+        // A prepared profile authenticates one complete artifact closure.
+        // Any later declaration is evidence that preparation was incomplete.
+        acceptDeclarations = false;
+      }
+    }
     session.connect();
     connected = true;
     session.on("Debugger.scriptParsed", (message: any) => {
@@ -892,8 +956,26 @@ export async function runAuthenticatedNodeProfile({
       })));
       candidatePromisesByUrl.set(url, candidates);
     });
+    acceptCandidates = true;
     await post(session, "Debugger.enable");
     debuggerEnabled = true;
+    if (prepare) {
+      // Debugger.enable reports scripts which V8 parsed before the Inspector
+      // session connected. Authenticate the complete prepared closure before
+      // the CPU sampler starts, so source compilation cannot consume samples.
+      authenticatedArtifacts = await Promise.all(declarations.map(
+        async (declaration) => ({
+          ...declaration,
+          candidate: authenticateCandidate(
+            declaration.map,
+            declaration.javascript,
+            await Promise.all(
+              candidatePromisesByUrl.get(declaration.map.generated.url) ?? [],
+            ),
+          ),
+        }),
+      ));
+    }
     await post(session, "Profiler.enable");
     profilerEnabled = true;
     await post(session, "Profiler.setSamplingInterval", {
@@ -901,13 +983,10 @@ export async function runAuthenticatedNodeProfile({
     });
     await post(session, "Profiler.start");
     profilerStarted = true;
-    acceptCandidates = true;
     const wallStart = process.hrtime.bigint();
     try {
-      const result = execute(artifacts);
-      if (result !== null && typeof result === "object" &&
-          typeof Reflect.get(result, "then") === "function") {
-        throw new TypeError("profile execute callback must be synchronous");
+      for (let run = 0; run < repetitions; run += 1) {
+        requireSynchronousResult(execute(artifacts), "execute");
       }
     } catch (error) {
       actionThrew = true;
@@ -922,16 +1001,20 @@ export async function runAuthenticatedNodeProfile({
     acceptCandidates = false;
     // Source retrieval is an Inspector request too. Authenticate while the
     // Debugger domain and session are still alive, before cleanup can race it.
-    authenticatedArtifacts = await Promise.all(declarations.map(async (declaration) => ({
-      ...declaration,
-      candidate: authenticateCandidate(
-        declaration.map,
-        declaration.javascript,
-        await Promise.all(
-          candidatePromisesByUrl.get(declaration.map.generated.url) ?? [],
-        ),
-      ),
-    })));
+    if (!prepare) {
+      authenticatedArtifacts = await Promise.all(declarations.map(
+        async (declaration) => ({
+          ...declaration,
+          candidate: authenticateCandidate(
+            declaration.map,
+            declaration.javascript,
+            await Promise.all(
+              candidatePromisesByUrl.get(declaration.map.generated.url) ?? [],
+            ),
+          ),
+        }),
+      ));
+    }
   } finally {
     if (profilerStarted) {
       try {
@@ -963,6 +1046,10 @@ export async function runAuthenticatedNodeProfile({
     profile,
     requestedIntervalMicros: samplingIntervalMicros,
     wallMicros,
+    preparationMicros,
+    prepared: prepare !== undefined,
+    warmupRuns,
+    repetitions,
     privateEvents: privateEvents.snapshot(),
     actionThrew,
     actionError,
