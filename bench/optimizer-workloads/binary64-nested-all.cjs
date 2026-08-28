@@ -40,12 +40,18 @@ const SCALAR_EXPRESSION = `if numeric_values is not None and all(
 const SCALAR_REPLACEMENT = `if numeric_values is not None and _campaign1_checked_nested_binary64_all(
             numeric_values, all, math.isfinite, False
         ):`;
+const DIRECT_V8_SCALAR_REPLACEMENT = `if numeric_values is not None and _campaign1_direct_v8_nested_binary64_all(
+            numeric_values, all, math.isfinite, False
+        ):`;
 const VECTOR_EXPRESSION = `if numeric_pairs is not None and all(
             math.isfinite(pair[0]) and math.isfinite(pair[1])
             for row in numeric_pairs
             for pair in row
         ):`;
 const VECTOR_REPLACEMENT = `if numeric_pairs is not None and _campaign1_checked_nested_binary64_all(
+            numeric_pairs, all, math.isfinite, True
+        ):`;
+const DIRECT_V8_VECTOR_REPLACEMENT = `if numeric_pairs is not None and _campaign1_direct_v8_nested_binary64_all(
             numeric_pairs, all, math.isfinite, True
         ):`;
 const FLOAT_MATERIALIZATION_EXPRESSION =
@@ -92,6 +98,27 @@ function deriveCandidateSource(publicSource, profileSource) {
   assert.equal(occurrences(transformed, VECTOR_EXPRESSION), 0);
   assert.equal(occurrences(transformed, SCALAR_REPLACEMENT), 1);
   assert.equal(occurrences(transformed, VECTOR_REPLACEMENT), 1);
+  return `${transformed.trimEnd()}\n\n${helperSource(profileSource)}\n`;
+}
+
+function deriveDirectV8Source(publicSource, profileSource) {
+  assert.equal(
+    occurrences(publicSource, SCALAR_EXPRESSION),
+    1,
+    "the public scalar reduction source changed",
+  );
+  assert.equal(
+    occurrences(publicSource, VECTOR_EXPRESSION),
+    1,
+    "the public vector reduction source changed",
+  );
+  const transformed = publicSource
+    .replace(SCALAR_EXPRESSION, DIRECT_V8_SCALAR_REPLACEMENT)
+    .replace(VECTOR_EXPRESSION, DIRECT_V8_VECTOR_REPLACEMENT);
+  assert.equal(occurrences(transformed, SCALAR_EXPRESSION), 0);
+  assert.equal(occurrences(transformed, VECTOR_EXPRESSION), 0);
+  assert.equal(occurrences(transformed, DIRECT_V8_SCALAR_REPLACEMENT), 1);
+  assert.equal(occurrences(transformed, DIRECT_V8_VECTOR_REPLACEMENT), 1);
   return `${transformed.trimEnd()}\n\n${helperSource(profileSource)}\n`;
 }
 
@@ -390,7 +417,12 @@ function workloadCatalogEntry(oracle) {
 }
 
 function catalogInsertion(catalog, workload) {
-  const ids = [...catalog.workloads.map((item) => item.id), workload.id].sort();
+  const ids = [
+    ...catalog.workloads
+      .map((item) => item.id)
+      .filter((id) => id !== workload.id),
+    workload.id,
+  ].sort();
   return {
     index: ids.indexOf(workload.id),
     beforeId: ids[ids.indexOf(workload.id) - 1] ?? null,
@@ -421,7 +453,9 @@ function candidateDispositions() {
       status: "measured-feasibility-not-production-route",
       scope: "complete-public-call",
       detail:
-        "exact public source with only the two reviewed nested all expressions replaced by the checked target",
+        "exact public source with only the two reviewed nested all expressions replaced by the emitter-faithful direct V8 lower bound",
+      productionGap:
+        "prototype checks are lower-bound scaffolding; production requires unforgeable runtime list and tuple brands",
     },
     wasm: {
       status: "not-run-inconclusive",
@@ -463,7 +497,8 @@ function sourceProvenance(
   root,
   publicSource,
   profileSource,
-  candidateSource,
+  pythonSourceFeasibilitySource,
+  directV8Source,
   floatMaterializationSource,
 ) {
   const publicFunctionStart = publicSource.indexOf("def sample_scalar_grid(");
@@ -477,12 +512,15 @@ function sourceProvenance(
     ),
     profilePath: PROFILE_SOURCE,
     profileSha256: sha256(profileSource),
-    candidateSha256: sha256(candidateSource),
-    candidateBytes: Buffer.byteLength(candidateSource),
+    pythonSourceFeasibilitySha256: sha256(pythonSourceFeasibilitySource),
+    pythonSourceFeasibilityBytes:
+      Buffer.byteLength(pythonSourceFeasibilitySource),
+    directV8Sha256: sha256(directV8Source),
+    directV8Bytes: Buffer.byteLength(directV8Source),
     floatMaterializationNegativeSha256: sha256(floatMaterializationSource),
     floatMaterializationNegativeBytes:
       Buffer.byteLength(floatMaterializationSource),
-    transformation: {
+    pythonSourceFeasibilityTransformation: {
       authority: "exact-byte-source-substitution",
       replacedExpressions: 2,
       scalarOriginalSha256: sha256(SCALAR_EXPRESSION),
@@ -491,6 +529,18 @@ function sourceProvenance(
       vectorReplacementSha256: sha256(VECTOR_REPLACEMENT),
       appendedCheckedHelperSha256: sha256(helperSource(profileSource)),
       allOtherPublicSourceBytesIdentical: true,
+    },
+    directV8Transformation: {
+      authority: "exact-byte-source-substitution",
+      replacedExpressions: 2,
+      scalarOriginalSha256: sha256(SCALAR_EXPRESSION),
+      scalarReplacementSha256: sha256(DIRECT_V8_SCALAR_REPLACEMENT),
+      vectorOriginalSha256: sha256(VECTOR_EXPRESSION),
+      vectorReplacementSha256: sha256(DIRECT_V8_VECTOR_REPLACEMENT),
+      appendedCheckedHelperSha256: sha256(helperSource(profileSource)),
+      allOtherPublicSourceBytesIdentical: true,
+      feasibilityOnly:
+        "prototype guards are a lower bound; a production route needs unforgeable runtime list and tuple brands",
     },
     negativeTransformation: {
       authority: "exact-byte-source-substitution",
@@ -509,13 +559,17 @@ function evaluatorSetupSource() {
 import math as _campaign1_math
 import sagejs.runtime as _campaign1_runtime
 
-_campaign1_candidate_scalar = _campaign1_nested_all_scalar
-_campaign1_candidate_vector = _campaign1_nested_all_vector
+_campaign1_direct_candidate_scalar = _campaign1_direct_v8_scalar
+_campaign1_direct_candidate_vector = _campaign1_direct_v8_vector
+_campaign1_python_source_scalar = _campaign1_python_nested_all_scalar
+_campaign1_python_source_vector = _campaign1_python_nested_all_vector
 _campaign1_float_materialization_scalar = sample_scalar_grid
 
 def _campaign1_measure_scalar(target, points):
-    if target == "nested-all":
-        sampler = _campaign1_candidate_scalar
+    if target == "direct-v8":
+        sampler = _campaign1_direct_candidate_scalar
+    elif target == "python-source":
+        sampler = _campaign1_python_source_scalar
     elif target == "float-materialization":
         sampler = _campaign1_float_materialization_scalar
     else:
@@ -526,7 +580,12 @@ def _campaign1_measure_scalar(target, points):
     return {"seconds": seconds, "digest": campaign1_complete_output_digest(output)}
 
 def _campaign1_measure_vector(target, points):
-    sampler = _campaign1_candidate_vector if target == "nested-all" else _public_sample_vector_grid
+    if target == "direct-v8":
+        sampler = _campaign1_direct_candidate_vector
+    elif target == "python-source":
+        sampler = _campaign1_python_source_vector
+    else:
+        sampler = _public_sample_vector_grid
     started = _campaign1_runtime.wall_time()
     output = campaign1_vector_grid(sampler=sampler, plot_points=points)
     seconds = _campaign1_runtime.wall_time() - started
@@ -555,6 +614,72 @@ def _campaign1_guard_audit():
     row_shape_fallback = _campaign1_checked_nested_binary64_all(
         (scalar[0],), replacement_all, _CAMPAIGN1_EXPECTED_ISFINITE, False
     )
+
+    direct_fallback_calls = [0]
+    direct_seen = []
+
+    def direct_replacement_all(iterable):
+        direct_fallback_calls[0] += 1
+        return _CAMPAIGN1_EXPECTED_ALL(iterable)
+
+    def direct_replacement_predicate(value):
+        direct_seen.append(float(value))
+        return len(direct_seen) < 2
+
+    direct_builtin_identity_fallback = _campaign1_direct_v8_nested_binary64_all(
+        scalar, direct_replacement_all, _CAMPAIGN1_EXPECTED_ISFINITE, False
+    )
+    direct_predicate_identity_fallback = _campaign1_direct_v8_nested_binary64_all(
+        scalar, _CAMPAIGN1_EXPECTED_ALL, direct_replacement_predicate, False
+    )
+    direct_row_shape_fallback = _campaign1_direct_v8_nested_binary64_all(
+        (scalar[0],), direct_replacement_all, _CAMPAIGN1_EXPECTED_ISFINITE, False
+    )
+    source_order_row = [[float(1.0), float("inf"), float(3.0)]]
+    _campaign1_runtime.reflect.deleteProperty(source_order_row[0], 2)
+    source_order_sentinel = _campaign1_runtime.reflect.apply(
+        _CAMPAIGN1_DIRECT_V8_NESTED_ALL, None, [source_order_row, False]
+    )
+
+    direct_interrupt_calls = [0]
+    def direct_count_interrupt():
+        direct_interrupt_calls[0] += 1
+    direct_saved_interrupt = _campaign1_runtime.reflect.get(
+        _campaign1_runtime.global_object, "ρσ_check_interrupt"
+    )
+    _campaign1_runtime.reflect.set(
+        _campaign1_runtime.global_object,
+        "ρσ_check_interrupt",
+        direct_count_interrupt,
+    )
+    try:
+        direct_interrupt_target = _campaign1_runtime.reflect.apply(
+            _CAMPAIGN1_DIRECT_V8_FACTORY,
+            None,
+            [
+                _campaign1_runtime.reflect.get(
+                    _campaign1_runtime.global_object, "ρσ_strict_float_unbox"
+                ),
+                direct_count_interrupt,
+                _campaign1_runtime.reflect.get(
+                    _campaign1_runtime.global_object, "ρσ_list_decorate"
+                ),
+                _campaign1_runtime.reflect.get(
+                    _campaign1_runtime.global_object, "ρσ_math_tuple"
+                ),
+            ],
+        )
+        direct_interrupt_sentinel = _campaign1_runtime.reflect.apply(
+            direct_interrupt_target,
+            None,
+            [[[float(index) + 0.5 for index in range(513)]], False],
+        )
+    finally:
+        _campaign1_runtime.reflect.set(
+            _campaign1_runtime.global_object,
+            "ρσ_check_interrupt",
+            direct_saved_interrupt,
+        )
 
     interrupt_calls = [0]
     saved_interrupt = _campaign1_runtime.check_interrupt
@@ -593,6 +718,27 @@ def _campaign1_guard_audit():
         "interrupt_intrinsic_immune_to_module_replacement": interrupt_calls[0] == 0,
         "periodic_interrupt_stride": 1024,
         "interrupt_result": interrupt_result,
+        "direct_accepted_scalar": _campaign1_direct_v8_nested_binary64_all(
+            scalar, _CAMPAIGN1_EXPECTED_ALL, _CAMPAIGN1_EXPECTED_ISFINITE, False
+        ),
+        "direct_accepted_fixed_pair": _campaign1_direct_v8_nested_binary64_all(
+            pairs, _CAMPAIGN1_EXPECTED_ALL, _CAMPAIGN1_EXPECTED_ISFINITE, True
+        ),
+        "direct_nonfinite_short_circuit": _campaign1_direct_v8_nested_binary64_all(
+            [[float(1.0), float("inf"), float(3.0)]],
+            _CAMPAIGN1_EXPECTED_ALL,
+            _CAMPAIGN1_EXPECTED_ISFINITE,
+            False,
+        ),
+        "direct_builtin_identity_fallback": direct_builtin_identity_fallback,
+        "direct_predicate_identity_fallback": direct_predicate_identity_fallback,
+        "direct_row_shape_fallback": direct_row_shape_fallback,
+        "direct_fallback_calls": direct_fallback_calls[0],
+        "direct_fallback_predicate_seen": direct_seen,
+        "direct_periodic_interrupt_stride": 256,
+        "direct_nonfinite_before_later_hole_sentinel": source_order_sentinel,
+        "direct_interrupt_audit_sentinel": direct_interrupt_sentinel,
+        "direct_interrupt_calls_for_513_scalars": direct_interrupt_calls[0],
     }
 `;
 }
@@ -668,6 +814,7 @@ async function createRunner(
   root,
   profileSource,
   candidateSource,
+  directV8Source,
   floatMaterializationSource,
   level = "O2",
 ) {
@@ -706,10 +853,24 @@ async function createRunner(
       suppressResult: true,
     });
     evaluator.evaluate(
-      "_campaign1_nested_all_scalar = sample_scalar_grid\n" +
-        "_campaign1_nested_all_vector = sample_vector_grid\n",
+      "_campaign1_python_nested_all_scalar = sample_scalar_grid\n" +
+        "_campaign1_python_nested_all_vector = sample_vector_grid\n",
       {
-        filename: "sagejs-feasibility:///binary64-nested-all-bind.py",
+        filename: "sagejs-feasibility:///binary64-python-source-bind.py",
+        language: "python",
+        suppressResult: true,
+      },
+    );
+    evaluator.evaluate(directV8Source, {
+      filename: "sagejs-feasibility:///binary64-direct-v8-lower-bound.py",
+      language: "python",
+      suppressResult: true,
+    });
+    evaluator.evaluate(
+      "_campaign1_direct_v8_scalar = sample_scalar_grid\n" +
+        "_campaign1_direct_v8_vector = sample_vector_grid\n",
+      {
+        filename: "sagejs-feasibility:///binary64-direct-v8-bind.py",
         language: "python",
         suppressResult: true,
       },
@@ -748,7 +909,12 @@ async function createRunner(
   }
 
   function measure(kind, target, points) {
-    if (!new Set(["baseline", "nested-all", "float-materialization"]).has(target)) {
+    if (!new Set([
+      "baseline",
+      "direct-v8",
+      "python-source",
+      "float-materialization",
+    ]).has(target)) {
       throw new Error(`unknown binary64 target ${target}`);
     }
     if (kind === "vector" && target === "float-materialization") {
@@ -832,6 +998,19 @@ function validateReport(report) {
   assert.equal(report.guardAudit.periodic_interrupt_stride, 1024);
   assert.equal(report.guardAudit.interrupt_result, true);
   assert.equal(report.guardAudit.nonfinite_short_circuit, false);
+  assert.equal(report.guardAudit.direct_accepted_scalar, true);
+  assert.equal(report.guardAudit.direct_accepted_fixed_pair, true);
+  assert.equal(report.guardAudit.direct_nonfinite_short_circuit, false);
+  assert.equal(report.guardAudit.direct_fallback_calls, 2);
+  assert.deepEqual(report.guardAudit.direct_fallback_predicate_seen, [1, 2]);
+  assert.equal(report.guardAudit.direct_periodic_interrupt_stride, 256);
+  assert.equal(report.guardAudit.direct_nonfinite_before_later_hole_sentinel, 2);
+  assert.equal(report.guardAudit.direct_interrupt_audit_sentinel, 1);
+  assert.equal(report.guardAudit.direct_interrupt_calls_for_513_scalars, 3);
+  assert.deepEqual(
+    report.exactDifferential.pythonSourceFeasibility,
+    report.exactDifferential.currentGeneric,
+  );
   return report;
 }
 
@@ -881,6 +1060,7 @@ async function runFeasibility({
   const publicSource = fs.readFileSync(path.join(root, PUBLIC_SOURCE), "utf8");
   const profileSource = fs.readFileSync(path.join(root, PROFILE_SOURCE), "utf8");
   const candidateSource = deriveCandidateSource(publicSource, profileSource);
+  const directV8Source = deriveDirectV8Source(publicSource, profileSource);
   const floatMaterializationSource = deriveFloatMaterializationSource(
     publicSource,
     profileSource,
@@ -890,6 +1070,7 @@ async function runFeasibility({
     publicSource,
     profileSource,
     candidateSource,
+    directV8Source,
     floatMaterializationSource,
   );
   const oracle = independentCpythonOracle(scalarPoints, vectorPoints);
@@ -914,6 +1095,7 @@ async function runFeasibility({
     root,
     profileSource,
     candidateSource,
+    directV8Source,
     floatMaterializationSource,
     "O2",
   );
@@ -924,18 +1106,25 @@ async function runFeasibility({
       vectorCompleteOutputDigest:
         runner.measure("vector", "baseline", vectorPoints).digest,
     };
-    const candidateExact = {
+    const directV8Exact = {
       scalarCompleteOutputDigest:
-        runner.measure("scalar", "nested-all", scalarPoints).digest,
+        runner.measure("scalar", "direct-v8", scalarPoints).digest,
       vectorCompleteOutputDigest:
-        runner.measure("vector", "nested-all", vectorPoints).digest,
+        runner.measure("vector", "direct-v8", vectorPoints).digest,
+    };
+    const pythonSourceExact = {
+      scalarCompleteOutputDigest:
+        runner.measure("scalar", "python-source", scalarPoints).digest,
+      vectorCompleteOutputDigest:
+        runner.measure("vector", "python-source", vectorPoints).digest,
     };
     const negativeExact = {
       scalarCompleteOutputDigest:
         runner.measure("scalar", "float-materialization", scalarPoints).digest,
     };
     assert.deepEqual(genericExact, oracleEvidence(oracle));
-    assert.deepEqual(candidateExact, oracleEvidence(oracle));
+    assert.deepEqual(directV8Exact, oracleEvidence(oracle));
+    assert.deepEqual(pythonSourceExact, oracleEvidence(oracle));
     assert.equal(
       negativeExact.scalarCompleteOutputDigest,
       oracle.scalar.digest,
@@ -944,24 +1133,32 @@ async function runFeasibility({
 
     for (let index = 0; index < warmups; index += 1) {
       runner.measure("scalar", "baseline", scalarPoints);
-      runner.measure("scalar", "nested-all", scalarPoints);
+      runner.measure("scalar", "direct-v8", scalarPoints);
+      runner.measure("scalar", "python-source", scalarPoints);
       runner.measure("scalar", "float-materialization", scalarPoints);
       runner.measure("vector", "baseline", vectorPoints);
-      runner.measure("vector", "nested-all", vectorPoints);
+      runner.measure("vector", "direct-v8", vectorPoints);
     }
     const scalar = buildPairedComparison({
       phase: "primary-scalar-complete-public",
       samples,
       baseline: () => runner.measure("scalar", "baseline", scalarPoints),
-      candidate: () => runner.measure("scalar", "nested-all", scalarPoints),
+      candidate: () => runner.measure("scalar", "direct-v8", scalarPoints),
       digest: oracle.scalar.digest,
     });
     const vector = buildPairedComparison({
       phase: "heldout-vector-complete-public",
       samples,
       baseline: () => runner.measure("vector", "baseline", vectorPoints),
-      candidate: () => runner.measure("vector", "nested-all", vectorPoints),
+      candidate: () => runner.measure("vector", "direct-v8", vectorPoints),
       digest: oracle.vector.digest,
+    });
+    const scalarPythonSourceFeasibility = buildPairedComparison({
+      phase: "primary-scalar-python-source-feasibility-negative",
+      samples,
+      baseline: () => runner.measure("scalar", "baseline", scalarPoints),
+      candidate: () => runner.measure("scalar", "python-source", scalarPoints),
+      digest: oracle.scalar.digest,
     });
     const scalarFloatMaterializationNegative = buildPairedComparison({
       phase: "primary-scalar-float-materialization-negative",
@@ -996,6 +1193,8 @@ async function runFeasibility({
         positiveHeldoutVector: vector.opportunityEvidencePairs,
         scalarFloatMaterializationNegative:
           scalarFloatMaterializationNegative.opportunityEvidencePairs,
+        scalarPythonSourceFeasibilityNegative:
+          scalarPythonSourceFeasibility.opportunityEvidencePairs,
       },
       phaseReceiptData: {
         primaryScalar: {
@@ -1033,13 +1232,32 @@ async function runFeasibility({
           },
         },
         negativeTargets: [{
+          target: "python-source-feasibility",
+          candidate: "checked-nested-all-ordinary-python",
+          disposition: "measured-losing-prior-standard-and-retained-as-negative",
+          samplesNanoseconds:
+            scalarPythonSourceFeasibility.rawPairs.map(
+              (pair) => pair.candidateNanoseconds,
+            ),
+          baselineSamplesNanoseconds:
+            scalarPythonSourceFeasibility.rawPairs.map(
+              (pair) => pair.baselineNanoseconds,
+            ),
+          outputDigest: oracle.scalar.digest,
+          productionRouteClaim: "none",
+          priorStandardEvidence: {
+            reportId:
+              "sha256:a297acf1e70a1684f476020660e47603041b92e1ed43a8e14b3c5338df7b6364",
+            baselineMedianNanoseconds: 524874449,
+            candidateMedianNanoseconds: 493808270,
+            medianRatioBaselineOverCandidate: 1.0629114190412405,
+            losingPairIndices: [2, 6],
+            disposition: "rejected-below-campaign-threshold",
+          },
+        }, {
           target: "v8",
           candidate: "checked-binary64-float-materialization",
-          disposition:
-            scalarFloatMaterializationNegative.candidate.median >
-              scalar.candidate.median
-              ? "measured-slower-than-selected-nested-all-feasible"
-              : "measured-inconclusive-against-selected-nested-all-feasible",
+          disposition: "measured-losing-prior-standard-and-retained-as-negative",
           samplesNanoseconds:
             scalarFloatMaterializationNegative.rawPairs.map(
               (pair) => pair.candidateNanoseconds,
@@ -1050,6 +1268,14 @@ async function runFeasibility({
             ),
           outputDigest: oracle.scalar.digest,
           productionRouteClaim: "none",
+          priorStandardEvidence: {
+            reportId:
+              "sha256:a297acf1e70a1684f476020660e47603041b92e1ed43a8e14b3c5338df7b6364",
+            baselineMedianNanoseconds: 526810169,
+            candidateMedianNanoseconds: 2332798243,
+            medianRatioBaselineOverCandidate: 0.22582757449376217,
+            disposition: "rejected-materially-slower",
+          },
         }],
         unavailableAndInconclusiveTargets: dispositions,
       },
@@ -1093,7 +1319,8 @@ async function runFeasibility({
       exactDifferential: {
         sagejsO0: o0Exact,
         currentGeneric: genericExact,
-        checkedV8: candidateExact,
+        checkedV8: directV8Exact,
+        pythonSourceFeasibility: pythonSourceExact,
         checkedFloatMaterializationNegative: negativeExact,
       },
       measurementScope: {
@@ -1107,12 +1334,19 @@ async function runFeasibility({
           "independent CPython oracle execution",
         ],
         candidateDifference:
-          "only the two exact nested all(math.isfinite(...)) source expressions are replaced; all preceding and following public-source bytes execute unchanged",
+          "only the two exact nested all(math.isfinite(...)) source expressions are replaced by the direct V8 lower-bound wrapper; all preceding and following public-source bytes execute unchanged",
+        productionGuardGap:
+          "prototype checks are lower-bound scaffolding; production additionally requires unforgeable runtime list and tuple brands",
       },
       guardAudit,
       targetDispositions: dispositions,
       consumerObligations: obligations,
-      comparisons: { scalar, scalarFloatMaterializationNegative, vector },
+      comparisons: {
+        scalar,
+        scalarFloatMaterializationNegative,
+        scalarPythonSourceFeasibility,
+        vector,
+      },
       opportunityEvidenceAdapter: adapter,
     };
     return validateReport(attachIdentity(SCHEMA, payload));
@@ -1177,6 +1411,7 @@ module.exports = {
   consumerObligations,
   cpythonOracleProgram,
   deriveCandidateSource,
+  deriveDirectV8Source,
   deriveFloatMaterializationSource,
   expectedOrder,
   helperSource,
