@@ -70,6 +70,19 @@ the first generalization boundary needed by Phase 6; it deliberately does not
 pretend that quaternion orders or ideal classes are already
 field-independent.
 
+The second-field witness is now live over $F=\mathbf Q(\sqrt3)$. A maximal
+order in $(-1,-1)_F$ contributes two genuine quaternion right-ideal-class
+components at level $(13,\sqrt3-9)$, giving a four-dimensional ambient module
+and a two-dimensional cuspidal quotient. Exact unit images and good-prime
+transporters reconstruct sparse $T_{\mathfrak p}$ for norms $2$, $3$, and the
+two primes above $11$. Constant degree, the component mass adjoint, pairwise
+commutativity, and the component Eisenstein space are checked before
+publication. A content-addressed Magma 2.18-5 oracle records the complete
+arithmetic packet; its ambient operators agree after the documented transpose
+and its cuspidal characteristic polynomials are $x^2-2$, $x^2-2$, $x^2-32$,
+and $x^2-18$. This example genuinely defeats the single-component assumptions
+of the icosian implementation.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
@@ -78,9 +91,9 @@ declared stable. Optimized large-index modular-polynomial construction,
 scalable exact characteristic-polynomial certificates, higher-dimensional
 coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
 the full Hilbert old/new-space layer remain later implementation stages in
-this plan. A second real quadratic field, including explicit quaternion
-ideal-class components and independent Magma Hilbert-form verification,
-remains to complete Phase 6.
+this plan. Phase 6 still requires prime-power local compatibility and
+degeneracy/new-space support for the general multi-component engine; the
+second-field and independent-Magma milestones are complete.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

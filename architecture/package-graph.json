@@ -584,7 +584,7 @@
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 140000,
+      "max_source_bytes": 175000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "graph-theory", "modular-forms"
@@ -594,7 +594,9 @@
         "src/lib/sage/modular/ssmod/__init__.py",
         "src/lib/sage/modular/ssmod/ssmod.py",
         "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/algebraic.py",
         "src/lib/sagejs/modular_forms/finite_hecke.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",
         "src/lib/sagejs/modular_forms/mestre.py",
         "src/lib/sagejs/modular_forms/modular_polynomial.py",

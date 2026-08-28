@@ -7,8 +7,10 @@ from typing import Any
 SparseHeckeOperator: Any
 SparseWiedemannCertificate: Any
 ClassicalModularPolynomial: Any
+ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
 FiniteHeckeSet: Any
+HilbertModularFormsQsqrt3: Any
 HilbertModularFormsQsqrt5: Any
 IcosianDegeneracyMap: Any
 IcosianLocalSplitting: Any
@@ -23,6 +25,10 @@ SupersingularFiniteHeckeSet: Any
 Qsqrt5HeckePrime: Any
 Qsqrt5PrimeIdeal: Any
 Qsqrt5PrimePowerLevel: Any
+Qsqrt3PrimeIdeal: Any
+QuaternionComponentHeckeSet: Any
+QuaternionHeckeCorrespondence: Any
+QuaternionIdealComponent: Any
 classical_modular_polynomial: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
@@ -30,6 +36,8 @@ j_invariant_unit_series: Any
 supersingular_j: Any
 sparse_wiedemann_certificate: Any
 finite_hecke_set: Any
+sqrt3_hecke_prime: Any
+sqrt3_prime_ideals: Any
 sqrt5_hecke_prime: Any
 sqrt5_prime_ideals: Any
 
@@ -37,8 +45,10 @@ __all__ = [
     "SparseHeckeOperator",
     "SparseWiedemannCertificate",
     "ClassicalModularPolynomial",
+    "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
     "FiniteHeckeSet",
+    "HilbertModularFormsQsqrt3",
     "HilbertModularFormsQsqrt5",
     "IcosianDegeneracyMap",
     "IcosianLocalSplitting",
@@ -53,6 +63,10 @@ __all__ = [
     "Qsqrt5HeckePrime",
     "Qsqrt5PrimeIdeal",
     "Qsqrt5PrimePowerLevel",
+    "Qsqrt3PrimeIdeal",
+    "QuaternionComponentHeckeSet",
+    "QuaternionHeckeCorrespondence",
+    "QuaternionIdealComponent",
     "classical_modular_polynomial",
     "berlekamp_massey",
     "dimension_supersingular_module",
@@ -60,6 +74,8 @@ __all__ = [
     "supersingular_j",
     "sparse_wiedemann_certificate",
     "finite_hecke_set",
+    "sqrt3_hecke_prime",
+    "sqrt3_prime_ideals",
     "sqrt5_hecke_prime",
     "sqrt5_prime_ideals",
 ]
@@ -74,6 +90,24 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import finite_hecke
 
         return getattr(finite_hecke, name)
+    if name in [
+        "ComponentCuspidalHeckeOperator",
+        "QuaternionComponentHeckeSet",
+        "QuaternionHeckeCorrespondence",
+        "QuaternionIdealComponent",
+    ]:
+        from . import algebraic
+
+        return getattr(algebraic, name)
+    if name in [
+        "HilbertModularFormsQsqrt3",
+        "Qsqrt3PrimeIdeal",
+        "sqrt3_hecke_prime",
+        "sqrt3_prime_ideals",
+    ]:
+        from . import hilbert_sqrt3
+
+        return getattr(hilbert_sqrt3, name)
     if name in [
         "HilbertModularFormsQsqrt5",
         "IcosianDegeneracyMap",
