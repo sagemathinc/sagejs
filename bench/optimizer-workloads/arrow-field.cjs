@@ -1185,16 +1185,17 @@ if (require.main === module) {
 }
 
 module.exports = {
-  PROFILE_SOURCE,
-  PUBLIC_SOURCE,
-  SOURCE_PATHS,
   STANDARD_POINTS,
   STANDARD_SAMPLES,
   STANDARD_WARMUPS,
+  PROFILE_SOURCE,
+  PUBLIC_SOURCE,
+  SOURCE_PATHS,
   buildPairedComparison,
   candidateDispositions,
   catalogInsertion,
   cpythonPublicProgram,
+  createRunner,
   deriveCandidateSource,
   expectedOrder,
   helperSource,
