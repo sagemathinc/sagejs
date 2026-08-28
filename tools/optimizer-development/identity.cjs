@@ -1,0 +1,200 @@
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+
+const {
+  array,
+  attachIdentity,
+  contentId,
+  contentIdentity,
+  digest,
+  enumeration,
+  exactKeys,
+  identifier,
+  nonemptyString,
+  repositoryPath,
+  safeInteger,
+  sha256,
+  stableName,
+} = require("./common.cjs");
+
+const SOURCE_BUNDLE_SCHEMA = "sagejs.optimizer-source-bundle/v1";
+const COMPILER_IDENTITY_SCHEMA = "sagejs.optimizer-compiler-identity/v1";
+const SOURCE_UNIT_SCHEMA = "sagejs.optimizer-source-unit/v1";
+const FUNCTION_IDENTITY_SCHEMA = "sagejs.optimizer-function-identity/v1";
+const REGION_IDENTITY_SCHEMA = "sagejs.optimizer-region-identity/v1";
+const DECISION_IDENTITY_SCHEMA = "sagejs.optimizer-decision-identity/v1";
+
+function validateRange(label, value) {
+  exactKeys(label, value, ["startLine", "startColumn", "endLine", "endColumn"]);
+  const result = {
+    startLine: safeInteger(`${label}.startLine`, value.startLine, 1),
+    startColumn: safeInteger(`${label}.startColumn`, value.startColumn),
+    endLine: safeInteger(`${label}.endLine`, value.endLine, 1),
+    endColumn: safeInteger(`${label}.endColumn`, value.endColumn),
+  };
+  if (result.endLine < result.startLine ||
+      (result.endLine === result.startLine && result.endColumn < result.startColumn)) {
+    throw new Error(`optimizer evidence ${label}: end must not precede start`);
+  }
+  return result;
+}
+
+function normalizeFileRecords(files) {
+  return array("source bundle files", files, (label, value) => {
+    exactKeys(label, value, ["path", "digest", "bytes"]);
+    return {
+      path: repositoryPath(`${label}.path`, value.path),
+      digest: digest(`${label}.digest`, value.digest),
+      bytes: safeInteger(`${label}.bytes`, value.bytes),
+    };
+  }, { minimum: 1, uniqueBy: (item) => item.path })
+    .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+}
+
+function sourceBundleFromRecords(files) {
+  return attachIdentity(SOURCE_BUNDLE_SCHEMA, { files: normalizeFileRecords(files) });
+}
+
+function sourceBundleIdentity(root, repositoryPaths) {
+  const rootPath = path.resolve(nonemptyString("source bundle root", root));
+  const records = array("source bundle paths", repositoryPaths,
+    (label, value) => repositoryPath(label, value),
+    { minimum: 1, uniqueBy: (item) => item })
+    .map((relativePath) => {
+      const bytes = fs.readFileSync(path.join(rootPath, relativePath));
+      return { path: relativePath, digest: sha256(bytes), bytes: bytes.length };
+    });
+  return sourceBundleFromRecords(records);
+}
+
+function validateSourceBundle(label, value) {
+  exactKeys(label, value, ["schema", "id", "files"]);
+  if (value.schema !== SOURCE_BUNDLE_SCHEMA) {
+    throw new Error(`optimizer evidence ${label}.schema: unknown schema ${value.schema}`);
+  }
+  const expected = sourceBundleFromRecords(value.files);
+  contentId(`${label}.id`, value.id);
+  if (expected.id !== value.id) {
+    throw new Error(`optimizer evidence ${label}.id: is stale; expected ${expected.id}`);
+  }
+  return expected;
+}
+
+function compilerIdentity(value) {
+  exactKeys("compiler identity", value, [
+    "irSchema", "compilerSourceBundleId", "frontendDigest", "catalogDigest", "optionsDigest",
+  ]);
+  return attachIdentity(COMPILER_IDENTITY_SCHEMA, {
+    irSchema: nonemptyString("compiler identity.irSchema", value.irSchema),
+    compilerSourceBundleId: contentId(
+      "compiler identity.compilerSourceBundleId", value.compilerSourceBundleId,
+    ),
+    frontendDigest: digest("compiler identity.frontendDigest", value.frontendDigest),
+    catalogDigest: digest("compiler identity.catalogDigest", value.catalogDigest),
+    optionsDigest: digest("compiler identity.optionsDigest", value.optionsDigest),
+  });
+}
+
+function sourceUnitIdentity(value) {
+  exactKeys("source unit identity", value, ["path", "digest", "language"]);
+  return attachIdentity(SOURCE_UNIT_SCHEMA, {
+    path: repositoryPath("source unit identity.path", value.path),
+    digest: digest("source unit identity.digest", value.digest),
+    language: enumeration("source unit identity.language", value.language,
+      ["python", "javascript", "typescript", "c", "cpp", "wasm"]),
+  });
+}
+
+function functionIdentity(value) {
+  exactKeys("function identity", value, [
+    "sourceUnitId", "qualifiedName", "kind", "semanticFingerprint", "range", "ordinal",
+  ]);
+  const payload = {
+    sourceUnitId: contentId("function identity.sourceUnitId", value.sourceUnitId),
+    qualifiedName: nonemptyString("function identity.qualifiedName", value.qualifiedName),
+    kind: enumeration("function identity.kind", value.kind,
+      ["function", "method", "lambda", "module"]),
+    semanticFingerprint: contentId(
+      "function identity.semanticFingerprint", value.semanticFingerprint,
+    ),
+    range: validateRange("function identity.range", value.range),
+    ordinal: safeInteger("function identity.ordinal", value.ordinal),
+  };
+  return attachIdentity(FUNCTION_IDENTITY_SCHEMA, payload);
+}
+
+function semanticFingerprint(value) {
+  return contentIdentity("sagejs.optimizer-semantic-structure/v1", value);
+}
+
+function semanticRegionIdentity(value) {
+  exactKeys("region identity", value, [
+    "functionId", "kind", "semanticFingerprint", "range", "ordinal",
+  ]);
+  return attachIdentity(REGION_IDENTITY_SCHEMA, {
+    functionId: contentId("region identity.functionId", value.functionId),
+    kind: stableName("region identity.kind", value.kind),
+    semanticFingerprint: contentId(
+      "region identity.semanticFingerprint", value.semanticFingerprint,
+    ),
+    range: validateRange("region identity.range", value.range),
+    ordinal: safeInteger("region identity.ordinal", value.ordinal),
+  });
+}
+
+function decisionIdentity(value) {
+  exactKeys("decision identity", value, ["regionId", "passId", "compilerId"]);
+  return attachIdentity(DECISION_IDENTITY_SCHEMA, {
+    regionId: contentId("decision identity.regionId", value.regionId),
+    passId: stableName("decision identity.passId", value.passId),
+    compilerId: contentId("decision identity.compilerId", value.compilerId),
+  });
+}
+
+function predecessorKey(region) {
+  return [region.path, region.qualifiedName, region.kind, region.semanticFingerprint].join("\u0000");
+}
+
+function linkPredecessor(previousRegions, currentRegion) {
+  exactKeys("current predecessor candidate", currentRegion,
+    ["id", "path", "qualifiedName", "kind", "semanticFingerprint"]);
+  contentId("current predecessor candidate.id", currentRegion.id);
+  repositoryPath("current predecessor candidate.path", currentRegion.path);
+  nonemptyString("current predecessor candidate.qualifiedName", currentRegion.qualifiedName);
+  identifier("current predecessor candidate.kind", currentRegion.kind);
+  contentId("current predecessor candidate.semanticFingerprint", currentRegion.semanticFingerprint);
+  const currentKey = predecessorKey(currentRegion);
+  const matches = array("previous predecessor candidates", previousRegions, (label, region) => {
+    exactKeys(label, region, ["id", "path", "qualifiedName", "kind", "semanticFingerprint"]);
+    contentId(`${label}.id`, region.id);
+    repositoryPath(`${label}.path`, region.path);
+    nonemptyString(`${label}.qualifiedName`, region.qualifiedName);
+    identifier(`${label}.kind`, region.kind);
+    contentId(`${label}.semanticFingerprint`, region.semanticFingerprint);
+    return region;
+  }).filter((region) => predecessorKey(region) === currentKey);
+  return matches.length === 1 && matches[0].id !== currentRegion.id ? matches[0].id : null;
+}
+
+module.exports = {
+  COMPILER_IDENTITY_SCHEMA,
+  DECISION_IDENTITY_SCHEMA,
+  FUNCTION_IDENTITY_SCHEMA,
+  REGION_IDENTITY_SCHEMA,
+  SOURCE_BUNDLE_SCHEMA,
+  SOURCE_UNIT_SCHEMA,
+  compilerIdentity,
+  decisionIdentity,
+  functionIdentity,
+  linkPredecessor,
+  normalizeFileRecords,
+  semanticFingerprint,
+  semanticRegionIdentity,
+  sourceBundleFromRecords,
+  sourceBundleIdentity,
+  sourceUnitIdentity,
+  validateRange,
+  validateSourceBundle,
+};
