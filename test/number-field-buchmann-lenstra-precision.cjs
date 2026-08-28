@@ -196,7 +196,7 @@ function run(command, args, environment = {}) {
 test("2772-bit BL construction and independent replay agree exactly", () => {
   const python = run(pythonExecutable(), [
     "-c",
-    `import decimal\n${source}`,
+    `import decimal\nimport math\n${source}`,
   ]);
   const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",

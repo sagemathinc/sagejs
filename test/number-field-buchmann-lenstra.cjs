@@ -210,7 +210,7 @@ function run(command, args, environment = {}) {
 }
 
 test("Buchmann--Lenstra composite steps agree in CPython and Sage.js", () => {
-  const python = run(pythonExecutable(), ["-c", source]);
+  const python = run(pythonExecutable(), ["-c", `import math\n${source}`]);
   const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });

@@ -366,8 +366,12 @@ function run(command, args, environment = {}) {
 
 test("radical/multiplier fallback agrees in CPython and Sage.js", () => {
   // CPython 3.14 lazily imports decimal for very large integer division. Load
-  // the stdlib module before the test adds Sage.js' source tree to sys.path.
-  const python = run(pythonExecutable(), ["-c", `import decimal\n${source}`]);
+  // it and stdlib math before Sage.js' top-level compatibility modules enter
+  // sys.path.
+  const python = run(pythonExecutable(), [
+    "-c",
+    `import decimal\nimport math\n${source}`,
+  ]);
   const sagejs = run(join(root, "bin", "sagejs"), ["--python", "-"], {
     SAGEJS_NATIVE_DISABLE: "1",
   });
