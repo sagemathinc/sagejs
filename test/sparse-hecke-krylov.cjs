@@ -179,3 +179,55 @@ rows
     }
   },
 );
+
+test(
+  "packed CSR Krylov kernels match direct exact arithmetic and reject shapes",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+from sagejs.kernels.matrix.sparse_prime_field import (
+    word_prime_csr_polynomial_apply,
+    word_prime_csr_power_traces,
+    word_prime_csr_projected_sequence,
+)
+from sagejs.native import kernel_uint64_buffer, kernel_uint64_zeros
+
+kernel = word_prime_csr_projected_sequence
+offsets = kernel_uint64_buffer(kernel, [0,2,4])
+columns = kernel_uint64_buffer(kernel, [0,1,0,1])
+values = kernel_uint64_buffer(kernel, [1,2,3,4])
+left = kernel_uint64_buffer(kernel, [5,6])
+right = kernel_uint64_buffer(kernel, [7,8])
+sequence = kernel_uint64_zeros(kernel, 4)
+workspace = kernel_uint64_zeros(kernel, 4)
+assert kernel(sequence, offsets, columns, values, left, right, workspace, 2, 4, 97)
+assert list(sequence) == [83,45,3,8]
+
+polynomial = kernel_uint64_buffer(kernel, [1,2,1])
+image = kernel_uint64_zeros(kernel, 2)
+assert word_prime_csr_polynomial_apply(
+    image, offsets, columns, values, polynomial, right, workspace, 2, 97
+)
+assert list(image) == [85,7]
+
+traces = kernel_uint64_zeros(kernel, 3)
+assert word_prime_csr_power_traces(
+    traces, offsets, columns, values, workspace, 2, 97
+)
+assert list(traces) == [2,5,29]
+
+sentinel = kernel_uint64_buffer(kernel, [91,92,93,94])
+assert not kernel(
+    sentinel, offsets, columns, values, left, right, workspace, 2, 3, 97
+)
+assert list(sentinel) == [91,92,93,94]
+(tuple(sequence), tuple(image), tuple(traces))
+`);
+      assert.equal(result.repr, "((83, 45, 3, 8), (85, 7), (2, 5, 29))");
+    } finally {
+      await session.close();
+    }
+  },
+);

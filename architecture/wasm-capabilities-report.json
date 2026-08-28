@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "fabf896a6741eba67cddd76410ab3482856389c197ac4e2fa556da856e5559f5",
+  "source_sha256": "ea4d2a44f315a1256e2589d8925508875bad001eac8282cfc804055ea1392e6a",
   "counts": {
-    "total": 1007,
+    "total": 1008,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 320,
-      "production-kernel": 47,
+      "production-kernel": 48,
       "runtime-intrinsic": 142,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 47,
+      "compiled-source": 48,
       "desktop-only": 42,
       "generated-wasm": 321,
       "portable-fallback": 552,
       "shared-core": 45
     },
     "by_status": {
-      "available": 550,
+      "available": 551,
       "desktop-only": 42,
       "fallback": 415
     }
@@ -6593,6 +6593,18 @@
       "wasm_module": "kernel-flint",
       "public_consumers": [
         "word-prime-krylov"
+      ],
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:word-prime-sparse-krylov-production",
+      "family": "word-prime-sparse-krylov",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "sagejs.modular_forms.sparse_krylov"
       ],
       "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },

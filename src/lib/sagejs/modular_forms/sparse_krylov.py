@@ -13,6 +13,12 @@ from typing import Any
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.kernels.matrix.sparse_prime_field import (
+    word_prime_csr_polynomial_apply,
+    word_prime_csr_power_traces,
+    word_prime_csr_projected_sequence,
+)
+from sagejs.native import is_compiled, kernel_uint64_buffer, kernel_uint64_zeros
 
 _MAX_WORD_PRIME = 67108859
 
@@ -201,6 +207,93 @@ def _matvec(operator: Any, vector: list[int], modulus: int) -> list[int]:
     return answer
 
 
+class _NativeSparsePrimeAction:
+    """One prime-specific packed CSR lease retained across Krylov calls."""
+
+    def __init__(self, operator: Any, modulus: int) -> None:
+        offsets = [0]
+        columns = []
+        values = []
+        for row in range(operator.nrows()):
+            for column, coefficient in operator.row(row):
+                columns.append(int(column))
+                values.append(int(coefficient) % modulus)
+            offsets.append(len(columns))
+        kernel = word_prime_csr_projected_sequence
+        self._dimension = int(operator.nrows())
+        self._modulus = runtime.integer_bigint(modulus)
+        self._offsets = kernel_uint64_buffer(kernel, offsets)
+        self._columns = kernel_uint64_buffer(kernel, columns)
+        self._values = kernel_uint64_buffer(kernel, values)
+
+    def sequence(self, left: list[int], right: list[int], length: int) -> list[int]:
+        kernel = word_prime_csr_projected_sequence
+        left_buffer = kernel_uint64_buffer(kernel, left)
+        right_buffer = kernel_uint64_buffer(kernel, right)
+        output = kernel_uint64_zeros(kernel, length)
+        workspace = kernel_uint64_zeros(kernel, 2 * self._dimension)
+        if not kernel(
+            output,
+            self._offsets,
+            self._columns,
+            self._values,
+            left_buffer,
+            right_buffer,
+            workspace,
+            self._dimension,
+            length,
+            self._modulus,
+        ):
+            raise ArithmeticError("packed sparse projected sequence was rejected")
+        return [int(value) for value in output]
+
+    def polynomial_apply(self, coefficients: list[int], vector: list[int]) -> list[int]:
+        kernel = word_prime_csr_polynomial_apply
+        coefficient_buffer = kernel_uint64_buffer(kernel, coefficients)
+        vector_buffer = kernel_uint64_buffer(kernel, vector)
+        output = kernel_uint64_zeros(kernel, self._dimension)
+        workspace = kernel_uint64_zeros(kernel, 2 * self._dimension)
+        if not kernel(
+            output,
+            self._offsets,
+            self._columns,
+            self._values,
+            coefficient_buffer,
+            vector_buffer,
+            workspace,
+            self._dimension,
+            self._modulus,
+        ):
+            raise ArithmeticError("packed sparse polynomial action was rejected")
+        return [int(value) for value in output]
+
+    def power_traces(self) -> list[int]:
+        kernel = word_prime_csr_power_traces
+        output = kernel_uint64_zeros(kernel, self._dimension + 1)
+        workspace = kernel_uint64_zeros(kernel, 2 * self._dimension)
+        if not kernel(
+            output,
+            self._offsets,
+            self._columns,
+            self._values,
+            workspace,
+            self._dimension,
+            self._modulus,
+        ):
+            raise ArithmeticError("packed sparse power traces were rejected")
+        return [int(value) for value in output]
+
+
+def _native_sparse_action(operator: Any, modulus: int) -> Any:
+    if not is_compiled(word_prime_csr_projected_sequence):
+        return None
+    if not is_compiled(word_prime_csr_polynomial_apply):
+        return None
+    if not is_compiled(word_prime_csr_power_traces):
+        return None
+    return _NativeSparsePrimeAction(operator, modulus)
+
+
 def _dot(left: list[int], right: list[int], modulus: int) -> int:
     if len(left) != len(right):
         raise ValueError("Krylov projection vectors have different lengths")
@@ -216,7 +309,10 @@ def _sequence(
     right: list[int],
     length: int,
     modulus: int,
+    native_action: Any = None,
 ) -> list[int]:
+    if native_action is not None:
+        return native_action.sequence(left, right, length)
     vector = list(right)
     answer = []
     for _index in range(length):
@@ -226,8 +322,14 @@ def _sequence(
 
 
 def _polynomial_apply(
-    operator: Any, coefficients: list[int], vector: list[int], modulus: int
+    operator: Any,
+    coefficients: list[int],
+    vector: list[int],
+    modulus: int,
+    native_action: Any = None,
 ) -> list[int]:
+    if native_action is not None:
+        return native_action.polynomial_apply(coefficients, vector)
     answer = [0 for _index in range(operator.nrows())]
     for coefficient in reversed(coefficients):
         answer = _matvec(operator, answer, modulus)
@@ -488,6 +590,7 @@ def _full_degree_modular_characteristic(
 ) -> tuple[list[int] | None, int]:
     """Return the modular characteristic polynomial when full degree is proved."""
     dimension = int(operator.nrows())
+    native_action = _native_sparse_action(operator, prime)
     sequence_length = 2 * dimension + 8
     candidate = [1]
     products = 0
@@ -496,7 +599,9 @@ def _full_degree_modular_characteristic(
             raise MemoryError("sparse characteristic-polynomial work limit exceeded")
         left = _deterministic_vector(dimension, prime, seed, 2 * projection_index)
         right = _deterministic_vector(dimension, prime, seed, 2 * projection_index + 1)
-        sequence = _sequence(operator, left, right, sequence_length, prime)
+        sequence = _sequence(
+            operator, left, right, sequence_length, prime, native_action
+        )
         products += sequence_length
         recurrence = list(berlekamp_massey(sequence, prime))
         candidate = _polynomial_lcm(candidate, recurrence, prime)
@@ -520,13 +625,17 @@ def _trace_newton_modular_characteristic(
     if product_limit is not None and required_products > product_limit:
         raise MemoryError("sparse characteristic-polynomial work limit exceeded")
 
-    traces = [0 for _index in range(dimension + 1)]
-    for basis_index in range(dimension):
-        vector = [0 for _index in range(dimension)]
-        vector[basis_index] = 1
-        for power in range(1, dimension + 1):
-            vector = _matvec(operator, vector, prime)
-            traces[power] = (traces[power] + vector[basis_index]) % prime
+    native_action = _native_sparse_action(operator, prime)
+    if native_action is not None:
+        traces = native_action.power_traces()
+    else:
+        traces = [0 for _index in range(dimension + 1)]
+        for basis_index in range(dimension):
+            vector = [0 for _index in range(dimension)]
+            vector[basis_index] = 1
+            for power in range(1, dimension + 1):
+                vector = _matvec(operator, vector, prime)
+                traces[power] = (traces[power] + vector[basis_index]) % prime
 
     # If det(xI-A)=x^n+c_1*x^(n-1)+...+c_n and s_k=tr(A^k),
     # Newton's identities give k*c_k + sum(c_(k-i)*s_i)=0.
@@ -687,6 +796,7 @@ def sparse_wiedemann_certificate(
         return SparseWiedemannCertificate(prime, 0, source_seed, [1], [], [], 0, 0)
 
     sequence_length = 2 * dimension + 8
+    native_action = _native_sparse_action(operator, prime)
     candidate = [1]
     projection_records = []
     products = 0
@@ -699,7 +809,7 @@ def sparse_wiedemann_certificate(
         right = _deterministic_vector(
             dimension, prime, source_seed, 2 * projection_index + 1
         )
-        values = _sequence(operator, left, right, sequence_length, prime)
+        values = _sequence(operator, left, right, sequence_length, prime, native_action)
         products += sequence_length
         recurrence = list(berlekamp_massey(values, prime))
         candidate = _polynomial_lcm(candidate, recurrence, prime)
@@ -728,7 +838,9 @@ def sparse_wiedemann_certificate(
                 source_seed,
                 2 * projection_limit + replay_index,
             )
-            residual = _polynomial_apply(operator, candidate, vector, prime)
+            residual = _polynomial_apply(
+                operator, candidate, vector, prime, native_action
+            )
             products += len(candidate) - 1
             replay_records.append((tuple(vector), tuple(residual)))
             if not _is_zero(residual):
@@ -763,7 +875,9 @@ def sparse_wiedemann_certificate(
         for basis_index in range(dimension):
             vector = [0 for _index in range(dimension)]
             vector[basis_index] = 1
-            residual = _polynomial_apply(operator, candidate, vector, prime)
+            residual = _polynomial_apply(
+                operator, candidate, vector, prime, native_action
+            )
             products += len(candidate) - 1
             if not _is_zero(residual):
                 break

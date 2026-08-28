@@ -41,6 +41,18 @@ $(1+\lVert T\rVert_\infty)^n$ coefficient bound, and the complete calculation
 is replayable.  Repeated diagonal and nonsemisimple Jordan witnesses exercise
 the universal fallback under explicit work limits.
 
+The prime-field sparse proof layer now packs each immutable operator once as
+CSR and performs a complete projected sequence, polynomial replay, or power-
+trace calculation inside one source-transparent native call. The ordinary
+Python bodies remain the dynamic and CPython oracles, and malformed layouts
+are rejected before publication. On the local Linux x64 acceptance witness at
+level $10007$, $T_2$ has dimension $835$ and $2502$ nonzero entries; the
+full-degree projected replay fell from $96.95$ seconds in the dynamic path to
+$4.08$ seconds in the compiled path, while returning the same degree-$835$
+candidate and exact replay count. The checked level-$389$ instance also
+reconstructs and independently verifies the full integer characteristic
+polynomial without dense materialization.
+
 Higher-dimensional classical packets are now reconstructed over exact number
 fields.  An irreducible simple factor of a cuspidal $T_\ell$ characteristic
 polynomial defines its coefficient field; ordinary exact Gaussian elimination

@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 47,
-    "production_kernels": 40,
-    "compiled_functions": 273,
+    "registered_kernels": 48,
+    "production_kernels": 41,
+    "compiled_functions": 276,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -440,6 +440,15 @@
     },
     {
       "id": "word-prime-krylov-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 3,
+      "fallback_functions": 0,
+      "total_functions": 3,
+      "fallback_reasons": []
+    },
+    {
+      "id": "word-prime-sparse-krylov-production",
       "production": true,
       "status": "available",
       "compiled_functions": 3,

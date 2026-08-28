@@ -174,6 +174,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
@@ -584,10 +585,10 @@
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 250000,
+      "max_source_bytes": 255000,
       "depends_on": [
-        "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
-        "graph-theory", "modular-forms"
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
+        "graph-theory", "modular-forms", "matrix-native-kernels"
       ],
       "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
       "files": [

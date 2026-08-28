@@ -11907,6 +11907,32 @@
       }
     },
     {
+      "id": "kernel:word-prime-sparse-krylov-production",
+      "kind": "production-kernel",
+      "family": "word-prime-sparse-krylov",
+      "source": "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "sagejs.modular_forms.sparse_krylov"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 3,
+        "fallback_functions": 0,
+        "total_functions": 3,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
       "kind": "napi-export",
       "family": "dense-matrix-storage",
