@@ -16,6 +16,7 @@ def _batch_declaration(output, name):
 
 
 def _batch_guard_error(output, region, reason):
+    output.print_optimizer_profile_event(region, "error", reason)
     output.indent()
     output.print("throw new RuntimeError(")
     output.print(
@@ -264,6 +265,7 @@ def _print_fast_batch(loop, output, plan, names):
     output.assign(loop.init)
     output.print(names["count"] + " - 1")
     output.end_statement()
+    output.print_optimizer_profile_event(loop.optimization_region, "guarded-fast")
 
 
 def print_modular_batch_region(self, output):
@@ -438,7 +440,19 @@ def print_modular_batch_region(self, output):
                 _batch_guard_error(output, region, names["reason"])
             else:
                 _batch_fallback(self, output, names)
+                output.print_optimizer_profile_event(
+                    region, "guarded-fallback", names["reason"]
+                )
 
         output.with_block(fallback)
 
     output.with_block(nonempty)
+    if output.options.optimizer_profile_observer:
+        output.space()
+        output.print("else")
+        output.space()
+
+        def zero_trip():
+            output.print_optimizer_profile_event(region, "zero-trip")
+
+        output.with_block(zero_trip)

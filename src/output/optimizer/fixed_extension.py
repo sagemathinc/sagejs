@@ -2,7 +2,8 @@ from output.optimizer.scalar import (
     _field_operation_mask,
     _print_closed_field_fallback,
     _print_closed_field_fast_path,
-    _print_optimizer_guard_error,
+    _print_optimizer_profile_terminal,
+    _print_profiled_optimizer_guard_error,
     _print_region_variable,
 )
 
@@ -61,13 +62,19 @@ def _print_fixed_extension_v8_dispatch(self, output, plan, names):
 
     def unsupported_shape():
         if self.optimization_region.guardFailure == "error":
-            _print_optimizer_guard_error(
+            _print_profiled_optimizer_guard_error(
                 output,
                 self.optimization_region,
                 JSON.stringify("fixed-extension-shape"),
             )
         else:
             _print_closed_field_fallback(self, output, plan, names)
+            _print_optimizer_profile_terminal(
+                output,
+                self.optimization_region,
+                "guarded-fallback",
+                JSON.stringify("fixed-extension-shape"),
+            )
 
     output.with_block(unsupported_shape)
 
@@ -107,6 +114,9 @@ def _print_fixed_extension_fast_path(self, output, plan, names):
             output.assign(self.init)
             output.print(names["count"] + " - 1")
             output.end_statement()
+            _print_optimizer_profile_terminal(
+                output, self.optimization_region, "guarded-fast"
+            )
 
         output.with_block(isolated_path)
         output.space()
@@ -288,17 +298,23 @@ def print_fixed_extension_region(self, output):
         output.space()
 
         def fallback():
+            reason = (
+                "("
+                + names["context"]
+                + ".ok === true ? 'not-fixed-extension-parent' : "
+                + names["context"]
+                + ".reason)"
+            )
             if region.guardFailure == "error":
-                reason = (
-                    "("
-                    + names["context"]
-                    + ".ok === true ? 'not-fixed-extension-parent' : "
-                    + names["context"]
-                    + ".reason)"
-                )
-                _print_optimizer_guard_error(output, region, reason)
+                _print_profiled_optimizer_guard_error(output, region, reason)
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    reason,
+                )
 
         output.with_block(fallback)
 
@@ -312,6 +328,15 @@ def print_fixed_extension_region(self, output):
             output.print("if (" + names["count"] + " !== 0)")
             output.space()
             output.with_block(nonempty_region)
+            if output.options.optimizer_profile_observer:
+                output.space()
+                output.print("else")
+                output.space()
+
+                def zero_trip_zip():
+                    _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+                output.with_block(zero_trip_zip)
 
         output.with_block(eligible_zip)
         output.space()
@@ -320,14 +345,29 @@ def print_fixed_extension_region(self, output):
 
         def invalid_zip():
             if region.guardFailure == "error":
-                _print_optimizer_guard_error(
+                _print_profiled_optimizer_guard_error(
                     output,
                     region,
                     JSON.stringify("zip-shape"),
                 )
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    JSON.stringify("zip-shape"),
+                )
 
         output.with_block(invalid_zip)
     else:
         output.with_block(nonempty_region)
+        if output.options.optimizer_profile_observer:
+            output.space()
+            output.print("else")
+            output.space()
+
+            def zero_trip():
+                _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+            output.with_block(zero_trip)

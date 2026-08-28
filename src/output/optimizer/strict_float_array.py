@@ -1,6 +1,7 @@
 from output.optimizer.scalar import (
     _print_closed_field_fallback,
-    _print_optimizer_guard_error,
+    _print_optimizer_profile_terminal,
+    _print_profiled_optimizer_guard_error,
     _print_region_declaration,
     _print_region_variable,
 )
@@ -82,9 +83,15 @@ def _print_strict_float_array_statements(
 
 def _print_strict_float_array_fallback(loop, output, plan, names, reason):
     if loop.optimization_region.guardFailure == "error":
-        _print_optimizer_guard_error(output, loop.optimization_region, reason)
+        _print_profiled_optimizer_guard_error(output, loop.optimization_region, reason)
     else:
         _print_closed_field_fallback(loop, output, plan, names)
+        _print_optimizer_profile_terminal(
+            output,
+            loop.optimization_region,
+            "guarded-fallback",
+            reason,
+        )
 
 
 def print_strict_float_array_region(self, output):
@@ -272,6 +279,7 @@ def print_strict_float_array_region(self, output):
                 output.assign(plan.iterator)
                 output.print(names["last_original"])
                 output.end_statement()
+                _print_optimizer_profile_terminal(output, region, "guarded-fast")
 
             output.with_block(commit)
             output.space()
@@ -312,3 +320,12 @@ def print_strict_float_array_region(self, output):
         )
 
     output.with_block(invalid_sequence_fallback)
+    if output.options.optimizer_profile_observer:
+        output.space()
+        output.print("else")
+        output.space()
+
+        def zero_trip():
+            _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+        output.with_block(zero_trip)
