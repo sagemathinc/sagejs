@@ -71,6 +71,26 @@
       "commit": "9ce454f2e2d568789576bd9417c0ae904f61f03e",
       "workspace_fingerprint": "58768e43f363a9de0cd0a34d9355497b3422fcd73005f798669abee00d28374d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.244,
+      "started_at": "2026-08-28T02:00:07.832Z",
+      "commit": "8b83dfe5162a353df05f6728356a38bda3f7360a",
+      "workspace_fingerprint": "4ebcb6bc44807b30205aaed35460a4d661c5498274d9f0fbed4a25a6056396a2",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-resident-hnf.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.448,
+      "started_at": "2026-08-28T02:00:56.569Z",
+      "commit": "8b83dfe5162a353df05f6728356a38bda3f7360a",
+      "workspace_fingerprint": "4ebcb6bc44807b30205aaed35460a4d661c5498274d9f0fbed4a25a6056396a2",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
