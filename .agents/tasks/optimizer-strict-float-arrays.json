@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimizer-strict-float-arrays",
+  "title": "Strict binary64 array regions",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Extend the ordered IEEE-754 optimizer with reviewed sequence-fed loops and reductions, preserving source rounding, NaN, signed-zero, infinity, exception, alias, and fallback semantics; add isolated pass/target/verifier/emitter files, differential tests, and cross-runtime benchmarks; do not edit central catalogs or dispatchers.",
+  "base_commit": "28bcc570b16a88d44e0e34845ea122058f1888e4",
+  "claims": [
+    "tools/python/optimizer/domains/strict-binary64-array/",
+    "tools/python/optimizer/passes/strict-float-array-region.ts",
+    "tools/python/optimizer/representations/binary64-array.ts",
+    "tools/python/optimizer/targets/v8-strict-float-array.ts",
+    "tools/python/optimizer/verifiers/strict-float-array.ts",
+    "src/output/optimizer/strict_float_array.py",
+    "test/optimizer-strict-float-array.cjs",
+    "bench/optimizer-strict-float-array/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "sagejs-o0",
+      "ieee754-bit-patterns"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
