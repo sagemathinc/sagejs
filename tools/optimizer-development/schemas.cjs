@@ -33,6 +33,10 @@ const {
   validateReason,
   validateReasons,
 } = require("./reason-codes.cjs");
+const {
+  INTERVENTION_ACTIONS,
+  validateIntervention,
+} = require("./interventions.cjs");
 
 const SCHEMAS = deepFreeze({
   workload: "sagejs.optimizer-workload/v1",
@@ -800,14 +804,20 @@ function validateHotnessOverlay(value, context = {}) {
     (opportunityLabel, opportunity) => {
       exactKeys(opportunityLabel, opportunity, [
         "id", "regionId", "workloadId", "decisionId", "passId", "status",
-        "candidateScope", "hotChildRegionIds", "attributionProfileId",
+        "candidateScope", "hotChildRegionIds", "attributionProfileId", "intervention",
       ]);
       return {
         id: contentId(`${opportunityLabel}.id`, opportunity.id),
         regionId: contentId(`${opportunityLabel}.regionId`, opportunity.regionId),
         workloadId: contentId(`${opportunityLabel}.workloadId`, opportunity.workloadId),
-        decisionId: contentId(`${opportunityLabel}.decisionId`, opportunity.decisionId),
-        passId: stableName(`${opportunityLabel}.passId`, opportunity.passId),
+        decisionId: nullableContentId(
+          `${opportunityLabel}.decisionId`, opportunity.decisionId,
+        ),
+        passId: opportunity.passId === null ? null
+          : stableName(`${opportunityLabel}.passId`, opportunity.passId),
+        intervention: validateIntervention(
+          `${opportunityLabel}.intervention`, opportunity.intervention,
+        ),
         status: enumeration(`${opportunityLabel}.status`, opportunity.status,
           ["eligible", "inconclusive", "rejected"]),
         candidateScope: enumeration(`${opportunityLabel}.candidateScope`,
@@ -861,7 +871,8 @@ function validateHotnessOverlay(value, context = {}) {
       "source", "loopId", "staticDecisions", "opportunityEvidenceIds",
       "opportunityDecisionIds",
       "observations", "runtimeRoutes",
-      "classification", "recommendedAction", "eligibility", "ranking", "removableFraction",
+      "classification", "intervention", "recommendedAction", "eligibility", "ranking",
+      "removableFraction",
     ]);
     const source = validateSource(`${regionLabel}.source`, region.source);
     const observations = array(`${regionLabel}.observations`, region.observations,
@@ -955,9 +966,21 @@ function validateHotnessOverlay(value, context = {}) {
     });
     if (opportunityEvidenceIds.length !== regionOpportunities.length ||
       opportunityDecisionIds.length !== new Set(
-        regionOpportunities.map((opportunity) => opportunity.decisionId),
+        regionOpportunities.map((opportunity) => opportunity.decisionId)
+          .filter((decisionId) => decisionId !== null),
       ).size) {
       fail(regionLabel, "must retain every opportunity and reviewed compiler decision for its region");
+    }
+    const intervention = region.intervention === null ? null
+      : validateIntervention(`${regionLabel}.intervention`, region.intervention);
+    const recommendedAction = enumeration(`${regionLabel}.recommendedAction`,
+      region.recommendedAction, [
+        "already-optimized", "reject", "investigate", ...INTERVENTION_ACTIONS,
+      ]);
+    if (INTERVENTION_ACTIONS.includes(recommendedAction) &&
+        recommendedAction !== intervention?.action) {
+      fail(`${regionLabel}.recommendedAction`,
+        "does not match the reviewed intervention category");
     }
     return {
       source,
@@ -972,10 +995,8 @@ function validateHotnessOverlay(value, context = {}) {
         "boundary-dominated", "allocation-materialization", "compiler-rejection",
         "target-mismatch", "cold-startup-dominated", "unknown",
       ]),
-      recommendedAction: enumeration(`${regionLabel}.recommendedAction`,
-        region.recommendedAction, [
-          "already-optimized", "reject", "investigate", "algorithm-work", "compiler-campaign",
-        ]),
+      intervention,
+      recommendedAction,
       eligibility,
       ranking,
       removableFraction,
@@ -1028,12 +1049,14 @@ function validateDossier(value, context = {}) {
   const label = "dossier";
   const registry = context.reasonRegistry || DEFAULT_REASON_REGISTRY;
   schemaHeader(label, value, SCHEMAS.dossier, [
-    "status", "classification", "recommendedAction", "source", "evidence", "excerpt",
+    "status", "classification", "intervention", "recommendedAction", "source", "evidence", "excerpt",
     "currentIr", "facts", "rejections",
     "costs", "candidates", "unresolvedProofs", "suggestedContract", "witness", "oracles",
     "adversarialObligations", "benchmarkObligations", "generality", "negativeEvidence",
     "claims", "integration", "promotionCriteria",
   ]);
+  const intervention = value.intervention === null ? null
+    : validateIntervention(`${label}.intervention`, value.intervention);
   const source = validateSource(`${label}.source`, value.source);
   exactKeys(`${label}.evidence`, value.evidence,
     ["dashboardId", "overlayId", "profileIds", "opportunityEvidenceIds"]);
@@ -1054,6 +1077,8 @@ function validateDossier(value, context = {}) {
   if (excerpt.digest !== sha256(excerpt.text)) {
     fail(`${label}.excerpt.digest`, "does not match excerpt text");
   }
+  let currentIr = null;
+  if (value.currentIr !== null) {
   exactKeys(`${label}.currentIr`, value.currentIr, [
     "reportDigest", "program", "decisionId", "legacyDecisionId", "passId", "selected", "decision",
   ]);
@@ -1064,7 +1089,7 @@ function validateDossier(value, context = {}) {
   if (program.schema !== "sagejs.optimizing-mathematics/v1" || !Array.isArray(program.regions)) {
     fail(`${label}.currentIr.program`, "must be a complete optimizing-mathematics/v1 program");
   }
-  const currentIr = {
+  currentIr = {
     reportDigest: digest(`${label}.currentIr.reportDigest`, value.currentIr.reportDigest),
     program,
     decisionId: contentId(`${label}.currentIr.decisionId`, value.currentIr.decisionId),
@@ -1085,6 +1110,13 @@ function validateDossier(value, context = {}) {
   }
   if (decisionIr.passId !== currentIr.passId || decisionIr.selected !== currentIr.selected) {
     fail(`${label}.currentIr`, "copied pass and selection do not match the optimizer decision");
+  }
+  }
+  if (intervention?.category === "compiler" && currentIr === null) {
+    fail(`${label}.currentIr`, "is required for a compiler intervention");
+  }
+  if (intervention !== null && intervention.category !== "compiler" && currentIr !== null) {
+    fail(`${label}.currentIr`, "must be null for a non-compiler intervention");
   }
   exactKeys(`${label}.facts`, value.facts, ["proven", "guarded", "unknown", "invalidated"]);
   const facts = Object.fromEntries(Object.entries(value.facts).map(([key, items]) => [
@@ -1117,9 +1149,11 @@ function validateDossier(value, context = {}) {
       ),
     };
   }, { minimum: 1, uniqueBy: (candidate) => candidate.id, sortedBy: (candidate) => candidate.id });
+  let suggestedContract = null;
+  if (value.suggestedContract !== null) {
   exactKeys(`${label}.suggestedContract`, value.suggestedContract,
     ["requiredPassId", "coverage", "target", "guardFailure"]);
-  const suggestedContract = {
+  suggestedContract = {
     requiredPassId: stableName(
       `${label}.suggestedContract.requiredPassId`, value.suggestedContract.requiredPassId,
     ),
@@ -1132,6 +1166,14 @@ function validateDossier(value, context = {}) {
       ["fallback", "error"],
     ),
   };
+  }
+  if (intervention?.category === "compiler" && suggestedContract === null) {
+    fail(`${label}.suggestedContract`, "is required for a compiler intervention");
+  }
+  if (intervention !== null && intervention.category !== "compiler" &&
+      suggestedContract !== null) {
+    fail(`${label}.suggestedContract`, "must be null for a non-compiler intervention");
+  }
   exactKeys(`${label}.witness`, value.witness, ["path", "digest"]);
   exactKeys(`${label}.integration`, value.integration, ["sharedFiles", "owner"]);
   exactKeys(`${label}.promotionCriteria`, value.promotionCriteria,
@@ -1146,8 +1188,9 @@ function validateDossier(value, context = {}) {
       "boundary-dominated", "allocation-materialization", "compiler-rejection",
       "target-mismatch", "cold-startup-dominated", "unknown",
     ]),
+    intervention,
     recommendedAction: enumeration(`${label}.recommendedAction`, value.recommendedAction, [
-      "already-optimized", "reject", "investigate", "algorithm-work", "compiler-campaign",
+      "already-optimized", "reject", "investigate", ...INTERVENTION_ACTIONS,
     ]),
     source,
     evidence,
@@ -1192,6 +1235,10 @@ function validateDossier(value, context = {}) {
         value.promotionCriteria.maximumRegression, 0, 1),
     },
   };
+  if ([...INTERVENTION_ACTIONS].includes(normalized.recommendedAction) &&
+      normalized.recommendedAction !== intervention?.action) {
+    fail(`${label}.recommendedAction`, "does not match the reviewed intervention category");
+  }
   if (context.overlayId && evidence.overlayId !== context.overlayId) {
     fail(`${label}.evidence.overlayId`, "does not match the verified overlay");
   }
@@ -1209,11 +1256,12 @@ function validateDossier(value, context = {}) {
 function validateCampaign(value, context = {}) {
   const label = "campaign";
   schemaHeader(label, value, SCHEMAS.campaign, [
-    "status", "baseCommit", "dossier", "hypothesis", "selectionEvidence", "interfaces",
+    "status", "baseCommit", "dossier", "intervention", "hypothesis", "selectionEvidence", "interfaces",
     "targets", "lanes", "dependencies", "oracles", "acceptance", "platforms", "evidencePolicy",
   ]);
   if (!/^[0-9a-f]{40}$/.test(value.baseCommit)) fail(`${label}.baseCommit`, "must be a Git commit");
   const dossier = validateReference(`${label}.dossier`, value.dossier);
+  const intervention = validateIntervention(`${label}.intervention`, value.intervention);
   const interfaces = array(`${label}.interfaces`, value.interfaces, (interfaceLabel, item) => {
     exactKeys(interfaceLabel, item, ["name", "schema", "digest", "owner"]);
     return {
@@ -1232,7 +1280,8 @@ function validateCampaign(value, context = {}) {
       id: identifier(`${laneLabel}.id`, lane.id),
       role: enumeration(`${laneLabel}.role`, lane.role, [
         "workload", "semantic-proof", "representation", "target", "verifier",
-        "differential-evidence", "integration",
+        "differential-evidence", "algorithm", "library-route", "runtime", "boundary",
+        "cache", "source", "integration",
       ]),
       claims: stringArray(`${laneLabel}.claims`, lane.claims, { minimum: 1 }).map(
         (claim, index) => repositoryPath(`${laneLabel}.claims[${index}]`, claim),
@@ -1271,6 +1320,7 @@ function validateCampaign(value, context = {}) {
       ["proposed", "approved", "active", "review", "accepted", "rejected"]),
     baseCommit: value.baseCommit,
     dossier,
+    intervention,
     hypothesis: nonemptyString(`${label}.hypothesis`, value.hypothesis),
     selectionEvidence: stringArray(`${label}.selectionEvidence`, value.selectionEvidence,
       { minimum: 1 }),
@@ -1306,6 +1356,10 @@ function validateCampaign(value, context = {}) {
   };
   if (context.dossierId && dossier.id !== context.dossierId) {
     fail(`${label}.dossier.id`, "does not match the approved dossier");
+  }
+  if (context.intervention &&
+      canonicalJson(intervention) !== canonicalJson(context.intervention)) {
+    fail(`${label}.intervention`, "does not match the approved dossier intervention");
   }
   return finish(label, value, normalized);
 }
@@ -1511,13 +1565,14 @@ function promotionDecision(document, bindings = {
 function validatePromotionReceipt(value, context = {}) {
   const label = "promotion";
   schemaHeader(label, value, SCHEMAS.promotion, [
-    "authority", "campaign", "policy", "baseline", "candidate", "build", "artifact",
+    "authority", "campaign", "intervention", "policy", "baseline", "candidate", "build", "artifact",
     "workloads", "correctness", "compilerDelta", "routes", "performance", "costs", "resources",
     "platforms", "baselineExceptions", "browsers", "dashboardDelta", "adversarial",
     "neighboring", "losingCandidates", "decision",
   ]);
   if (value.authority !== "promotion-validator") fail(`${label}.authority`, "must be promotion-validator");
   const campaign = validateReference(`${label}.campaign`, value.campaign);
+  const intervention = validateIntervention(`${label}.intervention`, value.intervention);
   exactKeys(`${label}.policy`, value.policy, [
     "id", "digest", "minPairs", "bootstrapResamples", "confidence", "bootstrapSeedDigest",
     "minimumEndToEndImprovement", "minimumPhaseImprovement", "minimumPhaseShare",
@@ -1629,9 +1684,11 @@ function validatePromotionReceipt(value, context = {}) {
     (id, index) => contentId(`${label}.workloads[${index}]`, id));
   const correctness = array(`${label}.correctness`, value.correctness, validateStatusEvidence,
     { minimum: 1, uniqueBy: (item) => item.id, sortedBy: (item) => item.id });
-  exactKeys(`${label}.compilerDelta`, value.compilerDelta,
-    ["beforeDecisionIds", "afterDecisionIds", "resolvedReasons", "introducedReasons"]);
-  const compilerDelta = {
+  let compilerDelta = null;
+  if (value.compilerDelta !== null) {
+    exactKeys(`${label}.compilerDelta`, value.compilerDelta,
+      ["beforeDecisionIds", "afterDecisionIds", "resolvedReasons", "introducedReasons"]);
+    compilerDelta = {
     beforeDecisionIds: stringArray(`${label}.compilerDelta.beforeDecisionIds`,
       value.compilerDelta.beforeDecisionIds).map((id, index) =>
         contentId(`${label}.compilerDelta.beforeDecisionIds[${index}]`, id)),
@@ -1642,7 +1699,14 @@ function validatePromotionReceipt(value, context = {}) {
       value.compilerDelta.resolvedReasons, context.reasonRegistry || DEFAULT_REASON_REGISTRY),
     introducedReasons: validateReasonList(`${label}.compilerDelta.introducedReasons`,
       value.compilerDelta.introducedReasons, context.reasonRegistry || DEFAULT_REASON_REGISTRY),
-  };
+    };
+  }
+  if (intervention.category === "compiler" && compilerDelta === null) {
+    fail(`${label}.compilerDelta`, "is required for a compiler intervention");
+  }
+  if (intervention.category !== "compiler" && compilerDelta !== null) {
+    fail(`${label}.compilerDelta`, "must be null for a non-compiler intervention");
+  }
   const routes = array(`${label}.routes`, value.routes, (routeLabel, route) => {
     exactKeys(routeLabel, route, [
       "id", "status", "evidenceId", "passId", "lowering", "representation", "target",
@@ -1663,7 +1727,11 @@ function validatePromotionReceipt(value, context = {}) {
       guardFallback: enumeration(`${routeLabel}.guardFallback`, route.guardFallback,
         ["pass", "fail", "not-exercised"]),
     };
-  }, { minimum: 1, uniqueBy: (route) => route.id, sortedBy: (route) => route.id });
+  }, { minimum: intervention.category === "compiler" ? 1 : 0,
+    uniqueBy: (route) => route.id, sortedBy: (route) => route.id });
+  if (intervention.category !== "compiler" && routes.length !== 0) {
+    fail(`${label}.routes`, "compiler route evidence must be empty for a non-compiler intervention");
+  }
   exactKeys(`${label}.performance`, value.performance,
     ["endToEnd", "phase"]);
   const performance = {
@@ -1795,7 +1863,8 @@ function validatePromotionReceipt(value, context = {}) {
       };
     }, { uniqueBy: (item) => item.target, sortedBy: (item) => item.target });
   const normalizedCore = {
-    schema: value.schema, id: value.id, authority: value.authority, campaign, policy, baseline,
+    schema: value.schema, id: value.id, authority: value.authority, campaign, intervention,
+    policy, baseline,
     candidate, build, artifact, workloads, correctness, compilerDelta, routes,
     performance, costs, resources, platforms, baselineExceptions, browsers, dashboardDelta,
     adversarial, neighboring, losingCandidates,
@@ -1865,7 +1934,7 @@ function validatePromotionReceipt(value, context = {}) {
       neighboringWorkloadIds: neighboring.map((item) => item.workloadId),
       losingCandidateEvidenceIds: losingCandidates.map((item) => item.evidenceId),
       dashboardIds: [dashboardDelta.beforeId, dashboardDelta.afterId],
-      compilerDecisionIds: [
+      compilerDecisionIds: compilerDelta === null ? [] : [
         ...compilerDelta.beforeDecisionIds,
         ...compilerDelta.afterDecisionIds,
       ],

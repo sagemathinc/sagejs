@@ -115,7 +115,7 @@ function promotionBindings(document, context = {}) {
     neighboringWorkloadIds: document.neighboring.map((item) => item.workloadId),
     losingCandidateEvidenceIds: document.losingCandidates.map((item) => item.evidenceId),
     dashboardIds: [document.dashboardDelta.beforeId, document.dashboardDelta.afterId],
-    compilerDecisionIds: [
+    compilerDecisionIds: document.compilerDelta === null ? [] : [
       ...document.compilerDelta.beforeDecisionIds,
       ...document.compilerDelta.afterDecisionIds,
     ],

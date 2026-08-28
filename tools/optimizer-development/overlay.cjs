@@ -1,10 +1,6 @@
 "use strict";
 
 const OVERLAY_SCHEMA = "sagejs.optimizer-hotness-overlay/v1";
-const COMPILER_CLASSES = new Set([
-  "representation", "dynamic-dispatch-coercion", "boundary-dominated",
-  "allocation-materialization", "compiler-rejection", "target-mismatch",
-]);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -58,13 +54,20 @@ function recommendAction(region, negativeEvidence = []) {
   const optimized = region.runtimeRoutes.some((route) => route.optimizedEntries > 0);
   if (selected && optimized) return "already-optimized";
   if (negativeEvidence.length > 0) return "reject";
-  if (["algorithmic", "repeated-proof-state"].includes(region.classification)) {
-    return "algorithm-work";
-  }
-  if (region.eligibility.status === "eligible" && COMPILER_CLASSES.has(region.classification)) {
-    return "compiler-campaign";
+  if (region.eligibility.status === "eligible" && region.intervention !== null) {
+    return region.intervention.action;
   }
   return "investigate";
+}
+
+function matureDispositionSatisfied(region) {
+  if (region.intervention === null) return false;
+  const expected = region.intervention.category === "library-route"
+    ? "mature-algorithm-available"
+    : region.intervention.category === "algorithm"
+      ? "no-mature-implementation"
+      : "not-duplicate";
+  return region.matureAlgorithmDisposition === expected;
 }
 
 function mergeObservedRegion(staticRegion, evidence) {
@@ -76,10 +79,12 @@ function mergeObservedRegion(staticRegion, evidence) {
   const coverage = Math.min(...observations.map((item) => item.coverage));
   const exactOutput = observations.every((item) => item.exactOutput === true);
   const material = staticRegion.ranking.removableWallLower > 0;
+  const interventionReviewed = staticRegion.intervention !== null;
+  const algorithmDispositionKnown = matureDispositionSatisfied(staticRegion);
   const eligible = current && coverage >= evidence.minimumCoverage && exactOutput
     && material && staticRegion.classification !== "unknown"
     && staticRegion.fallbackPreserving === true
-    && staticRegion.matureAlgorithmDisposition === "not-duplicate";
+    && interventionReviewed && algorithmDispositionKnown;
   const gates = {
     current,
     coverageSatisfied: coverage >= evidence.minimumCoverage,
@@ -87,7 +92,8 @@ function mergeObservedRegion(staticRegion, evidence) {
     material,
     classificationKnown: staticRegion.classification !== "unknown",
     fallbackPreserving: staticRegion.fallbackPreserving === true,
-    algorithmDispositionKnown: staticRegion.matureAlgorithmDisposition === "not-duplicate",
+    interventionReviewed,
+    algorithmDispositionKnown,
   };
   const reasons = evidence.eligibilityReasons(gates);
   assert(eligible || reasons.length > 0, "ineligible region must have at least one stable reason");
@@ -108,6 +114,7 @@ function mergeObservedRegion(staticRegion, evidence) {
     })),
     runtimeRoutes: copy(routes),
     classification: staticRegion.classification,
+    intervention: copy(staticRegion.intervention || null),
     recommendedAction: "investigate",
     eligibility: { status: eligible ? "eligible" : current ? "ineligible" : "stale", reasons },
     ranking: copy(staticRegion.ranking),
@@ -147,6 +154,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       removableFraction: copy(region.removableFraction),
       opportunityEvidenceIds: [],
       opportunityDecisionIds: [],
+      intervention: copy(region.intervention || null),
     });
   }
 
@@ -172,8 +180,12 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
     assert(region && !duplicateIds.has(opportunity.scope.primaryRegionId),
       `reviewed opportunity ${opportunity.id} does not resolve one dashboard region`);
     region.opportunityEvidenceIds.push(opportunity.id);
-    region.opportunityDecisionIds.push(opportunity.compilerDecision.decisionId);
+    if (opportunity.compilerDecision !== null) {
+      region.opportunityDecisionIds.push(opportunity.compilerDecision.decisionId);
+    }
     if (opportunity.status === "eligible") {
+      region.intervention = copy(opportunity.intervention);
+      region.fallbackPreserving = opportunity.intervention.fallbackStrategy !== "not-applicable";
       region.classification = opportunity.classification.primary;
       region.matureAlgorithmDisposition = opportunity.matureAlgorithm.disposition;
       region.ranking.removableWallLower =
@@ -190,8 +202,9 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       id: opportunity.id,
       regionId: opportunity.scope.primaryRegionId,
       workloadId: opportunity.workload.id,
-      decisionId: opportunity.compilerDecision.decisionId,
-      passId: opportunity.compilerDecision.passId,
+      decisionId: opportunity.compilerDecision?.decisionId ?? null,
+      passId: opportunity.compilerDecision?.passId ?? null,
+      intervention: copy(opportunity.intervention),
       status: opportunity.status,
       candidateScope: opportunity.scope.candidateScope,
       hotChildRegionIds: copy(opportunity.scope.hotChildRegionIds),
@@ -205,6 +218,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       hotChildRegionIds: copy(opportunity.scope.hotChildRegionIds),
       attributionProfileId: opportunity.profiles.attributionId,
       workloadId: opportunity.workload.id,
+      intervention: copy(opportunity.intervention),
     });
   }
   opportunities.sort((left, right) => left.id.localeCompare(right.id));

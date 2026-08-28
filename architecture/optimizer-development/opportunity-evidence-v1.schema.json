@@ -11,6 +11,7 @@
     "dashboard",
     "compiler",
     "compilerDecision",
+    "intervention",
     "source",
     "scope",
     "workload",
@@ -58,12 +59,31 @@
       }
     },
     "compilerDecision": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decisionId", "passId"],
+          "properties": {
+            "decisionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+            "passId": { "$ref": "wire-definitions-v1.schema.json#/$defs/stableName" }
+          }
+        }
+      ]
+    },
+    "intervention": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["decisionId", "passId"],
+      "required": ["category", "action", "owner", "mechanism", "evidenceBoundary", "sourceRelationship", "fallbackStrategy"],
       "properties": {
-        "decisionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
-        "passId": { "$ref": "wire-definitions-v1.schema.json#/$defs/stableName" }
+        "category": { "enum": ["algorithm", "library-route", "representation", "runtime", "boundary", "cache", "source", "compiler"] },
+        "action": { "enum": ["algorithm-campaign", "library-route-campaign", "representation-campaign", "runtime-campaign", "boundary-campaign", "cache-campaign", "source-campaign", "compiler-campaign"] },
+        "owner": { "$ref": "wire-definitions-v1.schema.json#/$defs/identifier" },
+        "mechanism": { "type": "string", "minLength": 1 },
+        "evidenceBoundary": { "enum": ["complete-public-call", "reviewed-phase", "system-boundary"] },
+        "sourceRelationship": { "enum": ["source-transparent", "source-changing", "not-applicable"] },
+        "fallbackStrategy": { "enum": ["same-source", "guarded-source", "library-fallback", "rollback", "not-applicable"] }
       }
     },
     "source": {

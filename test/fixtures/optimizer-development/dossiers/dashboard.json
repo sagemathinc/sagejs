@@ -8,6 +8,15 @@
       "owningFunction": { "qualifiedName": "hot" },
       "staticEvidence": {
         "primaryClass": "compiler-rejection",
+        "intervention": {
+          "category": "compiler",
+          "action": "compiler-campaign",
+          "owner": "optimizer-development",
+          "mechanism": "prove and lower a reusable bounded integer region",
+          "evidenceBoundary": "complete-public-call",
+          "sourceRelationship": "source-transparent",
+          "fallbackStrategy": "same-source"
+        },
         "nearMissDistance": 1,
         "semanticRisk": "medium",
         "compilationAndCodeSizeRisk": "low",

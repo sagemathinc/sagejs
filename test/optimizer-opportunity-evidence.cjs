@@ -265,6 +265,15 @@ function buildFixture() {
     },
     compiler,
     compilerDecision,
+    intervention: {
+      category: "compiler",
+      action: "compiler-campaign",
+      owner: "optimizer-development",
+      mechanism: "lower the reviewed modular fold through a verified compiler plan",
+      evidenceBoundary: "complete-public-call",
+      sourceRelationship: "source-transparent",
+      fallbackStrategy: "same-source",
+    },
     source,
     scope,
     workload: {
@@ -325,6 +334,17 @@ function validDocument(fixture = buildFixture()) {
   );
 }
 
+const interventionCases = [
+  ["algorithm", "algorithmic", "no-mature-implementation", "source-changing", "rollback"],
+  ["library-route", "algorithmic", "mature-algorithm-available", "source-changing", "library-fallback"],
+  ["representation", "representation", "not-duplicate", "source-changing", "guarded-source"],
+  ["runtime", "dynamic-dispatch-coercion", "not-duplicate", "not-applicable", "rollback"],
+  ["boundary", "boundary-dominated", "not-duplicate", "not-applicable", "rollback"],
+  ["cache", "cold-startup-dominated", "not-duplicate", "not-applicable", "rollback"],
+  ["source", "allocation-materialization", "not-duplicate", "source-changing", "same-source"],
+  ["compiler", "compiler-rejection", "not-duplicate", "source-transparent", "same-source"],
+];
+
 test("opportunity evidence schema is strict and versioned", () => {
   const schema = JSON.parse(fs.readFileSync(path.join(
     ROOT, "architecture/optimizer-development/opportunity-evidence-v1.schema.json",
@@ -350,6 +370,36 @@ test("reviewed evidence binds current identities and recomputes a positive lower
   assert.deepEqual(document.compilerDecision, fixture.compilerDecision);
   assert(Object.isFrozen(document));
   assert(Object.isFrozen(document.measurement.pairs[0]));
+});
+
+test("reviewed evidence chooses among all optimization intervention categories", () => {
+  for (const [category, classification, disposition, sourceRelationship,
+    fallbackStrategy] of interventionCases) {
+    const fixture = buildFixture();
+    fixture.payload.compilerDecision = category === "compiler"
+      ? fixture.compilerDecision : null;
+    fixture.payload.intervention = {
+      category,
+      action: `${category}-campaign`,
+      owner: "optimizer-development",
+      mechanism: `reviewed ${category} mechanism at the complete public boundary`,
+      evidenceBoundary: "complete-public-call",
+      sourceRelationship,
+      fallbackStrategy,
+    };
+    fixture.payload.classification.primary = classification;
+    fixture.payload.matureAlgorithm.disposition = disposition;
+    const document = validDocument(fixture);
+    assert.equal(document.intervention.category, category);
+    assert.equal(document.intervention.action, `${category}-campaign`);
+    assert.equal(document.compilerDecision === null, category !== "compiler");
+  }
+});
+
+test("classification cannot silently select an intervention", () => {
+  const fixture = buildFixture();
+  fixture.payload.intervention.action = "algorithm-campaign";
+  assert.throws(() => validDocument(fixture), /expected compiler-campaign/);
 });
 
 test("a reviewed composite phase is selectable without claiming complete-call timing", () => {

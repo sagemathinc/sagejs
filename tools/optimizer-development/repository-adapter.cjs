@@ -147,6 +147,7 @@ function staticRegion(loop, files, passCounts, passExamples) {
     },
     staticDecisions: decisions,
     classification: staticClassification(loop),
+    intervention: null,
     fallbackPreserving: loop.decisions.some((decision) => typeof decision.fallbackId === "string"),
     // The dashboard does not prove whether a mature algorithm duplicates this
     // work. Leaving this unknown deliberately prevents an automatic campaign.
@@ -491,6 +492,9 @@ function createRepositoryAdapter(options = {}) {
     if (!gates.material) reasons.push(compilerReason("evidence.below-materiality-threshold"));
     if (!gates.classificationKnown) reasons.push(compilerReason("dashboard.no-current-pass-claimed"));
     if (!gates.fallbackPreserving) reasons.push(compilerReason("evidence.no-plausible-fallback"));
+    if (!gates.interventionReviewed) {
+      reasons.push(compilerReason("evidence.intervention-unreviewed"));
+    }
     if (!gates.algorithmDispositionKnown) {
       reasons.push(compilerReason("evidence.algorithm-disposition-unresolved"));
     }
@@ -499,6 +503,82 @@ function createRepositoryAdapter(options = {}) {
 
   function dossierDetails({ dashboardRegion, overlayRegion, profileReceipts, profileViews }) {
     const loop = dashboardRegion.repository.loop;
+    const intervention = overlayRegion.intervention;
+    const filename = path.join(root, loop.source.path);
+    const source = fs.readFileSync(filename, "utf8");
+    assert(sha256(source) === dashboardRegion.repository.file.sourceDigest,
+      `dossier source is stale: ${loop.source.path}`);
+    const excerpt = sourceExcerpt(source, overlayRegion.source.range);
+    assert(sha256(excerpt) === loop.excerptDigest,
+      `dossier excerpt is stale: ${loop.id}`);
+    const activeProfiles = new Set(overlayRegion.observations.map((item) => item.profileId));
+    const oracles = profileReceipts.filter((receipt) => activeProfiles.has(receipt.id))
+      .flatMap((receipt) => receipt.output.oracleResults.map((oracle) =>
+        `${oracle.id}: ${oracle.status}${oracle.digest ? ` (${oracle.digest})` : ""}`));
+    const similar = new Set(dashboardRegion.repository.heldOut.map((sibling) =>
+      `${sibling.path}:${sibling.line} is a held-out intervention hypothesis`));
+    if (intervention !== null && intervention.category !== "compiler") {
+      const zeroCounters = {
+        boundaryCrossings: 0,
+        copiedBytes: 0,
+        materializations: 0,
+        allocations: 0,
+      };
+      return {
+        intervention,
+        excerpt: { text: excerpt, digest: sha256(excerpt) },
+        currentIr: null,
+        facts: {
+          proven: [{
+            kind: "exact-current-source-region",
+            authority: "observation",
+            evidence: `${loop.id} in ${loop.source.path}`,
+          }],
+          guarded: [],
+          unknown: [],
+          invalidated: [],
+        },
+        rejections: [],
+        costs: { estimated: zeroCounters, observed: zeroCounters, dominant: "unknown" },
+        candidates: [{
+          id: "generic-current-control",
+          target: "generic",
+          representation: "current public Sage and Python values",
+          status: "selected",
+          reason: null,
+          inclusiveEvidence: "authenticated current workload baseline",
+        }],
+        unresolvedProofs: [
+          `complete ${intervention.category} semantic and failure-order proof`,
+          "intervention-specific resource and rollback accounting",
+        ],
+        suggestedContract: null,
+        witness: { path: loop.source.path, digest: dashboardRegion.repository.file.sourceDigest },
+        oracles: [...new Set(oracles)].sort(),
+        adversarialObligations: [
+          "preserve exact public output and exception behavior",
+          "exercise the reviewed fallback or rollback boundary",
+        ],
+        benchmarkObligations: [
+          "cold and warm complete-public-call timing",
+          "resource and boundary accounting",
+          "held-out consumer no-regression timing",
+        ],
+        generality: similar.size > 0 ? [...similar].sort()
+          : [`${loop.source.path}:${loop.source.line} requires a held-out independent consumer`],
+        negativeEvidence: overlayRegion.opportunityEvidenceIds.map((id) =>
+          `reviewed alternatives are retained in opportunity evidence ${id}`),
+        claims: [loop.source.path],
+        integration: { sharedFiles: [], owner: "optimizer-integration" },
+        promotionCriteria: {
+          minimumEndToEndImprovement: 0.1,
+          minimumPhaseImprovement: 0.5,
+          maximumRegression: 0.03,
+        },
+        dynamicFallback: intervention.fallbackStrategy,
+        independentVerifier: "independent exact differential and intervention-boundary verifier",
+      };
+    }
     assert(loop.decisions.length > 0,
       `cannot create a dossier without current optimizer decision IR: ${loop.id}`);
     const reviewedDecisionIds = overlayRegion.opportunityDecisionIds || [];
@@ -513,13 +593,6 @@ function createRepositoryAdapter(options = {}) {
     const dashboardDecision = loop.decisions.find((decision) =>
       decision.id === decisionSummary.decisionId);
     assert(dashboardDecision, `dashboard decision is missing: ${decisionSummary.decisionId}`);
-    const filename = path.join(root, loop.source.path);
-    const source = fs.readFileSync(filename, "utf8");
-    assert(sha256(source) === dashboardRegion.repository.file.sourceDigest,
-      `dossier source is stale: ${loop.source.path}`);
-    const excerpt = sourceExcerpt(source, overlayRegion.source.range);
-    assert(sha256(excerpt) === loop.excerptDigest,
-      `dossier excerpt is stale: ${loop.id}`);
     const program = compileFile(filename);
     const irDecision = exactDecision(program, dashboardDecision, overlayRegion.source, root);
     const candidates = dashboardDecision.candidates.map(candidateProjection)
@@ -533,15 +606,10 @@ function createRepositoryAdapter(options = {}) {
     // Receipt counters are workload-global. They are intentionally not
     // misattributed to one region.
     const observed = { boundaryCrossings: 0, copiedBytes: 0, materializations: 0, allocations: 0 };
-    const activeProfiles = new Set(overlayRegion.observations.map((item) => item.profileId));
-    const oracles = profileReceipts.filter((receipt) => activeProfiles.has(receipt.id))
-      .flatMap((receipt) => receipt.output.oracleResults.map((oracle) =>
-        `${oracle.id}: ${oracle.status}${oracle.digest ? ` (${oracle.digest})` : ""}`));
-    const similar = new Set(dashboardRegion.repository.heldOut.map((sibling) =>
-      `${sibling.path}:${sibling.line} is a held-out same-pass hypothesis`));
     const suggested = loop.suggestedContracts.find((item) =>
       item.passId === dashboardDecision.passId);
     return {
+      intervention,
       excerpt: { text: excerpt, digest: sha256(excerpt) },
       currentIr: {
         reportDigest: sha256(canonicalJson(program)),

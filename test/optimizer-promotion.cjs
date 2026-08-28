@@ -18,6 +18,15 @@ const git = (digit) => digit.repeat(40);
 const digest = (label) => sha256(label);
 const id = (label) => `sha256:${digest(label)}`;
 const orders = ["AB", "BA", "BA", "AB"];
+const compilerIntervention = {
+  category: "compiler",
+  action: "compiler-campaign",
+  owner: "optimizer-development",
+  mechanism: "verify and lower a reusable compiler region",
+  evidenceBoundary: "complete-public-call",
+  sourceRelationship: "source-transparent",
+  fallbackStrategy: "same-source",
+};
 
 function pairs(baseline = 125, candidate = 100) {
   return Array.from({ length: 11 }, (_, index) => ({
@@ -52,6 +61,7 @@ function acceptedDraft() {
   );
   const draft = {
     campaign: { id: id("campaign") },
+    intervention: compilerIntervention,
     policy: defaultPromotionPolicy({ bootstrapResamples: 1000 }),
     baseline,
     candidate,
@@ -275,4 +285,30 @@ test("paired bootstrap completion is deterministic and ignores claimed summaries
   assert.equal(first.pairs.length, 11);
   assert.ok(first.confidenceLower > 1.17);
   assert.ok(first.confidenceUpper < 1.25);
+});
+
+test("promotion authenticates non-compiler interventions without counterfeit compiler routes", () => {
+  for (const category of [
+    "algorithm", "library-route", "representation", "runtime", "boundary", "cache", "source",
+  ]) {
+    const { draft, context } = acceptedDraft();
+    draft.intervention = {
+      category,
+      action: `${category}-campaign`,
+      owner: "optimizer-development",
+      mechanism: `reviewed ${category} intervention`,
+      evidenceBoundary: "complete-public-call",
+      sourceRelationship: ["runtime", "boundary", "cache"].includes(category)
+        ? "not-applicable" : "source-changing",
+      fallbackStrategy: category === "library-route" ? "library-fallback" : "rollback",
+    };
+    draft.compilerDelta = null;
+    draft.routes = [];
+    context.validatedInputs.compilerDecisionIds = [];
+    context.validatedInputs.routeEvidenceIds = [];
+    const receipt = createPromotionReceipt(draft, context);
+    assert.equal(receipt.decision.status, "accepted", category);
+    assert.equal(receipt.compilerDelta, null);
+    assert.deepEqual(receipt.routes, []);
+  }
 });

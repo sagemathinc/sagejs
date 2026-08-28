@@ -1,7 +1,12 @@
-# Optimizer-development evidence contracts
+# Sage.js optimization-engine evidence contracts
 
-The compiler-development engine exchanges immutable, content-addressed JSON
-documents. The executable contract is
+The optimization engine exchanges immutable, content-addressed JSON documents.
+It discovers expensive behavior first and chooses an intervention only after
+the evidence boundary, semantics, alternatives, and fallback have been
+reviewed. A hotspot classification is diagnostic; it does not silently select
+compiler work.
+
+The executable contract is
 `tools/optimizer-development/schemas.cjs`; the JSON Schema files in this
 directory describe the wire shape for editors and non-JavaScript consumers.
 The executable validators additionally enforce invariants JSON Schema cannot
@@ -16,6 +21,37 @@ express conveniently:
 - paired ABBA measurement and bootstrap recomputation; and
 - current-checkout, build, artifact, browser, platform, route, resource, and
   baseline-exception gates.
+
+## Intervention choice
+
+Every eligible opportunity, approved dossier, campaign, and promotion receipt
+contains the same reviewed `intervention` object. The category determines the
+campaign action and architecture strategy; it does not weaken the correctness,
+paired-measurement, negative-evidence, resource, platform, or rollback gates.
+
+| Category | Campaign action | Typical change |
+| --- | --- | --- |
+| `algorithm` | `algorithm-campaign` | Replace a mathematical algorithm after ruling out a mature equivalent. |
+| `library-route` | `library-route-campaign` | Route through an already mature implementation with guarded fallback. |
+| `representation` | `representation-campaign` | Change ownership, layout, boxing, or materialization boundaries. |
+| `runtime` | `runtime-campaign` | Improve evaluator, dispatch, serialization, or runtime primitives. |
+| `boundary` | `boundary-campaign` | Reduce or restructure host, native, or Wasm crossings and copies. |
+| `cache` | `cache-campaign` | Change authenticated preparation, reuse, or invalidation behavior. |
+| `source` | `source-campaign` | Rewrite ordinary Sage.js source while preserving public semantics. |
+| `compiler` | `compiler-campaign` | Add a reusable source-transparent proof and lowering. |
+
+`tools/optimizer-development/interventions.cjs` is the shared vocabulary and
+validator. Classification and intervention deliberately remain separate. For
+example, allocation-heavy evidence may justify a representation, runtime,
+source, boundary, or compiler intervention depending on the complete-public
+measurements and mature alternatives. Without a reviewed intervention, the
+overlay recommendation remains `investigate`.
+
+Compiler interventions retain additional constraints: an exact current
+compiler decision and complete IR are mandatory, the source relationship must
+be `source-transparent`, and promotion must authenticate the O0/O2 route and
+fallback. Non-compiler interventions must not manufacture compiler decisions
+or route evidence.
 
 The version-one instance schemas are:
 
@@ -34,6 +70,10 @@ unknown fields are errors. A producer must construct a complete payload and
 then use `attachIdentity`; editing a document after it is addressed makes its
 identity stale.
 
+The first accepted pilot campaign is documented in `CAMPAIGN-1.md`. It used
+the general evidence process and selected a compiler intervention; the broader
+schema is a consequence of the campaign, not a relaxation of its gates.
+
 ## Identity domains
 
 `tools/optimizer-development/identity.cjs` defines repository-portable source
@@ -45,4 +85,3 @@ selected by location alone.
 
 Hashes provide integrity and deterministic joins, not authorship. See
 `TRUST-BOUNDARY.md` for the evidence authority model.
-

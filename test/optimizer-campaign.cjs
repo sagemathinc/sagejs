@@ -9,6 +9,10 @@ const test = require("node:test");
 const { buildHotnessOverlay } = require("../tools/optimizer-development/overlay.cjs");
 const { generateDossier } = require("../tools/optimizer-development/dossier.cjs");
 const { claimsOverlap, generateCampaign } = require("../tools/optimizer-development/campaign.cjs");
+const {
+  INTERVENTION_CATEGORIES,
+  architectureForIntervention,
+} = require("../tools/optimizer-development/interventions.cjs");
 const adapter = require("./fixtures/optimizer-development/dossiers/adapter.cjs");
 
 const fixtures = path.join(__dirname, "fixtures/optimizer-development/dossiers");
@@ -22,6 +26,30 @@ function approvedDossier() {
     regionId: adapter.cid("region:hot"), adapter });
   const { schema, id: _id, ...payload } = draft;
   return adapter.attachIdentity(schema, { ...payload, status: "approved" });
+}
+
+function approvedInterventionDossier(category) {
+  const dossier = approvedDossier();
+  const { schema, id: _id, ...payload } = dossier;
+  const compiler = category === "compiler";
+  payload.intervention = {
+    category,
+    action: `${category}-campaign`,
+    owner: "optimizer-development",
+    mechanism: `reviewed ${category} intervention`,
+    evidenceBoundary: "complete-public-call",
+    sourceRelationship: compiler ? "source-transparent"
+      : category === "runtime" || category === "boundary" || category === "cache"
+        ? "not-applicable" : "source-changing",
+    fallbackStrategy: category === "library-route" ? "library-fallback"
+      : compiler || category === "source" ? "same-source" : "rollback",
+  };
+  payload.recommendedAction = payload.intervention.action;
+  if (!compiler) {
+    payload.currentIr = null;
+    payload.suggestedContract = null;
+  }
+  return adapter.attachIdentity(schema, payload);
 }
 
 const tasks = [
@@ -104,10 +132,27 @@ test("cycles and conflicts with active parallel contracts are rejected", () => {
   }), /overlaps active task/);
 });
 
-test("only an explicitly approved compiler-campaign dossier can create tasks", () => {
+test("only an explicitly approved reviewed-intervention dossier can create tasks", () => {
   const draft = approvedDossier();
   const { schema, id: _id, ...payload } = draft;
   const notApproved = adapter.attachIdentity(schema, { ...payload, status: "draft" });
   assert.throws(() => generateCampaign({ dossier: notApproved, baseCommit,
     proposal: proposal(), adapter }), /approved dossier/);
+});
+
+test("campaign planning preserves every reviewed intervention category", () => {
+  for (const category of INTERVENTION_CATEGORIES) {
+    const result = generateCampaign({
+      dossier: approvedInterventionDossier(category),
+      baseCommit,
+      proposal: proposal(),
+      adapter,
+    });
+    assert.equal(result.campaign.intervention.category, category);
+    assert.equal(result.campaign.intervention.action, `${category}-campaign`);
+    for (const projection of result.projections) {
+      assert.equal(projection.taskContract.architecture.strategy,
+        architectureForIntervention(category));
+    }
+  }
 });

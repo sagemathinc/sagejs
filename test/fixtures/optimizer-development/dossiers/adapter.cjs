@@ -59,6 +59,7 @@ function staticRegion(region) {
     source,
     staticDecisions,
     classification: evidence.primaryClass,
+    intervention: evidence.intervention || null,
     fallbackPreserving: evidence.fallbackPreservingTransformation === true,
     matureAlgorithmDisposition: evidence.matureAlgorithmDisposition || "unknown",
     negativeEvidence: evidence.primaryClass === "target-mismatch"
@@ -88,6 +89,7 @@ const adapter = {
     if (!gates.material) reasons.push(reason("dashboard.no-current-pass-claimed"));
     if (!gates.classificationKnown) reasons.push(reason("dashboard.no-current-pass-claimed"));
     if (!gates.fallbackPreserving) reasons.push(reason("dashboard.no-current-pass-claimed"));
+    if (!gates.interventionReviewed) reasons.push(reason("evidence.intervention-unreviewed"));
     if (!gates.algorithmDispositionKnown) reasons.push(reason("dashboard.no-mathematical-domain-evidence"));
     return [...new Map(reasons.map((item) => [item.code, item])).values()];
   },
@@ -158,6 +160,7 @@ const adapter = {
       .map((item) => `${item.candidate}: ${item.inclusiveRatio}x (${item.disposition})`);
     const zeroCounters = { boundaryCrossings: 0, copiedBytes: 0, materializations: 0, allocations: 0 };
     return {
+      intervention: overlayRegion.intervention,
       excerpt: { text: evidence.sourceExcerpt || "for i in range(n): pass", digest: digest(evidence.sourceExcerpt || "for i in range(n): pass") },
       currentIr: {
         reportDigest: digest(JSON.stringify(canonical(program))),

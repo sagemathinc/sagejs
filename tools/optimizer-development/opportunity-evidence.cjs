@@ -25,6 +25,10 @@ const {
   sourceUnitIdentity,
   validateRange,
 } = require("./identity.cjs");
+const {
+  INTERVENTION_CATEGORIES,
+  validateIntervention,
+} = require("./interventions.cjs");
 
 const OPPORTUNITY_EVIDENCE_SCHEMA = "sagejs.optimizer-opportunity-evidence/v1";
 const PAIRING_METHOD = "paired-abba-minimum-observed-improvement-v1";
@@ -335,6 +339,7 @@ function normalizeDocument(value) {
     "dashboard",
     "compiler",
     "compilerDecision",
+    "intervention",
     "source",
     "scope",
     "workload",
@@ -363,13 +368,16 @@ function normalizeDocument(value) {
     inputDigest: digest(`${label}.workload.inputDigest`, value.workload.inputDigest),
     corpusId: identifier(`${label}.workload.corpusId`, value.workload.corpusId),
   };
-  exactKeys(`${label}.compilerDecision`, value.compilerDecision, ["decisionId", "passId"]);
-  const compilerDecision = {
-    decisionId: contentId(
-      `${label}.compilerDecision.decisionId`, value.compilerDecision.decisionId,
-    ),
-    passId: stableName(`${label}.compilerDecision.passId`, value.compilerDecision.passId),
-  };
+  let compilerDecision = null;
+  if (value.compilerDecision !== null) {
+    exactKeys(`${label}.compilerDecision`, value.compilerDecision, ["decisionId", "passId"]);
+    compilerDecision = {
+      decisionId: contentId(
+        `${label}.compilerDecision.decisionId`, value.compilerDecision.decisionId,
+      ),
+      passId: stableName(`${label}.compilerDecision.passId`, value.compilerDecision.passId),
+    };
+  }
   exactKeys(`${label}.feasibleCandidate`, value.feasibleCandidate, [
     "id", "target", "status", "representation", "compilerRoute", "scopeId",
     "candidateScope",
@@ -436,6 +444,7 @@ function normalizeDocument(value) {
     dashboard,
     compiler: normalizeCompiler(`${label}.compiler`, value.compiler),
     compilerDecision,
+    intervention: validateIntervention(`${label}.intervention`, value.intervention),
     source: normalizeSource(`${label}.source`, value.source),
     scope: normalizeScope(`${label}.scope`, value.scope),
     workload,
@@ -685,12 +694,15 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
     "opportunity evidence.compiler",
     "implementation tuple does not match the current dashboard compiler");
   const primaryLoop = dashboardSource(dashboard, normalized.source);
-  const matchingDecisions = primaryLoop.decisions.filter((decision) =>
-    decision.id === normalized.compilerDecision.decisionId &&
-    decision.passId === normalized.compilerDecision.passId);
-  assert(matchingDecisions.length === 1,
-    "opportunity evidence.compilerDecision",
-    "does not identify exactly one current dashboard decision for the reviewed region");
+  const matchingDecisions = normalized.compilerDecision === null ? []
+    : primaryLoop.decisions.filter((decision) =>
+      decision.id === normalized.compilerDecision.decisionId &&
+      decision.passId === normalized.compilerDecision.passId);
+  if (normalized.compilerDecision !== null) {
+    assert(matchingDecisions.length === 1,
+      "opportunity evidence.compilerDecision",
+      "does not identify exactly one current dashboard decision for the reviewed region");
+  }
   const scopedSources = dashboardScope(dashboard, normalized.scope, normalized.source);
   const workloadReference = {
     id: workload.id,
@@ -734,9 +746,11 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
     "attribution profile has no authenticated samples for the exact region");
   assert(sameHostAndEnvironment(baseline, feasible), "opportunity evidence.profiles",
     "paired baseline and feasible profiles must use the same host, mode, and environment");
-  assert(!carriesCompilerRoute(feasible, scopedSources),
-    "opportunity evidence.feasibleCandidate",
-    "lower-bound-only evidence must not claim an optimizer-selected or runtime route");
+  if (normalized.intervention.category === "compiler") {
+    assert(!carriesCompilerRoute(feasible, scopedSources),
+      "opportunity evidence.feasibleCandidate",
+      "lower-bound-only evidence must not claim an optimizer-selected or runtime route");
+  }
   assert(feasible.configuration.target === normalized.feasibleCandidate.target,
     "opportunity evidence.feasibleCandidate.target",
     "does not match its validated profile target");
@@ -807,19 +821,35 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   }
 
   if (normalized.status === "eligible") {
-    assert(matchingDecisions[0].selected === false,
-      "opportunity evidence.compilerDecision",
-      "an eligible prospective compiler opportunity cannot bind an already-selected decision");
     assert(expectedStatistics.removableWallLowerMicroseconds > 0 &&
       expectedStatistics.positivePairs === expectedStatistics.pairCount,
     "opportunity evidence.status",
     "eligible evidence requires a positive conservative bound from every pair");
-    assert(COMPILER_OPPORTUNITY_CLASSES.has(normalized.classification.primary),
-      "opportunity evidence.classification.primary",
-      "eligible compiler evidence requires a compiler opportunity classification");
-    assert(normalized.matureAlgorithm.disposition === "not-duplicate",
+    const category = normalized.intervention.category;
+    assert(normalized.intervention.fallbackStrategy !== "not-applicable",
+      "opportunity evidence.intervention.fallbackStrategy",
+      "eligible evidence requires an explicit fallback or rollback strategy");
+    if (category === "compiler") {
+      assert(normalized.compilerDecision !== null && matchingDecisions[0].selected === false,
+        "opportunity evidence.compilerDecision",
+        "cannot bind an already-selected decision; an eligible compiler intervention " +
+          "requires one current unselected decision");
+      assert(COMPILER_OPPORTUNITY_CLASSES.has(normalized.classification.primary),
+        "opportunity evidence.classification.primary",
+        "eligible compiler evidence requires a compiler opportunity classification");
+      assert(normalized.intervention.sourceRelationship === "source-transparent",
+        "opportunity evidence.intervention.sourceRelationship",
+        "a compiler intervention must remain source-transparent");
+    }
+    const expectedDisposition = category === "library-route"
+      ? "mature-algorithm-available"
+      : category === "algorithm"
+        ? "no-mature-implementation"
+        : "not-duplicate";
+    assert(normalized.matureAlgorithm.disposition === expectedDisposition,
       "opportunity evidence.matureAlgorithm.disposition",
-      "eligible compiler evidence must rule out duplicating a mature algorithm");
+      `must rule out duplicating a mature algorithm through the category-specific ` +
+        `disposition; eligible ${category} evidence requires ${expectedDisposition}`);
   }
 
   const expectedId = documentIdentity(normalized);
@@ -839,6 +869,7 @@ module.exports = Object.freeze({
   COMPILER_OPPORTUNITY_CLASSES: Object.freeze([...COMPILER_OPPORTUNITY_CLASS_NAMES]),
   MATURE_ALGORITHM_DISPOSITIONS,
   MINIMUM_PAIRS,
+  INTERVENTION_CATEGORIES,
   OPPORTUNITY_EVIDENCE_SCHEMA,
   OPPORTUNITY_SCOPE_SCHEMA,
   PAIRING_METHOD,

@@ -1,6 +1,7 @@
 "use strict";
 
 const DOSSIER_SCHEMA = "sagejs.optimizer-dossier/v1";
+const { INTERVENTION_ACTIONS, validateIntervention } = require("./interventions.cjs");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -56,27 +57,37 @@ function generateDossier({ overlay, dashboard, profileReceipts, regionId, adapte
   }
   const details = adapter.dossier({ dashboardRegion, overlayRegion,
     profileReceipts: receipts, profileViews });
-  assert(details && details.currentIr && details.currentIr.program && details.currentIr.decision,
-    "complete detached optimizer program and exact decision IR are required");
-  const decisionMatches = overlayRegion.staticDecisions.filter(
-    (decision) => decision.decisionId === details.currentIr.decisionId,
-  );
-  assert(decisionMatches.length === 1,
-    "dossier current IR decision must match exactly one overlay static decision");
+  const rawIntervention = details?.intervention ?? overlayRegion.intervention;
+  const intervention = rawIntervention === null ? null
+    : validateIntervention("dossier intervention", rawIntervention);
+  if (intervention?.category === "compiler") {
+    assert(details && details.currentIr && details.currentIr.program && details.currentIr.decision,
+      "a compiler intervention requires complete detached optimizer program and decision IR");
+    const decisionMatches = overlayRegion.staticDecisions.filter(
+      (decision) => decision.decisionId === details.currentIr.decisionId,
+    );
+    assert(decisionMatches.length === 1,
+      "dossier current IR decision must match exactly one overlay static decision");
+  } else if (intervention !== null) {
+    assert(details && details.currentIr === null,
+      "a non-compiler intervention must not manufacture compiler decision IR");
+  }
   const profileIds = sortedUnique(overlayRegion.observations.map((item) => item.profileId));
   assert(profileIds.length > 0, "dossier region must have authenticated profile observations");
 
   let recommendedAction = overlayRegion.recommendedAction;
   const required = [
-    [details.currentIr.program, "complete optimizer IR"],
     [details.dynamicFallback, "dynamic fallback obligation"],
     [details.independentVerifier, "independent verifier obligation"],
     [details.oracles && details.oracles.length, "oracle obligations"],
     [details.benchmarkObligations && details.benchmarkObligations.length, "benchmark obligations"],
     [details.generality && details.generality.length, "held-out generality hypothesis"],
   ];
+  if (intervention?.category === "compiler") {
+    required.push([details.currentIr.program, "complete optimizer IR"]);
+  }
   const missing = required.filter(([present]) => !present).map(([, label]) => label);
-  if (recommendedAction === "compiler-campaign" && missing.length > 0) {
+  if (INTERVENTION_ACTIONS.includes(recommendedAction) && missing.length > 0) {
     recommendedAction = "investigate";
   }
   const requiredList = (items, label) => items && items.length > 0
@@ -89,6 +100,7 @@ function generateDossier({ overlay, dashboard, profileReceipts, regionId, adapte
     status: recommendedAction === "reject" ? "rejected"
       : recommendedAction === "already-optimized" ? "measured" : "draft",
     classification: overlayRegion.classification,
+    intervention: copy(intervention),
     recommendedAction,
     source: copy(overlayRegion.source),
     evidence: {
@@ -105,7 +117,8 @@ function generateDossier({ overlay, dashboard, profileReceipts, regionId, adapte
     candidates: copy(details.candidates),
     unresolvedProofs: sortedUnique([...(details.unresolvedProofs || []),
       ...missing.map((item) => `missing: ${item}`)]),
-    suggestedContract: copy(details.suggestedContract),
+    suggestedContract: intervention === null || intervention.category === "compiler"
+      ? copy(details.suggestedContract) : null,
     witness: copy(details.witness),
     oracles: requiredList(details.oracles, "define an independent oracle"),
     adversarialObligations: sortedUnique(details.adversarialObligations || []),
@@ -120,7 +133,7 @@ function generateDossier({ overlay, dashboard, profileReceipts, regionId, adapte
   const document = adapter.attachIdentity(DOSSIER_SCHEMA, payload);
   return adapter.validateDossier(document, {
     overlayId: checkedOverlay.id,
-    compilerDecision: {
+    compilerDecision: details.currentIr === null ? null : {
       decisionId: details.currentIr.decisionId,
       passId: details.currentIr.passId,
       selected: details.currentIr.selected,

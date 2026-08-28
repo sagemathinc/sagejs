@@ -22,6 +22,15 @@ function fixture(name) {
 
 const rawDigest = (character) => character.repeat(64);
 const refId = (name) => common.contentIdentity("sagejs.optimizer-test-reference/v1", { name });
+const compilerIntervention = {
+  category: "compiler",
+  action: "compiler-campaign",
+  owner: "optimizer-development",
+  mechanism: "verify and lower a reusable compiler region",
+  evidenceBoundary: "complete-public-call",
+  sourceRelationship: "source-transparent",
+  fallbackStrategy: "same-source",
+};
 
 function addressed(schema, payload) {
   return JSON.parse(JSON.stringify(common.attachIdentity(schema, payload)));
@@ -325,6 +334,7 @@ function buildEvidence() {
       }],
       runtimeRoutes: [],
       classification: "compiler-rejection",
+      intervention: compilerIntervention,
       recommendedAction: "compiler-campaign",
       eligibility: { status: "eligible", reasons: [] },
       ranking: {
@@ -360,6 +370,7 @@ function buildEvidence() {
   const dossier = addressed(schemas.SCHEMAS.dossier, {
     status: "approved",
     classification: "compiler-rejection",
+    intervention: compilerIntervention,
     recommendedAction: "compiler-campaign",
     source,
     evidence: {
@@ -418,6 +429,7 @@ function buildEvidence() {
     status: "approved",
     baseCommit: "1".repeat(40),
     dossier: { id: dossier.id },
+    intervention: compilerIntervention,
     hypothesis: "Known-call provenance permits one reusable bounded exact region.",
     selectionEvidence: ["Current authenticated workload profile"],
     interfaces: [{
@@ -502,6 +514,7 @@ function buildEvidence() {
   const promotionCore = {
     authority: "promotion-validator",
     campaign: { id: campaign.id },
+    intervention: compilerIntervention,
     policy,
     baseline,
     candidate,

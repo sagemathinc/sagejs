@@ -28,6 +28,11 @@ const SCHEMA = "sagejs.campaign1-arrow-compiler-promotion-evidence/v1";
 const PASS = "math.closed-transactional-rectangular-binary64-dataflow.v1";
 const LOWERING = "v8.closed-transactional-rectangular-binary64-dataflow.v1";
 const ORDER = Object.freeze(["AB", "BA", "BA", "AB"]);
+const POLICY = Object.freeze({
+  minimumPairs: 11,
+  minimumCompletePublicImprovement: 0.1,
+  requiredConsumers: 2,
+});
 
 function median(values) {
   const sorted = [...values].sort((left, right) => left - right);
@@ -77,6 +82,10 @@ async function pairedComparison({ phase, samples, baseline, candidate, expected 
   const deltas = rawPairs.map(
     (pair) => pair.baselineNanoseconds - pair.candidateNanoseconds,
   );
+  const improvementFractions = rawPairs.map(
+    (pair) => (pair.baselineNanoseconds - pair.candidateNanoseconds) /
+      pair.baselineNanoseconds,
+  );
   return {
     phase,
     measurementScope: "complete-public-construction-and-lowering-call",
@@ -86,8 +95,46 @@ async function pairedComparison({ phase, samples, baseline, candidate, expected 
     candidate: distribution(candidateSamples),
     pairedDelta: distribution(deltas),
     positivePairs: deltas.filter((value) => value > 0).length,
+    pairedImprovementFraction: {
+      minimum: Math.min(...improvementFractions),
+      median: median(improvementFractions),
+      maximum: Math.max(...improvementFractions),
+    },
     medianRatioBaselineOverCandidate:
       median(baselineSamples) / median(candidateSamples),
+  };
+}
+
+function campaignDecision(report) {
+  const reasons = [];
+  if (report.buildAuthentication.status !== "authenticated-current-clean-build" ||
+      report.buildAuthentication.promotable !== true) {
+    reasons.push("campaign.build-not-authenticated-current-clean");
+  }
+  if (report.protocol.points !== STANDARD_POINTS ||
+      report.protocol.samples !== STANDARD_SAMPLES ||
+      report.protocol.warmups !== STANDARD_WARMUPS) {
+    reasons.push("campaign.nonstandard-protocol");
+  }
+  const comparisons = Object.values(report.comparisons);
+  if (comparisons.length < POLICY.requiredConsumers) {
+    reasons.push("campaign.insufficient-independent-public-consumers");
+  }
+  for (const comparison of comparisons) {
+    if (comparison.rawPairs.length < POLICY.minimumPairs) {
+      reasons.push(`campaign.insufficient-pairs.${comparison.phase}`);
+    }
+    if (comparison.positivePairs !== comparison.rawPairs.length) {
+      reasons.push(`campaign.no-paired-separation.${comparison.phase}`);
+    }
+    if (comparison.pairedImprovementFraction.minimum <
+        POLICY.minimumCompletePublicImprovement) {
+      reasons.push(`campaign.below-complete-public-threshold.${comparison.phase}`);
+    }
+  }
+  return {
+    status: reasons.length === 0 ? "accepted" : "non-promotable",
+    reasons: [...new Set(reasons)].sort(),
   };
 }
 
@@ -220,6 +267,10 @@ function validateReport(report) {
   assert.equal(report.intervention.passId, PASS);
   assert.equal(report.intervention.loweringId, LOWERING);
   assert.equal(report.productionRouteClaim, "compiler-selected-v8");
+  assert.equal(report.policy.minimumPairs, POLICY.minimumPairs);
+  assert.equal(report.policy.minimumCompletePublicImprovement,
+    POLICY.minimumCompletePublicImprovement);
+  assert.equal(report.policy.requiredConsumers, POLICY.requiredConsumers);
   validateComparison(
     "representative",
     report.comparisons.representativeVector,
@@ -238,6 +289,10 @@ function validateReport(report) {
   assert.equal(report.guardAudit.hypotIdentityFallbackExact, true);
   assert.ok(report.guardAudit.hypotReplacementCalls > 0);
   assert.equal(report.guardAudit.transactionalPublication, true);
+  const expectedDecision = campaignDecision(report);
+  assert.equal(report.decision.status, expectedDecision.status);
+  assert.deepEqual([...report.decision.reasons], expectedDecision.reasons);
+  assert.equal(report.promotable, expectedDecision.status === "accepted");
   return report;
 }
 
@@ -285,20 +340,8 @@ async function runPromotionEvidence({
         expected: oracles.slope,
       }),
     };
-    const completeSeparation = Object.values(comparisons).every(
-      (comparison) => comparison.positivePairs === samples,
-    );
-    const promotable = Boolean(
-      buildAuthentication.promotable && standard && completeSeparation,
-    );
     const payload = {
       generatedAt: new Date().toISOString(),
-      status: promotable
-        ? "standard-current-build-compiler-evidence"
-        : standard
-          ? "standard-current-build-insufficient-separation"
-        : "development-smoke-non-promotable",
-      promotable,
       buildAuthentication,
       host: {
         platform: process.platform,
@@ -316,6 +359,7 @@ async function runPromotionEvidence({
         sourceChanges: [],
       },
       productionRouteClaim: "compiler-selected-v8",
+      policy: POLICY,
       protocol: {
         points,
         samples,
@@ -343,6 +387,14 @@ async function runPromotionEvidence({
         interruption: "both represented source-loop backedges retain the compiler interrupt cadence when catchable",
       },
     };
+    const decision = campaignDecision(payload);
+    payload.status = decision.status === "accepted"
+      ? "accepted-optimization-campaign-evidence"
+      : standard
+        ? "standard-current-build-non-promotable"
+        : "development-smoke-non-promotable";
+    payload.promotable = decision.status === "accepted";
+    payload.decision = decision;
     return validateReport(attachIdentity(SCHEMA, payload));
   } finally {
     await candidate.close();

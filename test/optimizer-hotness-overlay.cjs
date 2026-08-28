@@ -33,7 +33,7 @@ test("selected, negative, and algorithmic controls retain conservative actions",
   const by = (name) => overlay.regions.find((item) => item.source.regionId === adapter.cid(name));
   assert.equal(recommendAction(by("region:selected")), "already-optimized");
   assert.equal(by("region:negative").recommendedAction, "reject");
-  assert.equal(recommendAction(by("region:algorithm")), "algorithm-work");
+  assert.equal(recommendAction(by("region:algorithm")), "investigate");
 });
 
 test("historical receipts and stale region IDs cannot enter the actionable join", () => {
@@ -100,6 +100,15 @@ test("validated fused opportunities consume exact hot children into their outer 
     compilerDecision: {
       decisionId: adapter.cid(`${primaryRegionId}:${passId}:0`),
       passId,
+    },
+    intervention: {
+      category: "compiler",
+      action: "compiler-campaign",
+      owner: "optimizer-development",
+      mechanism: "verified lowering of the reviewed fused region",
+      evidenceBoundary: "reviewed-phase",
+      sourceRelationship: "source-transparent",
+      fallbackStrategy: "same-source",
     },
     scope: {
       candidateScope: "fused-outer-region",

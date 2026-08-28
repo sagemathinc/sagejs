@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  architectureForIntervention,
+  validateIntervention,
+} = require("./interventions.cjs");
+
 const CAMPAIGN_SCHEMA = "sagejs.optimizer-campaign/v1";
 
 function assert(condition, message) {
@@ -76,8 +81,11 @@ function generateCampaign({ dossier, baseCommit, proposal, existingContracts = [
   }
   const checked = adapter.validateDossier(dossier);
   assert(checked.status === "approved", "campaign creation requires an approved dossier");
-  assert(checked.recommendedAction === "compiler-campaign",
-    "campaign creation requires a compiler-campaign dossier action");
+  const intervention = validateIntervention(
+    "campaign dossier intervention", checked.intervention,
+  );
+  assert(checked.recommendedAction === intervention.action,
+    "campaign creation requires the reviewed intervention campaign action");
   assert(typeof baseCommit === "string" && /^[0-9a-f]{40}$/.test(baseCommit),
     "baseCommit must be an exact Git commit");
   assert(proposal && Array.isArray(proposal.tasks) && proposal.tasks.length > 0,
@@ -92,8 +100,8 @@ function generateCampaign({ dossier, baseCommit, proposal, existingContracts = [
     objective: task.objective,
     claims: task.claims.map(normalizeClaim).sort(),
     dependencies: [...(task.dependencies || [])].sort(),
-    architecture: task.architecture || "compiler-infrastructure",
-    fallback: task.fallback || "same-source",
+    architecture: task.architecture || architectureForIntervention(intervention.category),
+    fallback: task.fallback || intervention.fallbackStrategy,
     oracles: [...(task.oracles || [])].sort(),
     deliverables: [...task.deliverables].sort(),
   })).sort((a, b) => a.id.localeCompare(b.id));
@@ -107,6 +115,7 @@ function generateCampaign({ dossier, baseCommit, proposal, existingContracts = [
     status: "proposed",
     baseCommit,
     dossier: { id: checked.id },
+    intervention,
     hypothesis: proposal.hypothesis,
     selectionEvidence: [...proposal.selectionEvidence].sort(),
     interfaces: [...proposal.interfaces].sort((a, b) => a.name.localeCompare(b.name)),
@@ -132,6 +141,7 @@ function generateCampaign({ dossier, baseCommit, proposal, existingContracts = [
   };
   const campaign = adapter.validateCampaign(adapter.attachIdentity(CAMPAIGN_SCHEMA, payload), {
     dossierId: checked.id,
+    intervention,
   });
   const projections = tasks.map((task) => ({
     id: task.id,

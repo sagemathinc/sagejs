@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-reason-registry/v1",
-  "id": "sha256:4eefdee46b2bd6745430fda057124ce3c8411d62a46885d8b9c3a3a6eb2bc364",
+  "id": "sha256:b8b253ef91d3d032153625430b9a91c35da94d61b70770b36c15d79f514c1a5b",
   "codes": [
     {
       "code": "binary64-nested-all.builtin-all-identity-unproved",
@@ -287,6 +287,13 @@
       "kind": "integrity",
       "origin": "validator",
       "description": "Current source attribution coverage is below the reviewed eligibility threshold.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.intervention-unreviewed",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "No evidence-reviewed algorithm, library, representation, runtime, boundary, cache, source, or compiler intervention has been selected.",
       "detailFields": []
     },
     {
