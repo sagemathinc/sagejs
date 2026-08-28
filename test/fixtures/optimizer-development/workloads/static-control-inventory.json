@@ -1,0 +1,46 @@
+{
+  "schema": "sagejs.optimizer-static-control-inventory/v1",
+  "id": "sha256:fb46e26c5c2a15b74d19bce97f4e24ebfe3eadc99db7a675931c5f5960d27b2a",
+  "controls": [
+    {
+      "expectedPass": "math.bounded-integer-region.v1",
+      "path": "bench/optimizer-workloads/bounded-integer.py",
+      "qualifiedName": "bounded_integer_control",
+      "selection": "required",
+      "selector": "bounded-integer",
+      "sha256": "4c5715eb991c3648332307ca508e390c64d79d11f76c426f81b7d0775c012a81"
+    },
+    {
+      "expectedPass": "math.fixed-extension-region.v1",
+      "path": "bench/optimizer-workloads/fixed-extension.py",
+      "qualifiedName": "fixed_extension_control",
+      "selection": "required",
+      "selector": "fixed-extension",
+      "sha256": "6f1b93ff6dbe07a042c8022ba3da3bc75c2914bc9412d7da439fda01e1a2784e"
+    },
+    {
+      "expectedPass": null,
+      "path": "bench/optimizer-workloads/packed-container.py",
+      "qualifiedName": "packed_container_control",
+      "selection": "forbidden",
+      "selector": "packed-container",
+      "sha256": "de7961adc86af0b7082790f40c9baf00315ee2ef443cc936bd225e4f5b901b3c"
+    },
+    {
+      "expectedPass": "math.modular-batch-region.v1",
+      "path": "bench/optimizer-workloads/prime-residue-batch.py",
+      "qualifiedName": "prime_residue_batch_control",
+      "selection": "required",
+      "selector": "prime-residue-batch",
+      "sha256": "8ee4eaf3c75540215ecccc9bfbc6018778771ce2506f499f16df334e315b3365"
+    },
+    {
+      "expectedPass": "math.strict-float-array-region.v1",
+      "path": "bench/optimizer-workloads/strict-binary64-tuple.py",
+      "qualifiedName": "strict_binary64_tuple_control",
+      "selection": "required",
+      "selector": "strict-binary64-array",
+      "sha256": "d269fdad73e39cab8e27ba9c16540bd7fb07e9b97ea913628dea29eb61f9cfea"
+    }
+  ]
+}

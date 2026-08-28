@@ -1,0 +1,11 @@
+{
+  "schema": "sagejs.optimizer-development/machine-oracles/v1",
+  "controls": [
+    {"mode": "bounded-integer", "smokeSize": 10000, "smoke": "17", "standardSize": 200000, "standard": "17"},
+    {"mode": "fixed-extension", "smokeSize": 50, "smoke": "4,2,1", "standardSize": 1000, "standard": "0,2,1"},
+    {"mode": "packed-container", "smokeSize": 5000, "smoke": "254230,2199,227", "standardSize": 100000, "standard": "2352785,2199,1757"},
+    {"mode": "prime-residue-batch", "smokeSize": 500, "smoke": "549,769,521", "standardSize": 10000, "standard": "32,769,419"},
+    {"mode": "strict-binary64-array", "smokeSize": 2500, "smoke": "c8736010a5fcd7bf", "standardSize": 50000, "standard": "a4a66eb63deff2bf"}
+  ],
+  "primePolynomial": {"smokeSize": 2000, "smoke": "46576", "standardSize": 20000, "standard": "33853", "modulus": 65537, "point": 12345}
+}
