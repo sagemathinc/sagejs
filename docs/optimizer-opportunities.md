@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `4c0a2740d3811b73de38a998addc6388385f3a30351006fbc8ebcf98218088b3` (517 files, 10734245 bytes).
-Analyzed source bundle: `sha256:a3196b5992e13d86958bb50cb62ba256100275789b6fdda74e8ed672c18ffea9`; compiler identity: `sha256:f7ed1bb2b6a762ac67af2273c4913f5692dc8f6838088588db46a882887f49fd`.
+Input identity: `a8dc635dc55a5cbbd810e6b96fe646534b6d859c1af05d841d4ebc7b7d72ff24` (520 files, 10763260 bytes).
+Analyzed source bundle: `sha256:ad7b601c72c32517723408d04ccfa08e9204dab8e90a60755d304555cea5ee33`; compiler identity: `sha256:703e211ea6c8808e4ab5fbe07fbf653c5b076a3f0cc8b4081966d83544e6e0ad`.
 
 Regenerate or verify it with:
 
@@ -31,8 +31,8 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Functions and methods compiled | 11529 |
 | Loop-bearing functions and methods | 3667 |
 | Loops in functions | 10320 |
-| Selected optimized loops | 47 |
-| Compiler-rejected loops | 2751 |
+| Selected optimized loops | 48 |
+| Compiler-rejected loops | 2750 |
 | Unrecognized loops | 7522 |
 | One-reason compiler near-misses | 233 |
 
@@ -47,8 +47,8 @@ are explicitly heuristic triage signals, not correctness proofs.
 - Known coercion sites: 15063
 - Potential boundary-call sites: 72
 - Unresolved call sites: 34859
-- Selected-target allocations: 1 known; 44 runtime-dependent
-- Selected-target representation conversions: 3 known; 45 runtime-dependent
+- Selected-target allocations: 3 known; 44 runtime-dependent
+- Selected-target representation conversions: 3 known; 46 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
 
 Static sites are not runtime event counts. Use profiling before prioritizing work.
