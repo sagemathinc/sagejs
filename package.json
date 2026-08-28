@@ -291,6 +291,7 @@
     "bench:modular:mestre:classical": "node bench/modular/mestre/classical.cjs",
     "bench:modular:mestre:competitive": "node bench/modular/mestre/competitive.cjs",
     "bench:modular:mestre:hilbert-sqrt5": "node bench/modular/mestre/hilbert-sqrt5.cjs",
+    "bench:modular:mestre:hilbert-sqrt5:competitive": "node bench/modular/mestre/hilbert-sqrt5-competitive.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:wasm-graph-components": "node bench/wasm-graph-components.cjs --json",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
