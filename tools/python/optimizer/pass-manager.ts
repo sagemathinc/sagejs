@@ -10,6 +10,7 @@ import {
   OptimizationCandidate,
   OptimizationControls,
   OptimizationDecision,
+  OptimizationObservation,
   OptimizationPassContext,
   OptimizationProgram,
 } from "./types";
@@ -118,6 +119,41 @@ export class OptimizerPassManager implements OptimizationPassContext {
     this.program.regions.push(decision);
     this.decisionByNode.set(candidate.node, decision);
     if (selected) candidate.node.optimization_region = candidate.internal;
+  }
+
+  observe(observation: OptimizationObservation): void {
+    const plugin = this.activePlugin;
+    if (!plugin || observation.decision.passId !== plugin.id) {
+      throw new TypeError(
+        "optimizer observation was submitted outside its registered plugin",
+      );
+    }
+    if (this.claimedNodes.has(observation.node)) return;
+    if (observation.rejectionReasons.length === 0) {
+      throw new TypeError("optimizer observation requires a rejection reason");
+    }
+    const functionContract = observation.ownerFunction
+      ? this.contracts.byFunction.get(observation.ownerFunction)
+      : undefined;
+    const reasons = [...observation.rejectionReasons];
+    if (this.controls.disabledPasses.has(observation.decision.passId)) {
+      reasons.push("pass-disabled");
+    }
+    if (optimizationLevelRank(this.controls.level) <
+        optimizationLevelRank(observation.minimumLevel)) {
+      reasons.push("optimization-level-too-low");
+    }
+    const decision: OptimizationDecision = {
+      ...observation.decision,
+      functionId: functionContract?.id ?? null,
+      selected: false,
+      rejectionReasons: [...new Set(reasons)].sort(),
+    };
+    verifyOptimizationDecision(decision);
+    this.program.regions.push(decision);
+    if (!this.decisionByNode.has(observation.node)) {
+      this.decisionByNode.set(observation.node, decision);
+    }
   }
 
   run(root: any): OptimizationProgram {

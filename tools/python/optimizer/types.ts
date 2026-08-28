@@ -191,10 +191,23 @@ export interface OptimizationCandidate {
   staticRejectionReasons?: readonly string[];
 }
 
+/** A recognized semantic region for which no target lowering is claimed. */
+export interface OptimizationObservation {
+  decision: Omit<
+    OptimizationDecision,
+    "selected" | "rejectionReasons" | "functionId"
+  >;
+  node: any;
+  ownerFunction?: any;
+  minimumLevel: OptimizationLevel;
+  rejectionReasons: readonly string[];
+}
+
 export interface OptimizationPassContext {
   readonly compiler: any;
   readonly controls: OptimizationControls;
   walk(root: any, visitor: (node: any, ancestors: readonly any[]) => void): void;
+  observe(observation: OptimizationObservation): void;
   consider(candidate: OptimizationCandidate): void;
 }
 

@@ -40,9 +40,6 @@ export function createOptimizerCatalog(
     if (plugin.claimSemantics !== "exclusive") {
       throw new TypeError(`optimizer plugin ${plugin.id} has unsupported claim semantics`);
     }
-    if (!plugin.loweringIds.length) {
-      throw new TypeError(`optimizer plugin ${plugin.id} has no registered lowering`);
-    }
     for (const loweringId of plugin.loweringIds) {
       if (loweringIds.has(loweringId)) {
         throw new TypeError(`duplicate optimizer lowering ownership ${loweringId}`);
