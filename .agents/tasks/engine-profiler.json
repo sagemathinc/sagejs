@@ -1,0 +1,55 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-profiler",
+  "title": "Authenticated optimizer profiler",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement generated Python-to-JavaScript span maps, content-authenticated Node inspector sampling, private route telemetry, profile receipts, and source-attribution/security tests",
+  "base_commit": "a736e7dd546cb857882587406f71a2b9a017c5de",
+  "claims": [
+    "src/output/stream.py",
+    "src/output/codegen.py",
+    "tools/python/optimizer/profile-identity.ts",
+    "tools/python/optimizer/profile-map.ts",
+    "tools/optimizer-profiler.ts",
+    "tools/kernel-evaluator.ts",
+    "tools/runtime-bootstrap.ts",
+    "tools/resources.ts",
+    "scripts/optimizer-profile.cjs",
+    "test/optimizer-profile-identity.cjs",
+    "test/optimizer-profile-source-map.cjs",
+    "test/optimizer-profile-attribution.cjs",
+    "test/optimizer-profile-security.cjs",
+    "test/optimizer-profile-overhead.cjs",
+    "test/fixtures/optimizer-development/profile/"
+  ],
+  "dependencies": ["engine-schema"],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Node inspector sampling conservation plus exact source-map and counterfeit-telemetry fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
