@@ -63,8 +63,8 @@ test("compiler emits balanced nested function and loop spans", async () => {
     const map = collector.finish(javascript, "sagejs-profile:///fixture.js");
     assert.ok(validOptimizerProfileMap(map));
     authenticateOptimizerProfileMap(map, javascript, source);
-    const functions = map.spans.filter((span) => span.identity.kind !== "loop");
-    const loops = map.spans.filter((span) => span.identity.kind === "loop");
+    const functions = map.spans.filter((span) => span.category !== "loop");
+    const loops = map.spans.filter((span) => span.category === "loop");
     assert.deepEqual(functions.map((span) => span.identity.qualifiedName), ["outer", "outer.inner"]);
     assert.deepEqual(loops.map((span) => span.identity.range.startLine), [4, 5, 8]);
     assert.ok(loops.every((span) => span.generated.end.offset > span.generated.start.offset));
@@ -118,7 +118,9 @@ test("semantic AST fingerprints ignore provenance without changing literals", as
 
 test("map collector detects an unbalanced compiler callback", () => {
   const collector = new CompilerProfileMapCollector("pass\n", "fixture.py");
-  collector.push({ constructor: { name: "AST_Function" }, start: { line: 1, col: 0 } }, {
+  const node = new (class AST_Function {})();
+  node.start = { line: 1, col: 0 };
+  collector.push(node, {
     line: 1,
     column: 0,
     offset: 0,

@@ -270,7 +270,9 @@ export class CompilerProfileMapCollector {
     let identity: ProfileSpan["identity"] | undefined;
     if (type === "Function" || type === "Lambda" || type === "Method") {
       category = type === "Method" ? "method" : "function";
-      const identityKind = type === "Lambda" ? "lambda" : category;
+      const identityKind = type === "Lambda" || node?.is_lambda === true
+        ? "lambda"
+        : category;
       scopeName = nodeName(node);
       const qualifiedName = [...scopes, scopeName].join(".") || scopeName;
       const fingerprint = semanticAstFingerprint(node);
