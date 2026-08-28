@@ -77,6 +77,7 @@ test("the immutable catalog is the only pass composition point", () => {
       ["strict-binary64-array", 250, "exclusive"],
       ["strict-binary64", 200, "exclusive"],
       ["prime-residue-modular-batch", 150, "exclusive"],
+      ["modular-sequence-reconnaissance", 140, "exclusive"],
       ["fixed-extension", 125, "exclusive"],
       ["closed-ring", 100, "exclusive"],
     ],

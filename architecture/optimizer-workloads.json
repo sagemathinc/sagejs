@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-workload-catalog/v1",
-  "id": "sha256:74667dc23c1d430be44a89344bb01a73c663e651af418215f93f99aa3ed8aa66",
+  "id": "sha256:315ad937f3606e35ee4f3811c8a702f3a2c8e67538aac374b7ee36b311919946",
   "workloads": [
     {
       "capabilities": [
@@ -792,6 +792,178 @@
         "v8"
       ],
       "title": "Small-prime residue batch"
+    },
+    {
+      "schema": "sagejs.optimizer-workload/v1",
+      "id": "sha256:95c54d3ec3da97334bc810a684ac85edf8f0da6cd6df1d54236d97fb48a546d5",
+      "capabilities": [
+        "optimizer-evidence",
+        "prime-field"
+      ],
+      "class": "microbenchmark",
+      "corpus": {
+        "digest": "1dcfcbcd173ea76a60a6278ce311bed41c3dc2ea3d4c09983ef2003c072ab0df",
+        "id": "public-modular-fold"
+      },
+      "input": {
+        "digest": "1b2d3ffb969fd145c5ed8098f93b37a55530e1005a48a25ea587e3e5ec00ccc2",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "canonical residue",
+          "expected": "37713",
+          "input": {
+            "coefficients": "coefficient i is (i*i+3*i-7) modulo p",
+            "evaluation_point": 12345,
+            "modulus": 65537
+          },
+          "mode": "public-modular-fold",
+          "oracleContract": {
+            "smoke": "59460",
+            "standard": "37713"
+          },
+          "policy": {
+            "campaign_role": "compiler-control-and-target-mismatch-negative-evidence",
+            "phase_partition": "normalization-and-fold-disjoint-equivalent-execution",
+            "production_eligibility": "ineligible-for-dense-list-production-promotion",
+            "production_requirement": "large-input-production-operations-must-use-mature-fmpz-mod-poly-algorithms",
+            "unavailable_targets": [
+              "library",
+              "native",
+              "wasm"
+            ],
+            "v8_lower_bound": "complete-valid-safe-number-call-non-production"
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 2000,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 9,
+              "size": 20000,
+              "timeout_seconds": 600,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/public-modular-fold.py",
+            "src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py"
+          ]
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "92d99e404cc0db82d21cf3e6b818cf445b99effc0e1252dba605a7460d65af8a",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "bench/optimizer-workloads/public-modular-fold.cjs"
+        },
+        {
+          "expectedDigest": "92d99e404cc0db82d21cf3e6b818cf445b99effc0e1252dba605a7460d65af8a",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "bench/optimizer-workloads/public-modular-fold.cjs"
+        },
+        {
+          "expectedDigest": "92d99e404cc0db82d21cf3e6b818cf445b99effc0e1252dba605a7460d65af8a",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "92d99e404cc0db82d21cf3e6b818cf445b99effc0e1252dba605a7460d65af8a",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "execute-o0",
+          "label": "complete public polynomial_evaluate_mod call under O0"
+        },
+        {
+          "id": "execute-o2",
+          "label": "complete public polynomial_evaluate_mod call under O2"
+        },
+        {
+          "id": "execute-v8-lower-bound",
+          "label": "complete handwritten safe-Number call; non-production lower bound"
+        },
+        {
+          "id": "fold-o0",
+          "label": "independent disjoint Horner fold under O0"
+        },
+        {
+          "id": "fold-o2",
+          "label": "independent disjoint Horner fold under O2"
+        },
+        {
+          "id": "module-load-o0",
+          "label": "module import under O0"
+        },
+        {
+          "id": "module-load-o2",
+          "label": "module import under O2"
+        },
+        {
+          "id": "normalize-o0",
+          "label": "independent disjoint validation and normalization under O0"
+        },
+        {
+          "id": "normalize-o2",
+          "label": "independent disjoint validation and normalization under O2"
+        },
+        {
+          "id": "session-o0",
+          "label": "complete Sage.js process under O0"
+        },
+        {
+          "id": "session-o2",
+          "label": "complete Sage.js process under O2"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 9,
+        "reset": "process",
+        "timeoutMilliseconds": 600000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "public-modular-fold"
+        ],
+        "environment": [
+          "SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY",
+          "SAGEJS_NATIVE_DISABLE",
+          "SAGEJS_OPT_LEVEL"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/public-modular-fold.cjs"
+      },
+      "targets": [
+        "generic",
+        "library",
+        "native",
+        "v8",
+        "wasm"
+      ],
+      "title": "Public exact modular fold compiler control"
     },
     {
       "capabilities": [

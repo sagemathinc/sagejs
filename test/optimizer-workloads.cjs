@@ -52,7 +52,7 @@ const staticInventory = require("./fixtures/optimizer-development/workloads/stat
 test("the workload catalog is immutable, content-addressed, and complete", () => {
   assert.equal(catalog.schema, "sagejs.optimizer-workload-catalog/v1");
   assert.match(catalog.id, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(catalog.workloads.length, 9);
+  assert.equal(catalog.workloads.length, 10);
   assert.ok(Object.isFrozen(catalog));
   assert.ok(catalog.workloads.every(Object.isFrozen));
   assert.deepEqual(
@@ -64,6 +64,7 @@ test("the workload catalog is immutable, content-addressed, and complete", () =>
       "packed-container",
       "prime-residue-batch",
       "profile",
+      "public-modular-fold",
       "public-evaluate",
       "strict-binary64-array",
       "targets",
@@ -87,6 +88,12 @@ test("fact-only and candidate-target policies cannot be silently narrowed", () =
   assert.deepEqual(polynomial.modes, ["python", "sage"]);
   assert.ok(polynomial.phases.some((phase) => phase.id === "execute-dynamic"));
   assert.ok(polynomial.phases.some((phase) => phase.id === "execute-v8-lower-bound"));
+  const modularFold = findWorkload(catalog, "public-modular-fold");
+  assert.equal(modularFold.class, "microbenchmark");
+  assert.equal(
+    modularFold.input.value.policy.production_eligibility,
+    "ineligible-for-dense-list-production-promotion",
+  );
   const negative = findWorkload(catalog, "targets");
   assert.deepEqual(negative.targets, ["generic", "native", "v8"]);
   assert.equal(negative.input.value.policy.maximum_javascript_over_native_call_ratio, 1);
