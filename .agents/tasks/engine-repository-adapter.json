@@ -1,0 +1,67 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-repository-adapter",
+  "title": "Join repository optimizer evidence",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the production repository adapter that validates and projects the real portable dashboard and profile receipts into sparse hotness overlays and full dossiers, preserving sample conservation, exact identities, runtime/static disagreement, unknown quantities, and fail-closed ambiguity.",
+  "base_commit": "d4f70c29439e6ff58792c529d45740741df2cff8",
+  "claims": [
+    "tools/optimizer-development/repository-adapter.cjs",
+    "test/optimizer-development-adapter.cjs",
+    "test/fixtures/optimizer-development/repository-adapter/"
+  ],
+  "dependencies": [
+    "engine-dossiers",
+    "engine-dashboard-identity",
+    "engine-profiler"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "exact-identity",
+      "sample-conservation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimizer-development-adapter.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 20.064,
+      "started_at": "2026-08-28T09:00:34.131Z",
+      "commit": "d4f70c29439e6ff58792c529d45740741df2cff8",
+      "workspace_fingerprint": "f3a709c59c5e54eda98b0120689bdd5e153895b7072bf707550894de386c0e10",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Adds the production repository adapter for dashboard v2 and authenticated profile receipts. The adapter validates current source bytes, exact portable region/function/source identities, sparse profile source bundles, compiler implementation compatibility independent of runtime options, separately conserved function-sample/position-tick/route channels, and fail-closed stale or ambiguous mappings. It projects only position ticks to loop observations, retains static and runtime decisions separately, and recompiles the exact current Python file under the dashboard's O2 options before emitting a detached full-IR dossier. Focused tests cover exact joins, options versus implementation identity, sparse/stale/ambiguous mappings, route-only regions, oracle gates, full-IR recompilation, and invalid receipts.",
+    "risks": [
+      "The shared compiler-identity helper changed a dashboard generator input after the checked-in census was produced. The integration lane must regenerate architecture/optimizer-opportunities.json and docs/optimizer-opportunities.md after merging; until then the default production adapter correctly reports the dashboard compiler implementation as stale.",
+      "Static inspection and position ticks do not prove a removable wall-time lower bound, so this adapter conservatively records zero instead of manufacturing a time estimate. Mature-algorithm duplication also remains unknown and prevents automatic compiler-campaign eligibility.",
+      "pnpm test:compiler has four environment failures because the optional packages/flint/build/Release/sagejs_flint.node addon is absent in this scratch worktree; all other compiler fixtures passed. pnpm architecture:check reaches only the expected stale-dashboard failure after its preceding architecture checks pass."
+    ],
+    "next_steps": [
+      "Merge this commit after the shared identity helper, rebuild, regenerate the dashboard and Markdown, then run the default adapter without a currentCompilerIdentity override.",
+      "Run the adapter against a real multi-artifact lazy profile receipt and retain its independently conserved function samples, position ticks, and route counts in integration evidence.",
+      "Wire tools/optimizer-development/repository-adapter.cjs into the overlay and dossier CLIs as the default production adapter after the regenerated dashboard is current."
+    ]
+  }
+}
