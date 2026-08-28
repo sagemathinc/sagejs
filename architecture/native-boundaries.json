@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 131,
+    "classified-native-file": 132,
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 325,
@@ -8684,6 +8684,14 @@
       "id": "native-file:bench/number-field-round2-proof-resource-witness.c",
       "kind": "classified-native-file",
       "path": "bench/number-field-round2-proof-resource-witness.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/optimizer-workloads/modular-scan-target.c",
+      "kind": "classified-native-file",
+      "path": "bench/optimizer-workloads/modular-scan-target.c",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"
