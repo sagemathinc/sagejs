@@ -104,6 +104,9 @@ export interface KernelEvaluator {
       suppressResult?: boolean;
       samplingIntervalMicros?: number;
       entryPoint?: string;
+      prepareEntryPoint?: string;
+      warmupRuns?: number;
+      repetitions?: number;
     },
   ): Promise<KernelProfileEvaluation>;
   complete(source: string, cursorPosition: number): KernelCompletion;
@@ -585,12 +588,18 @@ export function createKernelEvaluator({
         suppressResult = false,
         samplingIntervalMicros = 500,
         entryPoint,
+        prepareEntryPoint,
+        warmupRuns = entryPoint === undefined ? 0 : 1,
+        repetitions = 1,
       }: {
         filename?: string;
         language?: SageLanguageMode;
         suppressResult?: boolean;
         samplingIntervalMicros?: number;
         entryPoint?: string;
+        prepareEntryPoint?: string;
+        warmupRuns?: number;
+        repetitions?: number;
       } = {},
     ): Promise<KernelProfileEvaluation> {
       assertEvaluatorNotProfileContaminated();
@@ -606,9 +615,21 @@ export function createKernelEvaluator({
       }
       optimizerProfileActive = true;
       try {
-        if (entryPoint !== undefined &&
-            !/^[A-Za-z_][A-Za-z0-9_]*$/.test(entryPoint)) {
-          throw new TypeError("optimizer profile entry point must be a Python identifier");
+        for (const [label, candidate] of [
+          ["entry", entryPoint],
+          ["prepare entry", prepareEntryPoint],
+        ] as const) {
+          if (candidate !== undefined &&
+              !/^[A-Za-z_][A-Za-z0-9_]*$/.test(candidate)) {
+            throw new TypeError(
+              `optimizer profile ${label} point must be a Python identifier`,
+            );
+          }
+        }
+        if (prepareEntryPoint !== undefined && entryPoint === undefined) {
+          throw new TypeError(
+            "optimizer profile prepare entry point requires a sampled entry point",
+          );
         }
         const observerIdentifier = `$ρσ$optimizer_profile_${randomBytes(16).toString("hex")}`;
         const collector = new CompilerProfileMapCollector(source, filename);
@@ -622,9 +643,10 @@ export function createKernelEvaluator({
         // A direct eval preserves JavaScript completion values while retaining
         // the private lexical observer parameter. The sourceURL makes Inspector
         // expose the exact compiler artifact, not the tiny trusted wrapper.
-        const invocation = entryPoint === undefined ? "" :
-          `\nρσ_resolve_callable(globalThis.__sagejs_kernel_modules__.__main__[` +
-            `${JSON.stringify(entryPoint)}])();`;
+        // Without an entry point this remains the historical cold profiler.
+        // With one, root evaluation, imports, preparation, and warmup all run
+        // before Inspector sampling; only calls to the resolved entry remain.
+        const invocation = "";
         const javascript = `${generated}${invocation}\n//# sourceURL=${url}\n`;
         const sourceMap = collector.finish(javascript, url);
         const sourceMaps: OptimizerProfileMap[] = [sourceMap];
@@ -632,43 +654,116 @@ export function createKernelEvaluator({
         let execution:
           | ReturnType<typeof measureExecution>
           | undefined;
-        const observation = await runAuthenticatedNodeProfile({
-          map: sourceMap,
-          javascript,
-          samplingIntervalMicros,
-          privateEvents: events,
-          execute(artifacts) {
-            const endRuntimeProfile = runtimeBootstrap.beginOptimizerProfile({
-              observerIdentifier,
-              observer: events.observer,
-              runNonce,
-              declare(map, moduleJavaScript) {
-                artifacts.declare(map, moduleJavaScript);
-                sourceMaps.push(map);
-              },
-            });
-            try {
-              const program = compileFunction(
+        let runtimeProfile:
+          | ReturnType<typeof runtimeBootstrap.beginOptimizerProfile>
+          | undefined;
+        let program: ((observer: typeof events.observer) => unknown) | undefined;
+        let sampledEntry: (() => unknown) | undefined;
+        let observation: OptimizerProfileObservation;
+        try {
+          observation = await runAuthenticatedNodeProfile({
+            map: sourceMap,
+            javascript,
+            samplingIntervalMicros,
+            warmupRuns,
+            repetitions,
+            privateEvents: events,
+            prepare: entryPoint === undefined ? undefined : (artifacts) => {
+              runtimeProfile = runtimeBootstrap.beginOptimizerProfile({
+                observerIdentifier,
+                observer: events.observer,
+                runNonce,
+                declare(map, moduleJavaScript) {
+                  artifacts.declare(map, moduleJavaScript);
+                  sourceMaps.push(map);
+                },
+              });
+              program = compileFunction(
                 `return eval(${JSON.stringify(javascript)});`,
                 [observerIdentifier],
                 { filename: `${url}&wrapper=1` },
-              );
-              execution = measureExecution(() => {
+              ) as unknown as typeof program;
+              if (interruptState) Atomics.store(interruptState, 1, 1);
+              try {
+                global.ρσ_check_interrupt();
+                program(events.observer);
+                const mainModule = Reflect.get(
+                  globalThis.__sagejs_kernel_modules__,
+                  "__main__",
+                );
+                const resolveEntry = (name: string): (() => unknown) => {
+                  const callable = global.ρσ_resolve_callable(
+                    Reflect.get(mainModule, name),
+                  );
+                  if (typeof callable !== "function") {
+                    throw new TypeError(
+                      `optimizer profile entry point ${name} is not callable`,
+                    );
+                  }
+                  return callable;
+                };
+                if (prepareEntryPoint !== undefined) {
+                  resolveEntry(prepareEntryPoint)();
+                }
+                sampledEntry = resolveEntry(entryPoint);
+              } finally {
+                if (interruptState) Atomics.store(interruptState, 1, 0);
+              }
+            },
+            seal: entryPoint === undefined ? undefined : () => {
+              runtimeProfile!.seal();
+            },
+            execute(artifacts) {
+              if (entryPoint !== undefined) {
+                if (!sampledEntry) {
+                  throw new Error("optimizer profile entry was not prepared");
+                }
                 if (interruptState) Atomics.store(interruptState, 1, 1);
                 try {
                   global.ρσ_check_interrupt();
-                  return program(events.observer);
+                  execution = measureExecution(sampledEntry);
+                  return execution.value;
                 } finally {
                   if (interruptState) Atomics.store(interruptState, 1, 0);
                 }
+              }
+              const profileSession = runtimeBootstrap.beginOptimizerProfile({
+                observerIdentifier,
+                observer: events.observer,
+                runNonce,
+                declare(map, moduleJavaScript) {
+                  artifacts.declare(map, moduleJavaScript);
+                  sourceMaps.push(map);
+                },
               });
-              return execution.value;
-            } finally {
-              endRuntimeProfile();
-            }
-          },
-        });
+              try {
+                program = compileFunction(
+                  `return eval(${JSON.stringify(javascript)});`,
+                  [observerIdentifier],
+                  { filename: `${url}&wrapper=1` },
+                ) as unknown as typeof program;
+                execution = measureExecution(() => {
+                  if (interruptState) Atomics.store(interruptState, 1, 1);
+                  try {
+                    global.ρσ_check_interrupt();
+                    return program!(events.observer);
+                  } finally {
+                    if (interruptState) Atomics.store(interruptState, 1, 0);
+                  }
+                });
+                return execution.value;
+              } finally {
+                profileSession.end();
+              }
+            },
+          });
+        } finally {
+          if (runtimeProfile) runtimeProfile.end();
+        }
         if (!execution) throw new Error("profiled evaluator did not execute");
+        if (entryPoint !== undefined) {
+          execution.timing.wallMs = observation.sampling.wallMicros / 1_000;
+        }
         return {
           evaluation: evaluationFromValue(
             execution.value,

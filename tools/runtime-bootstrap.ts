@@ -60,9 +60,30 @@ export interface RuntimeOptimizerProfileSessionOptions {
 }
 
 export interface RuntimeBootstrapController {
-  beginOptimizerProfile(options: RuntimeOptimizerProfileSessionOptions): () => void;
+  beginOptimizerProfile(
+    options: RuntimeOptimizerProfileSessionOptions,
+  ): RuntimeOptimizerProfileSession;
   loadedLazyModules(): readonly string[];
   profileContaminated(): boolean;
+}
+
+export interface RuntimeOptimizerProfileSession {
+  seal(): void;
+  end(): void;
+}
+
+export class OptimizerProfileLateImportError extends Error {
+  readonly reasonCode = "evidence.late-import" as const;
+  readonly moduleName: string;
+
+  constructor(moduleName: string) {
+    super(
+      `sealed optimizer profile rejected late lazy import ${JSON.stringify(moduleName)}; ` +
+        "load the complete dynamic module closure during preparation or warmup",
+    );
+    this.name = "OptimizerProfileLateImportError";
+    this.moduleName = moduleName;
+  }
 }
 
 export const PRECOMPILED_MODULE_FILENAME =
@@ -399,6 +420,7 @@ export function runRuntimeBootstrap(
   const loadedLazyModules = new Set<string>();
   let activeOptimizerProfile: (RuntimeOptimizerProfileSessionOptions & {
     profiledModules: Set<string>;
+    sealed: boolean;
   }) | undefined;
   let optimizerProfileContaminated = false;
   // Module ``__dict__`` is a live writable mapping in CPython.  Keep an
@@ -860,6 +882,9 @@ export function runRuntimeBootstrap(
     if (Object.prototype.hasOwnProperty.call(registry, name)) {
       return Reflect.get(registry, name);
     }
+    if (activeOptimizerProfile?.sealed) {
+      throw new OptimizerProfileLateImportError(name);
+    }
 
     const separator = name.lastIndexOf(".");
     const parentName = separator < 0 ? "" : name.slice(0, separator);
@@ -1168,7 +1193,9 @@ export function runRuntimeBootstrap(
       pythonFrontend.parse(source, options),
   );
   const controller: RuntimeBootstrapController = Object.freeze({
-    beginOptimizerProfile(options: RuntimeOptimizerProfileSessionOptions): () => void {
+    beginOptimizerProfile(
+      options: RuntimeOptimizerProfileSessionOptions,
+    ): RuntimeOptimizerProfileSession {
       if (activeOptimizerProfile) {
         throw new Error("an optimizer profile is already active in this evaluator");
       }
@@ -1194,16 +1221,29 @@ export function runRuntimeBootstrap(
       const session = {
         ...options,
         profiledModules: new Set<string>(),
+        sealed: false,
       };
       activeOptimizerProfile = session;
       let ended = false;
-      return () => {
+      const assertActive = (): void => {
         if (ended || activeOptimizerProfile !== session) {
           throw new Error("optimizer profile runtime session is not active");
         }
-        ended = true;
-        activeOptimizerProfile = undefined;
       };
+      return Object.freeze({
+        seal(): void {
+          assertActive();
+          if (session.sealed) {
+            throw new Error("optimizer profile runtime session is already sealed");
+          }
+          session.sealed = true;
+        },
+        end(): void {
+          assertActive();
+          ended = true;
+          activeOptimizerProfile = undefined;
+        },
+      });
     },
     loadedLazyModules(): readonly string[] {
       return Object.freeze([...loadedLazyModules].sort());
