@@ -239,7 +239,11 @@ export const binary64NestedAllReconnaissancePass: OptimizationPass = {
         node,
       );
       if (!recognition.recognized) return;
-      const decision = observationDecision(node, recognition.program);
+      // The dashboard and profiler own the generator-comprehension loop as
+      // the semantic region.  Keep the call node as the pass-manager claim
+      // key, but bind the explain-only decision to the exact loop range so
+      // static and runtime evidence join without a containment heuristic.
+      const decision = observationDecision(node.args[0], recognition.program);
       verifyBinary64NestedAllReconnaissanceDecision(
         recognition.program,
         decision,
