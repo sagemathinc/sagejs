@@ -1,0 +1,53 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-production-workloads",
+  "title": "Authentic production modular candidate workloads",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add deterministic warm-profile sources and uninstrumented phase/oracle runners for real public prime-field integral, number-field local-polygon, hyperelliptic local-reduction, and cubic factor-base workloads, preserving exact result evidence and making no optimization-selection claim.",
+  "base_commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+  "claims": [
+    "bench/optimizer-workloads/production-modular-candidates.cjs",
+    "bench/optimizer-workloads/public-prime-polynomial-integral.py",
+    "bench/optimizer-workloads/number-field-local-polygons.py",
+    "bench/optimizer-workloads/hyperelliptic-local-reduction.py",
+    "bench/optimizer-workloads/number-field-cubic-factor-base.py",
+    "test/optimizer-production-modular-workloads.cjs"
+  ],
+  "dependencies": [
+    "campaign1-warm-profiler"
+  ],
+  "references": [
+    "agents/compiler-development-engine-plan.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact public GF(65537) antiderivative derivative replay and degree",
+      "Frozen local-polygon fixture outcomes plus CPython same-source differential",
+      "Independent CPython point counts for the normalization curve y^2=x^3+1",
+      "Exact cubic factor-base replay against generic modular factorization and a pinned packed-payload digest"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
