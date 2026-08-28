@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-reason-registry/v1",
-  "id": "sha256:2f357c411f7527a463989cda2eafd82e2acbfca08eb68f7866f2b57faa542861",
+  "id": "sha256:cc2159f7257276997e8fff67812fc81e2b75a63dd0c6dbc44c0bb3d4f5a5dc4f",
   "codes": [
     {
       "code": "bounded-integer.bigint-per-operation-cost",
@@ -273,6 +273,111 @@
       "kind": "rejection",
       "origin": "compiler",
       "description": "The candidate contains no modular arithmetic operation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.callback-effects-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The callback implementation, effects, and exception behavior are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.early-exit-publication-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer-loop early exit and publication semantics are not proved for an optimized target.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.element-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The consumed sequence elements lack an authenticated machine representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.guard-hoisting-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Representation and operation guards are not proved hoistable outside the complete outer scan.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.inline-sequence-preparation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The inline sequence producer must be evaluated exactly once before iterator creation and lacks a lowering proof.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.iterator-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The iterator callable, construction, consumption, and observable exit semantics are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.lexical-sequence-binding-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The lexical sequence binding lacks an authenticated canonical representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.machine-range-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The complete operation graph lacks a proof that every intermediate remains exactly machine representable.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.native-boundary-unmeasured",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The complete native conversion and boundary cost has not been measured.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.operation-dispatch-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Arithmetic, comparison, and sequence operations lack authenticated primitive dispatch.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.outer-range-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer range callable and complete iteration semantics are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.pow-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular power call lacks authenticated builtin dispatch and bounded result semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.resident-wasm-unproved",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Resident WebAssembly ownership, copying, and publication costs are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.staged-sequence-binding-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The staged producer result must remain an ordinary pre-loop effect and lacks an authenticated canonical representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.v8-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No verified V8 lowering is registered for the modular-sequence reconnaissance domain.",
       "detailFields": []
     },
     {

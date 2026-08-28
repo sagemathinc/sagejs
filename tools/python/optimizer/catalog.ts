@@ -9,6 +9,7 @@ import {
   fixedExtensionRegionPass,
 } from "./passes/fixed-extension-region";
 import { modularBatchPlugin } from "./passes/modular-batch-region";
+import { modularSequenceReconnaissancePlugin } from "./passes/modular-sequence-region";
 
 export interface OptimizerPassPlugin {
   readonly id: string;
@@ -84,6 +85,7 @@ export const optimizerCatalog = createOptimizerCatalog([
     pass: strictFloatRegionPass,
   },
   modularBatchPlugin,
+  modularSequenceReconnaissancePlugin,
   {
     id: fixedExtensionRegionPass.id,
     domainId: FIXED_EXTENSION_DOMAIN,

@@ -18,6 +18,7 @@ export * from "./domains/bounded-integer";
 export * from "./domains/strict-binary64-array";
 export * from "./domains/fixed-extension";
 export * from "./domains/modular-batch";
+export * from "./domains/modular-sequence";
 export * from "./domains/packed-container";
 
 export function optimizePythonAst(

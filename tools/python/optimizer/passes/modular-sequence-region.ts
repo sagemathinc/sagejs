@@ -310,7 +310,9 @@ export const modularSequenceReconnaissancePass: OptimizationPass = {
     "python-iteration", "source-evaluation-order", "callback-order",
     "exceptions", "final-loop-target", "zero-trip-behavior", "generic-fallback",
   ],
-  guardsIntroduced: [],
+  // Diagnostic passes still carry an explicit fail-closed guard contract:
+  // this pass may observe candidates but can never authorize execution.
+  guardsIntroduced: ["no-executable-lowering"],
   supportedTargets: ["v8", "wasm", "native", "generic"],
   verifier: MODULAR_SEQUENCE_RECONNAISSANCE_VERIFIER,
   compilationCostBudget: 64,
