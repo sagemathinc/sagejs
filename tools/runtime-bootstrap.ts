@@ -421,6 +421,7 @@ export function runRuntimeBootstrap(
   const loadedLazyModules = new Set<string>();
   let activeOptimizerProfile: (RuntimeOptimizerProfileSessionOptions & {
     profiledModules: Set<string>;
+    unavailableModules: Set<string>;
     sealed: boolean;
     lateImportAttempt: string | null;
   }) | undefined;
@@ -885,6 +886,20 @@ export function runRuntimeBootstrap(
       return Reflect.get(registry, name);
     }
     if (activeOptimizerProfile?.sealed) {
+      // ``from package.module import attribute`` probes
+      // ``package.module.attribute`` when the attribute is absent.  Preserve
+      // a missing-child result already established while preparing the
+      // authenticated closure; it is not a request to execute new code.
+      if (activeOptimizerProfile.unavailableModules.has(name)) {
+        const message = `No module named '${name}'`;
+        const ImportErrorClass = Reflect.get(globalThis, "ImportError");
+        if (typeof ImportErrorClass === "function") {
+          throw Reflect.construct(ImportErrorClass, [message]);
+        }
+        const error = new Error(message);
+        error.name = "ImportError";
+        throw error;
+      }
       activeOptimizerProfile.lateImportAttempt ??= name;
       throw new OptimizerProfileLateImportError(name);
     }
@@ -943,6 +958,7 @@ export function runRuntimeBootstrap(
       filename = join(namespaceDirectory, "__init__.py");
     }
     if (source === undefined) {
+      activeOptimizerProfile?.unavailableModules.add(name);
       const message = `No module named '${name}'`;
       const ImportErrorClass = Reflect.get(globalThis, "ImportError");
       if (typeof ImportErrorClass === "function") {
@@ -1224,6 +1240,7 @@ export function runRuntimeBootstrap(
       const session = {
         ...options,
         profiledModules: new Set<string>(),
+        unavailableModules: new Set<string>(),
         sealed: false,
         lateImportAttempt: null as string | null,
       };
