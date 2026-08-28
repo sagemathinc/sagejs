@@ -14,6 +14,7 @@ const reasons = require("../tools/optimizer-development/reason-codes.cjs");
 const schemas = require("../tools/optimizer-development/schemas.cjs");
 
 const FIXTURES = path.join(__dirname, "fixtures", "optimizer-development", "schemas");
+const CONTRACTS = path.join(__dirname, "..", "architecture", "optimizer-development");
 
 function fixture(name) {
   return JSON.parse(fs.readFileSync(path.join(FIXTURES, name), "utf8"));
@@ -30,6 +31,99 @@ function readdress(document) {
   const { schema, id: _id, ...payload } = document;
   return addressed(schema, payload);
 }
+
+test("wire schemas enumerate every frozen document boundary", () => {
+  const documents = new Map([
+    [schemas.SCHEMAS.workload, "workload-v1.schema.json"],
+    [schemas.SCHEMAS.workloadCatalog, "workload-catalog-v1.schema.json"],
+    [schemas.SCHEMAS.profile, "profile-receipt-v1.schema.json"],
+    [schemas.SCHEMAS.overlay, "hotness-overlay-v1.schema.json"],
+    [schemas.SCHEMAS.dossier, "dossier-v1.schema.json"],
+    [schemas.SCHEMAS.campaign, "campaign-v1.schema.json"],
+    [schemas.SCHEMAS.promotion, "promotion-receipt-v1.schema.json"],
+  ]);
+  for (const [instanceSchema, filename] of documents) {
+    const document = JSON.parse(fs.readFileSync(path.join(CONTRACTS, filename), "utf8"));
+    assert.equal(document.$schema, "https://json-schema.org/draft/2020-12/schema");
+    assert.equal(document.type, "object");
+    assert.equal(document.additionalProperties, false);
+    assert.equal(document.properties.schema.const, instanceSchema);
+    assert.deepEqual(new Set(document.required), new Set(Object.keys(document.properties)));
+  }
+  const adversarial = fixture("adversarial-cases.json");
+  assert.equal(adversarial.schema, "sagejs.optimizer-adversarial-schema-corpus/v1");
+  assert.equal(adversarial.cases.length, 10);
+  assert.equal(new Set(adversarial.cases.map((item) => item.id)).size, 10);
+});
+
+test("dashboard and runtime receipts share one compiler implementation identity", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-compiler-identity-"));
+  try {
+    const sourcePaths = [
+      ...identity.COMPILER_SOURCE_ROOT_PATHS,
+      "tools/python/optimizer/catalog.ts",
+      "tools/python/optimizer/passes/example.ts",
+    ];
+    for (const filename of [...sourcePaths, ...identity.FRONTEND_ARTIFACT_PATHS]) {
+      const target = path.join(root, filename);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, `authenticated bytes for ${filename}\n`);
+    }
+    const optimizerCatalog = {
+      plugins: [{
+        id: "math.example-region.v1",
+        domainId: "example-domain",
+        priority: 100,
+        claimSemantics: "exclusive",
+        loweringIds: ["v8.example-loop.v1"],
+        pass: {
+          id: "math.example-region.v1",
+          inputSchema: "sagejs.optimizer.ir/v2",
+          factsConsumed: ["example.input"],
+          factsProduced: ["example.output"],
+          factsInvalidated: [],
+          preserves: ["python.semantics"],
+          acceptedLevel: "semantic",
+          producedLevel: "representation",
+          guardsIntroduced: ["example.guard"],
+          supportedTargets: ["v8"],
+          verifier: "example-verifier",
+          compilationCostBudget: 10,
+          codeSizeBudget: 20,
+          requiredEvidence: ["example-evidence"],
+          run() {},
+        },
+      }],
+    };
+    const implementation = identity.compilerImplementationIdentity(root, optimizerCatalog);
+    const dashboard = identity.canonicalCompilerIdentity({
+      root,
+      irSchema: "sagejs.optimizer.ir/v2",
+      optimizerCatalog,
+      optionsDigest: common.sha256(common.canonicalJson({ level: "O2", explain: true })),
+    });
+    const runtime = identity.canonicalCompilerIdentity({
+      root,
+      irSchema: "sagejs.optimizer.ir/v2",
+      optimizerCatalog,
+      optionsDigest: common.sha256(common.canonicalJson({ level: "O2", explain: false })),
+    });
+    for (const compiler of [dashboard, runtime]) {
+      assert.equal(compiler.compilerSourceBundleId, implementation.compilerSourceBundle.id);
+      assert.equal(compiler.frontendDigest, implementation.frontendDigest);
+      assert.equal(compiler.catalogDigest, implementation.catalogDigest);
+    }
+    assert.notEqual(dashboard.optionsDigest, runtime.optionsDigest);
+    assert.notEqual(dashboard.id, runtime.id);
+    fs.writeFileSync(path.join(root, "dist/compiler/compiler.js"), "different emitted compiler\n");
+    const changedArtifact = identity.compilerImplementationIdentity(root, optimizerCatalog);
+    assert.equal(changedArtifact.compilerSourceBundle.id, implementation.compilerSourceBundle.id);
+    assert.equal(changedArtifact.catalogDigest, implementation.catalogDigest);
+    assert.notEqual(changedArtifact.frontendDigest, implementation.frontendDigest);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
 
 function distribution(samples = [10, 11, 12]) {
   const sorted = [...samples].sort((left, right) => left - right);
@@ -423,8 +517,7 @@ function buildEvidence() {
   const promotionContext = {
     campaignId: campaign.id,
     currentCheckout: {
-      commit: candidate.commit, tree: candidate.tree,
-      workspaceId: candidate.workspaceId, clean: true,
+      ...candidate,
     },
     currentBuild: build,
     currentArtifact: {
@@ -435,9 +528,31 @@ function buildEvidence() {
       receiptDigest: promotionArtifact.receiptDigest,
     },
     validatedBrowserReceiptIds: Object.values(browserReceiptIds),
+    validatedInputs: {
+      campaignIds: [campaign.id],
+      sourceBundleIds: [baseline.sourceBundleId, candidate.sourceBundleId].sort(),
+      compilerIds: [baseline.compilerId, candidate.compilerId].sort(),
+      artifactIds: [baseline.artifactId, candidate.artifactId].sort(),
+      profileIds: [...baseline.profileIds, ...candidate.profileIds].sort(),
+      workloadIds: [workload.id],
+      correctnessEvidenceIds: promotionCore.correctness.map((item) => item.evidenceId),
+      adversarialEvidenceIds: promotionCore.adversarial.map((item) => item.evidenceId),
+      routeEvidenceIds: promotionCore.routes.map((item) => item.evidenceId),
+      resourceEvidenceIds: promotionCore.resources.map((item) => item.evidenceId),
+      platformEvidenceIds: promotionCore.platforms.map((item) => item.evidenceId).sort(),
+      neighboringWorkloadIds: promotionCore.neighboring.map((item) => item.workloadId),
+      losingCandidateEvidenceIds: promotionCore.losingCandidates.map((item) => item.evidenceId),
+      dashboardIds: [
+        promotionCore.dashboardDelta.beforeId, promotionCore.dashboardDelta.afterId,
+      ].sort(),
+      compilerDecisionIds: [
+        ...promotionCore.compilerDelta.beforeDecisionIds,
+        ...promotionCore.compilerDelta.afterDecisionIds,
+      ].sort(),
+    },
   };
   const bindings = {
-    checkout: "verified", build: "verified", artifact: "verified",
+    checkout: "verified", build: "verified", artifact: "verified", evidence: "verified",
     browsers: ["chromium", "firefox", "webkit"],
   };
   const promotion = addressed(schemas.SCHEMAS.promotion, {
@@ -685,6 +800,17 @@ test("promotion summaries and current bindings are recomputed", () => {
   wrongCheckout.currentCheckout.commit = "9".repeat(40);
   assert.throws(() => schemas.validatePromotionReceipt(evidence.promotion, wrongCheckout),
     /independently recomputed decision/);
+
+  const counterfeitSource = structuredClone(evidence.promotionContext);
+  counterfeitSource.currentCheckout.sourceBundleId = refId("counterfeit-source");
+  assert.throws(() => schemas.validatePromotionReceipt(evidence.promotion, counterfeitSource),
+    /independently recomputed decision/);
+
+  const counterfeitEvidence = structuredClone(evidence.promotion);
+  counterfeitEvidence.routes[0].evidenceId = refId("counterfeit-route-evidence");
+  assert.throws(() => schemas.validatePromotionReceipt(
+    readdress(counterfeitEvidence), evidence.promotionContext,
+  ), /independently recomputed decision/);
 });
 
 test("campaign claims and dossier compiler evidence cannot be counterfeit", () => {
