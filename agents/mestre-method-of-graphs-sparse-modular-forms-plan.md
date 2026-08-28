@@ -2,8 +2,9 @@
 
 ## Status
 
-Implementation is active. The first classical vertical slice now provides a
-public, lazily loaded `SupersingularModule(p)` for primes $p \geq 5$, exact
+Implementation phases 0--6 are complete; release validation is active. The
+first classical vertical slice provides a public, lazily loaded
+`SupersingularModule(p)` for primes $p \geq 5$, exact
 $T_2$ discovery over $\operatorname{GF}(p^2)$, an immutable sparse operator,
 the mass-weighted graph view, and bounded dense materialization. Its focused
 corpus covers Sage's exact level-$37$ example, structural checks through
@@ -180,14 +181,30 @@ revalidates every edge and publishes transactionally. Final Windows, Linux
 x64/ARM64, and macOS receipts remain a release-stage gate rather than an
 unverified portability claim.
 
+The combined Linux x64 freeze at source commit `53ff71b9` passes the exact
+native and native-disabled Mestre suites ($28/28$ each), strict Python
+($254$ modules, zero errors), architecture and Wasm audits, a seven-stage
+production build with $35$ kernel families, all $77$ unit files, all $66$
+portable files, and $46$ executable documentation examples. The broad native
+repository gate passes dependency builds, FLINT/FFLAS/graph/M4RI, production
+autoload, FFI, lifecycle fuzzing, sanitizers, and finite/integer matrix
+budgets, then reproduces an unrelated existing dense-rational performance
+miss in row selection, column selection, and stacking. The full integration
+tier likewise reaches its second batch before an unrelated documentation
+coverage assertion reports the pre-existing `version` entry as incomplete.
+Neither failing path is changed by this branch; both are recorded rather than
+hidden or used to weaken their repository-wide gates. The foreign-platform
+matrix remains the final release-stage check.
+
 Optimized large-index modular-polynomial construction, fast large-precision
 Mestre evaluation, and broader real-quadratic arithmetic constructors remain
-later implementation stages in this plan. Phase 6's required second field, multi-component
-prime-power compatibility, degeneracy traces, and exact old/new decomposition
-are complete for the checked $\mathbf Q(\sqrt3)$ witness.
+explicit follow-on optimizations outside the completed phases 0--6. Phase 6's
+required second field, multi-component prime-power compatibility, degeneracy
+traces, and exact old/new decomposition are complete for the checked
+$\mathbf Q(\sqrt3)$ witness.
 
-This document is the review gate before implementation. The recommended first
-slice is the classical prime-level supersingular module and its sparse
+This document served as the review gate before implementation. The completed
+first slice is the classical prime-level supersingular module and its sparse
 $T_2$ operator. The longer program has two especially attractive outcomes:
 
 1. a scalable sparse-linear-algebra route to weight-two modular forms over

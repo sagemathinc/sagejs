@@ -1,0 +1,49 @@
+{
+  "schema": "sagejs.mestre-release-freeze/v1",
+  "recorded_at": "2026-08-28T07:30:00Z",
+  "source_commit": "53ff71b9f306627d74c5191d53bafe955dc85728",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.7.0",
+    "model": "AMD EPYC 7B13"
+  },
+  "gates": {
+    "focused_native": {"status": "pass", "tests": 28},
+    "focused_dynamic": {"status": "pass", "tests": 28, "environment": "SAGEJS_NATIVE_DISABLE=1"},
+    "strict_python": {"status": "pass", "modules": 254, "errors": 0},
+    "architecture": {"status": "pass", "native_boundaries": 1134, "wasm_capabilities": 1008},
+    "production_build": {"status": "pass", "stages": 7, "kernel_families": 35, "build_receipt_sha256": "8d44f52313253e87e5343922773f7c904030cd6bfa92b5b19397dc6a7ef29630"},
+    "unit": {"status": "pass", "files": 77},
+    "portable": {"status": "pass", "files": 66},
+    "documentation_examples": {"status": "pass", "examples": 46, "documents": 4},
+    "native_repository": {
+      "status": "fail-unrelated",
+      "passed_before_failure": [
+        "FLINT 56/56",
+        "FFLAS 11/11",
+        "graph 7/7",
+        "M4RI 12/12",
+        "FFI and production kernels 57 pass/1 skip",
+        "resource lifecycle fuzzing and sanitizers",
+        "native kernel v23",
+        "dense prime and dense integer migration",
+        "finite-field and integer matrix performance"
+      ],
+      "failure": "dense QQ public-surface performance regression: select_rows_300, select_columns_300, stack_300x300",
+      "branch_touches_failure_paths": false,
+      "isolated_replay": "reproduced at 35.65, 36.52, and 35.73 ms against 15 ms budgets"
+    },
+    "integration_repository": {
+      "status": "fail-unrelated",
+      "passed_files_before_failure": 23,
+      "failure": "test/cli-smoke.cjs expected no incomplete documentation entries; actual ['version']",
+      "branch_touches_failure_paths": false
+    },
+    "foreign_platforms": {"status": "pending-release-ci", "required": ["windows-x64", "linux-arm64", "macos-arm64"]}
+  },
+  "competitive_receipts": {
+    "classical_sha256": "44553c103c6fbb2d7f2c6979c873f1b23809bd1e21ce2d7ff8dd62d83a9b4c9f",
+    "hilbert_sqrt5_sha256": "1c147511d27072513cf64affcd2b3cb6a0e04a1ed80bd7fc48a0d80d5e13aabf"
+  }
+}
