@@ -55,6 +55,38 @@ def _print_optimizer_guard_error(output, region, reason):
     output.end_statement()
 
 
+def _print_optimizer_profile_terminal(output, region, outcome, reason="null"):
+    """Publish one evaluator-authenticated terminal route observation.
+
+    The observer name is a private lexical capability supplied only by the
+    profiling evaluator.  Ordinary compilation leaves no call, branch, or
+    public global behind.  Calls belong after the selected route completes;
+    the sole exception is a guard contract error, which is terminal at the
+    existing throw site.
+    """
+    observer = output.options.optimizer_profile_observer
+    if not observer or not region:
+        return
+    output.indent()
+    output.print(observer)
+    output.print("(")
+    output.print(JSON.stringify(region.id))
+    output.comma()
+    output.print(JSON.stringify(region.kind))
+    output.comma()
+    output.print(JSON.stringify(outcome))
+    output.comma()
+    output.print(reason)
+    output.print(")")
+    output.end_statement()
+
+
+def _print_profiled_optimizer_guard_error(output, region, reason):
+    """Publish the authenticated terminal error immediately before raising."""
+    _print_optimizer_profile_terminal(output, region, "error", reason)
+    _print_optimizer_guard_error(output, region, reason)
+
+
 def _region_temp(counter, suffix):
     name = "ρσ_FieldTemp" + suffix + "_" + str(counter[0])
     counter[0] += 1
@@ -1073,6 +1105,9 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                     names["zip_iterables"][target_index] + "[" + count_name + " - 1]"
                 )
                 output.end_statement()
+        _print_optimizer_profile_terminal(
+            output, self.optimization_region, "guarded-fast"
+        )
 
     if streaming:
         output.with_block(materialize)
@@ -1082,6 +1117,15 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
 
         def streaming_fallback():
             if self.optimization_region.guardFailure == "error":
+                _print_optimizer_profile_terminal(
+                    output,
+                    self.optimization_region,
+                    "error",
+                    JSON.stringify("sequence-element-representation-mismatch"),
+                )
+                # Preserve the established error message for this late
+                # element guard.  The authenticated event carries its stable
+                # reason without changing user-visible exception semantics.
                 output.indent()
                 output.print(
                     "throw new RuntimeError("
@@ -1094,6 +1138,12 @@ def _print_closed_field_fast_path(self, output, plan, names, representation, deg
                 output.end_statement()
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    self.optimization_region,
+                    "guarded-fallback",
+                    JSON.stringify("sequence-element-representation-mismatch"),
+                )
 
         output.with_block(streaming_fallback)
     else:
@@ -1337,6 +1387,7 @@ def print_closed_field_region(self, output):
                     output.assign(self.init)
                     output.print(names["count"] + " - 1")
                     output.end_statement()
+                    _print_optimizer_profile_terminal(output, region, "guarded-fast")
 
                 output.with_block(isolated_path)
                 output.space()
@@ -1353,11 +1404,17 @@ def print_closed_field_region(self, output):
 
         def fallback():
             if region.guardFailure == "error":
-                _print_optimizer_guard_error(
+                _print_profiled_optimizer_guard_error(
                     output, region, names["context"] + ".reason"
                 )
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    names["context"] + ".reason",
+                )
 
         output.with_block(fallback)
 
@@ -1371,6 +1428,15 @@ def print_closed_field_region(self, output):
             output.print("if (" + names["count"] + " !== 0)")
             output.space()
             output.with_block(nonempty_region)
+            if output.options.optimizer_profile_observer:
+                output.space()
+                output.print("else")
+                output.space()
+
+                def zero_trip_zip():
+                    _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+                output.with_block(zero_trip_zip)
 
         output.with_block(eligible_zip)
         output.space()
@@ -1379,12 +1445,27 @@ def print_closed_field_region(self, output):
 
         def invalid_zip():
             if region.guardFailure == "error":
-                _print_optimizer_guard_error(
+                _print_profiled_optimizer_guard_error(
                     output, region, JSON.stringify("zip-shape")
                 )
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    JSON.stringify("zip-shape"),
+                )
 
         output.with_block(invalid_zip)
     else:
         output.with_block(nonempty_region)
+        if output.options.optimizer_profile_observer:
+            output.space()
+            output.print("else")
+            output.space()
+
+            def zero_trip():
+                _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+            output.with_block(zero_trip)
