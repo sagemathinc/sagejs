@@ -9,7 +9,7 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `a8dc635dc55a5cbbd810e6b96fe646534b6d859c1af05d841d4ebc7b7d72ff24` (520 files, 10763260 bytes).
+Input identity: `81f87f5d1c483fb63d6ebb67c7688cc987aa64be968a4fc27444c8a4d23edfe7` (521 files, 10775401 bytes).
 Analyzed source bundle: `sha256:ad7b601c72c32517723408d04ccfa08e9204dab8e90a60755d304555cea5ee33`; compiler identity: `sha256:703e211ea6c8808e4ab5fbe07fbf653c5b076a3f0cc8b4081966d83544e6e0ad`.
 
 Regenerate or verify it with:
