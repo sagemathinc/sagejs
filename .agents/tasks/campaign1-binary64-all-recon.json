@@ -1,0 +1,54 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-binary64-all-recon",
+  "title": "Nested binary64 all-reduction reconnaissance",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add an explain-only structural compiler domain for checked nested binary64 all reductions, with stable proof and target rejection codes for scalar and fixed-pair finiteness predicates; do not implement an executable lowering.",
+  "base_commit": "9fdbd7ac4d6e7cb69a914c1ddc6703ffe6c93b5f",
+  "claims": [
+    "tools/python/optimizer/domains/binary64-nested-all/index.ts",
+    "tools/python/optimizer/domains/binary64-nested-all/model.ts",
+    "tools/python/optimizer/domains/binary64-nested-all/recognize.ts",
+    "tools/python/optimizer/domains/binary64-nested-all/verify.ts",
+    "tools/python/optimizer/passes/binary64-nested-all-region.ts",
+    "test/optimizer-binary64-nested-all-reconnaissance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "structural AST fixtures and exact IR validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added an application-name-independent, explain-only nested binary64 all-reduction recognizer, independently verified generic-fallback decision IR, and exact production/held-out/adversarial tests for scalar and fixed-pair finiteness predicates. The plugin owns no lowering and emits stable proof and target rejection codes.",
+    "risks": [
+      "The plugin is intentionally not integrated into the shared catalog, optimizer index, or reason registry in this implementation lane.",
+      "Every semantic identity, representation, iteration, short-circuit, interrupt, and untouched-restart obligation remains an explicit rejection; no executable optimization is claimed.",
+      "The scratch worktree lacks the optional FLINT native addon, so four otherwise unrelated compiler fixtures fail module loading; the other 11 active compiler fixtures pass."
+    ],
+    "next_steps": [
+      "Add the handed-off plugin to the integration-owned catalog at priority 145, export its domain from the optimizer index, and add the exact sorted reason-registry objects.",
+      "Regenerate the optimizer dashboard after integration changes the compiler identity.",
+      "Confirm both production grid-sampling regions appear as rejected observations through the integrated O2 compiler before developing any guarded representation proof or lowering."
+    ]
+  }
+}
