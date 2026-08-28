@@ -23,3 +23,15 @@ test("fresh Unix smalljac builds expose managed GMP headers to implicit rules", 
   assert.match(implementation, /`INCLUDES=\$\{includes\}`/);
   assert.match(implementation, /`CFLAGS=\$\{cflags\}`/);
 });
+
+test("Unix MPFR builds prefer the immutable Sage.js source mirror", () => {
+  assert.match(
+    source,
+    /url: "https:\/\/github\.com\/sagemathinc\/sagejs\/releases\/download\/native-sources-1\/mpfr-4\.2\.2\.tar\.xz"/
+  );
+  assert.match(
+    source,
+    /sha256: "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01"/
+  );
+  assert.match(source, /"https:\/\/ftp\.gnu\.org\/gnu\/mpfr\/mpfr-4\.2\.2\.tar\.xz"/);
+});

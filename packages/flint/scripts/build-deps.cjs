@@ -94,7 +94,11 @@ const dependencies = [
   {
     name: "mpfr",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpfr,
-    url: "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/mpfr-4.2.2.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.2.tar.xz",
+      "https://ftpmirror.gnu.org/mpfr/mpfr-4.2.2.tar.xz",
+    ],
     sha256: "b67ba0383ef7e8a8563734e2e889ef5ec3c3b898a01d00fa0a6869ad81c6ce01",
     archive: process.env.SAGEJS_MPFR_TARBALL,
   },
