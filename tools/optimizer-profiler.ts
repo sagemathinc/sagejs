@@ -122,7 +122,9 @@ const evidenceCommon = require(resolve(
   "optimizer-development",
   "common.cjs",
 )) as {
+  canonicalJson(value: unknown): string;
   documentIdentity(value: unknown): string;
+  sha256(value: string | Uint8Array): string;
 };
 
 /**
@@ -608,7 +610,7 @@ function buildReceipt(options: {
     }],
     mapBindings: [{
       schema: map.schema,
-      digest: profileSha256(JSON.stringify(map)),
+      digest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
       sourceUnitId: map.source.identity.id,
       generatedSha256: map.generated.sha256,
     }],
