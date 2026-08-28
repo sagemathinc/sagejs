@@ -1,0 +1,130 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimizer-packed-containers",
+  "title": "Packed machine container representation",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define reusable owner-bound packed sequence and matrix representation facts for optimizer domains, with length, element shape, alias, mutation, publication, cleanup, copy-cost, and resource proofs; implement isolated analysis/representation modules plus adversarial tests and benchmarks, but leave central registration and shared runtime hooks to integration.",
+  "base_commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+  "claims": [
+    "tools/python/optimizer/analyses/packed-containers/",
+    "tools/python/optimizer/domains/packed-container/",
+    "tools/python/optimizer/representations/packed-machine-container.ts",
+    "tools/python/optimizer/verifiers/packed-machine-container.ts",
+    "test/optimizer-packed-container.cjs",
+    "bench/optimizer-packed-container/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "sagejs-o0",
+      "detached-replay"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "node --test test/optimizer-packed-container.cjs",
+    "node bench/optimizer-packed-container/benchmark.cjs --check",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 724.39,
+      "started_at": "2026-08-28T01:17:09.758Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-packed-container.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.156,
+      "started_at": "2026-08-28T01:29:26.711Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimizer-packed-container/benchmark.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.354,
+      "started_at": "2026-08-28T01:29:32.295Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.178,
+      "started_at": "2026-08-28T01:29:40.293Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 442.888,
+      "started_at": "2026-08-28T01:30:28.769Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 435.841,
+      "started_at": "2026-08-28T01:38:13.145Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 393.802,
+      "started_at": "2026-08-28T01:46:10.454Z",
+      "commit": "52d45295f24572511749908547dcf2f0008e1ec5",
+      "workspace_fingerprint": "f2f383f0d21cfa279cb3057a7aa30341f7d688d7c88eb51f000dffdc8318feac",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the standalone math.packed-machine-container-facts.v1 provider (domain packed-machine-container, priority 400) with JSON-safe source contracts for contiguous sequences and row/column-major matrices. The representation.owner-bound-packed-container.v1 plan is deeply frozen and records length/shape, canonical element layout, source/active/public ownership, affine byte-range alias relations, immutable versus transactional mutation, sealed publication, all-exit cleanup, exact maximum copy bytes, foreign-resource generation/open guards, provenance, invalidations, same-source fallback, and a deterministic fingerprint. verify.packed-machine-container.v1 independently recomputes every safety-critical fact and supports serialized detached replay. Tests cover read-only aliases, write rejection, copy-in/out, owner transfer, zero trips, interruption cleanup, malformed resources, overflow, accessors, post-analysis mutation, and twelve forged-plan classes. The benchmark separately reports plan/replay latency and measured 1 MiB borrow/copy and transactional transfer/copy boundary costs without claiming an executable target speedup.",
+    "risks": [
+      "The provider is intentionally not registered in optimizer/catalog.ts or the lowering dispatcher, and no executable target consumes it on this lane.",
+      "Guarded maximum extents and owner/storage identities remain valid only until their recorded invalidation events; consuming passes must emit every listed guard before effects and include the plan fingerprint in cache identity.",
+      "Native and Wasm cleanup actions are declarative; a consuming target must execute close, transfer, and root-retention operations in the named allocator domain without exposing a raw address or mutable public array.",
+      "The complete pnpm test:integration command was attempted three times and stopped on the inherited test/dense-prime-host-boundary.cjs GF(2) scalar timing ratchet (50.093, 50.642, and 55.234 microseconds versus a 50 microsecond ceiling) under a shared host load around 13; that exact test passes in isolation and no lane file participates in it. The contract remains active until integration can record a clean receipt on an uncontended host."
+    ],
+    "next_steps": [
+      "Integration should import packedContainerDomainPlugin from tools/python/optimizer/domains/packed-container/index.ts into an integration-owned representation-fact-provider registry using its exported id, domainId, priority, planningId, representationId, verifierId, factsProduced, analyze/requirePlan, and verify fields; it is not an executable AST pass and should not be placed in the current target-lowering catalog by itself.",
+      "A consuming modular, strict-binary64, fixed-extension, Wasm, or native pass should construct PackedContainerCandidate only after proving the complete live peer set, no callback, no escape, owner ancestry, exact guarded extents, canonical lane shape, and resource generation/open state; call requirePlan, immediately verify, attach the plan to its internal region, and verify again after any detached serialization.",
+      "The consuming emitter must map the stable packed-container.* guard codes and cleanup owner actions before optimized effects, preserve fallback.restart=original-inputs, publish only the sealed result owner, and own its target-specific lowering/emitter registration.",
+      "Rerun pnpm parallel:run -- optimizer-packed-containers -- pnpm test:integration on an uncontended host, then set status to review after parallel:check accepts the fresh passing receipt."
+    ]
+  }
+}
