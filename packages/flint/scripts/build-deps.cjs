@@ -108,7 +108,11 @@ const dependencies = [
   {
     name: "mpc",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.mpc,
-    url: "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/mpc-1.4.1.tar.xz",
+    mirrors: [
+      "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
+      "https://ftpmirror.gnu.org/mpc/mpc-1.4.1.tar.xz",
+    ],
     sha256: "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
     archive: process.env.SAGEJS_MPC_TARBALL,
   },
