@@ -629,7 +629,7 @@ test("counterfeit authorities, malformed counters, and unknown reasons fail clos
     /unknown reason code/);
 });
 
-test("sampling channels conserve independently and authenticate script IDs", () => {
+test("sampling channels conserve independently and authenticate only attributed scripts", () => {
   const evidence = buildEvidence();
   const broken = structuredClone(evidence.profile);
   broken.sampling.functionSampleCounts.total = 1;
@@ -650,7 +650,23 @@ test("sampling channels conserve independently and authenticate script IDs", () 
     mapping: { status: "unmatched", candidates: [] },
   }];
   forged.runtime.authority = "private-evaluator-closure";
-  assert.throws(() => schemas.validateProfileReceipt(readdress(forged)),
+  assert.doesNotThrow(() => schemas.validateProfileReceipt(readdress(forged)));
+
+  const counterfeitMapping = structuredClone(forged);
+  counterfeitMapping.sampling.functionSampleCounts = {
+    total: 1, attributed: 1, ambiguous: 0, unmatched: 0,
+  };
+  counterfeitMapping.sampling.functionSamples[0].mapping = {
+    status: "attributed",
+    candidates: [{
+      sourceUnitId: evidence.sourceUnit.id,
+      functionId: evidence.functionRecord.id,
+      path: "src/lib/control.py",
+      range: { startLine: 1, startColumn: 0, endLine: 3, endColumn: 12 },
+      confidence: 1,
+    }],
+  };
+  assert.throws(() => schemas.validateProfileReceipt(readdress(counterfeitMapping)),
     /no authenticated source bytes/);
 });
 
