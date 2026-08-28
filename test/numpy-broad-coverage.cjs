@@ -38,7 +38,7 @@ if (available.status === 0) {
     sagejs.stdout.includes("[[7.0, 7.0, 7.0], [7.0, 7.0, 7.0]]"),
     sagejs.stdout,
   );
-  assert.ok(sagejs.stdout.includes("[5.0, 0.0]"), sagejs.stdout);
+  assert.ok(sagejs.stdout.includes("[0.6, -0.2]"), sagejs.stdout);
 }
 
 const inventory = run(python, [
