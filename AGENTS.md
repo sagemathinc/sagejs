@@ -28,6 +28,9 @@
   fallback; do not make WSL, MSYS2, or MinGW part of the supported user path.
 - Commit coherent completed work and push each commit to GitHub promptly.
 - Do not commit `*.chat` files or generated build artifacts that are already ignored.
+- Read `RELEASE.md` before preparing or publishing a release. Qualify the exact
+  candidate on the persistent four-platform hosts before creating an immutable
+  tag; GitHub release CI is confirmation and publication, not the iteration loop.
 
 ## Mathematical implementation architecture
 

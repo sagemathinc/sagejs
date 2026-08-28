@@ -7,6 +7,7 @@ const { existsSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sagejsInvocation } = require("./helpers/sagejs-cli.cjs");
 
 const root = resolve(__dirname, "..");
 const modulePath = join(
@@ -36,7 +37,8 @@ function runSageJs(source) {
   try {
     const script = join(directory, "witness.py");
     writeFileSync(script, source);
-    return run(resolve(root, "bin", "sagejs"), ["--python", script], "");
+    const [command, args] = sagejsInvocation(root, ["--python", script]);
+    return run(command, args, "");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

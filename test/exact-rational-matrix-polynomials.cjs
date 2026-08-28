@@ -9,7 +9,10 @@ const {
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -356,7 +359,7 @@ int main(void)
     const compiler = process.env.CC || "cc";
     const compiled = spawnSync(compiler, [
       "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
-      "-fsanitize=address,undefined",
+      sanitizerCompilerFlag(),
       `-I${join(root, "packages", "flint", "include")}`,
       `-I${join(flintPrefix, "include")}`,
       sourcePath,

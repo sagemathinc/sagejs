@@ -8,7 +8,10 @@ const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile: compileNative } = require("@sagemath/sagejs/native");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -602,7 +605,7 @@ int main(void)
     writeFileSync(sourcePath, source);
     const compile = spawnSync(process.env.CC || "cc", [
       "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
-      "-fsanitize=address,undefined",
+      sanitizerCompilerFlag(),
       `-I${resolve(root, "packages/flint/include")}`,
       `-I${resolve(flintPrefix, "include")}`,
       sourcePath,

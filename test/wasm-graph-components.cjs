@@ -16,6 +16,7 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { PassThrough } = require("node:stream");
 const test = require("node:test");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const root = resolve(__dirname, "..");
 const {
@@ -162,7 +163,7 @@ test("the public Graph and DiGraph workflows report the installed packed route",
 });
 
 test("CPython fallback preserves the packed traversal contract", () => {
-  const oracle = spawnSync("python3", ["-c", String.raw`
+  const oracle = spawnSync(pythonExecutable(), ["-c", String.raw`
 import json
 import sys
 sys.path.insert(0, "src/lib")

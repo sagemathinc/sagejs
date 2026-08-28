@@ -6,6 +6,10 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("../../test/helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const prefix = resolve(
@@ -111,6 +115,11 @@ if (process.platform === "win32") {
   process.exit(0);
 }
 
+const lifecycleRounds = 4000;
+const rationalRounds = 500;
+const canonicalCycleSpan = 46;
+const sanitizerFlag = sanitizerCompilerFlag();
+
 const source = String.raw`
 #include <stdint.h>
 #include <stdio.h>
@@ -126,7 +135,7 @@ int main(void)
 {
     uint64_t random_state = UINT64_C(0x5a17c0de);
     uint64_t aggregate = 0;
-    for (unsigned round = 0; round < 4000; round++) {
+    for (unsigned round = 0; round < ${lifecycleRounds}U; round++) {
         sagejs_igraph_graph_t graph;
         sagejs_igraph_edges_view_t first;
         sagejs_igraph_edges_view_t second;
@@ -150,7 +159,7 @@ int main(void)
             uint64_t labels[48];
             unsigned seen[48] = {0};
             const uint64_t cycle_vertices = UINT64_C(2) +
-                next_value(&random_state) % UINT64_C(46);
+                next_value(&random_state) % UINT64_C(${canonicalCycleSpan});
             const sagejs_igraph_canonical_request_t request = {
                 cycle_vertices, 2 * cycle_vertices, 0
             };
@@ -167,7 +176,7 @@ int main(void)
             }
         }
     }
-    printf("rounds=4000 aggregate=%llu\n", (unsigned long long) aggregate);
+    printf("rounds=${lifecycleRounds} aggregate=%llu\n", (unsigned long long) aggregate);
     return 0;
 }
 `;
@@ -180,7 +189,7 @@ const rationalSource = String.raw`
 
 int main(void)
 {
-    for (slong round = 0; round < 500; round++) {
+    for (slong round = 0; round < ${rationalRounds}; round++) {
         fmpz_mat_t left_num, left_den, right_num, right_den;
         fmpz_mat_t output_num, output_den, scalar_num, scalar_den;
         fmpz_mat_t polynomial_num, polynomial_den, rank;
@@ -356,7 +365,7 @@ try {
   const compiler = process.env.CC || "cc";
   const args = [
     "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
-    "-fsanitize=address,undefined",
+    sanitizerFlag,
     `-I${join(root, "packages", "graph", "include")}`,
     `-I${join(prefix, "include")}`,
     `-I${join(prefix, "include", "igraph")}`,
@@ -367,17 +376,14 @@ try {
   ];
   run(compiler, args);
   const output = run(executable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   }).trim();
   const rationalSourcePath = join(temporary, "rational-lifecycle.c");
   const rationalExecutable = join(temporary, "rational-lifecycle");
   writeFileSync(rationalSourcePath, rationalSource);
   run(compiler, [
     "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
-    "-fsanitize=address,undefined",
+    sanitizerFlag,
     `-I${join(root, "packages", "flint", "include")}`,
     `-I${join(flintPrefix, "include")}`,
     rationalSourcePath,
@@ -386,19 +392,17 @@ try {
     "-o", rationalExecutable,
   ]);
   run(rationalExecutable, [], {
-    env: {
-      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-      UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-    },
+    env: sanitizerEnvironment({ strictStringChecks: true }),
   });
   process.stdout.write(JSON.stringify({
     schema: "sagejs.ffi/lifecycle-fuzz-v1",
     capability: "sanitizers",
     supported: true,
     compiler,
+    sanitizer: sanitizerFlag.slice("-fsanitize=".length),
     dynamic: dynamicResult,
     result: output,
-    rationalResult: "rounds=500",
+    rationalResult: `rounds=${rationalRounds}`,
   }, null, 2) + "\n");
 } finally {
   rmSync(temporary, { recursive: true, force: true });

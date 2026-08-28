@@ -15,7 +15,10 @@ const test = require("node:test");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
-const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
+const {
+  sanitizerCompilerFlag,
+  sanitizerEnvironment,
+} = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const sourcePath = resolve(root, "bench/native_live_exact_vector.py");
@@ -91,7 +94,7 @@ test("live exact vectors clean up transactionally under platform sanitizers", {
     // ASan+UBSan and leak-detection gate.
     const sanitizerFlags = process.platform === "darwin"
       ? ["-fsanitize=undefined"]
-      : ["-fsanitize=address,undefined"];
+      : [sanitizerCompilerFlag()];
     const compile = spawnSync(process.env.CC || "cc", [
       "-std=c11",
       "-O1",
