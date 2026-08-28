@@ -1,0 +1,1168 @@
+{
+  "schema": "sagejs.optimizer-workload-catalog/v1",
+  "id": "sha256:74667dc23c1d430be44a89344bb01a73c663e651af418215f93f99aa3ed8aa66",
+  "workloads": [
+    {
+      "capabilities": [
+        "optimizer-evidence"
+      ],
+      "class": "microbenchmark",
+      "corpus": {
+        "digest": "32a4d2d2c2848733bf2980b7542113317f7fce1079580658ea16592e5b89bbb8",
+        "id": "optimizer-machine-controls"
+      },
+      "id": "sha256:2fecef601d9bd4a244ccb63e4073c57af6deee4c4e81e98b39fc49943a0b227a",
+      "input": {
+        "digest": "c0f4ea929101f94abb64ddc68a0a4e4c8c488de8297332578d3c8f9757d6305a",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "checksum,first,last",
+          "expected": "2352785,2199,1757",
+          "fixture": null,
+          "input": null,
+          "mode": "packed-container",
+          "oracleContract": {
+            "smoke": "254230,2199,227",
+            "standard": "2352785,2199,1757"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 5000,
+              "timeout_seconds": 120,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 100000,
+              "timeout_seconds": 300,
+              "warmups": 2
+            }
+          },
+          "route": {
+            "evidence": "fact-provider-only",
+            "expected_pass": null,
+            "selection": "forbidden"
+          },
+          "sourcePath": "bench/optimizer-workloads/packed-container.py"
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "2094a3a3dc9af7ed50c208793b6f7c74492110bef330851cbfcf00bcae5fcbed",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "2094a3a3dc9af7ed50c208793b6f7c74492110bef330851cbfcf00bcae5fcbed",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "2094a3a3dc9af7ed50c208793b6f7c74492110bef330851cbfcf00bcae5fcbed",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "2094a3a3dc9af7ed50c208793b6f7c74492110bef330851cbfcf00bcae5fcbed",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "frontend fact discovery and emit"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm container calls"
+        },
+        {
+          "id": "materialize-input",
+          "label": "packed input and output allocation outside timed kernel"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 2
+      },
+      "runner": {
+        "argv": [
+          "packed-container"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/machine-controls.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic"
+      ],
+      "title": "Packed signed-int64 container fact provider"
+    },
+    {
+      "capabilities": [
+        "optimizer-evidence"
+      ],
+      "class": "positive-control",
+      "corpus": {
+        "digest": "832a83c981bba7089444ae0172063577e6263ddb9faab147eac15b16ecee3419",
+        "id": "optimizer-machine-controls"
+      },
+      "id": "sha256:4a2eec3538f1c9a3155f13f53cb5be8f612ca1e8a3543eefa5b840b4edc8b789",
+      "input": {
+        "digest": "386210c740e34e66231a1ad8a1aeacc63a7b5b37882ae7bd213e0edbff40bc15",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "little-endian IEEE-754 binary64 hex",
+          "expected": "a4a66eb63deff2bf",
+          "fixture": null,
+          "input": null,
+          "mode": "strict-binary64-array",
+          "oracleContract": {
+            "smoke": "c8736010a5fcd7bf",
+            "standard": "a4a66eb63deff2bf"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 2500,
+              "timeout_seconds": 120,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 50000,
+              "timeout_seconds": 300,
+              "warmups": 2
+            }
+          },
+          "route": {
+            "expected_pass": "math.strict-float-array-region.v1",
+            "selection": "required"
+          },
+          "sourcePath": "bench/optimizer-workloads/strict-binary64-tuple.py"
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "83947d0f7c3f10cb5852eff3e5ce0dd67bb7f23f7665c6e934f7f944e275acd0",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "83947d0f7c3f10cb5852eff3e5ce0dd67bb7f23f7665c6e934f7f944e275acd0",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "83947d0f7c3f10cb5852eff3e5ce0dd67bb7f23f7665c6e934f7f944e275acd0",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "83947d0f7c3f10cb5852eff3e5ce0dd67bb7f23f7665c6e934f7f944e275acd0",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "frontend parse, proof, lowering, and emit"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm strict recurrence calls"
+        },
+        {
+          "id": "materialize-input",
+          "label": "tuple construction outside timed kernel"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 2
+      },
+      "runner": {
+        "argv": [
+          "strict-binary64-array"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/machine-controls.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "v8"
+      ],
+      "title": "Strict binary64 tuple recurrence"
+    },
+    {
+      "capabilities": [
+        "native-kernel",
+        "prime-field"
+      ],
+      "class": "representative",
+      "corpus": {
+        "digest": "3ad0db377f522b7fae722cf8ffc2f76b79ede35ebc45fbcadf1ff436554cd358",
+        "id": "public-prime-field-polynomial"
+      },
+      "id": "sha256:4efe8cfd0b14379b8e75e257a8eb32379ae6e0eadd8df7c949bc89b778c5befd",
+      "input": {
+        "digest": "a223c6eb16556a915eaab34adf6e62c5ae84fa85cc4a83975c8f5d0eb1bb9d9c",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "canonical residue",
+          "expected": "33853",
+          "fixture": null,
+          "input": {
+            "coefficients": "coefficient i is i modulo p",
+            "evaluation_point": 12345,
+            "modulus": 65537
+          },
+          "mode": "public-evaluate",
+          "oracleContract": {
+            "smoke": "46576",
+            "standard": "33853"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 2000,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 9,
+              "size": 20000,
+              "timeout_seconds": 600,
+              "warmups": 3
+            }
+          },
+          "route": null
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "09b45161eac5ce45706dc09c74689d2c885cee3aa3c37d80e5116b123cc1dd85",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "09b45161eac5ce45706dc09c74689d2c885cee3aa3c37d80e5116b123cc1dd85",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "09b45161eac5ce45706dc09c74689d2c885cee3aa3c37d80e5116b123cc1dd85",
+          "id": "sagejs-dynamic",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "09b45161eac5ce45706dc09c74689d2c885cee3aa3c37d80e5116b123cc1dd85",
+          "id": "sagejs-native",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "native source lowering and target preparation"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm Horner evaluation"
+        },
+        {
+          "id": "execute-dynamic",
+          "label": "complete public-call generic dynamic fallback"
+        },
+        {
+          "id": "execute-v8-lower-bound",
+          "label": "handwritten Number/Uint32 kernel only; not a complete public call"
+        },
+        {
+          "id": "materialize",
+          "label": "polynomial coefficient construction"
+        },
+        {
+          "id": "parent-setup",
+          "label": "prime field and polynomial ring construction"
+        },
+        {
+          "id": "resource",
+          "label": "native resource count before and after samples"
+        },
+        {
+          "id": "session",
+          "label": "Sage.js process/session initialization"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 9,
+        "reset": "process",
+        "timeoutMilliseconds": 600000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "public-evaluate"
+        ],
+        "environment": [
+          "SAGEJS_NATIVE_CACHE_DIR",
+          "SAGEJS_NATIVE_DISABLE",
+          "SAGEJS_NATIVE_MODE",
+          "SAGEJS_NATIVE_REQUIRED"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/public-prime-polynomial.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "library",
+        "native",
+        "v8",
+        "wasm"
+      ],
+      "title": "Public prime-field polynomial Horner evaluation"
+    },
+    {
+      "capabilities": [
+        "class-groups",
+        "exact-proof"
+      ],
+      "class": "representative",
+      "corpus": {
+        "digest": "284d90f785579866fe0e0fbe1831efb40d75be458339d13327c0ecdb40b88e0c",
+        "id": "cubic-public-class-number"
+      },
+      "id": "sha256:5cf74fbc93d6b1b791379e0564708f62e9849558ede8055f813742911cfca94a",
+      "input": {
+        "digest": "150b756a20546a62b7f4f1e033176f6d6c29c70ed6d6489dc4cec4e267bb40a8",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "class number and canonical presentation digest",
+          "expected": {
+            "3.1.4027.2": 6,
+            "3.1.5448.1": 8,
+            "3.1.588.1": 3
+          },
+          "fixture": null,
+          "input": null,
+          "mode": "profile",
+          "oracleContract": {
+            "classNumbers": {
+              "3.1.4027.2": 6,
+              "3.1.5448.1": 8,
+              "3.1.588.1": 3
+            },
+            "proofModes": [
+              false,
+              true
+            ]
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 1,
+              "size": 3,
+              "timeout_seconds": 600,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 3,
+              "timeout_seconds": 1800,
+              "warmups": 1
+            }
+          },
+          "route": null
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "52800cfc673bfcd856f5f414785beb693926361ec3c7051bf5b7d801f188b7de",
+          "id": "detached-proof-verifier",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "52800cfc673bfcd856f5f414785beb693926361ec3c7051bf5b7d801f188b7de",
+          "id": "pinned-lmfdb",
+          "kind": "digest",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "52800cfc673bfcd856f5f414785beb693926361ec3c7051bf5b7d801f188b7de",
+          "id": "sagejs-proof-false",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "52800cfc673bfcd856f5f414785beb693926361ec3c7051bf5b7d801f188b7de",
+          "id": "sagejs-proof-true",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "boundaries",
+          "label": "nested named mathematical boundaries"
+        },
+        {
+          "id": "class-number",
+          "label": "inclusive class-number projection"
+        },
+        {
+          "id": "field-setup",
+          "label": "fresh field and maximal order outside scalar timer"
+        },
+        {
+          "id": "presentation",
+          "label": "proof/presentation extraction, canonical encoding, and detached verification"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "process",
+        "timeoutMilliseconds": 1800000,
+        "warmupRuns": 1
+      },
+      "runner": {
+        "argv": [
+          "profile"
+        ],
+        "environment": [
+          "SAGEJS_CUBIC_KERNEL_TARGET",
+          "SAGEJS_CUBIC_PROFILE_MODE",
+          "SAGEJS_CUBIC_PROFILE_SAMPLES",
+          "SAGEJS_CUBIC_PROFILE_WARMUPS"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/cubic.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "native"
+      ],
+      "title": "Authentic cubic class-number and proof workload"
+    },
+    {
+      "capabilities": [
+        "class-groups",
+        "exact-proof"
+      ],
+      "class": "held-out",
+      "corpus": {
+        "digest": "8b247cdc4b8a68ad8ea65559a5451100cbacfffbd724136c4e53efb2507bb298",
+        "id": "cubic-lmfdb-neighbors"
+      },
+      "id": "sha256:5d862a001b6c6764580d1871d0cb8229cc7de1661a238033464da4d113ad0471",
+      "input": {
+        "digest": "966461a5b8df1716d9eedf08336e135122980ecbb431c8e9fe64e2d3c7f77531",
+        "kind": "fixture",
+        "seed": null,
+        "value": {
+          "encoding": "ten labeled exact class numbers",
+          "expected": null,
+          "fixture": {
+            "path": "test/fixtures/number-field-lmfdb-cubic-class-numbers.json",
+            "sha256": "8b247cdc4b8a68ad8ea65559a5451100cbacfffbd724136c4e53efb2507bb298"
+          },
+          "input": null,
+          "mode": "neighbors",
+          "oracleContract": {
+            "classNumbers": {
+              "3.1.1083.1": 3,
+              "3.1.1371.1": 4,
+              "3.1.1563.1": 5,
+              "3.1.23.1": 1,
+              "3.1.283.1": 2,
+              "3.1.2856.1": 7,
+              "3.1.4027.2": 6,
+              "3.1.5448.1": 8,
+              "3.1.588.1": 3,
+              "3.1.59.1": 1
+            },
+            "proofModes": [
+              false,
+              true
+            ]
+          },
+          "policy": {
+            "proof_modes": [
+              false,
+              true
+            ],
+            "records": 10,
+            "require_exact_match": true
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 1,
+              "size": 10,
+              "timeout_seconds": 1200,
+              "warmups": 0
+            },
+            "standard": {
+              "samples": 3,
+              "size": 10,
+              "timeout_seconds": 3600,
+              "warmups": 0
+            }
+          },
+          "route": null
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "7203f3a00591a478a779e1e85e832fced3c43c4c28bd2f24cea66d04561e8041",
+          "id": "pinned-lmfdb",
+          "kind": "digest",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "7203f3a00591a478a779e1e85e832fced3c43c4c28bd2f24cea66d04561e8041",
+          "id": "sage-pari-optional",
+          "kind": "pari",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "7203f3a00591a478a779e1e85e832fced3c43c4c28bd2f24cea66d04561e8041",
+          "id": "sagejs-proof-false",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "7203f3a00591a478a779e1e85e832fced3c43c4c28bd2f24cea66d04561e8041",
+          "id": "sagejs-proof-true",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "class-number",
+          "label": "warm class-number computation"
+        },
+        {
+          "id": "diagnostics",
+          "label": "dominant internal phase and proof status"
+        },
+        {
+          "id": "field-setup",
+          "label": "fresh field and maximal order outside scalar timer"
+        },
+        {
+          "id": "process",
+          "label": "persistent implementation process"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 3,
+        "reset": "process",
+        "timeoutMilliseconds": 3600000,
+        "warmupRuns": 0
+      },
+      "runner": {
+        "argv": [
+          "neighbors"
+        ],
+        "environment": [
+          "SAGEJS_CUBIC_KERNEL_TARGET",
+          "SAGEJS_CUBIC_PROFILE_MODE",
+          "SAGEJS_CUBIC_PROFILE_SAMPLES",
+          "SAGEJS_CUBIC_PROFILE_WARMUPS"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/cubic-neighbors.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "native"
+      ],
+      "title": "Ten-field LMFDB cubic promotion neighbors"
+    },
+    {
+      "capabilities": [
+        "optimizer-evidence"
+      ],
+      "class": "positive-control",
+      "corpus": {
+        "digest": "a8d607ab6b8587f09fbe49acbe464c6d60cc882d3cb20600f79c47196d8115cf",
+        "id": "optimizer-machine-controls"
+      },
+      "id": "sha256:908ed11d92f8138a5a4197c9baa536b0d2bd9aff4008d49bf887dbf14cd2d985",
+      "input": {
+        "digest": "491877dbfe90fadf30cc690d7212420293a0ba2e060f7ef8f36c22563b412923",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "canonical residue summary",
+          "expected": "32,769,419",
+          "fixture": null,
+          "input": null,
+          "mode": "prime-residue-batch",
+          "oracleContract": {
+            "smoke": "549,769,521",
+            "standard": "32,769,419"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 500,
+              "timeout_seconds": 120,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 10000,
+              "timeout_seconds": 300,
+              "warmups": 2
+            }
+          },
+          "route": {
+            "expected_pass": "math.modular-batch-region.v1",
+            "selection": "required"
+          },
+          "sourcePath": "bench/optimizer-workloads/prime-residue-batch.py"
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "097d8c8f289fa4526d16f8f2102c0d87c3298eec87a399f50a95e239a5368c7a",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "097d8c8f289fa4526d16f8f2102c0d87c3298eec87a399f50a95e239a5368c7a",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "097d8c8f289fa4526d16f8f2102c0d87c3298eec87a399f50a95e239a5368c7a",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "097d8c8f289fa4526d16f8f2102c0d87c3298eec87a399f50a95e239a5368c7a",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "frontend parse, proof, lowering, and emit"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm batch calls"
+        },
+        {
+          "id": "materialize-input",
+          "label": "residue tuple construction outside timed kernel"
+        },
+        {
+          "id": "resource",
+          "label": "native resource count before and after warm samples"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 2
+      },
+      "runner": {
+        "argv": [
+          "prime-residue-batch"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/machine-controls.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "v8"
+      ],
+      "title": "Small-prime residue batch"
+    },
+    {
+      "capabilities": [
+        "optimizer-evidence"
+      ],
+      "class": "positive-control",
+      "corpus": {
+        "digest": "82e3d7c110783a878e025f02cc4dec035dd46f4106afaceca4e039edd7157daa",
+        "id": "optimizer-machine-controls"
+      },
+      "id": "sha256:be998ccbcb1c87a3f979a9f75fd373c02190604b286278c87c5aa4f98d4f9f58",
+      "input": {
+        "digest": "58634081e5004cd693c0584b8841c64fe1be3e8eeb93258eb3034cad0292d3c5",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "canonical power-basis coordinates",
+          "expected": "0,2,1",
+          "fixture": null,
+          "input": null,
+          "mode": "fixed-extension",
+          "oracleContract": {
+            "smoke": "4,2,1",
+            "standard": "0,2,1"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 50,
+              "timeout_seconds": 120,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 1000,
+              "timeout_seconds": 300,
+              "warmups": 2
+            }
+          },
+          "route": {
+            "expected_pass": "math.fixed-extension-region.v1",
+            "selection": "required"
+          },
+          "sourcePath": "bench/optimizer-workloads/fixed-extension.py"
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "d135d852688982e69588ffe027067eef3512a481b1972c0c3406ea31aab77159",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "d135d852688982e69588ffe027067eef3512a481b1972c0c3406ea31aab77159",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "d135d852688982e69588ffe027067eef3512a481b1972c0c3406ea31aab77159",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "d135d852688982e69588ffe027067eef3512a481b1972c0c3406ea31aab77159",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "frontend parse, proof, lowering, and emit"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm recurrence calls"
+        },
+        {
+          "id": "parent-setup",
+          "label": "finite-field construction outside timed kernel"
+        },
+        {
+          "id": "resource",
+          "label": "parent resource count before and after calls"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 2
+      },
+      "runner": {
+        "argv": [
+          "fixed-extension"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/machine-controls.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "v8"
+      ],
+      "title": "Fixed-degree finite-field extension recurrence"
+    },
+    {
+      "capabilities": [
+        "native-kernel",
+        "packed-exact-integers"
+      ],
+      "class": "negative-control",
+      "corpus": {
+        "digest": "acb7144cf367df09e5fded167db46576976d3daeb64277e02425cb462a18f798",
+        "id": "cubic-negative-control"
+      },
+      "id": "sha256:c917de1a7a2ca1acb9c9a7e9b7e5488b4e1790158e0e7e272983bbe887c1a71c",
+      "input": {
+        "digest": "a3338baea3e9bda8bdb1592adc26e4608ff9118b4ffb69d4879e0133cda6a5d4",
+        "kind": "fixture",
+        "seed": null,
+        "value": {
+          "encoding": "candidate metadata",
+          "expected": [
+            105,
+            364,
+            0,
+            4
+          ],
+          "fixture": {
+            "path": "bench/optimizer-bounded-integer/held-out-cubic-negative-control.json",
+            "sha256": "acb7144cf367df09e5fded167db46576976d3daeb64277e02425cb462a18f798"
+          },
+          "input": null,
+          "mode": "targets",
+          "oracleContract": {
+            "metadata": [
+              105,
+              364,
+              0,
+              4
+            ]
+          },
+          "policy": {
+            "decision": "reject-current-generated-javascript",
+            "maximum_javascript_over_native_call_ratio": 1,
+            "maximum_javascript_over_native_inclusive_ratio": 1
+          },
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 25,
+              "timeout_seconds": 180,
+              "warmups": 10
+            },
+            "standard": {
+              "samples": 5,
+              "size": 200,
+              "timeout_seconds": 300,
+              "warmups": 50
+            }
+          },
+          "route": null
+        }
+      },
+      "modes": [
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "b58e1c8d92ec2f39f5c168b489f68b83aea93fd6db1627aaf85d24deea27ed2b",
+          "id": "generated-javascript",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "b58e1c8d92ec2f39f5c168b489f68b83aea93fd6db1627aaf85d24deea27ed2b",
+          "id": "native-kernel",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "buffer-setup",
+          "label": "five exact integer buffers"
+        },
+        {
+          "id": "call-javascript",
+          "label": "generated JavaScript invocation with resident buffers"
+        },
+        {
+          "id": "call-native",
+          "label": "native invocation with resident buffers"
+        },
+        {
+          "id": "inclusive-javascript",
+          "label": "fresh buffers, generated JavaScript invocation, and result materialization"
+        },
+        {
+          "id": "inclusive-native",
+          "label": "fresh buffers, native invocation, and result materialization"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 5,
+        "reset": "process",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 50
+      },
+      "runner": {
+        "argv": [
+          "targets"
+        ],
+        "environment": [
+          "SAGEJS_CUBIC_KERNEL_BATCHES",
+          "SAGEJS_CUBIC_KERNEL_CALLS",
+          "SAGEJS_CUBIC_KERNEL_WARMUPS",
+          "SAGEJS_CUBIC_PROFILE_MODE"
+        ],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/cubic.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "native",
+        "v8"
+      ],
+      "title": "Cubic relation sieve generated-JavaScript target"
+    },
+    {
+      "capabilities": [
+        "optimizer-evidence"
+      ],
+      "class": "positive-control",
+      "corpus": {
+        "digest": "fa9cba46fce89c3c9f7595e5a35df6e85014d590189df68cf36b5889dec0c337",
+        "id": "optimizer-machine-controls"
+      },
+      "id": "sha256:f2f3470a7b5c958bbaf93754784d445eb5a172080d3cffffc58c2e4c7d4af825",
+      "input": {
+        "digest": "d21346ed1531326bf23cc6c8cc1479d6f9b155e32b8fa661f6110da66db7fc87",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "decimal integer",
+          "expected": "17",
+          "fixture": null,
+          "input": null,
+          "mode": "bounded-integer",
+          "oracleContract": {
+            "smoke": "17",
+            "standard": "17"
+          },
+          "policy": null,
+          "profiles": {
+            "smoke": {
+              "samples": 3,
+              "size": 10000,
+              "timeout_seconds": 120,
+              "warmups": 1
+            },
+            "standard": {
+              "samples": 7,
+              "size": 200000,
+              "timeout_seconds": 300,
+              "warmups": 2
+            }
+          },
+          "route": {
+            "expected_pass": "math.bounded-integer-region.v1",
+            "selection": "required"
+          },
+          "sourcePath": "bench/optimizer-workloads/bounded-integer.py"
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "74e170790a3dda51e3c7f09cda3832f10d17c219a1486460f39d67706857f624",
+          "id": "cpython",
+          "kind": "cpython",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "74e170790a3dda51e3c7f09cda3832f10d17c219a1486460f39d67706857f624",
+          "id": "independent-javascript",
+          "kind": "invariant",
+          "runnerPath": "tools/optimizer-development/workloads.cjs"
+        },
+        {
+          "expectedDigest": "74e170790a3dda51e3c7f09cda3832f10d17c219a1486460f39d67706857f624",
+          "id": "sagejs-o0",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "74e170790a3dda51e3c7f09cda3832f10d17c219a1486460f39d67706857f624",
+          "id": "sagejs-o2",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "compile",
+          "label": "frontend parse, proof, lowering, and emit"
+        },
+        {
+          "id": "execute",
+          "label": "cold and warm recurrence calls"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 7,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 300000,
+        "warmupRuns": 2
+      },
+      "runner": {
+        "argv": [
+          "bounded-integer"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/machine-controls.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "v8"
+      ],
+      "title": "Bounded exact-integer linear recurrence"
+    }
+  ]
+}
