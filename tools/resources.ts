@@ -54,7 +54,11 @@ const NATIVE_KERNEL_PACK_ASSET =
   "native-kernels/pack/sagejs_native_kernel_pack.node";
 const NATIVE_KERNEL_PACK_MANIFEST_ASSET = "native-kernels/pack/index.json";
 const NATIVE_KERNEL_PACK_ABI_VERSION = 1;
-const NATIVE_KERNEL_COMPILER_ABI_VERSION = 22;
+// This is the embedded-asset half of `NATIVE_ABI_VERSION` in
+// `tools/native-kernel/c-backend.cjs`. Production-kernel tests ratchet it to
+// both the compiler and runtime-bootstrap values so an ABI bump cannot leave
+// SEA validation silently one version behind.
+export const NATIVE_KERNEL_ASSET_ABI_VERSION = 23;
 const NATIVE_RUNTIME_MODULES = new Set([
   "@sagemath/sagejs-flint",
   "@sagemath/sagejs-fflas",
@@ -227,7 +231,7 @@ export function loadPrecompiledNativeKernel(
     if (
       manifest?.schema !== "sagejs.native-pack/v2" ||
       manifest.packAbi !== NATIVE_KERNEL_PACK_ABI_VERSION ||
-      manifest.nativeAbi !== NATIVE_KERNEL_COMPILER_ABI_VERSION ||
+      manifest.nativeAbi !== NATIVE_KERNEL_ASSET_ABI_VERSION ||
       manifest.platform !== process.platform ||
       manifest.architecture !== process.arch ||
       manifest.nodeModulesAbi !== process.versions.modules ||

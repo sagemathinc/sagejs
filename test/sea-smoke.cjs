@@ -44,10 +44,11 @@ const mathExecutable = join(relocatedDirectory, `sagejs${executableSuffix}`);
 copyFileSync(builtPythonExecutable, pythonExecutable);
 if (!pythonOnly) copyFileSync(builtMathExecutable, mathExecutable);
 
-function run(executable, filename, extraArguments = []) {
+function run(executable, filename, extraArguments = [], env = process.env) {
   const result = spawnSync(executable, [...extraArguments, filename], {
     cwd: temporaryDirectory,
     encoding: "utf8",
+    env,
   });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
@@ -316,7 +317,10 @@ try {
       ].join("\n"),
     );
     assert.equal(
-      run(mathExecutable, mathProgram),
+      run(mathExecutable, mathProgram, [], {
+        ...process.env,
+        SAGEJS_NATIVE_REQUIRED: "1",
+      }),
       "2 * 1013\n" +
         "True True\n" +
         "120 3 120 10\n" +
