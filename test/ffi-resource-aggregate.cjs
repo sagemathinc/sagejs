@@ -211,7 +211,7 @@ function witnessDocument(headerDirectory) {
           ...structuredClone(flint.library.native.toolchain),
           source_include_dirs: [
             "packages/flint/include",
-            relative(root, headerDirectory),
+            relative(root, headerDirectory).replaceAll("\\", "/"),
           ],
         },
       },

@@ -299,13 +299,32 @@ function requiredFiles(paths, lock) {
   return files;
 }
 
-function inspectToolchain({ root = repositoryRoot, environment = process.env } = {}) {
+function inspectToolchain({
+  root = repositoryRoot,
+  environment = process.env,
+  platform = platformKey(),
+} = {}) {
   const lock = loadLock();
-  const platform = platformKey();
+  const override = explicitRoot(environment);
+  if (lock.wasiSdk.sources[platform] === undefined) {
+    return {
+      schema: "sagejs.wasm-toolchain-status/v2",
+      ready: false,
+      source: "unsupported-platform",
+      root: override || defaultCacheRoot(root),
+      lockDigest: null,
+      platform,
+      problems: [
+        `WASI SDK ${lock.wasiSdk.version} does not support ${platform}`,
+      ],
+      lock,
+      paths: null,
+      receipt: null,
+    };
+  }
   const catalog = loadCatalog(lock);
   const sources = selectedSources(lock, catalog, platform);
   const digest = toolchainDigest(lock, catalog, platform);
-  const override = explicitRoot(environment);
   const preparedRoot = override || cacheRoot(lock, root);
   const paths = pathsForRoot(preparedRoot, lock);
   const problems = requiredFiles(paths, lock)
