@@ -19,10 +19,14 @@ function number(value, label, minimum = 0) {
   return value;
 }
 
-function requireAdapter(adapter) {
+function requireAdapter(adapter, hasOpportunityEvidence = false) {
   for (const name of ["validateDashboard", "validateProfileReceipt", "dashboard", "profile",
     "attachIdentity", "validateHotnessOverlay", "eligibilityReasons"]) {
     assert(adapter && typeof adapter[name] === "function", `overlay adapter.${name} is required`);
+  }
+  if (hasOpportunityEvidence) {
+    assert(typeof adapter.validateOpportunityEvidence === "function",
+      "overlay adapter.validateOpportunityEvidence is required for reviewed opportunities");
   }
 }
 
@@ -91,6 +95,7 @@ function mergeObservedRegion(staticRegion, evidence) {
     source: copy(staticRegion.source),
     loopId: staticRegion.loopId,
     staticDecisions: copy(staticRegion.staticDecisions),
+    opportunityEvidenceIds: copy(staticRegion.opportunityEvidenceIds || []),
     observations: observations.map((item) => ({
       profileId: item.profileId,
       workloadId: item.workloadId,
@@ -119,8 +124,9 @@ function mergeObservedRegion(staticRegion, evidence) {
  * exact region IDs and the fields consumed below. This module never joins by
  * a source line, and it never reimplements content identity or schema logic.
  */
-function buildHotnessOverlay({ dashboard, profileReceipts, adapter, minimumCoverage = 0.8 }) {
-  requireAdapter(adapter);
+function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities = [],
+  workloads = [], adapter, minimumCoverage = 0.8 }) {
+  requireAdapter(adapter, reviewedOpportunities.length > 0);
   number(minimumCoverage, "minimumCoverage", 0);
   assert(minimumCoverage <= 1, "minimumCoverage must not exceed 1");
   const checkedDashboard = adapter.validateDashboard(dashboard);
@@ -134,14 +140,62 @@ function buildHotnessOverlay({ dashboard, profileReceipts, adapter, minimumCover
   for (const region of staticView.regions) {
     assert(typeof region.loopId === "string", "dashboard region loopId is required");
     if (staticById.has(region.loopId)) duplicateIds.add(region.loopId);
-    else staticById.set(region.loopId, region);
+    else staticById.set(region.loopId, {
+      ...region,
+      ranking: copy(region.ranking),
+      removableFraction: copy(region.removableFraction),
+      opportunityEvidenceIds: [],
+    });
   }
+
+  const checkedProfiles = profileReceipts.map((receipt) =>
+    adapter.validateProfileReceipt(receipt));
+  const opportunities = [];
+  const seenOpportunities = new Set();
+  for (const rawOpportunity of reviewedOpportunities) {
+    const workload = workloads.find((item) =>
+      item && item.id === rawOpportunity?.workload?.id);
+    assert(workload, `reviewed opportunity ${rawOpportunity?.id || "<unknown>"} ` +
+      "does not have its exact workload contract");
+    const opportunity = adapter.validateOpportunityEvidence(rawOpportunity, {
+      dashboard: checkedDashboard,
+      workload,
+      profileReceipts: checkedProfiles,
+    });
+    assert(!seenOpportunities.has(opportunity.id),
+      `duplicate reviewed opportunity ${opportunity.id}`);
+    seenOpportunities.add(opportunity.id);
+    const region = staticById.get(opportunity.scope.primaryRegionId);
+    assert(region && !duplicateIds.has(opportunity.scope.primaryRegionId),
+      `reviewed opportunity ${opportunity.id} does not resolve one dashboard region`);
+    region.opportunityEvidenceIds.push(opportunity.id);
+    if (opportunity.status === "eligible") {
+      region.classification = opportunity.classification.primary;
+      region.matureAlgorithmDisposition = opportunity.matureAlgorithm.disposition;
+      region.ranking.removableWallLower =
+        opportunity.measurement.statistics.removableWallLowerMicroseconds;
+      region.ranking.affectedWorkloads = 1;
+      region.ranking.evidenceQuality = Math.max(region.ranking.evidenceQuality, 5);
+      region.removableFraction.lower =
+        opportunity.measurement.statistics.removableFractionLower;
+      region.removableFraction.upper = 1;
+    } else if (opportunity.status === "rejected") {
+      region.negativeEvidence = [opportunity.id];
+    }
+    opportunities.push({
+      id: opportunity.id,
+      regionId: opportunity.scope.primaryRegionId,
+      workloadId: opportunity.workload.id,
+      status: opportunity.status,
+    });
+  }
+  opportunities.sort((left, right) => left.id.localeCompare(right.id));
+  for (const region of staticById.values()) region.opportunityEvidenceIds.sort();
 
   const profiles = [];
   const unmatched = [];
   const joined = new Map();
-  for (const rawReceipt of profileReceipts) {
-    const receipt = adapter.validateProfileReceipt(rawReceipt);
+  for (const receipt of checkedProfiles) {
     const view = adapter.profile(receipt, staticView, minimumCoverage);
     assert(Array.isArray(view.observations) && Array.isArray(view.runtimeRoutes)
       && Array.isArray(view.unmatched), "profile adapter returned an incomplete projection");
@@ -212,6 +266,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, adapter, minimumCover
   const payload = {
     dashboard: copy(staticView.reference),
     profiles,
+    opportunities,
     joinPolicy: { minimumCoverage, staleProfiles: "historical-only", ambiguity: "fail-closed" },
     regions,
     unmatched,

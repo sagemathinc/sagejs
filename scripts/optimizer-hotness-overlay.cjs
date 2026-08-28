@@ -26,16 +26,25 @@ function loadAdapter(modulePath) {
 
 function main(args = process.argv.slice(2)) {
   if (args.includes("--help")) {
-    process.stdout.write("Usage: node scripts/optimizer-hotness-overlay.cjs --dashboard FILE --profile FILE [--profile FILE ...] --adapter MODULE [--minimum-coverage NUMBER] [--output FILE]\n");
+    process.stdout.write("Usage: node scripts/optimizer-hotness-overlay.cjs --dashboard FILE --profile FILE [--profile FILE ...] --adapter MODULE [--opportunity FILE ... --workload-catalog FILE] [--minimum-coverage NUMBER] [--output FILE]\n");
     return null;
   }
   const dashboard = JSON.parse(fs.readFileSync(value(args, "--dashboard"), "utf8"));
   const profiles = values(args, "--profile").map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
   if (profiles.length === 0) throw new Error("at least one --profile is required");
   const adapter = loadAdapter(value(args, "--adapter"));
+  const reviewedOpportunities = values(args, "--opportunity")
+    .map((file) => JSON.parse(fs.readFileSync(file, "utf8")));
+  const catalogFiles = values(args, "--workload-catalog");
+  if (catalogFiles.length > 1 || (reviewedOpportunities.length > 0 && catalogFiles.length !== 1)) {
+    throw new Error("--workload-catalog is required exactly once with --opportunity");
+  }
+  const workloads = catalogFiles.length === 0 ? []
+    : JSON.parse(fs.readFileSync(catalogFiles[0], "utf8")).workloads;
   const coverage = values(args, "--minimum-coverage");
   if (coverage.length > 1) throw new Error("--minimum-coverage may be supplied at most once");
-  const overlay = buildHotnessOverlay({ dashboard, profileReceipts: profiles, adapter,
+  const overlay = buildHotnessOverlay({ dashboard, profileReceipts: profiles,
+    reviewedOpportunities, workloads, adapter,
     minimumCoverage: coverage.length ? Number(coverage[0]) : 0.8 });
   const json = `${JSON.stringify(overlay, null, 2)}\n`;
   const output = values(args, "--output");
