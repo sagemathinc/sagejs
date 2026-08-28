@@ -15,6 +15,9 @@ const os = require("node:os");
 const path = require("node:path");
 
 const { pythonExecutable } = require("../../tools/python-executable.cjs");
+const {
+  requireCurrentBuild,
+} = require("../../tools/optimizer-development/workloads.cjs");
 
 const SCHEMA = "sagejs.campaign1-modular-scan-target-feasibility/v1";
 const ADAPTER_SCHEMA =
@@ -26,6 +29,7 @@ const STANDARD_SAMPLES = 11;
 const STANDARD_WARMUPS = 3;
 const FAST_INTEGER_MAX_PRIME = 46_340;
 const EXACT_NUMBER_MAX_PRIME = 94_906_266;
+const EXACT_NUMBER_MAX_ELIGIBLE_PRIME = 94_906_249;
 const ABBA = Object.freeze(["AB", "BA", "BA", "AB"]);
 
 function sha256(value) {
@@ -294,38 +298,79 @@ function compileWasmTarget({
     const bytes = readFileSync(wasmPath);
     const moduleCompileNanoseconds = [];
     let moduleObject;
-    for (let sample = 0; sample < compileSamples; sample += 1) {
-      const started = process.hrtime.bigint();
-      moduleObject = new WebAssembly.Module(bytes);
-      moduleCompileNanoseconds.push(Number(process.hrtime.bigint() - started));
+    try {
+      for (let sample = 0; sample < compileSamples; sample += 1) {
+        const started = process.hrtime.bigint();
+        moduleObject = new WebAssembly.Module(bytes);
+        moduleCompileNanoseconds.push(Number(process.hrtime.bigint() - started));
+      }
+    } catch (error) {
+      return unavailableTarget(
+        "wasm-module-compilation-failed",
+        String(error?.message || error).slice(0, 4_096),
+        {
+          ...provenance,
+          producerNanoseconds,
+          moduleCompileNanoseconds,
+          artifactSha256: sha256(bytes),
+        },
+      );
     }
     const moduleInstantiateNanoseconds = [];
     let instance;
-    for (let sample = 0; sample < instantiateSamples; sample += 1) {
-      const started = process.hrtime.bigint();
-      instance = new WebAssembly.Instance(moduleObject, {
-        sagejs: { check_interrupt: interrupt },
-      });
-      moduleInstantiateNanoseconds.push(
-        Number(process.hrtime.bigint() - started),
+    try {
+      for (let sample = 0; sample < instantiateSamples; sample += 1) {
+        const started = process.hrtime.bigint();
+        instance = new WebAssembly.Instance(moduleObject, {
+          sagejs: { check_interrupt: interrupt },
+        });
+        moduleInstantiateNanoseconds.push(
+          Number(process.hrtime.bigint() - started),
+        );
+      }
+    } catch (error) {
+      return unavailableTarget(
+        "wasm-module-instantiation-failed",
+        String(error?.message || error).slice(0, 4_096),
+        {
+          ...provenance,
+          producerNanoseconds,
+          moduleCompileNanoseconds,
+          moduleInstantiateNanoseconds,
+          artifactSha256: sha256(bytes),
+        },
       );
     }
     if (typeof instance.exports.bounded_modular_character_sum_u32 !== "function" ||
-        !(instance.exports.memory instanceof WebAssembly.Memory)) {
+        !(instance.exports.memory instanceof WebAssembly.Memory) ||
+        !instance.exports.__heap_base ||
+        !Number.isSafeInteger(Number(instance.exports.__heap_base.value))) {
       return unavailableTarget(
         "wasm-artifact-contract-mismatch",
-        "expected function and memory exports are absent",
-        provenance,
+        "expected function, memory, and integer __heap_base exports are absent",
+        {
+          ...provenance,
+          producerNanoseconds,
+          moduleCompileNanoseconds,
+          moduleInstantiateNanoseconds,
+          artifactSha256: sha256(bytes),
+        },
       );
     }
     const heapBase = Number(instance.exports.__heap_base.value);
-    if (!Number.isSafeInteger(heapBase) || heapBase < 0 ||
+    if (heapBase < 0 || heapBase % Uint32Array.BYTES_PER_ELEMENT !== 0 ||
         heapBase + SOURCE_VALUES.length * Uint32Array.BYTES_PER_ELEMENT >
           instance.exports.memory.buffer.byteLength) {
       return unavailableTarget(
         "wasm-linear-memory-contract-mismatch",
         `invalid heap base ${heapBase}`,
-        provenance,
+        {
+          ...provenance,
+          producerNanoseconds,
+          moduleCompileNanoseconds,
+          moduleInstantiateNanoseconds,
+          artifactSha256: sha256(bytes),
+        },
       );
     }
     return {
@@ -785,7 +830,22 @@ function targetAccounting() {
       cleanup: "no external resource",
     },
     wasm: {
-      entryBoundaryCrossings: 3,
+      hostToWasmCallsPerPhase: PRIMARY_PRIMES.length,
+      wasmToHostInterruptCallbacksPerPhase: PRIMARY_PRIMES.reduce(
+        (total, prime) => total + Math.floor(prime / 256),
+        0,
+      ),
+      totalBoundaryRoundTripsPerPhase:
+        PRIMARY_PRIMES.length + PRIMARY_PRIMES.reduce(
+          (total, prime) => total + Math.floor(prime / 256),
+          0,
+        ),
+      directionalBoundaryCrossingsPerPhase: 2 * (
+        PRIMARY_PRIMES.length + PRIMARY_PRIMES.reduce(
+          (total, prime) => total + Math.floor(prime / 256),
+          0,
+        )
+      ),
       guardsPerPhase: {
         authenticatedPrimeContracts: 3,
         ordinaryArrayPrototypeChecks: 3,
@@ -854,7 +914,8 @@ function crossoverEvidence({ generic, wasmTarget, expected, samples }) {
     rows.push({
       prime,
       exactNumberProductGuard: exactNumberProductGuard(prime),
-      fastIntegerPerformanceGuard: fastIntegerPerformanceGuard(prime),
+      fastIntegerRouteSelectionGate: fastIntegerPerformanceGuard(prime),
+      routeSelectionGateAppliedDuringProbe: false,
       v8RouteDisposition: fastIntegerPerformanceGuard(prime)
         ? "eligible-for-engine-specific-measurement"
         : "rejected-by-conservative-31-bit-performance-gate",
@@ -874,7 +935,8 @@ function crossoverEvidence({ generic, wasmTarget, expected, samples }) {
       predicate: "p * (p - 1) <= 2^31 - 1",
     },
     numericalExactness: {
-      maximumPrimeInclusive: EXACT_NUMBER_MAX_PRIME,
+      maximumIntegerModulusInclusive: EXACT_NUMBER_MAX_PRIME,
+      maximumEligiblePrimeInclusive: EXACT_NUMBER_MAX_ELIGIBLE_PRIME,
       atBoundary: exactNumberProductGuard(EXACT_NUMBER_MAX_PRIME),
       afterBoundary: exactNumberProductGuard(EXACT_NUMBER_MAX_PRIME + 1),
       predicate: "p * (p - 1) <= Number.MAX_SAFE_INTEGER",
@@ -892,6 +954,7 @@ async function runFeasibility({
   producerSamples = STANDARD_SAMPLES,
   compileSamples = STANDARD_SAMPLES,
   instantiateSamples = STANDARD_SAMPLES,
+  allowUnverifiedBuild = false,
 } = {}) {
   for (const [label, value, minimum] of [
     ["samples", samples, 1],
@@ -905,7 +968,29 @@ async function runFeasibility({
       throw new TypeError(`${label} must be an integer at least ${minimum}`);
     }
   }
+  const standardEvidence = samples === STANDARD_SAMPLES &&
+    warmups >= STANDARD_WARMUPS;
+  if (allowUnverifiedBuild && standardEvidence) {
+    throw new Error(
+      "standard target-feasibility evidence cannot use an unverified build",
+    );
+  }
+  const buildAuthentication = allowUnverifiedBuild
+    ? {
+        status: "not-authenticated",
+        promotable: false,
+        reason:
+          "explicit smoke-only development run; source-to-dist identity was not authenticated",
+      }
+    : {
+        status: "authenticated-current-clean-build",
+        ...requireCurrentBuild(root),
+      };
   const source = sourceProvenance(root);
+  if (buildAuthentication.promotable) {
+    assert.equal(source.worktreeDirty, false);
+    assert.equal(source.repositoryCommit, buildAuthentication.source.commit);
+  }
   const workload = workloadProvenance(root);
   const allPrimes = [...PRIMARY_PRIMES, ...CROSSOVER_PRIMES];
   const oracle = independentCpythonOracle(allPrimes);
@@ -1002,6 +1087,7 @@ async function runFeasibility({
     }
     const adapter = {
       schema: ADAPTER_SCHEMA,
+      consumable: buildAuthentication.promotable,
       measurementScope: "reviewed-phase",
       phaseId: "normalization-factor",
       compilerDecision: {
@@ -1073,7 +1159,8 @@ async function runFeasibility({
             serializableWasm.accounting?.moduleCompile.samples ?? [],
           moduleInstantiateSamplesNanoseconds:
             serializableWasm.accounting?.moduleInstantiate.samples ?? [],
-          inclusiveColdSamplesNanoseconds: wasmComparison.status === "measured"
+          derivedCompileInstantiateAndResidentComponentSumsNanoseconds:
+            wasmComparison.status === "measured"
             ? wasmComparison.rawPairs.map((pair, index) =>
                 pair.feasibleNanoseconds +
                 serializableWasm.accounting.sourceToWasm.samples[
@@ -1095,13 +1182,18 @@ async function runFeasibility({
         }],
       },
       assemblyInstruction:
-        "Integration may attach these pairs only to phase-only profiles with the exact workload, source, compiler, and public output identities above; this adapter authenticates no compiler or runtime route.",
+        buildAuthentication.promotable
+          ? "Integration may attach these pairs only to phase-only profiles with the exact workload, source, compiler, and public output identities above; this adapter authenticates no compiler or runtime route."
+          : "Do not assemble opportunity evidence from this smoke report: its source-to-dist build identity is intentionally unauthenticated.",
     };
     const reportWithoutId = {
       schema: SCHEMA,
       generatedAt: new Date().toISOString(),
-      status: "feasibility-evidence-only",
+      status: buildAuthentication.promotable
+        ? "feasibility-evidence-only"
+        : "development-smoke-non-promotable",
       productionCompilerRouteClaim: "none",
+      buildAuthentication,
       measurementScope: {
         authority: "reviewed-phase",
         phaseId: "normalization-factor",
@@ -1119,8 +1211,7 @@ async function runFeasibility({
         samples,
         warmups,
         order: "deterministic repeating AB,BA,BA,AB",
-        standardEvidence: samples === STANDARD_SAMPLES &&
-          warmups >= STANDARD_WARMUPS,
+        standardEvidence,
         primes: PRIMARY_PRIMES,
         sourceValues: SOURCE_VALUES,
       },
@@ -1194,6 +1285,18 @@ function validateReport(report) {
   const { id, ...payload } = report;
   assert.equal(id, contentId(payload), "feasibility receipt identity is stale");
   assert.equal(report.productionCompilerRouteClaim, "none");
+  if (report.buildAuthentication.promotable) {
+    assert.equal(
+      report.buildAuthentication.status,
+      "authenticated-current-clean-build",
+    );
+    assert.equal(report.source.worktreeDirty, false);
+    assert.equal(report.opportunityEvidenceAdapter.consumable, true);
+  } else {
+    assert.equal(report.status, "development-smoke-non-promotable");
+    assert.equal(report.protocol.standardEvidence, false);
+    assert.equal(report.opportunityEvidenceAdapter.consumable, false);
+  }
   assert.equal(report.measurementScope.authority, "reviewed-phase");
   assert.deepEqual(report.protocol.primes, PRIMARY_PRIMES);
   assert.deepEqual(
@@ -1230,11 +1333,11 @@ function validateReport(report) {
     });
   }
   assert.equal(
-    report.thresholdAndCrossoverNegatives.rows[0].fastIntegerPerformanceGuard,
+    report.thresholdAndCrossoverNegatives.rows[0].fastIntegerRouteSelectionGate,
     true,
   );
   assert.equal(
-    report.thresholdAndCrossoverNegatives.rows[1].fastIntegerPerformanceGuard,
+    report.thresholdAndCrossoverNegatives.rows[1].fastIntegerRouteSelectionGate,
     false,
   );
   assert.equal(
@@ -1267,6 +1370,7 @@ function parseArguments(argv) {
         producerSamples: 1,
         compileSamples: 1,
         instantiateSamples: 1,
+        allowUnverifiedBuild: true,
       });
     } else if (argument === "--help") {
       return { help: true, output, options };

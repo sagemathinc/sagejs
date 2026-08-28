@@ -123,6 +123,13 @@ test("an absent C-to-Wasm producer is an explicit unavailable target", () => {
   assert.deepEqual(result.provenance.producerNanoseconds.length, 1);
 });
 
+test("standard evidence refuses an unauthenticated source-to-dist build", async () => {
+  await assert.rejects(
+    runFeasibility({ allowUnverifiedBuild: true }),
+    /standard target-feasibility evidence cannot use an unverified build/,
+  );
+});
+
 test("the real smoke harness compares current generic, V8, and honest Wasm", async () => {
   const report = await runFeasibility({
     root,
@@ -132,11 +139,15 @@ test("the real smoke harness compares current generic, V8, and honest Wasm", asy
     producerSamples: 1,
     compileSamples: 1,
     instantiateSamples: 1,
+    allowUnverifiedBuild: true,
   });
   validateReport(report);
   assert.equal(report.protocol.standardEvidence, false);
   assert.equal(report.measurementScope.phaseId, "normalization-factor");
   assert.equal(report.productionCompilerRouteClaim, "none");
+  assert.equal(report.status, "development-smoke-non-promotable");
+  assert.equal(report.buildAuthentication.promotable, false);
+  assert.equal(report.opportunityEvidenceAdapter.consumable, false);
   assert.equal(
     report.opportunityEvidenceAdapter.compilerDecision.id,
     "sha256:d8f23a140bed2fbe8b8d99280e21ab374d0fea8f66dff2c624188a1efbec386d",
@@ -150,6 +161,14 @@ test("the real smoke harness compares current generic, V8, and honest Wasm", asy
     assert.deepEqual(report.exactDifferential.checkedWasm, report.oracle.normalizationFactors);
     assert.equal(report.comparisons.wasm.rawPairs.length, 1);
     assert.equal(report.targets.wasm.execution.inputCopiedBytesPerPhase, 48);
+    assert.equal(
+      report.targets.wasm.execution.wasmToHostInterruptCallbacksPerPhase,
+      136,
+    );
+    assert.equal(
+      report.targets.wasm.execution.directionalBoundaryCrossingsPerPhase,
+      278,
+    );
     assert.ok(report.targets.wasm.accounting.sourceToWasm.samples[0] > 0);
     assert.equal(
       report.guardFallbackAndPublicationAudit.wasmInterrupt.publications,
