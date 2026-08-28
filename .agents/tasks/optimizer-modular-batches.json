@@ -1,0 +1,196 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimizer-modular-batches",
+  "title": "Prime residue and modular batch regions",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a guarded complete-batch optimizer plugin for small prime residues and modular arithmetic with indexed inputs/outputs only when aliasing and exact intermediate bounds are proved; compare monomorphic V8, resident Wasm, and coarse native targets including copy/materialization costs; add independent verifier, emitter, tests, and benchmark, leaving central registration to integration.",
+  "base_commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+  "claims": [
+    "tools/python/optimizer/domains/modular-batch/",
+    "tools/python/optimizer/passes/modular-batch-region.ts",
+    "tools/python/optimizer/representations/modular-batch.ts",
+    "tools/python/optimizer/targets/modular-batch.ts",
+    "tools/python/optimizer/verifiers/modular-batch.ts",
+    "src/output/optimizer/modular_batch.py",
+    "test/optimizer-modular-batch.cjs",
+    "bench/optimizer-modular-batch/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "sagejs-o0",
+      "exact-bigint",
+      "flint"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration",
+    "pnpm architecture:check",
+    "node --test test/optimizer-modular-batch.cjs",
+    "node bench/optimizer-modular-batch/benchmark.cjs --check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 325.425,
+      "started_at": "2026-08-28T00:50:04.345Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.43,
+      "started_at": "2026-08-28T00:55:36.913Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.151,
+      "started_at": "2026-08-28T01:00:52.906Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 236.681,
+      "started_at": "2026-08-28T01:01:52.660Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.092,
+      "started_at": "2026-08-28T01:06:14.566Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 799.442,
+      "started_at": "2026-08-28T01:06:33.446Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "5b2a7a77c641fda6bb9485e588f78d85a771c40eace3b923505b52db0fc7b98d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 348.985,
+      "started_at": "2026-08-28T01:24:14.512Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.022,
+      "started_at": "2026-08-28T01:30:13.541Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.199,
+      "started_at": "2026-08-28T01:31:04.840Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-modular-batch.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.48,
+      "started_at": "2026-08-28T01:31:22.318Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimizer-modular-batch/benchmark.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.929,
+      "started_at": "2026-08-28T01:31:30.337Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 441.431,
+      "started_at": "2026-08-28T01:31:36.952Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 478.717,
+      "started_at": "2026-08-28T01:39:11.929Z",
+      "commit": "780b6b1d290dda18a52863d36883bf8d73cf3ad7",
+      "workspace_fingerprint": "71e63ff8b917f3cb9117adc97cd80a2bd32f5d24dcf6f8814dd2c034e1691e82",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the opt-in math.modular-batch-region.v1 plugin for complete indexed residue batches. The recognizer admits only a top-level builtin range(count) loop immediately preceded by a fresh [None for _slot in range(count)] output allocation, one out[index] assignment, one to four immutable same-index inputs, and a bounded +, -, *, unary -, and exact-integer graph. The representation authenticates parent, element brand/prototype, every used method, and the complete integer-coercion plan; validates and packs the entire input transaction before computation; proves Number exactness through modulus 94,906,266; computes into private Float64 storage; and publishes only after success, with the untouched source loop as guard fallback. An independent verifier re-derives bindings, expression facts, alias proof, method mask, bounds, four-target inclusive structural costs, and code budget. The planner compares V8, resident Wasm, coarse native, and generic execution including copies, conversions, materialization, allocation, boundaries, and cold events; v1 selects only the implemented isolated V8 lowering and records stable capability rejects for Wasm/native. Generated and adversarial tests cover exact BigInt differentials through the maximum modulus and endpoint products, zero trips, alias/access rejects, explicit-contract selection, malformed plans, CPython emitter parsing, and an O0 Sage.js oracle. The 100,000-element benchmark measured 34.49 ms inclusive V8 versus a 1,904.74 ms projected real Sage.js O0 baseline (55.22x), with exact checksum 809625678 and 509 emitted bytes inside a 1,792-byte plan budget. Current successful receipts cover the full build, compiler suite, architecture checks, all seven focused tests, and the benchmark.",
+    "risks": [
+      "Executable registration is intentionally absent from this lane because catalog, lowering registry, verifier catalog, dispatcher, and shared architecture test are integration-owned; until those edits land, the plugin can be inspected and tested directly but cannot be selected by the production compiler.",
+      "Resident Wasm and coarse native estimates are inclusive but deliberately rejected until source-derived isolated modular-batch lowerings are registered; v1 does not relabel an unrelated kernel.",
+      "The current full integration receipt passed batches 1 and 2, then failed an unrelated dense-prime GF(2) scalar-write host timing ratchet in batch 3 (about 52 microseconds); 282 later files were not started. The current test:changed receipt passed build, architecture checks, and unit batches 1 through 5, then failed an unrelated Chromium group-pack test whose browser server returned HTTP 404 for a runtime asset.",
+      "Runtime receipts are Linux x64 only; required Linux arm64, Windows x64, and macOS arm64 validation remains integration/CI work."
+    ],
+    "next_steps": [
+      "In tools/python/optimizer/catalog.ts import modularBatchPlugin from ./passes/modular-batch-region and insert modularBatchPlugin between strictFloatRegionPass (priority 200) and closedRingRegionPass (priority 100).",
+      "In tools/python/optimizer/lowerings.ts register id v8.modular-batch-loop.v1 with passId math.modular-batch-region.v1, internalKind modular-batch-region, targetKinds [v8], and nodeKind AST_ForIn.",
+      "In tools/python/optimizer/verifiers/catalog.ts import verifyModularBatchInternalRegionPlan from ./modular-batch and add verifier plugin id verify.modular-batch-plan.v1 owning exactly [modular-batch-region].",
+      "In src/output/optimizer/dispatcher.py import print_modular_batch_region from output.optimizer.modular_batch and add v8.modular-batch-loop.v1: print_modular_batch_region to LOWERINGS.",
+      "In test/optimizer-architecture.cjs add prime-residue-modular-batch at priority 150 between the existing domains, add v8.modular-batch-loop.v1 to the registered/owned/emitted expectations, and add modular-batch-region to the exactly-one-verifier-kind loop. No bootstrap, manifest, or runtime-helper edit is required.",
+      "After registration, build and run an end-to-end @optimize(require=\"math.modular-batch-region.v1\", target=\"v8\") differential covering fast route selection plus parent/method/coercion mutation, late invalid element, ordinary-list, out-of-bound modulus, zero-trip, and guard_failure fallback/error behavior; then run the platform matrix."
+    ]
+  }
+}
