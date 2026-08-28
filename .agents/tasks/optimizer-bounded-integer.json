@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimizer-bounded-integer",
+  "title": "Bounded exact integer optimizer domain",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement an explain-first and then guarded fused bounded-exact-integer optimizer plugin with independent verification, exact fallback, differential/adversarial tests, and representative benchmarks including analysis of the cubic class-group profiler; do not edit central catalogs or dispatchers, and provide exact registration handoff.",
+  "base_commit": "d47e940fffe53579409e01b6c15dbb534acdd1dd",
+  "claims": [
+    "tools/python/optimizer/domains/bounded-integer/",
+    "tools/python/optimizer/passes/bounded-integer-region.ts",
+    "tools/python/optimizer/representations/bounded-integer.ts",
+    "tools/python/optimizer/targets/v8-bounded-integer.ts",
+    "tools/python/optimizer/verifiers/bounded-integer.ts",
+    "src/output/optimizer/bounded_integer.py",
+    "test/optimizer-bounded-integer.cjs",
+    "bench/optimizer-bounded-integer/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "sagejs-o0",
+      "exact-bigint"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

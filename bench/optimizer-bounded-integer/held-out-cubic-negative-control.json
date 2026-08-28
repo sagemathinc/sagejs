@@ -1,0 +1,27 @@
+{
+  "schema": "sagejs.optimizer-bounded-integer/cubic-negative-control-v1",
+  "source_branch": "origin/class-group",
+  "source_commit": "1632893e",
+  "profiler": "bench/class-unit-groups/cubic-compiler-boundaries.py",
+  "wishlist": "bench/class-unit-groups/CUBIC-COMPILER-WISHLIST.md",
+  "workload": "packed_cubic_norm_smooth_candidates_in_place",
+  "call_only": {
+    "native_nanoseconds": 57000,
+    "javascript_nanoseconds": 1500000
+  },
+  "fresh_buffer_inclusive": {
+    "native_nanoseconds": 181000,
+    "javascript_nanoseconds": 1640000
+  },
+  "public_cubic_sagejs_pari_geometric_mean_ratio": 53.5,
+  "route_decision": "reject-current-generated-javascript",
+  "reason": "The existing JavaScript target uses generic exact-integer buffers and is about 26 times slower call-only than the authenticated native target. It is a negative control, not a bounded-Number implementation.",
+  "required_rejection_reasons": [
+    "bounded-integer.mutable-buffer-access",
+    "bounded-integer.dynamic-call",
+    "bounded-integer.unsupported-operation:%",
+    "bounded-integer.unsupported-operation://",
+    "bounded-integer.unsupported-control-flow"
+  ],
+  "registration_effect": "explanation-only; no route or production dispatch change"
+}
