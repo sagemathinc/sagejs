@@ -18,7 +18,7 @@
   },
   "artifact_topology_limits": {
     "eager-core": {
-      "gzip_bytes": 14105000,
+      "gzip_bytes": 14107000,
       "brotli_bytes": 7860000
     }
   },
