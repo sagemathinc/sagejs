@@ -1,8 +1,8 @@
 r"""Exact Brandt Hecke modules over $\mathbf Q$.
 
 For prime discriminant and Eichler conductor one this module reuses the
-canonical supersingular ideal-class realization.  In general it constructs
-the rational Jacquet--Langlands realization
+canonical supersingular ideal-class realization.  The default general path
+constructs the rational Jacquet--Langlands realization
 
 $$
 \mathbf Q e_{\mathrm{Eis}} \oplus
@@ -10,9 +10,11 @@ S_2(\Gamma_0(DN),\mathbf Q)^{D\text{-new}}.
 $$
 
 The latter is a genuine realization of the Brandt *Hecke module*, but its
-basis is not advertised as a list of quaternion ideals.  Keeping that
-distinction explicit lets the general Hecke theory serve as an independent
-oracle for a future ideal-enumeration backend.
+basis is not advertised as a list of quaternion ideals.  The explicit
+`realization="ideal-classes"` backend instead constructs a certified maximal
+and Eichler order, enumerates the locally principal right ideal classes to
+the exact mass, and publishes their integral pairing.  Keeping the two paths
+distinct makes Jacquet--Langlands an independent spectral oracle.
 """
 
 from __future__ import annotations
@@ -430,6 +432,7 @@ class BrandtModule_class(sage.Parent):
         self._atkin_cache: list[tuple[int, BrandtLinearOperator]] = []
         self._supersingular = None
         self._cusp_symbols = None
+        self._ideal_classes = None
         if realization == "supersingular":
             if (
                 len(self._ramified_primes) != 1
@@ -455,6 +458,22 @@ class BrandtModule_class(sage.Parent):
             self._cusp_symbols = symbols
             self._dimension = 1 + symbols.dimension()
             self._realization = "jacquet-langlands-symbols"
+        elif realization == "ideal-classes":
+            from sagejs.quaternion_algebras.class_set import EichlerIdealClassSet
+
+            symbols = _global("ModularSymbols")(
+                self._level, 2, sign=1, base_ring=sage.QQ
+            ).cuspidal_submodule()
+            for prime in self._ramified_primes:
+                symbols = symbols.new_submodule(prime)
+            self._cusp_symbols = symbols
+            self._dimension = 1 + symbols.dimension()
+            self._ideal_classes = EichlerIdealClassSet(
+                discriminant,
+                conductor,
+                expected_dimension=self._dimension,
+            )
+            self._realization = "eichler-ideal-classes"
         else:
             raise ValueError("unknown Brandt-module realization")
 
@@ -491,7 +510,7 @@ class BrandtModule_class(sage.Parent):
         return self._realization
 
     def canonical_ideal_basis_available(self) -> bool:
-        return self._supersingular is not None
+        return self._supersingular is not None or self._ideal_classes is not None
 
     def __call__(self, value: Any = 0) -> BrandtModuleElement:
         if isinstance(value, BrandtModuleElement):
@@ -569,6 +588,53 @@ class BrandtModule_class(sage.Parent):
         sparse_source = None
         if self._supersingular is not None:
             matrix_value, sparse_source = self._canonical_hecke_matrix(hecke_index)
+        elif self._ideal_classes is not None:
+            factors = _factorization(hecke_index)
+            matrix_value = _identity_matrix(sage.ZZ, self._dimension)
+            for prime, exponent in factors:
+                prime_matrix = self._ideal_classes.hecke_matrix(prime)
+                if exponent == 1:
+                    prime_power = prime_matrix
+                else:
+                    previous = _identity_matrix(sage.ZZ, self._dimension)
+                    current = prime_matrix
+                    for _power in range(2, exponent + 1):
+                        following = prime_matrix * current - previous * prime
+                        previous, current = current, following
+                    prime_power = current
+                matrix_value = matrix_value * prime_power
+            if self._base_ring is not sage.ZZ:
+                matrix_value = matrix_value.change_ring(self._base_ring)
+            if self._cusp_symbols is None:
+                raise RuntimeError("the Jacquet--Langlands oracle is unavailable")
+            oracle = _block_matrix(
+                _sigma_one(hecke_index),
+                self._cusp_symbols.hecke_matrix(hecke_index),
+                sage.QQ,
+            )
+            if matrix_value.change_ring(sage.QQ).charpoly() != oracle.charpoly():
+                raise ArithmeticError(
+                    "the integral Brandt operator disagrees with its "
+                    "Jacquet--Langlands characteristic polynomial"
+                )
+            rational_matrix = matrix_value.change_ring(sage.QQ)
+            weights = _global("diagonal_matrix")(sage.QQ, self._ideal_classes.weights())
+            if rational_matrix * weights != weights * rational_matrix.transpose():
+                raise ArithmeticError(
+                    "the composite Brandt operator violates mass adjointness"
+                )
+            eisenstein = _global("vector")(
+                sage.QQ,
+                [sage.QQ(1) / weight for weight in self._ideal_classes.weights()],
+            )
+            if eisenstein * rational_matrix != eisenstein * _sigma_one(hecke_index):
+                raise ArithmeticError(
+                    "the Brandt operator has the wrong Eisenstein eigenvalue"
+                )
+            for _cached_index, cached_operator in self._operator_cache:
+                cached_matrix = cached_operator.matrix().change_ring(sage.QQ)
+                if cached_matrix * rational_matrix != rational_matrix * cached_matrix:
+                    raise ArithmeticError("good Brandt operators do not commute")
         else:
             if self._cusp_symbols is None:
                 raise RuntimeError("the Jacquet--Langlands realization is unavailable")
@@ -622,6 +688,29 @@ class BrandtModule_class(sage.Parent):
             )
         return result
 
+    def _ideal_atkin_prime(self, prime: int) -> Any:
+        if self._ideal_classes is None:
+            raise RuntimeError("the Eichler ideal realization is unavailable")
+        permutation = self._ideal_classes.ramified_permutation(prime)
+        rows = []
+        for target in permutation:
+            row = [self._base_ring(0) for _column in range(self._dimension)]
+            row[target] = self._base_ring(-1)
+            rows.append(row)
+        result = _global("matrix")(self._base_ring, rows)
+        pairing = self.pairing_matrix()
+        if result * pairing * result.transpose() != pairing:
+            raise ArithmeticError(
+                "the ramified Atkin--Lehner operator is not a pairing isometry"
+            )
+        oracle = self._jl_atkin_prime(prime).change_ring(sage.QQ)
+        if result.change_ring(sage.QQ).charpoly() != oracle.charpoly():
+            raise ArithmeticError(
+                "the ideal-class Atkin--Lehner operator disagrees with "
+                "Jacquet--Langlands"
+            )
+        return result
+
     def atkin_lehner_operator(self, divisor: Any) -> BrandtLinearOperator:
         exact_divisor = _positive_integer(divisor, "Atkin--Lehner divisor")
         if self._discriminant % exact_divisor != 0:
@@ -638,6 +727,8 @@ class BrandtModule_class(sage.Parent):
                 raise ValueError("an Atkin--Lehner divisor must be squarefree")
             if self._supersingular is not None:
                 prime_matrix = self._canonical_atkin_prime()
+            elif self._ideal_classes is not None:
+                prime_matrix = self._ideal_atkin_prime(prime)
             else:
                 prime_matrix = self._jl_atkin_prime(prime)
             result = result * prime_matrix
@@ -659,7 +750,16 @@ class BrandtModule_class(sage.Parent):
         return self.atkin_lehner_operator(divisor).matrix()
 
     def eisenstein_subspace(self) -> BrandtSubspace:
-        if self._supersingular is None:
+        if self._ideal_classes is not None:
+            weights = self.monodromy_weights()
+            if self._base_ring is sage.ZZ:
+                common = 1
+                for weight in weights:
+                    common = common * weight // _gcd(common, weight)
+                row = [self._base_ring(common // weight) for weight in weights]
+            else:
+                row = [self._base_ring(1) / weight for weight in weights]
+        elif self._supersingular is None:
             row = [self._base_ring(1)] + [
                 self._base_ring(0) for _index in range(self._dimension - 1)
             ]
@@ -668,7 +768,14 @@ class BrandtModule_class(sage.Parent):
         return BrandtSubspace(self, [row], name="Eisenstein subspace")
 
     def cuspidal_subspace(self) -> BrandtSubspace:
-        if self._supersingular is None:
+        if self._ideal_classes is not None:
+            rows = []
+            for index in range(self._dimension - 1):
+                row = [self._base_ring(0) for _column in range(self._dimension)]
+                row[index] = self._base_ring(1)
+                row[-1] = self._base_ring(-1)
+                rows.append(row)
+        elif self._supersingular is None:
             rows = []
             for index in range(1, self._dimension):
                 row = [self._base_ring(0) for _column in range(self._dimension)]
@@ -688,6 +795,8 @@ class BrandtModule_class(sage.Parent):
         if value is None:
             return False
         element = self(value)
+        if self._ideal_classes is not None:
+            return sum(element.vector()) == 0
         if self._supersingular is None:
             return element[0] == 0
         return self._supersingular.is_cuspidal(element.vector())
@@ -707,6 +816,48 @@ class BrandtModule_class(sage.Parent):
         primes = conductor_primes if selected is None else (selected,)
         for value in primes:
             target = target.new_submodule(value)
+        if self._ideal_classes is not None:
+            # Recover the same rational Hecke summand intrinsically in the
+            # ideal-class basis.  For each good prime, the characteristic
+            # polynomial on `target` annihilates precisely the constituents
+            # that may belong to the requested newspace.  Intersecting these
+            # exact kernels resolves accidental eigenvalue collisions without
+            # choosing a noncanonical modular-symbol-to-ideal isomorphism.
+            current = self.cuspidal_subspace()
+            target_dimension = target.dimension()
+            if target_dimension == 0:
+                return BrandtSubspace(self, [], name="New cuspidal subspace")
+            if target_dimension == current.dimension():
+                return current
+            candidate_prime = None
+            for hecke_prime in self._good_primes(
+                max(self._default_decomposition_bound(), 13)
+            ):
+                source_matrix = current.hecke_matrix(hecke_prime)
+                target_polynomial = target.hecke_matrix(hecke_prime).charpoly()
+                if (
+                    candidate_prime is not None
+                    and source_matrix.charpoly() == target_polynomial
+                ):
+                    return current
+                local = target_polynomial(source_matrix).left_kernel_matrix()
+                current = BrandtSubspace(
+                    self,
+                    (local * current.basis_matrix()).rows(),
+                    name="New cuspidal subspace",
+                )
+                if current.dimension() < target_dimension:
+                    raise ArithmeticError(
+                        "Hecke-kernel reconstruction lost a requested new constituent"
+                    )
+                if current.dimension() == target_dimension:
+                    # Require an independent good-prime fingerprint before
+                    # publication: one Hecke polynomial can collide on two
+                    # different rational constituents.
+                    candidate_prime = hecke_prime
+            raise ArithmeticError(
+                "good Hecke operators did not separate the requested newspace"
+            )
         local = self._cusp_symbols.basis_matrix().solve_left(target.basis_matrix())
         rows = [[self._base_ring(0)] + list(row) for row in local.rows()]
         return BrandtSubspace(self, rows, name="New cuspidal subspace")
@@ -799,6 +950,8 @@ class BrandtModule_class(sage.Parent):
         )
 
     def monodromy_weights(self) -> tuple[int, ...]:
+        if self._ideal_classes is not None:
+            return tuple(self._ideal_classes.weights())
         if self._supersingular is None:
             raise NotImplementedError(
                 "monodromy weights require the canonical quaternion ideal-class basis"
@@ -826,10 +979,57 @@ class BrandtModule_class(sage.Parent):
         return (left_element.vector() * pairing).dot_product(right_element.vector())
 
     def right_ideals(self) -> Any:
+        if self._ideal_classes is not None:
+            return self._ideal_classes.ideals()
         raise NotImplementedError(
             "general Eichler ideal enumeration is not yet the basis backend; "
             "inspect realization() before requesting ideal representatives"
         )
+
+    def quaternion_algebra(self) -> Any:
+        if self._ideal_classes is None:
+            raise NotImplementedError(
+                "explicit quaternion arithmetic requires realization='ideal-classes'"
+            )
+        return self._ideal_classes.quaternion_algebra()
+
+    def maximal_order(self) -> Any:
+        if self._ideal_classes is None:
+            raise NotImplementedError(
+                "explicit quaternion orders require realization='ideal-classes'"
+            )
+        return self._ideal_classes.maximal_order()
+
+    def eichler_order(self) -> Any:
+        if self._ideal_classes is None:
+            raise NotImplementedError(
+                "explicit quaternion orders require realization='ideal-classes'"
+            )
+        return self._ideal_classes.eichler_order()
+
+    order_of_level_N = eichler_order
+
+    def class_fingerprints(self) -> tuple[Any, ...]:
+        if self._ideal_classes is None:
+            raise NotImplementedError(
+                "class fingerprints require realization='ideal-classes'"
+            )
+        return self._ideal_classes.class_fingerprints()
+
+    def mass(self) -> Any:
+        if self._ideal_classes is None:
+            raise NotImplementedError("exact class mass requires ideal classes")
+        return self._ideal_classes.mass()
+
+    def mass_certificate(self) -> Any:
+        if self._ideal_classes is None:
+            raise NotImplementedError("exact class mass requires ideal classes")
+        return self._ideal_classes.mass_certificate()
+
+    def degree_zero_submodule(self) -> Any:
+        from .component_groups import DegreeZeroBrandtLattice
+
+        return DegreeZeroBrandtLattice(self)
 
     def __repr__(self) -> str:
         return (
@@ -895,9 +1095,10 @@ def BrandtModule(
             if len(ramified_primes) == 1 and ramified_primes[0] >= 5 and conductor == 1
             else "jacquet-langlands"
         )
-    if selected not in ("supersingular", "jacquet-langlands"):
+    if selected not in ("supersingular", "jacquet-langlands", "ideal-classes"):
         raise ValueError(
-            "realization must be 'auto', 'supersingular', or 'jacquet-langlands'"
+            "realization must be 'auto', 'supersingular', "
+            "'jacquet-langlands', or 'ideal-classes'"
         )
     if selected == "jacquet-langlands" and base_ring is sage.ZZ:
         raise NotImplementedError(

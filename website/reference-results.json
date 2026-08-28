@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 183,
+    "pass": 185,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -34,6 +34,16 @@
       "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
+    },
+    {
+      "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
+      "status": "pass",
+      "actual": "(2, x^2 - x - 6)\n"
     },
     {
       "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",

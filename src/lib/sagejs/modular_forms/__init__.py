@@ -14,6 +14,9 @@ BrandtModule: Any
 BrandtModuleElement: Any
 BrandtModule_class: Any
 BrandtSubspace: Any
+BrandtComponentGroup: Any
+BrandtComponentGroupCertificate: Any
+DegreeZeroBrandtLattice: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
@@ -45,6 +48,7 @@ QuaternionIdealComponent: Any
 QuaternionOldNewDecomposition: Any
 classical_modular_polynomial: Any
 dimension_brandt_module: Any
+brandt_component_group: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
 j_invariant_unit_series: Any
@@ -69,6 +73,9 @@ __all__ = [
     "BrandtModuleElement",
     "BrandtModule_class",
     "BrandtSubspace",
+    "BrandtComponentGroup",
+    "BrandtComponentGroupCertificate",
+    "DegreeZeroBrandtLattice",
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
@@ -100,6 +107,7 @@ __all__ = [
     "QuaternionOldNewDecomposition",
     "classical_modular_polynomial",
     "dimension_brandt_module",
+    "brandt_component_group",
     "berlekamp_massey",
     "dimension_supersingular_module",
     "j_invariant_unit_series",
@@ -135,6 +143,15 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import brandt
 
         return getattr(brandt, name)
+    if name in [
+        "BrandtComponentGroup",
+        "BrandtComponentGroupCertificate",
+        "DegreeZeroBrandtLattice",
+        "brandt_component_group",
+    ]:
+        from . import component_groups
+
+        return getattr(component_groups, name)
     if name in [
         "ComponentCuspidalHeckeOperator",
         "ExactHeckeSubspace",

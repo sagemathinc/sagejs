@@ -2,20 +2,30 @@
 
 ## Status
 
-This is the implementation plan for the optional quaternion ideal-class
-realization of `BrandtModule(D, N)`. It follows the completed rational
-Jacquet--Langlands realization and the prime-level sparse supersingular
-realization.
+Implemented on `feature/general-brandt-modules` on 2026-08-28. The optional
+quaternion ideal-class realization now covers every valid squarefree definite
+discriminant $D$ and coprime Eichler conductor $N$. Exact orders, locally
+principal right ideals, equivalence witnesses, unit weights, mass-certified
+class enumeration, good Hecke operators, ramified Atkin--Lehner operators,
+the saturated degree-zero monodromy lattice, and the full modular-Jacobian
+component group are live.
 
-The first accepted slice will cover prime quaternion discriminant $D=p$ and
-arbitrary positive Eichler conductor $N=M$ with $\gcd(p,M)=1$. That is both the
-domain supported by SageMath's open-source Brandt implementation and the
-domain needed to compute the toric character lattice of $J_0(pM)$ at $p$ when
-$p\parallel pM$.
+The prime-discriminant oracle corpus agrees with SageMath by an explicitly
+verified weighted graph isometry, and the composite cases $(30,7)$ and
+$(66,5)$ agree exactly with Magma and the independent Jacquet--Langlands
+backend. A source-pinned equal-contract SageMath/Magma/Sage.js benchmark
+harness records construction and first-operator cost without disguising the
+current pure exact-Python performance gap.
 
-Composite squarefree $D$ is a required later phase, not part of the first
-vertical slice. The existing Jacquet--Langlands realization remains the exact
-general Hecke oracle throughout.
+The newform-quotient constructor remains deliberately deferred exactly as
+specified below: Sage.js does not yet have the audited integral modular-symbol
+annihilator and modular-degree maps needed to certify every finite index. The
+implemented `brandt_component_group(B)` is therefore explicitly the full
+$J_0(pM)$ monodromy cokernel and never labels itself as a quotient result.
+
+The initial prime-discriminant slice and the later composite-discriminant
+phase have both landed. The existing Jacquet--Langlands realization remains
+an independent exact spectral oracle throughout.
 
 ## Decision
 
@@ -340,7 +350,7 @@ prove:
 - mass adjointness
 
   $$
-  w_i(T_\ell)_{ij}=w_j(T_\ell)_{ji};
+  (T_\ell)_{ij}w_j=w_i(T_\ell)_{ji};
   $$
 
 - the Eisenstein vector has eigenvalue $\ell+1$;
@@ -584,8 +594,8 @@ following hold:
   the independent Jacquet--Langlands backend.
 - The $(37,2)$ degree-zero lattice and monodromy cokernel are exact and
   saturated.
-- Unsupported bad-prime, quotient, or composite-discriminant operations fail
-  with precise capability errors until their phases land.
+- Unsupported bad-prime or newform-quotient operations fail with precise
+  capability errors; composite discriminants are fully supported.
 - Focused tests, strict Python, architecture checks, unit, native, portable,
   documentation, and cross-platform gates pass.
 - A durable equal-contract competitive receipt is checked in.

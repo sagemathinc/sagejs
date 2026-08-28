@@ -584,13 +584,32 @@
       "prefixes": []
     },
     {
+      "id": "rational-quaternion-algebras",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 85000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.quaternion_algebras"],
+      "files": [
+        "src/lib/sagejs/quaternion_algebras/__init__.py",
+        "src/lib/sagejs/quaternion_algebras/algebra.py",
+        "src/lib/sagejs/quaternion_algebras/class_set.py",
+        "src/lib/sagejs/quaternion_algebras/ideals.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 310000,
+      "max_source_bytes": 320000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
-        "graph-theory", "modular-forms", "matrix-native-kernels"
+        "graph-theory", "modular-forms", "matrix-native-kernels",
+        "rational-quaternion-algebras"
       ],
       "modules": [
         "sage.modular.quatalg",
@@ -605,6 +624,7 @@
         "src/lib/sagejs/modular_forms/__init__.py",
         "src/lib/sagejs/modular_forms/algebraic.py",
         "src/lib/sagejs/modular_forms/brandt.py",
+        "src/lib/sagejs/modular_forms/component_groups.py",
         "src/lib/sagejs/modular_forms/finite_hecke.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",

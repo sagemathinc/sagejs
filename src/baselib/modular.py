@@ -52,7 +52,9 @@ def BrandtModule(
     prime factors, and the Eichler conductor $N$ is positive and coprime to
     $D$. The canonical sparse supersingular realization is selected when it
     applies; all other valid pairs use the exact Jacquet--Langlands Hecke
-    realization.
+    realization. Pass `realization="ideal-classes"` to construct genuine
+    Eichler right ideal classes, their unit weights, and their integral
+    pairing.
 
     ```sage
     sage: B = BrandtModule(11, 1)
@@ -5224,14 +5226,16 @@ runtime.register_doc(
         "backends": [
             "Sage.js sparse supersingular graphs",
             "Sage.js exact modular symbols",
+            "Sage.js exact rational quaternion ideals",
         ],
         "sage_compatibility": {
             "status": "extension",
             "notes": (
                 "Supports every definite squarefree rational quaternion "
                 "discriminant and coprime Eichler conductor in weight two. "
-                "The general basis is an exact Jacquet--Langlands Hecke "
-                "realization, not a claimed list of quaternion ideals."
+                "The default general basis is an exact Jacquet--Langlands "
+                "Hecke realization; the explicit ideal-class realization "
+                "constructs genuine quaternion ideals and their integral lattice."
             ),
         },
         "provenance": [
@@ -5248,15 +5252,25 @@ runtime.register_doc(
                 ),
                 "license": "GPL-2.0-or-later",
             },
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Kirschmer--Voight ideal-class enumeration and "
+                    "Kohel--Stein monodromy/component-group formulas"
+                ),
+            },
         ],
         "limitations": [
             (
-                "General D,N use a Jacquet--Langlands basis; canonical "
-                "Eichler ideal representatives and monodromy weights are "
-                "available only in the supersingular realization."
+                "Bad-prime operators at primes dividing the Eichler conductor "
+                "are not yet exposed."
             ),
             "Only weight two and base rings QQ/ZZ are implemented.",
             "Atkin--Lehner operators are currently exposed for divisors of D.",
+            (
+                "Full-Jacobian component groups are implemented; newform-quotient "
+                "groups await audited integral modular-degree maps."
+            ),
         ],
     },
 )

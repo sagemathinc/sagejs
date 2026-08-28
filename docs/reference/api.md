@@ -297,7 +297,9 @@ The quaternion discriminant $D$ is squarefree with an odd number of
 prime factors, and the Eichler conductor $N$ is positive and coprime to
 $D$. The canonical sparse supersingular realization is selected when it
 applies; all other valid pairs use the exact Jacquet--Langlands Hecke
-realization.
+realization. Pass `realization="ideal-classes"` to construct genuine
+Eichler right ideal classes, their unit weights, and their integral
+pairing.
 
 ```sage
 sage: B = BrandtModule(11, 1)
@@ -310,14 +312,15 @@ sage: (B.dimension(), B.T(2).charpoly())
 - Kind: `function`
 - Module: `sage.modular.quatalg.brandt`
 - Tags: modular forms, Brandt modules, quaternion algebras, Eichler orders, Hecke operators, Jacquet-Langlands
-- Backends: Sage.js sparse supersingular graphs, Sage.js exact modular symbols
-- Sage compatibility: extension — Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The general basis is an exact Jacquet--Langlands Hecke realization, not a claimed list of quaternion ideals.
-- Limitations: General D,N use a Jacquet--Langlands basis; canonical Eichler ideal representatives and monodromy weights are available only in the supersingular realization. Only weight two and base rings QQ/ZZ are implemented. Atkin--Lehner operators are currently exposed for divisors of D.
+- Backends: Sage.js sparse supersingular graphs, Sage.js exact modular symbols, Sage.js exact rational quaternion ideals
+- Sage compatibility: extension — Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The default general basis is an exact Jacquet--Langlands Hecke realization; the explicit ideal-class realization constructs genuine quaternion ideals and their integral lattice.
+- Limitations: Bad-prime operators at primes dividing the Eichler conductor are not yet exposed. Only weight two and base rings QQ/ZZ are implemented. Atkin--Lehner operators are currently exposed for divisors of D. Full-Jacobian component groups are implemented; newform-quotient groups await audited integral modular-degree maps.
 
 ### Provenance
 
 - `literature-implemented` — Jacquet--Langlands correspondence for definite quaternion algebras
 - `sage-derived` — [SageMath Brandt-module API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/quatalg/brandt.html); license GPL-2.0-or-later
+- `literature-implemented` — Kirschmer--Voight ideal-class enumeration and Kohel--Stein monodromy/component-group formulas
 
 ## `circle`
 

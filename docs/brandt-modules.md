@@ -1,7 +1,6 @@
 ---
 title: "Brandt modules over the rational numbers"
 ---
-
 # Brandt modules over the rational numbers
 
 Sage.js implements exact weight-two Brandt Hecke modules for definite
@@ -49,8 +48,8 @@ materializes a dense exact matrix and respects the module's
 
 ## General discriminant and Eichler conductor
 
-For every other supported pair, Sage.js realizes the rational Brandt Hecke
-module through Jacquet--Langlands:
+For every other supported pair, the default `"auto"` realization uses the
+rational Brandt Hecke module supplied by Jacquet--Langlands:
 
 $$
 \mathbf Q e_{\mathrm{Eis}}
@@ -87,6 +86,78 @@ sage: all(B.W(q).matrix()^2 == identity_matrix(QQ, 8) for q in (2, 3, 5))
 True
 ```
 
+## Genuine Eichler ideal classes
+
+Request `realization="ideal-classes"` when the distinguished integral
+quaternionic lattice matters:
+
+```sage
+sage: B = BrandtModule(37, 2, realization="ideal-classes")
+sage: B.realization(), B.dimension(), B.mass()
+('eichler-ideal-classes', 9, 9)
+sage: len(B.right_ideals()), B.eichler_order().discriminant()
+(9, 74)
+sage: B.monodromy_weights()
+(1, 1, 1, 1, 1, 1, 1, 1, 1)
+sage: B.T(3).charpoly()
+x^9 - 2*x^8 - 23*x^7 + 34*x^6 + 156*x^5 - 166*x^4 - 239*x^3 + 290*x^2 - 15*x - 36
+sage: B.mass_certificate().verify()
+True
+```
+
+This backend constructs the definite rational quaternion algebra, a certified
+maximal order, its Eichler order of conductor $N$, and the locally principal
+right ideal classes. Neighbor traversal stops only when the exact Eichler
+mass is exhausted. Positive ideal equivalences carry a connecting quaternion
+whose lattice equality is replayed; theta series are filters, not equality
+proofs.
+
+The implementation is not restricted to prime discriminants. For example,
+`BrandtModule(30, 7, realization="ideal-classes")` constructs eight genuine
+ideal classes in the algebra ramified at $2,3,5$ and infinity. The fast
+Jacquet--Langlands backend remains the default because spectral questions do
+not usually justify ideal-enumeration cost.
+
+The integral backend additionally provides:
+
+| Operation | Meaning |
+| --- | --- |
+| `B.quaternion_algebra()` | exact algebra in a fixed $1,i,j,ij$ basis |
+| `B.maximal_order()` | certified maximal order |
+| `B.eichler_order()` | certified order of reduced discriminant $DN$ |
+| `B.right_ideals()` | deterministic representatives of every right ideal class |
+| `B.class_fingerprints()` | stable representative metadata |
+| `B.monodromy_weights()` | $\#O_L(I_i)^\times/\{\pm1\}$ |
+| `B.pairing_matrix()` | diagonal integral Brandt pairing |
+| `B.degree_zero_submodule()` | saturated augmentation kernel |
+| `B.mass_certificate()` | replayable class-completeness certificate |
+
+## Monodromy and component groups
+
+For $p\nmid M$, the degree-zero Brandt lattice for discriminant $p$ and
+conductor $M$ is the toric character lattice at $p$ of $J_0(pM)$. Its exact
+pairing gives the full modular-Jacobian component group:
+
+```sage
+sage: from sagejs.modular_forms import brandt_component_group
+sage: B = BrandtModule(37, 2, realization="ideal-classes")
+sage: X = B.degree_zero_submodule()
+sage: X.rank(), X.invariant_factors()
+(8, (9,))
+sage: C = brandt_component_group(B)
+sage: C.invariant_factors(), C.order()
+((9,), 9)
+sage: C.character_lattice_frobenius_matrix()^2 == identity_matrix(ZZ, 8)
+True
+```
+
+`C.frobenius_matrix()` is geometric Frobenius on the full Smith-coordinate
+presentation of the finite cokernel. The certificate records both that
+matrix and the $-W_p$ action on the character lattice. This function computes
+the component group of the full modular Jacobian. It does not infer the
+component group of a newform quotient from rational eigenvalues; that requires
+additional integral modular-degree and annihilator maps.
+
 ## Operators and elements
 
 `BrandtModule(D,N)` provides the following core operations:
@@ -104,6 +175,8 @@ True
 | `B.cuspidal_subspace()` | the cuspidal subspace |
 | `B.new_subspace()` | the subspace new at the Eichler conductor |
 | `B.decomposition()` | exact simultaneous Hecke constituents |
+| `B.mass()` | exact Eichler mass (ideal realization) |
+| `B.degree_zero_submodule()` | integral monodromy lattice (ideal realization) |
 
 Elements use exact coordinates and can be acted on from either side:
 
@@ -150,12 +223,16 @@ dimensions through $12$. Exact dimensions, full Hecke characteristic
 polynomials, Atkin--Lehner characteristic polynomials, and involutions are
 checked rather than compared numerically.
 
-The two realizations also provide independent internal checks:
+The three realizations also provide independent internal checks:
 
 - the supersingular path checks graph degree, automorphism masses, the
   Eisenstein vector, and exact mass-adjointness;
 - the general path is built from exact modular symbols and isolates the
   $D$-new subspace before adjoining its Eisenstein line;
+- the genuine ideal path checks order closure and discriminants, local
+  principality, explicit ideal equivalence, unit weights, exact mass,
+  row sums, pairing adjointness, and complete Hecke characteristic
+  polynomials against the Jacquet--Langlands path;
 - Hecke decompositions use exact polynomial factorization and exact kernels.
 
 ## Performance and Magma comparison
@@ -179,30 +256,32 @@ claim about every level or workload. See the full
 [competitive receipt](../bench/results/mestre-classical-competitive-linux-x64-2026-08-28.md)
 for exact gates, process-memory envelopes, and the large sparse witness.
 
-For general $(D,N)$, timings must be labeled by realization. Magma constructs
-actual Eichler ideal classes, while Sage.js currently constructs the exact
-rational Jacquet--Langlands Hecke module. Their Hecke characteristic
-polynomials are directly comparable, but their construction work and basis
-objects are not the same contract.
+For general $(D,N)$, timings must be labeled by realization. Magma and
+`realization="ideal-classes"` both construct actual Eichler ideal classes and
+are an equal-work comparison. The default Jacquet--Langlands realization is a
+same-spectrum baseline with a different construction contract.
 
 ## Current boundaries
 
 The distinction between an abstract Hecke module and a canonical quaternion
 ideal-class basis is important.
 
-- The canonical sparse ideal-class basis is currently available only for
-  prime $D\geq5$ with $N=1$. In this case `monodromy_weights()`,
-  `pairing_matrix()`, and sparse graph operators are available.
-- A general pair $(D,N)$ has an exact rational Jacquet--Langlands realization,
-  but Sage.js does not yet enumerate the corresponding Eichler right ideals.
-  Consequently `right_ideals()`, canonical monodromy weights, and the
-  ideal-basis pairing deliberately raise `NotImplementedError`.
+- The sparse supersingular ideal-class basis remains the automatic choice only
+  for prime $D\geq5$ and $N=1$. The general ideal basis is available
+  explicitly for every valid squarefree $D$ and coprime $N$.
+- Ideal representatives are deterministic but canonical only up to class
+  permutation and isometry. Code should use the published integral lattice,
+  not compare representatives from different systems byte-for-byte.
 - `T_n` currently requires $\gcd(n,DN)=1$. At primes dividing $D$, use
   `W(q)`. Operators at primes dividing the Eichler conductor are not yet
   exposed.
 - General Jacquet--Langlands modules use $\mathbf Q$. The canonical
-  supersingular realization also permits $\mathbf Z$.
+  supersingular and general Eichler ideal realizations also permit $\mathbf Z$.
 - Only weight $2$ is currently implemented.
+- The component-group API currently covers the full $J_0(pM)$ group at the
+  prime quaternion discriminant $p$. Newform-quotient groups are deliberately
+  deferred until integral modular-symbol annihilator and modular-degree maps
+  can certify every finite index.
 
 These failures are intentional: a successful operation never silently
 substitutes an abstract modular-symbol basis for a requested quaternion
