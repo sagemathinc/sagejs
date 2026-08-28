@@ -86,6 +86,7 @@ for characteristic in ${JSON.stringify(primes)}:
         samples.append({
             "construction_seconds": construction,
             "first_t2_seconds": first_operator,
+            "module_and_first_t2_seconds": construction + first_operator,
             "matvec_seconds": matvec,
             "prime_matvec_seconds": prime_matvec,
             "block_two_matvec_seconds": block_matvec,

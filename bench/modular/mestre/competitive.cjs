@@ -188,12 +188,39 @@ async function main() {
   const magma = option("magma", process.env.MAGMA ?? "magma");
   const magmaScript = path.join(__dirname, "magma-brandt-benchmark.m");
   const sageScript = path.join(__dirname, "classical.cjs");
-  const sageRun = await runSampled(process.execPath, [
-    sageScript,
-    `--repeat=${repeat}`,
-    `--primes=${primes.join(",")}`,
-  ]);
-  const sage = JSON.parse(sageRun.stdout);
+  const sageRuns = [];
+  const sageRecords = [];
+  for (const prime of primes) {
+    const samples = [];
+    for (let sample = 1; sample <= repeat; sample += 1) {
+      const run = await runSampled(process.execPath, [
+        sageScript,
+        "--repeat=1",
+        `--primes=${prime}`,
+      ]);
+      const payload = JSON.parse(run.stdout);
+      const record = payload.records[0].samples[0];
+      record.sample = sample;
+      samples.push(record);
+      sageRuns.push({
+        prime,
+        sample,
+        wall_seconds: run.wallSeconds,
+        peak_process_tree_rss_bytes: run.peakRssBytes,
+        stderr: run.stderr,
+      });
+    }
+    sageRecords.push({ prime, samples });
+  }
+  const sage = {
+    schema: "sagejs.mestre-classical-sparse-benchmark.v1",
+    node: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    repeat,
+    sample_contract: "fresh Node and Sage worker process for each prime and sample",
+    records: sageRecords,
+  };
   const magmaRun = await runSampled(magma, ["-b", magmaScript], {
     env: {
       MESTRE_BENCH_PRIMES: primes.join(","),
@@ -225,6 +252,9 @@ async function main() {
       magma_cpu_timer_resolution_seconds: 0.01,
       magma_warm_iterations: 100000,
       orientation: "basis-independent invariants; Magma acts on row vectors",
+      equal_contract_timing: "public module construction plus first T2",
+      sage_sample_isolation: "fresh process per prime and sample",
+      magma_sample_isolation: "fresh BrandtModule object per mode and sample",
     },
     sources: {
       sage_benchmark: path.relative(root, sageScript),
@@ -233,9 +263,15 @@ async function main() {
       magma_benchmark_sha256: sha256(magmaScript),
     },
     sagejs: {
-      wall_seconds: sageRun.wallSeconds,
-      peak_process_tree_rss_bytes: sageRun.peakRssBytes,
-      stderr_sha256: crypto.createHash("sha256").update(sageRun.stderr).digest("hex"),
+      wall_seconds: sageRuns.reduce((sum, run) => sum + run.wall_seconds, 0),
+      peak_process_tree_rss_bytes: Math.max(
+        ...sageRuns.map((run) => run.peak_process_tree_rss_bytes ?? 0),
+      ),
+      stderr_sha256: crypto
+        .createHash("sha256")
+        .update(sageRuns.map((run) => run.stderr).join(""))
+        .digest("hex"),
+      process_runs: sageRuns.map(({ stderr: _stderr, ...run }) => run),
       payload: sage,
     },
     magma: {
