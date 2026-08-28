@@ -191,6 +191,14 @@ class ClassicalModularPolynomial:
 _modular_polynomial_cache: dict[int, ClassicalModularPolynomial] = {}
 
 
+def j_invariant_unit_series(precision: Any) -> tuple[Any, ...]:
+    r"""Return $qj(q)$ through $q^{\text{precision}}$ over $\mathbf{Z}$."""
+    bound = _machine_integer(precision, "j-series precision")
+    if bound < 0:
+        raise ValueError("j-series precision must be nonnegative")
+    return tuple(_j_unit_series(bound))
+
+
 def _construct_modular_polynomial(
     index: int,
     max_unknowns: int,
@@ -299,4 +307,8 @@ def classical_modular_polynomial(
     return answer
 
 
-__all__ = ["ClassicalModularPolynomial", "classical_modular_polynomial"]
+__all__ = [
+    "ClassicalModularPolynomial",
+    "classical_modular_polynomial",
+    "j_invariant_unit_series",
+]

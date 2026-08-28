@@ -29,13 +29,23 @@ mass-orthogonal cuspidal coordinates, a sparse ambient cuspidal action, and the
 mass-normalized self-adjoint adjacency operator used for spectral and
 Ramanujan checks.
 
+The first reconstruction slice now publishes one-dimensional rational
+simultaneous eigenpackets only after exact kernel, cuspidality, primitivity,
+and commuting-Hecke scalar checks. It evaluates Mestre's identity directly as
+truncated exact coefficient lists over $\operatorname{GF}(p^2)$, including the
+exceptional automorphism masses, proves the leading-term normalization, and
+rechecks every stored Hecke eigenvalue. Both rational level-$37$ newforms
+reproduce the pinned LMFDB values at $2,3,5,7$ and the prime-power Hecke
+recurrences through $q^9$.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
 but cross-platform coordinate sorting must land before the basis digest is
 declared stable. Optimized large-index modular-polynomial construction,
-scalable exact characteristic-polynomial certificates, Mestre reconstruction,
-and the Hilbert modules remain later implementation stages in this plan.
+scalable exact characteristic-polynomial certificates, higher-dimensional
+coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
+the Hilbert modules remain later implementation stages in this plan.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

@@ -148,6 +148,24 @@ def _find_equal(values: Sequence[Any], target: Any) -> int:
     return -1
 
 
+def _primitive_integer_vector(vector: Any) -> list[Any]:
+    entries = [sage.ZZ(value) for value in vector]
+    common = sage.ZZ(0)
+    for value in entries:
+        right = abs(value)
+        while right != 0:
+            common, right = right, common % right
+    if common == 0:
+        raise ArithmeticError("an eigenspace basis vector is zero")
+    entries = [value // common for value in entries]
+    for value in entries:
+        if value < 0:
+            return [-entry for entry in entries]
+        if value > 0:
+            return entries
+    raise ArithmeticError("an eigenspace basis vector is zero")
+
+
 class SupersingularPointIndex:
     """A read-only equality-based mapping from exact $j$ values to indices."""
 
@@ -799,6 +817,57 @@ class SupersingularModule:
             self.hecke_operator(index),
             dense_entry_limit=self._dense_entry_limit,
         )
+
+    def rational_eigenpacket(
+        self,
+        eigenvalue: Any,
+        *,
+        index: Any = 2,
+        check_primes: Any = (3, 5),
+    ) -> Any:
+        """Return a proved one-dimensional rational cuspidal eigenpacket."""
+        from .mestre import SupersingularEigenpacket
+
+        ell = _integer(index, "Hecke index")
+        value = sage.ZZ(eigenvalue)
+        operator = self.hecke_operator(ell)
+        matrix = operator.matrix()
+        identity = _global("identity_matrix")(sage.ZZ, self._dimension)
+        kernel = (matrix - value * identity).right_kernel_matrix()
+        if kernel.nrows() != 1:
+            raise ValueError(
+                "the requested Hecke eigenvalue does not have multiplicity one"
+            )
+        vector = _primitive_integer_vector(kernel.row(0))
+        if not self.is_cuspidal(vector):
+            raise ValueError("the requested Hecke eigenvalue is Eisenstein")
+        eigenvalues = [(ell, value)]
+        checked = {ell: True}
+        for candidate in check_primes:
+            prime = _integer(candidate, "check-prime index")
+            if prime in checked:
+                continue
+            checked[prime] = True
+            image = list(self.hecke_operator(prime).apply(vector))
+            pivot = -1
+            for position, coordinate in enumerate(vector):
+                if pivot < 0 and coordinate != 0:
+                    pivot = position
+            if pivot < 0:
+                raise ArithmeticError("a rational eigenpacket vector is zero")
+            candidate_value = sage.QQ(image[pivot]) / sage.QQ(vector[pivot])
+            if candidate_value.denominator() != 1:
+                raise ValueError("the simultaneous eigenvalue is not rational integral")
+            integer_value = sage.ZZ(candidate_value.numerator())
+            for position, coordinate in enumerate(vector):
+                if image[position] != integer_value * coordinate:
+                    raise ValueError(
+                        "the rational eigenspace is not simultaneous for T_"
+                        + str(prime)
+                    )
+            eigenvalues.append((prime, integer_value))
+        eigenvalues.sort()
+        return SupersingularEigenpacket(self, vector, eigenvalues)
 
     def __repr__(self) -> str:
         return (
