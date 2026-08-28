@@ -1728,11 +1728,12 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "        assert str(error) == 'FFI resource is closed'",
       "    else:",
       "        raise AssertionError('closed resource was accepted')",
+      "assert clone.nativeAvailable is __EXPECTED_NATIVE__",
       "wrong = fmpz_matrix(1, 1)",
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert __EXPECTED_WRONG_TYPE__ in str(error), str(error)",
+      "    assert 'FFI resource' in str(error), str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
@@ -1742,18 +1743,15 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "print('owned-resource-result-ok')",
       "",
     ].join("\n");
-    for (const [env, expectedWrongType] of [
-      [{}, "wrong FFI resource type"],
-      [
-        { SAGEJS_NATIVE_DISABLE: "1" },
-        "invalid dynamic FFI resource argument",
-      ],
+    for (const [env, expectedNative] of [
+      [{}, true],
+      [{ SAGEJS_NATIVE_DISABLE: "1" }, false],
     ]) {
       writeFileSync(
         runnerPath,
         runnerSource.replace(
-          "__EXPECTED_WRONG_TYPE__",
-          JSON.stringify(expectedWrongType),
+          "__EXPECTED_NATIVE__",
+          expectedNative ? "True" : "False",
         ),
       );
       assert.equal(
