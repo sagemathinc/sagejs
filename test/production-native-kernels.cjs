@@ -25,6 +25,9 @@ const { NATIVE_ABI_VERSION } = require(
 const { NATIVE_KERNEL_ABI_VERSION } = require(
   "../dist/tools/runtime-bootstrap.js"
 );
+const { NATIVE_KERNEL_ASSET_ABI_VERSION } = require(
+  "../dist/tools/resources.js"
+);
 const {
   NATIVE_PACK_ABI_VERSION,
   PACK_FILENAME,
@@ -112,6 +115,7 @@ test("all production native kernels are published and autoloadable", () => {
   assert.equal(index.packs.length, 1);
   assert.equal(index.packs[0].packAbi, NATIVE_PACK_ABI_VERSION);
   assert.equal(NATIVE_KERNEL_ABI_VERSION, NATIVE_ABI_VERSION);
+  assert.equal(NATIVE_KERNEL_ASSET_ABI_VERSION, NATIVE_ABI_VERSION);
   const packPath = join(published, "pack", PACK_FILENAME);
   const packManifest = JSON.parse(readFileSync(
     join(published, "pack", "index.json"),
