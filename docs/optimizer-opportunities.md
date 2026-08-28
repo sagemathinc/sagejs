@@ -9,14 +9,21 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `81f87f5d1c483fb63d6ebb67c7688cc987aa64be968a4fc27444c8a4d23edfe7` (521 files, 10775401 bytes).
+Input identity: `c8740bc87beacd77d075a1ec10fde139894ff544c55f42ae4c83bc522f8ff997` (511 files, 10537491 bytes).
 Analyzed source bundle: `sha256:ad7b601c72c32517723408d04ccfa08e9204dab8e90a60755d304555cea5ee33`; compiler identity: `sha256:703e211ea6c8808e4ab5fbe07fbf653c5b076a3f0cc8b4081966d83544e6e0ad`.
+
+The complete machine census is stored outside Git as immutable GitHub Release assets.
+`architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical
+identity, indexed SQLite query artifact, legacy JSON archive, and physical SHA-256 digests.
+Queries download and verify the SQLite artifact once, then reuse the ignored local cache.
 
 Regenerate or verify it with:
 
 ```bash
 pnpm optimizer:opportunities
 pnpm optimizer:opportunities:check
+pnpm optimizer:opportunities:fetch
+pnpm optimizer:opportunities:materialize -- build/optimizer-opportunities.json
 pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_groups.py:1
 pnpm optimizer:opportunities:query -- sha256:<digest>
 ```

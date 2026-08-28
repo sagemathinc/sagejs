@@ -21,8 +21,11 @@ rules.
 - Target boundary: resident V8 numbers and two transactionally private output
   arrays; no native/Wasm boundary and no copied input bytes.
 
-The current generated dashboard is
+The accepted dashboard epoch was
 `sha256:6853805f245450978a3aaf8ae322a9f74baceac21791ecf6a638e9988c6609a8`.
+Its canonical NDJSON, indexed SQLite database, exact legacy JSON, and manifest
+are preserved in the immutable
+[Campaign 1 evidence release](https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-6438210e33f94beb4d2104d714a3cfc23010474353144f4ec156d3676815abda-1be47fb0afcd533f).
 Its selected decision for the fused region is
 `sha256:0edc45e028eec7c75d139767895347090c6958809f9f9b5d81b3ca08eefb5eab`.
 

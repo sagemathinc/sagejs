@@ -817,7 +817,7 @@ separated approximately as follows:
 ```text
 architecture/
   optimizer-workloads.json
-  optimizer-opportunities.json
+  optimizer-opportunities.manifest.json
   optimizer-campaigns/
   optimizer-promotion-receipts/
 
@@ -944,7 +944,8 @@ not yet a proven compiler-development engine.
 2. Add compiler source-map anchors for functions and optimizer regions.
 3. Build the Node sampling/profile receipt path.
 4. Calibrate observer overhead with known O0/O2 controls.
-5. Join profiles to `architecture/optimizer-opportunities.json`.
+5. Join profiles to the dashboard materialized from
+   `architecture/optimizer-opportunities.manifest.json`.
 6. Generate dossiers for the existing control corpus.
 7. Verify the class-group generated-JavaScript negative control is rejected.
 8. Profile the complete cubic class/unit-group corpus and one independent

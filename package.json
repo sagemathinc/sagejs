@@ -134,6 +134,8 @@
     "wasm:workload-enforce": "node scripts/wasm-workload-dashboard.cjs --check",
     "optimizer:opportunities": "pnpm run build:check && node scripts/optimizer-opportunity-dashboard.cjs --write",
     "optimizer:opportunities:check": "pnpm run build:check && node scripts/optimizer-opportunity-dashboard.cjs --check",
+    "optimizer:opportunities:fetch": "node scripts/optimizer-opportunity-dashboard.cjs --fetch",
+    "optimizer:opportunities:materialize": "node scripts/optimizer-opportunity-dashboard.cjs --materialize-json",
     "optimizer:opportunities:query": "node scripts/optimizer-opportunity-dashboard.cjs --query",
     "optimizer:workloads": "node scripts/optimizer-workload.cjs list",
     "optimizer:workloads:check": "node scripts/optimizer-workload.cjs check",

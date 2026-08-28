@@ -20,3 +20,4 @@ bench/.native-poc
 bench/finite-field-boundary/build/
 build/*
 .artifacts/
+.cache/sagejs/optimization-engine/

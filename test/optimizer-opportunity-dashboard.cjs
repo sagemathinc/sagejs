@@ -3,6 +3,7 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
@@ -15,6 +16,15 @@ const {
   renderMarkdown,
   validateDashboard,
 } = require("../scripts/optimizer-opportunity-dashboard.cjs");
+const {
+  canonicalSnapshot,
+  querySnapshotDatabase,
+  readSnapshotDatabase,
+  validateArtifactManifest,
+  validateLocalDatabase,
+  writeSnapshotArtifacts,
+} = require("../tools/optimizer-development/dashboard-artifacts.cjs");
+const { canonicalJson } = require("../tools/optimizer-development/common.cjs");
 const {
   decisionIdentity,
   functionIdentity,
@@ -196,6 +206,46 @@ test("dashboard output and location queries are deterministic", async () => {
     () => queryDashboard(first, "sha256:not-a-digest"),
     /64 lowercase hex digits/,
   );
+});
+
+test("canonical row snapshots round-trip through an indexed SQLite artifact", async () => {
+  const dashboard = await fixture();
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-opportunities-"));
+  try {
+    const markdown = renderMarkdown(dashboard);
+    const result = writeSnapshotArtifacts({
+      root: temporary,
+      dashboard,
+      dashboardJson: dashboardJson(dashboard),
+      markdown,
+      repository: "sagemathinc/sagejs",
+    });
+    assert.equal(result.snapshot.logicalId, canonicalSnapshot(dashboard).logicalId);
+    validateArtifactManifest(result.manifest, {
+      expectedInput: dashboard.inputs,
+      markdown,
+    });
+    validateLocalDatabase(result.cachePath, result.manifest);
+    const roundTrip = readSnapshotDatabase(result.cachePath);
+    assert.equal(canonicalJson(roundTrip.dashboard), canonicalJson(dashboard));
+    validateDashboard(roundTrip.dashboard);
+
+    const selected = dashboard.loops.find((loop) => loop.status === "selected");
+    const byLoop = querySnapshotDatabase(result.cachePath, {
+      kind: "identity",
+      id: selected.id,
+    });
+    assert.deepEqual(byLoop.loops.map((loop) => loop.id), [selected.id]);
+    assert.equal(byLoop.files.length, 1);
+    assert.equal(byLoop.functions.length, 1);
+    const byDecision = querySnapshotDatabase(result.cachePath, {
+      kind: "identity",
+      id: selected.decisions[0].id,
+    });
+    assert.deepEqual(byDecision.loops.map((loop) => loop.id), [selected.id]);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("explicit optimizer controls have a separate inventory scope", async () => {

@@ -74,6 +74,32 @@ The first accepted pilot campaign is documented in `CAMPAIGN-1.md`. It used
 the general evidence process and selected a compiler intervention; the broader
 schema is a consequence of the campaign, not a relaxation of its gates.
 
+## Large evidence artifacts
+
+Git stores schemas, generators, workload definitions, accepted outcomes, the
+human-readable opportunity summary, and the small
+`architecture/optimizer-opportunities.manifest.json`. It does not store the
+complete million-line opportunity census.
+
+The manifest binds three assets in an immutable GitHub Release:
+
+- a canonical normalized NDJSON stream used for the storage-independent
+  logical identity;
+- an indexed SQLite database derived from exactly those logical records; and
+- the historical pretty-printed dashboard JSON for compatibility and audit.
+
+The logical identity hashes the uncompressed UTF-8 canonical record stream.
+Compression and SQLite layout are not semantic authority: each physical asset
+has its own byte count and SHA-256 digest. SQLite contains the logical and
+dashboard identities in its metadata table, and validation reconstructs the
+canonical records to prove a round trip. Derived summaries and query indexes
+remain reproducible views rather than a second source of truth.
+
+`pnpm optimizer:opportunities:query -- PATH[:LINE]` downloads and validates the
+SQLite asset on first use and then reuses the ignored local cache. Use
+`pnpm optimizer:opportunities:materialize -- FILE` when a consumer still needs
+the legacy dashboard JSON document.
+
 ## Identity domains
 
 `tools/optimizer-development/identity.cjs` defines repository-portable source

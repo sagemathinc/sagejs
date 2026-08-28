@@ -13,6 +13,15 @@ const {
   sha256,
 } = require("../tools/optimizer-development/common.cjs");
 const {
+  canonicalSnapshot,
+  ensureLocalDatabase,
+  querySnapshotDatabase,
+  readArtifactManifest,
+  readSnapshotDatabase,
+  validateArtifactManifest,
+  writeSnapshotArtifacts,
+} = require("../tools/optimizer-development/dashboard-artifacts.cjs");
+const {
   canonicalCompilerIdentity,
   compilerIdentity,
   decisionIdentity,
@@ -26,10 +35,10 @@ const {
 const ROOT = path.resolve(__dirname, "..");
 const SCHEMA = "sagejs.optimizer-opportunity-dashboard/v2";
 const GENERATOR = "optimizer-opportunity-dashboard/v2";
-const DEFAULT_JSON = path.join(
+const DEFAULT_MANIFEST = path.join(
   ROOT,
   "architecture",
-  "optimizer-opportunities.json",
+  "optimizer-opportunities.manifest.json",
 );
 const DEFAULT_MARKDOWN = path.join(
   ROOT,
@@ -171,10 +180,8 @@ function dashboardInputFiles(root = ROOT) {
       path.join(root, "tools", "python", "optimizer"),
       (name) => name.endsWith(".ts"),
     ),
-    ...recursiveFiles(
-      path.join(root, "tools", "optimizer-development"),
-      (name) => name.endsWith(".cjs"),
-    ),
+    path.join(root, "tools", "optimizer-development", "common.cjs"),
+    path.join(root, "tools", "optimizer-development", "identity.cjs"),
     path.join(root, "src", "ast_types.py"),
     path.join(root, "tools", "compiler.ts"),
     path.join(root, "tools", "python", "compiler-frontend.ts"),
@@ -1158,11 +1165,18 @@ function renderMarkdown(dashboard) {
     `Analyzed source bundle: \`${dashboard.sourceBundle.id}\`; compiler identity: ` +
       `\`${dashboard.compilerIdentity.id}\`.`,
     "",
+    "The complete machine census is stored outside Git as immutable GitHub Release assets.",
+    "`architecture/optimizer-opportunities.manifest.json` binds its canonical NDJSON logical",
+    "identity, indexed SQLite query artifact, legacy JSON archive, and physical SHA-256 digests.",
+    "Queries download and verify the SQLite artifact once, then reuse the ignored local cache.",
+    "",
     "Regenerate or verify it with:",
     "",
     "```bash",
     "pnpm optimizer:opportunities",
     "pnpm optimizer:opportunities:check",
+    "pnpm optimizer:opportunities:fetch",
+    "pnpm optimizer:opportunities:materialize -- build/optimizer-opportunities.json",
     "pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_groups.py:1",
     "pnpm optimizer:opportunities:query -- sha256:<digest>",
     "```",
@@ -1481,36 +1495,39 @@ function dashboardJson(dashboard) {
   return `${JSON.stringify(dashboard, null, 2)}\n`;
 }
 
-function readDashboard(filename = DEFAULT_JSON) {
-  return validateDashboard(JSON.parse(fs.readFileSync(filename, "utf8")));
+function readDashboard(filename) {
+  return validateDashboard(readSnapshotDatabase(filename).dashboard);
 }
 
 function verifyGenerated({
   root = ROOT,
-  jsonPath = DEFAULT_JSON,
+  manifestPath = DEFAULT_MANIFEST,
   markdownPath = DEFAULT_MARKDOWN,
 } = {}) {
   const expectedInput = inputIdentity(root);
-  const dashboard = validateDashboard(
-    JSON.parse(fs.readFileSync(jsonPath, "utf8")),
-    { expectedInput },
-  );
-  const expectedMarkdown = renderMarkdown(dashboard);
-  const actualMarkdown = fs.readFileSync(markdownPath, "utf8");
-  if (actualMarkdown !== expectedMarkdown) {
-    throw new Error("generated optimizer opportunity Markdown is stale");
-  }
-  return dashboard;
+  const markdown = fs.readFileSync(markdownPath, "utf8");
+  const manifest = readArtifactManifest(manifestPath);
+  return validateArtifactManifest(manifest, { expectedInput, markdown });
 }
 
-function writeDashboard(dashboard, {
-  jsonPath = DEFAULT_JSON,
+function writeDashboardArtifacts(dashboard, {
+  root = ROOT,
+  manifestPath = DEFAULT_MANIFEST,
   markdownPath = DEFAULT_MARKDOWN,
 } = {}) {
-  fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
+  const json = dashboardJson(dashboard);
+  const markdown = renderMarkdown(dashboard);
+  const result = writeSnapshotArtifacts({
+    root,
+    dashboard,
+    dashboardJson: json,
+    markdown,
+  });
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
   fs.mkdirSync(path.dirname(markdownPath), { recursive: true });
-  fs.writeFileSync(jsonPath, dashboardJson(dashboard));
-  fs.writeFileSync(markdownPath, renderMarkdown(dashboard));
+  fs.writeFileSync(manifestPath, `${JSON.stringify(result.manifest, null, 2)}\n`);
+  fs.writeFileSync(markdownPath, markdown);
+  return result;
 }
 
 function parseQuery(value) {
@@ -1631,13 +1648,26 @@ function formatQuery(result) {
 }
 
 function parseArguments(argv) {
-  const options = { write: false, check: false, verify: false, json: false, query: null };
+  const options = {
+    write: false,
+    check: false,
+    verify: false,
+    fetch: false,
+    json: false,
+    query: null,
+    materializeJson: null,
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--write") options.write = true;
     else if (argument === "--check") options.check = true;
     else if (argument === "--verify-generated") options.verify = true;
+    else if (argument === "--fetch") options.fetch = true;
     else if (argument === "--json") options.json = true;
+    else if (argument === "--materialize-json") {
+      index += 1;
+      options.materializeJson = argv[index];
+    }
     else if (argument === "--query") {
       index += 1;
       if (argv[index] === "--") index += 1;
@@ -1646,11 +1676,22 @@ function parseArguments(argv) {
     else if (argument === "--") continue;
     else throw new Error(`unknown argument ${argument}`);
   }
-  if ([options.write, options.check, options.verify, options.query !== null]
+  if ([
+    options.write,
+    options.check,
+    options.verify,
+    options.fetch,
+    options.query !== null,
+    options.materializeJson !== null,
+  ]
     .filter(Boolean).length !== 1) {
     throw new Error(
-      "choose exactly one of --write, --check, --verify-generated, or --query PATH[:LINE]",
+      "choose exactly one of --write, --check, --verify-generated, --fetch, " +
+      "--materialize-json FILE, or --query PATH[:LINE]",
     );
+  }
+  if (options.materializeJson === undefined) {
+    throw new Error("--materialize-json requires an output filename");
   }
   return options;
 }
@@ -1658,17 +1699,30 @@ function parseArguments(argv) {
 async function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
   if (options.verify) {
-    const dashboard = verifyGenerated();
+    const manifest = verifyGenerated();
     process.stdout.write(
-      `Verified optimizer opportunities ${dashboard.inputs.digest}: ` +
-      `${dashboard.summary.functionsCompiled} functions, ` +
-      `${dashboard.summary.loopsInFunctions} loops.\n`,
+      `Verified optimizer opportunities ${manifest.snapshot.logicalId}: ` +
+      `${manifest.dashboard.summary.functionsCompiled} functions, ` +
+      `${manifest.dashboard.summary.loopsInFunctions} loops.\n`,
     );
     return;
   }
-  if (options.query !== null) {
-    const dashboard = verifyGenerated();
-    const result = queryDashboard(dashboard, options.query);
+  if (options.fetch || options.query !== null || options.materializeJson !== null) {
+    const manifest = verifyGenerated();
+    const database = await ensureLocalDatabase({ root: ROOT, manifest });
+    if (options.fetch) {
+      process.stdout.write(`${database}\n`);
+      return;
+    }
+    if (options.materializeJson !== null) {
+      const dashboard = readDashboard(database);
+      fs.mkdirSync(path.dirname(path.resolve(options.materializeJson)), { recursive: true });
+      fs.writeFileSync(options.materializeJson, dashboardJson(dashboard));
+      process.stdout.write(`Materialized ${options.materializeJson} from ${manifest.snapshot.logicalId}.\n`);
+      return;
+    }
+    const query = parseQuery(options.query);
+    const result = querySnapshotDatabase(database, query);
     process.stdout.write(options.json
       ? `${JSON.stringify(result, null, 2)}\n`
       : formatQuery(result));
@@ -1678,17 +1732,20 @@ async function main(argv = process.argv.slice(2)) {
   const dashboard = await analyzeRepository();
   const elapsed = (performance.now() - started) / 1000;
   if (options.write) {
-    writeDashboard(dashboard);
+    const result = writeDashboardArtifacts(dashboard);
     process.stdout.write(
-      `Wrote optimizer opportunity dashboard: ${dashboard.summary.functionsCompiled} ` +
+      `Wrote optimizer opportunity artifacts ${result.snapshot.logicalId}: ` +
+      `${dashboard.summary.functionsCompiled} ` +
       `functions, ${dashboard.summary.loopsInFunctions} loops, ` +
-      `${dashboard.summary.oneReasonNearMisses} near misses in ${elapsed.toFixed(2)}s.\n`,
+      `${dashboard.summary.oneReasonNearMisses} near misses in ${elapsed.toFixed(2)}s.\n` +
+      `Release assets: ${result.releaseDirectory}\n`,
     );
     return;
   }
-  const expectedJson = fs.readFileSync(DEFAULT_JSON, "utf8");
+  const manifest = verifyGenerated();
+  const snapshot = canonicalSnapshot(dashboard);
   const expectedMarkdown = fs.readFileSync(DEFAULT_MARKDOWN, "utf8");
-  if (expectedJson !== dashboardJson(dashboard) ||
+  if (manifest.snapshot.logicalId !== snapshot.logicalId ||
       expectedMarkdown !== renderMarkdown(dashboard)) {
     throw new Error(
       "optimizer opportunity dashboard is stale; run pnpm optimizer:opportunities",
@@ -1718,8 +1775,9 @@ module.exports = {
   parseArguments,
   queryDashboard,
   reasonRemediation,
+  readDashboard,
   renderMarkdown,
   validateDashboard,
   verifyGenerated,
-  writeDashboard,
+  writeDashboardArtifacts,
 };

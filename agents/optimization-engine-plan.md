@@ -501,7 +501,12 @@ Create one integration-owned service or script that:
 
 - commits or verifies the exact clean evidence base;
 - performs one current build;
-- publishes a read-only epoch manifest and artifact locations;
+- publishes a read-only epoch manifest and immutable GitHub Release artifact
+  locations;
+- computes the epoch's logical identity from a canonical normalized NDJSON
+  record stream rather than from SQLite file bytes;
+- derives an indexed SQLite query database from those same records and proves
+  the database-to-record round trip;
 - verifies source, compiler, native, Wasm, and workload identities;
 - provides scratch output directories per lane;
 - rejects evidence after any tracked source change; and
@@ -511,6 +516,12 @@ Parallel lanes must consume this service instead of independently mutating the
 shared checkout or repeatedly running broad builds. A lane may run focused
 tests in its worktree, but authentic campaign evidence refers to the frozen
 integration epoch.
+
+Git retains only the small manifest, schemas, generators, workload contracts,
+human summaries, and accepted outcomes. Canonical NDJSON, SQLite, and legacy
+JSON snapshots are compressed release assets with separate physical digests.
+This prevents regenerated multi-million-line datasets from accumulating in
+repository history while keeping the evidence independently reconstructible.
 
 ### B. Workload and oracle catalog
 

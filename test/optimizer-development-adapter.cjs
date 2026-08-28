@@ -15,13 +15,14 @@ const {
   makeCompiler,
   makeReceipt,
 } = require("./fixtures/optimizer-development/repository-adapter/helpers.cjs");
+const {
+  analyzeSources,
+} = require("../scripts/optimizer-opportunity-dashboard.cjs");
 
 const root = path.resolve(__dirname, "..");
-const dashboard = JSON.parse(fs.readFileSync(
-  path.join(root, "architecture/optimizer-opportunities.json"), "utf8",
-));
-const selected = dashboard.loops.find((loop) =>
-  loop.status === "selected" && loop.functionId !== null);
+let dashboard;
+let selected;
+let production;
 
 function adapter(options = {}) {
   return createRepositoryAdapter({
@@ -32,7 +33,23 @@ function adapter(options = {}) {
   });
 }
 
-const production = adapter();
+test.before(async () => {
+  const relativePath = "src/lib/sagejs/plotting/field_layers.py";
+  const filename = path.join(root, relativePath);
+  dashboard = await analyzeSources({
+    root,
+    compilerRoot: root,
+    sources: [{
+      relativePath,
+      filename,
+      source: fs.readFileSync(filename, "utf8"),
+    }],
+  });
+  selected = dashboard.loops.find((loop) =>
+    loop.status === "selected" && loop.functionId !== null);
+  assert.ok(selected);
+  production = adapter();
+});
 
 test("real dashboard and sparse receipt join by exact portable region identity", () => {
   const receipt = makeReceipt({ dashboard, loop: selected, ticks: 7, functionSamples: 500 });
