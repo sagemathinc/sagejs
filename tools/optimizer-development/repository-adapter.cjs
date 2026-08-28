@@ -25,6 +25,9 @@ const {
   validateHotnessOverlay,
   validateProfileReceipt,
 } = require("./schemas.cjs");
+const {
+  validateOpportunityEvidence: validateReviewedOpportunityEvidence,
+} = require("./opportunity-evidence.cjs");
 
 const ROOT = path.resolve(__dirname, "../..");
 const DASHBOARD_MODULE = path.join(ROOT, "scripts/optimizer-opportunity-dashboard.cjs");
@@ -443,6 +446,13 @@ function createRepositoryAdapter(options = {}) {
     }
 
     const total = sampleCounts.total;
+    const protocol = receipt.sampling.protocol;
+    const closureCoverage = protocol &&
+      protocol.scope === "warm-prepared-sealed-generated-javascript-execution"
+      ? (protocol.declaredArtifactCount === 0 || protocol.lateArtifactCount !== 0
+          ? 0
+          : protocol.authenticatedArtifactCount / protocol.declaredArtifactCount)
+      : null;
     const projected = [...observations.values()].map((observation) => ({
       ...observation,
       wallFraction: total === 0 ? 0 : observation.exclusiveSamples / total,
@@ -453,7 +463,11 @@ function createRepositoryAdapter(options = {}) {
       id: receipt.id,
       workloadId: receipt.workload.id,
       current,
-      coverage: total === 0 ? 0 : sampleCounts.attributed / total,
+      // A warm sealed profile authenticates its dynamic generated-code closure
+      // before sampling. Native/runtime work and source positions outside loop
+      // spans remain in the wall-time denominator, but are not source-map
+      // failures. Cold/legacy receipts retain the conservative sample ratio.
+      coverage: closureCoverage ?? (total === 0 ? 0 : sampleCounts.attributed / total),
       exactOutput,
       samples: sampleCounts,
       observations: projected,
@@ -550,7 +564,8 @@ function createRepositoryAdapter(options = {}) {
       unresolvedProofs: [
         ...dashboardDecision.rejectionReasons.map((item) => normalizedReason(item).code),
         "runtime counters are workload-global and cannot be attributed to this region",
-        "mature algorithm duplication has not been ruled out",
+        ...(overlayRegion.opportunityEvidenceIds.length === 0
+          ? ["mature algorithm duplication has not been ruled out"] : []),
       ],
       suggestedContract: {
         requiredPassId: dashboardDecision.passId,
@@ -574,7 +589,8 @@ function createRepositoryAdapter(options = {}) {
       ],
       generality: similar.size > 0 ? [...similar].sort()
         : [`${loop.source.path}:${loop.source.line} requires a held-out independent consumer`],
-      negativeEvidence: [],
+      negativeEvidence: overlayRegion.opportunityEvidenceIds.map((id) =>
+        `reviewed target dispositions are retained in opportunity evidence ${id}`),
       claims: [loop.source.path],
       integration: { sharedFiles: [], owner: "optimizer-integration" },
       promotionCriteria: {
@@ -603,6 +619,9 @@ function createRepositoryAdapter(options = {}) {
       return validateDossier(value, { ...context, reasonRegistry: DEFAULT_REASON_REGISTRY });
     },
     validateCampaign,
+    validateOpportunityEvidence(value, context) {
+      return validateReviewedOpportunityEvidence(value, context);
+    },
     dashboard,
     profile: projectProfile,
     dossier: dossierDetails,

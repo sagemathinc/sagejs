@@ -779,7 +779,7 @@ function validateHotnessOverlay(value, context = {}) {
   const label = "overlay";
   const registry = context.reasonRegistry || DEFAULT_REASON_REGISTRY;
   schemaHeader(label, value, SCHEMAS.overlay,
-    ["dashboard", "profiles", "joinPolicy", "regions", "unmatched", "summary"]);
+    ["dashboard", "profiles", "opportunities", "joinPolicy", "regions", "unmatched", "summary"]);
   exactKeys(`${label}.dashboard`, value.dashboard,
     ["id", "digest", "sourceBundleId", "compilerId"]);
   const dashboard = {
@@ -796,6 +796,19 @@ function validateHotnessOverlay(value, context = {}) {
       status: enumeration(`${profileLabel}.status`, profile.status, ["current", "historical"]),
     };
   }, { minimum: 1, uniqueBy: (profile) => profile.id, sortedBy: (profile) => profile.id });
+  const opportunities = array(`${label}.opportunities`, value.opportunities,
+    (opportunityLabel, opportunity) => {
+      exactKeys(opportunityLabel, opportunity, ["id", "regionId", "workloadId", "status"]);
+      return {
+        id: contentId(`${opportunityLabel}.id`, opportunity.id),
+        regionId: contentId(`${opportunityLabel}.regionId`, opportunity.regionId),
+        workloadId: contentId(`${opportunityLabel}.workloadId`, opportunity.workloadId),
+        status: enumeration(`${opportunityLabel}.status`, opportunity.status,
+          ["eligible", "inconclusive", "rejected"]),
+      };
+    }, { uniqueBy: (opportunity) => opportunity.id,
+      sortedBy: (opportunity) => opportunity.id });
+  const opportunityIds = new Set(opportunities.map((opportunity) => opportunity.id));
   exactKeys(`${label}.joinPolicy`, value.joinPolicy,
     ["minimumCoverage", "staleProfiles", "ambiguity"]);
   const joinPolicy = {
@@ -810,7 +823,8 @@ function validateHotnessOverlay(value, context = {}) {
   const profileIds = new Set(profiles.map((profile) => profile.id));
   const regions = array(`${label}.regions`, value.regions, (regionLabel, region) => {
     exactKeys(regionLabel, region, [
-      "source", "loopId", "staticDecisions", "observations", "runtimeRoutes",
+      "source", "loopId", "staticDecisions", "opportunityEvidenceIds",
+      "observations", "runtimeRoutes",
       "classification", "recommendedAction", "eligibility", "ranking", "removableFraction",
     ]);
     const source = validateSource(`${regionLabel}.source`, region.source);
@@ -879,6 +893,13 @@ function validateHotnessOverlay(value, context = {}) {
       staticDecisions: array(`${regionLabel}.staticDecisions`, region.staticDecisions,
         (decisionLabel, decision) => validateStaticDecision(decisionLabel, decision, registry),
         { uniqueBy: (decision) => decision.decisionId, sortedBy: (decision) => decision.decisionId }),
+      opportunityEvidenceIds: stringArray(`${regionLabel}.opportunityEvidenceIds`,
+        region.opportunityEvidenceIds).map((item, index) => {
+          const id = contentId(`${regionLabel}.opportunityEvidenceIds[${index}]`, item);
+          if (!opportunityIds.has(id)) fail(`${regionLabel}.opportunityEvidenceIds[${index}]`,
+            "is not in overlay opportunities");
+          return id;
+        }),
       observations,
       runtimeRoutes,
       classification: enumeration(`${regionLabel}.classification`, region.classification, [
@@ -919,7 +940,7 @@ function validateHotnessOverlay(value, context = {}) {
     if (value.summary[key] !== expected) fail(`${label}.summary.${key}`, `must be ${expected}`);
   }
   const normalized = {
-    schema: value.schema, id: value.id, dashboard, profiles, joinPolicy, regions,
+    schema: value.schema, id: value.id, dashboard, profiles, opportunities, joinPolicy, regions,
     unmatched, summary: expectedSummary,
   };
   if (context.dashboardId && dashboard.id !== context.dashboardId) {
@@ -949,12 +970,16 @@ function validateDossier(value, context = {}) {
     "claims", "integration", "promotionCriteria",
   ]);
   const source = validateSource(`${label}.source`, value.source);
-  exactKeys(`${label}.evidence`, value.evidence, ["dashboardId", "overlayId", "profileIds"]);
+  exactKeys(`${label}.evidence`, value.evidence,
+    ["dashboardId", "overlayId", "profileIds", "opportunityEvidenceIds"]);
   const evidence = {
     dashboardId: contentId(`${label}.evidence.dashboardId`, value.evidence.dashboardId),
     overlayId: contentId(`${label}.evidence.overlayId`, value.evidence.overlayId),
     profileIds: stringArray(`${label}.evidence.profileIds`, value.evidence.profileIds,
       { minimum: 1 }).map((item, index) => contentId(`${label}.evidence.profileIds[${index}]`, item)),
+    opportunityEvidenceIds: stringArray(`${label}.evidence.opportunityEvidenceIds`,
+      value.evidence.opportunityEvidenceIds).map((item, index) =>
+      contentId(`${label}.evidence.opportunityEvidenceIds[${index}]`, item)),
   };
   exactKeys(`${label}.excerpt`, value.excerpt, ["text", "digest"]);
   const excerpt = {

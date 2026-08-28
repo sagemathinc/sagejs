@@ -402,6 +402,60 @@ test("counterfeit region and compiler implementation tuples fail closed", () => 
   ), /implementation tuple does not match/);
 });
 
+test("runtime profiling options may differ while compiler implementation stays exact", () => {
+  const fixture = buildFixture();
+  const context = structuredClone(fixture.context);
+  for (const profile of context.profileReceipts) {
+    profile.compiler = identity.compilerIdentity({
+      irSchema: profile.compiler.irSchema,
+      compilerSourceBundleId: profile.compiler.compilerSourceBundleId,
+      frontendDigest: profile.compiler.frontendDigest,
+      catalogDigest: profile.compiler.catalogDigest,
+      optionsDigest: rawDigest(`runtime options ${profile.fixtureSeed}`),
+    });
+    readdress(profile);
+  }
+  const bySeed = new Map(context.profileReceipts.map((profile) =>
+    [profile.fixtureSeed, profile]));
+  const document = structuredClone(validDocument(fixture));
+  document.profiles.baselineId = bySeed.get("baseline").id;
+  document.profiles.feasibleLowerBoundId = bySeed.get("feasible").id;
+  document.profiles.negativeIds = [bySeed.get("losing native").id];
+  document.classification.profileIds = [
+    bySeed.get("baseline").id,
+    bySeed.get("feasible").id,
+  ].sort();
+  document.matureAlgorithm.profileIds = [
+    bySeed.get("baseline").id,
+    bySeed.get("losing native").id,
+  ].sort();
+  document.negativeEvidence[0].profileId = bySeed.get("losing native").id;
+  readdress(document);
+  assert.doesNotThrow(() => opportunity.validateOpportunityEvidence(
+    document, { ...context, profileReceipts: [...bySeed.values()] }, fixture.adapter,
+  ));
+
+  const counterfeit = structuredClone(bySeed.get("feasible"));
+  counterfeit.compiler = identity.compilerIdentity({
+    irSchema: counterfeit.compiler.irSchema,
+    compilerSourceBundleId: counterfeit.compiler.compilerSourceBundleId,
+    frontendDigest: rawDigest("different frontend implementation"),
+    catalogDigest: counterfeit.compiler.catalogDigest,
+    optionsDigest: counterfeit.compiler.optionsDigest,
+  });
+  readdress(counterfeit);
+  const bad = structuredClone(document);
+  bad.profiles.feasibleLowerBoundId = counterfeit.id;
+  bad.classification.profileIds = [bad.profiles.baselineId, counterfeit.id].sort();
+  readdress(bad);
+  assert.throws(() => opportunity.validateOpportunityEvidence(
+    bad,
+    { ...context, profileReceipts: [bySeed.get("baseline"), counterfeit,
+      bySeed.get("losing native")] },
+    fixture.adapter,
+  ), /does not match the reviewed compiler implementation tuple/);
+});
+
 test("profile and workload references cannot be absent or counterfeit", () => {
   const fixture = buildFixture();
   const missing = structuredClone(validDocument(fixture));

@@ -2,6 +2,7 @@
 
 const {
   attachIdentity,
+  canonicalJson,
   contentIdentity,
   sha256,
 } = require("../../../../tools/optimizer-development/common.cjs");
@@ -74,6 +75,8 @@ function makeReceipt({
   compiler = makeCompiler(dashboard),
   sourceDigest = null,
   oracleStatus = "pass",
+  unmatchedTicks = 0,
+  warmSealedProtocol = false,
 } = {}) {
   const file = dashboard.files.find((item) => item.id === loop.sourceUnitId);
   const digest = sourceDigest || file.sourceDigest;
@@ -93,6 +96,13 @@ function makeReceipt({
     ticks,
     mapping: { status: mappingStatus, candidates: tickCandidates },
   }];
+  if (unmatchedTicks > 0) positionTicks.push({
+    nodeId: 3,
+    scriptId: "runtime-script",
+    line: 1,
+    ticks: unmatchedTicks,
+    mapping: { status: "unmatched", candidates: [] },
+  });
   const functionRows = functionSamples === 0 ? [] : [{
     nodeId: 2,
     samples: functionSamples,
@@ -139,6 +149,23 @@ function makeReceipt({
     kind: "node-build",
     receiptDigest: ONE,
   });
+  const samplingScripts = [{
+    url: "file:///authenticated-evaluator.mjs",
+    sha256: ONE,
+    bytes: 100,
+    authenticatedScriptIds: ["script-1"],
+    rejectedSameUrlScriptIds: [],
+  }];
+  const samplingMapBindings = [{
+    schema: "sagejs.optimizer-profile-map/v1",
+    digest: TWO,
+    sourceUnitId: sourceUnit.id,
+    generatedSha256: ONE,
+  }];
+  const closureDigest = sha256(canonicalJson({
+    scripts: samplingScripts,
+    mapBindings: samplingMapBindings,
+  }));
   const payload = {
     authority: "host-collector-with-private-evaluator-evidence",
     workload: { id: workloadId },
@@ -174,23 +201,24 @@ function makeReceipt({
       intervalMicroseconds: 1000,
       rawProfileDigest: TWO,
       timeDeltaMicroseconds: 10000,
-      scripts: [{
-        url: "file:///authenticated-evaluator.mjs",
-        sha256: ONE,
-        bytes: 100,
-        authenticatedScriptIds: ["script-1"],
-        rejectedSameUrlScriptIds: [],
-      }],
-      mapBindings: [{
-        schema: "sagejs.optimizer-profile-map/v1",
-        digest: TWO,
-        sourceUnitId: sourceUnit.id,
-        generatedSha256: ONE,
-      }],
+      scripts: samplingScripts,
+      mapBindings: samplingMapBindings,
       functionSampleCounts: counts(functionRows, "samples"),
       functionSamples: functionRows,
       positionTickCounts: counts(positionTicks, "ticks"),
       positionTicks,
+      protocol: {
+        scope: warmSealedProtocol
+          ? "warm-prepared-sealed-generated-javascript-execution"
+          : "cold-generated-javascript-load-and-execution",
+        preparationMicroseconds: warmSealedProtocol ? 100 : 0,
+        warmupRuns: warmSealedProtocol ? 1 : 0,
+        repetitions: warmSealedProtocol ? 3 : 1,
+        declaredArtifactCount: 1,
+        authenticatedArtifactCount: 1,
+        lateArtifactCount: 0,
+        closureDigest,
+      },
     },
     optimizer: {
       reportDigest: ZERO,

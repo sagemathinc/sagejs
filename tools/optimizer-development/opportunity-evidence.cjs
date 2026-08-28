@@ -20,6 +20,7 @@ const {
 } = require("./common.cjs");
 const {
   compilerIdentity,
+  compilerImplementationsCompatible,
   sourceUnitIdentity,
   validateRange,
 } = require("./identity.cjs");
@@ -515,6 +516,11 @@ function sameHostAndEnvironment(left, right) {
     left.configuration.mode === right.configuration.mode;
 }
 
+function sameHostAndMode(left, right) {
+  return same(left.host, right.host) &&
+    left.configuration.mode === right.configuration.mode;
+}
+
 function requireWarmSealedBaseline(profile) {
   const protocol = profile.sampling.protocol;
   assert(protocol && typeof protocol === "object",
@@ -687,7 +693,8 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   const referenced = referencedIds.map((id) => {
     const profile = profilesById.get(id);
     assert(profile, "opportunity evidence.profiles", `missing validated profile ${id}`);
-    assert(same(profile.compiler, normalized.compiler), `profile ${id}.compiler`,
+    assert(compilerImplementationsCompatible(profile.compiler, normalized.compiler),
+      `profile ${id}.compiler`,
       "does not match the reviewed compiler implementation tuple");
     exactProfileOutput(`profile ${id}`, profile, workload);
     return profile;
@@ -698,8 +705,8 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
     `profile ${baseline.id}.sourceBundle`,
     "does not contain the exact reviewed source unit");
   requireWarmSealedBaseline(baseline);
-  assert(sameHostAndEnvironment(baseline, feasible), "opportunity evidence.profiles",
-    "baseline and feasible profiles must use the same host, mode, and environment");
+  assert(sameHostAndMode(baseline, feasible), "opportunity evidence.profiles",
+    "baseline and feasible profiles must use the same host and language mode");
   assert(attributedRegionTicks(baseline, scopedSources) > 0,
     "opportunity evidence.profiles.baselineId",
     "baseline profile has no authenticated samples for the exact region");

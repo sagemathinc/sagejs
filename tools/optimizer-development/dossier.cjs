@@ -95,6 +95,7 @@ function generateDossier({ overlay, dashboard, profileReceipts, regionId, adapte
       dashboardId: checkedOverlay.dashboard.id,
       overlayId: checkedOverlay.id,
       profileIds,
+      opportunityEvidenceIds: copy(overlayRegion.opportunityEvidenceIds || []),
     },
     excerpt: copy(details.excerpt),
     currentIr: copy(details.currentIr),

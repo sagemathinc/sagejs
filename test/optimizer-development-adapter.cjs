@@ -77,6 +77,34 @@ test("compiler options may differ but compiler implementation dimensions must ag
   assert.equal(incompatible.unmatched[0].reason.code, "evidence.stale-compiler");
 });
 
+test("sealed artifact coverage does not misclassify runtime and native ticks as map failures", () => {
+  const staticView = production.dashboard(production.validateDashboard(dashboard));
+  const receipt = makeReceipt({
+    dashboard,
+    loop: selected,
+    ticks: 1,
+    unmatchedTicks: 999,
+    warmSealedProtocol: true,
+  });
+  const view = production.profile(
+    production.validateProfileReceipt(receipt), staticView,
+  );
+  assert.deepEqual(view.samples, {
+    total: 1000,
+    attributed: 1,
+    ambiguous: 0,
+    unmatched: 999,
+  });
+  assert.equal(view.coverage, 1);
+
+  const late = structuredClone(receipt);
+  late.sampling.protocol.lateArtifactCount = 1;
+  const { documentIdentity } = require("../tools/optimizer-development/common.cjs");
+  late.id = documentIdentity(late);
+  assert.throws(() => production.validateProfileReceipt(late),
+    /lateArtifactCount.*must be zero/);
+});
+
 test("stale and ambiguous source mappings fail closed while conserving every tick", () => {
   const staticView = production.dashboard(production.validateDashboard(dashboard));
   const stale = production.profile(production.validateProfileReceipt(makeReceipt({

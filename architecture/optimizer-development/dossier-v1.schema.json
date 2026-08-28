@@ -12,7 +12,10 @@
     "classification": { "enum": ["algorithmic", "representational", "boundary-dominated", "proof-dominated", "unclassified"] },
     "recommendedAction": { "enum": ["already-optimized", "reject", "investigate", "algorithm-work", "compiler-campaign"] },
     "source": { "$ref": "wire-definitions-v1.schema.json#/$defs/source" },
-    "evidence": { "type": "object" },
+    "evidence": {
+      "type": "object",
+      "required": ["dashboardId", "overlayId", "profileIds", "opportunityEvidenceIds"]
+    },
     "excerpt": { "type": "object" },
     "currentIr": { "type": "object" },
     "facts": { "type": "object" },
