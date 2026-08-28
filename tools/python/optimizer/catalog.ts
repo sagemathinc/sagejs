@@ -9,6 +9,7 @@ import {
   fixedExtensionRegionPass,
 } from "./passes/fixed-extension-region";
 import { modularBatchPlugin } from "./passes/modular-batch-region";
+import { binary64NestedAllReconnaissancePlugin } from "./passes/binary64-nested-all-region";
 import { modularSequenceReconnaissancePlugin } from "./passes/modular-sequence-region";
 
 export interface OptimizerPassPlugin {
@@ -85,6 +86,7 @@ export const optimizerCatalog = createOptimizerCatalog([
     pass: strictFloatRegionPass,
   },
   modularBatchPlugin,
+  binary64NestedAllReconnaissancePlugin,
   modularSequenceReconnaissancePlugin,
   {
     id: fixedExtensionRegionPass.id,

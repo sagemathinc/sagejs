@@ -1,7 +1,98 @@
 {
   "schema": "sagejs.optimizer-reason-registry/v1",
-  "id": "sha256:cc2159f7257276997e8fff67812fc81e2b75a63dd0c6dbc44c0bb3d4f5a5dc4f",
+  "id": "sha256:a3a3689c1adae87328424e455fd664f57802fabbfde7bfc6b81d1d0c5042d406",
   "codes": [
+    {
+      "code": "binary64-nested-all.builtin-all-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural all call lacks a proved stable identity with the Python builtin.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.indexed-pair-shape-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The ordered index-zero and index-one reads lack a proved exact fixed-pair shape.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.inner-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The inner generator iterable lacks proved exact-list iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.interrupt-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Interrupt checks and catchability are not proved equivalent for a fused reduction.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.math-isfinite-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural math.isfinite calls lack a proved stable identity with the strict binary64 predicate.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.native-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Native conversion, isolation, interrupt, and result-boundary costs have not been evaluated.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.outer-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer generator iterable lacks proved exact-list iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.short-circuit-order-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Nested generator traversal, pair conjunction, and all short-circuit order are not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.strict-binary64-fixed-pair-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Inner elements lack an authenticated exact fixed-pair strict binary64 representation.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.strict-binary64-scalar-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Inner elements lack an authenticated strict binary64 scalar representation.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.untouched-restart-fallback-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Guard failure cannot yet prove restart through the untouched expression before observable iterator advancement.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.v8-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No verified V8 lowering is registered for nested binary64 all reductions.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.wasm-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "WebAssembly copy, residency, interrupt, and result-boundary costs have not been evaluated.",
+      "detailFields": []
+    },
     {
       "code": "bounded-integer.bigint-per-operation-cost",
       "kind": "target-rejection",
