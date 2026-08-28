@@ -336,15 +336,21 @@ def ρσ_machine_field_sequence_length(source):
 def ρσ_prepare_strict_float_region(values, count):
     """Validate and unbox one transactional strict-binary64 region."""
     return r"""%js (() => {
-        if (!Number.isSafeInteger(count) || count < 0 ||
-            !Array.isArray(values) || values.length === 0) return null;
+        const reject = (reason) => Object.freeze({ ok: false, reason });
+        if (!Number.isSafeInteger(count) || count < 0) {
+            return reject("invalid-iteration-count");
+        }
+        if (!Array.isArray(values) || values.length === 0) {
+            return reject("missing-live-ins");
+        }
         const unboxed = [];
         for (const value of values) {
             const number = ρσ_strict_float_unbox(value);
-            if (number === null) return null;
+            if (number === null) return reject("live-in-not-binary64");
             unboxed.push(number);
         }
         return Object.freeze({
+            ok: true,
             values: Object.freeze(unboxed),
             materialize: ρσ_float_result,
         });
@@ -356,27 +362,32 @@ def ρσ_prepare_machine_field_region(
 ):
     """Validate and unbox one transactional finite-field region."""
     return r"""%js (() => {
+        const reject = (reason) => Object.freeze({ ok: false, reason });
         if (!Number.isSafeInteger(count) || count < 0 ||
             !Array.isArray(values) || values.length === 0 ||
             !Array.isArray(sequences) || !Array.isArray(integer_constants) ||
             !Number.isSafeInteger(operation_mask)) {
-            return null;
+            return reject("invalid-entry-contract");
         }
         const elementBrand = ρσ_brand_machine_field_element.__brand;
-        if (!(elementBrand instanceof WeakSet) ||
-            values.some((value) => !elementBrand.has(value))) return null;
+        if (!(elementBrand instanceof WeakSet)) {
+            return reject("element-brand-unavailable");
+        }
+        if (values.some((value) => !elementBrand.has(value))) {
+            return reject("live-in-brand-mismatch");
+        }
         const parent = values[0]._parent;
-        if (parent === undefined) return null;
+        if (parent === undefined) return reject("parent-missing");
         const tupleBrand = ρσ_math_tuple.__machineFieldSequenceBrand;
         if (sequences.some((source) =>
             !(tupleBrand instanceof WeakSet) || !tupleBrand.has(source) ||
-            source.length < count)) return null;
+            source.length < count)) return reject("sequence-shape-mismatch");
         const ADD = 1, SUB = 2, MUL = 4, NEG = 8, EQUAL = 16, STREAM = 32,
               POW = 64, IADD = 128, ISUB = 256, IMUL = 512,
               INTEGER_COERCION = 1024;
         const required = (bit) => (operation_mask & bit) !== 0;
         if (required(INTEGER_COERCION) !== (integer_constants.length !== 0)) {
-            return null;
+            return reject("integer-coercion-contract-mismatch");
         }
         const streaming = required(STREAM);
         const inplaceNames = [];
@@ -396,7 +407,9 @@ def ρσ_prepare_machine_field_region(
             return true;
         };
         if (inplaceNames.length !== 0 &&
-            values.some((value) => !hasNoInplaceDescriptor(value))) return null;
+            values.some((value) => !hasNoInplaceDescriptor(value))) {
+            return reject("in-place-descriptor-mutated");
+        }
 
         const validIntegerCoercion = () => {
             if (!required(INTEGER_COERCION)) return true;
@@ -455,7 +468,9 @@ def ρσ_prepare_machine_field_region(
                 callDescriptor?.value === parent._machineIntegerCallValue &&
                 Reflect.get(parent, "__call__") === parent._machineIntegerCall;
         };
-        if (!validIntegerCoercion()) return null;
+        if (!validIntegerCoercion()) {
+            return reject("machine-integer-coercion-mutated");
+        }
         const canonicalIntegerConstants = (modulus) => {
             const result = Object.create(null);
             if (!required(INTEGER_COERCION)) return Object.freeze(result);
@@ -483,16 +498,22 @@ def ρσ_prepare_machine_field_region(
             (!required(POW) || primePrototype?.__pow__ === parent._closedScalarPow) &&
             (!required(EQUAL) || primePrototype?._eq_ === parent._closedScalarEq)) {
             const modulus = parent._residueModulus;
-            if (!Number.isSafeInteger(modulus) || modulus <= 1) return null;
+            if (!Number.isSafeInteger(modulus) || modulus <= 1) {
+                return reject("modulus-out-of-range");
+            }
             const integerConstants = canonicalIntegerConstants(modulus);
-            if (integerConstants === null) return null;
+            if (integerConstants === null) {
+                return reject("integer-constant-invalid");
+            }
             const scalar = (value) =>
                 elementBrand.has(value) &&
                 value._parent === parent &&
                 Object.getPrototypeOf(value) === primePrototype &&
                 Number.isInteger(value._value) && value._value >= 0 &&
                 value._value < modulus;
-            if (!values.every(scalar)) return null;
+            if (!values.every(scalar)) {
+                return reject("live-in-representation-mismatch");
+            }
             const unboxed = new Float64Array(values.length);
             for (let index = 0; index < values.length; index++) {
                 unboxed[index] = values[index]._value;
@@ -505,7 +526,9 @@ def ρσ_prepare_machine_field_region(
                 }
                 const packed = new Float64Array(count);
                 for (let index = 0; index < count; index++) {
-                    if (!scalar(source[index])) return null;
+                    if (!scalar(source[index])) {
+                        return reject("sequence-element-representation-mismatch");
+                    }
                     packed[index] = source[index]._value;
                 }
                 packedSequences.push(packed);
@@ -514,7 +537,7 @@ def ρσ_prepare_machine_field_region(
                 parent._lastCompilerOptimizationRoute =
                     "v8-number-residue-region";
             }
-            return { kind: 1, parent, prototype: primePrototype, modulus,
+            return { ok: true, kind: 1, parent, prototype: primePrototype, modulus,
                      values: unboxed, sequences: packedSequences,
                      elementBrand, streaming, integerConstants };
         }
@@ -529,12 +552,14 @@ def ρσ_prepare_machine_field_region(
             !tupleBrand.has(modulusCoefficients) ||
             modulusCoefficients.length !== degree ||
             parentPrototype?._from_machine_coordinates !==
-                parent._machineExtensionMaterialize) return null;
+                parent._machineExtensionMaterialize) {
+            return reject("extension-parent-contract-mismatch");
+        }
         if ((required(ADD) && extensionPrototype?._add_ !== parent._machineExtensionAdd) ||
             (required(SUB) && extensionPrototype?._sub_ !== parent._machineExtensionSub) ||
             (required(MUL) && extensionPrototype?._mul_ !== parent._machineExtensionMul) ||
             (required(EQUAL) && extensionPrototype?._eq_ !== parent._machineExtensionEq)) {
-            return null;
+            return reject("extension-operation-contract-mismatch");
         }
         if (required(NEG)) {
             let negOwner = extensionPrototype;
@@ -547,7 +572,9 @@ def ρσ_prepare_machine_field_region(
             if (negOwner !== parent._machineExtensionNegOwner ||
                 negDescriptor?.get !== parent._machineExtensionNegGetter ||
                 Reflect.get(negOwner, "__neg__", negOwner) !==
-                    parent._machineExtensionNeg) return null;
+                    parent._machineExtensionNeg) {
+                return reject("extension-negation-contract-mismatch");
+            }
         }
         if (required(POW)) {
             let powOwner = extensionPrototype;
@@ -560,7 +587,9 @@ def ρσ_prepare_machine_field_region(
             if (powOwner !== parent._machineExtensionPowOwner ||
                 powDescriptor?.get !== parent._machineExtensionPowGetter ||
                 Reflect.get(powOwner, "__pow__", powOwner) !==
-                    parent._machineExtensionPow) return null;
+                    parent._machineExtensionPow) {
+                return reject("extension-power-contract-mismatch");
+            }
         }
         const modulus = parent._machineExtensionPrime;
         const exactBound = (degree + 2) * modulus * modulus + modulus;
@@ -568,9 +597,11 @@ def ρσ_prepare_machine_field_region(
             modulusCoefficients.some((coefficient) =>
                 !Number.isInteger(coefficient) || coefficient < 0 ||
                 coefficient >= modulus) ||
-            !Number.isSafeInteger(exactBound)) return null;
+            !Number.isSafeInteger(exactBound)) {
+            return reject("extension-modulus-out-of-range");
+        }
         const integerConstants = canonicalIntegerConstants(modulus);
-        if (integerConstants === null) return null;
+        if (integerConstants === null) return reject("integer-constant-invalid");
         const scalar = (value) => {
             if (!elementBrand.has(value) ||
                 value._parent !== parent ||
@@ -582,7 +613,9 @@ def ρσ_prepare_machine_field_region(
                     Number.isInteger(coefficient) && coefficient >= 0 &&
                     coefficient < modulus);
         };
-        if (!values.every(scalar)) return null;
+        if (!values.every(scalar)) {
+            return reject("live-in-representation-mismatch");
+        }
         const unboxed = new Float64Array(degree * values.length);
         for (let index = 0; index < values.length; index++) {
             for (let component = 0; component < degree; component++) {
@@ -598,7 +631,9 @@ def ρσ_prepare_machine_field_region(
             }
             const packed = new Float64Array(degree * count);
             for (let index = 0; index < count; index++) {
-                if (!scalar(source[index])) return null;
+                if (!scalar(source[index])) {
+                    return reject("sequence-element-representation-mismatch");
+                }
                 for (let component = 0; component < degree; component++) {
                     packed[degree * index + component] =
                         source[index]._machineCoordinates[component];
@@ -610,7 +645,7 @@ def ρσ_prepare_machine_field_region(
             parent._lastCompilerOptimizationRoute =
                 "v8-extension-tuple-region";
         }
-        return { kind: 2, parent, prototype: extensionPrototype, modulus,
+        return { ok: true, kind: 2, parent, prototype: extensionPrototype, modulus,
                  degree, modulusCoefficients, values: unboxed,
                  sequences: packedSequences, elementBrand, streaming,
                  integerConstants };

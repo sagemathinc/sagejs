@@ -30,11 +30,14 @@ print(optimization_contract(recurrence))
 try:
     recurrence(3, 2, 3)
 except RuntimeError as error:
-    print(type(error).__name__, str(error).startswith('optimizer runtime guard failed for '))
+    print(type(error).__name__, str(error))
 `);
     assert.match(result.stdout, /^54\.0\n/);
     assert.match(result.stdout, /'guard_failure': 'error'/);
-    assert.match(result.stdout, /RuntimeError True\n$/);
+    assert.match(
+      result.stdout,
+      /RuntimeError optimizer runtime guard failed for .*: live-in-not-binary64\n$/,
+    );
     assert.equal(result.optimization.authority, "compiler-verified-static");
     assert.equal(result.optimization.program.contracts.length, 1);
     assert.equal(result.optimization.program.contracts[0].status, "satisfied");
