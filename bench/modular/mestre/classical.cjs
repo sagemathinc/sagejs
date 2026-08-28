@@ -55,6 +55,16 @@ for characteristic in ${JSON.stringify(primes)}:
         matvec = time.perf_counter() - begin
 
         begin = time.perf_counter()
+        prime_image = operator.apply_mod(source, 1000003)
+        prime_matvec = time.perf_counter() - begin
+
+        begin = time.perf_counter()
+        block_image = operator.apply_block(
+            [source, vector(ZZ, list(reversed(list(source))))], 1000003
+        )
+        block_matvec = time.perf_counter() - begin
+
+        begin = time.perf_counter()
         candidate = operator.wiedemann_certificate(
             1000003, projections=2, replay_count=1, proof="replay"
         )
@@ -77,12 +87,24 @@ for characteristic in ${JSON.stringify(primes)}:
             "construction_seconds": construction,
             "first_t2_seconds": first_operator,
             "matvec_seconds": matvec,
+            "prime_matvec_seconds": prime_matvec,
+            "block_two_matvec_seconds": block_matvec,
             "projected_krylov_seconds": krylov,
             "exact_charpoly_seconds": exact_seconds,
             "dimension": module.dimension(),
             "nonzeros": operator.nnz(),
+            "csr_word_count": (
+                len(operator.structural_data()["row_offsets"])
+                + len(operator.structural_data()["columns"])
+                + len(operator.structural_data()["values"])
+            ),
+            "structural_json_characters": len(
+                json.dumps(operator.structural_data(), sort_keys=True)
+            ),
             "row_sum": int(operator.row_sums()[0]),
             "matvec_checksum": int(sum(image)),
+            "prime_matvec_checksum": int(sum(prime_image)),
+            "block_matvec_checksums": tuple(int(sum(value)) for value in block_image),
             "candidate_degree": candidate.degree(),
             "candidate_exact": candidate.is_exact(),
             "candidate_proof_method": candidate.proof_method(),
