@@ -1,0 +1,8 @@
+{
+  "schema": "sagejs.optimizer-profile-receipt/v1",
+  "identity": { "id": "profile:ambiguous" },
+  "dashboardIdentity": { "id": "dashboard:current" },
+  "workloadIdentity": { "id": "workload:ambiguous" },
+  "samples": { "total": 11, "unmatched": 0, "ambiguous": 1 },
+  "observations": [{ "regionIdentity": { "id": "region:not-current" }, "selfSamples": 10, "inclusiveMilliseconds": 10, "exclusiveMilliseconds": 10 }]
+}

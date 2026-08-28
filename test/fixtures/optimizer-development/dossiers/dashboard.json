@@ -1,0 +1,71 @@
+{
+  "schema": "sagejs.optimizer-opportunity-dashboard/v2",
+  "identity": { "id": "dashboard:current" },
+  "regions": [
+    {
+      "identity": { "id": "region:hot" },
+      "source": { "path": "src/lib/example.py", "start": { "line": 10, "column": 4 }, "end": { "line": 12, "column": 20 } },
+      "owningFunction": { "qualifiedName": "hot" },
+      "staticEvidence": {
+        "primaryClass": "compiler-rejection",
+        "nearMissDistance": 1,
+        "semanticRisk": "medium",
+        "compilationAndCodeSizeRisk": "low",
+        "matureAlgorithmDisposition": "not-duplicate",
+        "fallbackPreservingTransformation": true,
+        "optimizer": {
+          "selected": false,
+          "reasonCodes": ["bounded-integer.mutable-buffer-access"],
+          "decisions": [{ "pass": "math.bounded-integer-region.v1", "decision": "rejected" }],
+          "remediation": ["prove exclusive mutable buffer ownership"],
+          "ir": { "schema": "sagejs.math-ir/v1", "blocks": [{ "id": "entry", "operations": ["load", "mul", "store"] }] }
+        },
+        "facts": { "proven": ["parent.fixed"], "guarded": ["range.word-sized"] },
+        "unresolvedProofSet": ["bounded-integer.mutable-buffer-access"],
+        "sourceExcerpt": "for i in range(n):\n    values[i] = values[i] * a",
+        "candidateRepresentations": ["packed-u32"],
+        "candidateTargets": ["v8", "wasm"],
+        "existingComponents": ["bounded-integer-range-analysis"],
+        "proposedContract": { "require": ["math.bounded-integer-region.v1"] },
+        "heldOutHypotheses": [{ "consumer": "src/lib/other.py:other", "shape": "packed modular map" }],
+        "adversarialCases": ["aliased input/output", "overflow bound edge"],
+        "obligations": {
+          "dynamicFallback": "untouched source region",
+          "independentVerifier": "separate plan verifier",
+          "oracles": ["CPython", "O0", "independent modular oracle"],
+          "benchmarks": { "cold": true, "warm": true, "compile": true, "size": true, "resource": true },
+          "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+        },
+        "estimatedCosts": { "allocationsPerIteration": 2, "coercionsPerIteration": 1 },
+        "witness": { "kind": "curated", "path": "test/fixtures/hot.py" },
+        "claimedFiles": ["src/compiler/passes/bounded_integer.ts"],
+        "sharedIntegrationRequirements": ["src/compiler/passes/registry.ts"],
+        "promotionCriteria": { "endToEndMedianImprovementPercent": 10, "exactOutput": true }
+      }
+    },
+    {
+      "identity": { "id": "region:selected" },
+      "source": { "path": "src/lib/example.py", "start": { "line": 20, "column": 4 }, "end": { "line": 21, "column": 20 } },
+      "owningFunction": { "qualifiedName": "selected" },
+      "staticEvidence": { "primaryClass": "compiler-rejection", "nearMissDistance": 0, "matureAlgorithmDisposition": "not-duplicate", "fallbackPreservingTransformation": true, "optimizer": { "selected": true, "ir": { "blocks": [] } }, "heldOutHypotheses": [] }
+    },
+    {
+      "identity": { "id": "region:negative" },
+      "source": { "path": "src/lib/class_groups.py", "start": { "line": 30, "column": 4 }, "end": { "line": 31, "column": 20 } },
+      "owningFunction": { "qualifiedName": "generated_js_candidate" },
+      "staticEvidence": { "primaryClass": "target-mismatch", "optimizer": { "selected": false, "ir": { "blocks": [] } }, "heldOutHypotheses": [] }
+    },
+    {
+      "identity": { "id": "region:algorithm" },
+      "source": { "path": "src/lib/class_groups.py", "start": { "line": 40, "column": 4 }, "end": { "line": 41, "column": 20 } },
+      "owningFunction": { "qualifiedName": "duplicate_proof_state" },
+      "staticEvidence": { "primaryClass": "repeated-proof-state", "optimizer": { "selected": false, "ir": { "blocks": [] } }, "heldOutHypotheses": [] }
+    },
+    {
+      "identity": { "id": "region:cold" },
+      "source": { "path": "src/lib/example.py", "start": { "line": 50, "column": 4 }, "end": { "line": 51, "column": 20 } },
+      "owningFunction": { "qualifiedName": "cold" },
+      "staticEvidence": { "primaryClass": "compiler-rejection", "nearMissDistance": 1, "optimizer": { "selected": false, "ir": { "blocks": [] } }, "heldOutHypotheses": [] }
+    }
+  ]
+}
