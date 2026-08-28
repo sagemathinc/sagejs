@@ -61,6 +61,7 @@ export interface KernelProfileEvaluation {
   evaluation: KernelEvaluation;
   observation: OptimizerProfileObservation;
   sourceMap: OptimizerProfileMap;
+  sourceMaps: readonly OptimizerProfileMap[];
 }
 
 export interface SageOptimizationReport {
@@ -276,7 +277,7 @@ export function createKernelEvaluator({
     globalThis,
     (text) => onOutput(`${text}\n`),
   );
-  runRuntimeBootstrap(
+  const runtimeBootstrap = runRuntimeBootstrap(
     compiler,
     mode,
     compilerFrontends.get(mode)!,
@@ -284,6 +285,18 @@ export function createKernelEvaluator({
   );
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
   runInThisContext('var __name__ = "__main__"; show_js = false;');
+  let optimizerProfileActive = false;
+
+  function assertEvaluatorNotProfileContaminated(): void {
+    if (optimizerProfileActive) {
+      throw new Error("an optimizer profile is already active in this evaluator");
+    }
+    if (runtimeBootstrap.profileContaminated()) {
+      throw new Error(
+        "this evaluator contains profile-instrumented lazy modules and must be closed",
+      );
+    }
+  }
 
   function compile(
     source: string,
@@ -534,6 +547,7 @@ export function createKernelEvaluator({
         suppressResult?: boolean;
       } = {},
     ): KernelEvaluation {
+      assertEvaluatorNotProfileContaminated();
       const timeit = parseTimeitDirective(source);
       if (timeit) source = timeit.source;
       const timing = parseTimeDirective(source, language === "sage");
@@ -576,60 +590,92 @@ export function createKernelEvaluator({
         samplingIntervalMicros?: number;
       } = {},
     ): Promise<KernelProfileEvaluation> {
-      const observerIdentifier = `$ρσ$optimizer_profile_${randomBytes(16).toString("hex")}`;
-      const collector = new CompilerProfileMapCollector(source, filename);
-      const generated = compile(source, filename, language, undefined, {
-        collector,
-        observerIdentifier,
-      });
-      const runNonce = randomBytes(16).toString("hex");
-      const url = `sagejs-profile:///${encodeURIComponent(filename)}` +
-        `?source=${encodeURIComponent(collector.sourceIdentity.id)}&run=${runNonce}`;
-      // A direct eval preserves JavaScript completion values while retaining
-      // the private lexical observer parameter. The sourceURL makes Inspector
-      // expose the exact compiler artifact, not the tiny trusted wrapper.
-      const javascript = `${generated}\n//# sourceURL=${url}\n`;
-      const sourceMap = collector.finish(javascript, url);
-      const events = createPrivateProfileEventCollector();
-      let execution:
-        | ReturnType<typeof measureExecution>
-        | undefined;
-      const observation = await runAuthenticatedNodeProfile({
-        map: sourceMap,
-        javascript,
-        samplingIntervalMicros,
-        privateEvents: events,
-        execute() {
-          const program = compileFunction(
-            `return eval(${JSON.stringify(javascript)});`,
-            [observerIdentifier],
-            { filename: `${url}&wrapper=1` },
-          );
-          execution = measureExecution(() => {
-            if (interruptState) Atomics.store(interruptState, 1, 1);
+      assertEvaluatorNotProfileContaminated();
+      if (optimizerProfileActive) {
+        throw new Error("an optimizer profile is already active in this evaluator");
+      }
+      const preloadedModules = runtimeBootstrap.loadedLazyModules();
+      if (preloadedModules.length !== 0) {
+        throw new Error(
+          "optimizer profiling requires a fresh evaluator before any lazy module is loaded: " +
+            preloadedModules.join(", "),
+        );
+      }
+      optimizerProfileActive = true;
+      try {
+        const observerIdentifier = `$ρσ$optimizer_profile_${randomBytes(16).toString("hex")}`;
+        const collector = new CompilerProfileMapCollector(source, filename);
+        const generated = compile(source, filename, language, undefined, {
+          collector,
+          observerIdentifier,
+        });
+        const runNonce = randomBytes(16).toString("hex");
+        const url = `sagejs-profile:///${encodeURIComponent(filename)}` +
+          `?source=${encodeURIComponent(collector.sourceIdentity.id)}&run=${runNonce}`;
+        // A direct eval preserves JavaScript completion values while retaining
+        // the private lexical observer parameter. The sourceURL makes Inspector
+        // expose the exact compiler artifact, not the tiny trusted wrapper.
+        const javascript = `${generated}\n//# sourceURL=${url}\n`;
+        const sourceMap = collector.finish(javascript, url);
+        const sourceMaps: OptimizerProfileMap[] = [sourceMap];
+        const events = createPrivateProfileEventCollector();
+        let execution:
+          | ReturnType<typeof measureExecution>
+          | undefined;
+        const observation = await runAuthenticatedNodeProfile({
+          map: sourceMap,
+          javascript,
+          samplingIntervalMicros,
+          privateEvents: events,
+          execute(artifacts) {
+            const endRuntimeProfile = runtimeBootstrap.beginOptimizerProfile({
+              observerIdentifier,
+              observer: events.observer,
+              runNonce,
+              declare(map, moduleJavaScript) {
+                artifacts.declare(map, moduleJavaScript);
+                sourceMaps.push(map);
+              },
+            });
             try {
-              global.ρσ_check_interrupt();
-              return program(events.observer);
+              const program = compileFunction(
+                `return eval(${JSON.stringify(javascript)});`,
+                [observerIdentifier],
+                { filename: `${url}&wrapper=1` },
+              );
+              execution = measureExecution(() => {
+                if (interruptState) Atomics.store(interruptState, 1, 1);
+                try {
+                  global.ρσ_check_interrupt();
+                  return program(events.observer);
+                } finally {
+                  if (interruptState) Atomics.store(interruptState, 1, 0);
+                }
+              });
+              return execution.value;
             } finally {
-              if (interruptState) Atomics.store(interruptState, 1, 0);
+              endRuntimeProfile();
             }
-          });
-          return execution.value;
-        },
-      });
-      if (!execution) throw new Error("profiled evaluator did not execute");
-      return {
-        evaluation: evaluationFromValue(
-          execution.value,
-          execution.timing.wallMs,
-          suppressResult,
-        ),
-        observation,
-        sourceMap,
-      };
+          },
+        });
+        if (!execution) throw new Error("profiled evaluator did not execute");
+        return {
+          evaluation: evaluationFromValue(
+            execution.value,
+            execution.timing.wallMs,
+            suppressResult,
+          ),
+          observation,
+          sourceMap,
+          sourceMaps: Object.freeze([...sourceMaps]),
+        };
+      } finally {
+        optimizerProfileActive = false;
+      }
     },
 
     complete(source: string, cursorPosition: number): KernelCompletion {
+      assertEvaluatorNotProfileContaminated();
       const context = completionContext(source, cursorPosition);
       let names: string[];
       try {
@@ -658,6 +704,7 @@ export function createKernelEvaluator({
     },
 
     inspect(source: string, cursorPosition: number): KernelInspection {
+      assertEvaluatorNotProfileContaminated();
       const expression = inspectableExpression(source, cursorPosition);
       if (!expression) return { found: false, text: "" };
       try {
@@ -711,6 +758,9 @@ export function createKernelEvaluator({
     },
 
     close(): void {
+      if (optimizerProfileActive) {
+        throw new Error("cannot close an evaluator while an optimizer profile is active");
+      }
       for (const frontend of compilerFrontends.values()) {
         frontend.close();
       }
