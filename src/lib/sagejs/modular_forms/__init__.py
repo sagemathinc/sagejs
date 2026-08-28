@@ -9,6 +9,7 @@ SparseWiedemannCertificate: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
+ExactHeckeSubspace: Any
 FiniteHeckeSet: Any
 HilbertModularFormsQsqrt3: Any
 HilbertModularFormsQsqrt5: Any
@@ -26,9 +27,13 @@ Qsqrt5HeckePrime: Any
 Qsqrt5PrimeIdeal: Any
 Qsqrt5PrimePowerLevel: Any
 Qsqrt3PrimeIdeal: Any
+Qsqrt3PrimePowerLevel: Any
+QuaternionComponentDegeneracyMap: Any
+QuaternionComponentDegeneracyTrace: Any
 QuaternionComponentHeckeSet: Any
 QuaternionHeckeCorrespondence: Any
 QuaternionIdealComponent: Any
+QuaternionOldNewDecomposition: Any
 classical_modular_polynomial: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
@@ -47,6 +52,7 @@ __all__ = [
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
+    "ExactHeckeSubspace",
     "FiniteHeckeSet",
     "HilbertModularFormsQsqrt3",
     "HilbertModularFormsQsqrt5",
@@ -64,9 +70,13 @@ __all__ = [
     "Qsqrt5PrimeIdeal",
     "Qsqrt5PrimePowerLevel",
     "Qsqrt3PrimeIdeal",
+    "Qsqrt3PrimePowerLevel",
+    "QuaternionComponentDegeneracyMap",
+    "QuaternionComponentDegeneracyTrace",
     "QuaternionComponentHeckeSet",
     "QuaternionHeckeCorrespondence",
     "QuaternionIdealComponent",
+    "QuaternionOldNewDecomposition",
     "classical_modular_polynomial",
     "berlekamp_massey",
     "dimension_supersingular_module",
@@ -92,9 +102,13 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         return getattr(finite_hecke, name)
     if name in [
         "ComponentCuspidalHeckeOperator",
+        "ExactHeckeSubspace",
+        "QuaternionComponentDegeneracyMap",
+        "QuaternionComponentDegeneracyTrace",
         "QuaternionComponentHeckeSet",
         "QuaternionHeckeCorrespondence",
         "QuaternionIdealComponent",
+        "QuaternionOldNewDecomposition",
     ]:
         from . import algebraic
 
@@ -102,6 +116,7 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
     if name in [
         "HilbertModularFormsQsqrt3",
         "Qsqrt3PrimeIdeal",
+        "Qsqrt3PrimePowerLevel",
         "sqrt3_hecke_prime",
         "sqrt3_prime_ideals",
     ]:

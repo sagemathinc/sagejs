@@ -19,6 +19,15 @@ const fixture = JSON.parse(
     "utf8",
   ),
 );
+const primePowerFixture = JSON.parse(
+  readFileSync(
+    path.join(
+      root,
+      "test/fixtures/mestre-hilbert-sqrt3-prime-power-magma-2.18-5.json",
+    ),
+    "utf8",
+  ),
+);
 
 test("the Q(sqrt(3)) Magma packet has pinned source provenance", () => {
   assert.equal(fixture.generated_with, "Magma V2.18-5");
@@ -36,6 +45,64 @@ test("the Q(sqrt(3)) Magma packet has pinned source provenance", () => {
     );
   }
 });
+
+test("the Q(sqrt(3)) prime-power Magma packet has pinned provenance", () => {
+  assert.equal(primePowerFixture.generated_with, "Magma V2.18-5");
+  const source = readFileSync(path.join(root, primePowerFixture.script));
+  assert.equal(
+    createHash("sha256").update(source).digest("hex"),
+    primePowerFixture.script_sha256,
+  );
+  assert.deepEqual(primePowerFixture.dimensions, {
+    sagejs_ambient: 18,
+    cuspidal: 16,
+    old: 4,
+    new: 12,
+  });
+});
+
+test(
+  "Q(sqrt(3)) prime-power traces reproduce Magma old/new invariants",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+from sagejs.modular_forms import HilbertModularFormsQsqrt3
+
+fixture = ${JSON.stringify(primePowerFixture)}
+H = HilbertModularFormsQsqrt3((13,9,2))
+assert H.level().basis() == ((169,0),(108,1))
+assert H.dimension() == fixture['dimensions']['sagejs_ambient']
+assert H.cuspidal_dimension() == fixture['dimensions']['cuspidal']
+assert tuple(C.orbit_sizes() for C in H.ideal_class_components()) == tuple(tuple(row) for row in fixture['component_orbit_sizes'])
+assert tuple(str(value) for value in H.mass_weights()) == tuple(fixture['sagejs_mass_weights'])
+
+D1,Dp = H.degeneracy_maps()
+assert D1.direction() == 'downward' and Dp.direction() == 'downward'
+assert (D1.matrix().rank(),Dp.matrix().rank()) == tuple(fixture['trace_ranks'])
+assert all(sum(D1.matrix()[row,column] for row in range(H.dimension())) == 13 for column in range(H.dimension()))
+assert all(sum(Dp.matrix()[row,column] for row in range(H.dimension())) == 13 for column in range(H.dimension()))
+for ell in [2,3]:
+    assert D1.commutes_with_hecke(ell)
+    assert Dp.commutes_with_hecke(ell)
+
+decomposition = H.old_new_decomposition()
+old = decomposition.old_subspace()
+new = decomposition.new_subspace()
+assert old.dimension() == fixture['dimensions']['old']
+assert new.dimension() == fixture['dimensions']['new']
+assert new.basis_matrix() == matrix(QQ,fixture['sagejs_new_basis'])
+for ell in [2,3]:
+    assert list(new.T(ell).charpoly().coefficients()) == fixture['new_hecke_charpolys'][str(ell)]
+(H.dimension(),H.cuspidal_dimension(),old.dimension(),new.dimension())
+`);
+      assert.equal(result.repr, "(18, 16, 4, 12)");
+    } finally {
+      await session.close();
+    }
+  },
+);
 
 test(
   "Q(sqrt(3)) reconstructs the two-component Magma Brandt operators",

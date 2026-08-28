@@ -16,9 +16,12 @@ import sagejs.runtime as runtime
 
 from .algebraic import (
     ComponentCuspidalHeckeOperator,
+    ExactHeckeSubspace,
+    QuaternionComponentDegeneracyTrace,
     QuaternionComponentHeckeSet,
     QuaternionHeckeCorrespondence,
     QuaternionIdealComponent,
+    QuaternionOldNewDecomposition,
 )
 from .sparse_hecke import SparseHeckeOperator
 
@@ -64,6 +67,9 @@ class Qsqrt3PrimeIdeal:
     def basis(self) -> tuple[tuple[int, int], tuple[int, int]]:
         return ((self._prime, 0), ((-self._root) % self._prime, 1))
 
+    def prime_power(self, exponent: Any) -> Qsqrt3PrimePowerLevel:
+        return Qsqrt3PrimePowerLevel(self, exponent)
+
     def contains(self, constant: Any, radical: Any = 0) -> bool:
         first = _integer(constant, "ideal test constant")
         second = _integer(radical, "ideal test radical coefficient")
@@ -82,6 +88,83 @@ class Qsqrt3PrimeIdeal:
 
     def __repr__(self) -> str:
         return "Prime ideal (" + str(self._prime) + ", sqrt(3)-" + str(self._root) + ")"
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class Qsqrt3PrimePowerLevel:
+    r"""The compatible level $\mathfrak p^e$ above $13$ in $\mathbf Q(\sqrt3)$."""
+
+    def __init__(self, prime_ideal: Qsqrt3PrimeIdeal, exponent: Any = 1) -> None:
+        if not isinstance(prime_ideal, Qsqrt3PrimeIdeal):
+            raise TypeError("a Qsqrt3PrimeIdeal is required")
+        power = _integer(exponent, "prime-power exponent")
+        if power < 1 or power > 2:
+            raise NotImplementedError("the checked Q(sqrt(3)) packet supports e=1,2")
+        prime = prime_ideal.rational_prime()
+        modulus = prime**power
+        root = prime_ideal.root()
+        current_modulus = prime
+        for _step in range(1, power):
+            value = root * root - 3
+            correction = (
+                -(value // current_modulus) * pow(2 * root, prime - 2, prime) % prime
+            )
+            root += correction * current_modulus
+            current_modulus *= prime
+        if (root * root - 3) % modulus != 0:
+            raise ArithmeticError("the Q(sqrt(3)) Hensel lift is inconsistent")
+        self._prime_ideal = prime_ideal
+        self._exponent = power
+        self._modulus = modulus
+        self._root = root % modulus
+        runtime.object.freeze(self)
+
+    def prime_ideal(self) -> Qsqrt3PrimeIdeal:
+        return self._prime_ideal
+
+    def rational_prime(self) -> int:
+        return self._prime_ideal.rational_prime()
+
+    def exponent(self) -> int:
+        return self._exponent
+
+    def modulus(self) -> int:
+        return self._modulus
+
+    def norm(self) -> int:
+        return self._modulus
+
+    def root(self) -> int:
+        return self._root
+
+    def basis(self) -> tuple[tuple[int, int], tuple[int, int]]:
+        return ((self._modulus, 0), ((-self._root) % self._modulus, 1))
+
+    def lower_level(self) -> Qsqrt3PrimePowerLevel:
+        if self._exponent == 1:
+            raise ValueError("a prime level has no positive lower exponent")
+        return Qsqrt3PrimePowerLevel(self._prime_ideal, self._exponent - 1)
+
+    def fingerprint(self) -> tuple[Any, ...]:
+        return (
+            "Qsqrt3-prime-power-v1",
+            self._prime_ideal.fingerprint(),
+            self._exponent,
+            self._modulus,
+            self._root,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Qsqrt3PrimePowerLevel)
+            and self._prime_ideal == other._prime_ideal
+            and self._exponent == other._exponent
+        )
+
+    def __repr__(self) -> str:
+        return repr(self._prime_ideal) + "^" + str(self._exponent)
 
     __str__ = __repr__
     toString = __repr__
@@ -285,6 +368,154 @@ _TRANSITIONS: dict[
 }
 
 
+# One compatible local packet at levels 13a and 13a^2.  These are reductions
+# modulo 169 of a single Magma quaternion splitting, so lowering every matrix
+# modulo 13 is mathematically meaningful (and is checked by the degeneracy
+# publisher).
+_POWER_UNIT_MATRICES: tuple[tuple[Matrix2, ...], ...] = (
+    (
+        (168, 0, 0, 168),
+        (51, 111, 111, 119),
+        (95, 60, 60, 13),
+        (58, 51, 50, 111),
+        (36, 107, 107, 132),
+        (50, 111, 111, 118),
+        (156, 60, 60, 74),
+        (132, 62, 62, 36),
+        (111, 119, 118, 58),
+        (145, 2, 2, 131),
+        (82, 120, 120, 87),
+        (94, 60, 60, 12),
+        (109, 156, 95, 60),
+        (131, 167, 167, 145),
+        (0, 1, 168, 0),
+        (120, 87, 87, 49),
+        (60, 75, 12, 109),
+        (2, 24, 131, 167),
+        (12, 109, 109, 94),
+        (60, 74, 13, 109),
+        (2, 131, 24, 167),
+        (60, 12, 75, 109),
+        (62, 37, 36, 107),
+        (62, 36, 37, 107),
+    ),
+    (
+        (168, 0, 0, 168),
+        (67, 82, 113, 103),
+        (125, 133, 163, 45),
+        (32, 97, 65, 30),
+        (66, 82, 113, 102),
+        (45, 36, 6, 125),
+        (30, 72, 104, 32),
+        (60, 74, 13, 109),
+        (131, 167, 167, 145),
+        (127, 156, 126, 43),
+        (60, 12, 75, 109),
+        (82, 120, 120, 87),
+        (30, 109, 140, 77),
+        (126, 156, 126, 42),
+        (163, 95, 63, 6),
+        (77, 60, 29, 30),
+        (16, 38, 7, 154),
+        (154, 131, 162, 16),
+        (107, 132, 133, 62),
+        (24, 167, 167, 38),
+        (101, 58, 27, 68),
+        (111, 118, 119, 58),
+        (161, 70, 102, 8),
+        (54, 107, 138, 115),
+    ),
+)
+
+_POWER_GOOD_TRANSITIONS: dict[
+    str, tuple[int, tuple[tuple[int, int, tuple[Matrix2, ...]], ...]]
+] = {
+    "2": (
+        2,
+        (
+            (0, 1, ((65, 154, 45, 45), (40, 147, 146, 128), (109, 0, 0, 109))),
+            (1, 0, ((126, 43, 42, 13), (102, 87, 56, 66), (168, 0, 0, 168))),
+        ),
+    ),
+    "3": (
+        3,
+        (
+            (
+                0,
+                1,
+                (
+                    (154, 110, 111, 125),
+                    (89, 59, 60, 79),
+                    (41, 142, 143, 127),
+                    (142, 128, 127, 26),
+                ),
+            ),
+            (
+                1,
+                0,
+                (
+                    (44, 37, 5, 124),
+                    (89, 104, 105, 49),
+                    (79, 22, 53, 28),
+                    (124, 132, 164, 44),
+                ),
+            ),
+        ),
+    ),
+}
+
+_POWER_LEVEL_TRANSITIONS: tuple[tuple[int, int, tuple[Matrix2, ...]], ...] = (
+    (
+        0,
+        0,
+        (
+            (23, 10, 73, 86),
+            (25, 83, 85, 82),
+            (111, 11, 57, 58),
+            (106, 154, 155, 1),
+            (107, 134, 131, 62),
+            (148, 85, 86, 19),
+            (148, 133, 26, 130),
+            (92, 97, 37, 14),
+            (145, 104, 166, 130),
+            (45, 146, 148, 61),
+            (82, 86, 84, 25),
+            (88, 11, 73, 79),
+            (130, 99, 39, 38),
+            (153, 43, 106, 123),
+        ),
+    ),
+    (
+        1,
+        1,
+        (
+            (56, 17, 47, 112),
+            (116, 91, 60, 52),
+            (148, 168, 28, 127),
+            (137, 68, 36, 138),
+            (25, 83, 85, 82),
+            (111, 11, 57, 58),
+            (162, 33, 125, 5),
+            (85, 168, 138, 23),
+            (124, 131, 165, 44),
+            (107, 134, 131, 62),
+            (54, 157, 18, 113),
+            (104, 35, 65, 3),
+            (129, 35, 144, 147),
+            (31, 2, 78, 78),
+        ),
+    ),
+)
+
+_POWER_REPRESENTATIVES = {
+    1: ((11, 6), (4, 11)),
+    2: (
+        (76, 88, 41, 47, 91, 90, 142, 173, 165),
+        (32, 101, 83, 48, 90, 111, 95, 173, 44),
+    ),
+}
+
+
 def _finite_set(dense_entry_limit: Any) -> QuaternionComponentHeckeSet:
     # The content-addressed Magma packet uses ((1,-1),(1,-4)) and
     # ((1,4),(1,-6)).  Our compact P^1 encoding sends (0,1) to 0 and
@@ -310,31 +541,94 @@ def _finite_set(dense_entry_limit: Any) -> QuaternionComponentHeckeSet:
     )
 
 
+def _reduce_matrix(matrix: Matrix2, modulus: int) -> Matrix2:
+    return tuple(value % modulus for value in matrix)  # type: ignore[return-value]
+
+
+def _power_finite_set(
+    exponent: int, dense_entry_limit: Any
+) -> QuaternionComponentHeckeSet:
+    modulus = 13**exponent
+    components = tuple(
+        QuaternionIdealComponent(
+            "I" + str(index + 1),
+            modulus,
+            tuple(_reduce_matrix(matrix, modulus) for matrix in units),
+            residue_prime=13,
+            representatives=_POWER_REPRESENTATIVES[exponent][index],
+        )
+        for index, units in enumerate(_POWER_UNIT_MATRICES)
+    )
+    correspondences = []
+    for label in ["2", "3"]:
+        norm, transitions = _POWER_GOOD_TRANSITIONS[label]
+        reduced = []
+        for source, target, matrices in transitions:
+            reduced.append(
+                (
+                    source,
+                    target,
+                    tuple(_reduce_matrix(matrix, modulus) for matrix in matrices),
+                )
+            )
+        correspondences.append(QuaternionHeckeCorrespondence(label, norm, reduced))
+    return QuaternionComponentHeckeSet(
+        components,
+        correspondences,
+        dense_entry_limit=dense_entry_limit,
+    )
+
+
+def _power_level_correspondence() -> QuaternionHeckeCorrespondence:
+    return QuaternionHeckeCorrespondence("13a", 13, _POWER_LEVEL_TRANSITIONS)
+
+
 class HilbertModularFormsQsqrt3:
     r"""Full Brandt module of level $(13,\sqrt3-9)$ over $\mathbf Q(\sqrt3)$."""
 
     def __init__(
         self,
-        level: Qsqrt3PrimeIdeal | Iterable[Any] = _LEVEL,
+        level: Qsqrt3PrimeIdeal | Qsqrt3PrimePowerLevel | Iterable[Any] = _LEVEL,
         *,
         dense_entry_limit: Any = 1000000,
+        _compatible_power_packet: bool = False,
     ) -> None:
-        if not isinstance(level, Qsqrt3PrimeIdeal):
+        if not isinstance(level, (Qsqrt3PrimeIdeal, Qsqrt3PrimePowerLevel)):
             data = tuple(level)
-            if len(data) != 2:
-                raise ValueError("the Q(sqrt(3)) level is specified by (13, 9)")
-            level = Qsqrt3PrimeIdeal(data[0], data[1], "13a")
-        if level != _LEVEL:
+            if len(data) not in [2, 3]:
+                raise ValueError(
+                    "the Q(sqrt(3)) level is specified by (13, 9[, exponent])"
+                )
+            prime_level = Qsqrt3PrimeIdeal(data[0], data[1], "13a")
+            level = (
+                prime_level
+                if len(data) == 2
+                else Qsqrt3PrimePowerLevel(prime_level, data[2])
+            )
+        prime_ideal = (
+            level if isinstance(level, Qsqrt3PrimeIdeal) else level.prime_ideal()
+        )
+        if prime_ideal != _LEVEL:
             raise NotImplementedError("the second-field slice implements level 13a")
         self._level = level
         self._dense_entry_limit = _integer(dense_entry_limit, "dense entry limit")
-        self._finite_set = _finite_set(self._dense_entry_limit)
+        self._compatible_power_packet = bool(_compatible_power_packet)
+        exponent = 1 if isinstance(level, Qsqrt3PrimeIdeal) else level.exponent()
+        if exponent == 1 and not self._compatible_power_packet:
+            self._finite_set = _finite_set(self._dense_entry_limit)
+        else:
+            self._finite_set = _power_finite_set(exponent, self._dense_entry_limit)
 
     def base_field(self) -> str:
         return "Q(sqrt(3))"
 
-    def level(self) -> Qsqrt3PrimeIdeal:
+    def level(self) -> Qsqrt3PrimeIdeal | Qsqrt3PrimePowerLevel:
         return self._level
+
+    def level_exponent(self) -> int:
+        if isinstance(self._level, Qsqrt3PrimeIdeal):
+            return 1
+        return self._level.exponent()
 
     def weight(self) -> tuple[int, int]:
         return (2, 2)
@@ -364,6 +658,10 @@ class HilbertModularFormsQsqrt3:
 
     def hecke_operator(self, index: Any) -> SparseHeckeOperator:
         prime = sqrt3_hecke_prime(index)
+        if self.level_exponent() == 2 and prime.label() not in ["2", "3"]:
+            raise NotImplementedError(
+                "the prime-power packet currently records T_2 and T_3"
+            )
         return self._finite_set.hecke_operator(prime.label())
 
     T = hecke_operator
@@ -378,9 +676,57 @@ class HilbertModularFormsQsqrt3:
     def cuspidal_matrix(self, index: Any) -> Any:
         return self.cuspidal_operator(index).matrix()
 
+    def compatible_lower_module(self) -> HilbertModularFormsQsqrt3:
+        if self.level_exponent() != 2:
+            raise ValueError("only level exponent two has an adjacent lower module")
+        return HilbertModularFormsQsqrt3(
+            Qsqrt3PrimePowerLevel(_LEVEL, 1),
+            dense_entry_limit=self._dense_entry_limit,
+            _compatible_power_packet=True,
+        )
+
+    def degeneracy_maps(
+        self,
+    ) -> tuple[QuaternionComponentDegeneracyTrace, QuaternionComponentDegeneracyTrace]:
+        lower = self.compatible_lower_module()
+        identity = QuaternionComponentDegeneracyTrace(
+            self._finite_set,
+            lower._finite_set,
+            dense_entry_limit=self._dense_entry_limit,
+        )
+        prime = QuaternionComponentDegeneracyTrace(
+            self._finite_set,
+            lower._finite_set,
+            _power_level_correspondence(),
+            dense_entry_limit=self._dense_entry_limit,
+        )
+        return (identity, prime)
+
+    def old_new_decomposition(self) -> QuaternionOldNewDecomposition:
+        identity, prime = self.degeneracy_maps()
+        decomposition = QuaternionOldNewDecomposition(identity, prime)
+        for index in ["2", "3"]:
+            if not identity.commutes_with_hecke(index):
+                raise ArithmeticError("identity degeneracy is not Hecke equivariant")
+            if not prime.commutes_with_hecke(index):
+                raise ArithmeticError("prime degeneracy is not Hecke equivariant")
+            decomposition.old_subspace().hecke_matrix(index)
+            decomposition.new_subspace().hecke_matrix(index)
+        return decomposition
+
+    def old_subspace(self) -> ExactHeckeSubspace:
+        return self.old_new_decomposition().old_subspace()
+
+    def new_subspace(self) -> ExactHeckeSubspace:
+        return self.old_new_decomposition().new_subspace()
+
     def __repr__(self) -> str:
-        return "Hilbert Brandt module over Q(sqrt(3)) of level 13a, dimension " + str(
-            self.dimension()
+        level = "13a" if self.level_exponent() == 1 else "13a^2"
+        return (
+            "Hilbert Brandt module over Q(sqrt(3)) of level "
+            + level
+            + ", dimension "
+            + str(self.dimension())
         )
 
     __str__ = __repr__
@@ -390,6 +736,7 @@ class HilbertModularFormsQsqrt3:
 __all__ = [
     "HilbertModularFormsQsqrt3",
     "Qsqrt3PrimeIdeal",
+    "Qsqrt3PrimePowerLevel",
     "sqrt3_hecke_prime",
     "sqrt3_prime_ideals",
 ]

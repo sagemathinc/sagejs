@@ -1,0 +1,47 @@
+{
+  "schema": "sagejs.mestre-hilbert-sqrt3-prime-power-magma-oracle.v1",
+  "generated_with": "Magma V2.18-5",
+  "captured_at": "2026-08-28",
+  "script": "bench/modular/mestre/magma-hilbert-sqrt3-prime-power-oracle.m",
+  "script_sha256": "6728bee3ba721e9c30eabd4c4af6fd50c68432f538ddaa67fe84c9198ca62a91",
+  "conventions": {
+    "field": "Q(a), a^2-3=0",
+    "level": "13a^2",
+    "weight": [2, 2],
+    "algorithm": "common kernel of Magma downward degeneracy traces",
+    "basis_comparison": "invariant dimensions and Hecke characteristic polynomials; the Sage.js basis is bound to its independently reconstructed component packet"
+  },
+  "dimensions": {
+    "sagejs_ambient": 18,
+    "cuspidal": 16,
+    "old": 4,
+    "new": 12
+  },
+  "component_orbit_sizes": [
+    [24, 24, 24, 24, 24, 24, 24, 12, 2],
+    [24, 24, 24, 24, 24, 24, 24, 6, 8]
+  ],
+  "sagejs_mass_weights": [
+    "1", "1", "1", "1", "1", "1", "1", "1/2", "1/12",
+    "1", "1", "1", "1", "1", "1", "1", "1/4", "1/3"
+  ],
+  "trace_ranks": [4, 4],
+  "sagejs_new_basis": [
+    [1, 0, 0, 0, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0, -2, -12, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 1, 0, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, -3],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, -4, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, -3],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, -1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, -4, -3],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, -4, -3]
+  ],
+  "new_hecke_charpolys": {
+    "2": [0, 0, -156, 0, 476, 0, -393, 0, 131, 0, -19, 0, 1],
+    "3": [0, 0, -624, 0, 1334, 0, -877, 0, 226, 0, -25, 0, 1]
+  }
+}

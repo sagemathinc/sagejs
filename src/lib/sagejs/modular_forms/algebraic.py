@@ -52,17 +52,39 @@ def _normalize_matrix(matrix: Iterable[Any], modulus: int) -> Matrix2:
     if len(data) != 4:
         raise ValueError("a projective matrix needs four entries")
     determinant = (data[0] * data[3] - data[1] * data[2]) % modulus
-    if determinant == 0:
-        raise ValueError("a projective matrix must be invertible")
+    try:
+        _inverse(determinant, modulus)
+    except ZeroDivisionError:
+        raise ValueError("a projective matrix must be invertible") from None
     return (data[0], data[1], data[2], data[3])
 
 
 def _projective_matrix(matrix: Matrix2, modulus: int) -> Matrix2:
     for value in matrix:
-        if value % modulus:
+        try:
             scale = _inverse(value, modulus)
             return tuple((entry * scale) % modulus for entry in matrix)  # type: ignore[return-value]
+        except ZeroDivisionError:
+            pass
     raise ArithmeticError("an invertible matrix cannot be projectively zero")
+
+
+def _prime_power(modulus: int, residue_prime: Any | None) -> tuple[int, int]:
+    if residue_prime is None:
+        if modulus < 3 or not sage.is_prime(modulus):
+            raise ValueError("a composite projective modulus needs its residue prime")
+        return (modulus, 1)
+    prime = _integer(residue_prime, "projective residue prime")
+    if prime < 3 or not sage.is_prime(prime):
+        raise ValueError("the projective residue characteristic must be odd prime")
+    remaining = modulus
+    exponent = 0
+    while remaining % prime == 0:
+        remaining //= prime
+        exponent += 1
+    if remaining != 1 or exponent < 1:
+        raise ValueError("the projective modulus must be a power of its prime")
+    return (prime, exponent)
 
 
 def _matrix_product(left: Matrix2, right: Matrix2, modulus: int) -> Matrix2:
@@ -85,17 +107,19 @@ class QuaternionIdealComponent:
         modulus: Any,
         unit_matrices: Iterable[Iterable[Any]],
         *,
+        residue_prime: Any | None = None,
         representatives: Iterable[Any] | None = None,
     ) -> None:
-        prime = _integer(modulus, "projective modulus")
-        if prime < 3 or not sage.is_prime(prime):
-            raise ValueError("the first component engine requires an odd prime modulus")
-        units = tuple(_normalize_matrix(matrix, prime) for matrix in unit_matrices)
+        modulus_value = _integer(modulus, "projective modulus")
+        prime, exponent = _prime_power(modulus_value, residue_prime)
+        units = tuple(
+            _normalize_matrix(matrix, modulus_value) for matrix in unit_matrices
+        )
         if not units:
             raise ValueError("a quaternion component needs its projective unit group")
         projective_units: list[Matrix2] = []
         for matrix in units:
-            normalized = _projective_matrix(matrix, prime)
+            normalized = _projective_matrix(matrix, modulus_value)
             if normalized not in projective_units:
                 projective_units.append(normalized)
         identity = (1, 0, 0, 1)
@@ -103,17 +127,29 @@ class QuaternionIdealComponent:
             raise ArithmeticError("the projective unit data has no identity")
         for left in projective_units:
             for right in projective_units:
-                product = _projective_matrix(_matrix_product(left, right, prime), prime)
+                product = _projective_matrix(
+                    _matrix_product(left, right, modulus_value), modulus_value
+                )
                 if product not in projective_units:
                     raise ArithmeticError("the projective unit data is not a group")
-        table = [-1 for _index in range(prime + 1)]
+        lower_chart_size = modulus_value // prime
+        projective_cardinality = modulus_value + lower_chart_size
+        table = [-1 for _index in range(projective_cardinality)]
         automatic_representatives = []
         orbit_sizes = []
-        for point in range(prime + 1):
+        for point in range(projective_cardinality):
             if table[point] >= 0:
                 continue
             orbit_index = len(automatic_representatives)
-            orbit = {self.act(point, matrix, modulus=prime) for matrix in units}
+            orbit = {
+                self.act(
+                    point,
+                    matrix,
+                    modulus=modulus_value,
+                    residue_prime=prime,
+                )
+                for matrix in projective_units
+            }
             if len(projective_units) % len(orbit) != 0:
                 raise ArithmeticError(
                     "a component orbit size does not divide its group"
@@ -131,7 +167,7 @@ class QuaternionIdealComponent:
                 _integer(value, "component orbit representative")
                 for value in representatives
             )
-            if any(value < 0 or value > prime for value in requested):
+            if any(value < 0 or value >= projective_cardinality for value in requested):
                 raise IndexError("a component orbit representative is out of range")
             old_orbits = tuple(table[value] for value in requested)
             if len(old_orbits) != len(automatic_representatives) or len(
@@ -145,7 +181,10 @@ class QuaternionIdealComponent:
             orbit_sizes = [orbit_sizes[old] for old in old_orbits]
             automatic_representatives = list(requested)
         self._label = str(label)
-        self._modulus = prime
+        self._modulus = modulus_value
+        self._residue_prime = prime
+        self._exponent = exponent
+        self._lower_chart_size = lower_chart_size
         self._units = units
         self._projective_unit_order = len(projective_units)
         self._table = tuple(table)
@@ -154,24 +193,72 @@ class QuaternionIdealComponent:
         runtime.object.freeze(self)
 
     @staticmethod
-    def act(point: Any, matrix: Iterable[Any], *, modulus: Any) -> int:
-        prime = _integer(modulus, "projective modulus")
+    def act(
+        point: Any,
+        matrix: Iterable[Any],
+        *,
+        modulus: Any,
+        residue_prime: Any | None = None,
+    ) -> int:
+        modulus_value = _integer(modulus, "projective modulus")
+        prime, _exponent = _prime_power(modulus_value, residue_prime)
+        lower_chart_size = modulus_value // prime
+        cardinality = modulus_value + lower_chart_size
         position = _integer(point, "projective point")
-        if position < 0 or position > prime:
+        if position < 0 or position >= cardinality:
             raise IndexError("projective point is out of range")
-        normalized = _normalize_matrix(matrix, prime)
-        if position == 0:
-            first, second = 0, 1
+        normalized = _normalize_matrix(matrix, modulus_value)
+        return QuaternionIdealComponent.transport(
+            position,
+            normalized,
+            modulus=modulus_value,
+            residue_prime=prime,
+        )
+
+    @staticmethod
+    def transport(
+        point: Any,
+        matrix: Iterable[Any],
+        *,
+        modulus: Any,
+        residue_prime: Any | None = None,
+    ) -> int:
+        """Apply a possibly singular local correspondence to a primitive point."""
+        modulus_value = _integer(modulus, "projective modulus")
+        prime, _exponent = _prime_power(modulus_value, residue_prime)
+        lower_chart_size = modulus_value // prime
+        cardinality = modulus_value + lower_chart_size
+        position = _integer(point, "projective point")
+        if position < 0 or position >= cardinality:
+            raise IndexError("projective point is out of range")
+        data = tuple(
+            _integer(value, "projective matrix entry") % modulus_value
+            for value in matrix
+        )
+        if len(data) != 4:
+            raise ValueError("a projective matrix needs four entries")
+        if position < lower_chart_size:
+            first, second = prime * position, 1
         else:
-            first, second = 1, position - 1
-        a, b, c, d = normalized
+            first, second = 1, position - lower_chart_size
+        a, b, c, d = data
         # Magma's ``ProjectiveLine(Type := "Matrix")`` stores a projective
         # point as a column and the residue splitting acts on the left.
-        image_first = (a * first + b * second) % prime
-        image_second = (c * first + d * second) % prime
-        if image_first == 0:
-            return 0
-        return 1 + image_second * _inverse(image_first, prime) % prime
+        image_first = (a * first + b * second) % modulus_value
+        image_second = (c * first + d * second) % modulus_value
+        if image_first % prime != 0:
+            return (
+                lower_chart_size
+                + image_second * _inverse(image_first, modulus_value) % modulus_value
+            )
+        if image_second % prime != 0:
+            normalized_first = (
+                image_first * _inverse(image_second, modulus_value) % modulus_value
+            )
+            if normalized_first % prime != 0:
+                raise ArithmeticError("projective normalization left the lower chart")
+            return normalized_first // prime
+        raise ArithmeticError("a nonprimitive vector has no projective class")
 
     def label(self) -> str:
         return self._label
@@ -179,8 +266,14 @@ class QuaternionIdealComponent:
     def modulus(self) -> int:
         return self._modulus
 
+    def residue_prime(self) -> int:
+        return self._residue_prime
+
+    def exponent(self) -> int:
+        return self._exponent
+
     def projective_cardinality(self) -> int:
-        return self._modulus + 1
+        return len(self._table)
 
     def projective_unit_order(self) -> int:
         return self._projective_unit_order
@@ -197,13 +290,59 @@ class QuaternionIdealComponent:
         return self._representatives
 
     def representatives(self) -> tuple[tuple[int, int], ...]:
-        answer = []
-        for point in self._representatives:
-            if point == 0:
-                answer.append((0, 1))
-            else:
-                answer.append((1, point - 1))
-        return tuple(answer)
+        return tuple(self.coordinates(point) for point in self._representatives)
+
+    def coordinates(self, point: Any) -> tuple[int, int]:
+        position = _integer(point, "projective point")
+        if position < 0 or position >= self.projective_cardinality():
+            raise IndexError("projective point is out of range")
+        if position < self._lower_chart_size:
+            return (self._residue_prime * position, 1)
+        return (1, position - self._lower_chart_size)
+
+    def standard_index(self, first: Any, second: Any) -> int:
+        x = _integer(first, "projective first coordinate") % self._modulus
+        y = _integer(second, "projective second coordinate") % self._modulus
+        if x % self._residue_prime != 0:
+            return (
+                self._lower_chart_size + y * _inverse(x, self._modulus) % self._modulus
+            )
+        if y % self._residue_prime != 0:
+            normalized = x * _inverse(y, self._modulus) % self._modulus
+            if normalized % self._residue_prime != 0:
+                raise ArithmeticError("projective normalization left the lower chart")
+            return normalized // self._residue_prime
+        raise ArithmeticError("a nonprimitive vector has no projective class")
+
+    def reduces_to(self, lower: QuaternionIdealComponent) -> bool:
+        if not isinstance(lower, QuaternionIdealComponent):
+            return False
+        if self._label != lower._label:
+            return False
+        if self._residue_prime != lower._residue_prime:
+            return False
+        if self._exponent != lower._exponent + 1:
+            return False
+        if self._modulus != lower._modulus * self._residue_prime:
+            return False
+        modulus = lower._modulus
+        # Tuple hashing in the translated runtime is deliberately not an
+        # arithmetic identity contract; this packet has only 24 units, so use
+        # equality-based membership just as the orbit constructors do.
+        lower_units = [_projective_matrix(unit, modulus) for unit in lower._units]
+        return all(
+            _projective_matrix(
+                (
+                    unit[0] % modulus,
+                    unit[1] % modulus,
+                    unit[2] % modulus,
+                    unit[3] % modulus,
+                ),
+                modulus,
+            )
+            in lower_units
+            for unit in self._units
+        )
 
     def orbit_sizes(self) -> tuple[int, ...]:
         return self._orbit_sizes
@@ -403,7 +542,10 @@ class QuaternionComponentHeckeSet(FiniteHeckeSet):
             target_component = self._components[target]
             for matrix in matrices:
                 point = QuaternionIdealComponent.act(
-                    representative, matrix, modulus=self._modulus
+                    representative,
+                    matrix,
+                    modulus=self._modulus,
+                    residue_prime=source_component.residue_prime(),
                 )
                 target_orbit = target_component.orbit_index(point)
                 target_index = self._offsets[target] + target_orbit
@@ -448,6 +590,434 @@ class QuaternionComponentHeckeSet(FiniteHeckeSet):
             self.hecke_operator(index),
             dense_entry_limit=self._finite_hecke_dense_limit,
         )
+
+
+class QuaternionComponentDegeneracyMap:
+    """One exact adjacent-level map between compatible component packets."""
+
+    def __init__(
+        self,
+        domain: QuaternionComponentHeckeSet,
+        codomain: QuaternionComponentHeckeSet,
+        correspondence: QuaternionHeckeCorrespondence | None = None,
+        *,
+        dense_entry_limit: Any = 1000000,
+    ) -> None:
+        if not isinstance(domain, QuaternionComponentHeckeSet) or not isinstance(
+            codomain, QuaternionComponentHeckeSet
+        ):
+            raise TypeError("component Hecke sets are required")
+        high_components = domain.components()
+        low_components = codomain.components()
+        if len(high_components) != len(low_components):
+            raise ValueError("degeneracy packets need the same ideal components")
+        if not all(
+            high.reduces_to(low)
+            for high, low in zip(high_components, low_components, strict=True)
+        ):
+            raise ValueError("degeneracy packets do not have compatible local data")
+        if correspondence is not None and not isinstance(
+            correspondence, QuaternionHeckeCorrespondence
+        ):
+            raise TypeError("a quaternion transporter correspondence is required")
+
+        row_offsets = [0]
+        columns = []
+        values = []
+        expected_degree = (
+            1 if correspondence is None else high_components[0].residue_prime()
+        )
+        for row in range(domain.cardinality()):
+            source, orbit = domain._component_orbit(row)
+            high_component = high_components[source]
+            representative = high_component.representative_indices()[orbit]
+            counts: dict[int, int] = {}
+            if correspondence is None:
+                targets = ((source, representative),)
+            else:
+                images = []
+                for transition_source, target, matrices in correspondence.transitions():
+                    if transition_source != source:
+                        continue
+                    for matrix in matrices:
+                        try:
+                            point = QuaternionIdealComponent.transport(
+                                representative,
+                                matrix,
+                                modulus=high_component.modulus(),
+                                residue_prime=high_component.residue_prime(),
+                            )
+                        except ArithmeticError:
+                            continue
+                        images.append((target, point))
+                targets = tuple(images)
+            for target, point in targets:
+                high_target = high_components[target]
+                low_target = low_components[target]
+                first, second = high_target.coordinates(point)
+                reduced = low_target.standard_index(
+                    first % low_target.modulus(), second % low_target.modulus()
+                )
+                target_orbit = low_target.orbit_index(reduced)
+                target_index = codomain.component_offsets()[target] + target_orbit
+                counts[target_index] = counts.get(target_index, 0) + 1
+            if sum(counts.values()) != expected_degree:
+                raise ArithmeticError("a degeneracy row has the wrong degree")
+            for column in sorted(counts):
+                columns.append(column)
+                values.append(counts[column])
+            row_offsets.append(len(columns))
+
+        label = "identity" if correspondence is None else correspondence.label()
+        self._domain = domain
+        self._codomain = codomain
+        self._label = label
+        self._operator = SparseHeckeOperator(
+            sage.QQ,
+            domain.cardinality(),
+            codomain.cardinality(),
+            row_offsets,
+            columns,
+            values,
+            index=label,
+            name="Sparse quaternion-component degeneracy map " + label,
+            dense_entry_limit=dense_entry_limit,
+        )
+        runtime.object.freeze(self)
+
+    def domain(self) -> QuaternionComponentHeckeSet:
+        return self._domain
+
+    def codomain(self) -> QuaternionComponentHeckeSet:
+        return self._codomain
+
+    def label(self) -> str:
+        return self._label
+
+    def sparse_operator(self) -> SparseHeckeOperator:
+        return self._operator
+
+    def matrix(self) -> Any:
+        return self._operator.matrix()
+
+    def pullback(self, vector: Any) -> Any:
+        return self._operator.apply(vector)
+
+    def pushforward(self, vector: Any) -> Any:
+        return self._operator.transpose_apply(vector)
+
+    def commutes_with_hecke(self, index: Any) -> bool:
+        high = self._domain.hecke_operator(index)
+        low = self._codomain.hecke_operator(index)
+        for row in range(self._domain.cardinality()):
+            if high._product_row(self._operator, row) != self._operator._product_row(
+                low, row
+            ):
+                return False
+        return True
+
+
+class QuaternionComponentDegeneracyTrace:
+    r"""One downward trace used at an adjacent prime-power level.
+
+    At level $\mathfrak p^e$ with $e\geq 2$, the robust old/new algorithm uses
+    the common kernel of the identity and $\mathfrak p$ trace operators.  This
+    is also the convention used by Magma's definite Hilbert modular-form
+    implementation.  The stored matrix acts on row vectors on the right; the
+    public Hecke operators act on function columns, so equivariance is checked
+    against their transposes.
+    """
+
+    def __init__(
+        self,
+        domain: QuaternionComponentHeckeSet,
+        codomain: QuaternionComponentHeckeSet,
+        correspondence: QuaternionHeckeCorrespondence | None = None,
+        *,
+        dense_entry_limit: Any = 1000000,
+    ) -> None:
+        if not isinstance(domain, QuaternionComponentHeckeSet) or not isinstance(
+            codomain, QuaternionComponentHeckeSet
+        ):
+            raise TypeError("component Hecke sets are required")
+        high_components = domain.components()
+        low_components = codomain.components()
+        if len(high_components) != len(low_components):
+            raise ValueError("degeneracy packets need the same ideal components")
+        if not all(
+            high.reduces_to(low)
+            for high, low in zip(high_components, low_components, strict=True)
+        ):
+            raise ValueError("degeneracy packets do not have compatible local data")
+        if correspondence is not None and not isinstance(
+            correspondence, QuaternionHeckeCorrespondence
+        ):
+            raise TypeError("a quaternion transporter correspondence is required")
+
+        size = domain.cardinality()
+        row_data: list[dict[int, int]] = [{} for _index in range(size)]
+        if correspondence is None:
+            high_offsets = domain.component_offsets()
+            for component_index, (high, low) in enumerate(
+                zip(high_components, low_components, strict=True)
+            ):
+                fibers: list[list[int]] = [
+                    [] for _point in range(low.projective_cardinality())
+                ]
+                for point in range(high.projective_cardinality()):
+                    first, second = high.coordinates(point)
+                    reduced = low.standard_index(
+                        first % low.modulus(), second % low.modulus()
+                    )
+                    fibers[reduced].append(point)
+                offset = high_offsets[component_index]
+                for representative in high.representative_indices():
+                    first, second = high.coordinates(representative)
+                    reduced = low.standard_index(
+                        first % low.modulus(), second % low.modulus()
+                    )
+                    counts: dict[int, int] = {}
+                    for point in fibers[reduced]:
+                        orbit = high.orbit_index(point)
+                        counts[orbit] = counts.get(orbit, 0) + 1
+                    for column in counts:
+                        target_column = offset + column
+                        for row, multiplicity in counts.items():
+                            target_row = offset + row
+                            previous = row_data[target_row].get(target_column)
+                            if previous is not None and previous != multiplicity:
+                                raise ArithmeticError(
+                                    "the identity trace has incompatible fibre counts"
+                                )
+                            row_data[target_row][target_column] = multiplicity
+            expected_column_degree = high_components[0].residue_prime()
+            column_degrees = [0 for _index in range(size)]
+            for row in range(size):
+                for column, value in row_data[row].items():
+                    column_degrees[column] += value
+            if any(value != expected_column_degree for value in column_degrees):
+                raise ArithmeticError("an identity trace fibre has the wrong degree")
+            label = "identity-trace"
+        else:
+            # First form the bad-prime row correspondence.  Exactly one of the
+            # norm-plus-one singular transporters kills each primitive point;
+            # the remaining norm-many images give U_p.  Magma's downward trace
+            # is its transpose in our function-column convention.
+            offsets = domain.component_offsets()
+            image_rows: list[dict[int, int]] = [{} for _index in range(size)]
+            expected_degree = high_components[0].residue_prime()
+            for row in range(size):
+                source, orbit = domain._component_orbit(row)
+                high = high_components[source]
+                representative = high.representative_indices()[orbit]
+                for transition_source, target, matrices in correspondence.transitions():
+                    if transition_source != source:
+                        continue
+                    for matrix in matrices:
+                        try:
+                            point = QuaternionIdealComponent.transport(
+                                representative,
+                                matrix,
+                                modulus=high.modulus(),
+                                residue_prime=high.residue_prime(),
+                            )
+                        except ArithmeticError:
+                            continue
+                        column = offsets[target] + high_components[target].orbit_index(
+                            point
+                        )
+                        image_rows[row][column] = image_rows[row].get(column, 0) + 1
+                if sum(image_rows[row].values()) != expected_degree:
+                    raise ArithmeticError("a prime trace row has the wrong degree")
+            for row in range(size):
+                for column, value in image_rows[row].items():
+                    row_data[column][row] = value
+            label = correspondence.label() + "-trace"
+
+        row_offsets = [0]
+        columns = []
+        values = []
+        for row in row_data:
+            for column in sorted(row):
+                columns.append(column)
+                values.append(row[column])
+            row_offsets.append(len(columns))
+        self._domain = domain
+        self._codomain = codomain
+        self._label = label
+        self._operator = SparseHeckeOperator(
+            sage.QQ,
+            size,
+            size,
+            row_offsets,
+            columns,
+            values,
+            index=label,
+            name="Sparse quaternion-component downward trace " + label,
+            dense_entry_limit=dense_entry_limit,
+        )
+        runtime.object.freeze(self)
+
+    def domain(self) -> QuaternionComponentHeckeSet:
+        return self._domain
+
+    def codomain(self) -> QuaternionComponentHeckeSet:
+        return self._codomain
+
+    def direction(self) -> str:
+        return "downward"
+
+    def label(self) -> str:
+        return self._label
+
+    def sparse_operator(self) -> SparseHeckeOperator:
+        return self._operator
+
+    def matrix(self) -> Any:
+        return self._operator.matrix()
+
+    def kernel_matrix(self) -> Any:
+        return self.matrix().left_kernel_matrix()
+
+    def commutes_with_hecke(self, index: Any) -> bool:
+        hecke = self._domain.hecke_operator(index).matrix()
+        trace = self.matrix()
+        return hecke.transpose() * trace == trace * hecke.transpose()
+
+
+class ExactHeckeSubspace:
+    """An exact rational subspace with verified restricted Hecke actions."""
+
+    def __init__(
+        self,
+        finite_set: QuaternionComponentHeckeSet,
+        basis_rows: Iterable[Any],
+        *,
+        name: str,
+    ) -> None:
+        rows = [list(row) for row in basis_rows]
+        if any(len(row) != finite_set.cardinality() for row in rows):
+            raise ValueError("a subspace basis row has the wrong ambient degree")
+        if rows:
+            source = _global("matrix")(sage.QQ, rows)
+        else:
+            source = _global("matrix")(sage.QQ, 0, finite_set.cardinality(), [])
+        self._finite_set = finite_set
+        self._basis = source.row_space().basis_matrix()
+        self._space = self._basis.row_space()
+        self._name = name
+        runtime.object.freeze(self)
+
+    def ambient_dimension(self) -> int:
+        return self._finite_set.cardinality()
+
+    def dimension(self) -> int:
+        return self._basis.nrows()
+
+    rank = dimension
+
+    def basis_matrix(self) -> Any:
+        return self._basis
+
+    def contains(self, vector: Any) -> bool:
+        entries = _global("vector")(sage.QQ, [sage.QQ(value) for value in vector])
+        if len(entries) != self.ambient_dimension():
+            return False
+        return entries in self._space
+
+    def hecke_matrix(self, index: Any) -> Any:
+        operator = self._finite_set.hecke_operator(index)
+        columns = []
+        for basis_row in self._basis.rows():
+            image_entries = []
+            for row in range(self.ambient_dimension()):
+                total = sage.QQ(0)
+                for column, multiplicity in operator.row(row):
+                    total += sage.QQ(multiplicity) * sage.QQ(basis_row[column])
+                image_entries.append(total)
+            image = _global("vector")(sage.QQ, image_entries)
+            if not self.contains(image):
+                raise ArithmeticError("the exact subspace is not Hecke invariant")
+            coordinates = self._basis.transpose().solve_right(image)
+            columns.append(list(coordinates))
+        rows = []
+        for row in range(self.dimension()):
+            rows.append([columns[column][row] for column in range(self.dimension())])
+        return _global("matrix")(sage.QQ, rows)
+
+    T = hecke_matrix
+
+    def __repr__(self) -> str:
+        return self._name + " of dimension " + str(self.dimension())
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class QuaternionOldNewDecomposition:
+    """The exact old/new decomposition from two downward degeneracy traces."""
+
+    def __init__(
+        self,
+        identity_map: QuaternionComponentDegeneracyTrace,
+        prime_map: QuaternionComponentDegeneracyTrace,
+    ) -> None:
+        if not isinstance(
+            identity_map, QuaternionComponentDegeneracyTrace
+        ) or not isinstance(prime_map, QuaternionComponentDegeneracyTrace):
+            raise TypeError("two quaternion degeneracy traces are required")
+        if (
+            identity_map.domain() is not prime_map.domain()
+            or identity_map.codomain() is not prime_map.codomain()
+        ):
+            raise ValueError(
+                "oldspace maps must share exact domain and codomain packets"
+            )
+        high = identity_map.domain()
+        traces = identity_map.matrix().augment(prime_map.matrix())
+        new_basis = traces.left_kernel_matrix()
+        new = ExactHeckeSubspace(high, new_basis.rows(), name="Quaternion new subspace")
+        if any(not high.is_cuspidal(row) for row in new.basis_matrix().rows()):
+            raise ArithmeticError("the common trace kernel is not cuspidal")
+
+        # Recover the oldspace as the mass-orthogonal complement of the exact
+        # newspace inside the componentwise cusp space.  This avoids choosing
+        # arbitrary upward lifts and makes the pairing convention explicit.
+        constraints = []
+        offsets = high.component_offsets()
+        for component in range(high.component_count()):
+            row = [sage.QQ(0) for _index in range(high.cardinality())]
+            for index in range(offsets[component], offsets[component + 1]):
+                row[index] = high.mass(index)
+            constraints.append(row)
+        for basis_vector in new.basis_matrix().rows():
+            constraints.append(
+                [
+                    high.mass(index) * sage.QQ(basis_vector[index])
+                    for index in range(high.cardinality())
+                ]
+            )
+        constraint_matrix = _global("matrix")(sage.QQ, constraints)
+        old_basis = constraint_matrix.right_kernel_matrix()
+        old = ExactHeckeSubspace(high, old_basis.rows(), name="Quaternion old subspace")
+        if old.dimension() + new.dimension() != high.cuspidal_dimension():
+            raise ArithmeticError("old and new dimensions do not fill the cusp space")
+        self._identity_map = identity_map
+        self._prime_map = prime_map
+        self._old = old
+        self._new = new
+        runtime.object.freeze(self)
+
+    def degeneracy_maps(
+        self,
+    ) -> tuple[QuaternionComponentDegeneracyTrace, QuaternionComponentDegeneracyTrace]:
+        return (self._identity_map, self._prime_map)
+
+    def old_subspace(self) -> ExactHeckeSubspace:
+        return self._old
+
+    def new_subspace(self) -> ExactHeckeSubspace:
+        return self._new
 
 
 class ComponentCuspidalHeckeOperator:
@@ -564,7 +1134,11 @@ class ComponentCuspidalHeckeOperator:
 
 __all__ = [
     "ComponentCuspidalHeckeOperator",
+    "ExactHeckeSubspace",
+    "QuaternionComponentDegeneracyMap",
+    "QuaternionComponentDegeneracyTrace",
     "QuaternionComponentHeckeSet",
     "QuaternionHeckeCorrespondence",
     "QuaternionIdealComponent",
+    "QuaternionOldNewDecomposition",
 ]

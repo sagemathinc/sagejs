@@ -83,6 +83,18 @@ and its cuspidal characteristic polynomials are $x^2-2$, $x^2-2$, $x^2-32$,
 and $x^2-18$. This example genuinely defeats the single-component assumptions
 of the icosian implementation.
 
+The same $\mathbf Q(\sqrt3)$ packet now extends compatibly to level
+$(13,\sqrt3-9)^2$. Its two projective charts contain $182$ local points per
+ideal component and reduce through the Hensel-lifted splitting modulo $13$.
+The resulting two-component Brandt module has ambient dimension $18$ and
+cuspidal dimension $16$. At exponent two, Sage.js follows Magma's robust
+prime-power algorithm: it constructs the identity and bad-prime downward
+traces, proves both have rank $4$ and commute with the good $T_2,T_3$ actions,
+and takes their exact common kernel. The old/new dimensions are $4$ and $12$;
+the new $T_2$ and $T_3$ characteristic polynomials agree with an independent,
+content-addressed Magma 2.18-5 run. No Magma result matrix is used to construct
+the Sage.js operators or subspaces.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
@@ -90,10 +102,10 @@ but cross-platform coordinate sorting must land before the basis digest is
 declared stable. Optimized large-index modular-polynomial construction,
 scalable exact characteristic-polynomial certificates, higher-dimensional
 coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
-the full Hilbert old/new-space layer remain later implementation stages in
-this plan. Phase 6 still requires prime-power local compatibility and
-degeneracy/new-space support for the general multi-component engine; the
-second-field and independent-Magma milestones are complete.
+broader real-quadratic arithmetic constructors remain later implementation
+stages in this plan. Phase 6's required second field, multi-component
+prime-power compatibility, degeneracy traces, and exact old/new decomposition
+are complete for the checked $\mathbf Q(\sqrt3)$ witness.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse
