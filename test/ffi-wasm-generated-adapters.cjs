@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { mkdtemp } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
@@ -10,7 +10,7 @@ const { pathToFileURL } = require("node:url");
 const test = require("node:test");
 const { WASI } = require("node:wasi");
 
-const { build, toolchain } = require(
+const { build, toolchainAvailable } = require(
   "../scripts/build-ffi-wasm-resource-adapter.cjs"
 );
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
@@ -25,15 +25,6 @@ const root = join(__dirname, "..");
 
 function registry() {
   return loadRegistry({ root });
-}
-
-function hasWasmFlintToolchain() {
-  const current = toolchain();
-  return existsSync(current.clang) && existsSync(current.sysroot) &&
-    current.prefixes.every((prefix) =>
-      existsSync(join(prefix.path, "include")) &&
-      existsSync(join(prefix.path, "lib", `lib${prefix.name}.a`))
-    );
 }
 
 async function generatedModule(artifact, stem) {
@@ -382,7 +373,7 @@ test("borrowed resource views retain and follow their owned root", async () => {
 });
 
 test("generated packed adapter executes through real FLINT Wasm", {
-  skip: hasWasmFlintToolchain()
+  skip: toolchainAvailable()
     ? false
     : "pinned FLINT Wasm toolchain is not available",
 }, async () => {

@@ -2,7 +2,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync, readFileSync, rmSync } = require("node:fs");
+const { readFileSync, rmSync } = require("node:fs");
 const { mkdtemp } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
@@ -12,7 +12,7 @@ const { WASI } = require("node:wasi");
 
 const {
   build,
-  toolchain,
+  toolchainAvailable,
 } = require("../scripts/build-ffi-wasm-resource-adapter.cjs");
 const { loadRegistry } = require("../tools/ffi/declarations.cjs");
 const {
@@ -40,15 +40,6 @@ const functionIds = [
 
 function flintDeclaration() {
   return loadRegistry({ root }).byId.get("flint");
-}
-
-function hasWasmFlintToolchain() {
-  const current = toolchain();
-  return existsSync(current.clang) && existsSync(current.sysroot) &&
-    current.prefixes.every((prefix) =>
-      existsSync(join(prefix.path, "include")) &&
-      existsSync(join(prefix.path, "lib", `lib${prefix.name}.a`))
-    );
 }
 
 function closeAll(backend, values) {
@@ -110,7 +101,7 @@ test("FmpzMatrix Wasm surface is selected entirely from declarations", () => {
 });
 
 test("generated FmpzMatrix resources execute through real FLINT Wasm", {
-  skip: hasWasmFlintToolchain()
+  skip: toolchainAvailable()
     ? false
     : "Sage.js FLINT Wasm toolchain is not available",
 }, async () => {
