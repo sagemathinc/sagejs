@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-workload-catalog/v1",
-  "id": "sha256:a711c357396a268b0b098759d3084b41a0378dc0c057b7fe9f0ffa873b151fb9",
+  "id": "sha256:ae1110def261664ed55b4ff13b5c0b16e4190e02938ae58629f8ae877cb41714",
   "workloads": [
     {
       "capabilities": [
@@ -817,7 +817,7 @@
         "digest": "db5849a9285c9d55d5189a537414a65700dfa72b9c5b0a46a35f5b2b3b738cf8",
         "id": "hyperelliptic-local-reduction"
       },
-      "id": "sha256:8933c121be5198cd10927cd0461386e05dd3fc3d718947623fd3faa3c9ec0906",
+      "id": "sha256:7df121d9b9a4dfa273e93073d4484609d1fa8f3c878206711bb04ab5ea32ea5b",
       "input": {
         "digest": "1e42997b9371a824986384fdf0312e29498bf1f554f13d67705d188c62bd8e14",
         "kind": "deterministic-generator",
@@ -887,7 +887,7 @@
           },
           "policy": {
             "optimizerSelectionClaim": "none-workload-evidence-only",
-            "timingBoundary": "production-and-exact-oracle-are-separate-uninstrumented-phases"
+            "timingBoundary": "production-normalization-factor-and-exact-oracle-are-separate-uninstrumented-phases"
           },
           "profiles": {
             "smoke": {
@@ -924,6 +924,10 @@
         {
           "id": "exact-oracle",
           "label": "exact certified Euler-factor projection outside production timing"
+        },
+        {
+          "id": "normalization-factor",
+          "label": "normalization-factor composite timed independently while preserving the public Euler-factor digest"
         },
         {
           "id": "prepare",

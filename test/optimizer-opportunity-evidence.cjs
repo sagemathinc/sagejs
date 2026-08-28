@@ -273,6 +273,7 @@ function buildFixture() {
       corpusId: workload.corpus.id,
     },
     profiles: {
+      attributionId: baseline.id,
       baselineId: baseline.id,
       feasibleLowerBoundId: feasible.id,
       negativeIds,
@@ -481,6 +482,7 @@ test("runtime profiling options may differ while compiler implementation stays e
   const bySeed = new Map(context.profileReceipts.map((profile) =>
     [profile.fixtureSeed, profile]));
   const document = structuredClone(validDocument(fixture));
+  document.profiles.attributionId = bySeed.get("baseline").id;
   document.profiles.baselineId = bySeed.get("baseline").id;
   document.profiles.feasibleLowerBoundId = bySeed.get("feasible").id;
   document.profiles.negativeIds = [bySeed.get("losing native").id];
@@ -591,6 +593,8 @@ test("eligible baseline attribution requires an authenticated sealed warm closur
   delete missingProtocolContext.profileReceipts[baselineIndex].sampling.protocol;
   readdress(missingProtocolContext.profileReceipts[baselineIndex]);
   const missingProtocol = structuredClone(validDocument(fixture));
+  missingProtocol.profiles.attributionId =
+    missingProtocolContext.profileReceipts[baselineIndex].id;
   missingProtocol.profiles.baselineId =
     missingProtocolContext.profileReceipts[baselineIndex].id;
   missingProtocol.classification.profileIds = [
@@ -613,6 +617,7 @@ test("eligible baseline attribution requires an authenticated sealed warm closur
   lateContext.profileReceipts[lateBaselineIndex].sampling.protocol.lateArtifactCount = 1;
   readdress(lateContext.profileReceipts[lateBaselineIndex]);
   const late = structuredClone(validDocument(fixture));
+  late.profiles.attributionId = lateContext.profileReceipts[lateBaselineIndex].id;
   late.profiles.baselineId = lateContext.profileReceipts[lateBaselineIndex].id;
   late.classification.profileIds = [late.profiles.baselineId, fixture.feasible.id].sort();
   late.matureAlgorithm.profileIds = [late.profiles.baselineId, fixture.negative.id].sort();

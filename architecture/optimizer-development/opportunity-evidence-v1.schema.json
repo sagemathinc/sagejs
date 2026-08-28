@@ -131,8 +131,9 @@
     "profiles": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["baselineId", "feasibleLowerBoundId", "negativeIds"],
+      "required": ["attributionId", "baselineId", "feasibleLowerBoundId", "negativeIds"],
       "properties": {
+        "attributionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
         "baselineId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
         "feasibleLowerBoundId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
         "negativeIds": {
