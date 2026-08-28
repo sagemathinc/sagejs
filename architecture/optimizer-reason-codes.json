@@ -1,7 +1,14 @@
 {
   "schema": "sagejs.optimizer-reason-registry/v1",
-  "id": "sha256:45c5961dd597106b2b505b59846dc9d5bdc07783f3359a27ff129263996d5612",
+  "id": "sha256:2f357c411f7527a463989cda2eafd82e2acbfca08eb68f7866f2b57faa542861",
   "codes": [
+    {
+      "code": "bounded-integer.bigint-per-operation-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Per-operation JavaScript BigInt costs dominate the bounded exact-integer target.",
+      "detailFields": []
+    },
     {
       "code": "bounded-integer.code-size-budget",
       "kind": "rejection",
@@ -287,6 +294,13 @@
       "kind": "rejection",
       "origin": "compiler",
       "description": "The selected optimization level does not enable this pass.",
+      "detailFields": []
+    },
+    {
+      "code": "output-allocation-not-proven",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate output is not proved to be a fresh private allocation with the required extent.",
       "detailFields": []
     },
     {

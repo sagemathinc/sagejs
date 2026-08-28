@@ -709,6 +709,14 @@ test("the checked reason registry accepts structured and legacy detailed reasons
   assert.equal(reasons.DEFAULT_REASON_REGISTRY.schema,
     "sagejs.optimizer-reason-registry/v1");
   assert.deepEqual(
+    reasons.validateReason("bounded-integer.bigint-per-operation-cost"),
+    { code: "bounded-integer.bigint-per-operation-cost", detail: {} },
+  );
+  assert.deepEqual(
+    reasons.validateReason("output-allocation-not-proven"),
+    { code: "output-allocation-not-proven", detail: {} },
+  );
+  assert.deepEqual(
     reasons.validateReason("bounded-integer.unsupported-operation://"),
     { code: "bounded-integer.unsupported-operation", detail: { operator: "//" } },
   );
