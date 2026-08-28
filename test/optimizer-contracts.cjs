@@ -11,6 +11,7 @@ const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
 const {
+  CLOSED_RING_REGION_PASS,
   formatOptimizationExplanation,
   STRICT_FLOAT_REGION_PASS,
 } = require("../dist/tools/python/optimizer/index.js");
@@ -154,6 +155,30 @@ test("all-loops is stronger than at-least-one", async () => {
     assert.equal(ast.optimization_ir.contracts[0].status, "satisfied");
     assert.equal(ast.optimization_ir.contracts[0].loopCount, 2);
     assert.equal(ast.optimization_ir.contracts[0].matchedRegionIds.length, 1);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("an exact contract reserves ambiguous loops for its named domain", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const source = contractSource.replace(
+      "math.strict-float-region.v1",
+      "math.closed-ring-region.v1",
+    );
+    const ast = frontend.parse(source, options());
+    assert.equal(ast.optimization_ir.contracts[0].status, "satisfied");
+    const [region] = ast.optimization_ir.regions;
+    assert.equal(region.passId, CLOSED_RING_REGION_PASS);
+    assert.equal(region.selected, true);
+    assert.equal(
+      ast.optimization_ir.regions.some(
+        (candidate) => candidate.passId === STRICT_FLOAT_REGION_PASS,
+      ),
+      false,
+    );
   } finally {
     frontend.close();
   }
