@@ -2,15 +2,26 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { createHash } = require("node:crypto");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 
+const root = path.resolve(__dirname, "..");
 const psageFixture = JSON.parse(
   readFileSync(
     path.join(__dirname, "fixtures/mestre-hilbert-sqrt5-psage.json"),
+    "utf8",
+  ),
+);
+const magmaFixture = JSON.parse(
+  readFileSync(
+    path.join(
+      root,
+      "test/fixtures/mestre-hilbert-sqrt5-magma-2.18-5.json",
+    ),
     "utf8",
   ),
 );
@@ -26,6 +37,56 @@ test("the Q(sqrt(5)) psage fixture has pinned source provenance", () => {
     [2, 7, 14, 35],
   );
 });
+
+test("the Q(sqrt(5)) Magma packet has pinned source provenance", () => {
+  assert.equal(magmaFixture.generated_with, "Magma V2.18-5");
+  const source = readFileSync(path.join(root, magmaFixture.script));
+  assert.equal(
+    createHash("sha256").update(source).digest("hex"),
+    magmaFixture.script_sha256,
+  );
+  assert.deepEqual(
+    magmaFixture.levels.map((record) => record.cusp_dimension),
+    [1, 6, 13, 34],
+  );
+});
+
+test(
+  "Q(sqrt(5)) ambient packets reproduce Magma cuspidal charpolys",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+from sagejs.modular_forms import HilbertModularFormsQsqrt5
+
+fixture = ${JSON.stringify(magmaFixture)}
+checked = []
+for row in fixture['levels']:
+    H = HilbertModularFormsQsqrt5((row['level_norm'], row['omega_residue']))
+    assert H.dimension() == row['cusp_dimension'] + 1
+    T2 = H.T(2).matrix().charpoly()
+    T3 = H.T(3).matrix().charpoly()
+    R = T2.parent()
+    x = R.gen()
+    cusp2 = T2 // (x-5)
+    cusp3 = T3 // (x-10)
+    coeff2 = tuple(int(cusp2[index]) for index in range(cusp2.degree()+1))
+    coeff3 = tuple(int(cusp3[index]) for index in range(cusp3.degree()+1))
+    assert coeff2 == tuple(row['t2_cuspidal_charpoly'])
+    assert coeff3 == tuple(row['t3_cuspidal_charpoly'])
+    checked.append((row['level_norm'], H.dimension(), cusp2.degree(), cusp3.degree()))
+checked
+`);
+      assert.equal(
+        result.repr,
+        "[(31, 2, 1, 1), (389, 7, 6, 6), (809, 14, 13, 13), (2011, 35, 34, 34)]",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
 
 test(
   "Q(sqrt(5)) icosian module reproduces psage's norm-31 operators",

@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 "use strict";
 
+const { execFileSync } = require("node:child_process");
+const path = require("node:path");
 const { performance } = require("node:perf_hooks");
+
 const { createSage } = require("../../../dist/tools/kernel.js");
 
 function option(name, fallback) {
@@ -80,6 +83,8 @@ for level in levels:
             't2_row_sum': t2.row_sums()[0],
             't3_row_sum': t3.row_sums()[0],
             'matvec_checksum': int(sum(image)),
+            't2_charpoly_coefficients': tuple(int(value) for value in t2.matrix().charpoly().coefficients()),
+            't3_charpoly_coefficients': tuple(int(value) for value in t3.matrix().charpoly().coefficients()),
         }
     construction.sort(); first_t2.sort(); first_t3.sort(); matvec.sort()
     middle = repeat//2
@@ -90,6 +95,7 @@ for level in levels:
         'samples': repeat,
         'construction_median_ms': 1000*construction[middle],
         'first_t2_median_ms': 1000*first_t2[middle],
+        'module_and_first_t2_median_ms': 1000*(construction[middle]+first_t2[middle]),
         'first_t3_median_ms': 1000*first_t3[middle],
         't2_matvec_median_ms': 1000*matvec[middle],
     })
@@ -97,6 +103,11 @@ json.dumps(rows, sort_keys=True)
 `);
     const payload = {
       schema: "sagejs.mestre-hilbert-sqrt5-benchmark/v1",
+      recorded_at: new Date().toISOString(),
+      source_commit: execFileSync("git", ["rev-parse", "HEAD"], {
+        cwd: path.resolve(__dirname, "../../.."),
+        encoding: "utf8",
+      }).trim(),
       node: process.version,
       platform: process.platform,
       arch: process.arch,
@@ -113,4 +124,3 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
-
