@@ -1,21 +1,26 @@
 // sagejs-test-tier: specialized
 "use strict";
 
+// Route telemetry is independent of the checked-in hyperelliptic dispatch
+// receipt, whose source closure is refreshed only after final platform
+// validation.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
 const createCompiler = require("../dist/tools/compiler.js").default;
 const {
-  createKernelEvaluatorAsync,
-} = require("../dist/tools/kernel-evaluator.js");
-const {
-  OptimizerProfileExecutionError,
-} = require("../dist/tools/optimizer-profiler.js");
-const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
+
+const profileRunner = join(
+  __dirname,
+  "fixtures/optimizer-development/profile-lazy/runner.cjs",
+);
 
 const source = readFileSync(join(
   __dirname,
@@ -88,17 +93,26 @@ function oneTerminal(observation) {
   return terminals[0];
 }
 
-async function profile(call, filename) {
-  const evaluator = await createKernelEvaluatorAsync({ mode: "sage", onOutput() {} });
-  try {
-    return await evaluator.profile(`${source}\n${call}\n`, {
-      filename: `${filename}.py`,
-      language: "sage",
-      samplingIntervalMicros: 500,
-    });
-  } finally {
-    evaluator.close();
-  }
+function profile(call, filename) {
+  const child = spawnSync(process.execPath, [profileRunner], {
+    cwd: join(__dirname, ".."),
+    env: { ...process.env, SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off" },
+    input: JSON.stringify({
+      action: "profile",
+      source: `${source}\n${call}\n`,
+      options: {
+        filename: `${filename}.py`,
+        language: "sage",
+        samplingIntervalMicros: 500,
+      },
+    }),
+    encoding: "utf8",
+    timeout: 60_000,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  const line = child.stdout.trim().split("\n").at(-1);
+  assert.ok(line, child.stderr);
+  return JSON.parse(line);
 }
 
 test("machine-domain telemetry is absent ordinarily and terminal calls follow publication", async () => {
@@ -146,9 +160,10 @@ test("all four machine domains conserve fast, fallback, and zero-trip routes", a
     ["extension-zero", "K = GF(5^3, 'a')\na = K.gen()\nprint(fixed_extension_fallback(0, K, a))", "zero-trip"],
   ];
   for (const [filename, call, expected] of cases) {
-    const result = await profile(call, filename);
-    assert.equal(result.observation.execution.status, "returned");
-    assert.equal(oneTerminal(result.observation).outcome, expected, filename);
+    const result = profile(call, filename);
+    assert.equal(result.ok, true, JSON.stringify(result.error));
+    assert.equal(result.value.observation.execution.status, "returned");
+    assert.equal(oneTerminal(result.value.observation).outcome, expected, filename);
   }
 });
 
@@ -160,12 +175,11 @@ test("all four machine-domain guard errors authenticate before throwing", async 
     ["extension-error", "fixed_extension_error(2, ZZ, ZZ(1))"],
   ];
   for (const [filename, call] of cases) {
-    await assert.rejects(profile(call, filename), (error) => {
-      assert.ok(error instanceof OptimizerProfileExecutionError);
-      assert.equal(error.observation.execution.status, "threw");
-      assert.match(error.observation.execution.error.message, /optimizer runtime guard failed/);
-      assert.equal(oneTerminal(error.observation).outcome, "error");
-      return true;
-    });
+    const result = profile(call, filename);
+    assert.equal(result.ok, false);
+    assert.equal(result.error.name, "OptimizerProfileExecutionError");
+    assert.equal(result.error.observation.execution.status, "threw");
+    assert.match(result.error.observation.execution.error.message, /optimizer runtime guard failed/);
+    assert.equal(oneTerminal(result.error.observation).outcome, "error");
   }
 });
