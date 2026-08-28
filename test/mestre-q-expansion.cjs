@@ -56,6 +56,11 @@ for a2 in [-2,0]:
     assert expansion.relation_denominator() != field(0)
     assert expansion.q_expansion() is expansion
     assert list(expansion.polynomial()) == list(expansion.coefficients())
+    sturm = packet.sturm_certificate()
+    assert sturm.bound() == 6
+    assert sturm.modular_symbols_dimension() == 2
+    assert sturm.verify()
+    assert sturm.structural_data()["coefficient_mode"] == "level-characteristic-residue"
     rows.append((
         a2,
         list(packet.vector()),
@@ -144,6 +149,11 @@ for record in expected:
         assert residue[1] == S.finite_field()(1)
         residues.append(tuple(str(value) for value in residue.coefficients()))
     assert residues[0] != residues[1]
+    sturm = packet.sturm_certificate()
+    assert sturm.bound() == 11
+    assert sturm.modular_symbols_dimension() == 5
+    assert sturm.verify()
+    assert sturm.q_expansion().coefficients() == expansion.coefficients()
     rows.append((
         record["label"],
         str(packet.defining_factor()),
@@ -205,6 +215,38 @@ for values in [packet.coordinates(), packet.ambient_vector(), packet.eigenvalues
 True
 `);
       assert.equal(result.repr, "True");
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
+  "level-389 Mestre reconstruction has an exact sparse-to-modular-symbol Sturm certificate",
+  { timeout: 180_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+S = SupersingularModule(389)
+packet = S.rational_eigenpacket(-2)
+certificate = packet.sturm_certificate()
+assert certificate.is_exact()
+assert certificate.bound() == 65
+assert certificate.modular_symbols_dimension() == 32
+assert certificate.verify()
+assert certificate.q_expansion().precision() == 66
+assert certificate.checked_eigenvalues() == (
+    (2,-2),(3,-2),(5,-3),(7,-5),(11,-4),(13,-3),(17,-6),(19,5),
+    (23,-4),(29,-6),(31,4),(37,-8),(41,-3),(43,12),(47,-2),
+    (53,-6),(59,3),(61,-8),
+)
+data = certificate.structural_data()
+assert data["algorithm"] == "prime-level-weight-two-sturm-modular-symbols"
+assert data["exact"]
+(certificate.bound(), certificate.modular_symbols_dimension(), len(certificate.checked_eigenvalues()))
+`);
+      assert.equal(result.repr, "(65, 32, 18)");
     } finally {
       await session.close();
     }

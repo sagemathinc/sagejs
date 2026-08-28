@@ -69,6 +69,15 @@ coefficient.  Magma's Gram/theta and neighboring-ideal Brandt modes
 independently reproduce the first packet's $T_2,T_3,T_5,T_7,T_{11}$
 eigenvalues.
 
+The q-expansion layer now closes the classical Sturm gate with an independent
+modular-symbol certificate. It constructs the exact plus-cuspidal Hecke line,
+checks every prime Hecke coefficient through the weight-two prime-level bound
+$\lfloor(p+1)/6\rfloor$, and records whether the comparison is in
+characteristic zero or after reduction modulo the level. At level $389$, the
+rational packet with $a_2=-2$ is verified through $q^{65}$ against the
+$32$-dimensional modular-symbol cusp space; at level $67$, both quadratic
+packets are verified through $q^{11}$ over their exact coefficient fields.
+
 The first reconstruction slice now publishes one-dimensional rational
 simultaneous eigenpackets only after exact kernel, cuspidality, primitivity,
 and commuting-Hecke scalar checks. It evaluates Mestre's identity directly as

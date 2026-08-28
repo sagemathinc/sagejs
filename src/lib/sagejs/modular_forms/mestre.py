@@ -250,6 +250,159 @@ def _reduce_number_field_element(value: Any, root: Any, residue_field: Any) -> A
     return answer
 
 
+def _weight_two_prime_sturm_bound(level: int) -> int:
+    r"""Return the weight-two Sturm bound for prime level $\Gamma_0(p)$."""
+    return (level + 1) // 6
+
+
+def _matrix_eigenvalue(matrix: Any, vector: list[Any], field: Any) -> Any:
+    pivot = -1
+    for index, value in enumerate(vector):
+        if pivot < 0 and value != field(0):
+            pivot = index
+    if pivot < 0:
+        raise ArithmeticError("a modular-symbol eigenvector is zero")
+    image = []
+    for row in range(matrix.nrows()):
+        total = field(0)
+        for column in range(matrix.ncols()):
+            total += field(matrix[row, column]) * vector[column]
+        image.append(total)
+    eigenvalue = image[pivot] / vector[pivot]
+    for index, value in enumerate(vector):
+        if image[index] != eigenvalue * value:
+            raise ArithmeticError("the modular-symbol Hecke line was not preserved")
+    return eigenvalue
+
+
+def _sturm_modular_symbols_data(
+    packet: Any,
+    expansion: Any,
+    coefficient_field: Any,
+    residue_field: Any | None,
+) -> tuple[int, tuple[tuple[int, Any], ...]]:
+    """Prove a packet through Sturm using the independent modular-symbol action."""
+    level = int(packet.module().prime())
+    bound = _weight_two_prime_sturm_bound(level)
+    if expansion.precision() <= bound:
+        raise ValueError("the q-expansion does not reach the Sturm bound")
+    symbols = _global("ModularSymbols")(level, 2, sign=1).cuspidal_submodule()
+    dimension = int(symbols.dimension())
+    if dimension != packet.module().dimension() - 1:
+        raise ArithmeticError("Brandt and modular-symbol cusp dimensions disagree")
+
+    anchor = coefficient_field(packet.eigenvalue(2))
+    anchor_matrix = symbols.T(2).matrix()
+    rows = []
+    for row in range(dimension):
+        values = []
+        for column in range(dimension):
+            value = coefficient_field(anchor_matrix[row, column])
+            if row == column:
+                value -= anchor
+            values.append(value)
+        rows.append(values)
+    kernel = _field_kernel_basis(rows, coefficient_field)
+    if len(kernel) != 1:
+        raise ArithmeticError("the modular-symbol Hecke packet is not a simple line")
+    vector = kernel[0]
+
+    checked = []
+    for index in range(2, bound + 1):
+        if not bool(sage.is_prime(index)):
+            continue
+        eigenvalue = _matrix_eigenvalue(
+            symbols.T(index).matrix(), vector, coefficient_field
+        )
+        coefficient = expansion[index]
+        if residue_field is None:
+            if coefficient != eigenvalue:
+                raise ArithmeticError(
+                    "the q-expansion disagrees with modular symbols at T_" + str(index)
+                )
+        elif coefficient != residue_field(eigenvalue):
+            raise ArithmeticError(
+                "the Mestre residue expansion disagrees with modular symbols at T_"
+                + str(index)
+            )
+        checked.append((index, eigenvalue))
+    return (dimension, tuple(checked))
+
+
+class SturmVerificationCertificate:
+    """Exact modular-symbol verification of a normalized packet through Sturm."""
+
+    def __init__(
+        self,
+        packet: Any,
+        expansion: Any,
+        coefficient_field: Any,
+        residue_field: Any | None,
+        dimension: int,
+        eigenvalues: tuple[tuple[int, Any], ...],
+    ) -> None:
+        self._packet = packet
+        self._expansion = expansion
+        self._coefficient_field = coefficient_field
+        self._residue_field = residue_field
+        self._dimension = dimension
+        self._eigenvalues = eigenvalues
+        runtime.object.freeze(self)
+
+    def level(self) -> int:
+        return int(self._packet.module().prime())
+
+    def bound(self) -> int:
+        return _weight_two_prime_sturm_bound(self.level())
+
+    def modular_symbols_dimension(self) -> int:
+        return self._dimension
+
+    def checked_eigenvalues(self) -> tuple[tuple[int, Any], ...]:
+        return self._eigenvalues
+
+    def q_expansion(self) -> Any:
+        return self._expansion
+
+    def is_exact(self) -> bool:
+        return True
+
+    def verify(self) -> bool:
+        dimension, eigenvalues = _sturm_modular_symbols_data(
+            self._packet,
+            self._expansion,
+            self._coefficient_field,
+            self._residue_field,
+        )
+        return dimension == self._dimension and eigenvalues == self._eigenvalues
+
+    def structural_data(self) -> dict[str, Any]:
+        return {
+            "algorithm": "prime-level-weight-two-sturm-modular-symbols",
+            "level": self.level(),
+            "bound": self.bound(),
+            "modular_symbols_dimension": self._dimension,
+            "checked_eigenvalues": self._eigenvalues,
+            "coefficient_mode": (
+                "characteristic-zero"
+                if self._residue_field is None
+                else "level-characteristic-residue"
+            ),
+            "exact": True,
+        }
+
+    def __repr__(self) -> str:
+        return (
+            "exact Sturm verification at level "
+            + str(self.level())
+            + " through q^"
+            + str(self.bound())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class MestreQExpansion:
     """An exact normalized $q$-expansion obtained from Mestre's identity."""
 
@@ -360,6 +513,34 @@ class SupersingularEigenpacket:
             bound,
         )
         return MestreQExpansion(self, coefficients, relation_denominator)
+
+    def sturm_bound(self) -> int:
+        return _weight_two_prime_sturm_bound(int(self._module.prime()))
+
+    def sturm_certificate(
+        self,
+        *,
+        max_series_terms: Any = 10000,
+    ) -> SturmVerificationCertificate:
+        """Verify the Mestre residue expansion through the exact Sturm bound."""
+        expansion = self.q_expansion(
+            self.sturm_bound() + 1,
+            max_series_terms=max_series_terms,
+        )
+        dimension, eigenvalues = _sturm_modular_symbols_data(
+            self,
+            expansion,
+            sage.QQ,
+            self._module.finite_field(),
+        )
+        return SturmVerificationCertificate(
+            self,
+            expansion,
+            sage.QQ,
+            self._module.finite_field(),
+            dimension,
+            eigenvalues,
+        )
 
     def __repr__(self) -> str:
         return (
@@ -591,6 +772,36 @@ class AlgebraicSupersingularEigenpacket:
                 )
         return MestreQExpansion(self, coefficients, relation_denominator)
 
+    def sturm_bound(self) -> int:
+        return _weight_two_prime_sturm_bound(int(self._module.prime()))
+
+    def sturm_certificate(
+        self,
+        *,
+        max_series_terms: Any = 10000,
+        max_hecke_index: Any = 97,
+    ) -> SturmVerificationCertificate:
+        """Verify the characteristic-zero packet through the exact Sturm bound."""
+        expansion = self.q_expansion(
+            self.sturm_bound() + 1,
+            max_series_terms=max_series_terms,
+            max_hecke_index=max_hecke_index,
+        )
+        dimension, eigenvalues = _sturm_modular_symbols_data(
+            self,
+            expansion,
+            self._field,
+            None,
+        )
+        return SturmVerificationCertificate(
+            self,
+            expansion,
+            self._field,
+            None,
+            dimension,
+            eigenvalues,
+        )
+
     def __repr__(self) -> str:
         return (
             "Algebraic supersingular eigenpacket at level "
@@ -663,5 +874,6 @@ __all__ = [
     "AlgebraicSupersingularEigenpacket",
     "MestreQExpansion",
     "SupersingularEigenpacket",
+    "SturmVerificationCertificate",
     "algebraic_supersingular_eigenpacket",
 ]

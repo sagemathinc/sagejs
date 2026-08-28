@@ -585,7 +585,7 @@
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 255000,
+      "max_source_bytes": 265000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
         "graph-theory", "modular-forms", "matrix-native-kernels"

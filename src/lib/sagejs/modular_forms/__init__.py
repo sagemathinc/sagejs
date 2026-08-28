@@ -24,6 +24,7 @@ MestreQExpansion: Any
 NormalizedAdjacencyOperator: Any
 SupersingularIsogenyGraph: Any
 SupersingularEigenpacket: Any
+SturmVerificationCertificate: Any
 SupersingularModule: Any
 SupersingularFiniteHeckeSet: Any
 Qsqrt5HeckePrime: Any
@@ -72,6 +73,7 @@ __all__ = [
     "NormalizedAdjacencyOperator",
     "SupersingularIsogenyGraph",
     "SupersingularEigenpacket",
+    "SturmVerificationCertificate",
     "SupersingularModule",
     "SupersingularFiniteHeckeSet",
     "Qsqrt5HeckePrime",
@@ -167,6 +169,7 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         "AlgebraicSupersingularEigenpacket",
         "MestreQExpansion",
         "SupersingularEigenpacket",
+        "SturmVerificationCertificate",
         "algebraic_supersingular_eigenpacket",
     ]:
         from . import mestre
