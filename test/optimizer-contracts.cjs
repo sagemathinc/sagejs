@@ -14,6 +14,7 @@ const {
   CLOSED_RING_REGION_PASS,
   formatOptimizationExplanation,
   STRICT_FLOAT_REGION_PASS,
+  verifyOptimizationProgram,
 } = require("../dist/tools/python/optimizer/index.js");
 
 const contractSource = `
@@ -153,6 +154,18 @@ test("diagnostic contract policy preserves a verified rejected explanation", asy
     assert.match(
       formatOptimizationExplanation(ast.optimization_ir),
       /contract recurrence \[unsatisfied\].*diagnostics: 11:4:no-optimizer-candidate/s,
+    );
+    const missingDiagnostics = JSON.parse(JSON.stringify(ast.optimization_ir));
+    missingDiagnostics.contracts[0].diagnostics = [];
+    assert.throws(
+      () => verifyOptimizationProgram(missingDiagnostics),
+      /unsatisfied optimizer contract .* has no diagnostics/,
+    );
+    const falseSuccess = JSON.parse(JSON.stringify(ast.optimization_ir));
+    falseSuccess.contracts[0].status = "satisfied";
+    assert.throws(
+      () => verifyOptimizationProgram(falseSuccess),
+      /satisfied optimizer contract .* has no regions/,
     );
   } finally {
     frontend.close();

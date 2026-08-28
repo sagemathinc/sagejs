@@ -568,9 +568,10 @@ Print deterministic mathematical optimizer decisions and evidence to STDERR.
 create_group("optimize", "<explain|check> [input.py]", function () {
   /*
 Explain or verify mathematical compiler optimizations without executing the
-program. `explain` prints every proved, rejected, and selected region. `check`
-validates all explicit @optimize contracts and exits unsuccessfully when a
-contract cannot be proved. Source is read from stdin when no file is given.
+program. `explain` returns a verified diagnostic report even when a contract is
+unsatisfied. `check` requires at least one explicit @optimize contract and exits
+unsuccessfully when any contract cannot be proved. Source is read from stdin
+when no file is given.
 */
 });
 
