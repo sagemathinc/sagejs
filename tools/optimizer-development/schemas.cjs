@@ -340,10 +340,12 @@ function validateProfileReceipt(value, context = {}) {
       warm: validateDistribution(`${phaseLabel}.warm`, phase.warm),
     };
   }, { uniqueBy: (phase) => phase.id, sortedBy: (phase) => phase.id });
-  exactKeys(`${label}.sampling`, value.sampling, [
+  const samplingKeys = [
     "kind", "intervalMicroseconds", "rawProfileDigest", "timeDeltaMicroseconds", "scripts",
     "mapBindings", "functionSampleCounts", "functionSamples", "positionTickCounts", "positionTicks",
-  ]);
+  ];
+  if (value.sampling.kind === "v8-cpu") samplingKeys.push("protocol");
+  exactKeys(`${label}.sampling`, value.sampling, samplingKeys);
   function mapping(mappingLabel, input, includeRegion) {
     exactKeys(mappingLabel, input, ["status", "candidates"]);
     const status = enumeration(`${mappingLabel}.status`, input.status,
@@ -419,9 +421,107 @@ function validateProfileReceipt(value, context = {}) {
     }
     return expected;
   }
+  const samplingKind = enumeration(`${label}.sampling.kind`, value.sampling.kind,
+    ["none", "v8-cpu", "node-allocation", "phase-only"]);
+  const samplingScripts = array(`${label}.sampling.scripts`, value.sampling.scripts,
+    (scriptLabel, script) => {
+      exactKeys(scriptLabel, script, [
+        "url", "sha256", "bytes", "authenticatedScriptIds", "rejectedSameUrlScriptIds",
+      ]);
+      return {
+        url: nonemptyString(`${scriptLabel}.url`, script.url),
+        sha256: digest(`${scriptLabel}.sha256`, script.sha256),
+        bytes: safeInteger(`${scriptLabel}.bytes`, script.bytes),
+        authenticatedScriptIds: stringArray(`${scriptLabel}.authenticatedScriptIds`,
+          script.authenticatedScriptIds, { minimum: 1 }),
+        rejectedSameUrlScriptIds: stringArray(`${scriptLabel}.rejectedSameUrlScriptIds`,
+          script.rejectedSameUrlScriptIds),
+      };
+    }, { uniqueBy: (script) => script.url, sortedBy: (script) => script.url });
+  const samplingMapBindings = array(`${label}.sampling.mapBindings`,
+    value.sampling.mapBindings, (bindingLabel, binding) => {
+      exactKeys(bindingLabel, binding,
+        ["schema", "digest", "sourceUnitId", "generatedSha256"]);
+      if (binding.schema !== "sagejs.optimizer-profile-map/v1") {
+        fail(`${bindingLabel}.schema`, `unknown schema ${binding.schema}`);
+      }
+      return {
+        schema: binding.schema,
+        digest: digest(`${bindingLabel}.digest`, binding.digest),
+        sourceUnitId: contentId(`${bindingLabel}.sourceUnitId`, binding.sourceUnitId),
+        generatedSha256: digest(`${bindingLabel}.generatedSha256`, binding.generatedSha256),
+      };
+    }, { uniqueBy: (binding) => `${binding.sourceUnitId}:${binding.generatedSha256}` });
+  let samplingProtocol;
+  if (samplingKind === "v8-cpu") {
+    exactKeys(`${label}.sampling.protocol`, value.sampling.protocol, [
+      "scope", "preparationMicroseconds", "warmupRuns", "repetitions",
+      "declaredArtifactCount", "authenticatedArtifactCount", "lateArtifactCount",
+      "closureDigest",
+    ]);
+    const scope = enumeration(`${label}.sampling.protocol.scope`,
+      value.sampling.protocol.scope, [
+        "cold-generated-javascript-load-and-execution",
+        "cold-generated-javascript-and-current-source-lazy-modules",
+        "warm-prepared-sealed-generated-javascript-execution",
+      ]);
+    samplingProtocol = {
+      scope,
+      preparationMicroseconds: safeInteger(
+        `${label}.sampling.protocol.preparationMicroseconds`,
+        value.sampling.protocol.preparationMicroseconds,
+      ),
+      warmupRuns: safeInteger(
+        `${label}.sampling.protocol.warmupRuns`, value.sampling.protocol.warmupRuns,
+      ),
+      repetitions: safeInteger(
+        `${label}.sampling.protocol.repetitions`, value.sampling.protocol.repetitions, 1,
+      ),
+      declaredArtifactCount: safeInteger(
+        `${label}.sampling.protocol.declaredArtifactCount`,
+        value.sampling.protocol.declaredArtifactCount, 1,
+      ),
+      authenticatedArtifactCount: safeInteger(
+        `${label}.sampling.protocol.authenticatedArtifactCount`,
+        value.sampling.protocol.authenticatedArtifactCount, 1,
+      ),
+      lateArtifactCount: safeInteger(
+        `${label}.sampling.protocol.lateArtifactCount`,
+        value.sampling.protocol.lateArtifactCount,
+      ),
+      closureDigest: digest(
+        `${label}.sampling.protocol.closureDigest`,
+        value.sampling.protocol.closureDigest,
+      ),
+    };
+    if (samplingProtocol.declaredArtifactCount !== samplingScripts.length ||
+        samplingProtocol.authenticatedArtifactCount !== samplingScripts.length) {
+      fail(`${label}.sampling.protocol`,
+        "artifact counts must equal the authenticated script closure");
+    }
+    if (samplingProtocol.lateArtifactCount !== 0) {
+      fail(`${label}.sampling.protocol.lateArtifactCount`,
+        "must be zero for an authenticated profile receipt");
+    }
+    const expectedClosureDigest = sha256(canonicalJson({
+      scripts: samplingScripts,
+      mapBindings: samplingMapBindings,
+    }));
+    if (samplingProtocol.closureDigest !== expectedClosureDigest) {
+      fail(`${label}.sampling.protocol.closureDigest`,
+        `is stale; expected ${expectedClosureDigest}`);
+    }
+    const warm = scope === "warm-prepared-sealed-generated-javascript-execution";
+    if (warm !== (samplingProtocol.warmupRuns >= 1) ||
+        (!warm && (samplingProtocol.preparationMicroseconds !== 0 ||
+          samplingProtocol.warmupRuns !== 0 ||
+          samplingProtocol.repetitions !== 1))) {
+      fail(`${label}.sampling.protocol`,
+        "warm scope requires preparation and warmup; cold scope requires one unprepared run");
+    }
+  }
   const sampling = {
-    kind: enumeration(`${label}.sampling.kind`, value.sampling.kind,
-      ["none", "v8-cpu", "node-allocation", "phase-only"]),
+    kind: samplingKind,
     intervalMicroseconds: safeInteger(
       `${label}.sampling.intervalMicroseconds`, value.sampling.intervalMicroseconds,
     ),
@@ -431,35 +531,9 @@ function validateProfileReceipt(value, context = {}) {
     timeDeltaMicroseconds: safeInteger(
       `${label}.sampling.timeDeltaMicroseconds`, value.sampling.timeDeltaMicroseconds,
     ),
-    scripts: array(`${label}.sampling.scripts`, value.sampling.scripts,
-      (scriptLabel, script) => {
-        exactKeys(scriptLabel, script, [
-          "url", "sha256", "bytes", "authenticatedScriptIds", "rejectedSameUrlScriptIds",
-        ]);
-        return {
-          url: nonemptyString(`${scriptLabel}.url`, script.url),
-          sha256: digest(`${scriptLabel}.sha256`, script.sha256),
-          bytes: safeInteger(`${scriptLabel}.bytes`, script.bytes),
-          authenticatedScriptIds: stringArray(`${scriptLabel}.authenticatedScriptIds`,
-            script.authenticatedScriptIds, { minimum: 1 }),
-          rejectedSameUrlScriptIds: stringArray(`${scriptLabel}.rejectedSameUrlScriptIds`,
-            script.rejectedSameUrlScriptIds),
-        };
-      }, { uniqueBy: (script) => script.url, sortedBy: (script) => script.url }),
-    mapBindings: array(`${label}.sampling.mapBindings`, value.sampling.mapBindings,
-      (bindingLabel, binding) => {
-        exactKeys(bindingLabel, binding,
-          ["schema", "digest", "sourceUnitId", "generatedSha256"]);
-        if (binding.schema !== "sagejs.optimizer-profile-map/v1") {
-          fail(`${bindingLabel}.schema`, `unknown schema ${binding.schema}`);
-        }
-        return {
-          schema: binding.schema,
-          digest: digest(`${bindingLabel}.digest`, binding.digest),
-          sourceUnitId: contentId(`${bindingLabel}.sourceUnitId`, binding.sourceUnitId),
-          generatedSha256: digest(`${bindingLabel}.generatedSha256`, binding.generatedSha256),
-        };
-      }, { uniqueBy: (binding) => `${binding.sourceUnitId}:${binding.generatedSha256}` }),
+    scripts: samplingScripts,
+    mapBindings: samplingMapBindings,
+    ...(samplingProtocol === undefined ? {} : { protocol: samplingProtocol }),
     functionSampleCounts: counts(`${label}.sampling.functionSampleCounts`,
       value.sampling.functionSampleCounts, functionSamples, "samples"),
     functionSamples,

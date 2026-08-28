@@ -698,6 +698,21 @@ function buildReceipt(options: {
       },
     };
   });
+  const foundationScripts = artifacts.map(({ candidate }) => ({
+    url: candidate.url,
+    sha256: candidate.sha256,
+    bytes: candidate.bytes,
+    authenticatedScriptIds: [candidate.scriptId],
+    rejectedSameUrlScriptIds: [],
+  })).sort((left, right) => left.url < right.url ? -1 : left.url > right.url ? 1 : 0);
+  const foundationMapBindings = artifacts.map(({ map }) => ({
+    schema: map.schema,
+    digest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
+    sourceUnitId: map.source.identity.id,
+    generatedSha256: map.generated.sha256,
+  })).sort((left, right) =>
+    left.sourceUnitId.localeCompare(right.sourceUnitId) ||
+    left.generatedSha256.localeCompare(right.generatedSha256));
   const foundationSampling = {
     kind: "v8-cpu",
     intervalMicroseconds: options.requestedIntervalMicros,
@@ -706,21 +721,25 @@ function buildReceipt(options: {
       (total, delta) => total + (Number.isFinite(delta) ? Math.max(0, delta) : 0),
       0,
     ))),
-    scripts: artifacts.map(({ candidate }) => ({
-      url: candidate.url,
-      sha256: candidate.sha256,
-      bytes: candidate.bytes,
-      authenticatedScriptIds: [candidate.scriptId],
-      rejectedSameUrlScriptIds: [],
-    })).sort((left, right) => left.url < right.url ? -1 : left.url > right.url ? 1 : 0),
-    mapBindings: artifacts.map(({ map }) => ({
-      schema: map.schema,
-      digest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
-      sourceUnitId: map.source.identity.id,
-      generatedSha256: map.generated.sha256,
-    })).sort((left, right) =>
-      left.sourceUnitId.localeCompare(right.sourceUnitId) ||
-      left.generatedSha256.localeCompare(right.generatedSha256)),
+    scripts: foundationScripts,
+    mapBindings: foundationMapBindings,
+    protocol: {
+      scope: options.prepared
+        ? "warm-prepared-sealed-generated-javascript-execution"
+        : artifacts.length === 1
+          ? "cold-generated-javascript-load-and-execution"
+          : "cold-generated-javascript-and-current-source-lazy-modules",
+      preparationMicroseconds: Math.max(0, Math.round(options.preparationMicros)),
+      warmupRuns: options.warmupRuns,
+      repetitions: options.repetitions,
+      declaredArtifactCount: artifacts.length,
+      authenticatedArtifactCount: artifacts.length,
+      lateArtifactCount: 0,
+      closureDigest: evidenceCommon.sha256(evidenceCommon.canonicalJson({
+        scripts: foundationScripts,
+        mapBindings: foundationMapBindings,
+      })),
+    },
     functionSampleCounts: frozenAccounting(sampleAccounting),
     functionSamples,
     positionTickCounts: frozenAccounting(tickAccounting),

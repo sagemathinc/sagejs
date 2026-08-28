@@ -186,6 +186,42 @@ test("a sampled late import fails against the sealed prepared closure", () => {
     !artifact.url.includes("warm_profile_late")));
 });
 
+test("a caught late-import exception still invalidates the host receipt", () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-caught-late-profile-"));
+  fs.writeFileSync(path.join(temporary, "caught_late.py"), "VALUE = 37\n");
+  const source = [
+    "import sys",
+    `sys.path.insert(0, ${JSON.stringify(temporary)})`,
+    "calls = 0",
+    "",
+    "def run_workload():",
+    "    global calls",
+    "    calls += 1",
+    "    if calls > 1:",
+    "        try:",
+    "            import caught_late",
+    "        except Exception:",
+    "            return 37",
+    "    return calls",
+  ].join("\n");
+  const result = runRaw({
+    action: "profile",
+    source,
+    options: {
+      filename: path.join(temporary, "caught-late-profile.sage"),
+      entryPoint: "run_workload",
+      warmupRuns: 1,
+      repetitions: 1,
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error.name, "OptimizerProfileExecutionError");
+  assert.equal(
+    result.error.observation.execution.error.name,
+    "OptimizerProfileLateImportError",
+  );
+});
+
 test("the CLI exposes an explicit prepared sampling protocol", () => {
   const parsed = parseArguments([
     "--entry", "run_workload",
