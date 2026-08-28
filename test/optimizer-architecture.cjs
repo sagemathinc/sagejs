@@ -79,6 +79,38 @@ test("the immutable catalog is the only pass composition point", () => {
   }
 });
 
+test("diagnostic plugins may report rejected candidates without fake lowerings", () => {
+  const { createOptimizerCatalog } = require(
+    "../dist/tools/python/optimizer/catalog.js",
+  );
+  const pass = Object.freeze({
+    id: "math.diagnostic-test.v1",
+    inputSchema: "sagejs.optimizing-mathematics/v1",
+    factsConsumed: [],
+    factsProduced: [],
+    factsInvalidated: [],
+    preserves: [],
+    acceptedLevel: "sage-semantic",
+    producedLevel: "target",
+    guardsIntroduced: [],
+    supportedTargets: ["generic"],
+    verifier: "verifyOptimizationDecision/v1",
+    compilationCostBudget: 1,
+    codeSizeBudget: 0,
+    requiredEvidence: [],
+    run() {},
+  });
+  const catalog = createOptimizerCatalog([{
+    id: pass.id,
+    domainId: "diagnostic-test",
+    priority: 1,
+    claimSemantics: "exclusive",
+    loweringIds: [],
+    pass,
+  }]);
+  assert.equal(catalog.plugins[0].loweringIds.length, 0);
+});
+
 test("every registered lowering has one verifier and one Python emitter", () => {
   const loweringSource = fs.readFileSync(
     path.join(root, "lowerings.ts"),
