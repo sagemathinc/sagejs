@@ -1,6 +1,7 @@
 from output.loop_common import print_interrupt_check
 from output.optimizer.scalar import (
-    _print_optimizer_guard_error,
+    _print_optimizer_profile_terminal,
+    _print_profiled_optimizer_guard_error,
     _print_region_declaration,
     _print_region_variable,
 )
@@ -273,6 +274,7 @@ def print_bounded_integer_region(self, output):
             output.assign(self.init)
             output.print(names["count"] + " - 1")
             output.end_statement()
+            _print_optimizer_profile_terminal(output, region, "guarded-fast")
 
         output.with_block(commit)
         output.space()
@@ -281,10 +283,25 @@ def print_bounded_integer_region(self, output):
 
         def fallback():
             if region.guardFailure == "error":
-                _print_optimizer_guard_error(output, region, names["reason"])
+                _print_profiled_optimizer_guard_error(output, region, names["reason"])
             else:
                 _print_bounded_integer_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    names["reason"],
+                )
 
         output.with_block(fallback)
 
     output.with_block(nonempty)
+    if output.options.optimizer_profile_observer:
+        output.space()
+        output.print("else")
+        output.space()
+
+        def zero_trip():
+            _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+        output.with_block(zero_trip)

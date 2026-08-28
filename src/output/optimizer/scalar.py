@@ -64,21 +64,7 @@ def _print_optimizer_profile_terminal(output, region, outcome, reason="null"):
     the sole exception is a guard contract error, which is terminal at the
     existing throw site.
     """
-    observer = output.options.optimizer_profile_observer
-    if not observer or not region:
-        return
-    output.indent()
-    output.print(observer)
-    output.print("(")
-    output.print(JSON.stringify(region.id))
-    output.comma()
-    output.print(JSON.stringify(region.kind))
-    output.comma()
-    output.print(JSON.stringify(outcome))
-    output.comma()
-    output.print(reason)
-    output.print(")")
-    output.end_statement()
+    output.print_optimizer_profile_event(region, outcome, reason)
 
 
 def _print_profiled_optimizer_guard_error(output, region, reason):

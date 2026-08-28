@@ -412,7 +412,7 @@ class OutputStream:
     def pos(self):
         return self.current_pos
 
-    def print_optimizer_profile_event(self, region, outcome):
+    def print_optimizer_profile_event(self, region, outcome, reason="null"):
         observer = self.options.optimizer_profile_observer
         if not observer or not region:
             return
@@ -423,6 +423,8 @@ class OutputStream:
         self.print_string(region.kind)
         self.comma()
         self.print_string(outcome)
+        self.comma()
+        self.print(reason)
         self.print(")")
         self.end_statement()
 
