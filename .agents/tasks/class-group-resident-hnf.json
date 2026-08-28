@@ -51,11 +51,40 @@
       "commit": "769a157f734a1410a3515c8c7ae09c01cb24c029",
       "workspace_fingerprint": "c9ed3b5b020938f69df267e7ca5c13218065c5504f469f5ff7a498f2267cb310",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.841,
+      "started_at": "2026-08-28T01:55:30.100Z",
+      "commit": "9ce454f2e2d568789576bd9417c0ae904f61f03e",
+      "workspace_fingerprint": "58768e43f363a9de0cd0a34d9355497b3422fcd73005f798669abee00d28374d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/number-field-class-group-resident-hnf.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.145,
+      "started_at": "2026-08-28T01:56:20.421Z",
+      "commit": "9ce454f2e2d568789576bd9417c0ae904f61f03e",
+      "workspace_fingerprint": "58768e43f363a9de0cd0a34d9355497b3422fcd73005f798669abee00d28374d",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Adds an independently exact, bounded resident relation-matrix capability with canonical FLINT HNF, verified unimodular source transform, source-row support, retained rank, stable candidate deletion, same-source generated JavaScript, and an ordinary CPython oracle/cancellation path. Captured 4027 and 5448 cubic selector inputs agree with the current FLINT selector, including support and deletion schedule; proof-carrying whole cubic projections reproduce exact scalars and presentation digests. A nine-sample O2 Linux x64 run improves the hard unconditional 4027 scalar by 9.82 percent (selector 57.78 ms to 24.16 ms), with the four 588/5448 neighbors between -1.50 and +1.82 percent.",
+    "risks": [
+      "The contract remains active because a fresh pnpm test:native run passed all correctness, compiler, FFI, and migration stages but its final unrelated dense QQ public-surface timing gate measured select_rows_300, select_columns_300, and stack_300x300 at about 35 ms against 15 ms budgets. No passing native receipt is claimed.",
+      "Shared package ownership and production-kernel registration are deliberately absent under the lane claims, so pnpm architecture:check and pnpm test:changed stop at the expected missing matrix-native-kernels package owner until integration adds the documented shared entries.",
+      "GP/PARI, Sage, and Magma executables were unavailable on this Linux x64 host; the fresh differentials are CPython, generated JavaScript, current FLINT HNF/selector behavior, and the existing pinned cubic scalar/proof fixtures.",
+      "The optimizer-packed-containers dependency is integration ordering only; this implementation consumes no API from that lane."
+    ],
+    "next_steps": [
+      "Integration lane: apply the documented narrow _select_cubic_relation_candidates replacement and retain its empty-input guard and exception policy.",
+      "Integration lane: add class_group_hnf.py to architecture/package-graph.json and pyrightconfig.json, add the production witness to architecture/native-kernels.json, and add the benchmark package script exactly as documented in RESIDENT-HNF.md.",
+      "After shared registration, rerun pnpm architecture:check, pnpm test:changed, the pinned ten-field cubic smoke corpus, the stratified 100-field corpus, and the clean-host pnpm test:native gate; collect Linux arm64, Windows x64 fallback, and macOS arm64 receipts."
+    ]
   }
 }
