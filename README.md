@@ -526,8 +526,11 @@ sage: dimension_cusp_forms(DirichletGroup(13).0^2, 2)
 
 FLINT computes the Bernoulli constant and all divisor sums in one native
 sieve, returning the complete exact polynomial through a single Node-API
-call. Cuspidal bases, Hecke operators, composite-level Eisenstein newforms,
-and modular symbols remain separate future layers.
+call. This is complemented by a sparse prime-level supersingular
+implementation of Mestre's graph method, exact Wiedemann/CRT certificates,
+Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
+Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
+[Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md).
 
 ## Sage mode
 

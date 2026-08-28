@@ -28,6 +28,7 @@ Start with:
 - [Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves](hyperelliptic-jacobian-arithmetic.md)
 - [Split even-degree hyperelliptic Jacobians](hyperelliptic-even-degree-jacobians.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
+- [Mestre's method of graphs and sparse modular forms](mestre-method-of-graphs.md)
 - [WebAssembly browser support and capabilities](webassembly-browser-support.md)
 - [Portable Node and browser examples](webassembly-examples.md)
 - [Contributing portable WebAssembly mathematics](webassembly-contributor-guide.md)
