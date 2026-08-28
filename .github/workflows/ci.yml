@@ -620,6 +620,11 @@ jobs:
           node-version: 26.5.1
           cache: pnpm
 
+      - name: Install the supported CPython reference
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
       - name: Install native build prerequisites
         run: |
           brew untap aws/tap || true
@@ -670,6 +675,8 @@ jobs:
         run: pnpm test:startup:run
 
       - name: Run portable, host integration, and native tests
+        env:
+          PYTHON: python3
         run: |
           pnpm test:portable
           pnpm test:integration
