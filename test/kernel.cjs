@@ -35,6 +35,11 @@ async function main(t) {
   assert.equal(first.stdout, "value: 12\n");
   assert.deepEqual(streamed, ["value: 12\n"]);
   assert.ok(first.durationMs >= 0);
+  assert.equal(first.optimization.authority, "compiler-verified-static");
+  assert.equal(
+    first.optimization.program.schema,
+    "sagejs.optimizing-mathematics/v1",
+  );
 
   const documentation = await session.documentation();
   assert.equal(documentation.schema_version, 1);

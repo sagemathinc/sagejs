@@ -1,0 +1,36 @@
+p := 65521;
+F := GF(p);
+a := F ! 12345;
+b := F ! 6789;
+n := 10000000;
+
+function BenchField(n, F, a, b)
+    x := F ! 1;
+    started := Cputime();
+    for index := 1 to n do
+        x := x * a + b;
+    end for;
+    return Cputime(started), Integers() ! x;
+end function;
+
+function BenchRaw(n, p, multiplier, increment)
+    x := 1;
+    started := Cputime();
+    for index := 1 to n do
+        x := (x * multiplier + increment) mod p;
+    end for;
+    return Cputime(started), x;
+end function;
+
+_, _ := BenchField(1000000, F, a, b);
+_, _ := BenchRaw(1000000, p, 12345, 6789);
+print "VERSION", GetVersion();
+for sample := 1 to 7 do
+    elapsed, checksum := BenchField(n, F, a, b);
+    print "FIELD", sample, elapsed, checksum;
+end for;
+for sample := 1 to 7 do
+    elapsed, checksum := BenchRaw(n, p, 12345, 6789);
+    print "RAW", sample, elapsed, checksum;
+end for;
+quit;

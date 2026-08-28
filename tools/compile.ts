@@ -6,7 +6,7 @@
  */
 
 import { dirname, join, normalize, resolve } from "path";
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, realpathSync, writeFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { runInThisContext } from "vm";
 import { getImportDirs, once } from "./utils";
@@ -27,6 +27,7 @@ import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import { formatOptimizationExplanation } from "./python/optimizer";
 import {
   baselibStandaloneImportPrelude,
   standaloneRuntimeRequirePrelude,
@@ -103,6 +104,10 @@ export default async function Compile({
     wolfram?: boolean;
     mathematica?: boolean;
     emit_sage?: boolean;
+    optimization_level?: string;
+    optimization_disable?: string;
+    optimization_require?: string;
+    explain_optimizations?: boolean;
   };
   src_path: string;
   lib_path: string;
@@ -167,6 +172,10 @@ export default async function Compile({
         bound_methods: true,
         sequential_definitions: true,
       },
+      optimization_level: argv.optimization_level || undefined,
+      optimization_disable: argv.optimization_disable || undefined,
+      optimization_require: argv.optimization_require || undefined,
+      optimization_explain: !!argv.explain_optimizations,
     });
   }
 
@@ -270,6 +279,12 @@ export default async function Compile({
     });
     if (process.exitCode || !topLevel) return;
 
+    if (argv.explain_optimizations) {
+      process.stderr.write(
+        formatOptimizationExplanation(topLevel.optimization_ir),
+      );
+    }
+
     let output;
     try {
       output = new PyLang.OutputStream(outputOptions);
@@ -350,7 +365,12 @@ export default async function Compile({
       const executionImportDirs = getImportDirs(argv.import_path);
       for (const filename of files) {
         if (filename === "-") continue;
-        const directory = dirname(resolve(filename));
+        // Imported modules must see the same physical source identity as the
+        // native compiler.  macOS exposes /tmp and /var through /private, and
+        // user entry points may also be reached through a symlinked project
+        // root.  Seeding sys.path with a lexical alias makes a valid compiled
+        // artifact undiscoverable even though both paths name one file.
+        const directory = dirname(realpathSync(resolve(filename)));
         if (!executionImportDirs.includes(directory)) {
           executionImportDirs.unshift(directory);
         }

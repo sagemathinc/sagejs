@@ -1,27 +1,27 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "ea4d2a44f315a1256e2589d8925508875bad001eac8282cfc804055ea1392e6a",
+  "source_sha256": "a2bc76c05619bb3afcedb9a23b1499e113b517c51638639742c3bbaf80dd9fcc",
   "counts": {
-    "total": 1008,
+    "total": 1021,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
-      "napi-export": 320,
-      "production-kernel": 48,
-      "runtime-intrinsic": 142,
+      "napi-export": 325,
+      "production-kernel": 51,
+      "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 48,
-      "desktop-only": 42,
+      "compiled-source": 51,
+      "desktop-only": 47,
       "generated-wasm": 321,
-      "portable-fallback": 552,
+      "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 551,
-      "desktop-only": 42,
+      "available": 559,
+      "desktop-only": 47,
       "fallback": 415
     }
   },
@@ -144,6 +144,12 @@
     ],
     "numpy-vertical-slice": [
       "specialist:numpy-ts"
+    ],
+    "optimizer-gf-p2-affine": [
+      "kernel:packed-gf-p2-affine-production"
+    ],
+    "optimizer-gf-pk-affine": [
+      "kernel:packed-gf-pk-affine-production"
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
@@ -6053,6 +6059,18 @@
       "explanation": "All 9 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:class-group-resident-hnf-production",
+      "family": "class-group-resident-hnf",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:compiler-owned-record-witness",
       "family": "compiler-owned-record",
       "disposition": "compiled-source",
@@ -6438,6 +6456,30 @@
         "matrix-combinatorial-invariants"
       ],
       "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-gf-p2-affine-production",
+      "family": "packed-gf-p2-affine",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded quadratic finite-field affine recurrences"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:packed-gf-pk-affine-production",
+      "family": "packed-gf-pk-affine",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded fixed-degree finite-field affine recurrences"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:packed-graph-components-production",
@@ -10470,6 +10512,66 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "disposition": "desktop-only",
+      "status": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
       "id": "runtime:array",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -10542,6 +10644,18 @@
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "explanation": "Optimized finite-field extension loops authenticate their reduction law against the field parent's immutable construction context before entering a machine representation."
+    },
+    {
       "id": "runtime:blocking_sleep",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -10564,6 +10678,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed finite-field regions"
+      ],
+      "explanation": "Compiler-proven finite-field regions use a private runtime brand to distinguish canonical machine representations from forged or observable objects."
     },
     {
       "id": "runtime:callable_instance_class",
@@ -10756,6 +10882,30 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:fast_closed_binary",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "explanation": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback."
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed GF(p) and Zmod(n) recurrences"
+      ],
+      "explanation": "A compiler-proven small modular recurrence can stay in V8 Number locals for the complete loop and materialize one exact public element afterward; all other cases run the original source loop."
     },
     {
       "id": "runtime:ffi_call",
@@ -11224,6 +11374,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "explanation": "A fixed-width extension-field region runs only when its live parent still has exactly the reduction context with which it was constructed."
     },
     {
       "id": "runtime:map",

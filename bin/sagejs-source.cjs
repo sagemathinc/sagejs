@@ -106,6 +106,10 @@ if (argv.mode === "self") {
     emitSage: !!argv.emit_sage,
     tokens: argv.tokens,
     importDirs: load("utils").getImportDirs(argv.import_path),
+    optimizationLevel: argv.optimization_level || undefined,
+    optimizationDisable: argv.optimization_disable || undefined,
+    optimizationRequire: argv.optimization_require || undefined,
+    explainOptimizations: !!argv.explain_optimizations,
   });
 } else if (argv.mode === "msgfmt") {
   load("msgfmt").cli(argv, basePath, srcPath, compilerPath);
@@ -139,6 +143,14 @@ if (argv.mode === "self") {
 } else if (argv.mode === "math") {
   load("math-dispatch/cli").runMathDispatchCli(argv, basePath).catch((error) => {
     console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });
+} else if (argv.mode === "optimize") {
+  load("optimizer-cli").runOptimizerCli(argv, {
+    srcPath,
+    compilerPath,
+  }).catch((error) => {
+    console.error(error?.message ?? String(error));
     process.exitCode = 1;
   });
 } else if (argv.mode === "docs") {

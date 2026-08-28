@@ -58,7 +58,9 @@ values = runtime.uint64_residue_elements(packed, F, F._elementType)
 assert len(values) == 3
 assert [int(value.lift()) for value in values] == [0, 1, 96]
 assert all(value.parent() is F for value in values)
-assert all(runtime.object.isFrozen(value) for value in values)
+expect_failure(lambda: setattr(values[1], "_value", 17), "immutable")
+expect_failure(lambda: delattr(values[1], "_value"), "immutable")
+assert int(values[1]) == 1
 assert runtime.uint64_polynomial_format(packed, "z") == "96*z^2 + z"
 assert runtime.uint64_polynomial_format(runtime.uint64_buffer([]), "z") == "0"
 expect_failure(

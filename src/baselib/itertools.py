@@ -31,7 +31,7 @@ def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
 
 
 def _sum_modular_array(iterable: Any, start: Any) -> Any:
-    """Accumulate a homogeneous prime-field or residue-ring array in BigInt."""
+    """Accumulate a homogeneous modular array in its parent's scalar form."""
     first = iterable[0]
     parent = getattr(first, "_parent", None)
     if parent is None:
@@ -42,19 +42,36 @@ def _sum_modular_array(iterable: Any, start: Any) -> Any:
 
     start_type = runtime.jstype(start)
     if (start_type == "bigint" or start_type == "number") and start == 0:
-        total = runtime.bigint(0)
+        total = 0 if parent._machineResidues else runtime.bigint(0)
     elif getattr(start, "_parent", None) is parent:
         total = start._value
     else:
         return runtime.undefined
 
-    for value in iterable:
-        # The first element established this optimized internal representation.
-        # Direct field access keeps this loop at native JavaScript speed; null
-        # and undefined are guarded because JavaScript cannot box them.
-        if value is None or value is runtime.undefined or value._parent is not parent:
-            return runtime.undefined
-        total = runtime.native_add(total, value._value)
+    if parent._machineResidues:
+        modulus = parent._residueModulus
+        for value in iterable:
+            # Keep the accumulator canonical, both to preserve exactness for
+            # arbitrarily long inputs and to give the JIT one bounded Number
+            # representation throughout the loop.
+            if (
+                value is None
+                or value is runtime.undefined
+                or value._parent is not parent
+            ):
+                return runtime.undefined
+            total = runtime.native_add(total, value._value)
+            if total >= modulus:
+                total = runtime.native_sub(total, modulus)
+    else:
+        for value in iterable:
+            if (
+                value is None
+                or value is runtime.undefined
+                or value._parent is not parent
+            ):
+                return runtime.undefined
+            total = runtime.native_add(total, value._value)
     return runtime.reflect.apply(parent, runtime.undefined, [total])
 
 

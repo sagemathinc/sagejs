@@ -476,6 +476,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "class-group-resident-hnf-production",
+      "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+      "functions": ["resident_exact_relation_hnf_select"],
+      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through declared FLINT FFI",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint"],
+      "benchmark": "bench:number-field-resident-hnf",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [
@@ -751,6 +762,28 @@
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "scalar-factorization"],
       "benchmark": "bench:wasm-arithmetic-hotspots",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-gf-p2-affine-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "functions": ["packed_gf_p2_affine_recurrence"],
+      "semantic_domain": "one fused bounded affine recurrence over canonical power-basis coefficient pairs for a guarded quadratic finite field",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "direct-quadratic-formula"],
+      "benchmark": "bench:optimizer-gf-p2",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "packed-gf-pk-affine-production",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "functions": ["packed_gf_pk_affine_recurrence"],
+      "semantic_domain": "one fused bounded affine recurrence over canonical power-basis coefficient tuples of reviewed degrees two through four",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "independent-coordinate-convolution"],
+      "benchmark": "bench:optimizer-extension-degrees",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

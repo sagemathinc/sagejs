@@ -62,3 +62,56 @@ test("interrupt acknowledges termination before replacement readiness", async ()
     globalThis.Worker = originalWorker;
   }
 });
+
+test("session configures a validated compiler-worker optimizer policy", async () => {
+  const originalWorker = globalThis.Worker;
+  let initialized;
+
+  class TestWorker {
+    postMessage(message, ports) {
+      initialized = message;
+      this.port = ports[0];
+      this.port.onmessage = ({ data }) => {
+        if (data.type !== "evaluate") return;
+        this.port.postMessage({
+          type: "result",
+          id: data.id,
+          ok: true,
+          result: { repr: "done", saveRequests: [] },
+        });
+      };
+      this.port.start?.();
+      setTimeout(() => {
+        this.port.postMessage({ type: "ready", protocol: 2 });
+      }, 0);
+    }
+
+    terminate() {
+      this.port?.close();
+    }
+  }
+
+  globalThis.Worker = TestWorker;
+  const session = new SageSession({
+    worker: "test-worker.mjs",
+    compilerWorker: "compiler-worker.mjs",
+    optimizationLevel: "O0",
+  });
+  try {
+    await session.ready();
+    await session.evaluate("done");
+    assert.equal(
+      new URL(initialized.compilerWorker).searchParams.get(
+        "sagejsOptimizationLevel",
+      ),
+      "O0",
+    );
+    assert.throws(
+      () => new SageSession({ optimizationLevel: "fast" }),
+      /optimizationLevel must be O0, O1, O2, O3, or Os/,
+    );
+  } finally {
+    await session.close();
+    globalThis.Worker = originalWorker;
+  }
+});

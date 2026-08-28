@@ -305,6 +305,7 @@ class AST_ForIn(AST_StatementWithBody):
         "object": "[AST_Node] the object that we're looping through",
         "builtin_range": "[bool?] false when range is shadowed in the enclosing scope",
         "alternative": "[AST_Statement?] the Python loop `else` suite, or null",
+        "optimization_region": "[object?] verified target-neutral optimization plan",
     }
 
     def _walk(self, visitor):

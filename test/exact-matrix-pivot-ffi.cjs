@@ -7,6 +7,7 @@ const {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -14,6 +15,7 @@ const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 const { compile } = require("@sagemath/sagejs/native");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const packagePath = join(root, "packages", "flint");
@@ -237,8 +239,15 @@ print("exact-matrix-pivot-kernel-ok")
 
 test("native and disabled-native paths use the same declared pivot calls", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-exact-matrix-pivots-"));
+  const aliasRoot = mkdtempSync(join(tmpdir(), "sagejs-exact-matrix-alias-"));
+  const temporaryAlias = join(aliasRoot, "source");
   try {
-    const witnessPath = join(temporary, "pivot_witness.py");
+    symlinkSync(
+      temporary,
+      temporaryAlias,
+      process.platform === "win32" ? "junction" : "dir",
+    );
+    const witnessPath = join(temporaryAlias, "pivot_witness.py");
     writeFileSync(witnessPath, nativeWitness);
     const compiled = await compile({ sourcePath: witnessPath });
     const core = readFileSync(compiled.coreSourcePath, "utf8");
@@ -259,6 +268,9 @@ test("native and disabled-native paths use the same declared pivot calls", async
     };
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
+        // Compile through an alias but import through the physical path. This
+        // reproduces macOS' /var -> /private/var source spelling mismatch on
+        // every platform without changing runtime source-bundle identity.
         cwd: temporary,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_REQUIRED: "1" },
         input: sageWitness(true),
@@ -274,6 +286,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
       "exact-matrix-pivot-kernel-ok",
     );
   } finally {
+    rmSync(aliasRoot, { recursive: true, force: true });
     rmSync(temporary, { recursive: true, force: true });
   }
 });
@@ -373,10 +386,7 @@ test("exact pivot resources pass sanitizer-backed lifecycle stress", {
     ]);
     assert.equal(
       run(executable, [], {
-        env: {
-          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-        },
+        env: sanitizerEnvironment({ strictStringChecks: true }),
       }),
       "rounds=500",
     );

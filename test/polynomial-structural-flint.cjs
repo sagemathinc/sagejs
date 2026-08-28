@@ -8,6 +8,7 @@ const { tmpdir } = require("node:os");
 const { resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compile: compileNative } = require("@sagemath/sagejs/native");
+const { sanitizerEnvironment } = require("./helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const flintPrefix = resolve(
@@ -617,11 +618,7 @@ int main(void)
     const run = spawnSync(executable, [], {
       cwd: root,
       encoding: "utf8",
-      env: {
-        ...process.env,
-        ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1",
-        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1",
-      },
+      env: sanitizerEnvironment({ strictStringChecks: true }),
     });
     assert.equal(
       run.status,

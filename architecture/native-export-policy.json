@@ -151,6 +151,15 @@
         "Sage.js JavaScript fallback",
         "igraph"
       ]
+    },
+    "boundary-benchmarks": {
+      "rationale": "Standalone microbenchmark exports measure JavaScript, Node-API, and WebAssembly call and representation costs without entering any production runtime path.",
+      "fallback": "The benchmark reports an unavailable runtime instead of substituting these experimental callbacks for Sage.js mathematical operations.",
+      "oracles": [
+        "JavaScript scalar arithmetic",
+        "WebAssembly scalar arithmetic",
+        "cross-runtime deterministic checksums"
+      ]
     }
   },
   "matrix_remediation": {
@@ -241,6 +250,31 @@
     }
   },
   "exports": [
+    {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "family": "boundary-benchmarks",
+      "decision": "retain-differential-oracle"
+    },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrix",
       "family": "dense-matrix-storage",

@@ -24,6 +24,21 @@ _POLYNOMIAL_RESOURCE_CACHE_LIMIT = 64
 _polynomial_resource_cache = []
 
 
+def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
+    """Evaluate by Horner over one low-to-high coefficient sequence.
+
+    The source is intentionally ordinary and target-neutral.  The optimizer
+    may scalar-replace the loop when `base`, `value`, and every coefficient
+    satisfy one reviewed finite-field representation contract.  Its guarded
+    reverse-view lowering reads a branded tuple in place; every other parent
+    executes the ordinary `reversed` iterator unchanged.
+    """
+    answer = base(0)
+    for coefficient in reversed(coefficients):
+        answer = answer * value + coefficient
+    return answer
+
+
 def _touch_polynomial_resource(storage: Any) -> None:
     if _polynomial_resource_cache and _polynomial_resource_cache[-1] is storage:
         return
@@ -1289,8 +1304,10 @@ class PolynomialElement(sage.Element):
         self,
         parent: PolynomialRingParent,
         value: Any,
+        machine_field_coefficients: Any = runtime.undefined,
     ) -> None:
         self._parent = parent
+        self._machineFieldCoefficients = machine_field_coefficients
         self._storage: Any = runtime.undefined
         if _packed_polynomial_kind(parent.base_ring()) == "legacy":
             self._native = value
@@ -1424,7 +1441,9 @@ class PolynomialElement(sage.Element):
                     runtime.integer_bigint(coefficient._denominator),
                 )
             else:
-                constant = backend.nmodPolyConstant(coefficient._value, base._modulus)
+                constant = backend.nmodPolyConstant(
+                    runtime.integer_bigint(coefficient._value), base._modulus
+                )
             result = backend.polyAdd(result, constant)
         return result
 
@@ -3273,6 +3292,8 @@ class PolynomialElement(sage.Element):
         return answer
 
     def coefficients(self) -> list[Any]:
+        if self._machineFieldCoefficients is not runtime.undefined:
+            return list(self._machineFieldCoefficients)
         base = self._parent.base_ring()
         kind = _packed_polynomial_kind(base)
         if kind == "ZZ":
@@ -3483,11 +3504,10 @@ class PolynomialElement(sage.Element):
         # incompatible numerical domains into Python `TypeError` instead of
         # leaking internal attribute lookup failures.
         runtime.coercion_model.resolveParents(base, value_parent)
-        coefficients = self.coefficients()
-        answer = self._parent.base_ring()(0)
-        for coefficient in reversed(coefficients):
-            answer = answer * value + coefficient
-        return answer
+        coefficients = self._machineFieldCoefficients
+        if coefficients is runtime.undefined:
+            coefficients = self.coefficients()
+        return _closed_field_horner(base, coefficients, value)
 
     def __repr__(self) -> str:
         base = self._parent.base_ring()
@@ -3663,14 +3683,20 @@ class PolynomialRingParent(sage.Parent):
         _flint_ffi_module().fmpq_polynomial_length(resource)
         return PolynomialElement(self, _FmpqPolynomialResourceStorage(resource))
 
-    def _from_fq_polynomial_resource(self, resource: Any) -> PolynomialElement:
+    def _from_fq_polynomial_resource(
+        self,
+        resource: Any,
+        machine_field_coefficients: Any = runtime.undefined,
+    ) -> PolynomialElement:
         """Take ownership of a checked `GF(p^n)[x]` resource."""
         if _packed_polynomial_kind(self._base) != "GF_EXT":
             resource.close()
             raise TypeError("extension polynomial resource requires `GF(p^n)`")
         _flint_ffi_module().fq_polynomial_length(resource)
         return PolynomialElement(
-            self, _FqPolynomialResourceStorage(resource, self._base)
+            self,
+            _FqPolynomialResourceStorage(resource, self._base),
+            machine_field_coefficients,
         )
 
     def _from_fmpz_mod_polynomial_resource(self, resource: Any) -> PolynomialElement:
@@ -3855,18 +3881,37 @@ class PolynomialRingParent(sage.Parent):
             coordinates = []
             for index in range(length):
                 coordinates.extend(values[index]._power_basis_coordinates())
+            machine_coefficients = (
+                runtime.math_tuple(values[:length])
+                if runtime.reflect.get(self._base, "_machineExtensionDegree") != 0
+                else runtime.undefined
+            )
             return self._from_fq_polynomial_resource(
                 _flint_ffi_module().fq_polynomial(
                     runtime.reflect.get(self._base, "_nativeContext"),
                     runtime.uint64_buffer(coordinates),
                     len(coordinates),
                     length,
-                )
+                ),
+                machine_coefficients,
             )
         result = self(0)
         generator = self.gen()
         for coefficient in reversed(coefficients):
             result = result._mul_(generator)._add_(self(coefficient))
+        if (
+            self._base._kind == "GF_EXTENSION"
+            and runtime.reflect.get(self._base, "_machineExtensionDegree") != 0
+        ):
+            values = [self._base(value) for value in coefficients]
+            length = len(values)
+            while length > 0 and values[length - 1].is_zero():
+                length -= 1
+            return PolynomialElement(
+                self,
+                result._native,
+                runtime.math_tuple(values[:length]),
+            )
         return result
 
     def gen(self) -> PolynomialElement:
@@ -3962,10 +4007,16 @@ class PolynomialRingParent(sage.Parent):
         ):
             if self._base._kind == "ZMOD":
                 return PolynomialElement(
-                    self, backend.zmodPolyConstant(value._value, self._base._modulus)
+                    self,
+                    backend.zmodPolyConstant(
+                        runtime.integer_bigint(value._value), self._base._modulus
+                    ),
                 )
             return PolynomialElement(
-                self, backend.nmodPolyConstant(value._value, self._base._modulus)
+                self,
+                backend.nmodPolyConstant(
+                    runtime.integer_bigint(value._value), self._base._modulus
+                ),
             )
         if (
             self._base._kind == "GF_EXTENSION"
@@ -4380,7 +4431,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
             denominator = rational._denominator
         elif self._base._kind in ["GF", "ZMOD"]:
             residue = self._base(value)
-            numerator = residue._value
+            numerator = runtime.integer_bigint(residue._value)
             denominator = runtime.bigint(1)
         elif self._base._kind == "GF_EXTENSION":
             residue = self._base(value)

@@ -36,6 +36,23 @@ function serializeError(error) {
   };
 }
 
+function optimizationReport(program, filename) {
+  if (
+    program?.schema !== "sagejs.optimizing-mathematics/v1" ||
+    !Array.isArray(program.passes) ||
+    !Array.isArray(program.contracts) ||
+    !Array.isArray(program.regions)
+  ) {
+    throw new TypeError("browser compiler produced invalid optimizer IR");
+  }
+  return JSON.parse(JSON.stringify({
+    schema: "sagejs.optimizer-evaluation/v1",
+    authority: "compiler-verified-static",
+    filename,
+    program,
+  }));
+}
+
 async function fetchText(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -64,6 +81,15 @@ let foreignGrammarUrls;
 let foreignFrontendModulePromise;
 const configuredForeignGrammars = new Set();
 const foreignFrontends = new Map();
+const configuredOptimizationLevel = new URL(
+  typeof self.location?.href === "string" ? self.location.href : import.meta.url,
+).searchParams.get("sagejsOptimizationLevel") ?? undefined;
+if (
+  configuredOptimizationLevel !== undefined &&
+  !["O0", "O1", "O2", "O3", "Os"].includes(configuredOptimizationLevel)
+) {
+  throw new TypeError("invalid Sage.js compiler-worker optimization level");
+}
 
 function compileWithFrontend(source, filename, frontend, language) {
   const classes = toplevel?.classes;
@@ -84,6 +110,7 @@ function compileWithFrontend(source, filename, frontend, language) {
     jsage: language === "sage",
     exact_integer_literals: true,
     strict_python_scopes: true,
+    optimization_level: configuredOptimizationLevel,
   });
   const javascript = outputJavaScript(
     compiler,
@@ -110,7 +137,12 @@ function compileWithFrontend(source, filename, frontend, language) {
   const dynamicImports = imports
     .filter((module) => module?.dynamic === true)
     .map((module) => module.module_id);
-  return { javascript, dynamicImports, moduleImports };
+  return {
+    javascript,
+    dynamicImports,
+    moduleImports,
+    optimization: optimizationReport(toplevel.optimization_ir, filename),
+  };
 }
 
 async function foreignModule() {

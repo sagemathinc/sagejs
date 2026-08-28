@@ -100,6 +100,62 @@ test("direct CST lowering matches established JavaScript for core nodes", async 
   }
 });
 
+test("closed modular recurrences receive a guarded scalar loop", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const emit = (source) => {
+      const ast = frontend.parse(source, parserOptions);
+      const output = new compiler.OutputStream(outputOptions);
+      ast.print(output);
+      return output.get();
+    };
+    const optimized = emit(`
+def recurrence(n, field):
+    value = field(1)
+    multiplier = field(12345)
+    increment = field(6789)
+    for index in range(n):
+        value = value * multiplier + increment
+    return value
+`);
+    assert.match(optimized, /ρσ_prepare_machine_field_region\(/);
+    assert.match(optimized, /ρσ_FieldCount\d+, 5, \[\]\)/);
+    assert.match(optimized, /ρσ_fast_machine_residue_recurrence\(/);
+    assert.match(optimized, /ρσ_FieldAdaptiveResult\d+ !== null/);
+    assert.match(optimized, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
+
+    const generic = (() => {
+      const ast = frontend.parse(`
+def recurrence(n, field):
+    value = field(1)
+    multiplier = field(12345)
+    increment = field(6789)
+    for index in range(n):
+        value = value * multiplier + increment
+    return value
+`, { ...parserOptions, optimization_level: "O0" });
+      const output = new compiler.OutputStream(outputOptions);
+      ast.print(output);
+      return output.get();
+    })();
+    assert.doesNotMatch(generic, /ρσ_prepare_machine_field_region\(/);
+    assert.doesNotMatch(generic, /ρσ_fast_machine_residue_recurrence\(/);
+    assert.match(generic, /ρσ_operator_add_exact\(ρσ_operator_mul_exact\(/);
+
+    for (const source of [
+      `for multiplier in range(count):\n    value = value * multiplier + increment\n`,
+      `for index in range(count):\n    value = value * multiplier + increment\n    seen.append(1)\n`,
+      `for index in range(count):\n    value = value * multiplier + increment\nelse:\n    finished = True\n`,
+      `range = custom_range\nfor index in range(count):\n    value = value * multiplier + increment\n`,
+    ]) {
+      assert.doesNotMatch(emit(source), /ρσ_prepare_machine_field_region\(/);
+    }
+  } finally {
+    frontend.close();
+  }
+});
+
 test("starred set displays lower to valid JavaScript spread", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

@@ -6,6 +6,7 @@ import {
   SAGEJS_RUNTIME_INTRINSICS,
 } from "./contract";
 import type { PythonSyntaxTree } from "./frontend";
+import { optimizePythonAst } from "./optimizer";
 import { PythonAstSemanticAnalyzer } from "./semantic";
 
 export class UnsupportedPythonCstNode extends Error {
@@ -259,6 +260,7 @@ export class PythonCstLowerer {
         this.options.scoped_flags?.sequential_definitions
       ),
     ).analyze(ast);
+    optimizePythonAst(this.compiler, ast, this.options);
     ast.intrinsic_modules = Object.fromEntries(this.intrinsicModules);
     return {
       ast,
@@ -890,12 +892,13 @@ export class PythonCstLowerer {
     const left = this.field(node, "left");
     const init = this.lowerBindingTarget(this.lowerExpression(left), left);
     const object = this.lowerExpression(this.field(node, "right"));
+    const body = this.lowerBlock(this.field(node, "body"));
     this.invalidateIntrinsicBinding(left);
     return this.make(isAsync ? "AST_AsyncFor" : "AST_ForIn", node, {
       init,
       name: null,
       object,
-      body: this.lowerBlock(this.field(node, "body")),
+      body,
       alternative: alternative
         ? this.lowerBlock(this.field(alternative, "body"))
         : null,

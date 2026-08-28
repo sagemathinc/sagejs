@@ -213,6 +213,7 @@ test("packed cubic collector reuses its authenticated factor-base snapshot", () 
   const output = runSagejs(
     String.raw`
 from sagejs.number_fields import class_group_factor_base as factor_bases
+from sagejs.number_fields import class_group_matrix as relation_matrices
 from sagejs.number_fields import class_group_relations as relations
 from sagejs.number_fields import cubic_class_number as cubic
 from sagejs.number_fields import ideal_arithmetic as ideals
@@ -307,13 +308,14 @@ assert small_record.to_dict() == factor_bases.build_factor_base(
     )
 )[0].to_dict()
 small_basis = tuple(small.maximal_order().basis())
+small_norm_form = cubic._order_cubic_norm_form_coefficients(small.maximal_order())
 for coordinates in ((1, 0, 0), (1, 1, 0), (-2, 3, 1), (5, -4, 2)):
     element = sum(
         coordinate * basis_element
         for coordinate, basis_element in zip(coordinates, small_basis)
     )
-    assert cubic._power_basis_cubic_element_norm(
-        small.maximal_order(), coordinates
+    assert cubic._cubic_norm_form_value(
+        small_norm_form, *coordinates
     ) == int(QQ(element.norm())._numerator)
 assert small_record.modular_table
 assert small_record._modular_table is not None
@@ -335,6 +337,51 @@ assert small_lmfdb_result.relation_records[0].provenance == {
     "factor_base_index": 0,
     "order_basis_coordinates": [0, 1, -1],
 }
+
+# Principal-factor proposals share one exact order norm form across every
+# retained prime and modular lift.  Revalidating the power basis and decoding
+# the same defining polynomial for each candidate used to dominate this tiny
+# exact search.
+proposal_plan = factor_bases.factor_base_plan(
+    small_lmfdb.maximal_order(), proof=True, theorem="minkowski"
+)
+proposal_factors = cubic.packed_cubic_factor_records(proposal_plan)
+assert proposal_factors is not None
+saved_norm_form = cubic._order_cubic_norm_form_coefficients
+norm_form_calls = 0
+def counted_norm_form(order):
+    global norm_form_calls
+    norm_form_calls += 1
+    return saved_norm_form(order)
+cubic._order_cubic_norm_form_coefficients = counted_norm_form
+try:
+    proposals = cubic._packed_principal_factor_proposals(
+        small_lmfdb.maximal_order(), proposal_factors
+    )
+finally:
+    cubic._order_cubic_norm_form_coefficients = saved_norm_form
+assert proposals and norm_form_calls == 1
+
+# The HNF support selector already knows whether the low-norm prefix has full
+# rank.  A rank-deficient prefix must widen directly instead of constructing a
+# complete HNF/Smith presentation solely to rediscover that missing pivot.
+saved_extract = relation_matrices.extract_relation_presentation
+observed_presentation_ranks = []
+def counted_extract(rows, columns, **kwargs):
+    presentation = saved_extract(rows, columns, **kwargs)
+    observed_presentation_ranks.append((presentation.rank, int(columns)))
+    return presentation
+relation_matrices.extract_relation_presentation = counted_extract
+try:
+    rank_deficient_prefix = cubic.bounded_cubic_minkowski_class_number(
+        NumberField(x**3 - x**2 - 14*x + 30, "rank")
+    )
+finally:
+    relation_matrices.extract_relation_presentation = saved_extract
+assert not rank_deficient_prefix.complete
+assert observed_presentation_ranks and all(
+    rank == width for rank, width in observed_presentation_ranks
+)
 
 # The private authority still checks retained object identities.  It cannot
 # transfer packed records to another maximal order, while detached replay

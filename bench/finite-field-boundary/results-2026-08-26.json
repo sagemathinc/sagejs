@@ -1,0 +1,429 @@
+{
+  "schema": "sagejs.finite-field-boundary-results/v1",
+  "measured": "2026-08-26",
+  "parameters": {
+    "iterations": 2000000,
+    "warmup_iterations": 100000,
+    "samples": 5,
+    "vector_length": 500000,
+    "vector_samples": 5,
+    "modulus": 65521,
+    "multiplier": 12345,
+    "increment": 6789
+  },
+  "hosts": {
+    "linux_x64": {
+      "cpu": "AMD EPYC 7B13",
+      "runtimes": {
+        "node": {
+          "version": "26.7.0",
+          "engine": "V8 14.6.202.34-node.28",
+          "raw_ns_per_step": {
+            "js-number-inline": 4.979,
+            "js-bigint-call": 8.612,
+            "wasm-scalar-fused": 9.77,
+            "napi-scalar-fused": 56.094
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 150.845,
+            "object-js-number-two-results": 69.402,
+            "object-wasm-fused-one-result": 42.916
+          }
+        },
+        "bun": {
+          "version": "1.4.0",
+          "engine": "JavaScriptCore",
+          "raw_ns_per_step": {
+            "js-number-inline": 5.308,
+            "js-bigint-call": 31.494,
+            "wasm-scalar-fused": 11.773,
+            "napi-scalar-fused": 76.011
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 133.99,
+            "object-js-number-two-results": 96.523,
+            "object-wasm-fused-one-result": 32.272
+          }
+        },
+        "deno": {
+          "version": "2.9.5",
+          "engine": "V8 15.0.245.2-rusty",
+          "raw_ns_per_step": {
+            "js-number-inline": 4.978,
+            "js-bigint-call": 7.077,
+            "wasm-scalar-fused": 9.127,
+            "napi-scalar-fused": 81.302
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 143.155,
+            "object-js-number-two-results": 66.573,
+            "object-wasm-fused-one-result": 41.117
+          }
+        }
+      },
+      "node_batching": {
+        "chunked_ns_per_step": {
+          "js-number-inline": 4.064,
+          "wasm-chain-1": 10.244,
+          "napi-chain-1": 62.613,
+          "wasm-chain-8": 4.756,
+          "napi-chain-8": 10.18,
+          "wasm-chain-64": 4.673,
+          "napi-chain-64": 5.36,
+          "wasm-chain-1024": 4.671,
+          "napi-chain-1024": 4.717
+        },
+        "vector_ns_per_element": {
+          "js-typed-array-resident": 3.512,
+          "wasm-linear-memory-resident": 2.214,
+          "napi-borrowed-typed-array": 2.22,
+          "wasm-copy-in-and-out": 2.768
+        }
+      }
+    },
+    "linux_arm64": {
+      "cpu": "Neoverse-N1",
+      "runtimes": {
+        "node": {
+          "version": "26.7.0",
+          "engine": "V8 14.6.202.34-node.28",
+          "raw_ns_per_step": {
+            "js-number-inline": 4.325,
+            "js-bigint-call": 11.91,
+            "wasm-scalar-fused": 14.324,
+            "napi-scalar-fused": 64.408
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 228.809,
+            "object-js-number-two-results": 118.183,
+            "object-wasm-fused-one-result": 68.234
+          }
+        },
+        "bun": {
+          "version": "1.4.0",
+          "engine": "JavaScriptCore",
+          "raw_ns_per_step": {
+            "js-number-inline": 5.394,
+            "js-bigint-call": 51.114,
+            "wasm-scalar-fused": 16.82,
+            "napi-scalar-fused": 116.814
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 170.991,
+            "object-js-number-two-results": 113.457,
+            "object-wasm-fused-one-result": 45.651
+          }
+        },
+        "deno": {
+          "version": "2.9.5",
+          "engine": "V8 15.0.245.2-rusty",
+          "raw_ns_per_step": {
+            "js-number-inline": 4.315,
+            "js-bigint-call": 10.275,
+            "wasm-scalar-fused": 13.307,
+            "napi-scalar-fused": 140.178
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 220.204,
+            "object-js-number-two-results": 113.684,
+            "object-wasm-fused-one-result": 67.221
+          }
+        }
+      },
+      "node_batching": {
+        "chunked_ns_per_step": {
+          "js-number-inline": 4.316,
+          "wasm-chain-1": 14.757,
+          "napi-chain-1": 71.531,
+          "wasm-chain-8": 5.766,
+          "napi-chain-8": 12.577,
+          "wasm-chain-64": 5.395,
+          "napi-chain-64": 5.663,
+          "wasm-chain-1024": 5.338,
+          "napi-chain-1024": 4.738
+        },
+        "vector_ns_per_element": {
+          "js-typed-array-resident": 4.477,
+          "wasm-linear-memory-resident": 3.071,
+          "napi-borrowed-typed-array": 3.052,
+          "wasm-copy-in-and-out": 3.657
+        }
+      }
+    },
+    "windows_x64": {
+      "cpu": "AMD EPYC 7B13",
+      "runtimes": {
+        "node": {
+          "version": "26.5.1",
+          "engine": "V8 14.6.202.34-node.24",
+          "raw_ns_per_step": {
+            "js-number-inline": 4.95,
+            "js-bigint-call": 8.155,
+            "wasm-scalar-fused": 9.998,
+            "napi-scalar-fused": 42.97
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 152.46,
+            "object-js-number-two-results": 71.649,
+            "object-wasm-fused-one-result": 42.681
+          }
+        },
+        "bun": {
+          "version": "1.4.0",
+          "engine": "JavaScriptCore",
+          "raw_ns_per_step": {
+            "js-number-inline": 5.293,
+            "js-bigint-call": 46.049,
+            "wasm-scalar-fused": 11.476,
+            "napi-scalar-fused": 82.019
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 122.351,
+            "object-js-number-two-results": 79.725,
+            "object-wasm-fused-one-result": 37.488
+          }
+        },
+        "deno": {
+          "version": "2.9.5",
+          "engine": "V8 15.0.245.2-rusty",
+          "raw_ns_per_step": {
+            "js-number-inline": 5.047,
+            "js-bigint-call": 7.235,
+            "wasm-scalar-fused": 9.547,
+            "napi-scalar-fused": 91.237
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 157.537,
+            "object-js-number-two-results": 71.795,
+            "object-wasm-fused-one-result": 42.281
+          }
+        }
+      },
+      "node_batching": {
+        "chunked_ns_per_step": {
+          "js-number-inline": 4.021,
+          "wasm-chain-1": 10.416,
+          "napi-chain-1": 47.144,
+          "wasm-chain-8": 4.72,
+          "napi-chain-8": 9.105,
+          "wasm-chain-64": 4.638,
+          "napi-chain-64": 5.202,
+          "wasm-chain-1024": 4.636,
+          "napi-chain-1024": 4.665
+        },
+        "vector_ns_per_element": {
+          "js-typed-array-resident": 3.839,
+          "wasm-linear-memory-resident": 2.215,
+          "napi-borrowed-typed-array": 2.193,
+          "wasm-copy-in-and-out": 3.005
+        }
+      }
+    },
+    "macos_arm64": {
+      "cpu": "Apple M1 Max",
+      "runtimes": {
+        "node": {
+          "version": "26.5.0",
+          "engine": "V8 14.6.202.34-node.24",
+          "raw_ns_per_step": {
+            "js-number-inline": 14.479,
+            "js-bigint-call": 26.955,
+            "wasm-scalar-fused": 22.571,
+            "napi-scalar-fused": 96.459
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 307.302,
+            "object-js-number-two-results": 161.649,
+            "object-wasm-fused-one-result": 90.676
+          }
+        },
+        "bun": {
+          "version": "1.4.0",
+          "engine": "JavaScriptCore",
+          "raw_ns_per_step": {
+            "js-number-inline": 16.831,
+            "js-bigint-call": 69.323,
+            "wasm-scalar-fused": 27.932,
+            "napi-scalar-fused": 125.381
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 273.649,
+            "object-js-number-two-results": 207.286,
+            "object-wasm-fused-one-result": 56.24
+          }
+        },
+        "deno": {
+          "version": "2.9.5",
+          "engine": "V8 15.0.245.2-rusty",
+          "raw_ns_per_step": {
+            "js-number-inline": 14.365,
+            "js-bigint-call": 24.239,
+            "wasm-scalar-fused": 22.603,
+            "napi-scalar-fused": 169.532
+          },
+          "object_ns_per_step": {
+            "object-js-number-two-results-frozen": 292.68,
+            "object-js-number-two-results": 147.825,
+            "object-wasm-fused-one-result": 85.537
+          }
+        }
+      },
+      "node_batching": {
+        "chunked_ns_per_step": {
+          "js-number-inline": 14.446,
+          "wasm-chain-1": 22.615,
+          "napi-chain-1": 107.604,
+          "wasm-chain-8": 14.862,
+          "napi-chain-8": 18.201,
+          "wasm-chain-64": 13.899,
+          "napi-chain-64": 13.931,
+          "wasm-chain-1024": 13.764,
+          "napi-chain-1024": 13.329
+        },
+        "vector_ns_per_element": {
+          "js-typed-array-resident": 5.332,
+          "wasm-linear-memory-resident": 1.947,
+          "napi-borrowed-typed-array": 1.904,
+          "wasm-copy-in-and-out": 2.306
+        }
+      }
+    }
+  },
+  "cas_comparison": {
+    "host": "AMD EPYC 7B13 Linux x64",
+    "workload": {
+      "iterations": 10000000,
+      "warmup_iterations": 1000000,
+      "samples": 7,
+      "modulus": 65521,
+      "multiplier": 12345,
+      "increment": 6789,
+      "checksum": 19598
+    },
+    "systems": {
+      "sagejs_guarded_compiler_recurrence": {
+        "version": "0.4.0 / Node 26.7.0",
+        "samples_seconds": [
+          0.053844451904296875,
+          0.053236961364746094,
+          0.053231000900268555,
+          0.0532994270324707,
+          0.05319476127624512,
+          0.05312204360961914,
+          0.05309295654296875,
+          0.05319356918334961,
+          0.053136348724365234
+        ],
+        "median_ns_per_step": 5.319356918334961
+      },
+      "sagejs_native_uint64_recurrence": {
+        "version": "0.4.0 / Node 26.7.0",
+        "compile_milliseconds": 715.4773120000001,
+        "load_milliseconds": 1.8316610000000537,
+        "cold_call_milliseconds": 47.02521200000001,
+        "selected_backend": "tagged",
+        "samples_milliseconds": [
+          46.603571999999986,
+          46.595781999999986,
+          46.62439200000006,
+          46.57514200000003,
+          46.623242000000005,
+          46.57410200000004,
+          46.57959099999994,
+          46.569001999999955,
+          46.63986299999988
+        ],
+        "median_ns_per_step": 4.659578199999999,
+        "portable_javascript_ir_median_ns_per_step": 28.633538300000012
+      },
+      "julia_raw_integer": {
+        "version": "1.12.7",
+        "cold_seconds": 0.039085032,
+        "samples_seconds": [
+          0.039002702,
+          0.039037181,
+          0.039103512,
+          0.039068542,
+          0.039090172,
+          0.039149201,
+          0.039060061
+        ],
+        "median_ns_per_step": 3.9068542
+      },
+      "julia_parametric_modp": {
+        "version": "1.12.7",
+        "cold_seconds": 0.128825986,
+        "samples_seconds": [
+          0.128936616,
+          0.128939726,
+          0.128823446,
+          0.129597766,
+          0.129871795,
+          0.129327596,
+          0.129106736
+        ],
+        "median_ns_per_step": 12.9106736
+      },
+      "julia_parametric_modp_fused": {
+        "version": "1.12.7",
+        "cold_seconds": 0.071783913,
+        "samples_seconds": [
+          0.071774494,
+          0.071826483,
+          0.071793383,
+          0.071850694,
+          0.071898884,
+          0.072071913,
+          0.072010483
+        ],
+        "median_ns_per_step": 7.1850694
+      },
+      "magma_field": {
+        "version": "2.18",
+        "samples_seconds": [0.89, 0.87, 0.89, 0.9, 0.88, 0.88, 0.88],
+        "median_ns_per_step": 88.0
+      },
+      "magma_raw_integer": {
+        "version": "2.18",
+        "samples_seconds": [1.01, 1.01, 1.02, 1.01, 1.03, 1.03, 1.02],
+        "median_ns_per_step": 102.0
+      },
+      "pari_gp_mod": {
+        "version": "2.17.2",
+        "samples_milliseconds": [1540, 1528, 1618, 1540, 1618, 1523, 1623],
+        "median_ns_per_step": 154.0
+      },
+      "pari_gp_raw_integer": {
+        "version": "2.17.2",
+        "samples_milliseconds": [1307, 1312, 1312, 1302, 1304, 1302, 1306],
+        "median_ns_per_step": 130.6
+      },
+      "sagejs_field": {
+        "version": "0.4.0 / Node 26.7.0",
+        "samples_seconds": [
+          1.076254,
+          1.108101,
+          1.068272,
+          1.063555,
+          1.071666,
+          1.078641,
+          1.07719
+        ],
+        "median_ns_per_step": 107.6254
+      },
+      "sagejs_raw_integer": {
+        "version": "0.4.0 / Node 26.7.0",
+        "samples_seconds": [
+          4.283271,
+          4.271347,
+          4.344056,
+          4.32002,
+          4.302729,
+          4.330278,
+          4.371068
+        ],
+        "median_ns_per_step": 432.002
+      }
+    }
+  }
+}

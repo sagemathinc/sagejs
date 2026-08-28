@@ -33,6 +33,36 @@
       }
     },
     {
+      "id": "optimizer-gf-p2-affine",
+      "family": "finite-fields",
+      "workflow": "optimizer-gf-p2-affine",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-gf-p2-affine-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<x> = PolynomialRing(GF(97))\nK.<a> = GF(97^2, modulus=x^2 + x + 5)\ndef optimized(count):\n    value = K(1) + 2*a\n    multiplier = K(3) + 4*a\n    increment = K(5) + 6*a\n    for index in range(count):\n        value = value * multiplier + increment\n    return value, index\nanswer = optimized(10000)\nprint(answer[0], answer[1], K._lastCompilerOptimizationRoute)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "15*a + 81 9999 wasm-compiled-source\n",
+        "repr": ""
+      }
+    },
+    {
+      "id": "optimizer-gf-pk-affine",
+      "family": "finite-fields",
+      "workflow": "optimizer-gf-pk-affine",
+      "tier": "release",
+      "requires": [
+        { "id": "kernel:packed-gf-pk-affine-production", "route": "receipt-backed-wasm-artifact" }
+      ],
+      "source": "P.<x> = PolynomialRing(GF(5))\nK.<a> = GF(5^3, modulus=x^3+x+1)\ndef optimized(count):\n    aa=a*a\n    value=K(1)+2*a+3*aa\n    multiplier=K(2)+a+4*aa\n    increment=K(3)+4*a+aa\n    for index in range(count):\n        value=value*multiplier+increment\n    return value,index\nK._machineExtensionIsolatedMinSteps=4096\nanswer=optimized(10000)\nprint(tuple(answer[0]._machineCoordinates),answer[1],K._lastCompilerOptimizationRoute)",
+      "timeout_ms": 30000,
+      "expect": {
+        "stdout": "(2, 2, 0) 9999 wasm-compiled-source\n",
+        "repr": ""
+      }
+    },
+    {
       "id": "capability-report-api",
       "family": "runtime",
       "workflow": "capability-report-api",

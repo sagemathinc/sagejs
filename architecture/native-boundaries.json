@@ -13,11 +13,11 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 128,
+    "classified-native-file": 131,
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
-    "napi-export": 320,
-    "runtime-intrinsic": 142,
+    "napi-export": 325,
+    "runtime-intrinsic": 147,
     "wasm-export": 72
   },
   "boundaries": [
@@ -8511,6 +8511,56 @@
       "family": "graph"
     },
     {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "kind": "napi-export",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "package": "@sagemath/sagejs",
+      "export": "add_mod_u32",
+      "symbol": "add_mod_u32",
+      "disposition": "retain-differential-oracle",
+      "family": "boundary-benchmarks"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "kind": "napi-export",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "package": "@sagemath/sagejs",
+      "export": "chain_mod_u32",
+      "symbol": "chain_mod_u32",
+      "disposition": "retain-differential-oracle",
+      "family": "boundary-benchmarks"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "kind": "napi-export",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "package": "@sagemath/sagejs",
+      "export": "mul_add_mod_u32",
+      "symbol": "mul_add_mod_u32",
+      "disposition": "retain-differential-oracle",
+      "family": "boundary-benchmarks"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "kind": "napi-export",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "package": "@sagemath/sagejs",
+      "export": "mul_mod_u32",
+      "symbol": "mul_mod_u32",
+      "disposition": "retain-differential-oracle",
+      "family": "boundary-benchmarks"
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "kind": "napi-export",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "package": "@sagemath/sagejs",
+      "export": "vector_mul_add_mod_u32",
+      "symbol": "vector_mul_add_mod_u32",
+      "disposition": "retain-differential-oracle",
+      "family": "boundary-benchmarks"
+    },
+    {
       "id": "native-file:bench/call-boundary/napi_add.c",
       "kind": "classified-native-file",
       "path": "bench/call-boundary/napi_add.c",
@@ -8549,6 +8599,30 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/finite-field-boundary/napi_modular.c",
+      "kind": "classified-native-file",
+      "path": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/finite-field-boundary/wasm_modular.c",
+      "kind": "classified-native-file",
+      "path": "bench/finite-field-boundary/wasm_modular.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
+      "id": "native-file:bench/finite-field-boundary/win_delay_load_hook.cc",
+      "kind": "classified-native-file",
+      "path": "bench/finite-field-boundary/win_delay_load_hook.cc",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:bench/hyperelliptic/cuda-twist-feasibility.cu",
@@ -9583,6 +9657,14 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bind_machine_extension_context",
+      "symbol": "ρσ_bind_machine_extension_context",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:blocking_sleep",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
@@ -9596,6 +9678,14 @@
       "path": "tools/python/contract.ts",
       "export": "bool_builtin",
       "symbol": "ρσ_bool",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "brand_machine_field_element",
+      "symbol": "ρσ_brand_machine_field_element",
       "disposition": "runtime-primitive"
     },
     {
@@ -9724,6 +9814,22 @@
       "path": "tools/python/contract.ts",
       "export": "factor_pair",
       "symbol": "ρσ_factor_pair",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:fast_closed_binary",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "fast_closed_binary",
+      "symbol": "ρσ_fast_closed_binary",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "fast_machine_residue_recurrence",
+      "symbol": "ρσ_fast_machine_residue_recurrence",
       "disposition": "runtime-primitive"
     },
     {
@@ -9987,7 +10093,7 @@
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
       "export": "jstype",
-      "symbol": "jstype",
+      "symbol": "ρσ_native_jstype",
       "disposition": "runtime-primitive"
     },
     {
@@ -10036,6 +10142,14 @@
       "path": "tools/python/contract.ts",
       "export": "live_scope_dict",
       "symbol": "ρσ_live_scope_dict",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "machine_extension_context_matches",
+      "symbol": "ρσ_machine_extension_context_matches",
       "disposition": "runtime-primitive"
     },
     {

@@ -15,6 +15,7 @@ const {
 
 const root = resolve(__dirname, "..");
 const {
+  inspectToolchain,
   resolveToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 
@@ -82,6 +83,16 @@ function toolchain(library = "flint") {
     libraries: configuration.libraries,
     sources: configuration.sources,
   };
+}
+
+function toolchainAvailable(library = "flint", options = {}) {
+  if (wasmLibraries[library] === undefined) {
+    throw new Error(`no Wasm toolchain configuration for ${library}`);
+  }
+  return inspectToolchain({
+    root: options.root ?? root,
+    environment: options.environment ?? process.env,
+  }).ready;
 }
 
 function requirePath(description, path) {
@@ -176,4 +187,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { build, parseArguments, toolchain };
+module.exports = { build, parseArguments, toolchain, toolchainAvailable };

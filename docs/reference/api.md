@@ -8171,8 +8171,14 @@ Sage.js
 ### Metadata
 
 - Kind: `function`
-- Module: `sagejs._baselib.builtins`
-- Sage compatibility: compatible
+- Module: `sage.version`
+- Tags: runtime, version, introspection
+- Backends: Sage.js host metadata
+- Sage compatibility: compatible — Returns the Sage.js product release and adds an optional machine-readable dictionary form.
+
+### Provenance
+
+- `sagejs-original`
 
 ## `Zmod`
 

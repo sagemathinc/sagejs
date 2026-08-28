@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 700000,
+      "max_source_bytes": 781000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -70,8 +70,9 @@
       "startup": "lazy",
       "max_source_bytes": 950000,
       "depends_on": ["core-runtime"],
-      "modules": ["sagejs.native", "sagejs.ffi"],
+      "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
+        "src/lib/sagejs/compiler.py",
         "src/lib/sagejs/native.py",
         "src/lib/sagejs/kernels/__init__.py"
       ],
@@ -81,7 +82,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 720000,
+      "max_source_bytes": 750000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -154,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 160000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -164,6 +165,7 @@
       "modules": ["sagejs.kernels.matrix"],
       "files": [
         "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
         "src/lib/sagejs/kernels/matrix/combinatorial.py",
         "src/lib/sagejs/kernels/matrix/dense_binary_m4ri.py",
         "src/lib/sagejs/kernels/matrix/dense_integer.py",
@@ -260,7 +262,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1565000,
+      "max_source_bytes": 1585000,
       "depends_on": [
         "core-runtime",
         "arithmetic",

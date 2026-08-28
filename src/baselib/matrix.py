@@ -1141,7 +1141,11 @@ def _native_matrix(
     if _is_modular_base(base):
         entries = []
         for value in values:
-            entries.append(base(value)._value)
+            # The public small-residue representation is a JavaScript Number,
+            # while the legacy FLINT object bridge has an exact-BigInt ABI.
+            # Keep that conversion at this coarse native boundary instead of
+            # paying for BigInt in every scalar field operation.
+            entries.append(runtime.integer_bigint(base(value)._value))
         if getattr(base, "_kind", None) == "ZMOD":
             return backend.zmodMatrix(rows, cols, entries, base._modulus)
         return backend.nmodMatrix(rows, cols, entries, base._modulus)
@@ -1320,7 +1324,7 @@ def _matrix_scalar_parts(
 ) -> tuple[sage.Parent, int, int]:
     if _is_modular_base(base):
         scalar = base(value)
-        return (base, scalar._value, runtime.bigint(1))
+        return (base, runtime.integer_bigint(scalar._value), runtime.bigint(1))
     if _is_extension_field_base(base):
         return (base, 0, 1)
     if _is_algebraic_base(base):

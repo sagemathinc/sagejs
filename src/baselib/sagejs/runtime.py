@@ -19,6 +19,9 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
+# globals: ρσ_bind_machine_extension_context, ρσ_brand_machine_field_element
+# globals: ρσ_fast_machine_residue_recurrence
+# globals: ρσ_machine_extension_context_matches
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_json_scalar_sequence
 # globals: ρσ_canonical_json_exact
@@ -427,6 +430,7 @@ def uint64_residue_elements(source, parent, element_type):
         if (modulus <= 0n || modulus > 0xffffffffffffffffn) {
             throw new RangeError("invalid uint64 residue modulus");
         }
+        const machineResidues = Reflect.get(parent, "_machineResidues") === true;
         const output = new Array(source.length);
         for (let index = 0; index < source.length; index += 1) {
             const residue = source[index];
@@ -435,11 +439,37 @@ def uint64_residue_elements(source, parent, element_type):
             }
             const value = Object.create(prototype);
             value._parent = parent;
-            value._value = residue;
-            output[index] = Object.freeze(value);
+            value._value = machineResidues ? Number(residue) : residue;
+            output[index] = value;
         }
         return ρσ_list_decorate(output);
     })()"""
+
+
+def fast_closed_binary(left, right, operation, missing):
+    """Dispatch one whitelisted closed-parent operation without coercion."""
+    return r"""%js (() => {
+        if (left !== null && right !== null &&
+            typeof left === "object" && typeof right === "object") {
+            const parent = left._parent;
+            if (parent !== undefined && parent === right._parent &&
+                parent._closedScalarArithmetic === true) {
+                switch (operation) {
+                    case "add": return left._add_(right);
+                    case "sub": return left._sub_(right);
+                    case "mul": return left._mul_(right);
+                    case "truediv": return left._truediv_(right);
+                    default: throw new Error("invalid closed binary operation");
+                }
+            }
+        }
+        return missing;
+    })()"""
+
+
+def fast_machine_residue_recurrence(accumulator, multiplier, increment, count):
+    """Run a compiler-proven closed machine-residue recurrence."""
+    return ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, count)
 
 
 def integer_buffer_prefix(source, length):
@@ -666,6 +696,9 @@ list_contains = ρσ_list_contains
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
+bind_machine_extension_context = ρσ_bind_machine_extension_context
+brand_machine_field_element = ρσ_brand_machine_field_element
+machine_extension_context_matches = ρσ_machine_extension_context_matches
 named_tuple = ρσ_named_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power

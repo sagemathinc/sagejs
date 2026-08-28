@@ -36,6 +36,7 @@ import {
 } from "./foreign";
 import { rewriteQuestionMarkHelp } from "./polyglot";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
+import { formatOptimizationExplanation } from "./python/optimizer";
 import { markModuleCacheInUse } from "./cache-lease";
 import {
   formatExecutionTiming,
@@ -82,6 +83,10 @@ export interface Options {
   tokens?: boolean; // show very verbose tokens as parsed
   moduleCacheDir?: string | false;
   importDirs?: string[];
+  optimizationLevel?: string;
+  optimizationDisable?: string;
+  optimizationRequire?: string;
+  explainOptimizations?: boolean;
 }
 
 export function defaultHistoryFile(
@@ -596,7 +601,16 @@ export default async function Repl(
         module_cache_dir: moduleCacheDir,
         precompiled_module_cache_dir: precompiledModuleCacheDir,
         tokens: options.tokens,
+        optimization_level: options.optimizationLevel,
+        optimization_disable: options.optimizationDisable,
+        optimization_require: options.optimizationRequire,
+        optimization_explain: !!options.explainOptimizations,
       });
+      if (options.explainOptimizations) {
+        options.console.error(
+          formatOptimizationExplanation(toplevel.optimization_ir).trimEnd(),
+        );
+      }
       if (timeitOptions) {
         const statements = toplevel.body;
         const body = statements.length === 1

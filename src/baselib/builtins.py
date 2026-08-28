@@ -12,6 +12,8 @@ from typing import Any, Callable, Iterator
 import sagejs.runtime as runtime
 
 _builtins_number_class = runtime.native_number_class
+_builtins_number_prototype = runtime.reflect.get(_builtins_number_class, "prototype")
+_builtins_number_value_of = runtime.reflect.get(_builtins_number_prototype, "valueOf")
 _Bool = bool
 _Float = float
 _Int = int
@@ -78,7 +80,24 @@ def _sagejs_version(json: _Bool = False) -> Any:
 runtime.reflect.set(_sagejs_version, "__name__", "version")
 if runtime.reflect.get(runtime.global_object, "__sagejs_sage_mode__") is True:
     runtime.reflect.set(runtime.global_object, "version", _sagejs_version)
-    runtime.register_doc("version", _sagejs_version)
+    runtime.register_doc(
+        "version",
+        _sagejs_version,
+        {
+            "kind": "function",
+            "module": "sage.version",
+            "tags": ["runtime", "version", "introspection"],
+            "backends": ["Sage.js host metadata"],
+            "sage_compatibility": {
+                "status": "compatible",
+                "notes": (
+                    "Returns the Sage.js product release and adds an optional "
+                    "machine-readable dictionary form."
+                ),
+            },
+            "provenance": [{"kind": "sagejs-original"}],
+        },
+    )
 
 
 def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
@@ -871,6 +890,35 @@ def ρσ_float_result(value: Any) -> Any:
     return number
 
 
+def ρσ_strict_float_unbox(value: Any) -> Any:
+    """Return an authenticated Python float as one binary64 primitive.
+
+    `None` is the fail-closed result. Nonintegral primitive Numbers, infinities,
+    and NaNs already carry Python float identity. Integral floats use the one
+    frozen private Number subclass created by `_builtins_box_float`; the
+    captured intrinsic avoids invoking a mutable user-visible `valueOf`.
+    """
+    if (
+        runtime.reflect.get(_builtins_number_prototype, "valueOf")
+        is not _builtins_number_value_of
+    ):
+        return None
+    if runtime.strict_equal(runtime.jstype(value), "number"):
+        return None if runtime.number.isSafeInteger(value) else value
+    if (
+        value is None
+        or not runtime.strict_equal(runtime.jstype(value), "object")
+        or _builtins_float_prototype is runtime.undefined
+        or runtime.object.getPrototypeOf(value) is not _builtins_float_prototype
+        or not runtime.object.isFrozen(value)
+    ):
+        return None
+    try:
+        return runtime.reflect.apply(_builtins_number_value_of, value, [])
+    except Exception:
+        return None
+
+
 def _builtins_numeric_result(
     value: Any,
     left: Any,
@@ -931,6 +979,13 @@ runtime.set_class_repr(_NoneType, "<class 'NoneType'>")
 
 
 def ρσ_operator_add(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_add_slow(left, right)
+
+
+def _builtins_operator_add_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -979,6 +1034,13 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "add", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_add_exact_slow(left, right)
+
+
+def _builtins_operator_add_exact_slow(left: Any, right: Any) -> Any:
     # Primitive values cannot override Python's arithmetic methods. Handle
     # them before the general parent/coercion and special-method machinery;
     # overflowing safe integers still promote to BigInt below.
@@ -1223,6 +1285,13 @@ def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_sub_slow(left, right)
+
+
+def _builtins_operator_sub_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1266,6 +1335,13 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "sub", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_sub_exact_slow(left, right)
+
+
+def _builtins_operator_sub_exact_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1355,6 +1431,13 @@ def _builtins_repeat_string(text: str, count: Any) -> str:
 
 
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_mul_slow(left, right)
+
+
+def _builtins_operator_mul_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1402,6 +1485,13 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "mul", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_mul_exact_slow(left, right)
+
+
+def _builtins_operator_mul_exact_slow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
     if runtime.strict_equal(left_type, right_type) and (
@@ -1791,6 +1881,13 @@ def ρσ_operator_idiv_python_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "truediv", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_truediv_slow(left, right)
+
+
+def _builtins_operator_truediv_slow(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
         result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
         if result is not NotImplemented:
@@ -1834,6 +1931,13 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
+    result = runtime.fast_closed_binary(left, right, "truediv", _BUILTINS_MISSING)
+    if result is not _BUILTINS_MISSING:
+        return result
+    return _builtins_operator_truediv_exact_slow(left, right)
+
+
+def _builtins_operator_truediv_exact_slow(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, "_sage_scalar_truediv_"):
         result = _builtins_call_member(left, "_sage_scalar_truediv_", [right])
         if result is not NotImplemented:

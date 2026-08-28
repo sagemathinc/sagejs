@@ -33,6 +33,39 @@
           "packages/flint-wasm/test/resource-browser-smoke.mjs"
         ]
       },
+      "finite-field-boundary-benchmark": {
+        "differential": true,
+        "paths": [
+          "bench/finite-field-boundary/benchmark-js.mjs",
+          "bench/finite-field-boundary/benchmark-compiler-recurrence.cjs",
+          "bench/finite-field-boundary/benchmark-native-recurrence.cjs",
+          "bench/finite-field-boundary/results-2026-08-26.json",
+          "packages/flint-wasm/test/finite-field-compiler-browser.mjs",
+          "test/finite-field-machine-residues.cjs"
+        ]
+      },
+      "optimizer-gf-p2-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-gf-p2.cjs",
+          "bench/optimizer-gf-p2.cjs"
+        ]
+      },
+      "optimizer-extension-degree-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-extension-degrees.cjs",
+          "bench/optimizer-extension-degrees.cjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
+      "optimizer-extension-context-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-field-regions.cjs",
+          "test/optimizer-bootstrap-parity.cjs"
+        ]
+      },
       "runtime-intrinsic-contract": {
         "differential": true,
         "paths": [
@@ -82,6 +115,12 @@
         "paths": [
           "test/production-native-kernels.cjs",
           "test/native-kernel.cjs"
+        ]
+      },
+      "class-group-resident-hnf-differential": {
+        "differential": true,
+        "paths": [
+          "test/number-field-class-group-resident-hnf.cjs"
         ]
       },
       "hyperelliptic-native-kummer": {
@@ -461,6 +500,12 @@
       "ffi:flint:fq_context",
       "ffi:flint:fq_element",
       "ffi:flint:fq_element_pow"
+    ],
+    "optimizer-gf-p2-affine": [
+      "kernel:packed-gf-p2-affine-production"
+    ],
+    "optimizer-gf-pk-affine": [
+      "kernel:packed-gf-pk-affine-production"
     ],
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
@@ -10688,6 +10733,33 @@
       }
     },
     {
+      "id": "kernel:class-group-resident-hnf-production",
+      "kind": "production-kernel",
+      "family": "class-group-resident-hnf",
+      "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "tests": [
+        "production-kernel-differential",
+        "class-group-resident-hnf-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
       "id": "kernel:buchmann-lenstra-row-hnf-production",
       "kind": "production-kernel",
       "family": "buchmann-lenstra-row-hnf",
@@ -11496,6 +11568,58 @@
       ],
       "tests": [
         "arithmetic-hotspots-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-gf-p2-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-p2-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded quadratic finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:packed-gf-pk-affine-production",
+      "kind": "production-kernel",
+      "family": "packed-gf-pk-affine",
+      "source": "src/lib/sagejs/kernels/arithmetic/gf_p2.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "guarded fixed-degree finite-field affine recurrences"
+      ],
+      "tests": [
+        "optimizer-extension-degree-differential"
       ],
       "status": "available",
       "reviewed": true,
@@ -18168,6 +18292,101 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs:add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:chain_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:mul_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
+      "id": "napi:@sagemath/sagejs:vector_mul_add_mod_u32",
+      "kind": "napi-export",
+      "family": "boundary-benchmarks",
+      "source": "bench/finite-field-boundary/napi_modular.c",
+      "disposition": "desktop-only",
+      "fallback": "standalone-wasm-benchmark-equivalent",
+      "wasm_module": "benchmark-only",
+      "public_consumers": [
+        "finite-field boundary benchmark only"
+      ],
+      "tests": [
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "desktop-only",
+      "reviewed": true,
+      "review_note": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime.",
+      "public_explanation": "This Node-API callback is an isolated differential benchmark oracle and is never loaded by the Sage.js runtime."
+    },
+    {
       "id": "runtime:array",
       "kind": "runtime-intrinsic",
       "family": "runtime",
@@ -18282,6 +18501,26 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-extension-context-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The runtime binds each machine extension parent once to a frozen, non-replaceable construction context containing its degree, prime, source polynomial, and machine reduction tuple.",
+      "public_explanation": "Optimized finite-field extension loops authenticate their reduction law against the field parent's immutable construction context before entering a machine representation."
+    },
+    {
       "id": "runtime:blocking_sleep",
       "kind": "runtime-intrinsic",
       "family": "runtime",
@@ -18318,6 +18557,26 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:brand_machine_field_element",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-gf-p2-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This private WeakSet brand authenticates canonical machine-shadow field elements without invoking user getters, proxies, or callbacks; guarded optimized regions retain their exact generic source fallback.",
+      "public_explanation": "Compiler-proven finite-field regions use a private runtime brand to distinguish canonical machine representations from forged or observable objects."
     },
     {
       "id": "runtime:callable_instance_class",
@@ -18622,6 +18881,46 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:fast_closed_binary",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiled Sage and Python modules"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback.",
+      "public_explanation": "This guarded JavaScript representation primitive accelerates same-parent closed scalar operations while retaining the exact generic operator fallback."
+    },
+    {
+      "id": "runtime:fast_machine_residue_recurrence",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven closed GF(p) and Zmod(n) recurrences"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "finite-field-boundary-benchmark"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The compiler emits this guarded scalar-loop primitive only for an enumerated non-aliasing recurrence shape. Runtime parent, representation, prototype, method-stability, residue, and count guards retain the original dispatched source loop for every rejected case.",
+      "public_explanation": "A compiler-proven small modular recurrence can stay in V8 Number locals for the complete loop and materialize one exact public element afterward; all other cases run the original source loop."
     },
     {
       "id": "runtime:ffi_call",
@@ -19363,6 +19662,26 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-extension-context-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This guard checks live degree, prime, source-polynomial identity, and machine-modulus identity against the parent's immutable construction context; any mismatch executes the exact original source loop.",
+      "public_explanation": "A fixed-width extension-field region runs only when its live parent still has exactly the reduction context with which it was constructed."
     },
     {
       "id": "runtime:map",

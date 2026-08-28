@@ -2454,15 +2454,15 @@
           "kind": "memory"
         },
         {
-          "name": "sagejs_wasm_allocate_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_allocate_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_allocate_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -2471,6 +2471,10 @@
         },
         {
           "name": "sagejs_wasm_allocate_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -2490,19 +2494,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_allocate_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_allocate_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_allocate_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -2522,86 +2526,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_coset_transport_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_cremona_count",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_cremona_digest",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_cremona_entry",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_cremona_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_higher_weight_action_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_higher_weight_hecke_matrix",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_merel_digest",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_merel_entry",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_merel_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_reduce_transported_action",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_heilbronn_transported_action_fill",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_apply_packed",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_gcd",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_index_normalized_packed",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_monomial_matrix_coefficient",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_normalize_with_scalar",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_rational_add_scaled_at",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_round_quotient",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_091992102a7979ff_p1_xgcd_left",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_call_m_114283412980fca3_sparse_random_binary",
           "kind": "function"
         },
@@ -2618,15 +2542,127 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_30fc414a9fde11d3_integer_matrix_polynomial_annihilates_first_coordinate",
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_coset_transport_fill",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_30fc414a9fde11d3_integer_matrix_word_prime_minimal_polynomial_batch",
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_cremona_count",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_30fc414a9fde11d3_word_prime_krylov_minimal_polynomial",
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_cremona_digest",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_cremona_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_cremona_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_higher_weight_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_higher_weight_hecke_matrix",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_merel_digest",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_merel_entry",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_merel_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_reduce_transported_action",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_heilbronn_transported_action_fill",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_apply_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_index_normalized_packed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_monomial_matrix_coefficient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_normalize_with_scalar",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_rational_add_scaled_at",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_round_quotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_16a84a73c1d3024b_p1_xgcd_left",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_add_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_copy_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_negate_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_progression_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_scalar_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_scalar_many_primes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_search_progression",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_search_progressions",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_subtract_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_sum_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_31f58dd72163cff2_packed_cantor_validate_batch",
           "kind": "function"
         },
         {
@@ -2639,6 +2675,18 @@
         },
         {
           "name": "sagejs_wasm_call_m_4235182537b104b9_flint_arbitrary_prime_polynomial_coefficient_sum",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_58afdcca8114660b_integer_matrix_polynomial_annihilates_first_coordinate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_58afdcca8114660b_integer_matrix_word_prime_minimal_polynomial_batch",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_58afdcca8114660b_word_prime_krylov_minimal_polynomial",
           "kind": "function"
         },
         {
@@ -2798,6 +2846,18 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_81795ca8d6929c65_packed_prime_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_81795ca8d6929c65_packed_prime_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_83b0ec9dde1c0bb5_resident_exact_relation_hnf_select",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_83d952e74ec12580_flint_dense_prime_field_matrix_charpoly",
           "kind": "function"
         },
@@ -2834,14 +2894,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_9a1a56f040e061c6_packed_prime_matrix_minors",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_9a1a56f040e061c6_packed_prime_matrix_permanent",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_call_m_b2eb6c5b6e160f7f_assemble_bf_dyadic_finite_term",
           "kind": "function"
         },
@@ -2863,50 +2915,6 @@
         },
         {
           "name": "sagejs_wasm_call_m_b2eb6c5b6e160f7f_assemble_zeta_coefficients_from_factors",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_add_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_copy_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_negate_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_progression_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_scalar_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_scalar_many_primes",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_search_progression",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_search_progressions",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_subtract_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_sum_batch",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_bdc7c40f86c81530_packed_cantor_validate_batch",
           "kind": "function"
         },
         {
@@ -3158,15 +3166,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_deallocate_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_deallocate_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3175,6 +3183,10 @@
         },
         {
           "name": "sagejs_wasm_deallocate_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3194,19 +3206,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_deallocate_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_deallocate_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_deallocate_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3274,15 +3286,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_last_message_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_last_message_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3291,6 +3303,10 @@
         },
         {
           "name": "sagejs_wasm_last_message_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3310,19 +3326,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_last_message_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_last_message_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_last_message_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3418,15 +3434,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_f64_at_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_result_f64_at_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3435,6 +3451,10 @@
         },
         {
           "name": "sagejs_wasm_result_f64_at_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3454,19 +3474,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_f64_at_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_f64_at_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_f64_at_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3486,15 +3506,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_length_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_result_length_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3503,6 +3523,10 @@
         },
         {
           "name": "sagejs_wasm_result_length_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3522,19 +3546,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_length_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_length_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_length_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3554,15 +3578,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_limbs_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_result_limbs_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3571,6 +3595,10 @@
         },
         {
           "name": "sagejs_wasm_result_limbs_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3590,19 +3618,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_limbs_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_limbs_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_limbs_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3622,15 +3650,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_sign_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_result_sign_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3639,6 +3667,10 @@
         },
         {
           "name": "sagejs_wasm_result_sign_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3658,19 +3690,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_sign_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_sign_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_sign_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3690,15 +3722,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_091992102a7979ff",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_u64_at_m_114283412980fca3",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_30fc414a9fde11d3",
+          "name": "sagejs_wasm_result_u64_at_m_16a84a73c1d3024b",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_31f58dd72163cff2",
           "kind": "function"
         },
         {
@@ -3707,6 +3739,10 @@
         },
         {
           "name": "sagejs_wasm_result_u64_at_m_4235182537b104b9",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_58afdcca8114660b",
           "kind": "function"
         },
         {
@@ -3726,19 +3762,19 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_u64_at_m_81795ca8d6929c65",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_83b0ec9dde1c0bb5",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_u64_at_m_83d952e74ec12580",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_9a1a56f040e061c6",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_result_u64_at_m_b2eb6c5b6e160f7f",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_bdc7c40f86c81530",
           "kind": "function"
         },
         {
@@ -3795,19 +3831,15 @@
           "kind": "memory"
         },
         {
+          "name": "sagejs_wasm_allocate_m_08192d1570305aa9",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_allocate_m_088cbdc4e52861b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_allocate_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -3815,11 +3847,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_3482764ad608a91d",
+          "name": "sagejs_wasm_allocate_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -3831,11 +3859,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_418c272c76914d97",
+          "name": "sagejs_wasm_allocate_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_allocate_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -3847,11 +3875,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_allocate_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_allocate_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -3859,11 +3883,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_87baef891db212df",
+          "name": "sagejs_wasm_allocate_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_allocate_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -3871,11 +3895,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_allocate_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_allocate_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_allocate_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -3883,7 +3911,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_allocate_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_allocate_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_allocate_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_08192d1570305aa9_packed_gf_pk_affine_recurrence",
           "kind": "function"
         },
         {
@@ -3963,131 +4011,27 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_0969e09a50fe551e_packed_integer_matrix_minors",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_dyadic_kummer_height_recurrence_batch",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_0969e09a50fe551e_packed_integer_matrix_permanent",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_dyadic_kummer_height_recurrence",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_0969e09a50fe551e_packed_rational_matrix_minors",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_dyadic_log_interval_batch",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_0969e09a50fe551e_packed_rational_matrix_permanent",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_exact_kummer_small_step_batch",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_17fb00ecfb823bdf_packed_incremental_row_hnf_in_place",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_modular_kummer_height_recurrence_batch",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_17fb00ecfb823bdf_packed_maxmin_valuations_are_maximal",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_17fb00ecfb823bdf_packed_triangular_basis_is_closed",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_add_pair",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_add",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_augment",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_copy",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_equal",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_fill_denominator_one",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_gcd",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_get",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_identity",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_is_one",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_is_zero",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_kernel_from_rref",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_multiply_pair",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_negate",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_nonzero_count",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_normalize",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_scalar_multiply",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_select_columns",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_select_rows",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_set",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_stack",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_subtract_pair",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_subtract",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_trace",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_24d68dfb7c9605f7_dense_rational_matrix_transpose",
+          "name": "sagejs_wasm_call_m_14f67dc26544f2bb_modular_kummer_height_recurrence",
           "kind": "function"
         },
         {
@@ -4095,15 +4039,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_32d074188d52d3d8_packed_cubic_reduced_algebra_factors_in_place",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_32d074188d52d3d8_packed_prime_ideal_candidate_hnf_in_place",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_3482764ad608a91d_packed_permutation_center",
+          "name": "sagejs_wasm_call_m_37164a849c64b9be_packed_gf_p2_affine_recurrence",
           "kind": "function"
         },
         {
@@ -4115,15 +4051,11 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_40c7c53196d1b6a1_packed_permutation_center",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_418c272c76914d97_packed_composite_polynomial_split_hint_in_place",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_42b0b1f400510b7a_packed_graph_all_pairs_distances",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_42b0b1f400510b7a_packed_graph_shortest_paths",
           "kind": "function"
         },
         {
@@ -4155,35 +4087,103 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7d156e29cf3ea245_packed_cubic_norm_form_first_obstruction_in_place",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_add_pair",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7d156e29cf3ea245_packed_cubic_norm_form_target_slice",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_add",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_dyadic_kummer_height_recurrence_batch",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_augment",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_dyadic_kummer_height_recurrence",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_copy",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_dyadic_log_interval_batch",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_equal",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_exact_kummer_small_step_batch",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_fill_denominator_one",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_modular_kummer_height_recurrence_batch",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_gcd",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_7e1ed6e9f4ef4755_modular_kummer_height_recurrence",
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_get",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_identity",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_is_one",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_is_zero",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_kernel_from_rref",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_multiply_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_nonzero_count",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_normalize",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_scalar_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_select_columns",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_select_rows",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_set",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_stack",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_subtract_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_subtract",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_trace",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_60e8ef14e57f17f4_dense_rational_matrix_transpose",
           "kind": "function"
         },
         {
@@ -4199,10 +4199,6 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_call_m_87baef891db212df_packed_moebius_range",
-          "kind": "function"
-        },
-        {
           "name": "sagejs_wasm_call_m_9b1a47ddb4512569_packed_cubic_norm_smooth_candidates_in_place",
           "kind": "function"
         },
@@ -4212,6 +4208,10 @@
         },
         {
           "name": "sagejs_wasm_call_m_9b1a47ddb4512569_packed_factor_base_rows_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_a8e8a2193192d35c_packed_moebius_range",
           "kind": "function"
         },
         {
@@ -4227,6 +4227,22 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_b551e54032afd3c9_packed_cubic_norm_form_first_obstruction_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_b551e54032afd3c9_packed_cubic_norm_form_target_slice",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_b9168ef728aa0d16_packed_graph_all_pairs_distances",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_b9168ef728aa0d16_packed_graph_shortest_paths",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_c883f300cae2a2a0__conjugation_action_float64_kernel",
           "kind": "function"
         },
@@ -4236,50 +4252,6 @@
         },
         {
           "name": "sagejs_wasm_call_m_c883f300cae2a2a0__period_sign_mask_float64_kernel",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_integral_number_field_exact_quotient",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_integral_number_field_multiply_reduce",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_integral_number_field_power_basis",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_add_pair",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_add",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_equal",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_gcd",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_multiply_pair",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_multiply",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_negate",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_call_m_dc8f3dc28dc317f5_packed_rational_polynomial_subtract",
           "kind": "function"
         },
         {
@@ -4319,6 +4291,74 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_f0d8833c8d822502_packed_integer_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f0d8833c8d822502_packed_integer_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f0d8833c8d822502_packed_rational_matrix_minors",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f0d8833c8d822502_packed_rational_matrix_permanent",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f2f3a4e753a447a4_packed_cubic_reduced_algebra_factors_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f2f3a4e753a447a4_packed_prime_ideal_candidate_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_integral_number_field_exact_quotient",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_integral_number_field_multiply_reduce",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_integral_number_field_power_basis",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_add_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_add",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_equal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_gcd",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_multiply_pair",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_multiply",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_negate",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_f646addeaf973854_packed_rational_polynomial_subtract",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_call_m_fb7b3c425a5b4846_packed_field_analysis_authenticate_projection",
           "kind": "function"
         },
@@ -4343,19 +4383,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_call_m_ff81ae0f94a3c0f7_packed_incremental_row_hnf_in_place",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ff81ae0f94a3c0f7_packed_maxmin_valuations_are_maximal",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_call_m_ff81ae0f94a3c0f7_packed_triangular_basis_is_closed",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_08192d1570305aa9",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_deallocate_m_088cbdc4e52861b6",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_deallocate_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4363,11 +4411,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_3482764ad608a91d",
+          "name": "sagejs_wasm_deallocate_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4379,11 +4423,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_418c272c76914d97",
+          "name": "sagejs_wasm_deallocate_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_deallocate_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4395,11 +4439,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_deallocate_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_deallocate_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4407,11 +4447,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_87baef891db212df",
+          "name": "sagejs_wasm_deallocate_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_deallocate_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4419,11 +4459,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_deallocate_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_deallocate_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_deallocate_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4431,7 +4475,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_deallocate_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_deallocate_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_deallocate_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4439,15 +4503,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_last_message_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4455,11 +4511,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_3482764ad608a91d",
+          "name": "sagejs_wasm_last_message_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4471,11 +4523,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_418c272c76914d97",
+          "name": "sagejs_wasm_last_message_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_last_message_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4487,11 +4539,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_last_message_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_last_message_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4499,11 +4547,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_87baef891db212df",
+          "name": "sagejs_wasm_last_message_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_last_message_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4511,11 +4559,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_last_message_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_last_message_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_last_message_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4523,7 +4575,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_last_message_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_last_message_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_last_message_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4531,15 +4603,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_result_f64_at_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4547,11 +4611,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_3482764ad608a91d",
+          "name": "sagejs_wasm_result_f64_at_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4563,11 +4623,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_418c272c76914d97",
+          "name": "sagejs_wasm_result_f64_at_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_result_f64_at_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4579,11 +4639,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_f64_at_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_result_f64_at_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4591,11 +4647,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_87baef891db212df",
+          "name": "sagejs_wasm_result_f64_at_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_result_f64_at_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4603,11 +4659,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_result_f64_at_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_f64_at_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_result_f64_at_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4615,7 +4675,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_f64_at_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_f64_at_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_f64_at_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4623,15 +4703,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_result_length_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4639,11 +4711,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_3482764ad608a91d",
+          "name": "sagejs_wasm_result_length_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4655,11 +4723,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_418c272c76914d97",
+          "name": "sagejs_wasm_result_length_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_result_length_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4671,11 +4739,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_length_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_result_length_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4683,11 +4747,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_87baef891db212df",
+          "name": "sagejs_wasm_result_length_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_result_length_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4695,11 +4759,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_result_length_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_length_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_result_length_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4707,7 +4775,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_length_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_length_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_length_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4715,15 +4803,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_result_limbs_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4731,11 +4811,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_3482764ad608a91d",
+          "name": "sagejs_wasm_result_limbs_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4747,11 +4823,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_418c272c76914d97",
+          "name": "sagejs_wasm_result_limbs_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_result_limbs_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4763,11 +4839,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_limbs_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_result_limbs_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4775,11 +4847,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_87baef891db212df",
+          "name": "sagejs_wasm_result_limbs_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_result_limbs_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4787,11 +4859,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_result_limbs_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_limbs_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_result_limbs_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4799,7 +4875,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_limbs_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_limbs_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_limbs_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4807,15 +4903,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_result_sign_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4823,11 +4911,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_3482764ad608a91d",
+          "name": "sagejs_wasm_result_sign_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4839,11 +4923,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_418c272c76914d97",
+          "name": "sagejs_wasm_result_sign_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_result_sign_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4855,11 +4939,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_sign_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_result_sign_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4867,11 +4947,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_87baef891db212df",
+          "name": "sagejs_wasm_result_sign_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_result_sign_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4879,11 +4959,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_result_sign_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_sign_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_result_sign_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4891,7 +4975,27 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_sign_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_sign_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_sign_m_ff81ae0f94a3c0f7",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_08192d1570305aa9",
           "kind": "function"
         },
         {
@@ -4899,15 +5003,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_0969e09a50fe551e",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_17fb00ecfb823bdf",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_24d68dfb7c9605f7",
+          "name": "sagejs_wasm_result_u64_at_m_14f67dc26544f2bb",
           "kind": "function"
         },
         {
@@ -4915,11 +5011,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_32d074188d52d3d8",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_3482764ad608a91d",
+          "name": "sagejs_wasm_result_u64_at_m_37164a849c64b9be",
           "kind": "function"
         },
         {
@@ -4931,11 +5023,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_418c272c76914d97",
+          "name": "sagejs_wasm_result_u64_at_m_40c7c53196d1b6a1",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_42b0b1f400510b7a",
+          "name": "sagejs_wasm_result_u64_at_m_418c272c76914d97",
           "kind": "function"
         },
         {
@@ -4947,11 +5039,7 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_7d156e29cf3ea245",
-          "kind": "function"
-        },
-        {
-          "name": "sagejs_wasm_result_u64_at_m_7e1ed6e9f4ef4755",
+          "name": "sagejs_wasm_result_u64_at_m_60e8ef14e57f17f4",
           "kind": "function"
         },
         {
@@ -4959,11 +5047,11 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_87baef891db212df",
+          "name": "sagejs_wasm_result_u64_at_m_9b1a47ddb4512569",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_9b1a47ddb4512569",
+          "name": "sagejs_wasm_result_u64_at_m_a8e8a2193192d35c",
           "kind": "function"
         },
         {
@@ -4971,11 +5059,15 @@
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_c883f300cae2a2a0",
+          "name": "sagejs_wasm_result_u64_at_m_b551e54032afd3c9",
           "kind": "function"
         },
         {
-          "name": "sagejs_wasm_result_u64_at_m_dc8f3dc28dc317f5",
+          "name": "sagejs_wasm_result_u64_at_m_b9168ef728aa0d16",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_c883f300cae2a2a0",
           "kind": "function"
         },
         {
@@ -4983,7 +5075,23 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_result_u64_at_m_f0d8833c8d822502",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_f2f3a4e753a447a4",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_f646addeaf973854",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_result_u64_at_m_fb7b3c425a5b4846",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_result_u64_at_m_ff81ae0f94a3c0f7",
           "kind": "function"
         }
       ]

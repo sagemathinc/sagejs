@@ -8,6 +8,7 @@ const {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
@@ -1631,7 +1632,14 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
 
 test("public kernels borrow and transfer generated FLINT resources", async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-public-resource-"));
+  const aliasRoot = mkdtempSync(join(tmpdir(), "sagejs-ffi-public-alias-"));
+  const temporaryAlias = join(aliasRoot, "source");
   try {
+    symlinkSync(
+      temporary,
+      temporaryAlias,
+      process.platform === "win32" ? "junction" : "dir",
+    );
     const sourcePath = join(temporary, "resource_kernel.py");
     writeFileSync(sourcePath, [
       "from sagejs.ffi.flint import (",
@@ -1688,7 +1696,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
     flint.ffiFmpqMatrixClose(matrix);
 
     const runnerPath = join(temporary, "exercise_resource_kernel.py");
-    writeFileSync(runnerPath, [
+    const runnerSource = [
       "from resource_kernel import clone, create, rows",
       "from sagejs.ffi.flint import (",
       "    fmpq_matrix,",
@@ -1720,11 +1728,12 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "        assert str(error) == 'FFI resource is closed'",
       "    else:",
       "        raise AssertionError('closed resource was accepted')",
+      "assert clone.nativeAvailable is __EXPECTED_NATIVE__",
       "wrong = fmpz_matrix(1, 1)",
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert 'wrong FFI resource type' in str(error)",
+      "    assert 'FFI resource' in str(error), str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
@@ -1733,10 +1742,24 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "assert copy.closed",
       "print('owned-resource-result-ok')",
       "",
-    ].join("\n"));
-    for (const env of [{}, { SAGEJS_NATIVE_DISABLE: "1" }]) {
+    ].join("\n");
+    for (const [env, expectedNative] of [
+      [{}, true],
+      [{ SAGEJS_NATIVE_DISABLE: "1" }, false],
+    ]) {
+      writeFileSync(
+        runnerPath,
+        runnerSource.replace(
+          "__EXPECTED_NATIVE__",
+          expectedNative ? "True" : "False",
+        ),
+      );
       assert.equal(
-        runSage([runnerPath], undefined, env).trim(),
+        runSage(
+          [join(temporaryAlias, "exercise_resource_kernel.py")],
+          undefined,
+          env,
+        ).trim(),
         "owned-resource-result-ok",
       );
     }
@@ -1790,6 +1813,7 @@ function unreachableHolder() {
     );
     assert.equal(lifecycle.stdout, "owned-resource-lifecycle-ok");
   } finally {
+    rmSync(aliasRoot, { recursive: true, force: true });
     removeLoadedNativeCache(temporary);
   }
 });

@@ -1,4 +1,12 @@
 const DIRECT_BUILTIN_CALLS = new Set([
+  "_builtins_operator_add_exact_slow",
+  "_builtins_operator_add_slow",
+  "_builtins_operator_mul_exact_slow",
+  "_builtins_operator_mul_slow",
+  "_builtins_operator_sub_exact_slow",
+  "_builtins_operator_sub_slow",
+  "_builtins_operator_truediv_exact_slow",
+  "_builtins_operator_truediv_slow",
   "divmod",
   "float",
   "int",
@@ -6,7 +14,9 @@ const DIRECT_BUILTIN_CALLS = new Set([
   "list",
   "ord",
   "range",
+  "reversed",
   "sum",
+  "zip",
 ]);
 
 function unique(values: string[]): string[] {

@@ -1022,6 +1022,9 @@ def _tuple_index(
 
 
 _tuple_array_prototype_cache = runtime.undefined
+_machine_field_sequence_brand = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakSet"), []
+)
 
 
 def _tuple_array_prototype(
@@ -1082,7 +1085,25 @@ def math_tuple(values: list[Any]) -> Any:
     prototype = _tuple_array_prototype_cache
     if prototype is runtime.undefined:
         prototype = _tuple_array_prototype(values)
-    return runtime.native_freeze_tuple(values, prototype)
+    answer = runtime.native_freeze_tuple(values, prototype)
+    runtime.reflect.apply(
+        runtime.reflect.get(_machine_field_sequence_brand, "add"),
+        _machine_field_sequence_brand,
+        [answer],
+    )
+    return answer
+
+
+runtime.object.defineProperty(
+    math_tuple,
+    "__machineFieldSequenceBrand",
+    {
+        "value": _machine_field_sequence_brand,
+        "enumerable": False,
+        "configurable": False,
+        "writable": False,
+    },
+)
 
 
 def _install_type_tuple_metadata() -> None:

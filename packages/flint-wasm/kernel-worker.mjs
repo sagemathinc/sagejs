@@ -11,6 +11,32 @@ function serializeError(error) {
 let evaluatorPromise;
 let evaluationTail = Promise.resolve();
 let channel;
+let compilerOptimizationReport;
+
+function validOptimizationReport(value) {
+  return (
+    value?.schema === "sagejs.optimizer-evaluation/v1" &&
+    value?.authority === "compiler-verified-static" &&
+    value?.program?.schema === "sagejs.optimizing-mathematics/v1" &&
+    Array.isArray(value?.program?.passes) &&
+    Array.isArray(value?.program?.contracts) &&
+    Array.isArray(value?.program?.regions)
+  );
+}
+
+// The nested compiler worker is already isolated from evaluated code. Observe
+// only its verified static report here rather than publishing a trace hook into
+// the evaluator global. Returning an explicit object from a constructor is
+// supported by JavaScript and preserves the Worker interface expected by the
+// evaluator without modifying that separately certified source boundary.
+function ReportingCompilerWorker(url, options) {
+  const worker = new Worker(url, options);
+  worker.addEventListener("message", ({ data }) => {
+    const report = data?.ok ? data?.result?.optimization : undefined;
+    if (validOptimizationReport(report)) compilerOptimizationReport = report;
+  });
+  return worker;
+}
 
 function send(message) {
   if (!channel) throw new Error("Sage.js browser kernel is not connected");
@@ -41,6 +67,7 @@ async function initialize(message) {
     sageGrammar: message.sageGrammar,
     foreignGrammars: message.foreignGrammars,
     capabilityReport: message.capabilityReport,
+    WorkerConstructor: ReportingCompilerWorker,
   });
   await evaluatorPromise;
   send({
@@ -52,6 +79,7 @@ async function initialize(message) {
 async function evaluate(message) {
   const evaluator = await evaluatorPromise;
   const started = performance.now();
+  compilerOptimizationReport = undefined;
   const result = await evaluator.evaluate(message.source, {
     filename: message.filename,
     onOutput(text) {
@@ -69,6 +97,9 @@ async function evaluate(message) {
       });
     },
   });
+  if (!validOptimizationReport(compilerOptimizationReport)) {
+    throw new TypeError("browser compiler did not return verified optimizer IR");
+  }
   send({
     type: "result",
     id: message.id,
@@ -78,6 +109,7 @@ async function evaluate(message) {
       display: result.display,
       saveRequests: result.saveRequests,
       instrumentation: result.instrumentation,
+      optimization: compilerOptimizationReport,
       durationMs: performance.now() - started,
     },
   });
