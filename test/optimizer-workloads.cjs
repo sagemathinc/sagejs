@@ -104,6 +104,14 @@ test("fact-only and candidate-target policies cannot be silently narrowed", () =
   assert.equal(negative.input.value.policy.maximum_javascript_over_native_inclusive_ratio, 1);
   assert.ok(negative.phases.some((phase) => phase.id === "inclusive-javascript"));
   assert.ok(negative.phases.some((phase) => phase.id === "inclusive-native"));
+  const hyperelliptic = findWorkload(catalog, "hyperelliptic-local-reduction");
+  assert.ok(hyperelliptic.phases.some((phase) =>
+    phase.id === "normalization-factor" &&
+    phase.label.includes("timed independently")));
+  assert.notEqual(
+    hyperelliptic.phases.find((phase) => phase.id === "normalization-factor").label,
+    hyperelliptic.phases.find((phase) => phase.id === "production").label,
+  );
 });
 
 test("independent machine and polynomial oracles reproduce pinned outputs", () => {
