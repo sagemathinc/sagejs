@@ -82,15 +82,19 @@ export class OptimizerPassManager implements OptimizationPassContext {
           candidate.internal.loweringId,
       );
     }
+    const functionContract = candidate.ownerFunction
+      ? this.contracts.byFunction.get(candidate.ownerFunction)
+      : undefined;
+    // An exact source contract is an explicit domain-selection boundary. It
+    // lets a narrower plugin own a loop which a broader earlier recognizer
+    // could also describe, without relying on pass-order accidents.
+    if (functionContract && functionContract.requiredPassId !== plugin.id) return;
     // Pass ordering is deterministic.  Once an earlier, more specific pass
     // has considered a semantic region, a broader pass may not reinterpret
     // the same node under a different contract merely because the first pass
     // was disabled or rejected by the selected optimization level.
     if (this.claimedNodes.has(candidate.node)) return;
     if (plugin.claimSemantics === "exclusive") this.claimedNodes.add(candidate.node);
-    const functionContract = candidate.ownerFunction
-      ? this.contracts.byFunction.get(candidate.ownerFunction)
-      : undefined;
     candidate.internal.functionId = functionContract?.id ?? null;
     candidate.internal.guardFailure = functionContract?.guardFailure ?? "fallback";
     verifyInternalRegionPlan(candidate.internal);
@@ -128,13 +132,14 @@ export class OptimizerPassManager implements OptimizationPassContext {
         "optimizer observation was submitted outside its registered plugin",
       );
     }
+    const functionContract = observation.ownerFunction
+      ? this.contracts.byFunction.get(observation.ownerFunction)
+      : undefined;
+    if (functionContract && functionContract.requiredPassId !== plugin.id) return;
     if (this.claimedNodes.has(observation.node)) return;
     if (observation.rejectionReasons.length === 0) {
       throw new TypeError("optimizer observation requires a rejection reason");
     }
-    const functionContract = observation.ownerFunction
-      ? this.contracts.byFunction.get(observation.ownerFunction)
-      : undefined;
     const reasons = [...observation.rejectionReasons];
     if (this.controls.disabledPasses.has(observation.decision.passId)) {
       reasons.push("pass-disabled");
