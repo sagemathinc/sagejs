@@ -19,8 +19,10 @@ def fixed_extension_control(count, parent, generator):
 
 
 def __profile_run__():
-    parent = GF(5**3, "a")
+    polynomial_ring = PolynomialRing(GF(5), "x")
+    x = polynomial_ring.gen()
+    parent = GF(5**3, "a", modulus=x**3 + x + 1)
     value = parent(0)
     for _repeat in range(1_000):
         value = fixed_extension_control(1_000, parent, parent.gen())
-    return value
+    return tuple(int(entry) for entry in value._power_basis_coordinates())

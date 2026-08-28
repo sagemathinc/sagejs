@@ -24,4 +24,4 @@ def __profile_run__():
     output = ()
     for _repeat in range(50):
         output = prime_residue_batch_control(len(values), values)
-    return sum(int(value) for value in output), int(output[0]), int(output[-1])
+    return int(sum(output)), int(output[0]), int(output[-1])
