@@ -35,6 +35,12 @@ export function optimizationLevelRank(value: OptimizationLevel): number {
 export function optimizerControls(
   options: Record<string, any> = {},
 ): OptimizationControls {
+  const contractPolicy = options.optimization_contract_policy ?? "enforce";
+  if (contractPolicy !== "enforce" && contractPolicy !== "diagnose") {
+    throw new RangeError(
+      `unknown Sage.js optimizer contract policy ${JSON.stringify(contractPolicy)}`,
+    );
+  }
   return {
     level: level(
       options.optimization_level ?? environment("SAGEJS_OPT_LEVEL") ?? "O2",
@@ -47,5 +53,6 @@ export function optimizerControls(
     ),
     explain: options.optimization_explain === true ||
       environment("SAGEJS_OPT_EXPLAIN") === "1",
+    contractPolicy,
   };
 }

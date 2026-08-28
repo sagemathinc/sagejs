@@ -119,11 +119,19 @@ function verifyFunctionContract(contract: FunctionOptimizationContract): void {
   }
   requireNonnegativeInteger(contract.loopCount, "contract.loopCount");
   requireStringArray(contract.matchedRegionIds, "contract.matchedRegionIds");
-  if (contract.status !== "pending" && contract.status !== "satisfied") {
+  requireStringArray(contract.diagnostics, "contract.diagnostics");
+  if (contract.status !== "pending" && contract.status !== "satisfied" &&
+      contract.status !== "unsatisfied") {
     throw new TypeError(`optimizer contract ${contract.id} has invalid status`);
   }
   if (contract.status === "satisfied" && contract.matchedRegionIds.length === 0) {
     throw new TypeError(`satisfied optimizer contract ${contract.id} has no regions`);
+  }
+  if (contract.status === "satisfied" && contract.diagnostics.length !== 0) {
+    throw new TypeError(`satisfied optimizer contract ${contract.id} has diagnostics`);
+  }
+  if (contract.status === "unsatisfied" && contract.diagnostics.length === 0) {
+    throw new TypeError(`unsatisfied optimizer contract ${contract.id} has no diagnostics`);
   }
 }
 

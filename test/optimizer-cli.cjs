@@ -111,16 +111,30 @@ test("dedicated optimizer CLI explains and checks import-proven contracts", () =
     selectedRegions: 1,
   });
 
+  const unsupportedSource = contractSource.replace(
+    "        value = value * multiplier",
+    "        value = value * multiplier + 1.0",
+  );
+  const explainedRejection = spawnSync(
+    process.execPath,
+    [executable, "optimize", "explain", "--json", "--function", "recurrence"],
+    { cwd: root, encoding: "utf8", input: unsupportedSource },
+  );
+  assert.equal(explainedRejection.status, 0, explainedRejection.stderr);
+  const rejectedReport = JSON.parse(explainedRejection.stdout);
+  assert.equal(rejectedReport.contracts[0].status, "unsatisfied");
+  assert.deepEqual(
+    rejectedReport.contracts[0].diagnostics,
+    ["11:4:no-optimizer-candidate"],
+  );
+
   const rejected = spawnSync(
     process.execPath,
     [executable, "optimize", "check"],
     {
       cwd: root,
       encoding: "utf8",
-      input: contractSource.replace(
-        "        value = value * multiplier",
-        "        value = value * multiplier + 1.0",
-      ),
+      input: unsupportedSource,
     },
   );
   assert.equal(rejected.status, 1);

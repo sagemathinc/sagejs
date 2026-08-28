@@ -85,6 +85,7 @@ test("an import-proven @optimize contract covers its function and runtime guard"
     assert.equal(contract.functionName, "recurrence");
     assert.equal(contract.requiredPassId, STRICT_FLOAT_REGION_PASS);
     assert.equal(contract.status, "satisfied");
+    assert.deepEqual(contract.diagnostics, []);
     assert.equal(contract.loopCount, 1);
     assert.equal(contract.matchedRegionIds.length, 1);
     const [region] = ast.optimization_ir.regions.filter(
@@ -128,6 +129,30 @@ test("contracts fail compilation for missing coverage, pass, level, or target", 
         options(),
       ),
       /optimization contract for recurrence was not satisfied.*selected target v8/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("diagnostic contract policy preserves a verified rejected explanation", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      contractSource.replace(
+        "        value = value * multiplier",
+        "        value = value * multiplier + 1.0",
+      ),
+      options({ optimization_contract_policy: "diagnose" }),
+    );
+    const [contract] = ast.optimization_ir.contracts;
+    assert.equal(contract.status, "unsatisfied");
+    assert.deepEqual(contract.matchedRegionIds, []);
+    assert.deepEqual(contract.diagnostics, ["11:4:no-optimizer-candidate"]);
+    assert.match(
+      formatOptimizationExplanation(ast.optimization_ir),
+      /contract recurrence \[unsatisfied\].*diagnostics: 11:4:no-optimizer-candidate/s,
     );
   } finally {
     frontend.close();

@@ -119,6 +119,7 @@ export async function runOptimizerCli(
       optimization_disable: argv.optimization_disable || undefined,
       optimization_require: argv.optimization_require || undefined,
       optimization_explain: true,
+      optimization_contract_policy: action === "explain" ? "diagnose" : "enforce",
     });
     const program = filteredProgram(
       topLevel.optimization_ir,

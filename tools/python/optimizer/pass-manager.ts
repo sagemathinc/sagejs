@@ -26,6 +26,15 @@ const IGNORED_AST_KEYS = new Set([
   "baselib", "optimization_ir", "optimization_region", "optimization_contract",
 ]);
 
+function humanContractDiagnostic(value: string): string {
+  if (value === "no-loops") return "no loops";
+  return value
+    .replace(/:no-optimizer-candidate$/, ": no optimizer candidate")
+    .replace(/:selected-target:/, ": selected target ")
+    .replace(/:selected-pass:/, ": selected ")
+    .replace(/:([^:]+):rejected:(.*)$/, ": $1 rejected ($2)");
+}
+
 export class OptimizerPassManager implements OptimizationPassContext {
   readonly program: OptimizationProgram;
   private readonly claimedNodes = new WeakSet<object>();
@@ -263,22 +272,29 @@ export class OptimizerPassManager implements OptimizationPassContext {
         const details = loops.map((loop) => {
           const region = this.decisionByNode.get(loop);
           const location = `${loop.start?.line ?? 0}:${loop.start?.col ?? 0}`;
-          if (!region) return `${location}: no optimizer candidate`;
+          if (!region) return `${location}:no-optimizer-candidate`;
           if (!region.selected) {
-            return `${location}: ${region.passId} rejected (` +
-              `${region.rejectionReasons.join(",")})`;
+            return `${location}:${region.passId}:rejected:` +
+              `${region.rejectionReasons.join(",")}`;
           }
           if (region.passId !== contract.requiredPassId) {
-            return `${location}: selected ${region.passId}`;
+            return `${location}:selected-pass:${region.passId}`;
           }
-          return `${location}: selected target ${region.target.kind}`;
-        }).join("; ");
-        throw new Error(
-          `optimization contract for ${contract.functionName} was not satisfied: ` +
-          `require=${contract.requiredPassId}, coverage=${contract.coverage}, ` +
-          `target=${contract.target}` + (details ? ` (${details})` : " (no loops)"),
-        );
+          return `${location}:selected-target:${region.target.kind}`;
+        });
+        contract.diagnostics = details.length > 0 ? details : ["no-loops"];
+        contract.status = "unsatisfied";
+        if (this.controls.contractPolicy === "enforce") {
+          throw new Error(
+            `optimization contract for ${contract.functionName} was not satisfied: ` +
+            `require=${contract.requiredPassId}, coverage=${contract.coverage}, ` +
+            `target=${contract.target} (` +
+            `${contract.diagnostics.map(humanContractDiagnostic).join("; ")})`,
+          );
+        }
+        continue;
       }
+      contract.diagnostics = [];
       contract.status = "satisfied";
     }
   }

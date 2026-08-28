@@ -192,6 +192,7 @@ function contractForFunction(
     guardFailure,
     loopCount: countLexicalLoops(compiler, definition),
     matchedRegionIds: [],
+    diagnostics: [],
     status: "pending",
   };
 }

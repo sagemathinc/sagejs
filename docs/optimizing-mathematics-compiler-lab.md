@@ -288,6 +288,9 @@ representation, target, guards, fallback, competing targets, cost estimates,
 and stable rejection reasons. `check` exits unsuccessfully if an import-proven
 contract is absent or unsatisfied. This makes it suitable for CI and for an
 agent deciding whether a source change preserved a promised fast path.
+`explain` is deliberately diagnostic: it still returns a verified report when
+a contract is unsatisfied, marks that contract `unsatisfied`, and records such
+reasons as `no-optimizer-candidate` without executing the source.
 
 The file suffix selects the language: `.py` means Python mode and `.sage`
 means Sage mode. Use `--sage` or `--python` to override that choice. Standard

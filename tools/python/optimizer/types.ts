@@ -134,7 +134,8 @@ export interface FunctionOptimizationContract {
   guardFailure: OptimizationGuardFailure;
   loopCount: number;
   matchedRegionIds: string[];
-  status: "pending" | "satisfied";
+  diagnostics: string[];
+  status: "pending" | "satisfied" | "unsatisfied";
 }
 
 export interface OptimizationPassRecord {
@@ -166,6 +167,7 @@ export interface OptimizationControls {
   disabledPasses: ReadonlySet<string>;
   requiredOptimizations: ReadonlySet<string>;
   explain: boolean;
+  contractPolicy: "enforce" | "diagnose";
 }
 
 export interface InternalRegionPlan {

@@ -14,6 +14,7 @@ export function explainOptimizationProgram(program: OptimizationProgram): any {
       .map((contract) => ({
         ...contract,
         matchedRegionIds: [...contract.matchedRegionIds].sort(),
+        diagnostics: [...contract.diagnostics].sort(),
       })),
     passes: program.passes.map((pass) => ({
       ...pass,
@@ -64,6 +65,9 @@ export function formatOptimizationExplanation(
     lines.push(`  loops/matched: ${contract.loopCount}/${contract.matchedRegionIds.length}`);
     if (contract.matchedRegionIds.length) {
       lines.push(`  regions: ${contract.matchedRegionIds.join(", ")}`);
+    }
+    if (contract.diagnostics.length) {
+      lines.push(`  diagnostics: ${contract.diagnostics.join("; ")}`);
     }
   }
   if (!explanation.regions.length) lines.push("no optimization candidates");
