@@ -1227,7 +1227,7 @@ function validateStatusEvidence(label, value, allowed = ["pass", "fail", "unavai
 }
 
 function promotionDecision(document, bindings = {
-  checkout: "missing", build: "missing", artifact: "missing", browsers: [],
+  checkout: "missing", build: "missing", artifact: "missing", evidence: "missing", browsers: [],
 }) {
   const reasons = [];
   let inconclusive = false;
@@ -1240,9 +1240,10 @@ function promotionDecision(document, bindings = {
     reasons.push(reason);
     inconclusive = true;
   };
-  for (const name of ["checkout", "build", "artifact"]) {
-    if (bindings[name] === "missing") unknown(`binding.${name}-unverified`);
-    if (bindings[name] === "mismatch") reject(`binding.${name}-mismatch`);
+  for (const name of ["checkout", "build", "artifact", "evidence"]) {
+    const state = bindings[name] ?? "missing";
+    if (state === "missing") unknown(`binding.${name}-unverified`);
+    if (state === "mismatch") reject(`binding.${name}-mismatch`);
   }
   if (!document.candidate.clean) reject("promotion.candidate-dirty");
   for (const item of [...document.correctness, ...document.adversarial]) {
@@ -1639,11 +1640,15 @@ function validatePromotionReceipt(value, context = {}) {
   function bindingState(contextLabel, current, actual, fields) {
     if (current === undefined) return "missing";
     exactKeys(contextLabel, current, fields);
-    return fields.every((field) => current[field] === actual[field]) ? "verified" : "mismatch";
+    return fields.every((field) =>
+      canonicalJson(current[field]) === canonicalJson(actual[field])) ? "verified" : "mismatch";
   }
   const bindings = {
     checkout: bindingState("promotion context.currentCheckout", context.currentCheckout,
-      candidate, ["commit", "tree", "workspaceId", "clean"]),
+      candidate, [
+        "commit", "tree", "sourceBundleId", "workspaceId", "clean", "compilerId", "artifactId",
+        "profileIds",
+      ]),
     build: bindingState("promotion context.currentBuild", context.currentBuild,
       build, ["workspaceId", "receiptDigest", "outputsDigest"]),
     artifact: bindingState("promotion context.currentArtifact", context.currentArtifact,
@@ -1652,6 +1657,49 @@ function validatePromotionReceipt(value, context = {}) {
       Array.isArray(context.validatedBrowserReceiptIds) &&
       context.validatedBrowserReceiptIds.includes(browser.receiptId)).map((browser) => browser.engine),
   };
+  if (context.validatedInputs === undefined) {
+    bindings.evidence = "missing";
+  } else {
+    const inputFields = [
+      "campaignIds", "sourceBundleIds", "compilerIds", "artifactIds",
+      "profileIds", "workloadIds", "correctnessEvidenceIds", "adversarialEvidenceIds",
+      "routeEvidenceIds", "resourceEvidenceIds", "platformEvidenceIds",
+      "neighboringWorkloadIds", "losingCandidateEvidenceIds", "dashboardIds",
+      "compilerDecisionIds",
+    ];
+    exactKeys("promotion context.validatedInputs", context.validatedInputs, inputFields);
+    const validated = Object.fromEntries(inputFields.map((field) => [field, new Set(
+      stringArray(`promotion context.validatedInputs.${field}`, context.validatedInputs[field])
+        .map((id, index) => contentId(
+          `promotion context.validatedInputs.${field}[${index}]`, id,
+        )),
+    )]));
+    const cited = {
+      campaignIds: [campaign.id],
+      sourceBundleIds: [baseline.sourceBundleId, candidate.sourceBundleId],
+      compilerIds: [baseline.compilerId, candidate.compilerId],
+      artifactIds: [baseline.artifactId, candidate.artifactId],
+      profileIds: [...baseline.profileIds, ...candidate.profileIds],
+      workloadIds: [
+        ...workloads,
+        ...(performance.phase?.heldOutConsumers ?? []),
+      ],
+      correctnessEvidenceIds: correctness.map((item) => item.evidenceId),
+      adversarialEvidenceIds: adversarial.map((item) => item.evidenceId),
+      routeEvidenceIds: routes.map((item) => item.evidenceId),
+      resourceEvidenceIds: resources.map((item) => item.evidenceId),
+      platformEvidenceIds: platforms.map((item) => item.evidenceId),
+      neighboringWorkloadIds: neighboring.map((item) => item.workloadId),
+      losingCandidateEvidenceIds: losingCandidates.map((item) => item.evidenceId),
+      dashboardIds: [dashboardDelta.beforeId, dashboardDelta.afterId],
+      compilerDecisionIds: [
+        ...compilerDelta.beforeDecisionIds,
+        ...compilerDelta.afterDecisionIds,
+      ],
+    };
+    bindings.evidence = Object.entries(cited).every(([field, ids]) =>
+      ids.every((id) => validated[field].has(id))) ? "verified" : "mismatch";
+  }
   const expectedDecision = promotionDecision(normalizedCore, bindings);
   exactKeys(`${label}.decision`, value.decision, ["status", "reasons", "statistics"]);
   const suppliedDecision = {
@@ -1661,7 +1709,8 @@ function validatePromotionReceipt(value, context = {}) {
     statistics: validateJsonValue(`${label}.decision.statistics`, value.decision.statistics),
   };
   if (canonicalJson(suppliedDecision) !== canonicalJson(expectedDecision)) {
-    fail(`${label}.decision`, "does not match the independently recomputed decision");
+    fail(`${label}.decision`,
+      `does not match the independently recomputed decision ${canonicalJson(expectedDecision)}`);
   }
   if (context.campaignId && campaign.id !== context.campaignId) {
     fail(`${label}.campaign.id`, "does not match the reviewed campaign");
