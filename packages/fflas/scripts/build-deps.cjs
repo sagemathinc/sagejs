@@ -64,7 +64,11 @@ const dependencies = [
     name: "gmp",
     version: NATIVE_MATH_DEPENDENCY_VERSIONS.gmp,
     url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
-    mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
+    mirrors: [
+      "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+      "https://ftpmirror.gnu.org/gmp/gmp-6.3.0.tar.xz",
+      "https://mirrors.kernel.org/gnu/gmp/gmp-6.3.0.tar.xz",
+    ],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
     archive: process.env.SAGEJS_GMP_TARBALL,
   },
@@ -133,6 +137,31 @@ async function obtainArchive(dependency) {
       );
     }
     rmSync(filename, { force: true });
+  }
+
+  // A cold repository bootstrap builds FLINT before FFLAS.  Reuse any
+  // byte-identical source archive that FLINT has already authenticated rather
+  // than immediately downloading the same dependency a second time.  The
+  // digest check keeps this a cache optimization, never a trust shortcut.
+  if (!dependency.archive) {
+    const sharedArchive = join(
+      repositoryRoot,
+      "packages",
+      "flint",
+      ".native",
+      "downloads",
+      basename(dependency.url),
+    );
+    if (
+      existsSync(sharedArchive) &&
+      digest(sharedArchive) === dependency.sha256
+    ) {
+      copyFileSync(sharedArchive, filename);
+      process.stdout.write(
+        `Reused authenticated ${dependency.name} archive from the FLINT build\n`,
+      );
+      return filename;
+    }
   }
 
   const failures = [];

@@ -1159,7 +1159,12 @@ test("shared native dependencies link one read-only content-addressed payload", 
   }
 });
 
-test("FFLAS installation metadata remains valid after relocating its builder prefix", () => {
+test("FFLAS installation metadata remains valid after relocating its builder prefix", {
+  skip:
+    process.platform === "win32"
+      ? "FFLAS installs these POSIX config scripts only on Unix hosts"
+      : false,
+}, () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-fflas-prefix-test-"));
   const builder = join(directory, "builder");
   const prefix = join(builder, "packages", "fflas", ".native", "prefix");

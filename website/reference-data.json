@@ -11760,16 +11760,27 @@
         "name": "version",
         "aliases": [],
         "kind": "function",
-        "module": "sagejs._baselib.builtins",
+        "module": "sage.version",
         "signature": "version(json: _Bool=False) -> Any",
         "summary": "Return the Sage.js release string or its machine-readable record.",
         "doc": "Return the Sage.js release string or its machine-readable record.\n\n`version()` returns a concise human-readable string. `version(True)` and\n`version(json=True)` return a detached dictionary with stable field names.\n\n### Examples\n\n```sage\nsage: version().startswith(\"Sage.js v\")\nTrue\nsage: info = version(json=True)\nsage: info[\"schema\"]\nsagejs.version/v1\nsage: info[\"name\"]\nSage.js\n```",
-        "tags": [],
-        "backends": [],
+        "tags": [
+          "runtime",
+          "version",
+          "introspection"
+        ],
+        "backends": [
+          "Sage.js host metadata"
+        ],
         "sage_compatibility": {
-          "status": "compatible"
+          "status": "compatible",
+          "notes": "Returns the Sage.js product release and adds an optional machine-readable dictionary form."
         },
-        "provenance": [],
+        "provenance": [
+          {
+            "kind": "sagejs-original"
+          }
+        ],
         "references": [],
         "limitations": []
       },
@@ -31997,16 +32008,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 6457,
+        "line": 6474,
         "excerpt": {
-          "start_line": 6445,
+          "start_line": 6462,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for `value`.\"\"\"\n    if _builtins_member_is_function(value, \"_latex_\"):\n        return LatexExpr(_builtins_call_member(value, \"_latex_\", []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
           "id": "src/baselib/builtins.py#4c7d8330c2c79857-4b227777d4dd1fc6",
-          "line": 6468,
+          "line": 6485,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -32022,7 +32033,7 @@
         },
         {
           "id": "src/baselib/builtins.py#ca981138a8a22b10-b7a56873cd771f2c",
-          "line": 6470,
+          "line": 6487,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -32038,7 +32049,7 @@
         },
         {
           "id": "src/baselib/builtins.py#c0bc81d3429aebdb-0f03cde178fa9f37",
-          "line": 6472,
+          "line": 6489,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -32298,9 +32309,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8216,
+        "line": 8233,
         "excerpt": {
-          "start_line": 8204,
+          "start_line": 8221,
           "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -33535,16 +33546,27 @@
       "name": "version",
       "aliases": [],
       "kind": "function",
-      "module": "sagejs._baselib.builtins",
+      "module": "sage.version",
       "signature": "version(json: _Bool=False) -> Any",
       "summary": "Return the Sage.js release string or its machine-readable record.",
       "doc": "Return the Sage.js release string or its machine-readable record.\n\n`version()` returns a concise human-readable string. `version(True)` and\n`version(json=True)` return a detached dictionary with stable field names.\n\n### Examples\n\n```sage\nsage: version().startswith(\"Sage.js v\")\nTrue\nsage: info = version(json=True)\nsage: info[\"schema\"]\nsagejs.version/v1\nsage: info[\"name\"]\nSage.js\n```",
-      "tags": [],
-      "backends": [],
+      "tags": [
+        "runtime",
+        "version",
+        "introspection"
+      ],
+      "backends": [
+        "Sage.js host metadata"
+      ],
       "sage_compatibility": {
-        "status": "compatible"
+        "status": "compatible",
+        "notes": "Returns the Sage.js product release and adds an optional machine-readable dictionary form."
       },
-      "provenance": [],
+      "provenance": [
+        {
+          "kind": "sagejs-original"
+        }
+      ],
       "references": [],
       "limitations": [],
       "source": {
@@ -33748,16 +33770,14 @@
       "registry_entries": 291,
       "with_docstring": 291,
       "with_summary": 291,
-      "with_tags": 290,
-      "with_backend": 290,
-      "with_provenance": 290,
-      "with_compatibility_notes": 290,
+      "with_tags": 291,
+      "with_backend": 291,
+      "with_provenance": 291,
+      "with_compatibility_notes": 291,
       "with_references": 88,
       "markdown_docstrings": 291,
       "invalid_markdown_entries": [],
-      "incomplete_entries": [
-        "version"
-      ]
+      "incomplete_entries": []
     },
     "examples": {
       "entries_with_examples": 196,

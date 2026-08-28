@@ -103,6 +103,14 @@ function runFailure(args, input) {
 }
 
 assert.equal(run(["--version"]).trim(), `sagejs ${packageVersion}`);
+assert.match(
+  run([], "print(version())\n"),
+  new RegExp(`Sage\\.js v${packageVersion.replaceAll(".", "\\.")}`),
+);
+assert.match(
+  runFailure(["--python"], "version()\n").stderr,
+  /name 'version' is not defined/,
+);
 const help = run(["--help"]);
 assert.match(help, /Sage\.js — research mathematics native to JavaScript/);
 assert.match(help, /With no program, start an interactive Sage calculator/);

@@ -13,6 +13,7 @@ const {
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
+const { sanitizerEnvironment } = require("../../../test/helpers/sanitizers.cjs");
 
 const root = resolve(__dirname, "..");
 const repositoryRoot = resolve(root, "..", "..");
@@ -606,7 +607,7 @@ int main(void) {
   assert.equal(compile.status, 0, `${compile.stdout}\n${compile.stderr}`);
   const run = spawnSync(executable, [], {
     encoding: "utf8",
-    env: { ...process.env, ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1" },
+    env: sanitizerEnvironment(),
   });
   assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
 });

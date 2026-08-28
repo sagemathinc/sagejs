@@ -78,7 +78,24 @@ def _sagejs_version(json: _Bool = False) -> Any:
 runtime.reflect.set(_sagejs_version, "__name__", "version")
 if runtime.reflect.get(runtime.global_object, "__sagejs_sage_mode__") is True:
     runtime.reflect.set(runtime.global_object, "version", _sagejs_version)
-    runtime.register_doc("version", _sagejs_version)
+    runtime.register_doc(
+        "version",
+        _sagejs_version,
+        {
+            "kind": "function",
+            "module": "sage.version",
+            "tags": ["runtime", "version", "introspection"],
+            "backends": ["Sage.js host metadata"],
+            "sage_compatibility": {
+                "status": "compatible",
+                "notes": (
+                    "Returns the Sage.js product release and adds an optional "
+                    "machine-readable dictionary form."
+                ),
+            },
+            "provenance": [{"kind": "sagejs-original"}],
+        },
+    )
 
 
 def sagejs_capabilities(family: Any = None, workflow: Any = None) -> Any:
