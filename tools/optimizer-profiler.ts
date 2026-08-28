@@ -699,7 +699,7 @@ function buildReceipt(options: {
       bytes: candidate.bytes,
       authenticatedScriptIds: [candidate.scriptId],
       rejectedSameUrlScriptIds: [],
-    })).sort((left, right) => left.url.localeCompare(right.url)),
+    })).sort((left, right) => left.url < right.url ? -1 : left.url > right.url ? 1 : 0),
     mapBindings: artifacts.map(({ map }) => ({
       schema: map.schema,
       digest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
