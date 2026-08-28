@@ -41,7 +41,18 @@
     "pnpm test:baselib:strict",
     "pnpm test:native"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 41.135,
+      "started_at": "2026-08-28T01:54:01.864Z",
+      "commit": "769a157f734a1410a3515c8c7ae09c01cb24c029",
+      "workspace_fingerprint": "c9ed3b5b020938f69df267e7ca5c13218065c5504f469f5ff7a498f2267cb310",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
     "summary": "",
     "risks": [],

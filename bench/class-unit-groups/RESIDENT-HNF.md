@@ -105,11 +105,12 @@ return (
 
 The integration lane must also:
 
-1. Add `src/lib/sagejs/kernels/matrix/class_group_hnf.py` beside the other
-   matrix kernels in `pyrightconfig.json`.
-2. Add a `bench:number-field-resident-hnf` script to `package.json` which runs
+1. Add `src/lib/sagejs/kernels/matrix/class_group_hnf.py` to the
+   `matrix-native-kernels.files` list in `architecture/package-graph.json`.
+2. Add that source beside the other matrix kernels in `pyrightconfig.json`.
+3. Add a `bench:number-field-resident-hnf` script to `package.json` which runs
    `node bin/sagejs --python bench/class-unit-groups/resident-hnf.py`.
-3. Add this production witness to `architecture/native-kernels.json`:
+4. Add this production witness to `architecture/native-kernels.json`:
 
    ```json
    {
