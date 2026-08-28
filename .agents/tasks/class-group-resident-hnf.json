@@ -1,0 +1,50 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "class-group-resident-hnf",
+  "title": "Resident small exact relation matrices",
+  "lane": "arithmetic-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Using the authentic cubic class-group profiler, implement a same-source resident packed exact-relation matrix capability that fuses HNF support, bounded row-deletion trials, and retained-rank publication while preserving canonical HNF/source-row support, exact fallback, proof semantics, cancellation, and resource bounds; benchmark end-to-end and leave shared registrations to integration.",
+  "base_commit": "1632893e3868d4a5152a85d8829f3e04b012c290",
+  "claims": [
+    "src/lib/sagejs/number_fields/class_group_matrix.py",
+    "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
+    "test/number-field-class-group-resident-hnf.cjs",
+    "bench/class-unit-groups/resident-hnf.py",
+    "bench/class-unit-groups/RESIDENT-HNF.md"
+  ],
+  "dependencies": [
+    "optimizer-packed-containers"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": [
+      "cpython",
+      "javascript",
+      "sagejs-existing-hnf",
+      "pari",
+      "magma"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
