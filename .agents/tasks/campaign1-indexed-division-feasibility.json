@@ -1,0 +1,96 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-indexed-division-feasibility",
+  "title": "Compare prime-field indexed division targets",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Produce authenticated 11-pair feasibility evidence for the exact public dense-integral phase, comparing current generic, checked V8, copy-complete Wasm, and mature-library availability with exact derivative replay and complete boundary/cold accounting.",
+  "base_commit": "fcef638bd0f9cc1c8387aaff32bd2feac189cc3e",
+  "claims": [
+    "bench/optimizer-workloads/indexed-division-target-feasibility.cjs",
+    "bench/optimizer-workloads/indexed-division-target.c",
+    "test/optimizer-indexed-division-target-feasibility.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/compiler-development-engine-plan.md",
+    "src/lib/sagejs/polynomial_algorithms/structural_calculus.py"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact public derivative replay under Sage.js O0/O2",
+      "Independent BigInt GF(65537) coefficient oracle"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --check bench/optimizer-workloads/indexed-division-target-feasibility.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.029,
+      "started_at": "2026-08-28T13:51:48.286Z",
+      "commit": "fcef638bd0f9cc1c8387aaff32bd2feac189cc3e",
+      "workspace_fingerprint": "968e490c09ec1a59906bccededbfb0750e5b3f3ef2983d051573c6d36f0cc04f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=reviewed phase|exact public|checked V8|absent C-to-Wasm|isolated C-to-Wasm|standard evidence test/optimizer-indexed-division-target-feasibility.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.383,
+      "started_at": "2026-08-28T13:51:48.938Z",
+      "commit": "fcef638bd0f9cc1c8387aaff32bd2feac189cc3e",
+      "workspace_fingerprint": "968e490c09ec1a59906bccededbfb0750e5b3f3ef2983d051573c6d36f0cc04f",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimizer-workloads/indexed-division-target-feasibility.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.035,
+      "started_at": "2026-08-28T13:52:03.611Z",
+      "commit": "fcef638bd0f9cc1c8387aaff32bd2feac189cc3e",
+      "workspace_fingerprint": "8e4fb2914f2e537029598e22a746fc7fc14faca73ef6176541491430480e030d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test --test-name-pattern=reviewed phase|exact public|checked V8|absent C-to-Wasm|isolated C-to-Wasm|standard evidence test/optimizer-indexed-division-target-feasibility.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.389,
+      "started_at": "2026-08-28T13:52:04.278Z",
+      "commit": "fcef638bd0f9cc1c8387aaff32bd2feac189cc3e",
+      "workspace_fingerprint": "8e4fb2914f2e537029598e22a746fc7fc14faca73ef6176541491430480e030d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented a feasibility-only complete checked V8 target, a copy-complete isolated C-to-Wasm target, independent full-vector BigInt and derivative-replay oracles, deterministic 11-pair ABBA report plumbing, clean-build authentication, and complete guard/fallback/exception/interrupt/publication/cold/copy/boundary/resource/code-size accounting for the exact GF(65537), degree-69999 dense-integral phase. A separate mature-library audit proved a lawful two-block FLINT route, so the report marks this compiler candidate as a mature-algorithm duplicate that must fail closed.",
+    "risks": [
+      "The full standard ABBA report was intentionally not produced after the integration lane disqualified the compiler opportunity; this worktree has no current built dist and the coordinator requested no redundant broad build.",
+      "The handwritten V8 and C-to-Wasm targets are feasibility evidence only and authenticate no production compiler route.",
+      "The mature FLINT timing and route evidence is owned by the separate mature-library audit and is referenced by disposition only, not copied or authenticated here."
+    ],
+    "next_steps": [
+      "Integration should set matureAlgorithm to mature-algorithm-available and reject this dossier before campaign implementation.",
+      "If alternative-target evidence is retained, classify indexed-division-target.c as benchmark-reference and run the standard command only from a clean current build.",
+      "Preserve Wasm source-to-artifact, compile, instantiate, copy, and resident execution separately; do not claim runtime clang as a production route."
+    ]
+  }
+}
