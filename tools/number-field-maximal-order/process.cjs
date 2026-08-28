@@ -1,26 +1,42 @@
 "use strict";
 
 const { accessSync, constants, readFileSync } = require("node:fs");
-const { delimiter } = require("node:path");
+const { delimiter, extname, isAbsolute, join } = require("node:path");
 const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const readline = require("node:readline");
 
 function resolveExecutable(command, env = process.env) {
-  if (command.includes("/")) {
-    try {
-      accessSync(command, constants.X_OK);
-      return command;
-    } catch {
-      return null;
+  const accessMode =
+    process.platform === "win32" ? constants.F_OK : constants.X_OK;
+  const extensions =
+    process.platform === "win32" && !extname(command)
+      ? String(env.PATHEXT || ".COM;.EXE;.BAT;.CMD").split(";")
+      : [""];
+  const candidates = (base) => [
+    base,
+    ...extensions
+      .filter((extension) => extension)
+      .map((extension) => `${base}${extension}`),
+  ];
+  if (isAbsolute(command) || command.includes("/") || command.includes("\\")) {
+    for (const candidate of candidates(command)) {
+      try {
+        accessSync(candidate, accessMode);
+        return candidate;
+      } catch {
+        // Continue through platform executable suffixes.
+      }
     }
+    return null;
   }
   for (const directory of String(env.PATH || "").split(delimiter)) {
-    const candidate = `${directory}/${command}`;
-    try {
-      accessSync(candidate, constants.X_OK);
-      return candidate;
-    } catch {
-      // Continue searching PATH.
+    for (const candidate of candidates(join(directory, command))) {
+      try {
+        accessSync(candidate, accessMode);
+        return candidate;
+      } catch {
+        // Continue searching PATH.
+      }
     }
   }
   return null;
