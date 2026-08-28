@@ -268,6 +268,8 @@
     "bench:optimizer-strict-float-array": "node bench/optimizer-strict-float-array/benchmark.cjs",
     "bench:optimizer-fixed-extension": "node bench/optimizer-fixed-extension/index.cjs",
     "bench:optimizer-modular-batch": "node bench/optimizer-modular-batch/benchmark.cjs",
+    "bench:optimizer-packed-container": "node bench/optimizer-packed-container/benchmark.cjs",
+    "bench:optimizer-machine-corpus": "node bench/optimizer-machine-corpus/run.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:elliptic-rank": "node bench/compare-elliptic-rank.cjs",
     "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",

@@ -159,6 +159,7 @@ export const modularBatchRegionPass: OptimizationPass = {
     "structured-effects",
   ],
   factsProduced: [
+    "explicit-domain-contract",
     "parent-identity", "parent-stable", "method-stability",
     "canonical-integer-coercion", "canonical-value", "no-alias",
     "no-escape", "no-callback", "exact-range", "operation-closed",

@@ -50,7 +50,7 @@ const LOWERING_CONTRACTS: readonly OptimizerLoweringContract[] = Object.freeze([
     id: "v8.fixed-extension-loop.v1",
     passId: "math.fixed-extension-region.v1",
     internalKind: "fixed-extension-region",
-    targetKinds: ["v8"],
+    targetKinds: ["v8", "adaptive"],
     nodeKind: "AST_ForIn",
   }),
   loweringContract({

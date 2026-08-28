@@ -1,4 +1,4 @@
-import { semanticFingerprint } from "../../identity";
+import { semanticFingerprint } from "../identity";
 import {
   PACKED_CONTAINER_CANDIDATE_SCHEMA,
   PackedContainerCandidate,
@@ -7,7 +7,7 @@ import {
   PackedExtent,
   PackedPeerRegion,
   PackedStorageOwner,
-} from "./contracts";
+} from "../analyses/packed-containers/contracts";
 import {
   freezePackedContainerPlan,
   PACKED_CONTAINER_ANALYSIS_ID,
@@ -24,7 +24,10 @@ import {
   PackedMachineContainerPlan,
   PackedOwnerCleanup,
   PackedResourceOwnerFact,
-} from "../../representations/packed-machine-container";
+} from "./packed-machine-container";
+
+export { PACKED_CONTAINER_CANDIDATE_SCHEMA } from
+  "../analyses/packed-containers/contracts";
 
 const EVIDENCE_KINDS: readonly PackedEvidenceKind[] = Object.freeze([
   "shape", "element", "owner", "alias", "mutation", "publication",

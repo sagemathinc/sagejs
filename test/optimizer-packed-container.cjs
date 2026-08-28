@@ -10,7 +10,7 @@ const {
   analyzePackedContainer,
   requirePackedContainerPlan,
 } = require(
-  "../dist/tools/python/optimizer/analyses/packed-containers/index.js",
+  "../dist/tools/python/optimizer/representations/packed-machine-container-plan.js",
 );
 const {
   PACKED_CONTAINER_FACT_PROVIDER_ID,

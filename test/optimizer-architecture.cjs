@@ -31,12 +31,16 @@ test("optimizer extension layers have one-way dependencies", () => {
   for (const filename of files(root)) {
     const name = relative(filename);
     for (const specifier of imports(filename)) {
+      const resolved = specifier.startsWith(".")
+        ? path.posix.normalize(path.posix.join(path.posix.dirname(name), specifier))
+        : specifier;
       if (specifier.includes("/passes/") && name !== "catalog.ts") {
         violations.push(`${name} imports pass implementation ${specifier}`);
       }
       if (name.startsWith("analyses/") &&
-          !specifier.startsWith("../ir/") &&
-          !specifier.startsWith("../analyses/")) {
+          !resolved.startsWith("analyses/") &&
+          !resolved.startsWith("ir/") &&
+          resolved !== "types") {
         violations.push(`${name} has non-analysis dependency ${specifier}`);
       }
       if (name.startsWith("canonicalize/") &&
@@ -115,6 +119,37 @@ test("diagnostic plugins may report rejected candidates without fake lowerings",
   assert.equal(catalog.plugins[0].loweringIds.length, 0);
 });
 
+test("target-neutral fact providers cannot masquerade as executable lowerings", () => {
+  const { optimizerFactProviderCatalog } = require(
+    "../dist/tools/python/optimizer/fact-provider-catalog.js",
+  );
+  assert.equal(Object.isFrozen(optimizerFactProviderCatalog), true);
+  assert.equal(Object.isFrozen(optimizerFactProviderCatalog.plugins), true);
+  assert.deepEqual(
+    optimizerFactProviderCatalog.plugins.map((plugin) => [
+      plugin.id,
+      plugin.domainId,
+      plugin.priority,
+      plugin.publicMutableStorage,
+    ]),
+    [[
+      "math.packed-machine-container-facts.v1",
+      "packed-machine-container",
+      400,
+      false,
+    ]],
+  );
+  const [provider] = optimizerFactProviderCatalog.plugins;
+  assert.equal(Object.isFrozen(provider), true);
+  assert.equal(Object.isFrozen(provider.factsProduced), true);
+  assert.equal(Object.isFrozen(provider.supportedConsumers), true);
+  assert.equal(Object.hasOwn(provider, "loweringIds"), false);
+  assert.equal(Object.hasOwn(provider, "pass"), false);
+  for (const fact of provider.factsProduced) {
+    assert.equal(optimizerFactProviderCatalog.factOwners[fact], provider.id);
+  }
+});
+
 test("every registered lowering has one verifier and one Python emitter", () => {
   const { optimizerLoweringContracts } = require(
     "../dist/tools/python/optimizer/lowerings.js",
@@ -130,6 +165,10 @@ test("every registered lowering has one verifier and one Python emitter", () => 
     "utf8",
   );
   const contracts = optimizerLoweringContracts();
+  const fixedExtension = contracts.find(
+    (contract) => contract.id === "v8.fixed-extension-loop.v1",
+  );
+  assert.deepEqual(fixedExtension.targetKinds, ["v8", "adaptive"]);
   const registered = contracts.map((contract) => contract.id).sort();
   const owned = optimizerCatalog.plugins
     .flatMap((plugin) => plugin.loweringIds).sort();
@@ -154,4 +193,15 @@ test("every registered lowering has one verifier and one Python emitter", () => 
       `${kind} must belong to exactly one verifier plugin`,
     );
   }
+});
+
+test("explicit-domain rejection evidence is declared by its pass", () => {
+  const { optimizerCatalog } = require(
+    "../dist/tools/python/optimizer/catalog.js",
+  );
+  const modular = optimizerCatalog.plugins.find(
+    (plugin) => plugin.id === "math.modular-batch-region.v1",
+  );
+  assert.ok(modular);
+  assert.ok(modular.pass.factsProduced.includes("explicit-domain-contract"));
 });

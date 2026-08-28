@@ -49,8 +49,8 @@ function workloadSize(spec, scale) {
   return Math.max(spec.minimumSize, Math.round(spec.baseSize * scale));
 }
 
-function commonSageTiming(spec, size, samples) {
-  return `${spec.sageDefinition(size)}
+function commonSageTiming(spec, size, samples, withContract = true) {
+  return `${spec.sageDefinition(size, withContract)}
 _resource_before = _machine_resource_count()
 _cold_started = time.perf_counter()
 ${spec.invocation}
@@ -85,14 +85,20 @@ function workloadSpecifications() {
   return [
     {
       domain: "bounded-integer",
+      expectedPassId: "math.bounded-integer-region.v1",
       outputKind: "exact-decimal-integer",
       baseSize: 200_000,
       minimumSize: 1_000,
       invocation: "_machine_answer = machine_workload(_machine_size, 17, -1, 19)",
-      sageDefinition(size) {
+      sageDefinition(size, withContract = true) {
+        const contract = withContract
+          ? `from sagejs.compiler import optimize
+@optimize(require="math.bounded-integer-region.v1", target="v8", guard_failure="error")
+`
+          : "";
         return `import time
 _machine_size = ${size}
-def machine_workload(count: int, value: int, multiplier: int, increment: int):
+${contract}def machine_workload(count: int, value: int, multiplier: int, increment: int):
     for index in range(count):
         value = value*multiplier + increment
     return value
@@ -102,7 +108,7 @@ def _machine_resource_count():
     return 0`;
       },
       pythonDefinition(size) {
-        return this.sageDefinition(size);
+        return this.sageDefinition(size, false);
       },
       logicalBytes(size) {
         return { input: 32, output: 8, elements: size };
@@ -110,18 +116,24 @@ def _machine_resource_count():
     },
     {
       domain: "strict-binary64-array",
+      expectedPassId: "math.strict-float-array-region.v1",
       outputKind: "native-endian-ieee754-bits",
       baseSize: 50_000,
       minimumSize: 1_000,
-      invocation: "_machine_answer = machine_workload(_machine_values, 0.125, 0.9999999403953552)",
-      sageDefinition(size) {
+      invocation: "_machine_answer = machine_workload(_machine_values, float(0.125), float(0.9999999403953552))",
+      sageDefinition(size, withContract = true) {
+        const contract = withContract
+          ? `from sagejs.compiler import optimize
+@optimize(require="math.strict-float-array-region.v1", target="v8", guard_failure="error")
+`
+          : "";
         return `import time
 from array import array
 _machine_size = ${size}
-_machine_values = array('d', [((index % 17) - 8)/16.0 for index in range(_machine_size)])
-def machine_workload(values, accumulator: float, multiplier: float):
-    for index in range(len(values)):
-        accumulator = accumulator*multiplier + values[index]
+_machine_values = tuple(float(((index % 17) - 8)/16.0) for index in range(_machine_size))
+${contract}def machine_workload(values: tuple[float, ...], accumulator: float, multiplier: float):
+    for value in values:
+        accumulator = accumulator*multiplier + value
     return accumulator
 def _machine_encode(value):
     return array('d', [value]).tobytes().hex()
@@ -129,7 +141,7 @@ def _machine_resource_count():
     return 0`;
       },
       pythonDefinition(size) {
-        return this.sageDefinition(size);
+        return this.sageDefinition(size, false);
       },
       logicalBytes(size) {
         return { input: size * 8 + 16, output: 8, elements: size };
@@ -137,24 +149,28 @@ def _machine_resource_count():
     },
     {
       domain: "prime-residue-batch",
+      expectedPassId: "math.modular-batch-region.v1",
       outputKind: "canonical-residue-summary",
       baseSize: 10_000,
       minimumSize: 100,
-      invocation: "_machine_answer = machine_workload(_machine_values, _machine_output, _machine_multiplier, _machine_increment, _machine_parent)",
-      sageDefinition(size) {
+      invocation: "_machine_answer = _machine_summarize(machine_workload(_machine_size, _machine_values))",
+      sageDefinition(size, withContract = true) {
+        const contract = withContract
+          ? `from sagejs.compiler import optimize
+@optimize(require="math.modular-batch-region.v1", coverage="at-least-one", target="v8", guard_failure="error")
+`
+          : "";
         return `import time
 _machine_size = ${size}
 _machine_parent = Zmod(1009)
 _machine_values = tuple(_machine_parent(index*index + 3*index - 7) for index in range(_machine_size))
-_machine_output = [_machine_parent(0) for index in range(_machine_size)]
-_machine_multiplier = _machine_parent(37)
-_machine_increment = _machine_parent(-19)
-def machine_workload(values, output, multiplier, increment, parent):
-    checksum = parent(0)
-    for index in range(len(values)):
-        output[index] = values[index]*multiplier + increment
-        checksum = checksum + output[index]
-    return checksum, output[0], output[-1]
+${contract}def machine_workload(count, values):
+    output = [None for _slot in range(count)]
+    for index in range(count):
+        output[index] = values[index]*37 + 19
+    return output
+def _machine_summarize(values):
+    return sum(values), values[0], values[-1]
 def _machine_encode(value):
     return ','.join(str(int(entry)) for entry in value)
 def _machine_resource_count():
@@ -165,15 +181,13 @@ def _machine_resource_count():
 _machine_size = ${size}
 _machine_parent = 1009
 _machine_values = tuple((index*index + 3*index - 7) % _machine_parent for index in range(_machine_size))
-_machine_output = [0 for index in range(_machine_size)]
-_machine_multiplier = 37
-_machine_increment = -19
-def machine_workload(values, output, multiplier, increment, parent):
-    checksum = 0
-    for index in range(len(values)):
-        output[index] = (values[index]*multiplier + increment) % parent
-        checksum = (checksum + output[index]) % parent
-    return checksum, output[0], output[-1]
+def machine_workload(count, values):
+    output = [None for _slot in range(count)]
+    for index in range(count):
+        output[index] = (values[index]*37 + 19) % _machine_parent
+    return output
+def _machine_summarize(values):
+    return sum(values) % _machine_parent, values[0], values[-1]
 def _machine_encode(value):
     return ','.join(str(entry) for entry in value)
 def _machine_resource_count():
@@ -185,17 +199,23 @@ def _machine_resource_count():
     },
     {
       domain: "fixed-extension",
+      expectedPassId: "math.fixed-extension-region.v1",
       outputKind: "canonical-power-basis-coordinates",
       baseSize: 1_000,
       minimumSize: 20,
       invocation: "_machine_answer = machine_workload(_machine_size)",
-      sageDefinition(size) {
+      sageDefinition(size, withContract = true) {
+        const contract = withContract
+          ? `from sagejs.compiler import optimize
+@optimize(require="math.fixed-extension-region.v1", target="auto", guard_failure="error")
+`
+          : "";
         return `import time
 _machine_size = ${size}
 _machine_polynomial_ring.<x> = PolynomialRing(GF(5))
 _machine_parent.<a> = GF(5^3, modulus=x^3 + x + 1)
 _machine_a2 = a*a
-def machine_workload(count):
+${contract}def machine_workload(count):
     value = _machine_parent(1) + 2*a + 3*_machine_a2
     multiplier = _machine_parent(2) + a + 4*_machine_a2
     increment = _machine_parent(3) + 4*a + _machine_a2
@@ -239,6 +259,8 @@ def _machine_resource_count():
     },
     {
       domain: "packed-container",
+      expectedPassId: null,
+      evidenceKind: "fact-provider-only",
       outputKind: "signed-int64-buffer-summary",
       baseSize: 100_000,
       minimumSize: 1_000,
@@ -301,10 +323,48 @@ function parserOptions(domain, level) {
   };
 }
 
-function compilationSource(spec, size) {
-  return spec.sageDefinition(size).split("\n")
-    .filter((line) => !line.startsWith("import ") && !line.startsWith("from "))
+function compilationSource(spec, size, withContract = true) {
+  return spec.sageDefinition(size, withContract).split("\n")
+    .filter((line) => !line.startsWith("import ") &&
+      (!line.startsWith("from ") || line === "from sagejs.compiler import optimize"))
     .join("\n");
+}
+
+function assertExpectedOptimizerRoute(spec, evidence) {
+  const selected = evidence.filter((region) => region.selected);
+  if (spec.expectedPassId === null) {
+    assert.equal(
+      selected.length,
+      0,
+      `${spec.domain}: target-neutral fact evidence must not masquerade as an executable lowering`,
+    );
+    return;
+  }
+  assert.ok(
+    selected.some((region) => region.pass_id === spec.expectedPassId),
+    `${spec.domain}: expected selected optimizer pass ${spec.expectedPassId}; got ` +
+      (selected.map((region) => region.pass_id).join(", ") || "none"),
+  );
+}
+
+function stripBenchmarkOnlyContractSyntax(compiler, ast) {
+  // The import and decorator are needed while the optimizer proves the source
+  // contract.  Direct OutputStream measurement does not have the module
+  // bundler that normally lowers imports, and the decorator is not part of the
+  // selected loop target.  Remove both only after optimization has completed.
+  ast.body = (ast.body ?? []).filter(
+    (node) => !(node instanceof compiler.AST_Imports) &&
+      !(node instanceof compiler.AST_SimpleStatement &&
+        node.body instanceof compiler.AST_EmptyStatement &&
+        node.start?.type === "decorated_definition"),
+  );
+  for (const node of ast.body) {
+    if (node instanceof compiler.AST_Function && node.optimization_contract) {
+      node.decorators = [];
+    }
+  }
+  ast.imported_module_ids = [];
+  ast.imports = Object.assign(Object.create(null), { __main__: ast });
 }
 
 function detachedRegionEvidence(program) {
@@ -361,15 +421,19 @@ async function measureCompilation(specs, sizes, samples) {
       // Imports are runtime setup rather than part of the candidate region.  Keeping
       // the measured source import-free also lets the standalone emitter report the
       // workload's generated bytes without bundling unrelated library modules.
-      const source = compilationSource(spec, sizes[spec.domain]);
+      const source = compilationSource(spec, sizes[spec.domain], true);
       const observations = { O0: [], O2: [] };
       const emitted = { O0: 0, O2: 0 };
       let optimizerEvidence = [];
       for (let sample = 0; sample < samples; sample += 1) {
         const order = sample % 2 ? ["O0", "O2"] : ["O2", "O0"];
         for (const level of order) {
+          const levelSource = level === "O2"
+            ? source
+            : compilationSource(spec, sizes[spec.domain], false);
           const started = performance.now();
-          const ast = frontend.parse(source, parserOptions(spec.domain, level));
+          const ast = frontend.parse(levelSource, parserOptions(spec.domain, level));
+          stripBenchmarkOnlyContractSyntax(compiler, ast);
           const output = new compiler.OutputStream(outputOptions);
           ast.print(output);
           const javascript = output.get();
@@ -380,6 +444,7 @@ async function measureCompilation(specs, sizes, samples) {
           }
         }
       }
+      assertExpectedOptimizerRoute(spec, optimizerEvidence);
       report[spec.domain] = {
         source_sha256: sha256(source),
         source_bytes: Buffer.byteLength(source),
@@ -391,6 +456,8 @@ async function measureCompilation(specs, sizes, samples) {
         emitted_bytes: emitted,
         emitted_o2_minus_o0_bytes: emitted.O2 - emitted.O0,
         optimizer_ir: optimizerEvidence,
+        expected_pass_id: spec.expectedPassId,
+        evidence_kind: spec.evidenceKind ?? "executable-region",
         accounting_availability: optimizerEvidence.length
           ? "reported by optimizer IR per considered region"
           : "no optimizer region reported for this source",
@@ -462,7 +529,7 @@ async function sessionAtLevel(level) {
 }
 
 async function measureSage(spec, size, samples, level) {
-  const source = commonSageTiming(spec, size, samples);
+  const source = commonSageTiming(spec, size, samples, level !== "O0");
   const initializationStarted = performance.now();
   const session = await sessionAtLevel(level);
   const sessionInitializeMs = performance.now() - initializationStarted;

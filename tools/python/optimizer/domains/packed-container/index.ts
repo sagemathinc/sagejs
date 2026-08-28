@@ -1,7 +1,7 @@
 import {
   analyzePackedContainer,
   requirePackedContainerPlan,
-} from "../../analyses/packed-containers";
+} from "../../representations/packed-machine-container-plan";
 import {
   PACKED_CONTAINER_ANALYSIS_ID,
   PACKED_CONTAINER_FACT_KINDS,

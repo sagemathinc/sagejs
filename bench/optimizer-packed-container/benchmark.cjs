@@ -9,7 +9,7 @@ const {
   PACKED_CONTAINER_CANDIDATE_SCHEMA,
   requirePackedContainerPlan,
 } = require(
-  "../../dist/tools/python/optimizer/analyses/packed-containers/index.js",
+  "../../dist/tools/python/optimizer/representations/packed-machine-container-plan.js",
 );
 const {
   replayPackedMachineContainerPlan,

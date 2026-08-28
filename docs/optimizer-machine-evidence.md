@@ -1,11 +1,19 @@
 # Optimizer machine-domain evidence
 
-This evidence suite is independent of the five optimizer implementations in
-the parallel compiler program. It feeds ordinary mathematical source through
-the public Sage/Python frontend at `O0` and `O2`; it does not import a domain
-pass, verifier, lowering, pass ID, or representation implementation. The same
-suite can therefore run on the frozen baseline, on an individual domain
-branch, and after integration.
+The generated correctness corpus is independent of the five machine-domain
+implementations in the parallel compiler program. It feeds ordinary
+mathematical source through the public Sage/Python frontend at `O0` and `O2`;
+it does not import a domain pass, verifier, lowering, pass ID, or
+representation implementation. The same corpus can therefore run on the
+frozen baseline, on an individual domain branch, and after integration.
+
+The performance harness has a different job. Its four executable workloads
+use public `@optimize` contracts and record the exact expected pass ID. A run
+fails before reporting timings if bounded integers, immutable binary64 tuples,
+modular batches, or fixed extensions did not select their intended verified
+region. The packed-container entry is explicitly `fact-provider-only`; the
+harness instead fails if it masquerades as an executable lowering. This keeps
+a fast generic or stale route from being reported as evidence for a new pass.
 
 ## Generated correctness corpus
 
@@ -76,11 +84,15 @@ The versioned JSON receipt includes, for every domain:
 - every optimizer-reported representation materialization, target boundary,
   copied-byte value, candidate cost, fallback identity, and rejection reason.
 
-The compiler source excludes import statements because imports are runtime
+The compiler source excludes runtime import statements because imports are
 setup, not part of a candidate mathematical region; this also prevents emitted
-byte counts from silently including library modules. Cold first-evaluation
-time does include imports, setup, input construction, frontend work, and the
-first result. Warm samples time only the same mathematical function call.
+byte counts from silently including library modules. The one
+`from sagejs.compiler import optimize` statement remains while the frontend
+authenticates the source contract. After selection, the direct-emitter harness
+removes that import and decorator syntax before counting target bytes. Cold
+first-evaluation time includes normal imports, setup, input construction,
+frontend work, and the first result. Warm samples time only the same
+mathematical function call.
 
 `runtime-dependent` remains `runtime-dependent`, and absent accounting remains
 explicitly unavailable. The harness never turns logical input bytes into a
@@ -99,10 +111,26 @@ the following diagnostic medians before the five new plugins were integrated:
 | fixed extension (50) | 44.04 / 56.66 | 510.5 / 521.2 | 7.385 / 2.253 | 0.083 |
 | packed container (5,000) | 25.93 / 25.79 | 501.7 / 491.3 | 9.280 / 9.097 | 0.306 |
 
-Those values expose the frozen baseline rather than ratcheting it. In
-particular, no speedup is claimed for a workload until the integrated domain
-pass reports the intended representation and target and a reviewed quiet-host
-receipt establishes a ceiling.
+Those values expose the frozen baseline rather than ratcheting it. They are
+retained as the pre-integration comparison. Current runs mechanically require
+the exact intended route, but no speedup is ratcheted until a reviewed
+quiet-host receipt establishes a stable ceiling.
+
+An integrated three-sample `--check` run on the same host selected the exact
+required routes and produced these diagnostic warm medians:
+
+| Domain | Authenticated selected route | warm O0/O2 ms | O0/O2 |
+| --- | --- | ---: | ---: |
+| bounded integer | `math.bounded-integer-region.v1` / V8 | 3.707 / 0.220 | 16.88x |
+| strict binary64 tuple | `math.strict-float-array-region.v1` / V8 | 1.397 / 0.673 | 2.08x |
+| prime residue batch | `math.modular-batch-region.v1` / V8 | 15.707 / 0.520 | 30.23x |
+| fixed extension | `math.fixed-extension-region.v1` / adaptive | 12.919 / 2.988 | 4.32x |
+| packed container | fact provider only; no executable route | 9.121 / 9.329 | 0.98x |
+
+These short runs establish route and exactness evidence, not stable performance
+ceilings. In particular, tuple conversion dominates the smallest strict-float
+workload, and the packed-container row is intentionally a no-speedup control
+until a mathematical pass consumes its ownership and layout facts.
 
 Use `--domains` to isolate a comma-separated subset, and `--scale` to change
 workload sizes without changing mathematical shape:
@@ -176,20 +204,22 @@ the native kernel. An integrated bounded-integer pass must demonstrate a new
 proved representation and an authentic end-to-end improvement; merely
 renaming or selecting that fallback is not evidence of optimization.
 
-## Integration handoff
+## Integrated evidence contract
 
-No shared optimizer catalog, verifier catalog, emitter dispatcher, package
-script, CI manifest, or architecture manifest is changed here. The integration
-lane should:
+The executable catalog now contains four relevant passes: bounded exact
+integers, strict binary64 immutable tuples, complete modular batches, and fixed
+extensions. The packed-container analyzer lives in the separate immutable
+fact-provider catalog because it proves representation boundaries for future
+consuming passes and does not itself own mathematical semantics or a fallback.
 
-1. register the five plugins through their shared catalogs and dispatcher;
-2. run this unchanged corpus at `O0` and `O2`;
-3. inspect each domain's `optimizer_ir` records for the intended pass,
-   representation, target, fallback, and complete accounting;
-4. capture an idle-host receipt plus both cubic target receipts and matched
+Every harness receipt includes both a stable mathematical domain ID and
+`expected_pass_id`. Route verification happens before execution timing is
+accepted. Integration validation therefore consists of:
+
+1. running the implementation-independent 25-case corpus at `O0` and `O2`;
+2. requiring the four exact executable pass IDs and no fake packed-container
+   lowering in the compile/cold/warm harness;
+3. inspecting representation, target, fallback, and accounting records;
+4. capturing an idle-host receipt plus both cubic target receipts and matched
    Sage/PARI evidence; and
-5. only then set route and performance ceilings appropriate to each platform.
-
-Because the harness keys domains by stable mathematical domain IDs rather than
-pass or lowering names, no central registration patch is required from this
-evidence lane.
+5. setting platform-specific ceilings only from those reviewed receipts.
