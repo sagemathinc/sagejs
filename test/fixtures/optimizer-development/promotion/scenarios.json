@@ -1,0 +1,27 @@
+[
+  {
+    "id": "accepted-paired-pilot",
+    "mutation": "none",
+    "expected": "accepted"
+  },
+  {
+    "id": "stale-current-checkout",
+    "mutation": "current-checkout",
+    "expected": "rejected"
+  },
+  {
+    "id": "unavailable-webkit",
+    "mutation": "webkit-unavailable",
+    "expected": "inconclusive"
+  },
+  {
+    "id": "unproved-speedup",
+    "mutation": "unproved-speedup",
+    "expected": "inconclusive"
+  },
+  {
+    "id": "unmatched-baseline-exception",
+    "mutation": "unmatched-exception",
+    "expected": "rejected"
+  }
+]

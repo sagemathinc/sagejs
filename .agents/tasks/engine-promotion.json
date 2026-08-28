@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-promotion",
+  "title": "Optimizer promotion validator and browser receipts",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement fail-closed promotion comparison/receipt validation and authenticated JSON receipts for machine optimizer domains in Chromium, Firefox, and WebKit",
+  "base_commit": "bbdd9254696e21c0fdb98ce9b1a8659b3d0ffa2a",
+  "claims": [
+    "tools/optimizer-development/promotion.cjs",
+    "scripts/optimizer-promotion.cjs",
+    "scripts/optimizer-platform-validate.cjs",
+    "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
+    "test/optimizer-promotion.cjs",
+    "test/optimizer-browser-receipt.cjs",
+    "test/fixtures/optimizer-development/promotion/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Recomputed promotion decisions, exact O0/O2/browser routes, malformed and stale artifact receipts, and paired-sample fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/optimizer-promotion.cjs test/optimizer-browser-receipt.cjs",
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
