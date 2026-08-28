@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const readline = require("node:readline");
 
@@ -90,10 +91,13 @@ async function pairedComparison({ phase, samples, baseline, candidate, expected 
   };
 }
 
-async function workerMain(level) {
+async function workerMain(variant) {
+  if (variant !== "baseline" && variant !== "candidate") {
+    throw new Error(`unknown arrow compiler evidence worker ${variant}`);
+  }
   const root = path.resolve(__dirname, "../..");
   const profileSource = fs.readFileSync(path.join(root, PROFILE_SOURCE), "utf8");
-  const runner = await createRunner(root, profileSource, level);
+  const runner = await createRunner(root, profileSource, "O2");
   const input = readline.createInterface({ input: process.stdin });
   process.stdout.write(`${JSON.stringify({ ready: true })}\n`);
   try {
@@ -117,13 +121,23 @@ async function workerMain(level) {
   }
 }
 
-function createSubprocessRunner(root, level) {
-  const child = spawn(process.execPath, [__filename, `--worker=${level}`], {
+function createSubprocessRunner(root, variant) {
+  const cacheRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), `sagejs-arrow-compiler-${variant}-`),
+  );
+  const environment = {
+    ...process.env,
+    SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
+    SAGEJS_NATIVE_DISABLE: "1",
+    SAGEJS_OPT_LEVEL: "O2",
+    SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: path.join(cacheRoot, "precompiled"),
+    XDG_CACHE_HOME: path.join(cacheRoot, "xdg"),
+  };
+  if (variant === "baseline") environment.SAGEJS_OPT_DISABLE = PASS;
+  else delete environment.SAGEJS_OPT_DISABLE;
+  const child = spawn(process.execPath, [__filename, `--worker=${variant}`], {
     cwd: root,
-    env: {
-      ...process.env,
-      SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off",
-    },
+    env: environment,
     stdio: ["pipe", "pipe", "pipe"],
   });
   const pending = new Map();
@@ -150,9 +164,12 @@ function createSubprocessRunner(root, level) {
     else promise.resolve(response.value);
   });
   child.once("exit", (code) => {
-    if (code !== 0) readyReject(new Error(stderr || `worker ${level} exited ${code}`));
+    fs.rmSync(cacheRoot, { recursive: true, force: true });
+    if (code !== 0) {
+      readyReject(new Error(stderr || `worker ${variant} exited ${code}`));
+    }
     for (const promise of pending.values()) {
-      promise.reject(new Error(stderr || `worker ${level} exited ${code}`));
+      promise.reject(new Error(stderr || `worker ${variant} exited ${code}`));
     }
     pending.clear();
   });
@@ -243,8 +260,8 @@ async function runPromotionEvidence({
     ? { status: "not-authenticated", promotable: false }
     : { status: "authenticated-current-clean-build", ...requireCurrentBuild(root) };
   const oracles = independentOracles(root, points).cpython;
-  const baseline = createSubprocessRunner(root, "O0");
-  const candidate = createSubprocessRunner(root, "O2");
+  const baseline = createSubprocessRunner(root, "baseline");
+  const candidate = createSubprocessRunner(root, "candidate");
   try {
     for (let index = 0; index < warmups; index += 1) {
       for (const kind of ["vector", "slope"]) {
@@ -254,26 +271,34 @@ async function runPromotionEvidence({
     }
     const comparisons = {
       representativeVector: await pairedComparison({
-        phase: "representative-vector-complete-public-o0-vs-o2",
+        phase: "representative-vector-complete-public-pass-disabled-vs-selected",
         samples,
         baseline: () => baseline.measure("vector", points),
         candidate: () => candidate.measure("vector", points),
         expected: oracles.vector,
       }),
       heldoutSlope: await pairedComparison({
-        phase: "heldout-slope-complete-public-o0-vs-o2",
+        phase: "heldout-slope-complete-public-pass-disabled-vs-selected",
         samples,
         baseline: () => baseline.measure("slope", points),
         candidate: () => candidate.measure("slope", points),
         expected: oracles.slope,
       }),
     };
+    const completeSeparation = Object.values(comparisons).every(
+      (comparison) => comparison.positivePairs === samples,
+    );
+    const promotable = Boolean(
+      buildAuthentication.promotable && standard && completeSeparation,
+    );
     const payload = {
       generatedAt: new Date().toISOString(),
-      status: standard
+      status: promotable
         ? "standard-current-build-compiler-evidence"
+        : standard
+          ? "standard-current-build-insufficient-separation"
         : "development-smoke-non-promotable",
-      promotable: Boolean(buildAuthentication.promotable && standard),
+      promotable,
       buildAuthentication,
       host: {
         platform: process.platform,
@@ -296,8 +321,11 @@ async function runPromotionEvidence({
         samples,
         warmups,
         order: "repeating AB,BA,BA,AB",
-        baselineOptimizationLevel: "O0",
+        baselineOptimizationLevel: "O2",
         candidateOptimizationLevel: "O2",
+        baselineDisabledPasses: [PASS],
+        candidateDisabledPasses: [],
+        lazyModuleCompilation: "exact-current-source-with-precompiled-cache-disabled",
         nativeDisabled: true,
         completePublicCall: true,
       },

@@ -11,7 +11,7 @@ const {
   validateReport,
 } = require("../bench/optimizer-workloads/arrow-field-compiler-promotion.cjs");
 
-test("public O0/O2 compiler smoke is exact", async () => {
+test("public pass-disabled/selected compiler smoke is exact", async () => {
   const report = await runPromotionEvidence({
     points: 5,
     samples: 1,
