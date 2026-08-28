@@ -17,6 +17,7 @@ function errorRecord(error) {
     reasonCode: error?.reasonCode ?? null,
     executionName: error?.observation?.execution?.error?.name ?? null,
     artifactCount: error?.observation?.artifacts?.length ?? null,
+    observation: error?.observation ?? null,
   };
 }
 
@@ -93,4 +94,3 @@ main().then(
     process.exitCode = 1;
   },
 );
-

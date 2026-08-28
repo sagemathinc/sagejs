@@ -1,21 +1,27 @@
 // sagejs-test-tier: specialized
 "use strict";
 
+// This suite exercises optimizer route telemetry, not the independently
+// receipt-gated hyperelliptic backend selector. Compiler/runtime source edits
+// intentionally invalidate that release receipt until the final platform
+// campaign regenerates it.
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
 const createCompiler = require("../dist/tools/compiler.js").default;
 const {
-  createKernelEvaluatorAsync,
-} = require("../dist/tools/kernel-evaluator.js");
-const {
-  OptimizerProfileExecutionError,
-} = require("../dist/tools/optimizer-profiler.js");
-const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
+
+const profileRunner = join(
+  __dirname,
+  "fixtures/optimizer-development/profile-lazy/runner.cjs",
+);
 
 const fixtureRoot = join(
   __dirname,
@@ -59,20 +65,19 @@ const outputOptions = {
   reuse_main_module: true,
 };
 
-let sharedEvaluator;
-async function evaluator() {
-  if (!sharedEvaluator) {
-    sharedEvaluator = await createKernelEvaluatorAsync({
-      mode: "sage",
-      onOutput() {},
-    });
-  }
-  return sharedEvaluator;
+function runOnce(payload) {
+  const child = spawnSync(process.execPath, [profileRunner], {
+    cwd: join(__dirname, ".."),
+    env: { ...process.env, SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off" },
+    input: JSON.stringify(payload),
+    encoding: "utf8",
+    timeout: 60_000,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  const line = child.stdout.trim().split("\n").at(-1);
+  assert.ok(line, child.stderr);
+  return JSON.parse(line);
 }
-
-test.after(() => {
-  sharedEvaluator?.close();
-});
 
 function emittedRoutes(source, observer) {
   const compiler = createCompiler();
@@ -105,20 +110,27 @@ function terminalEvents(observation) {
   return terminals[0];
 }
 
-async function profilePair(evaluator, source, call, filename) {
+function profilePair(source, call, filename) {
   const complete = `${source}\n${call}\n`;
-  const ordinary = await evaluator.evaluate(complete, {
-    filename: `${filename}.ordinary.py`,
-    language: "sage",
+  const ordinary = runOnce({
+    action: "evaluate",
+    source: complete,
+    options: { filename: `${filename}.ordinary.py`, language: "sage" },
   });
-  const profiled = await evaluator.profile(complete, {
-    filename: `${filename}.profiled.py`,
-    language: "sage",
-    samplingIntervalMicros: 500,
+  const profiled = runOnce({
+    action: "profile",
+    source: complete,
+    options: {
+      filename: `${filename}.profiled.py`,
+      language: "sage",
+      samplingIntervalMicros: 500,
+    },
   });
-  assert.equal(profiled.evaluation.stdout, ordinary.stdout);
-  assert.equal(profiled.evaluation.repr, ordinary.repr);
-  return profiled.observation;
+  assert.equal(ordinary.ok, true, JSON.stringify(ordinary.error));
+  assert.equal(profiled.ok, true, JSON.stringify(profiled.error));
+  assert.equal(profiled.value.evaluation.stdout, ordinary.value.evaluation.stdout);
+  assert.equal(profiled.value.evaluation.repr, ordinary.value.evaluation.repr);
+  return profiled.value.observation;
 }
 
 test("production output omits the private observer and terminal calls follow effects", async () => {
@@ -160,9 +172,7 @@ test("production output omits the private observer and terminal calls follow eff
 });
 
 test("scalar and strict-float routes conserve one entry and one terminal", async () => {
-  const kernel = await evaluator();
-  {
-    const cases = [
+  const cases = [
       {
         source: sources.field,
         call: "print(modular_recurrence(7, R(1), R(37), R(11)))",
@@ -208,53 +218,38 @@ test("scalar and strict-float routes conserve one entry and one terminal", async
         filename: "float-zero",
         outcome: "zero-trip",
       },
-    ];
-    for (const item of cases) {
-      const observation = await profilePair(
-        kernel,
-        item.source,
-        item.call,
-        item.filename,
-      );
-      assert.equal(terminalEvents(observation).outcome, item.outcome);
-    }
+  ];
+  for (const item of cases) {
+    const observation = profilePair(item.source, item.call, item.filename);
+    assert.equal(terminalEvents(observation).outcome, item.outcome);
   }
 });
 
 test("an exception in the untouched fallback remains explicitly incomplete", async () => {
-  const kernel = await evaluator();
   const call = [
     "left = tuple([R(2), R(3)])",
     "right = tuple([R(5)])",
     "modular_strict_zip(left, right)",
   ].join("\n");
-  await assert.rejects(
-    kernel.profile(`${sources.field}\n${call}\n`, {
+  const result = runOnce({
+    action: "profile",
+    source: `${sources.field}\n${call}\n`,
+    options: {
       filename: "field-zip-fallback-error.py",
       language: "sage",
       samplingIntervalMicros: 500,
-    }),
-    (error) => {
-      assert.ok(error instanceof OptimizerProfileExecutionError);
-      assert.match(error.observation.execution.error.message, /zip\(\) argument 2/);
-      const events = error.observation.privateEvents.events;
-      assert.equal(
-        events.filter((event) => event.outcome === "selected-static-entry").length,
-        1,
-      );
-      assert.equal(
-        events.filter((event) => event.outcome !== "selected-static-entry").length,
-        0,
-      );
-      return true;
     },
-  );
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.error.name, "OptimizerProfileExecutionError");
+  assert.match(result.error.observation.execution.error.message, /zip\(\) argument 2/);
+  const events = result.error.observation.privateEvents.events;
+  assert.equal(events.filter((event) => event.outcome === "selected-static-entry").length, 1);
+  assert.equal(events.filter((event) => event.outcome !== "selected-static-entry").length, 0);
 });
 
 test("guard-error routes authenticate before preserving the existing exception", async () => {
-  const kernel = await evaluator();
-  {
-    for (const item of [
+  for (const item of [
       {
         source: sources.field,
         call: "modular_recurrence_error(3, 1, 2, 3)",
@@ -265,21 +260,20 @@ test("guard-error routes authenticate before preserving the existing exception",
         call: "float_recurrence_error(3, 1, 2)",
         reason: "live-in-not-binary64",
       },
-    ]) {
-      await assert.rejects(
-        kernel.profile(`${item.source}\n${item.call}\n`, {
+  ]) {
+    const result = runOnce({
+      action: "profile",
+      source: `${item.source}\n${item.call}\n`,
+      options: {
           filename: `guard-error-${item.reason}.py`,
           language: "sage",
           samplingIntervalMicros: 500,
-        }),
-        (error) => {
-          assert.ok(error instanceof OptimizerProfileExecutionError);
-          assert.equal(error.observation.execution.status, "threw");
-          assert.match(error.observation.execution.error.message, new RegExp(item.reason));
-          assert.equal(terminalEvents(error.observation).outcome, "error");
-          return true;
-        },
-      );
-    }
+      },
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.error.name, "OptimizerProfileExecutionError");
+    assert.equal(result.error.observation.execution.status, "threw");
+    assert.match(result.error.observation.execution.error.message, new RegExp(item.reason));
+    assert.equal(terminalEvents(result.error.observation).outcome, "error");
   }
 });
