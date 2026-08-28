@@ -1,12 +1,54 @@
 # Optimizing mathematics compiler: parallel implementation program
 
-**Status:** active  
+**Status:** completed on 2026-08-28
 **Base:** `feature/optimizing-mathematics-compiler` at or after `209a972c`
 
 This program turns the optimizer RFC into independently reviewable machine-domain
 plugins. It deliberately separates semantic recognition, representation proofs,
 target selection, lowering, and evidence. A benchmark win without an exact
 fallback and verifier is not an optimizer feature.
+
+## Implementation outcome
+
+The program is complete on `feature/optimizing-mathematics-compiler` through
+`0a320d15`. The frozen catalog, verifier, lowering, fact-provider, and runtime
+guard contracts now support independent domain work without allowing a pass to
+smuggle target code or unverifiable facts into the middle end.
+
+Four executable machine-domain plugins are registered and route-authenticated:
+
+- `math.bounded-integer-region.v1` for proved bounded exact-integer graphs;
+- `math.strict-float-array-region.v1` for source-ordered binary64 tuple loops;
+- `math.modular-batch-region.v1` for complete transactional residue batches;
+- `math.fixed-extension-region.v1` for degree-two through degree-four finite
+  extensions with construction-context authentication.
+
+The packed-container work is deliberately a target-neutral fact provider, not
+an executable optimization. It proves ownership, layout, aliasing, mutation,
+publication, cleanup, and copy facts for later mathematical passes, and the
+evidence harness fails if it masquerades as a selected route.
+
+The independent 25-case corpus, CPython and JavaScript oracles, public
+`@optimize` contracts, compile/cold/warm harness, malformed-plan tests, and
+architecture import rules are documented in
+`docs/optimizer-machine-evidence.md`. A final short run at `0a320d15` selected
+all four required routes, selected no packed-container route, preserved every
+exact output or IEEE-754 bit pattern, and measured warm O0/O2 ratios of about
+20.3x, 2.9x, 29.6x, and 2.7x respectively. These are diagnostic short-run
+ratios, not portable performance ceilings.
+
+The held-out cubic class-group application now also keeps its exact relation
+matrix and HNF transform resident across deletion trials. It crosses one
+source-transparent FLINT boundary, retains exact presentation digests in both
+proof modes, and reduces the hard `3.1.4027.2` selector from about 61.7 ms to
+34.5 ms in the final integrated short run. This is an application-level
+resident-state optimization, not an application-named compiler rule.
+
+Final combined build, compiler, strict-Python, architecture/capability, focused
+class-group, and machine-corpus checks passed. The broad integration tier
+passed its first 95 files serially and then reproduced pre-existing
+higher-genus analytic timeouts and unrelated genus-three expectation failures;
+it is therefore not recorded as a passing full-suite receipt.
 
 ## Frozen integration contract
 
