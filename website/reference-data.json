@@ -33436,8 +33436,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#0d7572a9a651f00c-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -33451,8 +33452,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#e0cc1038fb9d40ed-4e07408562bedb8b",
+            "status": "pass",
+            "actual": "3\n"
           }
         },
         {
@@ -33466,8 +33468,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
+            "status": "pass",
+            "actual": "(3, 3, 3)\n"
           }
         }
       ]
@@ -33928,11 +33931,11 @@
       "entries_with_examples": 197,
       "entries_without_examples": 95,
       "documented": 189,
-      "verified": 180,
+      "verified": 183,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 3,
+      "unverified": 0,
       "random_seed": "sagejs-reference-0"
     }
   }
