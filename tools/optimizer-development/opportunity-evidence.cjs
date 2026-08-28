@@ -429,7 +429,7 @@ function normalizeDocument(value) {
       method: enumeration(`${label}.measurement.method`, value.measurement.method,
         [PAIRING_METHOD]),
       scope: enumeration(`${label}.measurement.scope`, value.measurement.scope,
-        ["complete-warm-workload"]),
+        ["complete-warm-workload", "reviewed-phase"]),
       pairs,
       statistics,
     },
@@ -716,6 +716,13 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   assert(feasible.configuration.target === normalized.feasibleCandidate.target,
     "opportunity evidence.feasibleCandidate.target",
     "does not match its validated profile target");
+  if (normalized.measurement.scope === "reviewed-phase") {
+    for (const [name, profile] of [["baseline", baseline], ["feasible", feasible]]) {
+      assert(profile.phases.some((phase) => phase.id === normalized.scope.phaseId),
+        `opportunity evidence.profiles.${name}`,
+        `does not measure reviewed phase ${normalized.scope.phaseId}`);
+    }
+  }
 
   const pairs = normalized.measurement.pairs;
   assert(workload.protocol.repetitions === pairs.length,
