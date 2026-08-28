@@ -85,10 +85,50 @@
       "commit": "d5c9ad27322ffc77d3186bacca9cef1d9e9ece8f",
       "workspace_fingerprint": "e3e073b7d13b124f81880c2d41f09b6ad286629bc4d8a52e931139a9856cb403",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.135,
+      "started_at": "2026-08-28T06:42:43.653Z",
+      "commit": "56531de030892a78f301eb3eee1eed05d3f8150d",
+      "workspace_fingerprint": "a23ce1c06670ad9c79524defff3ebb614a93e1b050980e1037f3ef26c71a3bd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 38.993,
+      "started_at": "2026-08-28T06:43:52.444Z",
+      "commit": "56531de030892a78f301eb3eee1eed05d3f8150d",
+      "workspace_fingerprint": "a23ce1c06670ad9c79524defff3ebb614a93e1b050980e1037f3ef26c71a3bd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/hyperelliptic-analytic-performance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 154.912,
+      "started_at": "2026-08-28T06:55:44.810Z",
+      "commit": "56531de030892a78f301eb3eee1eed05d3f8150d",
+      "workspace_fingerprint": "a23ce1c06670ad9c79524defff3ebb614a93e1b050980e1037f3ef26c71a3bd5",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 95.562,
+      "started_at": "2026-08-28T06:58:31.182Z",
+      "commit": "56531de030892a78f301eb3eee1eed05d3f8150d",
+      "workspace_fingerprint": "a23ce1c06670ad9c79524defff3ebb614a93e1b050980e1037f3ef26c71a3bd5",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Issue #74 reproduced at the exact 180-second timeout on current origin/main with the FLINT addon and all 36 production kernel families. Stage timing showed that the unreceipted auto selector correctly chose the exact exhaustive fallback: extending 1-60 took 24.219s and 60-120 took 177.571s, while explicit smalljac took 76.8ms and 26.6ms. The integration case is documented as a bounded semantic witness, so its arbitrary cutoffs are now 20 and 40 with a 60-second bound. It still compares incremental and fresh one-shot exact prefixes, verifies the old immutable prefix, and proves backend-agnostically that the second extension did not recompute old primes. The focused case passes in 10.85-11.12s and the complete analytic-performance file passes 7/7 in 146.85s.",
+    "summary": "Issue #74 reproduced at the exact 180-second timeout on current origin/main with the FLINT addon and all 36 production kernel families. Stage timing showed that the unreceipted auto selector correctly chose the exact exhaustive fallback: extending 1-60 took 24.219s and 60-120 took 177.571s, while explicit smalljac took 76.8ms and 26.6ms. The integration case is documented as a bounded semantic witness, so its arbitrary cutoffs are now 20 and 40 with a 60-second bound. It still compares incremental and fresh one-shot exact prefixes, verifies the old immutable prefix, and proves backend-agnostically that the second extension did not recompute old primes. At implementation commit 56531de0, the focused case passes in 12.34s and the complete analytic-performance file passes 7/7 in 154.91s.",
     "risks": [
       "This change deliberately does not authorize an unreceipted automatic accelerator; public auto dispatch continues to fail closed to exact exhaustive arithmetic when the release receipt policy has no matching source envelope.",
       "A root/native build does not create packages/flint-wasm/dist/wasi-runtime.mjs. The first unit and portable attempts therefore exposed a Chromium 404; after the declared flint-wasm package build, the exact browser test and the complete portable tier pass."
