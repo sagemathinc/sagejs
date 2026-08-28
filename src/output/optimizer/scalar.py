@@ -43,6 +43,18 @@ def _print_region_declaration(output, name):
     output.end_statement()
 
 
+def _print_optimizer_guard_error(output, region, reason):
+    """Emit a stable contract error with the runtime guard's reason code."""
+    output.indent()
+    output.print("throw new RuntimeError(")
+    output.print(
+        JSON.stringify("optimizer runtime guard failed for " + region.id + ": ")
+    )
+    output.print(" + " + reason)
+    output.print(")")
+    output.end_statement()
+
+
 def _region_temp(counter, suffix):
     name = "ρσ_FieldTemp" + suffix + "_" + str(counter[0])
     counter[0] += 1
@@ -1223,7 +1235,7 @@ def print_closed_field_region(self, output):
         output.print(")")
         output.end_statement()
         output.indent()
-        output.print("if (" + names["context"] + " !== null)")
+        output.print("if (" + names["context"] + ".ok === true)")
         output.space()
 
         def fast():
@@ -1341,13 +1353,9 @@ def print_closed_field_region(self, output):
 
         def fallback():
             if region.guardFailure == "error":
-                output.indent()
-                output.print(
-                    "throw new RuntimeError("
-                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
-                    + ")"
+                _print_optimizer_guard_error(
+                    output, region, names["context"] + ".reason"
                 )
-                output.end_statement()
             else:
                 _print_closed_field_fallback(self, output, plan, names)
 
@@ -1371,13 +1379,9 @@ def print_closed_field_region(self, output):
 
         def invalid_zip():
             if region.guardFailure == "error":
-                output.indent()
-                output.print(
-                    "throw new RuntimeError("
-                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
-                    + ")"
+                _print_optimizer_guard_error(
+                    output, region, JSON.stringify("zip-shape")
                 )
-                output.end_statement()
             else:
                 _print_closed_field_fallback(self, output, plan, names)
 

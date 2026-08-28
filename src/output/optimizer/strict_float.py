@@ -1,5 +1,6 @@
 from output.optimizer.scalar import (
     _print_closed_field_fallback,
+    _print_optimizer_guard_error,
     _print_region_declaration,
     _print_region_variable,
 )
@@ -106,7 +107,7 @@ def print_strict_float_region(self, output):
         output.print("]," + names["count"] + ")")
         output.end_statement()
         output.indent()
-        output.print("if (" + names["context"] + " !== null)")
+        output.print("if (" + names["context"] + ".ok === true)")
         output.space()
 
         def fast_path():
@@ -168,13 +169,9 @@ def print_strict_float_region(self, output):
 
         def fallback():
             if region.guardFailure == "error":
-                output.indent()
-                output.print(
-                    "throw new RuntimeError("
-                    + JSON.stringify("optimizer runtime guard failed for " + region.id)
-                    + ")"
+                _print_optimizer_guard_error(
+                    output, region, names["context"] + ".reason"
                 )
-                output.end_statement()
             else:
                 _print_closed_field_fallback(self, output, plan, names)
 
