@@ -573,7 +573,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 260000,
+      "max_source_bytes": 265000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -587,17 +587,24 @@
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 265000,
+      "max_source_bytes": 310000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
         "graph-theory", "modular-forms", "matrix-native-kernels"
       ],
-      "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
+      "modules": [
+        "sage.modular.quatalg",
+        "sage.modular.ssmod",
+        "sagejs.modular_forms"
+      ],
       "files": [
         "src/lib/sage/modular/ssmod/__init__.py",
         "src/lib/sage/modular/ssmod/ssmod.py",
+        "src/lib/sage/modular/quatalg/__init__.py",
+        "src/lib/sage/modular/quatalg/brandt.py",
         "src/lib/sagejs/modular_forms/__init__.py",
         "src/lib/sagejs/modular_forms/algebraic.py",
+        "src/lib/sagejs/modular_forms/brandt.py",
         "src/lib/sagejs/modular_forms/finite_hecke.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",

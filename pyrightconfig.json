@@ -162,6 +162,7 @@
     "src/lib/sagejs/hyperelliptic_curves/twists.py",
     "src/lib/sagejs/modular_forms/__init__.py",
     "src/lib/sagejs/modular_forms/algebraic.py",
+    "src/lib/sagejs/modular_forms/brandt.py",
     "src/lib/sagejs/modular_forms/finite_hecke.py",
     "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
     "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",

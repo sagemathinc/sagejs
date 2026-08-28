@@ -285,6 +285,40 @@ Graphics3d Object
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `BrandtModule`
+
+```sage
+BrandtModule(D: Any, N: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, realization: str='auto', dense_entry_limit: Any=1000000) -> Any
+```
+
+Construct the weight-two Brandt module over $\mathbf Q$.
+
+The quaternion discriminant $D$ is squarefree with an odd number of
+prime factors, and the Eichler conductor $N$ is positive and coprime to
+$D$. The canonical sparse supersingular realization is selected when it
+applies; all other valid pairs use the exact Jacquet--Langlands Hecke
+realization.
+
+```sage
+sage: B = BrandtModule(11, 1)
+sage: (B.dimension(), B.T(2).charpoly())
+(2, x^2 - x - 6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.quatalg.brandt`
+- Tags: modular forms, Brandt modules, quaternion algebras, Eichler orders, Hecke operators, Jacquet-Langlands
+- Backends: Sage.js sparse supersingular graphs, Sage.js exact modular symbols
+- Sage compatibility: extension — Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The general basis is an exact Jacquet--Langlands Hecke realization, not a claimed list of quaternion ideals.
+- Limitations: General D,N use a Jacquet--Langlands basis; canonical Eichler ideal representatives and monodromy weights are available only in the supersingular realization. Only weight two and base rings QQ/ZZ are implemented. Atkin--Lehner operators are currently exposed for divisors of D.
+
+### Provenance
+
+- `literature-implemented` — Jacquet--Langlands correspondence for definite quaternion algebras
+- `sage-derived` — [SageMath Brandt-module API](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/quatalg/brandt.html); license GPL-2.0-or-later
+
 ## `circle`
 
 ```sage

@@ -9,6 +9,11 @@ SparseCharacteristicPolynomialCertificate: Any
 SparseWiedemannCertificate: Any
 AlgebraicHeckeQExpansion: Any
 AlgebraicSupersingularEigenpacket: Any
+BrandtLinearOperator: Any
+BrandtModule: Any
+BrandtModuleElement: Any
+BrandtModule_class: Any
+BrandtSubspace: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
@@ -39,6 +44,7 @@ QuaternionHeckeCorrespondence: Any
 QuaternionIdealComponent: Any
 QuaternionOldNewDecomposition: Any
 classical_modular_polynomial: Any
+dimension_brandt_module: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
 j_invariant_unit_series: Any
@@ -58,6 +64,11 @@ __all__ = [
     "SparseWiedemannCertificate",
     "AlgebraicHeckeQExpansion",
     "AlgebraicSupersingularEigenpacket",
+    "BrandtLinearOperator",
+    "BrandtModule",
+    "BrandtModuleElement",
+    "BrandtModule_class",
+    "BrandtSubspace",
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
@@ -88,6 +99,7 @@ __all__ = [
     "QuaternionIdealComponent",
     "QuaternionOldNewDecomposition",
     "classical_modular_polynomial",
+    "dimension_brandt_module",
     "berlekamp_massey",
     "dimension_supersingular_module",
     "j_invariant_unit_series",
@@ -112,6 +124,17 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import finite_hecke
 
         return getattr(finite_hecke, name)
+    if name in [
+        "BrandtLinearOperator",
+        "BrandtModule",
+        "BrandtModuleElement",
+        "BrandtModule_class",
+        "BrandtSubspace",
+        "dimension_brandt_module",
+    ]:
+        from . import brandt
+
+        return getattr(brandt, name)
     if name in [
         "ComponentCuspidalHeckeOperator",
         "ExactHeckeSubspace",
