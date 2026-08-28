@@ -1,0 +1,286 @@
+{
+  "schema": "sagejs.optimizer-reason-registry/v1",
+  "id": "sha256:35af5840334fd543bcd18c0689a8c963904aa1c2212c3eaf3fa5529c5e91ba0c",
+  "codes": [
+    {
+      "code": "bounded-integer.code-size-budget",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The generated bounded-integer target would exceed its reviewed code-size budget.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.dynamic-call",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains a call whose implementation and effects are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.mutable-buffer-access",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate uses mutable indexed storage without the required ownership and alias proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.native-region-unproved",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The source-transparent native candidate lacks an isolated-region proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.resident-wasm-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No resident WebAssembly ownership and overflow contract is registered.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.scalar-boundary-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Scalar target-boundary cost dominates the bounded arithmetic.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.scalar-compilation-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Compilation cost dominates the scalar workload.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unproved-live-in",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "At least one scalar live-in lacks an exact representation proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unproved-sequence",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "A sequence input lacks an authenticated packed representation.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-control-flow",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate has control flow outside the verified transactional subset.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-iterator",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate iterator does not have proved built-in range semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-operation",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains an operation outside the verified exact-integer graph.",
+      "detailFields": ["operator"]
+    },
+    {
+      "code": "bounded-integer.unsupported-power",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The exact exponentiation lacks a bounded-power proof.",
+      "detailFields": []
+    },
+    {
+      "code": "catchable-interrupt-region",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate is nested where interrupt exceptions can be caught observably.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.comprehension-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found a comprehension.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.control-flow-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found internal branches.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.dynamic-call-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found dynamic calls.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.indexed-access-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found indexed access.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.module-scope-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The loop is at module scope rather than in a function.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.nested-loop-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found nested loops.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.no-current-pass-claimed",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "No current mathematical-domain pass claimed the loop.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.no-mathematical-domain-evidence",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The loop has no current mathematical-domain evidence.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.unsupported-while-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static inventory found a while loop without a proved progress measure.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.ambiguous-source-map",
+      "kind": "integrity",
+      "origin": "collector",
+      "description": "A generated sample maps to more than one current semantic region.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-artifact",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The artifact identity differs from the current required artifact.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-compiler",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The compiler identity differs from the current required compiler.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-source",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The source identity differs from the current required source bundle.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.unmatched-sample",
+      "kind": "integrity",
+      "origin": "collector",
+      "description": "A profiler sample could not be attributed to current source.",
+      "detailFields": []
+    },
+    {
+      "code": "general-operation-graph-native-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "A native lowering for the general operation graph is not registered.",
+      "detailFields": []
+    },
+    {
+      "code": "isolated-modular-batch-native-lowering-not-registered",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The modular-batch native target has no registered isolated lowering.",
+      "detailFields": []
+    },
+    {
+      "code": "isolated-modular-batch-wasm-lowering-not-registered",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The modular-batch WebAssembly target has no registered isolated lowering.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-expression-unsupported",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular expression is outside the verified operation graph.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-operation-required",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains no modular arithmetic operation.",
+      "detailFields": []
+    },
+    {
+      "code": "not-complete-range-batch",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The indexed operation is not one complete range batch.",
+      "detailFields": []
+    },
+    {
+      "code": "not-top-level-contracted-batch",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular batch is not a top-level contracted region.",
+      "detailFields": []
+    },
+    {
+      "code": "optimization-level-too-low",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The selected optimization level does not enable this pass.",
+      "detailFields": []
+    },
+    {
+      "code": "pass-disabled",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The relevant optimizer pass was explicitly disabled.",
+      "detailFields": []
+    },
+    {
+      "code": "resident-general-region-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The resident target for the general operation graph is not implemented.",
+      "detailFields": []
+    },
+    {
+      "code": "telemetry.guard-failure",
+      "kind": "guard",
+      "origin": "evaluator",
+      "description": "A runtime optimization guard rejected an invocation.",
+      "detailFields": ["guard"]
+    },
+    {
+      "code": "telemetry.route-unavailable",
+      "kind": "guard",
+      "origin": "evaluator",
+      "description": "The requested runtime route was unavailable.",
+      "detailFields": ["target"]
+    }
+  ]
+}
