@@ -288,7 +288,7 @@ async function run(environment = process.env) {
         });
       }
     } finally {
-      session.close();
+      await session.close();
     }
 
     const targetMedianMs = median(targetTimes);
