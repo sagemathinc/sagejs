@@ -125,6 +125,41 @@ test("dashboard and runtime receipts share one compiler implementation identity"
   }
 });
 
+test("compiler compatibility preserves distinct static and runtime options", () => {
+  const commonFields = {
+    irSchema: "sagejs.optimizing-mathematics/v1",
+    compilerSourceBundleId: refId("shared-compiler-source"),
+    frontendDigest: rawDigest("c"),
+    catalogDigest: rawDigest("d"),
+  };
+  const dashboard = identity.compilerIdentity({
+    ...commonFields,
+    optionsDigest: common.sha256(common.canonicalJson({
+      optimization_level: "O2", for_linting: true, runtime_imports: false,
+    })),
+  });
+  const runtime = identity.compilerIdentity({
+    ...commonFields,
+    optionsDigest: common.sha256(common.canonicalJson({
+      optimization_level: "O2", for_linting: false, runtime_imports: true,
+    })),
+  });
+  assert.notEqual(dashboard.id, runtime.id);
+  assert.equal(identity.compilerCompatibilityIdentity(dashboard).id,
+    identity.compilerCompatibilityIdentity(runtime).id);
+  assert.equal(identity.compilerImplementationsCompatible(dashboard, runtime), true);
+
+  const staleFrontend = identity.compilerIdentity({
+    ...commonFields,
+    frontendDigest: rawDigest("e"),
+    optionsDigest: runtime.optionsDigest,
+  });
+  assert.equal(identity.compilerImplementationsCompatible(dashboard, staleFrontend), false);
+  const counterfeit = structuredClone(runtime);
+  counterfeit.catalogDigest = rawDigest("f");
+  assert.throws(() => identity.compilerCompatibilityIdentity(counterfeit), /is stale/);
+});
+
 function distribution(samples = [10, 11, 12]) {
   const sorted = [...samples].sort((left, right) => left - right);
   return {

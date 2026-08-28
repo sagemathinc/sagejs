@@ -23,6 +23,8 @@ const {
 
 const SOURCE_BUNDLE_SCHEMA = "sagejs.optimizer-source-bundle/v1";
 const COMPILER_IDENTITY_SCHEMA = "sagejs.optimizer-compiler-identity/v1";
+const COMPILER_COMPATIBILITY_SCHEMA =
+  "sagejs.optimizer-compiler-implementation-compatibility/v1";
 const SOURCE_UNIT_SCHEMA = "sagejs.optimizer-source-unit/v1";
 const FUNCTION_IDENTITY_SCHEMA = "sagejs.optimizer-function-identity/v1";
 const REGION_IDENTITY_SCHEMA = "sagejs.optimizer-region-identity/v1";
@@ -211,6 +213,46 @@ function compilerIdentity(value) {
   });
 }
 
+/**
+ * Return the content-addressed implementation dimensions that must agree
+ * before static dashboard evidence and a live compilation may be compared.
+ *
+ * `optionsDigest` is intentionally excluded: the dashboard compiles with a
+ * lint-safe O2 environment while live evaluation uses real imports and target
+ * options. Their decisions remain separate evidence and must never be made to
+ * look identical merely to permit the source/profile join.
+ */
+function compilerCompatibilityIdentity(value) {
+  exactKeys("compiler compatibility input", value, [
+    "schema", "id", "irSchema", "compilerSourceBundleId", "frontendDigest",
+    "catalogDigest", "optionsDigest",
+  ]);
+  if (value.schema !== COMPILER_IDENTITY_SCHEMA) {
+    throw new Error("optimizer evidence compiler compatibility input.schema: unknown schema");
+  }
+  const checked = compilerIdentity({
+    irSchema: value.irSchema,
+    compilerSourceBundleId: value.compilerSourceBundleId,
+    frontendDigest: value.frontendDigest,
+    catalogDigest: value.catalogDigest,
+    optionsDigest: value.optionsDigest,
+  });
+  if (checked.id !== value.id) {
+    throw new Error("optimizer evidence compiler compatibility input.id: is stale");
+  }
+  return attachIdentity(COMPILER_COMPATIBILITY_SCHEMA, {
+    irSchema: checked.irSchema,
+    compilerSourceBundleId: checked.compilerSourceBundleId,
+    frontendDigest: checked.frontendDigest,
+    catalogDigest: checked.catalogDigest,
+  });
+}
+
+function compilerImplementationsCompatible(left, right) {
+  return compilerCompatibilityIdentity(left).id ===
+    compilerCompatibilityIdentity(right).id;
+}
+
 function sourceUnitIdentity(value) {
   exactKeys("source unit identity", value, ["path", "digest", "language"]);
   return attachIdentity(SOURCE_UNIT_SCHEMA, {
@@ -294,6 +336,7 @@ function linkPredecessor(previousRegions, currentRegion) {
 
 module.exports = {
   COMPILER_SOURCE_ROOT_PATHS,
+  COMPILER_COMPATIBILITY_SCHEMA,
   COMPILER_IDENTITY_SCHEMA,
   DECISION_IDENTITY_SCHEMA,
   FUNCTION_IDENTITY_SCHEMA,
@@ -302,7 +345,9 @@ module.exports = {
   SOURCE_UNIT_SCHEMA,
   FRONTEND_ARTIFACT_PATHS,
   canonicalCompilerIdentity,
+  compilerCompatibilityIdentity,
   compilerImplementationIdentity,
+  compilerImplementationsCompatible,
   compilerIdentity,
   compilerSourcePaths,
   decisionIdentity,
