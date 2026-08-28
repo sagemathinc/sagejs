@@ -551,11 +551,20 @@ function validateProfileReceipt(value, context = {}) {
           (status === "unmatched" && candidates.length !== 0)) {
         fail(`${eventLabel}.mapping`, "candidate count does not match mapping status");
       }
-      const outcome = stableName(`${eventLabel}.outcome`, event.outcome);
+      const outcome = enumeration(`${eventLabel}.outcome`, event.outcome, [
+        "selected-static-entry", "guarded-fast", "guarded-fallback", "zero-trip",
+        "completed", "error",
+      ]);
       const reason = event.reason === null
         ? null : validateReason(event.reason, registry, `${eventLabel}.reason`);
-      if ((outcome === "guard-failure" || outcome === "route-unavailable") !== (reason !== null)) {
-        fail(`${eventLabel}.reason`, "is required exactly for guard or route failures");
+      const guardedFailure = outcome === "guarded-fallback" || outcome === "error";
+      if (guardedFailure !== (reason !== null)) {
+        fail(`${eventLabel}.reason`,
+          "is required exactly for guarded fallback or guard-error outcomes");
+      }
+      if (reason !== null && reason.code !== "telemetry.guard-failure") {
+        fail(`${eventLabel}.reason.code`,
+          "must be telemetry.guard-failure for guarded fallback or guard-error outcomes");
       }
       return {
         optimizerRegionId: nonemptyString(

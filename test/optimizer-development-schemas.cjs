@@ -785,6 +785,48 @@ test("sampling channels conserve independently and authenticate only attributed 
     /no authenticated source bytes/);
 });
 
+test("terminal route outcomes distinguish fast, fallback, zero-trip, and guard error", () => {
+  const { profile } = buildEvidence();
+  const withEvent = (outcome, reason) => {
+    const receipt = structuredClone(profile);
+    receipt.authority = "host-collector-with-private-evaluator-evidence";
+    receipt.runtime.authority = "private-evaluator-closure";
+    receipt.runtime.routeEventCounts = {
+      total: 1, attributed: 0, ambiguous: 0, unmatched: 1,
+    };
+    receipt.runtime.routeEvents = [{
+      optimizerRegionId: "legacy-region-1",
+      regionKind: "bounded-integer-region",
+      outcome,
+      count: 1,
+      reason,
+      mapping: { status: "unmatched", candidates: [] },
+    }];
+    return readdress(receipt);
+  };
+  const guardReason = {
+    code: "telemetry.guard-failure",
+    detail: { guard: "bounded-intermediate-overflow" },
+  };
+  for (const outcome of [
+    "selected-static-entry", "guarded-fast", "zero-trip", "completed",
+  ]) {
+    assert.doesNotThrow(() => schemas.validateProfileReceipt(withEvent(outcome, null)));
+  }
+  for (const outcome of ["guarded-fallback", "error"]) {
+    assert.doesNotThrow(() => schemas.validateProfileReceipt(withEvent(outcome, guardReason)));
+    assert.throws(() => schemas.validateProfileReceipt(withEvent(outcome, null)),
+      /reason.*required exactly/);
+  }
+  assert.throws(() => schemas.validateProfileReceipt(withEvent("guarded-fast", guardReason)),
+    /reason.*required exactly/);
+  assert.throws(() => schemas.validateProfileReceipt(withEvent("guard-failure", guardReason)),
+    /one of/);
+  assert.throws(() => schemas.validateProfileReceipt(withEvent("guarded-fallback", {
+    code: "telemetry.route-unavailable", detail: { target: "v8" },
+  })), /must be telemetry.guard-failure/);
+});
+
 test("promotion summaries and current bindings are recomputed", () => {
   const evidence = buildEvidence();
   const falsified = structuredClone(evidence.promotion);
