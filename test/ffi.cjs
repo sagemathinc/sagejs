@@ -1688,7 +1688,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
     flint.ffiFmpqMatrixClose(matrix);
 
     const runnerPath = join(temporary, "exercise_resource_kernel.py");
-    writeFileSync(runnerPath, [
+    const runnerSource = [
       "from resource_kernel import clone, create, rows",
       "from sagejs.ffi.flint import (",
       "    fmpq_matrix,",
@@ -1724,7 +1724,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert 'wrong FFI resource type' in str(error), str(error)",
+      "    assert __EXPECTED_WRONG_TYPE__ in str(error), str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
@@ -1733,8 +1733,21 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "assert copy.closed",
       "print('owned-resource-result-ok')",
       "",
-    ].join("\n"));
-    for (const env of [{}, { SAGEJS_NATIVE_DISABLE: "1" }]) {
+    ].join("\n");
+    for (const [env, expectedWrongType] of [
+      [{}, "wrong FFI resource type"],
+      [
+        { SAGEJS_NATIVE_DISABLE: "1" },
+        "invalid dynamic FFI resource argument",
+      ],
+    ]) {
+      writeFileSync(
+        runnerPath,
+        runnerSource.replace(
+          "__EXPECTED_WRONG_TYPE__",
+          JSON.stringify(expectedWrongType),
+        ),
+      );
       assert.equal(
         runSage([runnerPath], undefined, env).trim(),
         "owned-resource-result-ok",
