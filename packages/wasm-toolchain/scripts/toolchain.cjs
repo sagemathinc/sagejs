@@ -329,7 +329,9 @@ function inspectToolchain({
   const paths = pathsForRoot(preparedRoot, lock);
   const problems = requiredFiles(paths, lock)
     .filter((filename) => !existsSync(filename))
-    .map((filename) => `missing ${relative(preparedRoot, filename)}`);
+    .map((filename) =>
+      `missing ${relative(preparedRoot, filename).replaceAll("\\", "/")}`,
+    );
   let receipt = null;
   try {
     receipt = JSON.parse(readFileSync(join(preparedRoot, markerName), "utf8"));
