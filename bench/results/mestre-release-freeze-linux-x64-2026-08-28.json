@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.mestre-release-freeze/v1",
-  "recorded_at": "2026-08-28T08:08:42Z",
-  "source_commit": "348c8cbb5c6de1db2803acc439e51ac40b8ce15d",
+  "recorded_at": "2026-08-28T09:38:50Z",
+  "source_commit": "9b7eff5e29459366e5dc40d01a26c002edd6abdb",
   "host": {
     "platform": "linux",
     "arch": "x64",
@@ -14,6 +14,20 @@
     "strict_python": {"status": "pass", "modules": 257, "errors": 0},
     "architecture": {"status": "pass", "kernel_families": 51, "native_boundaries": 1147, "wasm_capabilities": 1021},
     "production_build": {"status": "pass", "stages": 7, "kernel_families": 37, "build_receipt_sha256": "42b040e7e0481fd47f60263f9e1b3704dc316526ca62d1e80ef20cb9837ccecf"},
+    "browser_wasm_release": {
+      "status": "pass",
+      "artifact_source_revision": "94216eab52897dfaac2cbaa6eb203cb088f3bd81",
+      "artifact_identity": "sha256:4981ef03c59ffa41d1ac7e70dad21166a941dd57471f3433f88245d69478d110",
+      "production_manifest_sha256": "aec5171d39fead62bc854cf7507d5608462d7e54e30484e0e0036b459f030865",
+      "build_receipt_sha256": "302c4e047063d543e341b51bd0ab19bf95109841c0de412ddf88c79737d835cb",
+      "compiled_kernels": 279,
+      "unsupported_kernels": 0,
+      "reviewed_abi_modules": 13,
+      "totals": {"bytes": 156045353, "gzip_bytes": 21914247, "brotli_bytes": 13684342},
+      "eager_core": {"bytes": 131567263, "gzip_bytes": 14459612, "brotli_bytes": 8058655},
+      "ci_run": "https://github.com/sagemathinc/sagejs/actions/runs/33159069364",
+      "ci_job": "https://github.com/sagemathinc/sagejs/actions/runs/33159069364/job/98808846320"
+    },
     "unit": {"status": "pass", "files": 84},
     "portable": {"status": "pass", "files": 73},
     "documentation_examples": {"status": "pass", "examples": 46, "documents": 4},
@@ -35,12 +49,18 @@
       "isolated_replay": "reproduced at 35.65, 36.52, and 35.73 ms against 15 ms budgets"
     },
     "integration_repository": {
-      "status": "fail-unrelated",
-      "passed_files_before_failure": 23,
-      "failure": "test/cli-smoke.cjs expected no incomplete documentation entries; actual ['version']",
-      "branch_touches_failure_paths": false
+      "status": "pass",
+      "ci_run": "https://github.com/sagemathinc/sagejs/actions/runs/33159069381",
+      "ci_job": "https://github.com/sagemathinc/sagejs/actions/runs/33159069381/job/98808846170"
     },
-    "foreign_platforms": {"status": "pending-release-ci", "required": ["windows-x64", "linux-arm64", "macos-arm64"]}
+    "foreign_platforms": {
+      "status": "pass",
+      "source_commit": "9b7eff5e29459366e5dc40d01a26c002edd6abdb",
+      "windows_x64": "https://github.com/sagemathinc/sagejs/actions/runs/33159069381/job/98809801366",
+      "macos_arm64": "https://github.com/sagemathinc/sagejs/actions/runs/33159069381/job/98809801381",
+      "linux_arm64": "https://github.com/sagemathinc/sagejs/actions/runs/33159069381/job/98809801395",
+      "iphone_ipad_simulators": "https://github.com/sagemathinc/sagejs/actions/runs/33159069448/job/98808846630"
+    }
   },
   "competitive_receipts": {
     "classical_sha256": "44553c103c6fbb2d7f2c6979c873f1b23809bd1e21ce2d7ff8dd62d83a9b4c9f",
