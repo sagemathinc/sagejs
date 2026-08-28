@@ -176,7 +176,12 @@ export function semanticSourceFingerprint(node: unknown, sourceText: string): st
   const kind = semanticRegionKind(node);
   return profileSemanticFingerprint({
     kind,
-    source: sourceSlice(sourceText, sourceRange(node)),
+    // Some frontends place the synthetic empty-module token at line 2. A
+    // module owns the complete authenticated source, so using the complete
+    // source is both more direct and independent of that sentinel range.
+    source: kind === "AST_Toplevel"
+      ? sourceText
+      : sourceSlice(sourceText, sourceRange(node)),
   });
 }
 
