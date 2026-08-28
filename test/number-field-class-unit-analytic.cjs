@@ -18,6 +18,8 @@ const zetaKernelPath = join(
   root,
   "src/lib/sagejs/number_fields/zeta_coefficient_kernel.py",
 );
+const mpmathDirectory = join(root, "src/lib/mpmath");
+const mpmathPath = join(mpmathDirectory, "__init__.py");
 const fixturePath = join(
   root,
   "test/fixtures/number-field-class-unit-analytic.json",
@@ -30,6 +32,15 @@ import importlib.util
 import json
 import sys
 import types
+
+mpmath_spec = importlib.util.spec_from_file_location(
+    "mpmath",
+    ${JSON.stringify(mpmathPath)},
+    submodule_search_locations=[${JSON.stringify(mpmathDirectory)}],
+)
+mpmath_module = importlib.util.module_from_spec(mpmath_spec)
+sys.modules["mpmath"] = mpmath_module
+mpmath_spec.loader.exec_module(mpmath_module)
 
 sagejs = types.ModuleType("sagejs")
 number_fields = types.ModuleType("sagejs.number_fields")
