@@ -798,17 +798,20 @@ function validateHotnessOverlay(value, context = {}) {
   }, { minimum: 1, uniqueBy: (profile) => profile.id, sortedBy: (profile) => profile.id });
   const opportunities = array(`${label}.opportunities`, value.opportunities,
     (opportunityLabel, opportunity) => {
-      exactKeys(opportunityLabel, opportunity, ["id", "regionId", "workloadId", "status"]);
+      exactKeys(opportunityLabel, opportunity, [
+        "id", "regionId", "workloadId", "decisionId", "passId", "status",
+      ]);
       return {
         id: contentId(`${opportunityLabel}.id`, opportunity.id),
         regionId: contentId(`${opportunityLabel}.regionId`, opportunity.regionId),
         workloadId: contentId(`${opportunityLabel}.workloadId`, opportunity.workloadId),
+        decisionId: contentId(`${opportunityLabel}.decisionId`, opportunity.decisionId),
+        passId: stableName(`${opportunityLabel}.passId`, opportunity.passId),
         status: enumeration(`${opportunityLabel}.status`, opportunity.status,
           ["eligible", "inconclusive", "rejected"]),
       };
     }, { uniqueBy: (opportunity) => opportunity.id,
       sortedBy: (opportunity) => opportunity.id });
-  const opportunityIds = new Set(opportunities.map((opportunity) => opportunity.id));
   exactKeys(`${label}.joinPolicy`, value.joinPolicy,
     ["minimumCoverage", "staleProfiles", "ambiguity"]);
   const joinPolicy = {
@@ -824,6 +827,7 @@ function validateHotnessOverlay(value, context = {}) {
   const regions = array(`${label}.regions`, value.regions, (regionLabel, region) => {
     exactKeys(regionLabel, region, [
       "source", "loopId", "staticDecisions", "opportunityEvidenceIds",
+      "opportunityDecisionIds",
       "observations", "runtimeRoutes",
       "classification", "recommendedAction", "eligibility", "ranking", "removableFraction",
     ]);
@@ -887,19 +891,48 @@ function validateHotnessOverlay(value, context = {}) {
     if (removableFraction.lower > removableFraction.upper) {
       fail(`${regionLabel}.removableFraction`, "lower must not exceed upper");
     }
+    const staticDecisions = array(`${regionLabel}.staticDecisions`, region.staticDecisions,
+      (decisionLabel, decision) => validateStaticDecision(decisionLabel, decision, registry),
+      { uniqueBy: (decision) => decision.decisionId,
+        sortedBy: (decision) => decision.decisionId });
+    const regionOpportunities = opportunities.filter((opportunity) =>
+      opportunity.regionId === source.regionId);
+    const opportunityEvidenceIds = stringArray(
+      `${regionLabel}.opportunityEvidenceIds`, region.opportunityEvidenceIds,
+    ).map((item, index) => {
+      const id = contentId(`${regionLabel}.opportunityEvidenceIds[${index}]`, item);
+      if (!regionOpportunities.some((opportunity) => opportunity.id === id)) {
+        fail(`${regionLabel}.opportunityEvidenceIds[${index}]`,
+          "is not an overlay opportunity for this region");
+      }
+      return id;
+    });
+    const opportunityDecisionIds = stringArray(
+      `${regionLabel}.opportunityDecisionIds`, region.opportunityDecisionIds,
+    ).map((item, index) => {
+      const id = contentId(`${regionLabel}.opportunityDecisionIds[${index}]`, item);
+      const matches = regionOpportunities.filter((opportunity) =>
+        opportunity.decisionId === id);
+      if (matches.length === 0 || !staticDecisions.some((decision) =>
+        decision.decisionId === id &&
+        matches.some((opportunity) => opportunity.passId === decision.passId))) {
+        fail(`${regionLabel}.opportunityDecisionIds[${index}]`,
+          "is not an exact current static decision bound by an opportunity for this region");
+      }
+      return id;
+    });
+    if (opportunityEvidenceIds.length !== regionOpportunities.length ||
+      opportunityDecisionIds.length !== new Set(
+        regionOpportunities.map((opportunity) => opportunity.decisionId),
+      ).size) {
+      fail(regionLabel, "must retain every opportunity and reviewed compiler decision for its region");
+    }
     return {
       source,
       loopId: contentId(`${regionLabel}.loopId`, region.loopId),
-      staticDecisions: array(`${regionLabel}.staticDecisions`, region.staticDecisions,
-        (decisionLabel, decision) => validateStaticDecision(decisionLabel, decision, registry),
-        { uniqueBy: (decision) => decision.decisionId, sortedBy: (decision) => decision.decisionId }),
-      opportunityEvidenceIds: stringArray(`${regionLabel}.opportunityEvidenceIds`,
-        region.opportunityEvidenceIds).map((item, index) => {
-          const id = contentId(`${regionLabel}.opportunityEvidenceIds[${index}]`, item);
-          if (!opportunityIds.has(id)) fail(`${regionLabel}.opportunityEvidenceIds[${index}]`,
-            "is not in overlay opportunities");
-          return id;
-        }),
+      staticDecisions,
+      opportunityEvidenceIds,
+      opportunityDecisionIds,
       observations,
       runtimeRoutes,
       classification: enumeration(`${regionLabel}.classification`, region.classification, [

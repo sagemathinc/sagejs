@@ -17,6 +17,7 @@ const {
   nonemptyString,
   repositoryPath,
   safeInteger,
+  stableName,
 } = require("./common.cjs");
 const {
   compilerIdentity,
@@ -327,6 +328,7 @@ function normalizeDocument(value) {
     "status",
     "dashboard",
     "compiler",
+    "compilerDecision",
     "source",
     "scope",
     "workload",
@@ -354,6 +356,13 @@ function normalizeDocument(value) {
     id: contentId(`${label}.workload.id`, value.workload.id),
     inputDigest: digest(`${label}.workload.inputDigest`, value.workload.inputDigest),
     corpusId: identifier(`${label}.workload.corpusId`, value.workload.corpusId),
+  };
+  exactKeys(`${label}.compilerDecision`, value.compilerDecision, ["decisionId", "passId"]);
+  const compilerDecision = {
+    decisionId: contentId(
+      `${label}.compilerDecision.decisionId`, value.compilerDecision.decisionId,
+    ),
+    passId: stableName(`${label}.compilerDecision.passId`, value.compilerDecision.passId),
   };
   exactKeys(`${label}.feasibleCandidate`, value.feasibleCandidate, [
     "id", "target", "status", "representation", "compilerRoute", "scopeId",
@@ -420,6 +429,7 @@ function normalizeDocument(value) {
       ["eligible", "inconclusive", "rejected"]),
     dashboard,
     compiler: normalizeCompiler(`${label}.compiler`, value.compiler),
+    compilerDecision,
     source: normalizeSource(`${label}.source`, value.source),
     scope: normalizeScope(`${label}.scope`, value.scope),
     workload,
@@ -668,7 +678,13 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   assert(same(normalized.compiler, dashboard.compilerIdentity),
     "opportunity evidence.compiler",
     "implementation tuple does not match the current dashboard compiler");
-  dashboardSource(dashboard, normalized.source);
+  const primaryLoop = dashboardSource(dashboard, normalized.source);
+  const matchingDecisions = primaryLoop.decisions.filter((decision) =>
+    decision.id === normalized.compilerDecision.decisionId &&
+    decision.passId === normalized.compilerDecision.passId);
+  assert(matchingDecisions.length === 1,
+    "opportunity evidence.compilerDecision",
+    "does not identify exactly one current dashboard decision for the reviewed region");
   const scopedSources = dashboardScope(dashboard, normalized.scope, normalized.source);
   const workloadReference = {
     id: workload.id,
@@ -780,6 +796,9 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   }
 
   if (normalized.status === "eligible") {
+    assert(matchingDecisions[0].selected === false,
+      "opportunity evidence.compilerDecision",
+      "an eligible prospective compiler opportunity cannot bind an already-selected decision");
     assert(expectedStatistics.removableWallLowerMicroseconds > 0 &&
       expectedStatistics.positivePairs === expectedStatistics.pairCount,
     "opportunity evidence.status",

@@ -301,6 +301,7 @@ function buildEvidence() {
   const overlay = addressed(schemas.SCHEMAS.overlay, {
     dashboard,
     profiles: [{ id: profile.id, workloadId: workload.id, status: "current" }],
+    opportunities: [],
     joinPolicy: { minimumCoverage: 0.8, staleProfiles: "historical-only", ambiguity: "fail-closed" },
     regions: [{
       source,
@@ -311,6 +312,8 @@ function buildEvidence() {
         status: "rejected",
         reasons: [{ code: "bounded-integer.dynamic-call", detail: {} }],
       }],
+      opportunityEvidenceIds: [],
+      opportunityDecisionIds: [],
       observations: [{
         profileId: profile.id,
         workloadId: workload.id,
@@ -359,7 +362,12 @@ function buildEvidence() {
     classification: "compiler-rejection",
     recommendedAction: "compiler-campaign",
     source,
-    evidence: { dashboardId: dashboard.id, overlayId: overlay.id, profileIds: [profile.id] },
+    evidence: {
+      dashboardId: dashboard.id,
+      overlayId: overlay.id,
+      profileIds: [profile.id],
+      opportunityEvidenceIds: [],
+    },
     excerpt: { text: "for i in range(n):\n    x = helper(x)", digest: common.sha256("for i in range(n):\n    x = helper(x)") },
     currentIr: {
       reportDigest: common.sha256(common.canonicalJson(optimizerProgram)),

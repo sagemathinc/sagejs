@@ -109,6 +109,10 @@ function buildFixture() {
   const sourceBundle = common.attachIdentity("sagejs.optimizer-source-bundle/v1", {
     files: [{ path: source.path, digest: sourceDigest, bytes: 200 }],
   });
+  const compilerDecision = {
+    decisionId: refId("modular sequence reconnaissance decision"),
+    passId: "math.modular-sequence-reconnaissance.v1",
+  };
   const dashboard = common.attachIdentity("fixture.optimizer-dashboard/v1", {
     sourceBundle,
     compilerIdentity: compiler,
@@ -125,6 +129,11 @@ function buildFixture() {
       functionId: source.functionId,
       semanticFingerprint: source.semanticFingerprint,
       excerptDigest: source.excerptDigest,
+      decisions: [{
+        id: compilerDecision.decisionId,
+        passId: compilerDecision.passId,
+        selected: false,
+      }],
     }, {
       id: childRegion.id,
       source: {
@@ -138,6 +147,7 @@ function buildFixture() {
       functionId: childSource.functionId,
       semanticFingerprint: childSource.semanticFingerprint,
       excerptDigest: childSource.excerptDigest,
+      decisions: [],
     }],
   });
   const outputDigest = rawDigest("exact mathematical output");
@@ -254,6 +264,7 @@ function buildFixture() {
       compilerId: compiler.id,
     },
     compiler,
+    compilerDecision,
     source,
     scope,
     workload: {
@@ -302,7 +313,8 @@ function buildFixture() {
     }].sort((left, right) => left.profileId.localeCompare(right.profileId)),
   };
   const context = { dashboard, workload, profileReceipts: profiles };
-  return { adapter: fixtureAdapter(), baseline, childSource, context, dashboard, feasible,
+  return { adapter: fixtureAdapter(), baseline, childSource, compilerDecision, context,
+    dashboard, feasible,
     negative, outputDigest, pairs, payload, scope, source, workload };
 }
 
@@ -334,6 +346,7 @@ test("reviewed evidence binds current identities and recomputes a positive lower
   assert.equal(document.negativeEvidence[0].profileId, fixture.negative.id);
   assert.equal(document.scope.hotChildRegionIds[0], fixture.childSource.regionId);
   assert.equal(document.feasibleCandidate.scopeId, document.scope.id);
+  assert.deepEqual(document.compilerDecision, fixture.compilerDecision);
   assert(Object.isFrozen(document));
   assert(Object.isFrozen(document.measurement.pairs[0]));
 });
@@ -430,6 +443,26 @@ test("counterfeit region and compiler implementation tuples fail closed", () => 
   assert.throws(() => opportunity.validateOpportunityEvidence(
     wrongCompiler, fixture.context, fixture.adapter,
   ), /implementation tuple does not match/);
+});
+
+test("reviewed evidence binds one exact current compiler decision", () => {
+  const fixture = buildFixture();
+  const counterfeit = structuredClone(validDocument(fixture));
+  counterfeit.compilerDecision.decisionId = refId("different compiler decision");
+  readdress(counterfeit);
+  assert.throws(() => opportunity.validateOpportunityEvidence(
+    counterfeit, fixture.context, fixture.adapter,
+  ), /does not identify exactly one current dashboard decision/);
+
+  const alreadySelectedContext = structuredClone(fixture.context);
+  alreadySelectedContext.dashboard.loops[0].decisions[0].selected = true;
+  readdress(alreadySelectedContext.dashboard);
+  const selected = structuredClone(validDocument(fixture));
+  selected.dashboard.id = alreadySelectedContext.dashboard.id;
+  readdress(selected);
+  assert.throws(() => opportunity.validateOpportunityEvidence(
+    selected, alreadySelectedContext, fixture.adapter,
+  ), /cannot bind an already-selected decision/);
 });
 
 test("runtime profiling options may differ while compiler implementation stays exact", () => {

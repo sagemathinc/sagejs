@@ -501,7 +501,15 @@ function createRepositoryAdapter(options = {}) {
     const loop = dashboardRegion.repository.loop;
     assert(loop.decisions.length > 0,
       `cannot create a dossier without current optimizer decision IR: ${loop.id}`);
-    const decisionSummary = overlayRegion.staticDecisions[0];
+    const reviewedDecisionIds = overlayRegion.opportunityDecisionIds || [];
+    assert(reviewedDecisionIds.length <= 1,
+      `dossier opportunity evidence binds multiple compiler decisions for ${loop.id}`);
+    const decisionSummary = reviewedDecisionIds.length === 1
+      ? overlayRegion.staticDecisions.find((decision) =>
+        decision.decisionId === reviewedDecisionIds[0])
+      : overlayRegion.staticDecisions[0];
+    assert(decisionSummary,
+      `dossier opportunity decision is missing from current static evidence for ${loop.id}`);
     const dashboardDecision = loop.decisions.find((decision) =>
       decision.id === decisionSummary.decisionId);
     assert(dashboardDecision, `dashboard decision is missing: ${decisionSummary.decisionId}`);
