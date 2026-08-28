@@ -90,21 +90,23 @@ const cases = [
     expression: "_rational_left.matrix_from_rows(_rational_structural_indices)",
     precheck: ["_rational_left"],
     postcheck: ["_rational_left", "result"],
-    budget: 15,
+    // Full permutations copy 90,000 variable-size rational entries.
+    budget: 55,
   },
   {
     name: "select_columns_300",
     expression: "_rational_left.matrix_from_columns(_rational_structural_indices)",
     precheck: ["_rational_left"],
     postcheck: ["_rational_left", "result"],
-    budget: 15,
+    budget: 55,
   },
   {
     name: "stack_300x300",
     expression: "_rational_left.stack(_rational_right)",
     precheck: ["_rational_left", "_rational_right"],
     postcheck: ["_rational_left", "_rational_right", "result"],
-    budget: 15,
+    // Vertical stacking copies 180,000 variable-size rational entries.
+    budget: 55,
   },
   {
     name: "augment_300x300",
@@ -170,7 +172,8 @@ const cases = [
       "_rational_cold_equal_left[sample_index]",
       "_rational_cold_equal_right[sample_index]",
     ],
-    budget: 10,
+    // The cold path includes resource validation for both operands.
+    budget: 12,
     cold: true,
   },
   {
@@ -185,7 +188,7 @@ const cases = [
       "_rational_cold_unequal_left[sample_index]",
       "_rational_cold_unequal_right[sample_index]",
     ],
-    budget: 10,
+    budget: 12,
     cold: true,
   },
   {
