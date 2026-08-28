@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/opportunity-evidence-v1.schema.json",
+  "title": "Sage.js reviewed optimizer opportunity evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "status",
+    "dashboard",
+    "compiler",
+    "source",
+    "scope",
+    "workload",
+    "profiles",
+    "feasibleCandidate",
+    "measurement",
+    "classification",
+    "matureAlgorithm",
+    "negativeEvidence"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.optimizer-opportunity-evidence/v1" },
+    "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+    "status": { "enum": ["eligible", "inconclusive", "rejected"] },
+    "dashboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceBundleId", "compilerId"],
+      "properties": {
+        "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "sourceBundleId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "compilerId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" }
+      }
+    },
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "irSchema",
+        "compilerSourceBundleId",
+        "frontendDigest",
+        "catalogDigest",
+        "optionsDigest"
+      ],
+      "properties": {
+        "schema": { "const": "sagejs.optimizer-compiler-identity/v1" },
+        "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "irSchema": { "type": "string", "minLength": 1 },
+        "compilerSourceBundleId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "frontendDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
+        "catalogDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
+        "optionsDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "range",
+        "sourceUnitId",
+        "functionId",
+        "regionId",
+        "semanticFingerprint",
+        "excerptDigest"
+      ],
+      "properties": {
+        "path": { "$ref": "wire-definitions-v1.schema.json#/$defs/repositoryPath" },
+        "range": { "$ref": "wire-definitions-v1.schema.json#/$defs/range" },
+        "sourceUnitId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "functionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "regionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "semanticFingerprint": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "excerptDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "candidateScope",
+        "phaseId",
+        "path",
+        "range",
+        "sourceUnitId",
+        "functionId",
+        "primaryRegionId",
+        "hotChildRegionIds"
+      ],
+      "properties": {
+        "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "candidateScope": { "enum": ["fused-outer-region", "inner-loop-only"] },
+        "phaseId": { "$ref": "wire-definitions-v1.schema.json#/$defs/identifier" },
+        "path": { "$ref": "wire-definitions-v1.schema.json#/$defs/repositoryPath" },
+        "range": { "$ref": "wire-definitions-v1.schema.json#/$defs/range" },
+        "sourceUnitId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "functionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "primaryRegionId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "hotChildRegionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" }
+        }
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "inputDigest", "corpusId"],
+      "properties": {
+        "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "inputDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
+        "corpusId": { "$ref": "wire-definitions-v1.schema.json#/$defs/identifier" }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baselineId", "feasibleLowerBoundId", "negativeIds"],
+      "properties": {
+        "baselineId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "feasibleLowerBoundId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "negativeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" }
+        }
+      }
+    },
+    "feasibleCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "target",
+        "status",
+        "representation",
+        "compilerRoute",
+        "scopeId",
+        "candidateScope"
+      ],
+      "properties": {
+        "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/identifier" },
+        "target": { "enum": ["v8", "wasm", "native", "library", "generic"] },
+        "status": { "const": "lower-bound-only" },
+        "representation": { "type": "string", "minLength": 1 },
+        "compilerRoute": { "const": "none" },
+        "scopeId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+        "candidateScope": { "enum": ["fused-outer-region", "inner-loop-only"] }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "scope", "pairs", "statistics"],
+      "properties": {
+        "method": { "const": "paired-abba-minimum-observed-improvement-v1" },
+        "scope": { "const": "complete-warm-workload" },
+        "pairs": {
+          "type": "array",
+          "minItems": 11,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "order",
+              "baselineMicroseconds",
+              "feasibleLowerBoundMicroseconds",
+              "baselineOutputDigest",
+              "feasibleOutputDigest"
+            ],
+            "properties": {
+              "order": { "enum": ["AB", "BA"] },
+              "baselineMicroseconds": { "type": "integer", "minimum": 1 },
+              "feasibleLowerBoundMicroseconds": { "type": "integer", "minimum": 1 },
+              "baselineOutputDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" },
+              "feasibleOutputDigest": { "$ref": "wire-definitions-v1.schema.json#/$defs/digest" }
+            }
+          }
+        },
+        "statistics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pairCount",
+            "baselineMedianMicroseconds",
+            "baselineMaximumMicroseconds",
+            "feasibleMedianMicroseconds",
+            "pairedDifferenceMedianMicroseconds",
+            "pairedDifferenceMinimumMicroseconds",
+            "positivePairs",
+            "removableWallLowerMicroseconds",
+            "removableFractionLower"
+          ],
+          "properties": {
+            "pairCount": { "type": "integer", "minimum": 11 },
+            "baselineMedianMicroseconds": { "type": "number", "exclusiveMinimum": 0 },
+            "baselineMaximumMicroseconds": { "type": "integer", "minimum": 1 },
+            "feasibleMedianMicroseconds": { "type": "number", "exclusiveMinimum": 0 },
+            "pairedDifferenceMedianMicroseconds": { "type": "number" },
+            "pairedDifferenceMinimumMicroseconds": { "type": "number" },
+            "positivePairs": { "type": "integer", "minimum": 0 },
+            "removableWallLowerMicroseconds": { "type": "integer", "minimum": 0 },
+            "removableFractionLower": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary", "rationale", "profileIds"],
+      "properties": {
+        "primary": {
+          "enum": [
+            "algorithmic",
+            "repeated-proof-state",
+            "representation",
+            "dynamic-dispatch-coercion",
+            "boundary-dominated",
+            "allocation-materialization",
+            "compiler-rejection",
+            "target-mismatch",
+            "cold-startup-dominated",
+            "unknown"
+          ]
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "profileIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" }
+        }
+      }
+    },
+    "matureAlgorithm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "rationale", "profileIds"],
+      "properties": {
+        "disposition": {
+          "enum": [
+            "not-duplicate",
+            "mature-algorithm-available",
+            "no-mature-implementation",
+            "unresolved"
+          ]
+        },
+        "rationale": { "type": "string", "minLength": 1 },
+        "profileIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" }
+        }
+      }
+    },
+    "negativeEvidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profileId",
+          "target",
+          "disposition",
+          "medianMicroseconds",
+          "slowdownVersusFeasible",
+          "summary"
+        ],
+        "properties": {
+          "profileId": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+          "target": { "enum": ["v8", "wasm", "native", "library", "generic"] },
+          "disposition": { "enum": ["measured-slower", "inconclusive"] },
+          "medianMicroseconds": { "type": "number", "exclusiveMinimum": 0 },
+          "slowdownVersusFeasible": { "type": "number", "minimum": 0 },
+          "summary": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-opportunity-evidence",
+  "title": "Reviewed opportunity evidence contract",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define a strict content-addressed comparative opportunity-evidence contract that can prove a positive removable-time lower bound and algorithm disposition for one exact current region without treating hotness as performance causality.",
+  "base_commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+  "claims": [
+    "tools/optimizer-development/opportunity-evidence.cjs",
+    "architecture/optimizer-development/opportunity-evidence-v1.schema.json",
+    "test/optimizer-opportunity-evidence.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Recomputed paired comparative statistics and exact region/profile/dashboard bindings",
+      "Counterfeit or stale evidence fails closed"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 334.991,
+      "started_at": "2026-08-28T11:47:45.277Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7c9f292af63b59494fd39d4ead913f1e40a4c40def73e3b0e35098797592d981",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-opportunity-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.205,
+      "started_at": "2026-08-28T11:53:30.709Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "7c9f292af63b59494fd39d4ead913f1e40a4c40def73e3b0e35098797592d981",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the standalone sagejs.optimizer-opportunity-evidence/v1 contract, content-addressed composite scope, deterministic ABBA conservative statistics, exact dashboard/workload/compiler/profile joins, warm-sealed baseline requirements, mature-algorithm eligibility gate, preserved losing profiles, and 15 focused adversarial tests. The integration API is createOpportunityEvidence(payload, context, adapter), validateOpportunityEvidence(document, context, adapter), computeOpportunityStatistics(pairs), and opportunityScopeIdentity(payload); the adapter provides validateDashboard, validateWorkload, and validateProfileReceipt only.",
+    "risks": [
+      "Eligible evidence depends on the integration lane landing the shared profile.sampling.protocol validation for warm-prepared-sealed source sampling.",
+      "The inherited generated optimizer dashboard is stale on this base, so architecture:check cannot pass until integration regenerates it.",
+      "The worktree has no installed FLINT addon; four unrelated compiler fixtures fail while requiring packages/flint/build/Release/sagejs_flint.node."
+    ],
+    "next_steps": [
+      "Wire this standalone validator into the integration-owned opportunity adapter without changing its schema or statistics policy.",
+      "Construct the production fused-outer-region receipt from the exact hyperelliptic normalization-factor primary and child region IDs.",
+      "Regenerate the dashboard and restore the shared native cache before recording the remaining required validation receipts."
+    ]
+  }
+}
