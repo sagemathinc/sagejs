@@ -52,7 +52,7 @@ const staticInventory = require("./fixtures/optimizer-development/workloads/stat
 test("the workload catalog is immutable, content-addressed, and complete", () => {
   assert.equal(catalog.schema, "sagejs.optimizer-workload-catalog/v1");
   assert.match(catalog.id, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(catalog.workloads.length, 10);
+  assert.equal(catalog.workloads.length, 14);
   assert.ok(Object.isFrozen(catalog));
   assert.ok(catalog.workloads.every(Object.isFrozen));
   assert.deepEqual(
@@ -60,12 +60,16 @@ test("the workload catalog is immutable, content-addressed, and complete", () =>
     new Set([
       "bounded-integer",
       "fixed-extension",
+      "hyperelliptic-local-reduction",
       "neighbors",
+      "number-field-cubic-factor-base",
+      "number-field-local-polygons",
       "packed-container",
       "prime-residue-batch",
       "profile",
       "public-modular-fold",
       "public-evaluate",
+      "public-prime-polynomial-integral",
       "strict-binary64-array",
       "targets",
     ]),
