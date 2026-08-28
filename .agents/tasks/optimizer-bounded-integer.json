@@ -39,12 +39,116 @@
   "validation": [
     "pnpm build",
     "pnpm test:compiler",
-    "pnpm test:integration"
+    "pnpm test:integration",
+    "node --test test/optimizer-bounded-integer.cjs",
+    "node bench/optimizer-bounded-integer/run.cjs --check",
+    "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 352.598,
+      "started_at": "2026-08-28T01:23:43.622Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.844,
+      "started_at": "2026-08-28T01:29:43.232Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-bounded-integer.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.985,
+      "started_at": "2026-08-28T01:30:31.175Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimizer-bounded-integer/run.cjs --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.961,
+      "started_at": "2026-08-28T01:30:38.269Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 8.543,
+      "started_at": "2026-08-28T01:30:53.809Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 50.432,
+      "started_at": "2026-08-28T01:36:19.190Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 255.502,
+      "started_at": "2026-08-28T01:37:15.009Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 764.696,
+      "started_at": "2026-08-28T01:42:07.482Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:integration",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 395.988,
+      "started_at": "2026-08-28T01:55:01.256Z",
+      "commit": "ebb34810a762f4d0ee92f6494ba598b8fe988346",
+      "workspace_fingerprint": "916af07df17ca3349a41e6ff9733e36ae77a81ae90a32e3c36ba201c1db9ae93",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Adds the explain-first `math.bounded-integer-region.v1` plugin and a separately verified `v8.bounded-integer-loop.v1` lowering. Exact `int`-annotated scalar builtin-range graphs over add/subtract/multiply/negate/equality use authenticated primitive Number live-ins, check every intermediate in the inclusive exact range, keep all state private, poll interrupts, and publish only after complete success; entry or overflow failure restarts the untouched Number/BigInt loop. Unsupported mutable buffers, dynamic calls, floor division, remainder, powers, sequences, while loops, and unproved inputs produce stable target/cost/range explanations without claiming their AST. Eight focused tests cover normalized IR, malformed plans, O0/CPython/BigInt differential results, overflow, aliases, hostile objects, zero trips, interruption, and the origin/class-group negative control. The inclusive receipt measured 3.136 ns/step checked Number, 4.003 ns/step BigInt, and 64.8x over Sage.js O0, with zero copies/boundaries and one materialization; the existing cubic JavaScript kernel remains rejected at its recorded 26.3x call-only loss versus native.",
+    "risks": [
+      "The lane deliberately does not edit central catalogs or dispatchers, so the lowering is not executable through normal O2 compilation until the integration patch is applied.",
+      "The proved executable domain is scalar and transactional only; packed IntegerBuffer mutation, division/remainder, sequences, powers, and while loops remain explain-only and must not be inferred as optimized.",
+      "Receipts are Linux x64 only; Linux arm64, Windows x64, macOS arm64, and browser execution need integration-lane coverage after registration.",
+      "The optional FLINT addon was initially absent in this worktree. `pnpm test:compiler` first failed only in algebra.py, matrix.py, polynomial.py, and series.py with MODULE_NOT_FOUND for packages/flint/build/Release/sagejs_flint.node, then passed after `pnpm parallel:cache -- prepare` provisioned native dependencies and a fresh build regenerated the runtime. `pnpm test:changed` likewise hit seven existing browser fallback failures for the initially missing addon and a pre-existing cache-automatic pending-promise hang; it was stopped after 31 minutes with coordinator approval. After the fresh build, one exact integration run cleared its two stale generated-runtime failures but stopped in batch 3 when a shared-host timing guard measured a GF(2) scalar read at 26.47 microseconds against a 25 microsecond ceiling while another full repository build consumed one CPU. A final uncontended exact integration run passed batches 1 through 7 and that timing guard, then `test/hyperelliptic-analytic-performance.cjs` produced three unrelated 180-second timeouts in batch 8; the pathological batch was interrupted after 22 minutes 25 seconds with coordinator approval. The contract remains active because there is no fresh passing integration receipt. Build, compiler, architecture, the focused differential suite, and benchmark receipts pass."
+    ],
+    "next_steps": [
+      "Rerun the exact `pnpm test:integration` gate on a quiet provisioned host and move this contract to review only after a fresh passing receipt.",
+      "Register priority 300 domain `bounded-exact-integer`, lowering `v8.bounded-integer-loop.v1` for internal kind `bounded-integer-region` and target `v8`, verifier `verifyBoundedIntegerPlan`, and emitter `print_bounded_integer_region` in the integration-owned catalogs and dispatcher.",
+      "After registration, add an end-to-end O2 route assertion that executes the real Python emitter and rerun compiler/integration plus required browser and native-platform matrices on a provisioned host.",
+      "Keep the origin/class-group IntegerBuffer kernels as negative controls until a separate packed owner/alias/mutation proof and a coarse fused target beat the authenticated native route inclusively."
+    ]
   }
 }
