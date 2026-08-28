@@ -261,6 +261,26 @@ For general $(D,N)$, timings must be labeled by realization. Magma and
 are an equal-work comparison. The default Jacquet--Langlands realization is a
 same-spectrum baseline with a different construction contract.
 
+The frozen integral-backend receipt at source commit `3d65fd23` compares
+Sage.js, SageMath 10.9, and Magma V2.18-5 on $(D,N,\ell)=(11,2,3)$ and
+$(37,2,3)$. All three systems return the same dimensions and complete Hecke
+characteristic polynomials. On the receipt's AMD EPYC 7B13 host, the combined
+fresh-process wall times for both cases were $98.394\,\mathrm{s}$ for Sage.js,
+$1.657\,\mathrm{s}$ for SageMath, and $0.620\,\mathrm{s}$ for Magma. Peak
+process-tree RSS was $413.0$, $255.5$, and $26.9\,\mathrm{MB}$, respectively.
+Sage.js's resident construction/first-$T_3$ stages were
+$15.771/12.291\,\mathrm{s}$ at $(11,2)$ and
+$34.980/29.669\,\mathrm{s}$ at $(37,2)$; cached operator access was below
+$0.1\,\mathrm{ms}$ in both cases.
+
+This is an honest large performance gap in the initial pure exact-Python
+ideal-enumeration backend, not a competitiveness claim. The integral backend
+exists for its certified ideal lattice and component-group data; spectral-only
+work should continue to use the much faster automatic realization. See the
+[integral ideal-class receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json)
+for source hashes, exact row digests, pairing digests, row sums, masses, and
+the complete measurements.
+
 ## Current boundaries
 
 The distinction between an abstract Hecke module and a canonical quaternion

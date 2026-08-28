@@ -17,6 +17,15 @@ backend. A source-pinned equal-contract SageMath/Magma/Sage.js benchmark
 harness records construction and first-operator cost without disguising the
 current pure exact-Python performance gap.
 
+The final Linux x64 receipt is checked in at
+`bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json`
+and binds exact source commit `3d65fd23`. The two-case fresh-process totals are
+$98.394\,\mathrm{s}$ for Sage.js, $1.657\,\mathrm{s}$ for SageMath, and
+$0.620\,\mathrm{s}$ for Magma; complete Hecke characteristic polynomials agree
+exactly. The receipt records Sage.js operator/pairing digests, mass proofs,
+row sums, cached access, and process-tree RSS. These descriptive numbers expose
+the remaining performance work rather than weakening the equal-work contract.
+
 The newform-quotient constructor remains deliberately deferred exactly as
 specified below: Sage.js does not yet have the audited integral modular-symbol
 annihilator and modular-degree maps needed to certify every finite index. The

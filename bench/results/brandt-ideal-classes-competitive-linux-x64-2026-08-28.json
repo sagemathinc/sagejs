@@ -1,0 +1,218 @@
+{
+  "schema": "sagejs.brandt-ideal-classes-competitive-receipt.v1",
+  "recorded_at": "2026-08-28T20:32:14.749Z",
+  "source_commit": "3d65fd23f62add4eb6adb571c7ed2fef040010b9",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.7.0",
+    "cpu_model": "AMD EPYC 7B13",
+    "cpu_count": 16,
+    "total_memory_bytes": 67418701824
+  },
+  "contract": {
+    "cases": [
+      [
+        11,
+        2,
+        3
+      ],
+      [
+        37,
+        2,
+        3
+      ]
+    ],
+    "work": "construct genuine right ideal classes, then the first full good-prime Hecke matrix",
+    "correctness": "dimension and complete characteristic polynomial agree exactly",
+    "timing": "one descriptive process-cold run per system; Sage.js records resident construction, first/cached operator, and characteristic-polynomial stages; no competitiveness gate"
+  },
+  "sources": {
+    "runner": "bench/modular/brandt-ideal-classes/competitive.cjs",
+    "runner_sha256": "e46c694ffae8cefce3f9962cc9354758ceff4fb6b959d4cf96d44dbc4ce798dc",
+    "sage_oracle": "bench/modular/brandt-ideal-classes/sage-oracle.py",
+    "sage_oracle_sha256": "2fa3d73ead6755389e23b08bbb4e62daf80716120777e3c363cd4fb8f09ddec7",
+    "magma_oracle": "bench/modular/brandt-ideal-classes/magma-oracle.m",
+    "magma_oracle_sha256": "249ac197f6f61c5c450dc898824e04d9dfe3230dd219f1623005894f23e758a1"
+  },
+  "sagejs": {
+    "executable": "/opt/cocalc/bin/node",
+    "process_cold_wall_seconds": 98.39369529,
+    "peak_rss_bytes": 412995584,
+    "stdout_sha256": "5a9c052e611d5d5df9e29478fdc5cd5d5cc7c5aba256ac5b4b9ed65e50b31471",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "records": [
+      {
+        "D": 11,
+        "N": 2,
+        "ell": 3,
+        "dimension": 3,
+        "class_count": 3,
+        "standalone_order_seconds": 0.8254456520080566,
+        "construction_seconds": 15.771237850189209,
+        "first_operator_seconds": 12.291279315948486,
+        "cached_operator_seconds": 0.00006365776062011719,
+        "charpoly_seconds": 0.00006532669067382812,
+        "mass": "5/2",
+        "weights": [
+          2,
+          1,
+          1
+        ],
+        "row_sums": [
+          4,
+          4,
+          4
+        ],
+        "charpoly_coefficients": [
+          -4,
+          -7,
+          -2,
+          1
+        ],
+        "mass_verified": true,
+        "operator_sha256": "bf1730b2ff30d1ca264ff2973863cfa5a2e84d6ee5cb60293c4f4b84916aec5f",
+        "pairing_sha256": "8d82db4c831932d972b5ae331221357ff8708d22e36563995b3eb42c26199d17"
+      },
+      {
+        "D": 37,
+        "N": 2,
+        "ell": 3,
+        "dimension": 9,
+        "class_count": 9,
+        "standalone_order_seconds": 0.6489396095275879,
+        "construction_seconds": 34.980451345443726,
+        "first_operator_seconds": 29.66865086555481,
+        "cached_operator_seconds": 0.00006222724914550781,
+        "charpoly_seconds": 0.000024557113647460938,
+        "mass": "9",
+        "weights": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "row_sums": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "charpoly_coefficients": [
+          -36,
+          -15,
+          290,
+          -239,
+          -166,
+          156,
+          34,
+          -23,
+          -2,
+          1
+        ],
+        "mass_verified": true,
+        "operator_sha256": "b93b69eca0534e4fa7669f7b83f0dbd38b134ce7aaeaad4969fca53f8de6010b",
+        "pairing_sha256": "57fc7f4ad67797574886ca32d182859d21104addae1398424d25dd615ef668d7"
+      }
+    ]
+  },
+  "sagemath": {
+    "executable": "/home/user/sagelite/sage",
+    "process_cold_wall_seconds": 1.657049297,
+    "peak_rss_bytes": 255467520,
+    "stdout_sha256": "c9cd3a38694426d62e91a9c13b3c7c7cb02f97e5d0b1cc31f0c86a0280c5c925",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "records": [
+      {
+        "D": 11,
+        "N": 2,
+        "ell": 3,
+        "dimension": 3,
+        "class_count": 3,
+        "construction_seconds": 0.15576988901011646,
+        "first_operator_seconds": 0.025547918980009854,
+        "charpoly_coefficients": [
+          -4,
+          -7,
+          -2,
+          1
+        ]
+      },
+      {
+        "D": 37,
+        "N": 2,
+        "ell": 3,
+        "dimension": 9,
+        "class_count": 9,
+        "construction_seconds": 0.06371808494441211,
+        "first_operator_seconds": 0.09432978404220194,
+        "charpoly_coefficients": [
+          -36,
+          -15,
+          290,
+          -239,
+          -166,
+          156,
+          34,
+          -23,
+          -2,
+          1
+        ]
+      }
+    ]
+  },
+  "magma": {
+    "executable": "/home/user/magma-2.18/bin/magma",
+    "process_cold_wall_seconds": 0.620022678,
+    "peak_rss_bytes": 26865664,
+    "stdout_sha256": "b473930ac23d880667699227ad0c3b4ff1234b01aec593a5f6dbd70d7927f668",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "records": [
+      {
+        "D": 11,
+        "N": 2,
+        "ell": 3,
+        "dimension": 3,
+        "construction_cpu_seconds": 0.14,
+        "first_operator_cpu_seconds": 0,
+        "charpoly_coefficients": [
+          -4,
+          -7,
+          -2,
+          1
+        ]
+      },
+      {
+        "D": 37,
+        "N": 2,
+        "ell": 3,
+        "dimension": 9,
+        "construction_cpu_seconds": 0.28,
+        "first_operator_cpu_seconds": 0,
+        "charpoly_coefficients": [
+          -36,
+          -15,
+          290,
+          -239,
+          -166,
+          156,
+          34,
+          -23,
+          -2,
+          1
+        ]
+      }
+    ]
+  },
+  "exact_agreement": true
+}
