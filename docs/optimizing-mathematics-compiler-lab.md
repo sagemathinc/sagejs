@@ -260,6 +260,107 @@ the loop, sequences, calls, and reassociation remain generic in this first
 slice. A future explicitly named fast-math policy would require a separate
 semantic contract; ordinary `O2` does not enable one.
 
+## Checked machine-size exact integers
+
+Python integers are unbounded, so replacing them globally with JavaScript
+Numbers would be wrong. This contract instead keeps a complete scalar loop in
+private Number locals, checks every source arithmetic result against the exact
+integer interval `[-(2^53-1), 2^53-1]`, and publishes the answer only after the
+whole loop succeeds. An overflow cannot expose partial state: with fallback
+enabled the untouched arbitrary-precision loop restarts, while the contract
+below asks for an immediate error.
+
+Save this as `bounded-integer.py`:
+
+```python
+import time
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.bounded-integer-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
+def recurrence(n: int, x: int, a: int, b: int) -> int:
+    for step in range(n):
+        x = x*a + b
+    return x
+
+n = 500_000
+x, a, b = 7, 1, 3
+recurrence(n, x, a, b)
+for sample in range(7):
+    started = time.perf_counter()
+    answer = recurrence(n, x, a, b)
+    elapsed = time.perf_counter() - started
+    print(sample, answer, elapsed, 1e9*elapsed/n, "ns/checked step")
+```
+
+Run it in fresh O2 and O0 processes, and inspect the proof without executing
+the source:
+
+```sh
+SAGEJS_OPT_LEVEL=O2 sagejs --python bounded-integer.py
+SAGEJS_OPT_LEVEL=O0 sagejs --python bounded-integer.py
+sagejs optimize check --function recurrence bounded-integer.py
+sagejs optimize explain --function recurrence bounded-integer.py
+pnpm bench:optimizer-bounded-integer --check
+```
+
+The benchmark's initial x86-64 Node 26 measurement was about 3.1 ns per
+checked additive step, including an exact-range check at every arithmetic
+node. This is a bounded scalar result, not permission to lower general Python
+integer code. Calls, division, indexing mutable storage, unsupported control
+flow, and any graph whose complete effects are not proved remain generic.
+
+## Ordered binary64 reductions over immutable tuples
+
+The scalar floating-point pass above optimizes a fixed-count recurrence. A
+separate pass handles reductions over an immutable `tuple[float, ...]`. It
+authenticates the tuple and each Python float, preserves one IEEE-754 operation
+per source node, and retains loop state privately until all elements have
+passed their guards.
+
+Save this as `strict-float-array.py`:
+
+```python
+import time
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.strict-float-array-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
+def horner(values: tuple[float, ...], x: float, answer: float) -> float:
+    for value in values:
+        answer = answer*x + value
+    return answer
+
+values = tuple(float((i % 29) - 14) / 17.0 for i in range(50_000))
+x = 0.99991
+horner(values, x, 0.0)
+for sample in range(7):
+    started = time.perf_counter()
+    answer = horner(values, x, 0.0)
+    elapsed = time.perf_counter() - started
+    print(sample, answer, elapsed, 1e9*elapsed/len(values), "ns/item")
+```
+
+Input construction is deliberately outside the timed region. The guarded
+tuple lowering currently pays per-element descriptor and authentication costs,
+so it is a useful exact baseline rather than a claim to beat NumPy or Julia.
+Its repository benchmark compares exact binary64 checksums with Sage.js O0,
+plain JavaScript, CPython, NumPy, Numba when installed, and Julia:
+
+```sh
+sagejs optimize check --function horner strict-float-array.py
+sagejs optimize explain --function horner strict-float-array.py
+pnpm bench:optimizer-strict-float-array --check
+```
+
 ## Compare with the exact generic implementation
 
 Optimization level is fixed when a Sage.js runtime is created. Put one of the
@@ -345,6 +446,8 @@ pnpm bench:optimizer-branching-region --check
 pnpm bench:optimizer-field-horner --check
 pnpm bench:optimizer-integer-constants --check
 pnpm bench:optimizer-strict-float --check
+pnpm bench:optimizer-bounded-integer --check
+pnpm bench:optimizer-strict-float-array --check
 ```
 
 ## What should and should not optimize
