@@ -1724,7 +1724,7 @@ test("public kernels borrow and transfer generated FLINT resources", async () =>
       "try:",
       "    clone(wrong)",
       "except TypeError as error:",
-      "    assert 'wrong FFI resource type' in str(error)",
+      "    assert 'wrong FFI resource type' in str(error), str(error)",
       "else:",
       "    raise AssertionError('wrong resource type was accepted')",
       "wrong.close()",
