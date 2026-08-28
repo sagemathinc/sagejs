@@ -49,7 +49,9 @@ export function formatOptimizationExplanation(
   ];
   for (const pass of explanation.passes) {
     lines.push(
-      `pass ${pass.id}: regions ${pass.regionsBefore} -> ${pass.regionsAfter}`,
+      `pass ${pass.id}: domain=${pass.domainId} priority=${pass.priority} ` +
+        `claim=${pass.claimSemantics} regions ${pass.regionsBefore} -> ` +
+        `${pass.regionsAfter}`,
     );
   }
   for (const contract of explanation.contracts) {

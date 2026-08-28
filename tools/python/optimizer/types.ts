@@ -139,6 +139,9 @@ export interface FunctionOptimizationContract {
 
 export interface OptimizationPassRecord {
   id: string;
+  domainId: string;
+  priority: number;
+  claimSemantics: "exclusive";
   inputSchema: typeof OPTIMIZER_IR_SCHEMA;
   factsConsumed: readonly string[];
   factsProduced: readonly string[];
