@@ -80,6 +80,63 @@ test("a measured but unrecognized loop remains investigate-only", () => {
   assert.equal(hot.recommendedAction, "investigate");
 });
 
+test("validated fused opportunities consume exact hot children into their outer scope", () => {
+  const dashboard = load("dashboard.json");
+  const primary = dashboard.regions.find((item) => item.identity.id === "region:cold");
+  primary.staticEvidence.fallbackPreservingTransformation = true;
+  const profile = load("profile-current.json");
+  profile.samples = { total: 50, unmatched: 0, ambiguous: 0 };
+  profile.observations = profile.observations.filter((item) =>
+    item.regionIdentity.id === "region:hot");
+  const profileId = adapter.cid("profile:current");
+  const workloadId = adapter.cid("workload:authentic");
+  const primaryRegionId = adapter.cid("region:cold");
+  const childRegionId = adapter.cid("region:hot");
+  const passId = "math.control.v1";
+  const reviewed = {
+    id: adapter.cid("reviewed fused opportunity"),
+    status: "eligible",
+    workload: { id: workloadId },
+    compilerDecision: {
+      decisionId: adapter.cid(`${primaryRegionId}:${passId}:0`),
+      passId,
+    },
+    scope: {
+      candidateScope: "fused-outer-region",
+      primaryRegionId,
+      hotChildRegionIds: [childRegionId],
+    },
+    profiles: { attributionId: profileId },
+    classification: { primary: "dynamic-dispatch-coercion" },
+    matureAlgorithm: { disposition: "not-duplicate" },
+    measurement: { statistics: {
+      removableWallLowerMicroseconds: 25,
+      removableFractionLower: 0.25,
+    } },
+  };
+  const opportunityAdapter = {
+    ...adapter,
+    validateOpportunityEvidence(value) { return value; },
+  };
+  const overlay = buildHotnessOverlay({
+    dashboard,
+    profileReceipts: [profile],
+    reviewedOpportunities: [reviewed],
+    workloads: [{ id: workloadId }],
+    adapter: opportunityAdapter,
+  });
+  assert.equal(overlay.regions.length, 1);
+  const fused = overlay.regions[0];
+  assert.equal(fused.source.regionId, primaryRegionId);
+  assert.equal(fused.observations[0].exclusiveSamples, 50);
+  assert.equal(fused.recommendedAction, "compiler-campaign");
+  assert.equal(fused.eligibility.status, "eligible");
+  assert.equal(overlay.opportunities[0].candidateScope, "fused-outer-region");
+  assert.deepEqual(overlay.opportunities[0].hotChildRegionIds, [childRegionId]);
+  assert.equal(overlay.opportunities[0].attributionProfileId, profileId);
+  assert.equal(overlay.regions.some((item) => item.source.regionId === childRegionId), false);
+});
+
 test("ranking remains lexicographic and never creates an opaque score", () => {
   const make = (id, lower, importance) => ({ source: { regionId: id }, ranking: {
     removableWallLower: lower, affectedWorkloads: importance, nearMissDistance: 1,

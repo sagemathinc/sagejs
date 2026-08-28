@@ -153,6 +153,7 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
   const checkedProfiles = profileReceipts.map((receipt) =>
     adapter.validateProfileReceipt(receipt));
   const opportunities = [];
+  const opportunityProjections = [];
   const seenOpportunities = new Set();
   for (const rawOpportunity of reviewedOpportunities) {
     const workload = workloads.find((item) =>
@@ -192,6 +193,18 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
       decisionId: opportunity.compilerDecision.decisionId,
       passId: opportunity.compilerDecision.passId,
       status: opportunity.status,
+      candidateScope: opportunity.scope.candidateScope,
+      hotChildRegionIds: copy(opportunity.scope.hotChildRegionIds),
+      attributionProfileId: opportunity.profiles.attributionId,
+    });
+    opportunityProjections.push({
+      id: opportunity.id,
+      status: opportunity.status,
+      candidateScope: opportunity.scope.candidateScope,
+      primaryRegionId: opportunity.scope.primaryRegionId,
+      hotChildRegionIds: copy(opportunity.scope.hotChildRegionIds),
+      attributionProfileId: opportunity.profiles.attributionId,
+      workloadId: opportunity.workload.id,
     });
   }
   opportunities.sort((left, right) => left.id.localeCompare(right.id));
@@ -253,6 +266,68 @@ function buildHotnessOverlay({ dashboard, profileReceipts, reviewedOpportunities
         errorEntries: route.errorEntries,
       });
     }
+  }
+
+  // A reviewed fused scope may deliberately select an outer region while the
+  // authenticated CPU positions land only in exact nested regions. The
+  // opportunity validator has already proved every child is current, lies in
+  // the selected function/scope, and has attributed samples in this exact
+  // profile. Consume those declared observations into one composite outer
+  // observation. This is not a source-line parent inference: no region absent
+  // from the content-addressed opportunity is eligible for projection.
+  const consumedCompositeObservations = new Set();
+  for (const projection of opportunityProjections) {
+    if (projection.status !== "eligible" ||
+      projection.candidateScope !== "fused-outer-region") continue;
+    const profile = profiles.find((item) => item.id === projection.attributionProfileId);
+    assert(profile && profile.status === "current" &&
+      profile.workloadId === projection.workloadId,
+    `reviewed opportunity ${projection.id} attribution profile is not current for its workload`);
+    const sourceRegionIds = [projection.primaryRegionId, ...projection.hotChildRegionIds];
+    const selected = [];
+    for (const regionId of sourceRegionIds) {
+      const key = `${projection.attributionProfileId}:${regionId}`;
+      assert(!consumedCompositeObservations.has(key),
+        `reviewed opportunities reuse attributed region ${regionId} from profile ` +
+        projection.attributionProfileId);
+      const runtime = joined.get(regionId);
+      if (!runtime) continue;
+      const matching = runtime.observations.filter((item) =>
+        item.profileId === projection.attributionProfileId &&
+        item.workloadId === projection.workloadId);
+      assert(matching.length <= 1,
+        `profile ${projection.attributionProfileId} has duplicate observation for ${regionId}`);
+      if (matching.length === 0) continue;
+      consumedCompositeObservations.add(key);
+      selected.push(matching[0]);
+      runtime.observations = runtime.observations.filter((item) => item !== matching[0]);
+      // Feasibility opportunities are forbidden from claiming a compiler
+      // route. Keep route evidence exact to its original region and remove an
+      // orphaned route only when its sole observation was consumed here.
+      runtime.runtimeRoutes = runtime.runtimeRoutes.filter((item) =>
+        item.profileId !== projection.attributionProfileId);
+    }
+    assert(selected.length > 0,
+      `reviewed opportunity ${projection.id} has no exact projected observations`);
+    const exclusiveSamples = selected.reduce((sum, item) => sum + item.exclusiveSamples, 0);
+    const primary = joined.get(projection.primaryRegionId) ||
+      { observations: [], runtimeRoutes: [] };
+    primary.observations.push({
+      profileId: projection.attributionProfileId,
+      workloadId: projection.workloadId,
+      entryCount: Math.max(...selected.map((item) => item.entryCount)),
+      inclusiveSamples: exclusiveSamples,
+      exclusiveSamples,
+      wallFraction: Math.min(1, selected.reduce((sum, item) => sum + item.wallFraction, 0)),
+      confidence: Math.min(...selected.map((item) => item.confidence)),
+      current: true,
+      coverage: Math.min(...selected.map((item) => item.coverage)),
+      exactOutput: selected.every((item) => item.exactOutput === true),
+    });
+    joined.set(projection.primaryRegionId, primary);
+  }
+  for (const [regionId, runtime] of joined) {
+    if (runtime.observations.length === 0) joined.delete(regionId);
   }
 
   const regions = [];

@@ -800,6 +800,7 @@ function validateHotnessOverlay(value, context = {}) {
     (opportunityLabel, opportunity) => {
       exactKeys(opportunityLabel, opportunity, [
         "id", "regionId", "workloadId", "decisionId", "passId", "status",
+        "candidateScope", "hotChildRegionIds", "attributionProfileId",
       ]);
       return {
         id: contentId(`${opportunityLabel}.id`, opportunity.id),
@@ -809,6 +810,16 @@ function validateHotnessOverlay(value, context = {}) {
         passId: stableName(`${opportunityLabel}.passId`, opportunity.passId),
         status: enumeration(`${opportunityLabel}.status`, opportunity.status,
           ["eligible", "inconclusive", "rejected"]),
+        candidateScope: enumeration(`${opportunityLabel}.candidateScope`,
+          opportunity.candidateScope, ["fused-outer-region", "inner-loop-only"]),
+        hotChildRegionIds: array(`${opportunityLabel}.hotChildRegionIds`,
+          opportunity.hotChildRegionIds,
+          (itemLabel, item) => contentId(itemLabel, item), {
+            uniqueBy: (item) => item,
+            sortedBy: (item) => item,
+          }),
+        attributionProfileId: contentId(`${opportunityLabel}.attributionProfileId`,
+          opportunity.attributionProfileId),
       };
     }, { uniqueBy: (opportunity) => opportunity.id,
       sortedBy: (opportunity) => opportunity.id });
@@ -824,6 +835,27 @@ function validateHotnessOverlay(value, context = {}) {
       ["fail-closed"]),
   };
   const profileIds = new Set(profiles.map((profile) => profile.id));
+  for (const [index, opportunity] of opportunities.entries()) {
+    const profile = profiles.find((item) => item.id === opportunity.attributionProfileId);
+    if (!profile) {
+      fail(`${label}.opportunities[${index}].attributionProfileId`,
+        "is not in overlay profiles");
+    }
+    if (profile.workloadId !== opportunity.workloadId) {
+      fail(`${label}.opportunities[${index}].attributionProfileId`,
+        "does not belong to the opportunity workload");
+    }
+    if (opportunity.candidateScope === "fused-outer-region" &&
+      opportunity.hotChildRegionIds.length === 0) {
+      fail(`${label}.opportunities[${index}].hotChildRegionIds`,
+        "a fused scope requires an exact hot child");
+    }
+    if (opportunity.candidateScope === "inner-loop-only" &&
+      opportunity.hotChildRegionIds.length !== 0) {
+      fail(`${label}.opportunities[${index}].hotChildRegionIds`,
+        "an inner-loop scope cannot cite hot children");
+    }
+  }
   const regions = array(`${label}.regions`, value.regions, (regionLabel, region) => {
     exactKeys(regionLabel, region, [
       "source", "loopId", "staticDecisions", "opportunityEvidenceIds",
