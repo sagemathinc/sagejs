@@ -187,6 +187,8 @@ function buildFixture() {
         oracleResults: [{ id: "exact-output", status: "pass", digest: outputDigest }],
       },
       execution: { warm: distribution(samples) },
+      phases: [{ id: "normalization-factor", cold: distribution(samples),
+        warm: distribution(samples) }],
       sampling: {
         positionTicks: ticks ? [{ ticks: 37, mapping }] : [],
         ...(ticks ? { protocol: {
@@ -334,6 +336,34 @@ test("reviewed evidence binds current identities and recomputes a positive lower
   assert.equal(document.feasibleCandidate.scopeId, document.scope.id);
   assert(Object.isFrozen(document));
   assert(Object.isFrozen(document.measurement.pairs[0]));
+});
+
+test("a reviewed composite phase is selectable without claiming complete-call timing", () => {
+  const fixture = buildFixture();
+  const document = structuredClone(validDocument(fixture));
+  document.measurement.scope = "reviewed-phase";
+  readdress(document);
+  const checked = opportunity.validateOpportunityEvidence(
+    document, fixture.context, fixture.adapter,
+  );
+  assert.equal(checked.measurement.scope, "reviewed-phase");
+
+  const missing = structuredClone(fixture.context);
+  const feasibleIndex = missing.profileReceipts.findIndex(
+    (profile) => profile.id === fixture.feasible.id,
+  );
+  missing.profileReceipts[feasibleIndex].phases = [];
+  readdress(missing.profileReceipts[feasibleIndex]);
+  const invalid = structuredClone(document);
+  invalid.profiles.feasibleLowerBoundId = missing.profileReceipts[feasibleIndex].id;
+  invalid.classification.profileIds = [
+    invalid.profiles.baselineId,
+    invalid.profiles.feasibleLowerBoundId,
+  ].sort();
+  readdress(invalid);
+  assert.throws(() => opportunity.validateOpportunityEvidence(
+    invalid, missing, fixture.adapter,
+  ), /does not measure reviewed phase/);
 });
 
 test("one lucky pair cannot manufacture a positive conservative bound", () => {
