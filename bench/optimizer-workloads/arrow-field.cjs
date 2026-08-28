@@ -1055,9 +1055,79 @@ async function runFeasibility({
           vectorCopyMaterializationNegative:
             comparisons.vectorCopyMaterializationNegative.opportunityEvidencePairs,
         },
+        phaseReceiptData: {
+          representativeVector: {
+            baseline: {
+              target: "generic",
+              samplesNanoseconds:
+                comparisons.representativeVector.rawPairs.map(
+                  (pair) => pair.baselineNanoseconds,
+                ),
+              outputDigest: oracles.cpython.vector.completeDigest,
+            },
+            feasibleLowerBound: {
+              target: "v8",
+              samplesNanoseconds:
+                comparisons.representativeVector.rawPairs.map(
+                  (pair) => pair.candidateNanoseconds,
+                ),
+              outputDigest: oracles.cpython.vector.completeDigest,
+              productionRouteClaim: "none",
+            },
+          },
+          positiveHeldoutSlope: {
+            baseline: {
+              target: "generic",
+              samplesNanoseconds: comparisons.heldoutSlope.rawPairs.map(
+                (pair) => pair.baselineNanoseconds,
+              ),
+              outputDigest: oracles.cpython.slope.completeDigest,
+            },
+            feasibleLowerBound: {
+              target: "v8",
+              samplesNanoseconds: comparisons.heldoutSlope.rawPairs.map(
+                (pair) => pair.candidateNanoseconds,
+              ),
+              outputDigest: oracles.cpython.slope.completeDigest,
+              productionRouteClaim: "none",
+            },
+          },
+          independentPositiveHeldoutSurface: {
+            baseline: {
+              target: "generic",
+              samplesNanoseconds: comparisons.independentSurface.rawPairs.map(
+                (pair) => pair.baselineNanoseconds,
+              ),
+              outputDigest: oracles.cpython.surface.completeDigest,
+            },
+            feasibleLowerBound: {
+              target: "v8",
+              samplesNanoseconds: comparisons.independentSurface.rawPairs.map(
+                (pair) => pair.candidateNanoseconds,
+              ),
+              outputDigest: oracles.cpython.surface.completeDigest,
+              productionRouteClaim: "none",
+            },
+          },
+          negativeTargets: [{
+            target: "v8",
+            candidate: "copy-materialization-lookalike",
+            disposition: "measured-same-workload-negative",
+            samplesNanoseconds:
+              comparisons.vectorCopyMaterializationNegative.rawPairs.map(
+                (pair) => pair.candidateNanoseconds,
+              ),
+            baselineSamplesNanoseconds:
+              comparisons.vectorCopyMaterializationNegative.rawPairs.map(
+                (pair) => pair.baselineNanoseconds,
+              ),
+            outputDigest: oracles.cpython.vector.completeDigest,
+            productionRouteClaim: "none",
+          }],
+        },
         negativeTargets: [{
           id: "copy-materialization-lookalike",
-          target: "v8-plus-python-semantic-copy",
+          target: "v8",
           disposition: "measured-same-workload-negative",
           outputDigest: oracles.cpython.vector.completeDigest,
           productionRouteClaim: "none",

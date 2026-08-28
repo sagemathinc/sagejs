@@ -212,6 +212,20 @@ test("the current-build smoke is exact, guarded, and explicitly non-promotable",
     report.comparisons.vectorCopyMaterializationNegative.rawPairs.length,
     1,
   );
+  const phaseData = report.opportunityEvidenceAdapter.phaseReceiptData;
+  assert.equal(
+    phaseData.representativeVector.baseline.samplesNanoseconds.length,
+    1,
+  );
+  assert.equal(
+    phaseData.representativeVector.feasibleLowerBound.target,
+    "v8",
+  );
+  assert.equal(phaseData.negativeTargets[0].target, "v8");
+  assert.equal(
+    phaseData.negativeTargets[0].candidate,
+    "copy-materialization-lookalike",
+  );
   assert.equal(report.guardAudit.transactionalPublication, true);
   assert.equal(report.guardAudit.independentSurfaceExact, true);
 });
