@@ -38,6 +38,19 @@ rechecks every stored Hecke eigenvalue. Both rational level-$37$ newforms
 reproduce the pinned LMFDB values at $2,3,5,7$ and the prime-power Hecke
 recurrences through $q^9$.
 
+The first Hilbert slice now revives the compact icosian orbit-table engine for
+split prime levels over $\mathbf Q(\sqrt5)$. It exposes exact degree-one prime
+ideals, checked local quaternion splittings, all $120$ reduced icosian units,
+the deterministic table
+$\mathbf P^1(\mathbf F_p)\to R^\times\backslash\mathbf P^1(\mathbf F_p)$,
+single sparse Hecke rows, stabilizer masses, and cached sparse operators. The
+five small Hecke sets of norms $4$, $9$, $5$, $11$, and $11$ reproduce psage's
+level-$31$ matrices, the complete level-$389$ characteristic-factor corpus,
+and the recorded dimensions $2,7,14,35$ at level norms
+$31,389,809,2011$. Orbit disjointness, orbit-size divisibility by $120$,
+constant Hecke degree, exact mass adjointness, and pairwise commutativity are
+checked before publication.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
@@ -45,7 +58,9 @@ but cross-platform coordinate sorting must land before the basis digest is
 declared stable. Optimized large-index modular-polynomial construction,
 scalable exact characteristic-polynomial certificates, higher-dimensional
 coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
-the Hilbert modules remain later implementation stages in this plan.
+prime-power Hilbert levels with compatible degeneracy maps remain later
+implementation stages in this plan. The generic finite-Hecke-set interface and
+a second real quadratic field likewise remain to justify Phase 6.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse
