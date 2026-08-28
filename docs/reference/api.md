@@ -1330,8 +1330,10 @@ sage: K['x']
 Univariate Polynomial Ring in x over Finite Field in a of size 3^2
 ```
 
-Extension moduli are irreducible and normalized to monic. Passing
-`modulus='primitive'` uses the backend's primitive Conway polynomial.
+Extension moduli are irreducible and normalized to monic. Named quadratic
+extensions use a deterministic irreducible polynomial when the Conway
+tables have no entry. Passing `modulus='primitive'` requires a primitive
+Conway polynomial and does not use this fallback.
 
 ### Metadata
 

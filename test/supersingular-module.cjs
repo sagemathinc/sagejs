@@ -24,6 +24,27 @@ const lmfdbFixture = JSON.parse(
 );
 
 test(
+  "large supersingular modules construct beyond the Conway table",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+S = SupersingularModule(117223)
+K = S.finite_field()
+assert S.dimension() == 9769
+assert tuple(value.lift() for value in K.modulus().coefficients()) == (117220,0,1)
+assert K.gen()**2 == K(3)
+(S.dimension(), K.modulus())
+`);
+      assert.equal(result.repr, "(9769, x^2 + 117220)");
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
   "Mestre T2 graph has a canonical portable level-37 basis",
   { timeout: 120_000 },
   async () => {
