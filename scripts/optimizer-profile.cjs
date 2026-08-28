@@ -9,14 +9,18 @@ function usage() {
     "usage: node scripts/optimizer-profile.cjs [options] SOURCE",
     "",
     "Profile one Python/Sage source file with the authenticated Node sampler.",
-    "The scope is a cold generated-JavaScript load plus execution. Lazy modules",
-    "are compiled from exact current Python source with authenticated sidecar maps;",
-    "normal writable and production caches are bypassed without modification.",
+    "Without --entry, the scope is a cold generated-JavaScript load plus execution.",
+    "With --entry, root load, lazy imports, --prepare, and warmups happen before",
+    "sampling; the authenticated module closure is then sealed and only repeated",
+    "entry calls are sampled. Late lazy imports fail instead of losing attribution.",
     "",
     "options:",
     "  --language python|sage       source language (default: sage)",
     "  --sampling-interval MICROS  requested Inspector interval (default: 500)",
-    "  --entry FUNCTION            call one zero-argument function after loading",
+    "  --entry FUNCTION            sample one prepared zero-argument function",
+    "  --prepare FUNCTION          call once after root load and before warmups",
+    "  --warmups COUNT             entry warmups before sampling (default: 1)",
+    "  --repetitions COUNT         entry calls inside sampling (default: 1)",
     "  --envelope FILE             attach sampling to a validated phase receipt",
     "  --output FILE               write JSON receipt to FILE instead of stdout",
     "  --help                      show this message",
@@ -28,6 +32,9 @@ function parseArguments(argv) {
   let samplingIntervalMicros = 500;
   let output;
   let entryPoint;
+  let prepareEntryPoint;
+  let warmupRuns;
+  let repetitions;
   let envelope;
   let source;
   for (let index = 0; index < argv.length; index += 1) {
@@ -58,6 +65,24 @@ function parseArguments(argv) {
       }
       continue;
     }
+    if (argument === "--prepare") {
+      prepareEntryPoint = argv[++index];
+      if (!prepareEntryPoint || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(prepareEntryPoint)) {
+        throw new Error("--prepare requires a Python identifier");
+      }
+      continue;
+    }
+    if (argument === "--warmups" || argument === "--repetitions") {
+      const raw = argv[++index];
+      const value = Number(raw);
+      const minimum = argument === "--warmups" ? 0 : 1;
+      if (!raw || !Number.isSafeInteger(value) || value < minimum) {
+        throw new Error(`${argument} requires an integer at least ${minimum}`);
+      }
+      if (argument === "--warmups") warmupRuns = value;
+      else repetitions = value;
+      continue;
+    }
     if (argument === "--envelope") {
       envelope = argv[++index];
       if (!envelope) throw new Error("--envelope requires a profile receipt path");
@@ -71,12 +96,19 @@ function parseArguments(argv) {
     throw new Error(`unsupported language: ${language}`);
   }
   if (!source) throw new Error("a source file is required");
+  if (!entryPoint &&
+      (prepareEntryPoint !== undefined || warmupRuns !== undefined || repetitions !== undefined)) {
+    throw new Error("--prepare, --warmups, and --repetitions require --entry");
+  }
   return {
     help: false,
     language,
     samplingIntervalMicros,
     output,
     entryPoint,
+    prepareEntryPoint,
+    warmupRuns,
+    repetitions,
     envelope,
     source,
   };
@@ -134,6 +166,9 @@ function assembleReceipt(envelopeFilename, result, options) {
       phase: payload.configuration.environmentDigest,
       language: options.language,
       entryPoint: options.entryPoint ?? null,
+      prepareEntryPoint: options.prepareEntryPoint ?? null,
+      warmupRuns: options.warmupRuns ?? (options.entryPoint ? 1 : 0),
+      repetitions: options.repetitions ?? 1,
       samplingIntervalMicros: options.samplingIntervalMicros,
       hyperellipticReceiptPolicy:
         process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY ?? null,
@@ -170,6 +205,9 @@ async function main(argv = process.argv.slice(2)) {
       language: options.language,
       samplingIntervalMicros: options.samplingIntervalMicros,
       entryPoint: options.entryPoint,
+      prepareEntryPoint: options.prepareEntryPoint,
+      warmupRuns: options.warmupRuns,
+      repetitions: options.repetitions,
       suppressResult: options.entryPoint === undefined,
     });
     const receipt = options.envelope
