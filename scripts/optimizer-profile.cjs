@@ -9,8 +9,9 @@ function usage() {
     "usage: node scripts/optimizer-profile.cjs [options] SOURCE",
     "",
     "Profile one Python/Sage source file with the authenticated Node sampler.",
-    "The current scope is a cold generated-JavaScript load plus execution; imported",
-    "precompiled/lazy modules are conserved as unmatched until they provide maps.",
+    "The scope is a cold generated-JavaScript load plus execution. Lazy modules",
+    "are compiled from exact current Python source with authenticated sidecar maps;",
+    "normal writable and production caches are bypassed without modification.",
     "",
     "options:",
     "  --language python|sage       source language (default: sage)",
@@ -89,6 +90,7 @@ async function main(argv = process.argv.slice(2)) {
     const receipt = {
       schema: "sagejs.optimizer-profile-cli/v1",
       profileMap: result.sourceMap,
+      profileMaps: result.sourceMaps,
       evaluation: result.evaluation,
       observation: result.observation,
     };

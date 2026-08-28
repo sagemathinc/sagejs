@@ -2,6 +2,8 @@
 // sagejs-test-portable: true
 "use strict";
 
+process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY = "off";
+
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { compileFunction, Script } = require("node:vm");
@@ -155,6 +157,44 @@ test("private route events are lexical, validated, counted, and immutable", asyn
   assert.throws(
     () => events.observer("x", "y", "invented-route"),
     /invalid optimizer profile event outcome/,
+  );
+});
+
+test("private route telemetry aggregates bounded guard outcomes without per-call growth", () => {
+  const events = createPrivateProfileEventCollector();
+  for (let index = 0; index < 250_000; index += 1) {
+    events.observer("math.aggregate.v1", "strict-float-region", "guarded-fast", null);
+  }
+  events.observer(
+    "math.aggregate.v1",
+    "strict-float-region",
+    "guarded-fallback",
+    "sequence-element-representation-mismatch",
+  );
+  const snapshot = events.snapshot();
+  assert.equal(snapshot.count, 250_001);
+  assert.equal(snapshot.events.length, 2);
+  assert.equal(snapshot.aggregates.length, 2);
+  assert.equal(
+    snapshot.aggregates.find((event) => event.outcome === "guarded-fast").count,
+    250_000,
+  );
+  assert.equal(
+    snapshot.aggregates.find((event) => event.outcome === "guarded-fallback")
+      .rawGuardReason,
+    "sequence-element-representation-mismatch",
+  );
+  assert.throws(
+    () => events.observer("x", "y", "guarded-fallback", null),
+    /guard reason is required/,
+  );
+  assert.throws(
+    () => events.observer("x", "y", "guarded-fast", "invented"),
+    /guard reason is required/,
+  );
+  assert.throws(
+    () => events.observer("x", "y", "error", { unsafe: true }),
+    /invalid optimizer profile guard reason/,
   );
 });
 
