@@ -1,5 +1,7 @@
 import { InternalRegionPlan } from "../types";
 import { verifyScalarInternalRegionPlan } from "./scalar-plan";
+import { verifyBoundedIntegerPlan } from "./bounded-integer";
+import { verifyStrictFloatArrayPlan } from "./strict-float-array";
 
 export interface InternalPlanVerifierPlugin {
   readonly id: string;
@@ -8,6 +10,16 @@ export interface InternalPlanVerifierPlugin {
 }
 
 const plugins: readonly InternalPlanVerifierPlugin[] = Object.freeze([
+  Object.freeze({
+    id: "verify.bounded-integer-plan.v1",
+    internalKinds: Object.freeze(["bounded-integer-region"]),
+    verify: verifyBoundedIntegerPlan,
+  }),
+  Object.freeze({
+    id: "verify.strict-float-array-plan.v1",
+    internalKinds: Object.freeze(["strict-float-array-region"]),
+    verify: verifyStrictFloatArrayPlan,
+  }),
   Object.freeze({
     id: "verify.scalar-plan.v1",
     internalKinds: Object.freeze([

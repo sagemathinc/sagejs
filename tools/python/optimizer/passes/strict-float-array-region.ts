@@ -43,6 +43,7 @@ export const strictFloatArrayRegionPass: OptimizationPass = {
     "lexical-binding", "structured-effects", "float-annotation-hint",
   ],
   factsProduced: [
+    "explicit-optimization-contract", "float-annotation-hint",
     "strict-binary64", "immutable-sequence", "source-operation-order",
     "fixed-primitive-shape", "no-published-writes", "no-callback",
     "transactional-restart", "dead-store-free",

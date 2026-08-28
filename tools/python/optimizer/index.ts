@@ -13,6 +13,8 @@ export * from "./lowerings";
 export * from "./types";
 export * from "./verifier";
 export * from "./domains/ids";
+export * from "./domains/bounded-integer";
+export * from "./domains/strict-binary64-array";
 
 export function optimizePythonAst(
   compiler: any,

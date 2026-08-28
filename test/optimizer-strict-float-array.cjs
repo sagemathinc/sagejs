@@ -298,7 +298,7 @@ print(bits(fallback), type(fallback) is float)
 try:
     ordered((float(1), 'bad', float(3)), float(0), float(1))
 except Exception as error:
-    print(type(error).__name__)
+    print(isinstance(error, TypeError))
 first = float(1)
 answer, final = reverse((first, float(2), float(3)), float(0), float(1))
 print(bits(answer), final is first)
@@ -349,7 +349,7 @@ test("integrated O2 matches O0 and CPython exact binary64 bits", {
     assert.match(fast.stdout, /000000000000f87f/);
     assert.match(
       fast.stdout,
-      /True\n0000000000000840\n0000000000001840 True\nTypeError\n/,
+      /True\n0000000000000840\n0000000000001840 True\nTrue\n/,
     );
   } finally {
     await Promise.all([optimized.close(), generic.close()]);
@@ -366,13 +366,29 @@ test("integrated target code retains one ordered operation per source node", {
       ...parserOptions,
       optimization_level: "O2",
     });
-    const output = new compiler.OutputStream({
-      beautify: true,
-      python: true,
-      python_tuples: true,
+    let optimizedLoop = null;
+    walk(compiler, ast, (node) => {
+      if (
+        node instanceof compiler.AST_ForIn &&
+        node.optimization_region?.passId === STRICT_FLOAT_ARRAY_PASS
+      ) {
+        optimizedLoop = node;
+      }
     });
-    ast.print(output);
-    const javascript = output.toString();
+    assert(optimizedLoop, "expected one selected strict-float array loop");
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: true,
+      keep_docstrings: true,
+      exact_integers: true,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+    });
+    optimizedLoop.print(output);
+    const javascript = output.get();
     assert.match(javascript, /ρσ_FloatArrayElement/);
     assert.match(javascript, /Object\.getOwnPropertyDescriptor/);
     assert.match(javascript, /sequence-element-not-binary64/);

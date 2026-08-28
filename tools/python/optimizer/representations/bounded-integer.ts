@@ -1,7 +1,7 @@
 import {
   BoundedIntegerPlan,
   MAX_EXACT_NUMBER,
-} from "../domains/bounded-integer/model";
+} from "../ir/bounded-integer";
 
 export const BOUNDED_INTEGER_REPRESENTATION =
   "checked-javascript-number";

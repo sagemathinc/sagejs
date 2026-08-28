@@ -2,6 +2,8 @@ import { optimizerLoweringContract } from "./lowerings";
 import { OptimizationPass } from "./types";
 import { closedRingRegionPass } from "./passes/closed-field-region";
 import { strictFloatRegionPass } from "./passes/strict-float-region";
+import { boundedIntegerPlugin } from "./passes/bounded-integer-region";
+import { strictFloatArrayPlugin } from "./passes/strict-float-array-region";
 
 export interface OptimizerPassPlugin {
   readonly id: string;
@@ -66,6 +68,8 @@ export function createOptimizerCatalog(
 
 /** The only integration-owned composition point for optimizer plugins. */
 export const optimizerCatalog = createOptimizerCatalog([
+  boundedIntegerPlugin,
+  strictFloatArrayPlugin,
   {
     id: strictFloatRegionPass.id,
     domainId: "strict-binary64",

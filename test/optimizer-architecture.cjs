@@ -69,6 +69,8 @@ test("the immutable catalog is the only pass composition point", () => {
       plugin.claimSemantics,
     ]),
     [
+      ["bounded-exact-integer", 300, "exclusive"],
+      ["strict-binary64-array", 250, "exclusive"],
       ["strict-binary64", 200, "exclusive"],
       ["closed-ring", 100, "exclusive"],
     ],
@@ -112,34 +114,38 @@ test("diagnostic plugins may report rejected candidates without fake lowerings",
 });
 
 test("every registered lowering has one verifier and one Python emitter", () => {
-  const loweringSource = fs.readFileSync(
-    path.join(root, "lowerings.ts"),
-    "utf8",
+  const { optimizerLoweringContracts } = require(
+    "../dist/tools/python/optimizer/lowerings.js",
   );
-  const catalogSource = fs.readFileSync(path.join(root, "catalog.ts"), "utf8");
+  const { optimizerCatalog } = require(
+    "../dist/tools/python/optimizer/catalog.js",
+  );
+  const { internalPlanVerifierCatalog } = require(
+    "../dist/tools/python/optimizer/verifiers/catalog.js",
+  );
   const dispatcherSource = fs.readFileSync(
     path.join(__dirname, "../src/output/optimizer/dispatcher.py"),
     "utf8",
   );
-  const verifierCatalogSource = fs.readFileSync(
-    path.join(root, "verifiers/catalog.ts"),
-    "utf8",
-  );
-  const registered = [...loweringSource.matchAll(/\bid:\s*"(v8\.[^"]+)"/g)]
-    .map((match) => match[1]).sort();
-  const owned = [...catalogSource.matchAll(/"(v8\.[^"]+)"/g)]
-    .map((match) => match[1]).sort();
-  const emitted = [...dispatcherSource.matchAll(/^\s*"(v8\.[^"]+)":/gm)]
+  const contracts = optimizerLoweringContracts();
+  const registered = contracts.map((contract) => contract.id).sort();
+  const owned = optimizerCatalog.plugins
+    .flatMap((plugin) => plugin.loweringIds).sort();
+  const emitted = [...dispatcherSource.matchAll(/^\s*"([^"]+\.v1)":/gm)]
     .map((match) => match[1]).sort();
   assert.deepEqual(registered, [
+    "v8.bounded-integer-loop.v1",
     "v8.closed-ring-loop.v1",
+    "v8.strict-float-array-loop.v1",
     "v8.strict-float-loop.v1",
   ]);
   assert.deepEqual(owned, registered);
   assert.deepEqual(emitted, registered);
-  for (const kind of ["closed-ring-region", "strict-float-region"]) {
+  for (const { internalKind: kind } of contracts) {
     assert.equal(
-      verifierCatalogSource.match(new RegExp(`"${kind}"`, "g"))?.length,
+      internalPlanVerifierCatalog.plugins.filter((plugin) =>
+        plugin.internalKinds.includes(kind)
+      ).length,
       1,
       `${kind} must belong to exactly one verifier plugin`,
     );

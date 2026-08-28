@@ -5,7 +5,7 @@ import type {
 import {
   BoundedIntegerExecutionResult,
   BoundedIntegerPlan,
-} from "../domains/bounded-integer/model";
+} from "../ir/bounded-integer";
 import {
   boundedIntegerRepresentation,
   isBoundedExactNumber,

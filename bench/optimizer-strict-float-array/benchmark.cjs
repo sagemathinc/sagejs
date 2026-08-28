@@ -180,13 +180,29 @@ async function measureCompiler() {
         const [region] = ast.optimization_ir.regions;
         assert.equal(region.passId, STRICT_FLOAT_ARRAY_PASS);
         if (sample === 30) {
-          const output = new compiler.OutputStream({
-            beautify: false,
-            python: true,
-            python_tuples: true,
+          let optimizedLoop = null;
+          walk(compiler, ast, (node) => {
+            if (
+              node instanceof compiler.AST_ForIn &&
+              node.optimization_region?.passId === STRICT_FLOAT_ARRAY_PASS
+            ) {
+              optimizedLoop = node;
+            }
           });
-          ast.print(output);
-          emittedBytes = Buffer.byteLength(output.toString());
+          assert(optimizedLoop, "expected one selected strict-float array loop");
+          const output = new compiler.OutputStream({
+            omit_baselib: true,
+            write_name: false,
+            private_scope: false,
+            beautify: false,
+            keep_docstrings: true,
+            exact_integers: true,
+            python_tuples: true,
+            python_truthiness: true,
+            python_attributes: true,
+          });
+          optimizedLoop.print(output);
+          emittedBytes = Buffer.byteLength(output.get());
         }
       } else {
         const candidate = recognizeIsolated(
