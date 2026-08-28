@@ -147,6 +147,37 @@
       "required_checks": ["pnpm architecture:check", "pnpm test:baselib:strict", "pnpm test:native"]
     },
     {
+      "id": "optimizer-development",
+      "description": "Authenticated optimizer profiling, evidence schemas, opportunity dossiers, campaigns, and promotion validation",
+      "allowed_claims": [
+        ".agents/lanes.json",
+        "agents/compiler-development-engine-plan.md",
+        "architecture/optimizer-development/",
+        "architecture/optimizer-opportunities.json",
+        "architecture/optimizer-reason-codes.json",
+        "architecture/optimizer-workloads.json",
+        "bench/optimizer-workloads/",
+        "docs/optimizer-development/",
+        "docs/optimizer-opportunities.md",
+        "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
+        "scripts/optimizer-",
+        "src/output/codegen.py",
+        "src/output/stream.py",
+        "tools/kernel-evaluator.ts",
+        "tools/optimizer-cli.ts",
+        "tools/optimizer-development/",
+        "tools/optimizer-profiler.ts",
+        "tools/python/optimizer/profile-",
+        "tools/resources.ts",
+        "tools/runtime-bootstrap.ts"
+      ],
+      "required_checks": [
+        "pnpm build",
+        "pnpm test:compiler",
+        "pnpm architecture:check"
+      ]
+    },
+    {
       "id": "distribution",
       "description": "Native dependencies, WASM, SEA, installers, CI, and supported platforms",
       "allowed_claims": ["apps/sagejs-mobile/", "packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
