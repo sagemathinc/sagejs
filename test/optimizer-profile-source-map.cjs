@@ -13,6 +13,7 @@ const {
   authenticateOptimizerProfileMap,
   CompilerProfileMapCollector,
   semanticAstFingerprint,
+  semanticSourceFingerprint,
   validOptimizerProfileMap,
 } = require("../dist/tools/python/optimizer/profile-map.js");
 
@@ -111,6 +112,61 @@ test("semantic AST fingerprints ignore provenance without changing literals", as
     const changed = frontend.parse('def f():\n    return "a b"\n', options).body[0];
     assert.equal(semanticAstFingerprint(left), semanticAstFingerprint(moved));
     assert.notEqual(semanticAstFingerprint(left), semanticAstFingerprint(changed));
+  } finally {
+    frontend.close();
+  }
+});
+
+test("semantic source fingerprints ignore post-parse compiler metadata", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  const filename = "src/lib/profile-parser-mode.py";
+  const runtimeSource = `
+def fold(values: tuple[int, ...], modulus: int):
+    answer = 0
+    for value in reversed(values):
+        answer = (answer * 17 + value) % modulus
+    return answer
+`;
+  const baseOptions = {
+    filename,
+    import_dirs: [],
+    exact_integer_literals: true,
+    strict_python_scopes: true,
+    scoped_flags: {
+      dict_literals: true,
+      overload_getitem: true,
+      bound_methods: true,
+      sequential_definitions: true,
+    },
+    optimization_level: "O2",
+    optimization_explain: true,
+    optimization_contract_policy: "diagnose",
+  };
+  try {
+    const lint = frontend.parse(runtimeSource, {
+      ...baseOptions,
+      for_linting: true,
+      runtime_imports: false,
+    });
+    const runtime = frontend.parse(runtimeSource, {
+      ...baseOptions,
+      for_linting: false,
+      runtime_imports: true,
+    });
+    runtime.body[0].codegen_profile_marker = {
+      compilerPhase: "runtime-emission",
+      selected: true,
+    };
+    assert.notEqual(
+      semanticAstFingerprint(lint.body[0]),
+      semanticAstFingerprint(runtime.body[0]),
+      "fixture must exercise post-parse compiler metadata",
+    );
+    assert.equal(
+      semanticSourceFingerprint(lint.body[0], runtimeSource),
+      semanticSourceFingerprint(runtime.body[0], runtimeSource),
+    );
   } finally {
     frontend.close();
   }

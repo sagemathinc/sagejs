@@ -141,6 +141,45 @@ export function semanticAstFingerprint(node: unknown): string {
   return profileSemanticFingerprint(semanticAstDescriptor(node));
 }
 
+function sourceSlice(sourceText: string, range: SourceRange): string {
+  if (!Number.isSafeInteger(range.startLine) || range.startLine < 1 ||
+      !Number.isSafeInteger(range.startColumn) || range.startColumn < 0 ||
+      !Number.isSafeInteger(range.endLine) || range.endLine < range.startLine ||
+      !Number.isSafeInteger(range.endColumn) || range.endColumn < 0) {
+    throw new TypeError("semantic source fingerprint requires a valid source range");
+  }
+  const lines = sourceText.split("\n");
+  const first = range.startLine - 1;
+  const last = range.endLine - 1;
+  if (first >= lines.length || last >= lines.length) {
+    throw new RangeError("semantic source fingerprint range exceeds the source");
+  }
+  if (first === last) {
+    return (lines[first] ?? "").slice(range.startColumn, range.endColumn);
+  }
+  return [
+    (lines[first] ?? "").slice(range.startColumn),
+    ...lines.slice(first + 1, last),
+    (lines[last] ?? "").slice(0, range.endColumn),
+  ].join("\n");
+}
+
+/**
+ * Parser-mode-independent syntax identity for a compiler AST node.
+ *
+ * The enclosing source-unit identity already authenticates the complete file.
+ * Hashing the exact node slice here avoids admitting lowering-, lint-, or
+ * runtime-only AST metadata into identities that must join across compiler
+ * modes and checkout locations.
+ */
+export function semanticSourceFingerprint(node: unknown, sourceText: string): string {
+  const kind = semanticRegionKind(node);
+  return profileSemanticFingerprint({
+    kind,
+    source: sourceSlice(sourceText, sourceRange(node)),
+  });
+}
+
 /** Compiler-decision-independent syntax family for one semantic region. */
 export function semanticRegionKind(node: unknown): string {
   const name = String((node as any)?.constructor?.name ?? "");
@@ -257,7 +296,7 @@ export class CompilerProfileMapCollector {
         sourceUnitId: this.sourceIdentity.id,
         qualifiedName: "<module>",
         kind: "module",
-        semanticFingerprint: semanticAstFingerprint(node),
+        semanticFingerprint: semanticSourceFingerprint(node, this.sourceText),
         range: sourceRange(node),
         ordinal: 0,
       });
@@ -275,7 +314,7 @@ export class CompilerProfileMapCollector {
         : category;
       scopeName = nodeName(node);
       const qualifiedName = [...scopes, scopeName].join(".") || scopeName;
-      const fingerprint = semanticAstFingerprint(node);
+      const fingerprint = semanticSourceFingerprint(node, this.sourceText);
       const occurrenceKey = semanticOccurrenceKey({
         ownerId: parentFunction.id,
         qualifiedName,
@@ -297,7 +336,7 @@ export class CompilerProfileMapCollector {
       "SetComprehension", "DictComprehension", "GeneratorComprehension",
     ].includes(type)) {
       category = "loop";
-      const fingerprint = semanticAstFingerprint(node);
+      const fingerprint = semanticSourceFingerprint(node, this.sourceText);
       const regionKind = semanticRegionKind(node);
       const occurrenceKey = semanticOccurrenceKey({
         ownerId: parentFunction.id,

@@ -375,8 +375,8 @@ def outer(n: int, value: int):
       basedir: path.dirname(filename),
       libdir: path.join(root, "src", "lib"),
       import_dirs: [],
-      for_linting: true,
-      runtime_imports: false,
+      for_linting: false,
+      runtime_imports: true,
       exact_integer_literals: true,
       strict_python_scopes: true,
       scoped_flags: {

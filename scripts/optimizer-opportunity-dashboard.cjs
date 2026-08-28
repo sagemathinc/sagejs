@@ -406,7 +406,7 @@ function identityRange(region) {
 }
 
 function inventoryAst({ compiler, ast, root, filename, relativePath, source,
-  sourceUnitId, semanticAstFingerprint: astFingerprint, semanticOccurrenceKey,
+  sourceUnitId, semanticSourceFingerprint: sourceFingerprint, semanticOccurrenceKey,
   semanticRegionKind }) {
   const functions = [];
   const loops = [];
@@ -419,7 +419,7 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source,
     sourceUnitId,
     qualifiedName: "<module>",
     kind: "module",
-    semanticFingerprint: astFingerprint(ast),
+    semanticFingerprint: sourceFingerprint(ast, source),
     range: identityRange(moduleRegion),
     ordinal: 0,
   });
@@ -442,7 +442,7 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source,
       const qualifier = [...state.qualifier, name];
       const region = sourceRegion(root, value, filename);
       const kind = isMethod ? "method" : isLambda ? "lambda" : "function";
-      const fingerprint = astFingerprint(value);
+      const fingerprint = sourceFingerprint(value, source);
       const ordinalKey = semanticOccurrenceKey({
         ownerId: state.functionId ?? moduleIdentity.id,
         qualifiedName: qualifier.join("."),
@@ -496,7 +496,7 @@ function inventoryAst({ compiler, ast, root, filename, relativePath, source,
     if (isLoop) {
       const region = sourceRegion(root, value, filename);
       const kind = semanticRegionKind(value);
-      const fingerprint = astFingerprint(value);
+      const fingerprint = sourceFingerprint(value, source);
       const ordinalKey = semanticOccurrenceKey({
         ownerId: state.functionId ?? moduleIdentity.id,
         kind,
@@ -967,7 +967,7 @@ async function analyzeSources({ root = ROOT, compilerRoot = root, sources, ident
     "catalog.js",
   ));
   const {
-    semanticAstFingerprint,
+    semanticSourceFingerprint,
     semanticOccurrenceKey,
     semanticRegionKind,
   } = require(path.join(
@@ -1033,7 +1033,7 @@ async function analyzeSources({ root = ROOT, compilerRoot = root, sources, ident
           relativePath,
           source: item.source,
           sourceUnitId: sourceUnit.id,
-          semanticAstFingerprint,
+          semanticSourceFingerprint,
           semanticOccurrenceKey,
           semanticRegionKind,
         });
