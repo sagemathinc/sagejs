@@ -52,13 +52,14 @@ const staticInventory = require("./fixtures/optimizer-development/workloads/stat
 test("the workload catalog is immutable, content-addressed, and complete", () => {
   assert.equal(catalog.schema, "sagejs.optimizer-workload-catalog/v1");
   assert.match(catalog.id, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(catalog.workloads.length, 15);
+  assert.equal(catalog.workloads.length, 16);
   assert.ok(Object.isFrozen(catalog));
   assert.ok(catalog.workloads.every(Object.isFrozen));
   assert.deepEqual(
     new Set(catalog.workloads.map(workloadKey)),
     new Set([
       "bounded-integer",
+      "arrow-field",
       "binary64-nested-all",
       "fixed-extension",
       "hyperelliptic-local-reduction",
@@ -106,6 +107,19 @@ test("fact-only and candidate-target policies cannot be silently narrowed", () =
     "none-feasibility-evidence-only",
   );
   assert.deepEqual(nestedAll.targets, [
+    "generic", "library", "native", "v8", "wasm",
+  ]);
+  const arrowField = findWorkload(catalog, "arrow-field");
+  assert.equal(arrowField.class, "representative");
+  assert.equal(
+    arrowField.input.value.policy.compilerRouteClaim,
+    "none-feasibility-evidence-only",
+  );
+  assert.equal(
+    arrowField.input.value.policy.independentPositiveHeldout,
+    "public-rectangular-surface-layer-100x100-complete-call",
+  );
+  assert.deepEqual(arrowField.targets, [
     "generic", "library", "native", "v8", "wasm",
   ]);
   const negative = findWorkload(catalog, "targets");

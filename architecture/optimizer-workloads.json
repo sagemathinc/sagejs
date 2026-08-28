@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-workload-catalog/v1",
-  "id": "sha256:0a138611fe952ee65b13ebfcec5b32c01a3739a2a6bb270a777142b5589ec370",
+  "id": "sha256:488073c205afaee912bb5b5205f0befe8e31172ab282091dcb76437b7c657f6f",
   "workloads": [
     {
       "capabilities": [
@@ -255,6 +255,203 @@
         "generic"
       ],
       "title": "Packed signed-int64 container fact provider"
+    },
+    {
+      "capabilities": [
+        "binary64",
+        "optimizer-evidence",
+        "plotting",
+        "transactional-multi-output"
+      ],
+      "class": "representative",
+      "corpus": {
+        "digest": "0032fcbc69b09087971e0249c31329d37555862b66b6a4ddf200c16a85e416c4",
+        "id": "public-arrow-field-lowering"
+      },
+      "id": "sha256:4185623b431aeed626004df2db3d23033fde1dde094b426cc28f02c6f85be6c0",
+      "input": {
+        "digest": "ae0ea11f15871857886fb911cbbe15c930086b497bc4d776444dd137ebf10da8",
+        "kind": "deterministic-generator",
+        "seed": null,
+        "value": {
+          "encoding": "canonical JSON SHA-256 of complete public figures and x/y trace lists",
+          "expected": {
+            "slopeCompleteOutputDigest": "646a80f93d35d8340bdc37cb2dad5da2b95772725b03aefb42c27db3a44dc6d2",
+            "slopeTraceDigest": "3bf10438e06678ba41456995d74e46baad0ae5678968e1437b14a10097167ee6",
+            "surfaceBoundsDigest": "0cfe0ef769321c0ccc0be21b45929084083133a40e679c113d6ae252817af4f6",
+            "surfaceCompleteOutputDigest": "d5d13be0765b33d0f85daa70aa83e935be3290a9d6f1fc15b72b8d57105d4e9f",
+            "vectorCompleteOutputDigest": "4ab0419a2f23a4d957bd68f269bd48b51a5e430f071c38eac5bcedc8ca90a86c",
+            "vectorTraceDigest": "2042e501d00ce14b3dc4cfbb3841c11cc6353eddfad490e1fcc144f9b8f7f671"
+          },
+          "fixture": null,
+          "input": {
+            "heldout": {
+              "entry": "sage.plot.plot_field.plot_slope_field -> sagejs.plotting.lowering.lower_plot_spec",
+              "field": "0.0",
+              "plotPoints": [
+                100,
+                100
+              ],
+              "ranges": [
+                [
+                  -4,
+                  4
+                ],
+                [
+                  -3,
+                  3
+                ]
+              ]
+            },
+            "independentHeldout": {
+              "entry": "sagejs.plotting.surface_layers.rectangular_surface_layer -> PlotLayer.to_dict",
+              "geometry": "z = x - 2*y",
+              "plotPoints": [
+                100,
+                100
+              ],
+              "range": [
+                0,
+                1
+              ]
+            },
+            "representative": {
+              "entry": "sage.plot.plot_field.plot_vector_field -> sagejs.plotting.lowering.lower_plot_spec",
+              "field": [
+                "float(x + 0.25)",
+                "0.0"
+              ],
+              "plotPoints": [
+                100,
+                100
+              ],
+              "ranges": [
+                [
+                  -4,
+                  4
+                ],
+                [
+                  -3,
+                  3
+                ]
+              ]
+            }
+          },
+          "mode": "arrow-field",
+          "oracleContract": {
+            "slopeCompleteOutputDigest": "646a80f93d35d8340bdc37cb2dad5da2b95772725b03aefb42c27db3a44dc6d2",
+            "slopeTraceDigest": "3bf10438e06678ba41456995d74e46baad0ae5678968e1437b14a10097167ee6",
+            "surfaceBoundsDigest": "0cfe0ef769321c0ccc0be21b45929084083133a40e679c113d6ae252817af4f6",
+            "surfaceCompleteOutputDigest": "d5d13be0765b33d0f85daa70aa83e935be3290a9d6f1fc15b72b8d57105d4e9f",
+            "vectorCompleteOutputDigest": "4ab0419a2f23a4d957bd68f269bd48b51a5e430f071c38eac5bcedc8ca90a86c",
+            "vectorTraceDigest": "2042e501d00ce14b3dc4cfbb3841c11cc6353eddfad490e1fcc144f9b8f7f671"
+          },
+          "policy": {
+            "compilerRouteClaim": "none-feasibility-evidence-only",
+            "independentPositiveHeldout": "public-rectangular-surface-layer-100x100-complete-call",
+            "pairing": "repeating-AB-BA-BA-AB",
+            "positiveHeldout": "public-slope-field-100x100-complete-lowering",
+            "primary": "public-vector-field-100x100-complete-lowering"
+          },
+          "profiles": {
+            "smoke": {
+              "points": 5,
+              "samples": 1,
+              "timeout_seconds": 180,
+              "warmups": 1
+            },
+            "standard": {
+              "points": 100,
+              "samples": 11,
+              "timeout_seconds": 900,
+              "warmups": 3
+            }
+          },
+          "route": null,
+          "sourcePaths": [
+            "bench/optimizer-workloads/arrow-field.py",
+            "src/lib/sagejs/plotting/field_layers.py",
+            "src/lib/sage/plot/plot_field.py",
+            "src/lib/sagejs/plotting/lowering.py",
+            "src/lib/sagejs/plotting/surface_layers.py"
+          ]
+        }
+      },
+      "modes": [
+        "browser",
+        "python",
+        "sage"
+      ],
+      "oracles": [
+        {
+          "expectedDigest": "c409798580e3305dcbc1e09d47d4344713cf0b90977ec55cf11c7c7edfecb020",
+          "id": "cpython-complete-output",
+          "kind": "cpython",
+          "runnerPath": "bench/optimizer-workloads/arrow-field.cjs"
+        },
+        {
+          "expectedDigest": "c409798580e3305dcbc1e09d47d4344713cf0b90977ec55cf11c7c7edfecb020",
+          "id": "independent-arrow-geometry",
+          "kind": "invariant",
+          "runnerPath": "bench/optimizer-workloads/arrow-field.cjs"
+        },
+        {
+          "expectedDigest": "c409798580e3305dcbc1e09d47d4344713cf0b90977ec55cf11c7c7edfecb020",
+          "id": "sagejs-o0-complete-output",
+          "kind": "invariant",
+          "runnerPath": null
+        },
+        {
+          "expectedDigest": "c409798580e3305dcbc1e09d47d4344713cf0b90977ec55cf11c7c7edfecb020",
+          "id": "sagejs-o2-complete-output",
+          "kind": "invariant",
+          "runnerPath": null
+        }
+      ],
+      "owner": "optimizer-development",
+      "phases": [
+        {
+          "id": "heldout-slope-complete-public",
+          "label": "public plot_slope_field 100x100 construction through lower_plot_spec"
+        },
+        {
+          "id": "independent-surface-complete-public",
+          "label": "public rectangular_surface_layer 100x100 construction through PlotLayer publication"
+        },
+        {
+          "id": "representative-vector-complete-public",
+          "label": "public plot_vector_field 100x100 construction through lower_plot_spec"
+        }
+      ],
+      "platforms": [
+        "linux-arm64",
+        "linux-x64",
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "protocol": {
+        "repetitions": 11,
+        "reset": "evaluator",
+        "timeoutMilliseconds": 900000,
+        "warmupRuns": 3
+      },
+      "runner": {
+        "argv": [
+          "arrow-field"
+        ],
+        "environment": [],
+        "kind": "node-script",
+        "path": "bench/optimizer-workloads/arrow-field.cjs"
+      },
+      "schema": "sagejs.optimizer-workload/v1",
+      "targets": [
+        "generic",
+        "library",
+        "native",
+        "v8",
+        "wasm"
+      ],
+      "title": "Public vector and slope field arrow lowering"
     },
     {
       "capabilities": [
