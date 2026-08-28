@@ -177,6 +177,42 @@ test("preloaded lazy modules reject profiling before root execution", () => {
   assert.equal(result.after.repr, "5");
 });
 
+test("sealed profiles preserve a prepared missing from-list child lookup", () => {
+  const temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), "sagejs-profile-fromlist-"),
+  );
+  fs.writeFileSync(
+    path.join(temporary, "profile_fromlist_parent.py"),
+    "VALUE = 41\n",
+  );
+  const result = run({
+    action: "profile",
+    source: [
+      "import sys",
+      `sys.path.insert(0, ${JSON.stringify(temporary)})`,
+      "",
+      "def run_workload():",
+      '    module = __import__("profile_fromlist_parent",',
+      '        fromlist=["profile_fromlist_parent"])',
+      "    return module.VALUE",
+    ].join("\n"),
+    options: {
+      filename: path.join(temporary, "fromlist-profile.sage"),
+      entryPoint: "run_workload",
+      warmupRuns: 1,
+      repetitions: 2,
+      samplingIntervalMicros: 500,
+    },
+  });
+  assert.equal(result.evaluation.repr, "41");
+  assert.equal(result.observation.sampling.warmupRuns, 1);
+  assert.equal(result.observation.sampling.repetitions, 2);
+  assert.ok(result.sourceMaps.some((map) =>
+    map.source.identity.path === "<external>/profile_fromlist_parent.py"));
+  assert.ok(result.observation.artifacts.every((artifact) =>
+    !artifact.url.includes("profile_fromlist_parent.profile_fromlist_parent")));
+});
+
 test("failed imports clear the profile lifecycle and overlapping runs fail immediately", () => {
   const missing = run({
     action: "missing-then-profile",
