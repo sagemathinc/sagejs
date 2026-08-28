@@ -1,6 +1,7 @@
 from output.optimizer.scalar import (
     _print_closed_field_fallback,
-    _print_optimizer_guard_error,
+    _print_optimizer_profile_terminal,
+    _print_profiled_optimizer_guard_error,
     _print_region_declaration,
     _print_region_variable,
 )
@@ -161,6 +162,7 @@ def print_strict_float_region(self, output):
             output.assign(self.init)
             output.print(names["count"] + " - 1")
             output.end_statement()
+            _print_optimizer_profile_terminal(output, region, "guarded-fast")
 
         output.with_block(fast_path)
         output.space()
@@ -169,12 +171,27 @@ def print_strict_float_region(self, output):
 
         def fallback():
             if region.guardFailure == "error":
-                _print_optimizer_guard_error(
+                _print_profiled_optimizer_guard_error(
                     output, region, names["context"] + ".reason"
                 )
             else:
                 _print_closed_field_fallback(self, output, plan, names)
+                _print_optimizer_profile_terminal(
+                    output,
+                    region,
+                    "guarded-fallback",
+                    names["context"] + ".reason",
+                )
 
         output.with_block(fallback)
 
     output.with_block(nonempty_region)
+    if output.options.optimizer_profile_observer:
+        output.space()
+        output.print("else")
+        output.space()
+
+        def zero_trip():
+            _print_optimizer_profile_terminal(output, region, "zero-trip")
+
+        output.with_block(zero_trip)

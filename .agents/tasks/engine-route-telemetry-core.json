@@ -1,0 +1,47 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-route-telemetry-core",
+  "title": "Emit terminal optimizer route outcomes",
+  "lane": "compiler-runtime",
+  "status": "active",
+  "owner": "user",
+  "objective": "Emit exactly one authenticated terminal route outcome for scalar closed-field and strict-binary64 optimizer regions, including fast, fallback, zero-trip, and guard-error outcomes with stable reasons, outside hot loops and with unchanged production output when profiling is disabled.",
+  "base_commit": "dc4a1c6098821ea4a35bcfa5cf12a84ff847afab",
+  "claims": [
+    "src/output/optimizer/scalar.py",
+    "src/output/optimizer/strict_float.py",
+    "test/optimizer-profile-routes-core.cjs",
+    "test/fixtures/optimizer-development/profile-routes-core/"
+  ],
+  "dependencies": [
+    "engine-profiler"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "sagejs-o0",
+      "cpython"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm test:integration"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
