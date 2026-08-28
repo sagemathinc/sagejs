@@ -72,7 +72,7 @@ export function normalizedProfilePath(
   const root = resolve(repositoryRoot);
   const absolute = isAbsolute(filename) ? resolve(filename) : resolve(root, filename);
   const local = relative(root, absolute);
-  if (local === "") return ".";
+  if (local === "") return "<repository-root>";
   if (!local.startsWith("..") && !isAbsolute(local)) return slash(local);
   return `<external>/${basename(absolute)}`;
 }
@@ -127,4 +127,3 @@ function validRange(range: unknown): range is CanonicalRange {
     .every((entry) => Number.isSafeInteger(entry) && entry >= 0) &&
     item.startLine >= 1 && item.endLine >= item.startLine;
 }
-
