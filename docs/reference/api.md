@@ -8037,6 +8037,43 @@ sage: sudoku(A)[0]
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `SupersingularModule`
+
+```sage
+SupersingularModule(characteristic: Any=2, level: Any=1, base_ring: Any=None, dense_entry_limit: Any=1000000) -> Any
+```
+
+Construct the sparse level-one supersingular Brandt module.
+
+The authoritative Hecke representation is sparse. Calling `matrix()` on
+an operator is a bounded compatibility operation for small examples.
+
+```sage
+sage: S = SupersingularModule(37)
+sage: S.dimension()
+3
+sage: S.T(2) * vector(ZZ, [1, 1, 1])
+(3, 3, 3)
+```
+
+The implementation supports prime characteristic at least five,
+auxiliary level one, and good prime-index Hecke operators under an
+explicit modular-polynomial construction bound.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.ssmod.ssmod`
+- Tags: modular forms, supersingular elliptic curves, Brandt modules, Hecke operators, sparse matrices, isogeny graphs
+- Backends: Sage.js exact finite-field arithmetic, Sage.js immutable sparse Hecke operators
+- Sage compatibility: partial — Prime characteristic at least five, auxiliary level one, and good prime-index Hecke operators are supported. The Hecke operator itself is sparse; dense matrix materialization and modular-polynomial construction are explicitly bounded.
+- Limitations: Characteristics 2 and 3 are not implemented. Auxiliary levels greater than one are not implemented. Composite-index and bad-prime Hecke operators are not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath supersingular modules](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/ssmod/ssmod.html); license GPL-2.0-or-later
+- `sagejs-original` — Immutable CSR Hecke operator, mass-weighted graph view, and bounded dense compatibility layer
+
 ## `tetrahedron`
 
 ```sage
