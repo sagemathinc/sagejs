@@ -112,6 +112,17 @@ $31,389,809,2011$. Orbit disjointness, orbit-size divisibility by $120$,
 constant Hecke degree, exact mass adjointness, and pairwise commutativity are
 checked before publication.
 
+The icosian scaling corpus now has a process-cold, equal-contract Magma
+receipt. Every sample uses a fresh Sage.js process and a fresh Magma process;
+the timed cell is public module construction plus first $T_2$. At level norms
+$31,389,809,2011$, Sage.js medians are respectively $178.826$, $204.779$,
+$257.207$, and $401.616$ ms, while Magma 2.18-5 uses $580$, $620$, $630$, and
+$700$ ms. Exact agreement is basis independent: Magma's complete cuspidal
+$T_2,T_3$ characteristic polynomials equal the Sage.js ambient polynomials
+after removing the Eisenstein factors $x-5$ and $x-10$. The raw receipt binds
+both benchmark source hashes, all samples, process-tree RSS, and the exact
+source commit.
+
 Split prime-power levels now use compatible Hensel lifts of both $\omega$ and
 the quaternion splitting, together with the two-chart representation of
 $\mathbf P^1(\mathbf Z/p^e)$. Adjacent-level reduction publishes a sparse
