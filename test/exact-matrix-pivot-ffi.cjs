@@ -268,7 +268,10 @@ test("native and disabled-native paths use the same declared pivot calls", async
     };
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporaryAlias,
+        // Compile through an alias but import through the physical path. This
+        // reproduces macOS' /var -> /private/var source spelling mismatch on
+        // every platform without changing runtime source-bundle identity.
+        cwd: temporary,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_REQUIRED: "1" },
         input: sageWitness(true),
       }),
@@ -276,7 +279,7 @@ test("native and disabled-native paths use the same declared pivot calls", async
     );
     assert.equal(
       run(process.execPath, [sagejs, "--python"], {
-        cwd: temporaryAlias,
+        cwd: temporary,
         env: { ...boundaryEnvironment, SAGEJS_NATIVE_DISABLE: "1" },
         input: sageWitness(false),
       }),

@@ -6,7 +6,7 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { mkdirSync, realpathSync, statSync } from "fs";
+import { mkdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
@@ -436,21 +436,7 @@ export function runRuntimeBootstrap(
         Object.hasOwn(taskSources, filename)
       ? Reflect.get(taskSources, filename)
       : undefined;
-    const resolved = resolve(
-      typeof mapped === "string" && mapped ? mapped : filename,
-    );
-    try {
-      // Match the compiler's physical source identity.  In particular,
-      // macOS spells the same temporary file as both /var/... and
-      // /private/var/..., and users commonly import through symlinked project
-      // roots on every platform.
-      return realpathSync(resolved);
-    } catch (_error) {
-      // Embedded and virtual lazy-module paths do not necessarily exist in
-      // the host filesystem; their existing logical-source lookup remains
-      // authoritative.
-      return resolved;
-    }
+    return resolve(typeof mapped === "string" && mapped ? mapped : filename);
   };
   const usableNativeCandidate = (candidate: unknown): boolean => {
     if (typeof candidate !== "function") return false;
