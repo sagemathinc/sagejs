@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 SparseHeckeOperator: Any
+SparseCharacteristicPolynomialCertificate: Any
 SparseWiedemannCertificate: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
@@ -40,6 +41,7 @@ dimension_supersingular_module: Any
 j_invariant_unit_series: Any
 supersingular_j: Any
 sparse_wiedemann_certificate: Any
+sparse_characteristic_polynomial_certificate: Any
 finite_hecke_set: Any
 sqrt3_hecke_prime: Any
 sqrt3_prime_ideals: Any
@@ -48,6 +50,7 @@ sqrt5_prime_ideals: Any
 
 __all__ = [
     "SparseHeckeOperator",
+    "SparseCharacteristicPolynomialCertificate",
     "SparseWiedemannCertificate",
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
@@ -83,6 +86,7 @@ __all__ = [
     "j_invariant_unit_series",
     "supersingular_j",
     "sparse_wiedemann_certificate",
+    "sparse_characteristic_polynomial_certificate",
     "finite_hecke_set",
     "sqrt3_hecke_prime",
     "sqrt3_prime_ideals",
@@ -143,8 +147,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
 
         return SparseHeckeOperator
     if name in [
+        "SparseCharacteristicPolynomialCertificate",
         "SparseWiedemannCertificate",
         "berlekamp_massey",
+        "sparse_characteristic_polynomial_certificate",
         "sparse_wiedemann_certificate",
     ]:
         from . import sparse_krylov

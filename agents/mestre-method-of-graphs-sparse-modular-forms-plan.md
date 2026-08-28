@@ -29,6 +29,15 @@ mass-orthogonal cuspidal coordinates, a sparse ambient cuspidal action, and the
 mass-normalized self-adjoint adjacency operator used for spectral and
 Ramanujan checks.
 
+The sparse layer now also certifies exact integer characteristic polynomials
+without dense materialization when the modular action is cyclic. A projected
+recurrence of full degree $n$ proves that the modular minimal and
+characteristic polynomials coincide. Deterministic CRT records are accumulated
+until their product exceeds twice the rigorous $(1+\lVert T\rVert_\infty)^n$
+coefficient bound, and the complete calculation is replayable. Primes with
+eigenvalue collisions are skipped; an operator whose reductions never yield a
+full-degree recurrence fails closed rather than guessing multiplicities.
+
 The first reconstruction slice now publishes one-dimensional rational
 simultaneous eigenpackets only after exact kernel, cuspidality, primitivity,
 and commuting-Hecke scalar checks. It evaluates Mestre's identity directly as
@@ -108,13 +117,13 @@ revalidates every edge and publishes transactionally. Final Windows, Linux
 x64/ARM64, and macOS receipts remain a release-stage gate rather than an
 unverified portability claim.
 
-Optimized large-index modular-polynomial construction, scalable exact
-characteristic-polynomial certificates, higher-dimensional coefficient-field
-eigenpackets, fast large-precision Mestre evaluation, and broader
-real-quadratic arithmetic constructors remain later implementation stages in
-this plan. Phase 6's required second field, multi-component prime-power
-compatibility, degeneracy traces, and exact old/new decomposition are complete
-for the checked $\mathbf Q(\sqrt3)$ witness.
+Optimized large-index modular-polynomial construction, universal
+repeated-spectrum characteristic-polynomial recovery, higher-dimensional
+coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
+broader real-quadratic arithmetic constructors remain later implementation
+stages in this plan. Phase 6's required second field, multi-component
+prime-power compatibility, degeneracy traces, and exact old/new decomposition
+are complete for the checked $\mathbf Q(\sqrt3)$ witness.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

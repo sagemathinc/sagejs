@@ -89,3 +89,64 @@ for operation in [
     }
   },
 );
+
+test(
+  "full-degree sparse Wiedemann and CRT prove integer characteristic polynomials",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+from sagejs.modular_forms import SparseHeckeOperator
+
+rows = []
+for p in [37, 67, 389]:
+    S = SupersingularModule(p)
+    T = S.T(2)
+    certificate = T.characteristic_polynomial_certificate()
+    dense = T.matrix().charpoly()
+    assert certificate.is_exact()
+    assert certificate.verify(T)
+    assert certificate.polynomial() == dense
+    assert T.characteristic_polynomial() == dense
+    assert certificate.degree() == S.dimension()
+    assert certificate.modulus_product() > 2*certificate.coefficient_bound()
+    data = certificate.structural_data()
+    assert data["algorithm"] == "full-degree-projected-wiedemann-crt"
+    assert data["exact"]
+    assert data["matrix_vector_products"] > 0
+    assert len(data["prime_records"]) > 0
+    rows.append((p, S.dimension(), len(data["prime_records"]), certificate.verify(T)))
+
+# Repeated eigenvalues make the minimal polynomial smaller than the
+# characteristic polynomial. The full-degree proof must reject this case
+# instead of guessing multiplicities.
+identity = SparseHeckeOperator(
+    ZZ, 3, 3, [0,1,2,3], [0,1,2], [1,1,1], index=2
+)
+for operation in [
+    lambda: identity.characteristic_polynomial_certificate(max_prime_trials=2),
+    lambda: SupersingularModule(389).T(2).characteristic_polynomial_certificate(
+        max_matrix_vector_products=1
+    ),
+    lambda: SupersingularModule(37).T(2).characteristic_polynomial(
+        algorithm="dense"
+    ),
+]:
+    try:
+        operation()
+    except (ArithmeticError, MemoryError, ValueError):
+        pass
+    else:
+        raise AssertionError("an uncertified characteristic polynomial escaped")
+rows
+`);
+      assert.match(
+        result.repr,
+        /^\[\(37, 3, [1-9][0-9]*, True\), \(67, 6, [1-9][0-9]*, True\), \(389, 33, [1-9][0-9]*, True\)\]$/,
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);

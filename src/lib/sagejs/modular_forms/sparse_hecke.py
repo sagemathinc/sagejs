@@ -260,6 +260,54 @@ class SparseHeckeOperator:
 
     minpoly = minimal_polynomial
 
+    def characteristic_polynomial_certificate(
+        self,
+        *,
+        seed: Any = 0,
+        projections_per_prime: Any = 4,
+        first_prime: Any = 1000003,
+        max_prime_trials: Any = 64,
+        max_matrix_vector_products: Any = 10000000,
+    ) -> Any:
+        """Return an exact sparse CRT characteristic-polynomial certificate."""
+        from .sparse_krylov import sparse_characteristic_polynomial_certificate
+
+        return sparse_characteristic_polynomial_certificate(
+            self,
+            seed=seed,
+            projections_per_prime=projections_per_prime,
+            first_prime=first_prime,
+            max_prime_trials=max_prime_trials,
+            max_matrix_vector_products=max_matrix_vector_products,
+        )
+
+    def characteristic_polynomial(
+        self,
+        variable: str = "x",
+        *,
+        algorithm: str = "sparse-crt",
+        seed: Any = 0,
+        projections_per_prime: Any = 4,
+        first_prime: Any = 1000003,
+        max_prime_trials: Any = 64,
+        max_matrix_vector_products: Any = 10000000,
+    ) -> Any:
+        """Return the exact integer characteristic polynomial sparsely."""
+        if algorithm != "sparse-crt":
+            raise ValueError(
+                "the sparse characteristic-polynomial algorithm must be sparse-crt"
+            )
+        certificate = self.characteristic_polynomial_certificate(
+            seed=seed,
+            projections_per_prime=projections_per_prime,
+            first_prime=first_prime,
+            max_prime_trials=max_prime_trials,
+            max_matrix_vector_products=max_matrix_vector_products,
+        )
+        return certificate.polynomial(variable)
+
+    charpoly = characteristic_polynomial
+
     def row_sums(self) -> tuple[int, ...]:
         answer = []
         for row in range(self._nrows):

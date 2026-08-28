@@ -317,6 +317,292 @@ class SparseWiedemannCertificate:
     toString = __repr__
 
 
+class SparseCharacteristicPolynomialCertificate:
+    """An exact integer characteristic polynomial reconstructed sparsely.
+
+    Each modular record contains a projected Wiedemann recurrence of full
+    degree. A degree-$n$ scalar recurrence divides the operator minimal
+    polynomial, whose degree is at most $n$; it is therefore simultaneously
+    the modular minimal and characteristic polynomial. CRT reconstruction is
+    unique once the product of the recorded primes exceeds twice the rigorous
+    row-norm coefficient bound.
+    """
+
+    def __init__(
+        self,
+        dimension: int,
+        row_norm_bound: int,
+        coefficient_bound: Any,
+        modulus_product: Any,
+        coefficients: list[Any],
+        prime_records: list[Any],
+        prime_trials: int,
+        matrix_vector_products: int,
+    ) -> None:
+        self._dimension = dimension
+        self._row_norm_bound = row_norm_bound
+        self._coefficient_bound = sage.ZZ(coefficient_bound)
+        self._modulus_product = sage.ZZ(modulus_product)
+        self._coefficients = tuple(sage.ZZ(value) for value in coefficients)
+        self._prime_records = tuple(prime_records)
+        self._prime_trials = prime_trials
+        self._matrix_vector_products = matrix_vector_products
+        runtime.object.freeze(self)
+
+    def degree(self) -> int:
+        return self._dimension
+
+    def coefficients(self) -> tuple[Any, ...]:
+        return self._coefficients
+
+    def is_exact(self) -> bool:
+        return True
+
+    def polynomial(self, variable: str = "x") -> Any:
+        ring = _global("PolynomialRing")(sage.ZZ, variable)
+        return ring(list(self._coefficients))
+
+    def modulus_product(self) -> Any:
+        return self._modulus_product
+
+    def coefficient_bound(self) -> Any:
+        return self._coefficient_bound
+
+    def verify(self, operator: Any) -> bool:
+        """Replay every modular recurrence and the exact CRT reconstruction."""
+        dimension = _machine_integer(operator.nrows(), "operator dimension")
+        if dimension != self._dimension or dimension != _machine_integer(
+            operator.ncols(), "operator dimension"
+        ):
+            return False
+        row_norm = _operator_row_norm_bound(operator)
+        if row_norm != self._row_norm_bound:
+            return False
+        if sage.ZZ(1 + row_norm) ** dimension != self._coefficient_bound:
+            return False
+        residues = [0 for _index in range(dimension + 1)]
+        modulus_product = 1
+        for record in self._prime_records:
+            prime, seed, projection_count, expected = record
+            coefficients, _products = _full_degree_modular_characteristic(
+                operator,
+                int(prime),
+                int(seed),
+                int(projection_count),
+                None,
+            )
+            if coefficients is None or tuple(coefficients) != expected:
+                return False
+            residues, modulus_product = _crt_polynomial_update(
+                residues, modulus_product, coefficients, int(prime)
+            )
+        if sage.ZZ(modulus_product) != self._modulus_product:
+            return False
+        if self._modulus_product <= 2 * self._coefficient_bound:
+            return False
+        reconstructed = _symmetric_crt_coefficients(residues, modulus_product)
+        if tuple(sage.ZZ(value) for value in reconstructed) != self._coefficients:
+            return False
+        if len(self._coefficients) != dimension + 1:
+            return False
+        if self._coefficients[-1] != 1:
+            return False
+        if any(abs(value) > self._coefficient_bound for value in self._coefficients):
+            return False
+        row_sums = operator.row_sums()
+        if len(row_sums) != 0 and all(value == row_sums[0] for value in row_sums):
+            if _integer_polynomial_value(self._coefficients, row_sums[0]) != 0:
+                return False
+        return True
+
+    def structural_data(self) -> dict[str, Any]:
+        return {
+            "algorithm": "full-degree-projected-wiedemann-crt",
+            "dimension": self._dimension,
+            "row_norm_bound": self._row_norm_bound,
+            "coefficient_bound": self._coefficient_bound,
+            "modulus_product": self._modulus_product,
+            "coefficients_ascending": self._coefficients,
+            "prime_records": self._prime_records,
+            "prime_trials": self._prime_trials,
+            "matrix_vector_products": self._matrix_vector_products,
+            "exact": True,
+        }
+
+    def __repr__(self) -> str:
+        return (
+            "exact sparse characteristic-polynomial certificate of degree "
+            + str(self._dimension)
+            + " from "
+            + str(len(self._prime_records))
+            + " CRT primes"
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def _operator_row_norm_bound(operator: Any) -> int:
+    bound = 0
+    for row_index in range(operator.nrows()):
+        total = 0
+        for _column, value in operator.row(row_index):
+            total += abs(int(value))
+        bound = max(bound, total)
+    return bound
+
+
+def _integer_polynomial_value(coefficients: tuple[Any, ...], argument: int) -> Any:
+    answer = sage.ZZ(0)
+    value = sage.ZZ(argument)
+    for coefficient in reversed(coefficients):
+        answer = answer * value + coefficient
+    return answer
+
+
+def _next_word_prime(at_least: int) -> int:
+    candidate = max(3, int(at_least))
+    if candidate % 2 == 0:
+        candidate += 1
+    while candidate <= _MAX_WORD_PRIME:
+        if bool(sage.is_prime(candidate)):
+            return candidate
+        candidate += 2
+    raise MemoryError("the sparse CRT prime range was exhausted")
+
+
+def _full_degree_modular_characteristic(
+    operator: Any,
+    prime: int,
+    seed: int,
+    projection_limit: int,
+    product_limit: int | None,
+) -> tuple[list[int] | None, int]:
+    """Return the modular characteristic polynomial when full degree is proved."""
+    dimension = int(operator.nrows())
+    sequence_length = 2 * dimension + 8
+    candidate = [1]
+    products = 0
+    for projection_index in range(projection_limit):
+        if product_limit is not None and products + sequence_length > product_limit:
+            raise MemoryError("sparse characteristic-polynomial work limit exceeded")
+        left = _deterministic_vector(dimension, prime, seed, 2 * projection_index)
+        right = _deterministic_vector(dimension, prime, seed, 2 * projection_index + 1)
+        sequence = _sequence(operator, left, right, sequence_length, prime)
+        products += sequence_length
+        recurrence = list(berlekamp_massey(sequence, prime))
+        candidate = _polynomial_lcm(candidate, recurrence, prime)
+        if len(candidate) - 1 == dimension:
+            return (candidate, products)
+    return (None, products)
+
+
+def _crt_polynomial_update(
+    residues: list[int],
+    modulus_product: int,
+    coefficients: list[int],
+    prime: int,
+) -> tuple[list[int], int]:
+    if len(residues) != len(coefficients):
+        raise ValueError("CRT polynomial degrees differ")
+    inverse = pow(modulus_product % prime, prime - 2, prime)
+    answer = []
+    for index, residue in enumerate(residues):
+        correction = (coefficients[index] - residue % prime) % prime
+        answer.append(residue + modulus_product * (correction * inverse % prime))
+    return (answer, modulus_product * prime)
+
+
+def _symmetric_crt_coefficients(residues: list[int], modulus_product: int) -> list[Any]:
+    midpoint = modulus_product // 2
+    return [
+        sage.ZZ(value - modulus_product if value > midpoint else value)
+        for value in residues
+    ]
+
+
+def sparse_characteristic_polynomial_certificate(
+    operator: Any,
+    *,
+    seed: Any = 0,
+    projections_per_prime: Any = 4,
+    first_prime: Any = 1000003,
+    max_prime_trials: Any = 64,
+    max_matrix_vector_products: Any = 10000000,
+) -> SparseCharacteristicPolynomialCertificate:
+    """Return an exact integer characteristic polynomial from sparse matvecs.
+
+    A modular prime is accepted only when deterministic projected Wiedemann
+    proves a full-degree recurrence. Primes at which eigenvalues collide, or
+    projections miss a cyclic vector, are skipped. The result fails closed if
+    the explicit prime or matvec budget expires before the CRT modulus exceeds
+    twice the rigorous coefficient bound.
+    """
+    dimension = _machine_integer(operator.nrows(), "operator dimension")
+    if dimension != _machine_integer(operator.ncols(), "operator dimension"):
+        raise ValueError("a characteristic polynomial requires a square operator")
+    source_seed = _machine_integer(seed, "characteristic-polynomial seed")
+    projection_limit = _positive(projections_per_prime, "projections per CRT prime")
+    trial_limit = _positive(max_prime_trials, "CRT prime trial limit")
+    product_limit = _positive(max_matrix_vector_products, "matrix-vector product limit")
+    initial_prime = _positive(first_prime, "first CRT prime")
+    row_norm = _operator_row_norm_bound(operator)
+    coefficient_bound = sage.ZZ(1 + row_norm) ** dimension
+    if dimension == 0:
+        return SparseCharacteristicPolynomialCertificate(
+            0, row_norm, coefficient_bound, 3, [1], [], 0, 0
+        )
+
+    residues = [0 for _index in range(dimension + 1)]
+    modulus_product = 1
+    prime_records = []
+    products = 0
+    trials = 0
+    next_candidate = max(initial_prime, dimension + 2)
+    while modulus_product <= 2 * coefficient_bound and trials < trial_limit:
+        prime = _next_word_prime(next_candidate)
+        next_candidate = prime + 2
+        trial_seed = source_seed + 1000003 * trials
+        remaining_products = product_limit - products
+        if remaining_products <= 0:
+            raise MemoryError("sparse characteristic-polynomial work limit exceeded")
+        coefficients, used = _full_degree_modular_characteristic(
+            operator,
+            prime,
+            trial_seed,
+            projection_limit,
+            remaining_products,
+        )
+        products += used
+        trials += 1
+        if coefficients is None:
+            continue
+        residues, modulus_product = _crt_polynomial_update(
+            residues, modulus_product, coefficients, prime
+        )
+        prime_records.append((prime, trial_seed, projection_limit, tuple(coefficients)))
+    if modulus_product <= 2 * coefficient_bound:
+        raise ArithmeticError(
+            "full-degree modular recurrences did not provide enough CRT precision"
+        )
+    coefficients = _symmetric_crt_coefficients(residues, modulus_product)
+    certificate = SparseCharacteristicPolynomialCertificate(
+        dimension,
+        row_norm,
+        coefficient_bound,
+        modulus_product,
+        coefficients,
+        prime_records,
+        trials,
+        products,
+    )
+    if not certificate.verify(operator):
+        raise ArithmeticError(
+            "sparse characteristic-polynomial certificate failed replay"
+        )
+    return certificate
+
+
 def sparse_wiedemann_certificate(
     operator: Any,
     modulus: Any,
@@ -449,7 +735,9 @@ def sparse_wiedemann_certificate(
 
 
 __all__ = [
+    "SparseCharacteristicPolynomialCertificate",
     "SparseWiedemannCertificate",
     "berlekamp_massey",
+    "sparse_characteristic_polynomial_certificate",
     "sparse_wiedemann_certificate",
 ]
