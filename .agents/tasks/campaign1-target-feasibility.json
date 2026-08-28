@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-target-feasibility",
+  "title": "Campaign1 Target Feasibility",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Deliver a reproducible checked-in target-feasibility harness for the exact hyperelliptic bounded modular character scan, producing 11 ABBA generic/V8/Wasm measurements with exact factors, guard/copy/publication accounting, C-to-Wasm provenance, and explicit unavailability rather than skips",
+  "base_commit": "ffdd9d196c1919db6e1abfc25bdb99f474c2c4b9",
+  "claims": [
+    "bench/optimizer-workloads/modular-scan-target-feasibility.cjs",
+    "bench/optimizer-workloads/modular-scan-target.c",
+    "test/optimizer-modular-scan-target-feasibility.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "independent CPython point-count factors for p=5003,10009,20011",
+      "current generic normalization-factor differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Added an exact reviewed-phase feasibility harness for the current generic hyperelliptic normalization-factor implementation, a checked scalar V8 target, and a runtime C-to-Wasm target. The standard run emits 11 deterministic ABBA pairs per target, an independent CPython point-count oracle, differential output digests, guard/fallback/interrupt/publication audits, threshold probes, copy accounting, and source-to-Wasm compile/module/instantiate provenance. Wasm remains an explicitly inconclusive production target because its resident phase wins while its runtime Clang path loses; no production compiler route is claimed.",
+    "risks": [
+      "The integration lane must classify bench/optimizer-workloads/modular-scan-target.c as benchmark-reference in architecture/native-code.json before architecture:check can pass; that shared registry is outside this lane's claims.",
+      "The lane base predates the final hyperelliptic workload/catalog identities, so integration must rerun the standard harness after cherry-pick to bind the final workload sha256:7df121d9b9a4dfa273e93073d4484609d1fa8f3c878206711bb04ab5ea32ea5b and catalog sha256:ae1110def261664ed55b4ff13b5c0b16e4190e02938ae58629f8ae877cb41714."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane commit into integration and add the agreed benchmark-reference native-code registry entry.",
+      "Run node bench/optimizer-workloads/modular-scan-target-feasibility.cjs --output /scratch/sagejs-campaign1/evidence/target-feasibility/modular-scan-target-feasibility.integrated.json against the integrated catalog.",
+      "Assemble opportunity evidence with the adapter baseline as baselineId, feasibleLowerBound V8 as feasibleLowerBoundId, Wasm negativeTargets as an inconclusive negativeId, and the separately rerun warm public profile as attributionId."
+    ]
+  }
+}
