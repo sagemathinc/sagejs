@@ -27,14 +27,11 @@ from typing import Any, Iterable
 import sagejs as sage
 import sagejs.runtime as runtime
 
+from .finite_hecke import FiniteHeckeSet
 from .sparse_hecke import SparseHeckeOperator
 
 Matrix2 = tuple[int, int, int, int]
 ScaledQuaternion = tuple[int, int, int, int, int, int, int, int]
-
-
-def _global(name: str) -> Any:
-    return runtime.reflect.get(runtime.global_object, name)
 
 
 def _integer(value: Any, label: str) -> int:
@@ -672,12 +669,18 @@ def sqrt5_hecke_prime(index: Any) -> Qsqrt5HeckePrime:
     return _SMALL_HECKE_PRIMES[key]
 
 
-class IcosianOrbitSet:
+class IcosianOrbitSet(FiniteHeckeSet):
     r"""The compact finite set $R^\times\backslash\mathbf P^1(\mathbf F_p)$."""
 
-    def __init__(self, splitting: IcosianLocalSplitting) -> None:
+    def __init__(
+        self,
+        splitting: IcosianLocalSplitting,
+        *,
+        dense_entry_limit: Any = 1000000,
+    ) -> None:
         if not isinstance(splitting, IcosianLocalSplitting):
             raise TypeError("an IcosianLocalSplitting is required")
+        super().__init__(base_ring=sage.ZZ, dense_entry_limit=dense_entry_limit)
         self._splitting = splitting
         modulus = splitting.modulus()
         prime = splitting.rational_prime()
@@ -784,11 +787,29 @@ class IcosianOrbitSet:
     def stabilizer_orders(self) -> tuple[int, ...]:
         return tuple(120 // size for size in self._orbit_sizes)
 
-    def hecke_row(
-        self, prime: Qsqrt5HeckePrime, row: Any
-    ) -> tuple[tuple[int, int], ...]:
-        if not isinstance(prime, Qsqrt5HeckePrime):
-            raise TypeError("a Qsqrt5HeckePrime is required")
+    def mass(self, index: Any) -> Any:
+        position = _integer(index, "finite-set index")
+        if position < 0 or position >= self.cardinality():
+            raise IndexError("finite-set index is out of range")
+        return sage.QQ(1) / sage.QQ(self.stabilizer_orders()[position])
+
+    def hecke_degree(self, index: Any) -> int:
+        return sqrt5_hecke_prime(index).norm() + 1
+
+    def hecke_label(self, index: Any) -> str:
+        return "T_(" + sqrt5_hecke_prime(index).label() + ")"
+
+    def hecke_operator(self, index: Any) -> SparseHeckeOperator:
+        """Return the cached operator after canonicalizing its prime label."""
+        prime = sqrt5_hecke_prime(index)
+        if self._splitting.level().prime_ideal().contains(*prime.generator()):
+            raise NotImplementedError("Hecke operators at primes dividing the level")
+        return super().hecke_operator(prime)
+
+    T = hecke_operator
+
+    def hecke_row(self, index: Any, row: Any) -> tuple[tuple[int, int], ...]:
+        prime = sqrt5_hecke_prime(index)
         index = _integer(row, "basis index")
         if index < 0 or index >= self.cardinality():
             raise IndexError("basis index is out of range")
@@ -935,8 +956,9 @@ class HilbertModularFormsQsqrt5:
         ):
             raise ValueError("the local splitting does not belong to this level")
         self._splitting = local_splitting
-        self._finite_set = IcosianOrbitSet(self._splitting)
-        self._operators: dict[tuple[int, int], SparseHeckeOperator] = {}
+        self._finite_set = IcosianOrbitSet(
+            self._splitting, dense_entry_limit=self._dense_entry_limit
+        )
 
     def base_field(self) -> str:
         return "Q(sqrt(5))"
@@ -971,74 +993,22 @@ class HilbertModularFormsQsqrt5:
         return self._finite_set.stabilizer_orders()
 
     def mass_weights(self) -> tuple[Any, ...]:
-        return tuple(sage.QQ(1) / sage.QQ(value) for value in self.stabilizer_orders())
+        return self._finite_set.mass_weights()
 
     def eisenstein_vector(self) -> Any:
-        return _global("vector")(sage.ZZ, [1 for _ in range(self.dimension())])
+        return self._finite_set.eisenstein_vector()
 
     def mass_inner_product(self, left: Any, right: Any) -> Any:
-        left_entries = list(left)
-        right_entries = list(right)
-        if (
-            len(left_entries) != self.dimension()
-            or len(right_entries) != self.dimension()
-        ):
-            raise ValueError("mass-pairing vectors have the wrong length")
-        total = sage.QQ(0)
-        for position, mass in enumerate(self.mass_weights()):
-            total += (
-                mass
-                * sage.QQ(left_entries[position])
-                * sage.QQ(right_entries[position])
-            )
-        return total
+        return self._finite_set.mass_inner_product(left, right)
 
     def is_cuspidal(self, vector: Any) -> bool:
-        return self.mass_inner_product(vector, self.eisenstein_vector()) == 0
-
-    def _construct_operator(self, prime: Qsqrt5HeckePrime) -> None:
-        key = prime.generator()
-        if key in self._operators:
-            return
-        row_offsets = [0]
-        columns = []
-        values = []
-        for row in range(self.dimension()):
-            for column, multiplicity in self._finite_set.hecke_row(prime, row):
-                columns.append(column)
-                values.append(multiplicity)
-            row_offsets.append(len(columns))
-        operator = SparseHeckeOperator(
-            sage.ZZ,
-            self.dimension(),
-            self.dimension(),
-            row_offsets,
-            columns,
-            values,
-            index=prime,
-            name="Sparse Hilbert Hecke operator T_(" + prime.label() + ")",
-            dense_entry_limit=self._dense_entry_limit,
-        )
-        expected = tuple(prime.norm() + 1 for _ in range(self.dimension()))
-        if operator.row_sums() != expected:
-            raise ArithmeticError("Hilbert Hecke row sums are inconsistent")
-        stabilizers = self.stabilizer_orders()
-        for row in range(self.dimension()):
-            for column, multiplicity in operator.row(row):
-                opposite = int(operator[column, row])
-                if multiplicity * stabilizers[column] != opposite * stabilizers[row]:
-                    raise ArithmeticError("Hilbert Hecke mass adjointness failed")
-        for previous in self._operators.values():
-            if not operator.commutes_with(previous):
-                raise ArithmeticError("good Hilbert Hecke operators do not commute")
-        self._operators[key] = operator
+        return self._finite_set.is_cuspidal(vector)
 
     def hecke_operator(self, index: Any) -> SparseHeckeOperator:
         prime = sqrt5_hecke_prime(index)
         if self._level.prime_ideal().contains(*prime.generator()):
             raise NotImplementedError("Hecke operators at primes dividing the level")
-        self._construct_operator(prime)
-        return self._operators[prime.generator()]
+        return self._finite_set.hecke_operator(prime)
 
     T = hecke_operator
 

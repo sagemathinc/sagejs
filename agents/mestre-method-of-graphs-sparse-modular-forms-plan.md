@@ -59,6 +59,17 @@ reduces to the lower one. The level-$31^2\to31$ witness has dimensions
 $18\to2$, full rank, and commutes exactly with $T_2$ and $T_3$; a deliberately
 conjugated lower splitting is rejected.
 
+The classical supersingular and icosian engines now share a reusable
+`FiniteHeckeSet` contract. Arithmetic backends provide only their exact
+cardinality, masses, Hecke degree, and sparse rows; the common publisher
+checks constant degree, mass adjointness, and pairwise commutativity before
+caching an immutable operator. The existing classical and
+$\mathbf Q(\sqrt5)$ objects are adapters over this contract, and adversarial
+backends with a wrong row degree or wrong mass adjoint are rejected. This is
+the first generalization boundary needed by Phase 6; it deliberately does not
+pretend that quaternion orders or ideal classes are already
+field-independent.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
@@ -67,8 +78,9 @@ declared stable. Optimized large-index modular-polynomial construction,
 scalable exact characteristic-polynomial certificates, higher-dimensional
 coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
 the full Hilbert old/new-space layer remain later implementation stages in
-this plan. The generic finite-Hecke-set interface and a second real quadratic
-field likewise remain to justify Phase 6.
+this plan. A second real quadratic field, including explicit quaternion
+ideal-class components and independent Magma Hilbert-form verification,
+remains to complete Phase 6.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

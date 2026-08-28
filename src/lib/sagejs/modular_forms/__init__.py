@@ -8,6 +8,7 @@ SparseHeckeOperator: Any
 SparseWiedemannCertificate: Any
 ClassicalModularPolynomial: Any
 CuspidalHeckeOperator: Any
+FiniteHeckeSet: Any
 HilbertModularFormsQsqrt5: Any
 IcosianDegeneracyMap: Any
 IcosianLocalSplitting: Any
@@ -18,6 +19,7 @@ NormalizedAdjacencyOperator: Any
 SupersingularIsogenyGraph: Any
 SupersingularEigenpacket: Any
 SupersingularModule: Any
+SupersingularFiniteHeckeSet: Any
 Qsqrt5HeckePrime: Any
 Qsqrt5PrimeIdeal: Any
 Qsqrt5PrimePowerLevel: Any
@@ -27,6 +29,7 @@ dimension_supersingular_module: Any
 j_invariant_unit_series: Any
 supersingular_j: Any
 sparse_wiedemann_certificate: Any
+finite_hecke_set: Any
 sqrt5_hecke_prime: Any
 sqrt5_prime_ideals: Any
 
@@ -35,6 +38,7 @@ __all__ = [
     "SparseWiedemannCertificate",
     "ClassicalModularPolynomial",
     "CuspidalHeckeOperator",
+    "FiniteHeckeSet",
     "HilbertModularFormsQsqrt5",
     "IcosianDegeneracyMap",
     "IcosianLocalSplitting",
@@ -45,6 +49,7 @@ __all__ = [
     "SupersingularIsogenyGraph",
     "SupersingularEigenpacket",
     "SupersingularModule",
+    "SupersingularFiniteHeckeSet",
     "Qsqrt5HeckePrime",
     "Qsqrt5PrimeIdeal",
     "Qsqrt5PrimePowerLevel",
@@ -54,6 +59,7 @@ __all__ = [
     "j_invariant_unit_series",
     "supersingular_j",
     "sparse_wiedemann_certificate",
+    "finite_hecke_set",
     "sqrt5_hecke_prime",
     "sqrt5_prime_ideals",
 ]
@@ -64,6 +70,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
     # as a plain function.  Normalize the two otherwise equivalent call forms.
     if isinstance(runtime_name, str):
         name = runtime_name
+    if name in ["FiniteHeckeSet", "SupersingularFiniteHeckeSet", "finite_hecke_set"]:
+        from . import finite_hecke
+
+        return getattr(finite_hecke, name)
     if name in [
         "HilbertModularFormsQsqrt5",
         "IcosianDegeneracyMap",

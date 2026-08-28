@@ -160,6 +160,7 @@
     "src/lib/sagejs/hyperelliptic_curves/torsion.py",
     "src/lib/sagejs/hyperelliptic_curves/twists.py",
     "src/lib/sagejs/modular_forms/__init__.py",
+    "src/lib/sagejs/modular_forms/finite_hecke.py",
     "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",
     "src/lib/sagejs/modular_forms/modular_polynomial.py",
     "src/lib/sagejs/modular_forms/mestre.py",
