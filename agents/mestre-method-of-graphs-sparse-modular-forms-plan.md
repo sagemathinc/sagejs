@@ -38,6 +38,20 @@ coefficient bound, and the complete calculation is replayable. Primes with
 eigenvalue collisions are skipped; an operator whose reductions never yield a
 full-degree recurrence fails closed rather than guessing multiplicities.
 
+Higher-dimensional classical packets are now reconstructed over exact number
+fields.  An irreducible simple factor of a cuspidal $T_\ell$ characteristic
+polynomial defines its coefficient field; ordinary exact Gaussian elimination
+finds the one-dimensional Hecke line, and further commuting operators prove
+the simultaneous eigenvalues.  Weight-two multiplicativity and prime-power
+recurrences then produce the characteristic-zero $q$-expansion.  At level
+$67$, both quadratic packets agree coefficient-for-coefficient through
+$q^{11}$ with pinned LMFDB data.  For both roots of each coefficient-field
+polynomial modulo $67$, independent evaluation of Mestre's identity over
+$\operatorname{GF}(67^2)$ agrees with reduction of every characteristic-zero
+coefficient.  Magma's Gram/theta and neighboring-ideal Brandt modes
+independently reproduce the first packet's $T_2,T_3,T_5,T_7,T_{11}$
+eigenvalues.
+
 The first reconstruction slice now publishes one-dimensional rational
 simultaneous eigenpackets only after exact kernel, cuspidality, primitivity,
 and commuting-Hecke scalar checks. It evaluates Mestre's identity directly as
@@ -118,10 +132,9 @@ x64/ARM64, and macOS receipts remain a release-stage gate rather than an
 unverified portability claim.
 
 Optimized large-index modular-polynomial construction, universal
-repeated-spectrum characteristic-polynomial recovery, higher-dimensional
-coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
-broader real-quadratic arithmetic constructors remain later implementation
-stages in this plan. Phase 6's required second field, multi-component
+repeated-spectrum characteristic-polynomial recovery, fast large-precision
+Mestre evaluation, and broader real-quadratic arithmetic constructors remain
+later implementation stages in this plan. Phase 6's required second field, multi-component
 prime-power compatibility, degeneracy traces, and exact old/new decomposition
 are complete for the checked $\mathbf Q(\sqrt3)$ witness.
 

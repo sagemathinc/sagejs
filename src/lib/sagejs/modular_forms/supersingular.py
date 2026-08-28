@@ -1216,6 +1216,25 @@ class SupersingularModule:
         eigenvalues.sort()
         return SupersingularEigenpacket(self, vector, eigenvalues)
 
+    def algebraic_eigenpacket(
+        self,
+        factor: Any,
+        *,
+        index: Any = 2,
+        check_primes: Any = (3, 5),
+        field_name: str = "a",
+    ) -> Any:
+        """Return a proved simple eigenpacket over an exact number field."""
+        from .mestre import algebraic_supersingular_eigenpacket
+
+        return algebraic_supersingular_eigenpacket(
+            self,
+            factor,
+            index=index,
+            check_primes=check_primes,
+            field_name=field_name,
+        )
+
     def __repr__(self) -> str:
         return (
             "Module of supersingular points on X_0("

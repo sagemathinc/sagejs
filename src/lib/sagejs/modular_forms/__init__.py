@@ -7,6 +7,8 @@ from typing import Any
 SparseHeckeOperator: Any
 SparseCharacteristicPolynomialCertificate: Any
 SparseWiedemannCertificate: Any
+AlgebraicHeckeQExpansion: Any
+AlgebraicSupersingularEigenpacket: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
@@ -42,6 +44,7 @@ j_invariant_unit_series: Any
 supersingular_j: Any
 sparse_wiedemann_certificate: Any
 sparse_characteristic_polynomial_certificate: Any
+algebraic_supersingular_eigenpacket: Any
 finite_hecke_set: Any
 sqrt3_hecke_prime: Any
 sqrt3_prime_ideals: Any
@@ -52,6 +55,8 @@ __all__ = [
     "SparseHeckeOperator",
     "SparseCharacteristicPolynomialCertificate",
     "SparseWiedemannCertificate",
+    "AlgebraicHeckeQExpansion",
+    "AlgebraicSupersingularEigenpacket",
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
@@ -87,6 +92,7 @@ __all__ = [
     "supersingular_j",
     "sparse_wiedemann_certificate",
     "sparse_characteristic_polynomial_certificate",
+    "algebraic_supersingular_eigenpacket",
     "finite_hecke_set",
     "sqrt3_hecke_prime",
     "sqrt3_prime_ideals",
@@ -156,7 +162,13 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import sparse_krylov
 
         return getattr(sparse_krylov, name)
-    if name in ["MestreQExpansion", "SupersingularEigenpacket"]:
+    if name in [
+        "AlgebraicHeckeQExpansion",
+        "AlgebraicSupersingularEigenpacket",
+        "MestreQExpansion",
+        "SupersingularEigenpacket",
+        "algebraic_supersingular_eigenpacket",
+    ]:
         from . import mestre
 
         return getattr(mestre, name)
