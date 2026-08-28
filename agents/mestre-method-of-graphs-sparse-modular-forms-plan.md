@@ -2,7 +2,9 @@
 
 ## Status
 
-Implementation phases 0--6 are complete; release validation is active. The
+Implementation phases 0--6 are complete, and the combined Linux x64 source
+freeze is validated. The GitHub platform matrix remains the final release
+gate. The
 first classical vertical slice provides a public, lazily loaded
 `SupersingularModule(p)` for primes $p \geq 5$, exact
 $T_2$ discovery over $\operatorname{GF}(p^2)$, an immutable sparse operator,
@@ -181,11 +183,13 @@ revalidates every edge and publishes transactionally. Final Windows, Linux
 x64/ARM64, and macOS receipts remain a release-stage gate rather than an
 unverified portability claim.
 
-The combined Linux x64 freeze at source commit `53ff71b9` passes the exact
-native and native-disabled Mestre suites ($28/28$ each), strict Python
-($254$ modules, zero errors), architecture and Wasm audits, a seven-stage
-production build with $35$ kernel families, all $77$ unit files, all $66$
-portable files, and $46$ executable documentation examples. The broad native
+The combined Linux x64 freeze at source commit `348c8cbb` passes the exact
+native and native-disabled Mestre suites ($24/24$ each), strict Python
+($257$ modules, zero errors), architecture and Wasm audits ($51$ registered
+kernel families, $1147$ classified native boundaries, and $1021$ reviewed
+Wasm capabilities), a seven-stage production build with $37$ published kernel
+families, all $84$ unit files, all $73$ portable files, and $46$ executable
+documentation examples. The broad native
 repository gate passes dependency builds, FLINT/FFLAS/graph/M4RI, production
 autoload, FFI, lifecycle fuzzing, sanitizers, and finite/integer matrix
 budgets, then reproduces an unrelated existing dense-rational performance

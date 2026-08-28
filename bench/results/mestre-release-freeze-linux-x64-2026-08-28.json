@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.mestre-release-freeze/v1",
-  "recorded_at": "2026-08-28T07:30:00Z",
-  "source_commit": "53ff71b9f306627d74c5191d53bafe955dc85728",
+  "recorded_at": "2026-08-28T08:08:42Z",
+  "source_commit": "348c8cbb5c6de1db2803acc439e51ac40b8ce15d",
   "host": {
     "platform": "linux",
     "arch": "x64",
@@ -9,13 +9,13 @@
     "model": "AMD EPYC 7B13"
   },
   "gates": {
-    "focused_native": {"status": "pass", "tests": 28},
-    "focused_dynamic": {"status": "pass", "tests": 28, "environment": "SAGEJS_NATIVE_DISABLE=1"},
-    "strict_python": {"status": "pass", "modules": 254, "errors": 0},
-    "architecture": {"status": "pass", "native_boundaries": 1134, "wasm_capabilities": 1008},
-    "production_build": {"status": "pass", "stages": 7, "kernel_families": 35, "build_receipt_sha256": "8d44f52313253e87e5343922773f7c904030cd6bfa92b5b19397dc6a7ef29630"},
-    "unit": {"status": "pass", "files": 77},
-    "portable": {"status": "pass", "files": 66},
+    "focused_native": {"status": "pass", "tests": 24},
+    "focused_dynamic": {"status": "pass", "tests": 24, "environment": "SAGEJS_NATIVE_DISABLE=1"},
+    "strict_python": {"status": "pass", "modules": 257, "errors": 0},
+    "architecture": {"status": "pass", "kernel_families": 51, "native_boundaries": 1147, "wasm_capabilities": 1021},
+    "production_build": {"status": "pass", "stages": 7, "kernel_families": 37, "build_receipt_sha256": "42b040e7e0481fd47f60263f9e1b3704dc316526ca62d1e80ef20cb9837ccecf"},
+    "unit": {"status": "pass", "files": 84},
+    "portable": {"status": "pass", "files": 73},
     "documentation_examples": {"status": "pass", "examples": 46, "documents": 4},
     "native_repository": {
       "status": "fail-unrelated",
