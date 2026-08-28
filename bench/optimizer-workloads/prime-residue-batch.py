@@ -14,3 +14,14 @@ def prime_residue_batch_control(count, values):
     for index in range(count):
         output[index] = values[index] * 37 + 19
     return output
+
+
+def __profile_run__():
+    parent = Zmod(1009)
+    values = tuple(
+        parent((index * index + 3 * index - 7) % 1009) for index in range(10_000)
+    )
+    output = ()
+    for _repeat in range(50):
+        output = prime_residue_batch_control(len(values), values)
+    return sum(int(value) for value in output), int(output[0]), int(output[-1])

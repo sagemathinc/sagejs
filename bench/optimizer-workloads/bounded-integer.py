@@ -17,3 +17,10 @@ def bounded_integer_control(
     for _index in range(count):
         value = value * multiplier + increment
     return value
+
+
+def __profile_run__():
+    value = 0
+    for _repeat in range(100):
+        value = bounded_integer_control(200_000, 17, -1, 19)
+    return value

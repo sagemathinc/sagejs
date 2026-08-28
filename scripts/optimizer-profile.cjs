@@ -16,6 +16,7 @@ function usage() {
     "options:",
     "  --language python|sage       source language (default: sage)",
     "  --sampling-interval MICROS  requested Inspector interval (default: 500)",
+    "  --entry FUNCTION            call one zero-argument function after loading",
     "  --output FILE               write JSON receipt to FILE instead of stdout",
     "  --help                      show this message",
   ].join("\n");
@@ -25,6 +26,7 @@ function parseArguments(argv) {
   let language = "sage";
   let samplingIntervalMicros = 500;
   let output;
+  let entryPoint;
   let source;
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -47,6 +49,13 @@ function parseArguments(argv) {
       if (!output) throw new Error("--output requires a path");
       continue;
     }
+    if (argument === "--entry") {
+      entryPoint = argv[++index];
+      if (!entryPoint || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(entryPoint)) {
+        throw new Error("--entry requires a Python identifier");
+      }
+      continue;
+    }
     if (argument.startsWith("-")) throw new Error(`unknown option: ${argument}`);
     if (source) throw new Error("only one source file may be profiled");
     source = argument;
@@ -55,7 +64,7 @@ function parseArguments(argv) {
     throw new Error(`unsupported language: ${language}`);
   }
   if (!source) throw new Error("a source file is required");
-  return { help: false, language, samplingIntervalMicros, output, source };
+  return { help: false, language, samplingIntervalMicros, output, entryPoint, source };
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -85,7 +94,8 @@ async function main(argv = process.argv.slice(2)) {
       filename,
       language: options.language,
       samplingIntervalMicros: options.samplingIntervalMicros,
-      suppressResult: true,
+      entryPoint: options.entryPoint,
+      suppressResult: options.entryPoint === undefined,
     });
     const receipt = {
       schema: "sagejs.optimizer-profile-cli/v1",
