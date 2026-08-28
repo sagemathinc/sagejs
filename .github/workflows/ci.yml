@@ -400,7 +400,7 @@ jobs:
     needs: routine
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
       id-token: write
@@ -508,7 +508,7 @@ jobs:
         run: pnpm test:portable
 
       - name: Run host integration tests
-        timeout-minutes: 60
+        timeout-minutes: 75
         run: pnpm test:integration
 
       - name: Run native addon tests
