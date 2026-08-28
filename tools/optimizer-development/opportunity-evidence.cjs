@@ -267,16 +267,20 @@ function normalizeScope(label, value) {
 
 function normalizeProfileReferences(label, value) {
   exactKeys(label, value, [
+    "attributionId",
     "baselineId",
     "feasibleLowerBoundId",
     "negativeIds",
   ]);
+  const attributionId = contentId(`${label}.attributionId`, value.attributionId);
   const baselineId = contentId(`${label}.baselineId`, value.baselineId);
   const feasibleLowerBoundId = contentId(
     `${label}.feasibleLowerBoundId`, value.feasibleLowerBoundId,
   );
   assert(baselineId !== feasibleLowerBoundId, label,
     "baseline and feasible lower-bound profiles must be distinct");
+  assert(attributionId !== feasibleLowerBoundId, label,
+    "source attribution and feasible lower-bound profiles must be distinct");
   const negativeIds = array(`${label}.negativeIds`, value.negativeIds,
     (itemLabel, item) => contentId(itemLabel, item), {
       minimum: 1,
@@ -285,7 +289,9 @@ function normalizeProfileReferences(label, value) {
     });
   assert(!negativeIds.includes(baselineId) && !negativeIds.includes(feasibleLowerBoundId),
     label, "negative profiles must be distinct from baseline and feasible profiles");
-  return { baselineId, feasibleLowerBoundId, negativeIds };
+  assert(!negativeIds.includes(attributionId), label,
+    "negative profiles must be distinct from the source attribution profile");
+  return { attributionId, baselineId, feasibleLowerBoundId, negativeIds };
 }
 
 function normalizeNegativeEvidence(label, value) {
@@ -702,11 +708,12 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   "does not bind the exact reviewed composite scope");
 
   const referencedIds = [
+    normalized.profiles.attributionId,
     normalized.profiles.baselineId,
     normalized.profiles.feasibleLowerBoundId,
     ...normalized.profiles.negativeIds,
   ];
-  const referenced = referencedIds.map((id) => {
+  const referenced = [...new Set(referencedIds)].map((id) => {
     const profile = profilesById.get(id);
     assert(profile, "opportunity evidence.profiles", `missing validated profile ${id}`);
     assert(compilerImplementationsCompatible(profile.compiler, normalized.compiler),
@@ -715,17 +722,18 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
     exactProfileOutput(`profile ${id}`, profile, workload);
     return profile;
   });
-  const baseline = referenced[0];
-  const feasible = referenced[1];
-  assert(profileContainsSource(baseline, normalized.source),
-    `profile ${baseline.id}.sourceBundle`,
+  const attribution = profilesById.get(normalized.profiles.attributionId);
+  const baseline = profilesById.get(normalized.profiles.baselineId);
+  const feasible = profilesById.get(normalized.profiles.feasibleLowerBoundId);
+  assert(profileContainsSource(attribution, normalized.source),
+    `profile ${attribution.id}.sourceBundle`,
     "does not contain the exact reviewed source unit");
-  requireWarmSealedBaseline(baseline);
-  assert(sameHostAndMode(baseline, feasible), "opportunity evidence.profiles",
-    "baseline and feasible profiles must use the same host and language mode");
-  assert(attributedRegionTicks(baseline, scopedSources) > 0,
-    "opportunity evidence.profiles.baselineId",
-    "baseline profile has no authenticated samples for the exact region");
+  requireWarmSealedBaseline(attribution);
+  assert(attributedRegionTicks(attribution, scopedSources) > 0,
+    "opportunity evidence.profiles.attributionId",
+    "attribution profile has no authenticated samples for the exact region");
+  assert(sameHostAndEnvironment(baseline, feasible), "opportunity evidence.profiles",
+    "paired baseline and feasible profiles must use the same host, mode, and environment");
   assert(!carriesCompilerRoute(feasible, scopedSources),
     "opportunity evidence.feasibleCandidate",
     "lower-bound-only evidence must not claim an optimizer-selected or runtime route");
@@ -766,7 +774,10 @@ function validateOpportunityEvidence(value, context, adapter = context?.adapter 
   }
   assert(normalized.classification.profileIds.includes(baseline.id),
     "opportunity evidence.classification.profileIds",
-    "must cite the authenticated baseline attribution profile");
+    "must cite the paired baseline timing profile");
+  assert(normalized.classification.profileIds.includes(attribution.id),
+    "opportunity evidence.classification.profileIds",
+    "must cite the authenticated source attribution profile");
   assert(normalized.negativeEvidence.length === normalized.profiles.negativeIds.length,
     "opportunity evidence.negativeEvidence",
     "must preserve every declared negative profile exactly once");
