@@ -17,6 +17,30 @@ representation, and operator identities at entry, performs the loop using
 unboxed JavaScript numbers, then materializes the public result. If any guard
 fails, it executes the original loop.
 
+For exploratory code that fallback is convenient. For code whose running time
+matters, make the optimization an explicit compiler contract:
+
+```python
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.closed-ring-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
+def recurrence(count, value, multiplier, increment):
+    for step in range(count):
+        value = value*multiplier + increment
+    return value
+```
+
+This is stronger than a performance test. Compilation fails if the named pass
+cannot prove every loop, and a runtime guard mismatch raises an error with a
+stable reason instead of quietly executing the generic implementation. The
+decorator remains ordinary CPython-parseable source and does not change the
+function under CPython.
+
 ## A word-sized residue recurrence
 
 This is the smallest useful demonstration. The first call warms both the
@@ -28,6 +52,14 @@ import time
 
 R = Zmod(1009)
 
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.closed-ring-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
 def recurrence(count, value, multiplier, increment):
     for step in range(count):
         value = value*multiplier + increment
@@ -45,13 +77,13 @@ for sample in range(7):
     elapsed = time.time() - started
     print(sample, answer, elapsed, 1e9*elapsed/n, "ns/field step")
 
-print("route:", R._lastCompilerOptimizationRoute)
 ```
 
 On a warm contemporary x86-64 V8, the guarded loop has measured about
 5--10 ns per iteration. The exact number is machine-, V8-, and thermal-state
-dependent. The route should be `v8-number-residue`; `generic` means the entry
-proof did not select the optimized representation.
+dependent. `sagejs optimize explain` should report the `v8-number-residue`
+representation and V8 target. The contract prevents this example from
+silently becoming generic after a source edit.
 
 ## A general multi-state operation graph
 
@@ -65,6 +97,14 @@ import time
 R = Zmod(1009)
 values = tuple(R(i^2 + 3) for i in range(1_000_000))
 
+from sagejs.compiler import optimize
+
+@optimize(
+    require="math.closed-ring-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
 def checksum(values, left, right, pivot):
     for value in values:
         square = value*value
@@ -83,7 +123,6 @@ for sample in range(5):
     elapsed = time.time() - started
     print(sample, answer, elapsed, 1e9*elapsed/len(values), "ns/item")
 
-print("route:", R._lastCompilerOptimizationRoute)
 ```
 
 The expected route is `v8-number-residue-stream`. Sequence elements are
@@ -104,11 +143,19 @@ P.<x> = PolynomialRing(GF(5))
 K.<a> = GF(5^3, modulus=x^3 + x + 1)
 aa = a*a
 
+from sagejs.compiler import optimize
+
 coefficients = tuple(
     K(i) + ((i + 1) % 5)*a + ((i^2 + 2) % 5)*aa
     for i in range(200_000)
 )
 
+@optimize(
+    require="math.closed-ring-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
 def horner(coefficients, point, value):
     for coefficient in coefficients:
         value = value*point + coefficient
@@ -124,7 +171,6 @@ for sample in range(5):
     elapsed = time.time() - started
     print(sample, answer, elapsed, 1e9*elapsed/len(coefficients), "ns/item")
 
-print("route:", K._lastCompilerOptimizationRoute)
 ```
 
 The expected route is `v8-extension-tuple-stream`. Degree, characteristic,
@@ -146,7 +192,14 @@ Save this as `strict-float.py`:
 
 ```python
 import time
+from sagejs.compiler import optimize
 
+@optimize(
+    require="math.strict-float-region.v1",
+    coverage="all-loops",
+    target="v8",
+    guard_failure="error",
+)
 def recurrence(n: int, x: float, a: float, b: float) -> float:
     for index in range(n):
         x = x*a + b
@@ -221,8 +274,27 @@ report the median.
 
 ## Ask the compiler what it proved
 
-Put a snippet in `a.py`, then compile it in Sage mode with the deterministic
-optimizer explanation enabled:
+Put contracted code in `a.py` or `a.sage`. Checking does not execute the file:
+
+```sh
+sagejs optimize check --function recurrence a.py
+sagejs optimize explain --function recurrence a.py
+sagejs optimize explain --json --function recurrence a.py
+```
+
+Use the JSON form in automated tooling. It is a detached, verified compiler
+report containing the contract, region identity, mathematical domain,
+representation, target, guards, fallback, competing targets, cost estimates,
+and stable rejection reasons. `check` exits unsuccessfully if an import-proven
+contract is absent or unsatisfied. This makes it suitable for CI and for an
+agent deciding whether a source change preserved a promised fast path.
+
+The file suffix selects the language: `.py` means Python mode and `.sage`
+means Sage mode. Use `--sage` or `--python` to override that choice. Standard
+input is also accepted, with `--stdin-filename` providing its logical name.
+
+For lower-level compiler development, the older compile command exposes the
+same deterministic explanation while also writing the generated JavaScript:
 
 ```sh
 sagejs compile --sage --omit-baselib --explain-optimizations \
@@ -236,8 +308,7 @@ guards, chosen representation and target, competing targets, cost model, and
 the exact fallback. The JavaScript is written to `a.js` so it does not obscure
 the explanation.
 
-When a file is expected to contain an optimizable ring region, make absence a
-hard error instead of merely inspecting the report:
+Without a decorator, a compiler test can still require a pass globally:
 
 ```sh
 sagejs compile --sage --omit-baselib --explain-optimizations \
@@ -245,10 +316,17 @@ sagejs compile --sage --omit-baselib --explain-optimizations \
   --output a.js a.py
 ```
 
-Use `--optimization-level O0` with the first command to see the same region
-recognized but rejected with `optimization-level-too-low`. This is useful for
-distinguishing “the pass did not understand my source” from “policy disabled a
-valid optimization.”
+Use `--optimization-level O0` with `optimize explain` or the compile command to
+see the same region recognized but rejected with
+`optimization-level-too-low`. This is useful for distinguishing “the pass did
+not understand my source” from “policy disabled a valid optimization.”
+
+Every Node `SageSession.evaluate(...)` result also carries
+`result.optimization` with authority `compiler-verified-static`. The Jupyter
+kernel publishes the same report in execute-result metadata at
+`metadata.sagejs.optimization`. That static report proves what the compiler
+selected. A runtime guard can still reject particular inputs, which is why
+performance-sensitive code should normally use `guard_failure="error"`.
 
 The repository's ratcheted benchmark versions also compare generated and
 generic execution, validate independent mathematical oracles, check route and
@@ -271,6 +349,9 @@ objects, unsupported parents, oversized static programs, and changed operator
 methods remain on the original path. That refusal is a correctness feature,
 not a missed promise that arbitrary Sage code is already fast.
 
-Inspect `parent._lastCompilerOptimizationRoute` after a call when experimenting.
-Use the O0 comparison to distinguish optimizer effects from ordinary V8
-warmup, input construction, or a fast algorithm elsewhere in Sage.js.
+Some parents currently expose `_lastCompilerOptimizationRoute` for interactive
+debugging. It is public mutable state and therefore **not evidence** that a
+particular function or evaluation used an optimized path. Use an import-proven
+contract plus the compiler-verified report for claims. Use the O0 comparison to
+distinguish optimizer effects from ordinary V8 warmup, input construction, or
+a fast algorithm elsewhere in Sage.js.

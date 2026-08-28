@@ -125,4 +125,19 @@ test("dedicated optimizer CLI explains and checks import-proven contracts", () =
   );
   assert.equal(rejected.status, 1);
   assert.match(rejected.stderr, /optimization contract .* was not satisfied/);
+
+  const unchecked = spawnSync(
+    process.execPath,
+    [executable, "optimize", "check"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      input: "def ordinary(value):\n    return value + 1\n",
+    },
+  );
+  assert.equal(unchecked.status, 1);
+  assert.match(
+    unchecked.stderr,
+    /optimizer check requires at least one import-proven @optimize contract/,
+  );
 });

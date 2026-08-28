@@ -126,6 +126,11 @@ export async function runOptimizerCli(
     );
     verifyOptimizationProgram(program);
     if (action === "check") {
+      if (program.contracts.length === 0) {
+        throw new Error(
+          "optimizer check requires at least one import-proven @optimize contract",
+        );
+      }
       const selected = program.regions.filter((region) => region.selected).length;
       if (argv.json) {
         process.stdout.write(`${JSON.stringify({
