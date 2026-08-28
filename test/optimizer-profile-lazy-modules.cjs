@@ -196,6 +196,7 @@ test("failed imports clear the profile lifecycle and overlapping runs fail immed
 
 test("raw JavaScript in a lazy Python module is rejected without cache publication", () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-profile-raw-"));
+  fs.writeFileSync(path.join(temporary, "profile_lazy_raw.py"), "%js 40 + 2\n");
   const environment = {
     XDG_CACHE_HOME: path.join(temporary, "xdg"),
     SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: path.join(temporary, "precompiled"),
@@ -205,7 +206,7 @@ test("raw JavaScript in a lazy Python module is rejected without cache publicati
     env: { ...process.env, ...environment },
     input: JSON.stringify({
       action: "profile",
-      source: `${importPrefix()}import profile_lazy_raw`,
+      source: `import sys\nsys.path.insert(0, ${JSON.stringify(temporary)})\nimport profile_lazy_raw`,
     }),
     encoding: "utf8",
     timeout: 60_000,

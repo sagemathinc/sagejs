@@ -103,6 +103,7 @@ export interface KernelEvaluator {
       language?: SageLanguageMode;
       suppressResult?: boolean;
       samplingIntervalMicros?: number;
+      entryPoint?: string;
     },
   ): Promise<KernelProfileEvaluation>;
   complete(source: string, cursorPosition: number): KernelCompletion;
@@ -583,11 +584,13 @@ export function createKernelEvaluator({
         language = mode,
         suppressResult = false,
         samplingIntervalMicros = 500,
+        entryPoint,
       }: {
         filename?: string;
         language?: SageLanguageMode;
         suppressResult?: boolean;
         samplingIntervalMicros?: number;
+        entryPoint?: string;
       } = {},
     ): Promise<KernelProfileEvaluation> {
       assertEvaluatorNotProfileContaminated();
@@ -603,6 +606,10 @@ export function createKernelEvaluator({
       }
       optimizerProfileActive = true;
       try {
+        if (entryPoint !== undefined &&
+            !/^[A-Za-z_][A-Za-z0-9_]*$/.test(entryPoint)) {
+          throw new TypeError("optimizer profile entry point must be a Python identifier");
+        }
         const observerIdentifier = `$ρσ$optimizer_profile_${randomBytes(16).toString("hex")}`;
         const collector = new CompilerProfileMapCollector(source, filename);
         const generated = compile(source, filename, language, undefined, {
@@ -615,7 +622,10 @@ export function createKernelEvaluator({
         // A direct eval preserves JavaScript completion values while retaining
         // the private lexical observer parameter. The sourceURL makes Inspector
         // expose the exact compiler artifact, not the tiny trusted wrapper.
-        const javascript = `${generated}\n//# sourceURL=${url}\n`;
+        const invocation = entryPoint === undefined ? "" :
+          `\nρσ_resolve_callable(globalThis.__sagejs_kernel_modules__.__main__[` +
+            `${JSON.stringify(entryPoint)}])();`;
+        const javascript = `${generated}${invocation}\n//# sourceURL=${url}\n`;
         const sourceMap = collector.finish(javascript, url);
         const sourceMaps: OptimizerProfileMap[] = [sourceMap];
         const events = createPrivateProfileEventCollector();

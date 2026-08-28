@@ -16,3 +16,11 @@ def fixed_extension_control(count, parent, generator):
     for _index in range(count):
         value = value * multiplier + increment
     return value
+
+
+def __profile_run__():
+    parent = GF(5**3, "a")
+    value = parent(0)
+    for _repeat in range(1_000):
+        value = fixed_extension_control(1_000, parent, parent.gen())
+    return value
