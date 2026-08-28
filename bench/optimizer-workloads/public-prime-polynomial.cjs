@@ -200,7 +200,10 @@ async function run(context) {
       },
       counters: { boundaryCrossings: settings.samples + settings.warmups + 1, copiedBytes: 0, materializations: 2, allocations: 0 },
       resources: { liveBefore: native.resources_before, liveAfter: native.resources_after, highWater: Math.max(native.resources_before, native.resources_after) },
-      sourcePaths: ["src/lib/sagejs/kernels/polynomial/packed_prime_field.py"],
+      sourcePaths: [
+        "bench/optimizer-workloads/public-prime-polynomial.py",
+        "src/lib/sagejs/kernels/polynomial/packed_prime_field.py",
+      ],
     });
   } finally {
     rmSync(cache, { recursive: true, force: true });
