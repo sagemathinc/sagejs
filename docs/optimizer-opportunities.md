@@ -9,8 +9,8 @@ explicit control source under `bench/optimizer-workloads` at `O2` without execut
 Imports are stubbed, optimizer IR is independently verified, and every loop-bearing
 function, method, or lambda is retained with its exact source location and portable identity.
 
-Input identity: `37e327b231ac7f540cd36adc77b4dca0941f4205b3232ca59098e21c240f84b2` (493 files, 10503228 bytes).
-Analyzed source bundle: `sha256:82ec66d908941847be01987f0b1bb2f17173ca0a4167f8db1f070d596d56fba8`; compiler identity: `sha256:c679cb9a81a66f2d1cc3239ddcf460694fe8e9e4b1a1d7520e62018b930bf552`.
+Input identity: `4da132f9fdcae86b37c703c17f3ebb077195b49107886aeac0690328b57621e3` (493 files, 10503426 bytes).
+Analyzed source bundle: `sha256:107b4b4d581d43e03d6580cd0719cf5ab30239f3eac740df6ec87affdfd0f4a4`; compiler identity: `sha256:c679cb9a81a66f2d1cc3239ddcf460694fe8e9e4b1a1d7520e62018b930bf552`.
 
 Regenerate or verify it with:
 
@@ -30,10 +30,10 @@ pnpm optimizer:opportunities:query -- sha256:<digest>
 | Explicit control sources compiled | 5 / 5 |
 | Functions and methods compiled | 11464 |
 | Loop-bearing functions and methods | 3646 |
-| Loops in functions | 10275 |
+| Loops in functions | 10274 |
 | Selected optimized loops | 47 |
 | Compiler-rejected loops | 2740 |
-| Unrecognized loops | 7488 |
+| Unrecognized loops | 7487 |
 | One-reason compiler near-misses | 233 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -42,11 +42,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 69239
-- Collection-allocation sites: 8252
+- Potential object-result sites: 69236
+- Collection-allocation sites: 8251
 - Known coercion sites: 15031
 - Potential boundary-call sites: 72
-- Unresolved call sites: 34775
+- Unresolved call sites: 34774
 - Selected-target allocations: 1 known; 44 runtime-dependent
 - Selected-target representation conversions: 3 known; 45 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -115,10 +115,10 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 7488 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 6724 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 6326 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
-| `dashboard.comprehension-loop` | 3483 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
+| `dashboard.no-current-pass-claimed` | 7487 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 6723 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 6325 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.comprehension-loop` | 3482 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 2649 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2184 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 1768 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
