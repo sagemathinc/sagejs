@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-foundation",
+  "title": "Compiler-development evidence foundation",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement strict versioned evidence schemas, canonical SHA-256 identities, reason-code registry, validators, and adversarial fixtures for the compiler-development engine",
+  "base_commit": "96a2ba2877fd1554215501b111ebe4992982402c",
+  "claims": [
+    "tools/optimizer-development/common.cjs",
+    "tools/optimizer-development/identity.cjs",
+    "tools/optimizer-development/schemas.cjs",
+    "tools/optimizer-development/reason-codes.cjs",
+    "architecture/optimizer-development/",
+    "architecture/optimizer-reason-codes.json",
+    "test/optimizer-development-schemas.cjs",
+    "test/fixtures/optimizer-development/schemas/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Canonical JSON golden fixtures and adversarial mutation/stale-identity corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 352.935,
+      "started_at": "2026-08-28T07:42:18.545Z",
+      "commit": "acfa0ab784215142aba9018528277927ada09d9e",
+      "workspace_fingerprint": "03bdb0a2c5f36b2f314f6a31e110bbb9b55150d0e3e3d1cca75ee0b526aaffe0",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 20.953,
+      "started_at": "2026-08-28T07:54:15.870Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.067,
+      "started_at": "2026-08-28T07:54:45.156Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-development-schemas.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.349,
+      "started_at": "2026-08-28T07:55:13.005Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.808,
+      "started_at": "2026-08-28T07:56:34.028Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.518,
+      "started_at": "2026-08-28T07:57:02.307Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 961.383,
+      "started_at": "2026-08-28T07:57:56.476Z",
+      "commit": "cbaf499863ffd2f938b6c46fb65b57331c68cc3d",
+      "workspace_fingerprint": "39412e149e65999426d17d7a0c46c10d8c02a05793ee8351656f2ef8937a644a",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented immutable canonical JSON/SHA-256 identities, a reviewed stable reason registry, fail-closed validators and wire schemas for workloads, catalogs, profile receipts, overlays, dossiers, campaigns, and promotion receipts, evaluator telemetry trust boundaries, canonical cross-component compiler identity inputs, and golden/adversarial regression tests.",
+    "risks": [
+      "The isolated scratch worktree initially lacked generated FLINT files; after supplying the matching adapter and generated manifest, all 15 active compiler fixtures passed.",
+      "The pure JavaScript validators were exercised on linux-x64 in this lane; integration still owns the required linux-arm64, windows-x64, and macos-arm64 validation matrix.",
+      "Consumers must use canonicalCompilerIdentity instead of retaining local source, artifact, or optimizer-catalog digest projections, and promotion callers must supply the complete trusted validatedInputs context."
+    ],
+    "next_steps": [
+      "Replace dashboard, workload, and profiler compiler-identity adapters with canonicalCompilerIdentity and assert the shared implementation fields agree.",
+      "Run the portable validator suite on the required linux-arm64, windows-x64, and macos-arm64 matrix.",
+      "Require promotion integration to populate validatedInputs from already-validated receipts rather than raw candidate strings."
+    ]
+  }
+}
