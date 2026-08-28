@@ -55,20 +55,31 @@
       "commit": "9fdbd7ac4d6e7cb69a914c1ddc6703ffe6c93b5f",
       "workspace_fingerprint": "36f624708b38c3eb908080522b06d279c9d0926521fdda2a825bfb67b7ffb863",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-binary64-nested-all-workload.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 4.972,
+      "started_at": "2026-08-28T15:53:42.835Z",
+      "commit": "be5f55abdd8dd7012d8cb5ee4ca27d01e0d6a3dd",
+      "workspace_fingerprint": "8bbd46c5ca563dfa01dbf2321d192a02279f71e92b89519b62de6fc120181963",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Added the CPython-parseable binary64 grid profile source, a complete-public O2 feasibility runner, and focused tests. The runner mechanically derives the checked V8 candidate by replacing only the scalar/vector nested all(math.isfinite(...)) expressions in the exact public source; its guards authenticate builtin identities, dense list/row or fixed-pair shapes, both strict-float representations, source-order short circuit, periodic intrinsic interrupts, and one untouched dynamic fallback. It also executes a separate checked scalar float-materialization candidate as raw same-workload negative evidence. Independent CPython plus Sage.js O0/O2 and both checked targets agree on complete output digests. The report preserves raw ABBA rows, target dispositions, scalar primary/vector heldout phases, period/class-unit obligations, a non-consumable smoke policy, and the exact catalog document.",
+    "summary": "Added the CPython-parseable binary64 grid profile source, a complete-public O2 feasibility runner, and focused tests. The selected feasibility target is now an emitter-faithful anonymous V8 closure constructed from trusted runtime strict-float, interrupt, list, and tuple helpers; the exact public-source transform still replaces only the scalar/vector nested all(math.isfinite(...)) expressions. Reached-only own data-descriptor checks preserve source order, sentinel 0 takes one untouched fallback, sentinel 1 accepts, and sentinel 2 short-circuits nonfinite results. The report measures this direct target and retains both the rejected ordinary-Python checked target and checked float materialization as explicit executed losers with their prior standard report identity. Independent CPython plus Sage.js O0/O2 and all checked targets agree on complete output digests. The report preserves raw ABBA rows, exact fallback/interrupt/source-order audits, scalar primary/vector heldout phases, period/class-unit obligations, a non-consumable smoke policy, and the exact catalog document.",
     "risks": [
       "Only non-promotable smoke and a borrowed-build 3-pair probe were run in this lane; the clean integrated 3-warmup/11-pair standard receipt is still required.",
-      "The borrowed-build 400x400/100x100 3-pair probe measured 1.079x scalar and 1.098x vector median ratios; the full standard distribution must decide materiality.",
+      "The original ordinary-Python checked target was rejected by standard report sha256:a297acf1e70a1684f476020660e47603041b92e1ed43a8e14b3c5338df7b6364 at 1.0629x with two losing pairs; the new direct target still needs the clean integrated standard distribution.",
+      "The direct target's prototype checks are deliberate lower-bound scaffolding; production additionally requires unforgeable runtime list and tuple brands.",
       "The required period and class/unit neighboring workloads are explicitly not run and must be supplied before promotion.",
       "Broad build, compiler, architecture, browser, and VM gates are intentionally deferred to the integration lane because this lane borrowed the current base dist only for non-promotable smoke."
     ],
     "next_steps": [
-      "Cherry-pick this lane commit and insert workload sha256:abf5e3e0adb55ed60551d3a8c7f4c45004b6cc1b56f2efa6813de4a9a52ce169 at sorted catalog index 9, between sha256:95c54d3ec3da97334bc810a684ac85edf8f0da6cd6df1d54236d97fb48a546d5 and sha256:ac4f25a1636552870e352c39de5046ebdf2cbc058e10a5d9ad2955582ff426c0, then recompute the catalog identity.",
+      "Cherry-pick the follow-up commit; catalog insertion is now idempotent when workload sha256:abf5e3e0adb55ed60551d3a8c7f4c45004b6cc1b56f2efa6813de4a9a52ce169 is already present.",
       "Run a clean integrated build, then `node bench/optimizer-workloads/binary64-nested-all.cjs binary64-nested-all --output <receipt>` for the current-build-gated 400x400 scalar and 100x100 vector 3-warmup/11-pair report.",
-      "Assemble the report adapter's primary scalar and positive heldout vector raw pairs into exact phase receipts; preserve `phaseReceiptData.negativeTargets[0]` as the distinct successful same-workload V8 negative.",
+      "Assemble the report adapter's direct-V8 primary scalar and positive heldout vector raw pairs into exact phase receipts; preserve both `phaseReceiptData.negativeTargets` entries as the ordinary-Python and materialization losers.",
       "Profile `bench/optimizer-workloads/binary64-nested-all.py` with `--prepare __profile_prepare__ --entry __profile_run__ --warmups 3` against the exact phase envelope, then bind the static decision/region IDs in integration.",
       "Run period and class/unit neighbor receipts plus the required compiler, architecture, browser, and cross-platform gates."
     ]
