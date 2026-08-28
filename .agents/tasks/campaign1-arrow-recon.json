@@ -1,0 +1,126 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-arrow-recon",
+  "title": "Arrow segment geometry reconnaissance",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Recognize the semantic nested vector-field arrow geometry loop, emit independently verified explain-only optimizer evidence with exact proof gaps and target dispositions, and cover the production shape plus deterministic negative near-misses without adding a lowering",
+  "base_commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+  "claims": [
+    "tools/python/optimizer/domains/arrow-segment-geometry/",
+    "tools/python/optimizer/passes/arrow-segment-geometry-region.ts",
+    "test/optimizer-arrow-segment-geometry-reconnaissance.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/scratch/sagejs-campaign1/evidence/arrow-semantics-audit/558a5ed12a317ce80c0f701a047f39e5cdd9d3f633b061ccda9a27f2dc78adcb.md"
+  ],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Independent decision verifier recomputes structural IR, proof gaps, target dispositions, and stable region identity",
+      "Production field_layers.py AST plus adversarial structurally adjacent Python fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "pnpm exec tsc --noEmit",
+    "node --test test/optimizer-arrow-segment-geometry-reconnaissance.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 340.874,
+      "started_at": "2026-08-28T17:08:54.039Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "79b50dd965fc1c37aa70bce0e55b0f5c17c865ee8c1f33e16e02097047232057",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 10.001,
+      "started_at": "2026-08-28T18:07:42.258Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "7e7ec06c3f7602c96a8d9774e7736129de30bd8333009e91dd99140c69251374",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 346.775,
+      "started_at": "2026-08-28T18:08:10.946Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "7e7ec06c3f7602c96a8d9774e7736129de30bd8333009e91dd99140c69251374",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.938,
+      "started_at": "2026-08-28T18:13:58.408Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "7e7ec06c3f7602c96a8d9774e7736129de30bd8333009e91dd99140c69251374",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-arrow-segment-geometry-reconnaissance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.158,
+      "started_at": "2026-08-28T18:14:00.023Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "7e7ec06c3f7602c96a8d9774e7736129de30bd8333009e91dd99140c69251374",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.878,
+      "started_at": "2026-08-28T18:20:44.393Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "a230fb33005fbe43190c1308f72b3f389bbf3fef60607745db0dc64ecc67f2f3",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-arrow-segment-geometry-reconnaissance.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.061,
+      "started_at": "2026-08-28T18:20:45.980Z",
+      "commit": "013d8c3d9413c57d08d6f25e1dcfda1f9d54e6da",
+      "workspace_fingerprint": "a230fb33005fbe43190c1308f72b3f389bbf3fef60607745db0dc64ecc67f2f3",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added target-neutral explain-only reconnaissance for the structurally authenticated closed transactional rectangular binary64 arrow dataflow. The decision claims the complete fused outer loop, retains the exact profiled inner loop as a contained hot child, submits no lowering candidate, preserves generic execution, enumerates every audited proof gap, and independently verifies the full semantic, representation, target, cache-identity, and source-containment record. Production and renamed fixtures plus adversarial near-misses cover structural matching without function, path, application, or role-name selection.",
+    "risks": [
+      "The pass is deliberately non-executable: no runtime guard, representation proof, lowering, or optimization selection is implemented.",
+      "The standalone architecture check reaches the integration-owned optimizer dashboard and fails because the new plugin and reason codes are intentionally not registered in this narrow lane; root must regenerate and verify the dashboard after integration."
+    ],
+    "next_steps": [
+      "Import arrowSegmentGeometryReconnaissancePlugin from ./passes/arrow-segment-geometry-region in tools/python/optimizer/catalog.ts and list it after modularBatchPlugin (priority 150) and before binary64NestedAllReconnaissancePlugin (priority 145); this plugin owns priority 147 and no lowering IDs.",
+      "Register every ARROW_SEGMENT_GEOMETRY_REASONS value in architecture/optimizer-reason-codes.json, preserving alphabetical code order and classifying v8Lowering, wasmBoundary, nativeBoundary, and libraryUnavailable as target-rejection; all other values are rejection.",
+      "Regenerate the integration-owned optimizer opportunity dashboard, then run the full integrated build, compiler tests, and architecture check."
+    ]
+  }
+}
