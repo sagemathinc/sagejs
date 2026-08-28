@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/wire-definitions-v1.schema.json",
+  "$defs": {
+    "contentId": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "stableName": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z]:)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?/)(?!.*//).+$"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/contentId" }
+      }
+    },
+    "reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "detail"],
+      "properties": {
+        "code": { "$ref": "#/$defs/stableName" },
+        "detail": { "type": "object" }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startLine", "startColumn", "endLine", "endColumn"],
+      "properties": {
+        "startLine": { "type": "integer", "minimum": 1 },
+        "startColumn": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endColumn": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "range", "sourceUnitId", "functionId", "regionId"],
+      "properties": {
+        "path": { "$ref": "#/$defs/repositoryPath" },
+        "range": { "$ref": "#/$defs/range" },
+        "sourceUnitId": { "$ref": "#/$defs/contentId" },
+        "functionId": { "$ref": "#/$defs/contentId" },
+        "regionId": { "$ref": "#/$defs/contentId" }
+      }
+    },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "samples", "minimum", "median", "maximum"],
+      "properties": {
+        "unit": { "const": "microseconds" },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "minimum": { "type": "integer", "minimum": 0 },
+        "median": { "type": "number", "minimum": 0 },
+        "maximum": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "contentDocumentHeader": {
+      "type": "object",
+      "required": ["schema", "id"],
+      "properties": {
+        "schema": { "type": "string", "minLength": 1 },
+        "id": { "$ref": "#/$defs/contentId" }
+      }
+    }
+  }
+}
