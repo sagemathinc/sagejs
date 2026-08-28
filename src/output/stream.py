@@ -64,6 +64,10 @@ output_stream_defaults = {
     "ie_proof": True,
     "beautify": False,
     "source_map": None,
+    # A host-generated JavaScript lexical name, invalid as a Python binding,
+    # which is supplied only to vm.compileFunction during authenticated
+    # profiling.  Empty in every ordinary compilation path.
+    "optimizer_profile_observer": "",
     "bracketize": False,
     "semicolons": True,
     "comments": False,
@@ -408,10 +412,54 @@ class OutputStream:
     def pos(self):
         return self.current_pos
 
+    def print_optimizer_profile_event(self, region, outcome):
+        observer = self.options.optimizer_profile_observer
+        if not observer or not region:
+            return
+        self.print(observer)
+        self.print("(")
+        self.print_string(region.id)
+        self.comma()
+        self.print_string(region.kind)
+        self.comma()
+        self.print_string(outcome)
+        self.print(")")
+        self.end_statement()
+
+    def print_optimizer_profile_entry(self, node):
+        # This is deliberately outside the generated hot loop. It reports
+        # only that execution reached a compiler-selected plan. Target
+        # emitters can call `print_optimizer_profile_event` after a guard
+        # commits to record an exact fast or fallback route.
+        self.print_optimizer_profile_event(
+            node.optimization_region, "selected-static-entry"
+        )
+
     def push_node(self, node):
         self._stack.push(node)
+        source_map = self.options.source_map
+        if source_map and jstype(source_map.push) is "function":
+            source_map.push(
+                node,
+                {
+                    "line": self.current_line,
+                    "column": self.current_col,
+                    "offset": self.current_pos,
+                },
+            )
 
     def pop_node(self):
+        node = self._stack[self._stack.length - 1]
+        source_map = self.options.source_map
+        if source_map and jstype(source_map.pop) is "function":
+            source_map.pop(
+                node,
+                {
+                    "line": self.current_line,
+                    "column": self.current_col,
+                    "offset": self.current_pos,
+                },
+            )
         return self._stack.pop()
 
     def stack(self):

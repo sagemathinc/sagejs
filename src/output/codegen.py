@@ -163,17 +163,19 @@ def generate_code():
         self = this
         generator = self._codegen
         stream.push_node(self)
-        if force_parens or self.needs_parens(stream):
-            stream.with_parens(f_comments_then_generator)
+        try:
+            stream.print_optimizer_profile_entry(self)
+            if force_parens or self.needs_parens(stream):
+                stream.with_parens(f_comments_then_generator)
 
-            def f_comments_then_generator():
+                def f_comments_then_generator():
+                    self.add_comments(stream)
+                    generator(self, stream)
+            else:
                 self.add_comments(stream)
                 generator(self, stream)
-        else:
-            self.add_comments(stream)
-            generator(self, stream)
-
-        stream.pop_node()
+        finally:
+            stream.pop_node()
 
     AST_Node.prototype.print = f_print_generate
 
