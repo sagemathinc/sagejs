@@ -34,7 +34,7 @@ const {
   validateReasons,
 } = require("./reason-codes.cjs");
 
-  const SCHEMAS = deepFreeze({
+const SCHEMAS = deepFreeze({
   workload: "sagejs.optimizer-workload/v1",
   workloadCatalog: "sagejs.optimizer-workload-catalog/v1",
   profile: "sagejs.optimizer-profile-receipt/v1",
@@ -471,34 +471,44 @@ function validateProfileReceipt(value, context = {}) {
     fail(`${label}.sampling.rawProfileDigest`, "V8 CPU profiles require their raw profile digest");
   }
   const authenticatedScripts = new Map();
+  const rejectedScripts = new Set();
   for (const script of sampling.scripts) {
     for (const scriptId of script.authenticatedScriptIds) {
-      if (authenticatedScripts.has(scriptId)) {
+      if (authenticatedScripts.has(scriptId) || rejectedScripts.has(scriptId)) {
         fail(`${label}.sampling.scripts`, `scriptId ${scriptId} is authenticated by multiple sources`);
       }
       authenticatedScripts.set(scriptId, script);
     }
     for (const scriptId of script.rejectedSameUrlScriptIds) {
-      if (authenticatedScripts.has(scriptId)) {
+      if (authenticatedScripts.has(scriptId) || rejectedScripts.has(scriptId)) {
         fail(`${label}.sampling.scripts`, `scriptId ${scriptId} is both authenticated and rejected`);
       }
+      rejectedScripts.add(scriptId);
     }
   }
   for (const sample of sampling.functionSamples) {
     const script = authenticatedScripts.get(sample.generated.scriptId);
-    if (!script) {
+    if (sample.mapping.status !== "unmatched" && !script) {
       fail(`${label}.sampling.functionSamples`,
-        `scriptId ${sample.generated.scriptId} has no authenticated source bytes`);
+        `mapped scriptId ${sample.generated.scriptId} has no authenticated source bytes`);
     }
-    if (sample.generated.url !== script.url) {
+    if (rejectedScripts.has(sample.generated.scriptId) && sample.mapping.status !== "unmatched") {
+      fail(`${label}.sampling.functionSamples`,
+        `rejected scriptId ${sample.generated.scriptId} cannot carry a source mapping`);
+    }
+    if (script && sample.generated.url !== script.url) {
       fail(`${label}.sampling.functionSamples`,
         `scriptId ${sample.generated.scriptId} does not match generated URL`);
     }
   }
   for (const tick of sampling.positionTicks) {
-    if (!authenticatedScripts.has(tick.scriptId)) {
+    if (tick.mapping.status !== "unmatched" && !authenticatedScripts.has(tick.scriptId)) {
       fail(`${label}.sampling.positionTicks`,
-        `scriptId ${tick.scriptId} has no authenticated source bytes`);
+        `mapped scriptId ${tick.scriptId} has no authenticated source bytes`);
+    }
+    if (rejectedScripts.has(tick.scriptId) && tick.mapping.status !== "unmatched") {
+      fail(`${label}.sampling.positionTicks`,
+        `rejected scriptId ${tick.scriptId} cannot carry a source mapping`);
     }
   }
   exactKeys(`${label}.optimizer`, value.optimizer, ["reportDigest", "regions"]);
