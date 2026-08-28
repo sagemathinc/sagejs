@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-modular-reconnaissance",
+  "title": "Bounded modular sequence reconnaissance",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a general compiler domain recognizer that emits verified rejection IR for bounded modular sequence folds and transactional transforms, including the measured public Horner and dense antiderivative loops, without selecting or lowering any target.",
+  "base_commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+  "claims": [
+    "tools/python/optimizer/domains/modular-sequence/",
+    "tools/python/optimizer/passes/modular-sequence-region.ts",
+    "test/optimizer-modular-sequence-reconnaissance.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "Exact compiler IR source/range/rejection fixtures for the two measured public loops",
+      "No executable lowering is selected by reconnaissance"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}
