@@ -53,6 +53,45 @@ def _prime(value: Any, label: str = "rational prime") -> int:
     return answer
 
 
+def _mod_inverse(value: int, modulus: int) -> int:
+    """Return the inverse of `value` modulo an arbitrary positive modulus."""
+    old_remainder, remainder = value % modulus, modulus
+    old_coefficient, coefficient = 1, 0
+    while remainder != 0:
+        quotient = old_remainder // remainder
+        old_remainder, remainder = remainder, old_remainder - quotient * remainder
+        old_coefficient, coefficient = (
+            coefficient,
+            old_coefficient - quotient * coefficient,
+        )
+    if old_remainder != 1:
+        raise ZeroDivisionError("the residue is not invertible modulo the modulus")
+    return old_coefficient % modulus
+
+
+def _hensel_lift_root(
+    root: int,
+    prime: int,
+    exponent: int,
+    linear: int,
+    constant: int,
+) -> int:
+    """Lift a simple root of $x^2+linear*x+constant$ through $p^e$."""
+    answer = root % prime
+    modulus = prime
+    for _step in range(1, exponent):
+        value = answer * answer + linear * answer + constant
+        if value % modulus != 0:
+            raise ArithmeticError("the supplied Hensel root is inconsistent")
+        slope = (2 * answer + linear) % prime
+        correction = -(value // modulus) * _mod_inverse(slope, prime) % prime
+        answer += correction * modulus
+        modulus *= prime
+    if (answer * answer + linear * answer + constant) % modulus != 0:
+        raise ArithmeticError("Hensel lifting did not produce an exact root")
+    return answer % modulus
+
+
 def _sqrt_mod_prime(value: int, prime: int) -> int | None:
     """Return the smaller square root modulo an odd prime, or `None`."""
     residue = value % prime
@@ -125,7 +164,7 @@ def _matrix_inverse(matrix: Matrix2, modulus: int) -> Matrix2:
     determinant = (a * d - b * c) % modulus
     if determinant == 0:
         raise ZeroDivisionError("the reduced quaternion matrix is singular")
-    inverse = pow(determinant, modulus - 2, modulus)
+    inverse = _mod_inverse(determinant, modulus)
     return (
         d * inverse % modulus,
         -b * inverse % modulus,
@@ -176,6 +215,9 @@ class Qsqrt5PrimeIdeal:
     def conjugate(self) -> Qsqrt5PrimeIdeal:
         return Qsqrt5PrimeIdeal(self._prime, 1 - self._root)
 
+    def prime_power(self, exponent: Any) -> Qsqrt5PrimePowerLevel:
+        return Qsqrt5PrimePowerLevel(self, exponent)
+
     def contains(self, constant: Any, omega_coefficient: Any = 0) -> bool:
         a = _integer(constant, "constant")
         b = _integer(omega_coefficient, "omega coefficient")
@@ -207,6 +249,88 @@ class Qsqrt5PrimeIdeal:
     toString = __repr__
 
 
+class Qsqrt5PrimePowerLevel:
+    r"""A split prime-power level $\mathfrak p^e$ with a fixed Hensel lift."""
+
+    def __init__(self, prime_ideal: Qsqrt5PrimeIdeal, exponent: Any = 1) -> None:
+        if not isinstance(prime_ideal, Qsqrt5PrimeIdeal):
+            raise TypeError("a Qsqrt5PrimeIdeal is required")
+        power = _integer(exponent, "prime-power exponent")
+        if power < 1:
+            raise ValueError("prime-power exponent must be positive")
+        prime = prime_ideal.rational_prime()
+        modulus = prime**power
+        if not runtime.number.isSafeInteger(modulus):
+            raise OverflowError(
+                "the prime-power modulus exceeds exact machine integers"
+            )
+        root = _hensel_lift_root(
+            prime_ideal.omega_residue(),
+            prime,
+            power,
+            -1,
+            -1,
+        )
+        self._prime_ideal = prime_ideal
+        self._exponent = power
+        self._modulus = modulus
+        self._root = root
+        runtime.object.freeze(self)
+
+    def prime_ideal(self) -> Qsqrt5PrimeIdeal:
+        return self._prime_ideal
+
+    def rational_prime(self) -> int:
+        return self._prime_ideal.rational_prime()
+
+    def exponent(self) -> int:
+        return self._exponent
+
+    def modulus(self) -> int:
+        return self._modulus
+
+    def norm(self) -> int:
+        return self._modulus
+
+    def omega_residue(self) -> int:
+        return self._root
+
+    def lower_level(self) -> Qsqrt5PrimePowerLevel:
+        if self._exponent == 1:
+            raise ValueError("a prime level has no positive lower exponent")
+        return Qsqrt5PrimePowerLevel(self._prime_ideal, self._exponent - 1)
+
+    def contains(self, constant: Any, omega_coefficient: Any = 0) -> bool:
+        a = _integer(constant, "constant")
+        b = _integer(omega_coefficient, "omega coefficient")
+        return (a + b * self._root) % self._modulus == 0
+
+    def fingerprint(self) -> tuple[str, Any, int, int, int]:
+        return (
+            "Qsqrt5-prime-power-v1",
+            self._prime_ideal.fingerprint(),
+            self._exponent,
+            self._modulus,
+            self._root,
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Qsqrt5PrimePowerLevel)
+            and self._prime_ideal == other._prime_ideal
+            and self._exponent == other._exponent
+        )
+
+    def __hash__(self) -> int:
+        return hash((self._prime_ideal, self._exponent))
+
+    def __repr__(self) -> str:
+        return repr(self._prime_ideal) + "^" + str(self._exponent)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 def sqrt5_prime_ideals(rational_prime: Any) -> tuple[Qsqrt5PrimeIdeal, ...]:
     """Return the degree-one primes above a split or ramified prime."""
     prime = _prime(rational_prime)
@@ -226,28 +350,67 @@ def sqrt5_prime_ideals(rational_prime: Any) -> tuple[Qsqrt5PrimeIdeal, ...]:
 
 
 class IcosianLocalSplitting:
-    r"""A checked local splitting $R\to M_2(\mathbf F_p)$ at a split level."""
+    r"""A checked splitting $R\to M_2(\mathbf Z/p^e)$ at a split level."""
 
-    def __init__(self, prime_ideal: Qsqrt5PrimeIdeal) -> None:
-        if not isinstance(prime_ideal, Qsqrt5PrimeIdeal):
-            raise TypeError("a Qsqrt5PrimeIdeal is required")
-        modulus = prime_ideal.rational_prime()
-        if modulus == 2:
+    def __init__(
+        self,
+        level: Qsqrt5PrimeIdeal | Qsqrt5PrimePowerLevel,
+        *,
+        conjugator: Iterable[Any] | None = None,
+    ) -> None:
+        if isinstance(level, Qsqrt5PrimeIdeal):
+            level = Qsqrt5PrimePowerLevel(level, 1)
+        if not isinstance(level, Qsqrt5PrimePowerLevel):
+            raise TypeError("a Qsqrt5 split prime or prime-power level is required")
+        prime = level.rational_prime()
+        modulus = level.modulus()
+        if prime == 2:
             raise NotImplementedError("characteristic-two local splitting")
         image_i: Matrix2 = (0, modulus - 1, 1, 0)
         image_j: Matrix2 | None = None
-        for upper_right in range(1, modulus):
-            root = _sqrt_mod_prime(-1 - upper_right * upper_right, modulus)
+        for upper_right in range(1, prime):
+            root = _sqrt_mod_prime(-1 - upper_right * upper_right, prime)
             if root is None:
                 continue
-            diagonal = -root % modulus
+            diagonal = _hensel_lift_root(
+                -root % prime,
+                prime,
+                level.exponent(),
+                0,
+                1 + upper_right * upper_right,
+            )
             lower_left = (
-                (-1 - diagonal * diagonal) * pow(upper_right, modulus - 2, modulus)
+                (-1 - diagonal * diagonal) * _mod_inverse(upper_right, modulus)
             ) % modulus
             image_j = (diagonal, upper_right, lower_left, -diagonal % modulus)
             break
         if image_j is None:
             raise ArithmeticError("failed to construct the local quaternion splitting")
+        normalized_conjugator: Matrix2 = (1, 0, 0, 1)
+        if conjugator is not None:
+            conjugator_data = tuple(
+                _integer(value, "local conjugator entry") % modulus
+                for value in conjugator
+            )
+            if len(conjugator_data) != 4:
+                raise ValueError("a local conjugator needs four entries")
+            normalized_conjugator = (
+                conjugator_data[0],
+                conjugator_data[1],
+                conjugator_data[2],
+                conjugator_data[3],
+            )
+            inverse_conjugator = _matrix_inverse(normalized_conjugator, modulus)
+            image_i = _matrix_product(
+                _matrix_product(inverse_conjugator, image_i, modulus),
+                normalized_conjugator,
+                modulus,
+            )
+            image_j = _matrix_product(
+                _matrix_product(inverse_conjugator, image_j, modulus),
+                normalized_conjugator,
+                modulus,
+            )
         image_k = _matrix_product(image_i, image_j, modulus)
         minus_identity: Matrix2 = (modulus - 1, 0, 0, modulus - 1)
         if _matrix_product(image_i, image_i, modulus) != minus_identity:
@@ -258,8 +421,10 @@ class IcosianLocalSplitting:
             -1, image_k, modulus
         ):
             raise ArithmeticError("the local images of i and j do not anticommute")
-        self._ideal = prime_ideal
+        self._level = level
+        self._ideal = level.prime_ideal()
         self._modulus = modulus
+        self._conjugator = normalized_conjugator
         self._identity: Matrix2 = (1, 0, 0, 1)
         self._i = image_i
         self._j = image_j
@@ -269,8 +434,17 @@ class IcosianLocalSplitting:
     def prime_ideal(self) -> Qsqrt5PrimeIdeal:
         return self._ideal
 
+    def level(self) -> Qsqrt5PrimePowerLevel:
+        return self._level
+
     def modulus(self) -> int:
         return self._modulus
+
+    def rational_prime(self) -> int:
+        return self._level.rational_prime()
+
+    def exponent(self) -> int:
+        return self._level.exponent()
 
     def basis_images(self) -> tuple[Matrix2, Matrix2, Matrix2]:
         return (self._i, self._j, self._k)
@@ -288,8 +462,8 @@ class IcosianLocalSplitting:
         )
         if len(data) != 8:
             raise ValueError("a scaled quaternion needs eight integer coordinates")
-        root = self._ideal.omega_residue()
-        half = pow(2, self._modulus - 2, self._modulus)
+        root = self._level.omega_residue()
+        half = _mod_inverse(2, self._modulus)
         scalars = tuple(
             (data[index] + data[index + 1] * root) * half % self._modulus
             for index in range(0, 8, 2)
@@ -314,10 +488,40 @@ class IcosianLocalSplitting:
     def fingerprint(self) -> tuple[Any, ...]:
         return (
             "icosian-local-splitting-v1",
-            self._ideal.fingerprint(),
+            self._level.fingerprint(),
             self._i,
             self._j,
             self._k,
+        )
+
+    def lower_splitting(self) -> IcosianLocalSplitting:
+        """Reduce this exact splitting to the preceding prime-power level."""
+        lower_level = self._level.lower_level()
+        lower_modulus = lower_level.modulus()
+        lower = IcosianLocalSplitting(
+            lower_level,
+            conjugator=tuple(value % lower_modulus for value in self._conjugator),
+        )
+        if not self.reduces_to(lower):
+            raise ArithmeticError("the constructed local splittings are incompatible")
+        return lower
+
+    def reduces_to(self, lower: IcosianLocalSplitting) -> bool:
+        """Test exact adjacent-exponent compatibility, including the level."""
+        if not isinstance(lower, IcosianLocalSplitting):
+            return False
+        if self._level.exponent() != lower._level.exponent() + 1:
+            return False
+        if self._ideal != lower._ideal:
+            return False
+        modulus = lower.modulus()
+        return all(
+            tuple(value % modulus for value in high) == low
+            for high, low in zip(
+                (self._i, self._j, self._k),
+                (lower._i, lower._j, lower._k),
+                strict=True,
+            )
         )
 
 
@@ -476,6 +680,10 @@ class IcosianOrbitSet:
             raise TypeError("an IcosianLocalSplitting is required")
         self._splitting = splitting
         modulus = splitting.modulus()
+        prime = splitting.rational_prime()
+        lower_chart_size = modulus // prime
+        projective_cardinality = modulus + lower_chart_size
+        self._lower_chart_size = lower_chart_size
         identity: Matrix2 = (1, 0, 0, 1)
         generators = tuple(
             splitting.quaternion_matrix(generator)
@@ -504,10 +712,10 @@ class IcosianOrbitSet:
                 + str(len(units))
                 + ", expected 120"
             )
-        table = [-1 for _ in range(modulus + 1)]
+        table = [-1 for _ in range(projective_cardinality)]
         representatives = []
         orbit_sizes = []
-        for point in range(modulus + 1):
+        for point in range(projective_cardinality):
             if table[point] >= 0:
                 continue
             orbit_index = len(representatives)
@@ -528,19 +736,25 @@ class IcosianOrbitSet:
         self._orbit_sizes = tuple(orbit_sizes)
 
     def _coordinates(self, point: int) -> tuple[int, int]:
-        if point == 0:
-            return (0, 1)
-        return (1, point - 1)
+        if point < self._lower_chart_size:
+            return (self._splitting.rational_prime() * point, 1)
+        return (1, point - self._lower_chart_size)
 
     def _standard_index(self, first: int, second: int) -> int:
         modulus = self._splitting.modulus()
         first %= modulus
         second %= modulus
-        if first == 0:
-            if second == 0:
-                raise ArithmeticError("the zero vector has no projective class")
-            return 0
-        return 1 + second * pow(first, modulus - 2, modulus) % modulus
+        prime = self._splitting.rational_prime()
+        if first % prime != 0:
+            return (
+                self._lower_chart_size + second * _mod_inverse(first, modulus) % modulus
+            )
+        if second % prime != 0:
+            normalized = first * _mod_inverse(second, modulus) % modulus
+            if normalized % prime != 0:
+                raise ArithmeticError("projective normalization left the lower chart")
+            return normalized // prime
+        raise ArithmeticError("a nonprimitive vector has no projective class")
 
     def _act(self, point: int, matrix: Matrix2) -> int:
         first, second = self._coordinates(point)
@@ -601,19 +815,111 @@ class IcosianOrbitSet:
     toString = __repr__
 
 
+class IcosianDegeneracyMap:
+    """The checked adjacent-level reduction matrix for one splitting family."""
+
+    def __init__(
+        self,
+        domain: HilbertModularFormsQsqrt5,
+        codomain: HilbertModularFormsQsqrt5,
+    ) -> None:
+        if not domain.local_splitting().reduces_to(codomain.local_splitting()):
+            raise ValueError("degeneracy maps require compatible local splittings")
+        high_set = domain.finite_hecke_set()
+        low_set = codomain.finite_hecke_set()
+        low_modulus = codomain.level().modulus()
+        row_offsets = [0]
+        columns = []
+        values = []
+        for point in high_set.standard_representative_indices():
+            first, second = high_set._coordinates(point)
+            reduced = low_set._standard_index(first % low_modulus, second % low_modulus)
+            columns.append(low_set._table[reduced])
+            values.append(1)
+            row_offsets.append(len(columns))
+        self._domain = domain
+        self._codomain = codomain
+        self._operator = SparseHeckeOperator(
+            sage.ZZ,
+            domain.dimension(),
+            codomain.dimension(),
+            row_offsets,
+            columns,
+            values,
+            index=(domain.level(), codomain.level()),
+            name="Sparse icosian degeneracy matrix",
+            dense_entry_limit=max(
+                domain._dense_entry_limit, codomain._dense_entry_limit
+            ),
+        )
+        if self._operator.row_sums() != tuple(1 for _ in range(domain.dimension())):
+            raise ArithmeticError("a degeneracy row does not have degree one")
+
+    def domain(self) -> HilbertModularFormsQsqrt5:
+        return self._domain
+
+    def codomain(self) -> HilbertModularFormsQsqrt5:
+        return self._codomain
+
+    def sparse_operator(self) -> SparseHeckeOperator:
+        return self._operator
+
+    def matrix(self) -> Any:
+        return self._operator.matrix()
+
+    def pullback(self, vector: Any) -> Any:
+        return self._operator.apply(vector)
+
+    def pushforward(self, vector: Any) -> Any:
+        return self._operator.transpose_apply(vector)
+
+    def commutes_with_hecke(self, index: Any) -> bool:
+        high = self._domain.T(index)
+        low = self._codomain.T(index)
+        for row in range(self._domain.dimension()):
+            if high._product_row(self._operator, row) != self._operator._product_row(
+                low, row
+            ):
+                return False
+        return True
+
+    def __repr__(self) -> str:
+        return (
+            "Degeneracy map from level exponent "
+            + str(self._domain.level().exponent())
+            + " to "
+            + str(self._codomain.level().exponent())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class HilbertModularFormsQsqrt5:
     """Parallel weight $(2,2)$ icosian forms at split prime level."""
 
     def __init__(
         self,
-        level: Qsqrt5PrimeIdeal | tuple[Any, Any],
+        level: Qsqrt5PrimeIdeal
+        | Qsqrt5PrimePowerLevel
+        | tuple[Any, Any]
+        | tuple[Any, Any, Any],
         *,
         dense_entry_limit: Any = 1000000,
+        local_splitting: IcosianLocalSplitting | None = None,
     ) -> None:
         if isinstance(level, tuple) and len(level) == 2:
             level = Qsqrt5PrimeIdeal(level[0], level[1])
-        if not isinstance(level, Qsqrt5PrimeIdeal):
-            raise TypeError("level must be Qsqrt5PrimeIdeal or (prime, omega residue)")
+        elif isinstance(level, tuple) and len(level) == 3:
+            level = Qsqrt5PrimePowerLevel(
+                Qsqrt5PrimeIdeal(level[0], level[1]), level[2]
+            )
+        if isinstance(level, Qsqrt5PrimeIdeal):
+            level = Qsqrt5PrimePowerLevel(level, 1)
+        if not isinstance(level, Qsqrt5PrimePowerLevel):
+            raise TypeError(
+                "level must be a Qsqrt5 split prime power or (prime, root[, exponent])"
+            )
         if level.rational_prime() < 7:
             raise NotImplementedError("the first icosian slice uses split levels >= 7")
         limit = _integer(dense_entry_limit, "dense entry limit")
@@ -621,14 +927,21 @@ class HilbertModularFormsQsqrt5:
             raise ValueError("dense entry limit must be nonnegative")
         self._level = level
         self._dense_entry_limit = limit
-        self._splitting = IcosianLocalSplitting(level)
+        if local_splitting is None:
+            local_splitting = IcosianLocalSplitting(level)
+        if (
+            not isinstance(local_splitting, IcosianLocalSplitting)
+            or local_splitting.level() != level
+        ):
+            raise ValueError("the local splitting does not belong to this level")
+        self._splitting = local_splitting
         self._finite_set = IcosianOrbitSet(self._splitting)
         self._operators: dict[tuple[int, int], SparseHeckeOperator] = {}
 
     def base_field(self) -> str:
         return "Q(sqrt(5))"
 
-    def level(self) -> Qsqrt5PrimeIdeal:
+    def level(self) -> Qsqrt5PrimePowerLevel:
         return self._level
 
     def weight(self) -> tuple[int, int]:
@@ -644,6 +957,9 @@ class HilbertModularFormsQsqrt5:
 
     def local_splitting(self) -> IcosianLocalSplitting:
         return self._splitting
+
+    def level_exponent(self) -> int:
+        return self._level.exponent()
 
     def orbit_representatives(self) -> tuple[tuple[int, int], ...]:
         return self._finite_set.representatives()
@@ -719,7 +1035,7 @@ class HilbertModularFormsQsqrt5:
 
     def hecke_operator(self, index: Any) -> SparseHeckeOperator:
         prime = sqrt5_hecke_prime(index)
-        if self._level.contains(*prime.generator()):
+        if self._level.prime_ideal().contains(*prime.generator()):
             raise NotImplementedError("Hecke operators at primes dividing the level")
         self._construct_operator(prime)
         return self._operators[prime.generator()]
@@ -731,6 +1047,20 @@ class HilbertModularFormsQsqrt5:
 
     def hecke_matrix(self, index: Any) -> Any:
         return self.hecke_operator(index).matrix()
+
+    def degeneracy_map(self) -> IcosianDegeneracyMap:
+        if self._level.exponent() == 1:
+            raise ValueError("a prime level has no adjacent lower level")
+        lower_splitting = self._splitting.lower_splitting()
+        lower = HilbertModularFormsQsqrt5(
+            self._level.lower_level(),
+            dense_entry_limit=self._dense_entry_limit,
+            local_splitting=lower_splitting,
+        )
+        return IcosianDegeneracyMap(self, lower)
+
+    def degeneracy_matrix(self) -> Any:
+        return self.degeneracy_map().matrix()
 
     def __repr__(self) -> str:
         return (
@@ -751,10 +1081,12 @@ IcosianModularForms = HilbertModularFormsQsqrt5
 __all__ = [
     "HilbertModularFormsQsqrt5",
     "IcosianLocalSplitting",
+    "IcosianDegeneracyMap",
     "IcosianModularForms",
     "IcosianOrbitSet",
     "Qsqrt5HeckePrime",
     "Qsqrt5PrimeIdeal",
+    "Qsqrt5PrimePowerLevel",
     "sqrt5_hecke_prime",
     "sqrt5_prime_ideals",
 ]

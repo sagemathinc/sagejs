@@ -9,6 +9,7 @@ SparseWiedemannCertificate: Any
 ClassicalModularPolynomial: Any
 CuspidalHeckeOperator: Any
 HilbertModularFormsQsqrt5: Any
+IcosianDegeneracyMap: Any
 IcosianLocalSplitting: Any
 IcosianModularForms: Any
 IcosianOrbitSet: Any
@@ -19,6 +20,7 @@ SupersingularEigenpacket: Any
 SupersingularModule: Any
 Qsqrt5HeckePrime: Any
 Qsqrt5PrimeIdeal: Any
+Qsqrt5PrimePowerLevel: Any
 classical_modular_polynomial: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
@@ -34,6 +36,7 @@ __all__ = [
     "ClassicalModularPolynomial",
     "CuspidalHeckeOperator",
     "HilbertModularFormsQsqrt5",
+    "IcosianDegeneracyMap",
     "IcosianLocalSplitting",
     "IcosianModularForms",
     "IcosianOrbitSet",
@@ -44,6 +47,7 @@ __all__ = [
     "SupersingularModule",
     "Qsqrt5HeckePrime",
     "Qsqrt5PrimeIdeal",
+    "Qsqrt5PrimePowerLevel",
     "classical_modular_polynomial",
     "berlekamp_massey",
     "dimension_supersingular_module",
@@ -62,11 +66,13 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         name = runtime_name
     if name in [
         "HilbertModularFormsQsqrt5",
+        "IcosianDegeneracyMap",
         "IcosianLocalSplitting",
         "IcosianModularForms",
         "IcosianOrbitSet",
         "Qsqrt5HeckePrime",
         "Qsqrt5PrimeIdeal",
+        "Qsqrt5PrimePowerLevel",
         "sqrt5_hecke_prime",
         "sqrt5_prime_ideals",
     ]:

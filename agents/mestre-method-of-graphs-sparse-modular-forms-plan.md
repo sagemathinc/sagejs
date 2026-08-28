@@ -51,6 +51,14 @@ $31,389,809,2011$. Orbit disjointness, orbit-size divisibility by $120$,
 constant Hecke degree, exact mass adjointness, and pairwise commutativity are
 checked before publication.
 
+Split prime-power levels now use compatible Hensel lifts of both $\omega$ and
+the quaternion splitting, together with the two-chart representation of
+$\mathbf P^1(\mathbf Z/p^e)$. Adjacent-level reduction publishes a sparse
+rectangular degeneracy matrix only after the higher splitting proves that it
+reduces to the lower one. The level-$31^2\to31$ witness has dimensions
+$18\to2$, full rank, and commutes exactly with $T_2$ and $T_3$; a deliberately
+conjugated lower splitting is rejected.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
@@ -58,9 +66,9 @@ but cross-platform coordinate sorting must land before the basis digest is
 declared stable. Optimized large-index modular-polynomial construction,
 scalable exact characteristic-polynomial certificates, higher-dimensional
 coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
-prime-power Hilbert levels with compatible degeneracy maps remain later
-implementation stages in this plan. The generic finite-Hecke-set interface and
-a second real quadratic field likewise remain to justify Phase 6.
+the full Hilbert old/new-space layer remain later implementation stages in
+this plan. The generic finite-Hecke-set interface and a second real quadratic
+field likewise remain to justify Phase 6.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

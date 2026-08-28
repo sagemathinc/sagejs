@@ -161,3 +161,56 @@ failures
     }
   },
 );
+
+test(
+  "prime-power splittings and degeneracy maps are compatible and Hecke equivariant",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+from sagejs.modular_forms import (
+    HilbertModularFormsQsqrt5,
+    IcosianDegeneracyMap,
+    IcosianLocalSplitting,
+    Qsqrt5PrimeIdeal,
+)
+
+P = Qsqrt5PrimeIdeal(31,19)
+level = P.prime_power(2)
+assert level.modulus() == 961
+assert level.norm() == 961
+assert level.omega_residue() == 763
+assert (level.omega_residue()**2-level.omega_residue()-1) % 961 == 0
+
+high_splitting = IcosianLocalSplitting(level)
+low_splitting = high_splitting.lower_splitting()
+assert high_splitting.reduces_to(low_splitting)
+H = HilbertModularFormsQsqrt5(level, local_splitting=high_splitting)
+D = H.degeneracy_map()
+assert H.dimension() == 18
+assert H.finite_hecke_set().projective_cardinality() == 992
+assert D.codomain().dimension() == 2
+assert D.matrix().dimensions() == (18,2)
+assert D.matrix().rank() == 2
+assert tuple(sum(D.matrix()[i,j] for i in range(18)) for j in range(2)) == (7,11)
+assert D.commutes_with_hecke(2)
+assert D.commutes_with_hecke(3)
+
+bad_low = IcosianLocalSplitting(P, conjugator=(1,1,0,1))
+assert not high_splitting.reduces_to(bad_low)
+bad_module = HilbertModularFormsQsqrt5(P, local_splitting=bad_low)
+rejected = False
+try:
+    IcosianDegeneracyMap(H,bad_module)
+except ValueError:
+    rejected = True
+assert rejected
+(H.dimension(), D.matrix().dimensions(), D.commutes_with_hecke(2), rejected)
+`);
+      assert.equal(result.repr, "(18, (18, 2), True, True)");
+    } finally {
+      await session.close();
+    }
+  },
+);
