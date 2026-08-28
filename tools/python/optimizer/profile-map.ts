@@ -270,13 +270,14 @@ export class CompilerProfileMapCollector {
     let identity: ProfileSpan["identity"] | undefined;
     if (type === "Function" || type === "Lambda" || type === "Method") {
       category = type === "Method" ? "method" : "function";
+      const identityKind = type === "Lambda" ? "lambda" : category;
       scopeName = nodeName(node);
       const qualifiedName = [...scopes, scopeName].join(".") || scopeName;
       const fingerprint = semanticAstFingerprint(node);
       const occurrenceKey = semanticOccurrenceKey({
         ownerId: parentFunction.id,
         qualifiedName,
-        kind: category,
+        kind: identityKind,
         semanticFingerprint: fingerprint,
       });
       const ordinal = this.functionOrdinals.get(occurrenceKey) ?? 0;
@@ -284,7 +285,7 @@ export class CompilerProfileMapCollector {
       identity = makeProfileFunctionIdentity({
         sourceUnitId: this.sourceIdentity.id,
         qualifiedName,
-        kind: category,
+        kind: identityKind,
         semanticFingerprint: fingerprint,
         range: sourceRange(node),
         ordinal,
