@@ -2,7 +2,7 @@
 
 const { accessSync, constants, readFileSync } = require("node:fs");
 const { delimiter } = require("node:path");
-const { spawn, spawnSync } = require("node:child_process");
+const { execFileSync, spawn, spawnSync } = require("node:child_process");
 const readline = require("node:readline");
 
 function resolveExecutable(command, env = process.env) {
@@ -27,14 +27,42 @@ function resolveExecutable(command, env = process.env) {
 }
 
 function readRssKilobytes(pid) {
-  if (process.platform !== "linux" || !pid) return null;
+  const numericPid = Number(pid);
+  if (!Number.isSafeInteger(numericPid) || numericPid <= 0) return null;
   try {
-    const status = readFileSync(`/proc/${pid}/status`, "utf8");
-    const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status);
-    return match ? Number(match[1]) : null;
+    if (process.platform === "linux") {
+      const status = readFileSync(`/proc/${numericPid}/status`, "utf8");
+      const match = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status);
+      return match ? Number(match[1]) : null;
+    }
+    if (process.platform === "darwin") {
+      const value = Number(execFileSync(
+        "ps",
+        ["-o", "rss=", "-p", String(numericPid)],
+        { encoding: "utf8", timeout: 2_000 },
+      ).trim());
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+    if (process.platform === "win32") {
+      const bytes = Number(execFileSync(
+        "powershell.exe",
+        [
+          "-NoLogo",
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          `(Get-Process -Id ${numericPid} -ErrorAction Stop).WorkingSet64`,
+        ],
+        { encoding: "utf8", timeout: 5_000 },
+      ).trim());
+      return Number.isFinite(bytes) && bytes > 0
+        ? Math.ceil(bytes / 1024)
+        : null;
+    }
   } catch {
-    return null;
+    // The process may have exited between enumeration and sampling.
   }
+  return null;
 }
 
 function processChildren(pid) {
