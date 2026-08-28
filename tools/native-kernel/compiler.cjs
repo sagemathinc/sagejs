@@ -790,7 +790,13 @@ function bindingGyp(
 }
 
 async function compileKernel(options) {
-  const sourcePath = resolve(options.sourcePath);
+  // Use the physical source identity everywhere the compiler records or
+  // hashes a kernel.  macOS exposes its temporary directory through both
+  // /var and /private/var; symlinked project roots create the same issue on
+  // every host.  Recording the lexical spelling here makes a valid artifact
+  // undiscoverable when the runtime imports the same file through another
+  // spelling of that path.
+  const sourcePath = realpathSync(resolve(options.sourcePath));
   const sourceKey = options.sourceKey;
   const source = readFileSync(sourcePath, "utf8");
   const sourceHash = sha256(source);
