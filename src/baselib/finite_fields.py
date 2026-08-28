@@ -1179,12 +1179,21 @@ class FiniteFieldExtensionParent(sage.Parent):
                 self._machineExtensionDegree = degree
                 self._machineExtensionCommutative = True
                 self._machineExtensionPrime = runtime.number(prime)
-                self._machineExtensionModulusCoefficients = runtime.math_tuple(
+                machine_extension_modulus = runtime.math_tuple(
                     [
                         runtime.number(coefficient)
                         for coefficient in machine_modulus[:degree]
                     ]
                 )
+                if not runtime.bind_machine_extension_context(
+                    self,
+                    degree,
+                    runtime.number(prime),
+                    modulus_coefficients,
+                    machine_extension_modulus,
+                ):
+                    raise RuntimeError("finite-field machine context was already bound")
+                self._machineExtensionModulusCoefficients = machine_extension_modulus
                 self._machineExtensionElementPrototype = element_prototype
                 self._machineExtensionMul = runtime.reflect.get(
                     element_prototype, "_mul_"
@@ -1271,6 +1280,9 @@ class FiniteFieldExtensionParent(sage.Parent):
             self._machineExtensionDegree == 0
             or left is runtime.undefined
             or right is runtime.undefined
+            or not runtime.machine_extension_context_matches(
+                self, self._machineExtensionModulusCoefficients
+            )
         ):
             return runtime.undefined
         degree = self._machineExtensionDegree
@@ -1397,7 +1409,14 @@ class FiniteFieldExtensionParent(sage.Parent):
     ) -> Any:
         """Run one fused region through a compiled native or Wasm kernel."""
         degree = self._machineExtensionDegree
-        if degree < 2 or degree > 4 or count > 4294967295:
+        if (
+            degree < 2
+            or degree > 4
+            or count > 4294967295
+            or not runtime.machine_extension_context_matches(
+                self, self._machineExtensionModulusCoefficients
+            )
+        ):
             return runtime.undefined
         kernel_module, native_module = _machine_extension_kernel_modules()
         if kernel_module is None or native_module is None:

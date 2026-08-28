@@ -281,6 +281,41 @@ print(recurrence(2, R(0)), R._lastCompilerOptimizationRoute)
   }
 });
 
+test("mutated extension modulus identity forces the exact fallback", async () => {
+  const optimized = await sessionAtLevel("O2");
+  const generic = await sessionAtLevel("O0");
+  const source = String.raw`
+import sagejs.runtime as runtime
+P.<x> = PolynomialRing(GF(97))
+K.<a> = GF(97^2, modulus=x^2+x+5)
+values = tuple(K(i+2)+(i+1)*a for i in range(17))
+def recurrence(values, value):
+    for coefficient in values:
+        value = value*coefficient + a
+    return value
+original = K._machineExtensionModulusCoefficients
+K._machineExtensionModulusCoefficients = runtime.math_tuple([7, 1])
+print(runtime.machine_extension_context_matches(
+    K, K._machineExtensionModulusCoefficients
+))
+K._lastCompilerOptimizationRoute = 'context-identity-fallback'
+print(recurrence(values, K(3)+2*a), K._lastCompilerOptimizationRoute)
+K._machineExtensionModulusCoefficients = original
+print(runtime.machine_extension_context_matches(K, original))
+`;
+  try {
+    const [fast, slow] = await Promise.all([
+      optimized.evaluate(source), generic.evaluate(source),
+    ]);
+    assert.equal(fast.stdout, slow.stdout);
+    assert.match(fast.stdout, /^False\n/);
+    assert.match(fast.stdout, /context-identity-fallback/);
+    assert.match(fast.stdout, /\nTrue\n$/);
+  } finally {
+    await Promise.all([optimized.close(), generic.close()]);
+  }
+});
+
 test("deterministic grammar-generated regions agree with O0 across shapes", async () => {
   for (const [prime, constant] of [[2, 1], [3, 2], [97, 5], [199999, 3]]) {
     const source = generatedGrammarSource(prime, constant);

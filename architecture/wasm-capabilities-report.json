@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "92d32c9b801967c1a715f948914a9451ba968b3f4797b5d0d413f56f452b1a55",
+  "source_sha256": "c60ecb5b534b884aa00a080de05f26ef005b0ba76a216e6a47dc2d5b7230735d",
   "counts": {
-    "total": 1017,
+    "total": 1019,
     "by_kind": {
       "declared-ffi-function": 440,
       "declared-ffi-resource": 32,
       "napi-export": 325,
       "production-kernel": 49,
-      "runtime-intrinsic": 145,
+      "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
       "compiled-source": 49,
       "desktop-only": 47,
       "generated-wasm": 321,
-      "portable-fallback": 555,
+      "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 555,
+      "available": 557,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -10620,6 +10620,18 @@
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "explanation": "Optimized finite-field extension loops authenticate their reduction law against the field parent's immutable construction context before entering a machine representation."
+    },
+    {
       "id": "runtime:blocking_sleep",
       "family": "runtime",
       "disposition": "portable-fallback",
@@ -11338,6 +11350,18 @@
         "compiled Sage and Python modules"
       ],
       "explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "family": "runtime",
+      "disposition": "portable-fallback",
+      "status": "available",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "explanation": "A fixed-width extension-field region runs only when its live parent still has exactly the reduction context with which it was constructed."
     },
     {
       "id": "runtime:map",

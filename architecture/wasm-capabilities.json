@@ -59,6 +59,13 @@
           "test/browser-wasm-parity-corpus.json"
         ]
       },
+      "optimizer-extension-context-differential": {
+        "differential": true,
+        "paths": [
+          "test/optimizer-field-regions.cjs",
+          "test/optimizer-bootstrap-parity.cjs"
+        ]
+      },
       "runtime-intrinsic-contract": {
         "differential": true,
         "paths": [
@@ -18435,6 +18442,26 @@
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-extension-context-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The runtime binds each machine extension parent once to a frozen, non-replaceable construction context containing its degree, prime, source polynomial, and machine reduction tuple.",
+      "public_explanation": "Optimized finite-field extension loops authenticate their reduction law against the field parent's immutable construction context before entering a machine representation."
+    },
+    {
       "id": "runtime:blocking_sleep",
       "kind": "runtime-intrinsic",
       "family": "runtime",
@@ -19576,6 +19603,26 @@
       "reviewed": true,
       "review_note": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation.",
       "public_explanation": "This compiler runtime primitive is implemented above the Wasm ABI and exercised by browser compilation."
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "kind": "runtime-intrinsic",
+      "family": "runtime",
+      "source": "tools/python/contract.ts",
+      "disposition": "portable-fallback",
+      "fallback": "browser-javascript-runtime-primitive-with-exact-source-loop",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "compiler-proven fixed-width finite-field regions"
+      ],
+      "tests": [
+        "runtime-intrinsic-contract",
+        "optimizer-extension-context-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "This guard checks live degree, prime, source-polynomial identity, and machine-modulus identity against the parent's immutable construction context; any mismatch executes the exact original source loop.",
+      "public_explanation": "A fixed-width extension-field region runs only when its live parent still has exactly the reduction context with which it was constructed."
     },
     {
       "id": "runtime:map",

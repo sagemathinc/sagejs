@@ -25,6 +25,8 @@ function definition(source, name) {
 
 test("optimizer runtime guards are identical in both bootstrap closures", () => {
   for (const name of [
+    "ρσ_bind_machine_extension_context",
+    "ρσ_machine_extension_context_matches",
     "ρσ_prepare_strict_float_region",
     "ρσ_prepare_machine_field_region",
     "ρσ_materialize_machine_field_value",
@@ -54,6 +56,7 @@ test("runtime guards expose stable actionable reason codes", () => {
     "extension-operation-contract-mismatch",
     "extension-negation-contract-mismatch",
     "extension-power-contract-mismatch",
+    "extension-context-identity-mismatch",
     "extension-modulus-out-of-range",
   ]) {
     assert.match(compilerBootstrap, new RegExp(`reject\\("${reason}"\\)`));

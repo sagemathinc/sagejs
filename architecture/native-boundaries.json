@@ -17,7 +17,7 @@
     "declared-ffi": 440,
     "declared-ffi-resource": 32,
     "napi-export": 325,
-    "runtime-intrinsic": 145,
+    "runtime-intrinsic": 147,
     "wasm-export": 72
   },
   "boundaries": [
@@ -9657,6 +9657,14 @@
       "disposition": "runtime-primitive"
     },
     {
+      "id": "runtime:bind_machine_extension_context",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bind_machine_extension_context",
+      "symbol": "ρσ_bind_machine_extension_context",
+      "disposition": "runtime-primitive"
+    },
+    {
       "id": "runtime:blocking_sleep",
       "kind": "runtime-intrinsic",
       "path": "tools/python/contract.ts",
@@ -10134,6 +10142,14 @@
       "path": "tools/python/contract.ts",
       "export": "live_scope_dict",
       "symbol": "ρσ_live_scope_dict",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:machine_extension_context_matches",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "machine_extension_context_matches",
+      "symbol": "ρσ_machine_extension_context_matches",
       "disposition": "runtime-primitive"
     },
     {

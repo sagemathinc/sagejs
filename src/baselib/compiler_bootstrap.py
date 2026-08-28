@@ -287,6 +287,55 @@ def ρσ_math_tuple(values):
     })()"""
 
 
+def ρσ_bind_machine_extension_context(
+    parent,
+    degree,
+    prime,
+    source_modulus_coefficients,
+    machine_modulus_coefficients,
+):
+    """Permanently bind one extension parent to its construction-time context."""
+    return r"""%js (() => {
+        const key = "_machineExtensionImmutableContext";
+        const current = Object.getOwnPropertyDescriptor(parent, key);
+        if (current !== undefined) {
+            return false;
+        }
+        const context = Object.freeze({
+            id: "finite-field-extension-construction-context.v1",
+            degree,
+            prime,
+            sourceModulusCoefficients: source_modulus_coefficients,
+            machineModulusCoefficients: machine_modulus_coefficients,
+        });
+        Object.defineProperty(parent, key, {
+            value: context,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+        });
+        return true;
+    })()"""
+
+
+def ρσ_machine_extension_context_matches(parent, modulus_coefficients):
+    """Authenticate live extension fields against their construction-time values."""
+    return r"""%js (() => {
+        const descriptor = Object.getOwnPropertyDescriptor(
+            parent, "_machineExtensionImmutableContext"
+        );
+        const context = descriptor?.value;
+        return descriptor !== undefined &&
+            descriptor.writable === false && descriptor.configurable === false &&
+            Object.isFrozen(context) &&
+            context.id === "finite-field-extension-construction-context.v1" &&
+            context.degree === parent._machineExtensionDegree &&
+            context.prime === parent._machineExtensionPrime &&
+            context.sourceModulusCoefficients === parent._modulusCoefficients &&
+            context.machineModulusCoefficients === modulus_coefficients;
+    })()"""
+
+
 def ρσ_brand_machine_field_element(value):
     """Privately register one canonical field element for callback-free guards."""
     return r"""%js (() => {
@@ -546,6 +595,11 @@ def ρσ_prepare_machine_field_region(
         const parentPrototype = Object.getPrototypeOf(parent);
         const degree = parent._machineExtensionDegree;
         const modulusCoefficients = parent._machineExtensionModulusCoefficients;
+        if (!ρσ_machine_extension_context_matches(
+                parent, modulusCoefficients)) {
+            return reject("extension-context-identity-mismatch");
+        }
+        const constructionContext = parent._machineExtensionImmutableContext;
         if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
             parent._machineExtensionCommutative !== true ||
             !(tupleBrand instanceof WeakSet) ||
@@ -648,7 +702,9 @@ def ρσ_prepare_machine_field_region(
         return { ok: true, kind: 2, parent, prototype: extensionPrototype, modulus,
                  degree, modulusCoefficients, values: unboxed,
                  sequences: packedSequences, elementBrand, streaming,
-                 integerConstants };
+                 integerConstants, constructionContext,
+                 modulusIdentityAuthentication:
+                    "construction-time-modulus-identity.v1" };
     })()"""
 
 
@@ -802,7 +858,9 @@ def ρσ_fast_machine_residue_recurrence(accumulator, multiplier, increment, cou
         const modulusCoefficients = parent._machineExtensionModulusCoefficients;
         const tupleBrand = ρσ_math_tuple.__machineFieldSequenceBrand;
         const degree = parent._machineExtensionDegree;
-        if (!Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
+        if (!ρσ_machine_extension_context_matches(
+                parent, modulusCoefficients) ||
+            !Number.isSafeInteger(degree) || degree < 2 || degree > 4 ||
             parent._machineExtensionCommutative !== true ||
             !(tupleBrand instanceof WeakSet) ||
             !tupleBrand.has(modulusCoefficients) ||
