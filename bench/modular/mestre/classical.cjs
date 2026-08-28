@@ -60,7 +60,8 @@ for characteristic in ${JSON.stringify(primes)}:
         )
         krylov = time.perf_counter() - begin
         assert candidate.degree() == module.dimension()
-        assert not candidate.is_exact()
+        assert candidate.is_exact()
+        assert candidate.proof_method() == "full-degree-projection"
 
         exact = None
         exact_seconds = None
@@ -83,6 +84,8 @@ for characteristic in ${JSON.stringify(primes)}:
             "row_sum": int(operator.row_sums()[0]),
             "matvec_checksum": int(sum(image)),
             "candidate_degree": candidate.degree(),
+            "candidate_exact": candidate.is_exact(),
+            "candidate_proof_method": candidate.proof_method(),
             "candidate_coefficients_checksum": int(sum(candidate.coefficients())),
             "exact_coefficients": exact,
         })

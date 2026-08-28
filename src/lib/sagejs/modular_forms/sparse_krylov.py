@@ -380,7 +380,17 @@ class SparseWiedemannCertificate:
         return self._coefficients
 
     def is_exact(self) -> bool:
-        return self._exact_basis_vectors == self._dimension
+        return (
+            self._exact_basis_vectors == self._dimension
+            or self.degree() == self._dimension
+        )
+
+    def proof_method(self) -> str:
+        if self.degree() == self._dimension:
+            return "full-degree-projection"
+        if self._exact_basis_vectors == self._dimension:
+            return "basis-annihilation"
+        return "independent-replay"
 
     def verification_basis_rank(self) -> int:
         return self._exact_basis_vectors
@@ -400,6 +410,7 @@ class SparseWiedemannCertificate:
             "projection_records": self._projections,
             "replay_vectors": self._replay_vectors,
             "verification_basis_rank": self._exact_basis_vectors,
+            "proof_method": self.proof_method(),
             "exact": self.is_exact(),
             "matrix_vector_products": self._matrix_vector_products,
         }
@@ -775,12 +786,12 @@ def sparse_wiedemann_certificate(
 ) -> SparseWiedemannCertificate:
     """Compute and verify a sparse Wiedemann minimal-polynomial candidate.
 
-    With `proof="basis"` (the default), the function returns only after the
-    candidate annihilates every standard basis vector, which proves that it is
-    the exact operator minimal polynomial because each projected recurrence
-    divides that polynomial. `proof="replay"` is an explicitly nonexact
-    diagnostic mode: it checks independent deterministic vectors and labels
-    the returned certificate accordingly.
+    A projected scalar recurrence of degree equal to the operator dimension is
+    already exact: it divides the operator minimal polynomial, whose degree is
+    at most the dimension. Otherwise, `proof="basis"` (the default) accepts
+    only after the candidate annihilates every standard basis vector.
+    `proof="replay"` checks independent deterministic vectors but remains a
+    nonexact diagnostic unless the full-degree argument applies.
     """
     prime = _word_prime(modulus)
     source_seed = _machine_integer(seed, "Krylov seed")
@@ -847,6 +858,17 @@ def sparse_wiedemann_certificate(
                 replay_ok = False
         if not replay_ok:
             continue
+        if len(candidate) - 1 == dimension:
+            return SparseWiedemannCertificate(
+                prime,
+                dimension,
+                source_seed,
+                candidate,
+                projection_records,
+                replay_records,
+                0,
+                products,
+            )
         if proof == "replay":
             return SparseWiedemannCertificate(
                 prime,

@@ -49,7 +49,9 @@ are rejected before publication. On the local Linux x64 acceptance witness at
 level $10007$, $T_2$ has dimension $835$ and $2502$ nonzero entries; the
 full-degree projected replay fell from $96.95$ seconds in the dynamic path to
 $4.08$ seconds in the compiled path, while returning the same degree-$835$
-candidate and exact replay count. The checked level-$389$ instance also
+minimal polynomial. Full degree is itself an exact proof: the scalar
+recurrence divides the operator minimal polynomial, and both degrees are
+bounded above by $835$. The checked level-$389$ instance also
 reconstructs and independently verifies the full integer characteristic
 polynomial without dense materialization.
 
