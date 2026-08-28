@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.optimizer-reason-registry/v1",
-  "id": "sha256:35af5840334fd543bcd18c0689a8c963904aa1c2212c3eaf3fa5529c5e91ba0c",
+  "id": "sha256:45c5961dd597106b2b505b59846dc9d5bdc07783f3359a27ff129263996d5612",
   "codes": [
     {
       "code": "bounded-integer.code-size-budget",
@@ -164,10 +164,45 @@
       "detailFields": []
     },
     {
+      "code": "evidence.algorithm-disposition-unresolved",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The workload has not been classified as compiler work or mathematical algorithm work.",
+      "detailFields": []
+    },
+    {
       "code": "evidence.ambiguous-source-map",
       "kind": "integrity",
       "origin": "collector",
       "description": "A generated sample maps to more than one current semantic region.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.below-materiality-threshold",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The observed region is below the reviewed workload materiality threshold.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.insufficient-coverage",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "Current source attribution coverage is below the reviewed eligibility threshold.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.no-plausible-fallback",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "No same-source fallback-preserving transformation is currently plausible.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.oracle-unverified",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The authentic workload output has not passed its exact oracle.",
       "detailFields": []
     },
     {
