@@ -6,8 +6,10 @@ const path = require("node:path");
 const {
   array,
   attachIdentity,
+  canonicalJson,
   contentId,
   contentIdentity,
+  deepFreeze,
   digest,
   enumeration,
   exactKeys,
@@ -25,6 +27,32 @@ const SOURCE_UNIT_SCHEMA = "sagejs.optimizer-source-unit/v1";
 const FUNCTION_IDENTITY_SCHEMA = "sagejs.optimizer-function-identity/v1";
 const REGION_IDENTITY_SCHEMA = "sagejs.optimizer-region-identity/v1";
 const DECISION_IDENTITY_SCHEMA = "sagejs.optimizer-decision-identity/v1";
+
+const COMPILER_SOURCE_ROOT_PATHS = Object.freeze([
+  "src/ast_types.py",
+  "tools/compiler.ts",
+  "tools/python/compiler-frontend.ts",
+  "tools/python/frontend.ts",
+  "tools/python/lowerer.ts",
+  "tools/python/module-resolver.ts",
+  "tools/optimizer-development/common.cjs",
+  "tools/optimizer-development/identity.cjs",
+]);
+
+const FRONTEND_ARTIFACT_PATHS = Object.freeze([
+  "dist/compiler/compiler.js",
+  "dist/compiler/signatures.json",
+  "dist/tools/compiler.js",
+  "dist/tools/python/compiler-frontend.js",
+  "dist/tools/python/frontend.js",
+  "dist/tools/python/lowerer.js",
+  "dist/tools/python/optimizer/profile-identity.js",
+  "dist/tools/python/optimizer/profile-map.js",
+  "dist/vendor/tree-sitter-python.wasm",
+  "dist/vendor/tree-sitter-sage.wasm",
+  "dist/tools/tree-sitter-python/grammar.js",
+  "dist/tools/tree-sitter-sage/grammar.js",
+]);
 
 function validateRange(label, value) {
   exactKeys(label, value, ["startLine", "startColumn", "endLine", "endColumn"]);
@@ -67,6 +95,92 @@ function sourceBundleIdentity(root, repositoryPaths) {
       return { path: relativePath, digest: sha256(bytes), bytes: bytes.length };
     });
   return sourceBundleFromRecords(records);
+}
+
+function recursiveRepositoryFiles(root, relativeDirectory, suffix) {
+  const result = [];
+  const visit = (relative) => {
+    const directory = path.join(root, relative);
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const child = path.posix.join(relative, entry.name);
+      if (entry.isDirectory()) visit(child);
+      else if (entry.isFile() && entry.name.endsWith(suffix)) result.push(child);
+    }
+  };
+  visit(relativeDirectory);
+  return result.sort();
+}
+
+function compilerSourcePaths(root) {
+  const rootPath = path.resolve(nonemptyString("compiler identity root", root));
+  return Object.freeze([
+    ...COMPILER_SOURCE_ROOT_PATHS,
+    ...recursiveRepositoryFiles(rootPath, "tools/python/optimizer", ".ts"),
+  ].sort());
+}
+
+function fileRecords(root, repositoryPaths) {
+  const rootPath = path.resolve(nonemptyString("compiler identity root", root));
+  return normalizeFileRecords(repositoryPaths.map((relativePath) => {
+    const checked = repositoryPath("compiler identity path", relativePath);
+    const bytes = fs.readFileSync(path.join(rootPath, checked));
+    return { path: checked, digest: sha256(bytes), bytes: bytes.length };
+  }));
+}
+
+function semanticOptimizerCatalog(optimizerCatalog) {
+  exactKeys("optimizer catalog", optimizerCatalog, ["plugins"]);
+  const plugins = array("optimizer catalog.plugins", optimizerCatalog.plugins, (label, plugin) => {
+    exactKeys(label, plugin,
+      ["id", "domainId", "priority", "claimSemantics", "loweringIds", "pass"]);
+    exactKeys(`${label}.pass`, plugin.pass, [
+      "id", "inputSchema", "factsConsumed", "factsProduced", "factsInvalidated", "preserves",
+      "acceptedLevel", "producedLevel", "guardsIntroduced", "supportedTargets", "verifier",
+      "compilationCostBudget", "codeSizeBudget", "requiredEvidence", "run",
+    ]);
+    if (typeof plugin.pass.run !== "function") {
+      throw new TypeError(`optimizer evidence ${label}.pass.run: must be a function`);
+    }
+    const { run: _run, ...pass } = plugin.pass;
+    return {
+      id: stableName(`${label}.id`, plugin.id),
+      domainId: stableName(`${label}.domainId`, plugin.domainId),
+      priority: safeInteger(`${label}.priority`, plugin.priority),
+      claimSemantics: enumeration(`${label}.claimSemantics`, plugin.claimSemantics, ["exclusive"]),
+      loweringIds: array(`${label}.loweringIds`, plugin.loweringIds,
+        (itemLabel, item) => stableName(itemLabel, item),
+        { uniqueBy: (item) => item }),
+      pass,
+    };
+  }, {
+    minimum: 1,
+    uniqueBy: (plugin) => plugin.id,
+  });
+  return deepFreeze(plugins);
+}
+
+function compilerImplementationIdentity(root, optimizerCatalog) {
+  const compilerSourceBundle = sourceBundleIdentity(root, compilerSourcePaths(root));
+  const frontendArtifacts = fileRecords(root, FRONTEND_ARTIFACT_PATHS);
+  const catalog = semanticOptimizerCatalog(optimizerCatalog);
+  return deepFreeze({
+    compilerSourceBundle,
+    frontendDigest: sha256(canonicalJson(frontendArtifacts)),
+    catalogDigest: sha256(canonicalJson(catalog)),
+  });
+}
+
+function canonicalCompilerIdentity(value) {
+  exactKeys("canonical compiler identity", value,
+    ["root", "irSchema", "optimizerCatalog", "optionsDigest"]);
+  const implementation = compilerImplementationIdentity(value.root, value.optimizerCatalog);
+  return compilerIdentity({
+    irSchema: value.irSchema,
+    compilerSourceBundleId: implementation.compilerSourceBundle.id,
+    frontendDigest: implementation.frontendDigest,
+    catalogDigest: implementation.catalogDigest,
+    optionsDigest: value.optionsDigest,
+  });
 }
 
 function validateSourceBundle(label, value) {
@@ -179,18 +293,24 @@ function linkPredecessor(previousRegions, currentRegion) {
 }
 
 module.exports = {
+  COMPILER_SOURCE_ROOT_PATHS,
   COMPILER_IDENTITY_SCHEMA,
   DECISION_IDENTITY_SCHEMA,
   FUNCTION_IDENTITY_SCHEMA,
   REGION_IDENTITY_SCHEMA,
   SOURCE_BUNDLE_SCHEMA,
   SOURCE_UNIT_SCHEMA,
+  FRONTEND_ARTIFACT_PATHS,
+  canonicalCompilerIdentity,
+  compilerImplementationIdentity,
   compilerIdentity,
+  compilerSourcePaths,
   decisionIdentity,
   functionIdentity,
   linkPredecessor,
   normalizeFileRecords,
   semanticFingerprint,
+  semanticOptimizerCatalog,
   semanticRegionIdentity,
   sourceBundleFromRecords,
   sourceBundleIdentity,
