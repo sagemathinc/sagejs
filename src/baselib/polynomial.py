@@ -434,6 +434,222 @@ def _field_polynomial_quo_rem(
     )
 
 
+def _field_polynomial_add_coefficients(
+    left: list[Any], right: list[Any], zero: Any
+) -> list[Any]:
+    """Add two low-to-high dense polynomials over an arbitrary field."""
+    length = max(len(left), len(right))
+    answer = [zero for _index in range(length)]
+    for index in range(length):
+        left_value = left[index] if index < len(left) else zero
+        right_value = right[index] if index < len(right) else zero
+        answer[index] = left_value + right_value
+    return _trim_polynomial_coefficients(answer)
+
+
+def _field_polynomial_sub_coefficients(
+    left: list[Any], right: list[Any], zero: Any
+) -> list[Any]:
+    """Subtract two low-to-high dense polynomials over an arbitrary field."""
+    length = max(len(left), len(right))
+    answer = [zero for _index in range(length)]
+    for index in range(length):
+        left_value = left[index] if index < len(left) else zero
+        right_value = right[index] if index < len(right) else zero
+        answer[index] = left_value - right_value
+    return _trim_polynomial_coefficients(answer)
+
+
+def _field_polynomial_multiply_mod_coefficients(
+    left: list[Any],
+    right: list[Any],
+    modulus: list[Any],
+    zero: Any,
+) -> list[Any]:
+    """Multiply dense field polynomials and reduce modulo `modulus`."""
+    if len(left) == 0 or len(right) == 0:
+        return []
+    product = [zero for _index in range(len(left) + len(right) - 1)]
+    for left_index in range(len(left)):
+        if left[left_index] == zero:
+            continue
+        for right_index in range(len(right)):
+            if right[right_index] != zero:
+                product[left_index + right_index] += (
+                    left[left_index] * right[right_index]
+                )
+    return _field_polynomial_quo_rem(product, modulus, zero)[1]
+
+
+def _field_polynomial_pow_mod_coefficients(
+    value: list[Any],
+    exponent: int,
+    modulus: list[Any],
+    zero: Any,
+    one: Any,
+) -> list[Any]:
+    """Exponentiate a dense field polynomial modulo `modulus`."""
+    exponent = runtime.integer_bigint(exponent)
+    answer = [one]
+    power = _field_polynomial_quo_rem(value, modulus, zero)[1]
+    while exponent:
+        if exponent % 2:
+            answer = _field_polynomial_multiply_mod_coefficients(
+                answer, power, modulus, zero
+            )
+        exponent //= 2
+        if exponent:
+            power = _field_polynomial_multiply_mod_coefficients(
+                power, power, modulus, zero
+            )
+    return answer
+
+
+def _field_polynomial_monic_gcd_coefficients(
+    left: list[Any], right: list[Any], zero: Any
+) -> list[Any]:
+    """Return the monic Euclidean GCD of dense field polynomials."""
+    left = _trim_polynomial_coefficients(list(left))
+    right = _trim_polynomial_coefficients(list(right))
+    while len(right) != 0:
+        left, right = right, _field_polynomial_quo_rem(left, right, zero)[1]
+    if len(left) == 0:
+        return []
+    leading = left[-1]
+    return [coefficient / leading for coefficient in left]
+
+
+def _extension_field_element_from_index(field: Any, index: int) -> Any:
+    """Return the canonical power-basis element with integer index `index`."""
+    prime = int(field.characteristic())
+    coordinates = []
+    remaining = int(index)
+    for _coordinate in range(field.degree()):
+        coordinates.append(remaining % prime)
+        remaining //= prime
+    return field._from_power_basis_coordinates(coordinates)
+
+
+def _generated_extension_field_polynomial_roots(
+    polynomial: PolynomialElement,
+) -> list[list[Any]]:
+    """Return exact roots of a generated-resource `GF(p^n)` polynomial.
+
+    The implementation first extracts the product of the distinct linear
+    factors as `gcd(f, X^q-X)`.  It then uses deterministic equal-degree
+    splitting: quadratic characters in odd characteristic and the absolute
+    trace pairing in characteristic two.  This is the ordinary-Python/Wasm
+    counterpart of the legacy Node FLINT root routine.
+    """
+    if polynomial.is_zero():
+        raise ArithmeticError("factorization of 0 is not defined")
+    parent = polynomial.parent()
+    field = parent.base_ring()
+    zero = field(0)
+    one = field(1)
+    coefficients = _trim_polynomial_coefficients(polynomial.coefficients())
+    if len(coefficients) <= 1:
+        return []
+
+    x_coefficients = [zero, one]
+    field_order = int(field.order())
+    linear_part = _field_polynomial_monic_gcd_coefficients(
+        coefficients,
+        _field_polynomial_sub_coefficients(
+            _field_polynomial_pow_mod_coefficients(
+                x_coefficients,
+                field_order,
+                coefficients,
+                zero,
+                one,
+            ),
+            x_coefficients,
+            zero,
+        ),
+        zero,
+    )
+    if len(linear_part) <= 1:
+        return []
+
+    factors = []
+    pending = [linear_part]
+    characteristic = int(field.characteristic())
+    while len(pending) != 0:
+        factor = pending.pop()
+        degree = len(factor) - 1
+        if degree == 1:
+            factors.append(factor)
+            continue
+
+        split = []
+        for candidate_index in range(field_order):
+            candidate_value = _extension_field_element_from_index(
+                field, candidate_index
+            )
+            if characteristic == 2:
+                if candidate_value == zero:
+                    continue
+                candidate = [zero, candidate_value]
+                trace = []
+                power = candidate
+                for _index in range(field.degree()):
+                    trace = _field_polynomial_add_coefficients(trace, power, zero)
+                    power = _field_polynomial_multiply_mod_coefficients(
+                        power, power, factor, zero
+                    )
+                split = _field_polynomial_monic_gcd_coefficients(factor, trace, zero)
+            else:
+                candidate = [candidate_value, one]
+                character = _field_polynomial_pow_mod_coefficients(
+                    candidate,
+                    (field_order - 1) // 2,
+                    factor,
+                    zero,
+                    one,
+                )
+                split = _field_polynomial_monic_gcd_coefficients(
+                    factor,
+                    _field_polynomial_sub_coefficients(character, [one], zero),
+                    zero,
+                )
+            if 1 < len(split) < len(factor):
+                break
+        if not (1 < len(split) < len(factor)):
+            raise RuntimeError("finite-field linear factors did not split")
+        quotient, remainder = _field_polynomial_quo_rem(factor, split, zero)
+        if len(remainder) != 0:
+            raise ArithmeticError("finite-field root split was not exact")
+        pending.append(split)
+        pending.append(quotient)
+
+    roots = []
+    for factor in factors:
+        root = -factor[0] / factor[1]
+        divisor = [-root, one]
+        remaining = list(coefficients)
+        multiplicity = 0
+        while len(remaining) > 1:
+            quotient, remainder = _field_polynomial_quo_rem(remaining, divisor, zero)
+            if len(remainder) != 0:
+                break
+            multiplicity += 1
+            remaining = quotient
+        roots.append([root, runtime.number(multiplicity)])
+    ordered_roots = []
+    for pair in roots:
+        coordinates = pair[0]._power_basis_coordinates()
+        position = len(ordered_roots)
+        while position != 0:
+            previous_coordinates = ordered_roots[position - 1][
+                0
+            ]._power_basis_coordinates()
+            if previous_coordinates <= coordinates:
+                break
+            position -= 1
+        ordered_roots.insert(position, pair)
+    return ordered_roots
+
+
 def _integer_polynomial_quo_rem(
     dividend: list[Any], divisor: list[Any]
 ) -> tuple[list[Any], list[Any]]:
@@ -2983,7 +3199,9 @@ class PolynomialElement(sage.Element):
                 "ring unless the base is a finite field"
             )
         field = self._parent.base_ring()
-        if field._kind == "GF_EXTENSION":
+        if field._kind == "GF_EXTENSION" and self._has_fq_polynomial_resource():
+            raw_roots = _generated_extension_field_polynomial_roots(self)
+        elif field._kind == "GF_EXTENSION":
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
         elif _packed_polynomial_kind(field) == "GF_ARB":
             if self.is_zero():
@@ -3040,12 +3258,19 @@ class PolynomialElement(sage.Element):
 
         def make_root(pair: list[Any]) -> Any:
             if field._kind == "GF_EXTENSION":
-                root = field._from_native(pair[0])
+                root = (
+                    pair[0]
+                    if isinstance(pair[0], field._elementType)
+                    else field._from_native(pair[0])
+                )
             else:
                 root = field(pair[0])
             return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
-        return raw_roots.map(make_root)
+        answer = []
+        for pair in raw_roots:
+            answer.append(make_root(pair))
+        return answer
 
     def coefficients(self) -> list[Any]:
         base = self._parent.base_ring()

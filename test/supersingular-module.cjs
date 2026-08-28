@@ -24,7 +24,7 @@ const lmfdbFixture = JSON.parse(
 );
 
 test(
-  "Mestre T2 graph matches Sage's level-37 fixture exactly",
+  "Mestre T2 graph has a canonical portable level-37 basis",
   { timeout: 120_000 },
   async () => {
     const session = await createSage();
@@ -34,7 +34,10 @@ S = SupersingularModule(37)
 points, point_index = S.supersingular_points()
 T2 = S.T(2)
 assert S.dimension() == 3
-assert [str(j) for j in points] == ["8", "27*a + 23", "10*a + 20"]
+assert [str(j) for j in points] == ["8", "10*a + 20", "27*a + 23"]
+assert S.point_coordinates() == ((8,0),(20,10),(23,27))
+assert S.basis_digest() == 'ab0d3799fc12661e698c973647320a3b2b0c023bfcdec50c1857625f1caf083d'
+assert S.operator_digest(2) == '40aed650ea445b6ddee3393ad87e1c18791688b093df6cba1df9251e81ad86ec'
 assert [point_index[j] for j in points] == [0,1,2]
 assert T2.is_sparse()
 assert T2.nonzero_count() == 7
@@ -47,7 +50,7 @@ assert S.isogeny_graph().ramanujan_bound() == 2.0*sqrt(2.0)
 `);
       assert.equal(
         result.repr,
-        "[[8, 27*a + 23, 10*a + 20], " +
+        "[[8, 10*a + 20, 27*a + 23], " +
           "[1 1 1]\n[1 0 2]\n[1 2 0], " +
           "[1 0 0]\n[0 1 0]\n[0 0 1]]",
       );
@@ -65,11 +68,12 @@ test(
     try {
       const result = await session.evaluate(`
 S11 = SupersingularModule(11)
-assert S11.automorphism_weights() == (2,3)
-assert S11.mass_weights() == (QQ(1)/2, QQ(1)/3)
-assert S11.mass_inner_product([2,-3], S11.eisenstein_vector()) == 0
-assert S11.is_cuspidal([2,-3])
-assert S11.cuspidal_basis_matrix() == matrix(QQ, [[1,-QQ(3)/2]])
+assert S11.point_coordinates() == ((0,0),(1,0))
+assert S11.automorphism_weights() == (3,2)
+assert S11.mass_weights() == (QQ(1)/3, QQ(1)/2)
+assert S11.mass_inner_product([3,-2], S11.eisenstein_vector()) == 0
+assert S11.is_cuspidal([3,-2])
+assert S11.cuspidal_basis_matrix() == matrix(QQ, [[1,-QQ(2)/3]])
 C11 = S11.cuspidal_operator(2)
 assert C11.is_sparse()
 assert C11.dimension() == 1
@@ -147,7 +151,32 @@ json.dumps(rows, sort_keys=True)
           charpoly: operator.charpoly,
         })),
       );
-      assert.deepEqual(observed, expected);
+      for (const prime of [11, 37]) {
+        const actualOperators = observed.filter((row) => row.prime === prime);
+        const expectedOperators = expected.filter((row) => row.prime === prime);
+        const degree = actualOperators[0].matrix.length;
+        const permutations = (values) => {
+          if (values.length === 0) return [[]];
+          return values.flatMap((value, index) =>
+            permutations(values.slice(0, index).concat(values.slice(index + 1))).map(
+              (tail) => [value, ...tail],
+            ),
+          );
+        };
+        const ordering = permutations([...Array(degree).keys()]).find((order) =>
+          actualOperators.every((actual, operatorIndex) => {
+            const source = expectedOperators[operatorIndex];
+            const conjugated = order.map((row) =>
+              order.map((column) => source.matrix[row][column]),
+            );
+            return JSON.stringify(conjugated) === JSON.stringify(actual.matrix);
+          }),
+        );
+        assert.ok(ordering, `no common basis permutation matches Magma at ${prime}`);
+      }
+      for (let index = 0; index < observed.length; index += 1) {
+        assert.deepEqual(observed[index].charpoly, expected[index].charpoly);
+      }
 
       const level37 = magmaFixture.cases.find((row) => row.prime === 37);
       for (const operator of level37.operators) {
@@ -220,6 +249,70 @@ rows
           "(17, 2, 3), (19, 2, 4), (23, 3, 6), (29, 3, 5), " +
           "(31, 3, 7), (37, 3, 7), (41, 4, 7), (43, 4, 9), " +
           "(47, 5, 11), (67, 6, 15), (389, 33, 95)]",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
+  "portable supersingular caches are bound and fail closed",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+import hashlib
+import json
+
+def clone(value):
+    return json.loads(json.dumps(value,sort_keys=True))
+
+def resign(record):
+    body=dict(record)
+    del body['content_sha256']
+    encoded=json.dumps(body,sort_keys=True,separators=(',',':'))
+    record['content_sha256']=hashlib.sha256(encoded.encode('utf-8')).hexdigest()
+
+source=SupersingularModule(37)
+record=source.operator_cache_record(2)
+assert record['content_sha256']=='fca05138554f1af7338b9ec4dadde87b53601d7c3ac5d9cc668f64a75a4da0fd'
+loaded=SupersingularModule(37)
+loaded.load_operator_cache(clone(record))
+assert loaded.basis_digest()==source.basis_digest()
+assert loaded.operator_digest(2)==source.operator_digest(2)
+
+tampered=clone(record)
+tampered['rows'][1]=[[0,1],[1,2]]
+try:
+    SupersingularModule(37).load_operator_cache(tampered)
+    assert False
+except ValueError:
+    pass
+resign(tampered)
+victim=SupersingularModule(37)
+try:
+    victim.load_operator_cache(tampered)
+    assert False
+except ArithmeticError:
+    pass
+assert victim.T(2).matrix()==source.T(2).matrix()
+
+wrong_source=clone(record)
+wrong_source['modular_polynomial_sha256']='0'*64
+resign(wrong_source)
+try:
+    SupersingularModule(37).load_operator_cache(wrong_source)
+    assert False
+except ValueError:
+    pass
+(loaded.basis_digest(),loaded.operator_digest(2))
+`);
+      assert.equal(
+        result.repr,
+        "('ab0d3799fc12661e698c973647320a3b2b0c023bfcdec50c1857625f1caf083d', " +
+          "'40aed650ea445b6ddee3393ad87e1c18791688b093df6cba1df9251e81ad86ec')",
       );
     } finally {
       await session.close();

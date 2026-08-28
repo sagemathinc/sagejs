@@ -95,17 +95,26 @@ the new $T_2$ and $T_3$ characteristic polynomials agree with an independent,
 content-addressed Magma 2.18-5 run. No Magma result matrix is used to construct
 the Sage.js operators or subspaces.
 
-The remaining classical portability gate is a uniform canonical
-power-basis-coordinate export for both finite-field backends. Exact equality
-currently defines point identity and no formatted representation is trusted,
-but cross-platform coordinate sorting must land before the basis digest is
-declared stable. Optimized large-index modular-polynomial construction,
-scalable exact characteristic-polynomial certificates, higher-dimensional
-coefficient-field eigenpackets, fast large-precision Mestre evaluation, and
-broader real-quadratic arithmetic constructors remain later implementation
-stages in this plan. Phase 6's required second field, multi-component
-prime-power compatibility, degeneracy traces, and exact old/new decomposition
-are complete for the checked $\mathbf Q(\sqrt3)$ witness.
+The classical portability gate is now implemented. Generated FLINT resources
+export one exact power-basis coordinate block, while the legacy backend treats
+formatted output only as a candidate and accepts it after exact
+reconstruction. Canonical coordinate sorting therefore gives the same
+level-$37$ basis and operator digest in native Node and authenticated Wasm.
+Generated/Wasm extension-field polynomials use an exact deterministic
+finite-field root splitter rather than a host-only FLINT hook. Portable
+operator-cache records bind the field modulus, ordering schema, point and mass
+data, modular-polynomial source, CSR rows, and content digest; loading
+revalidates every edge and publishes transactionally. Final Windows, Linux
+x64/ARM64, and macOS receipts remain a release-stage gate rather than an
+unverified portability claim.
+
+Optimized large-index modular-polynomial construction, scalable exact
+characteristic-polynomial certificates, higher-dimensional coefficient-field
+eigenpackets, fast large-precision Mestre evaluation, and broader
+real-quadratic arithmetic constructors remain later implementation stages in
+this plan. Phase 6's required second field, multi-component prime-power
+compatibility, degeneracy traces, and exact old/new decomposition are complete
+for the checked $\mathbf Q(\sqrt3)$ witness.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

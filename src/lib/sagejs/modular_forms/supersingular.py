@@ -10,6 +10,8 @@ the immutable CSR and weighted graph interfaces are Sage.js additions.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Iterator, Sequence
 
 import sagejs as sage
@@ -146,6 +148,113 @@ def _find_equal(values: Sequence[Any], target: Any) -> int:
         if value == target:
             return index
     return -1
+
+
+def _legacy_power_basis_coordinates(element: Any, field: Any) -> tuple[Any, ...]:
+    """Parse a legacy FLINT rendering, then authenticate it by reconstruction."""
+    raw = runtime.flint_backend().fqToString(element._native)
+    degree = int(field.degree())
+    prime = runtime.bigint(field.characteristic())
+    variable = field.variable_name()
+    coordinates = [runtime.bigint(0) for _index in range(degree)]
+    occupied = [False for _index in range(degree)]
+    if raw != "0":
+        for term in raw.split("+"):
+            pieces = term.split("*")
+            if len(pieces) == 1:
+                coefficient_text = "1" if pieces[0].startswith(variable) else pieces[0]
+                monomial = pieces[0] if pieces[0].startswith(variable) else ""
+            elif len(pieces) == 2:
+                coefficient_text, monomial = pieces
+            else:
+                raise ArithmeticError("legacy finite-field coordinates are malformed")
+            coefficient = runtime.bigint(coefficient_text)
+            if coefficient < 0 or coefficient >= prime:
+                raise ArithmeticError("legacy finite-field coordinate is not reduced")
+            if monomial == "":
+                exponent = 0
+            elif monomial == variable:
+                exponent = 1
+            elif monomial.startswith(variable + "^"):
+                exponent = int(monomial[len(variable) + 1 :])
+            else:
+                raise ArithmeticError("legacy finite-field monomial is malformed")
+            if exponent < 0 or exponent >= degree or occupied[exponent]:
+                raise ArithmeticError("legacy finite-field power basis is malformed")
+            coordinates[exponent] = coefficient
+            occupied[exponent] = True
+
+    # The formatted string supplies only a candidate.  Exact field equality is
+    # the authority, so changes in FLINT formatting fail closed rather than
+    # changing a point identity or cache key.
+    reconstructed = field(0)
+    power = field(1)
+    generator = field.gen()
+    for coordinate in coordinates:
+        reconstructed += field(coordinate) * power
+        power *= generator
+    if reconstructed != element:
+        raise ArithmeticError("legacy finite-field coordinates failed exact replay")
+    return tuple(runtime.normalize_integer(value) for value in coordinates)
+
+
+def _power_basis_coordinates(element: Any, field: Any) -> tuple[Any, ...]:
+    """Return authenticated backend-independent power-basis coordinates."""
+    if getattr(element, "_parent", None) is not field:
+        raise TypeError("the finite-field element belongs to another parent")
+    if bool(getattr(field, "_generatedResourceBackend", False)):
+        coordinates = tuple(
+            runtime.normalize_integer(value)
+            for value in element._power_basis_coordinates()
+        )
+        if len(coordinates) != int(field.degree()):
+            raise ArithmeticError("generated finite-field coordinates have wrong width")
+        prime = runtime.bigint(field.characteristic())
+        if any(value < 0 or value >= prime for value in coordinates):
+            raise ArithmeticError("generated finite-field coordinate is not reduced")
+        reconstructed = field(0)
+        power = field(1)
+        generator = field.gen()
+        for coordinate in coordinates:
+            reconstructed += field(coordinate) * power
+            power *= generator
+        if reconstructed != element:
+            raise ArithmeticError("generated finite-field coordinates failed replay")
+        return coordinates
+    return _legacy_power_basis_coordinates(element, field)
+
+
+def _fingerprint_digest(fingerprint: Any) -> str:
+    payload = repr(fingerprint).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _cache_digest(payload: Any) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _modular_polynomial_fingerprint(index: int) -> tuple[Any, ...]:
+    if index == 2:
+        return (
+            "sagejs-classical-modular-polynomial-v1",
+            2,
+            (
+                (0, 3, "1"),
+                (1, 2, "1488"),
+                (1, 1, "40773375"),
+                (0, 2, "-162000"),
+                (0, 1, "8748000000"),
+                (0, 0, "-157464000000000"),
+                (2, 2, "-1"),
+            ),
+        )
+    polynomial = classical_modular_polynomial(index)
+    return (
+        "sagejs-classical-modular-polynomial-v1",
+        index,
+        tuple((left, right, str(value)) for left, right, value in polynomial.terms()),
+    )
 
 
 def _primitive_integer_vector(vector: Any) -> list[Any]:
@@ -320,6 +429,10 @@ class SupersingularIsogenyGraph:
     def vertex_mass(self, index: Any) -> Any:
         position = _integer(index, "vertex index")
         return self._module.mass_weights()[position]
+
+    def vertex_coordinates(self, index: Any) -> tuple[Any, ...]:
+        position = _integer(index, "vertex index")
+        return self._module.point_coordinates()[position]
 
     def neighbors(self, index: Any) -> tuple[tuple[int, int], ...]:
         return self._operator.row(index)
@@ -620,7 +733,7 @@ class SupersingularModule:
                 + " vertices, expected "
                 + str(self._dimension)
             )
-        operator = SparseHeckeOperator(
+        discovery_operator = SparseHeckeOperator(
             self._base_ring,
             self._dimension,
             self._dimension,
@@ -631,8 +744,37 @@ class SupersingularModule:
             name="Sparse Hecke operator T_2",
             dense_entry_limit=self._dense_entry_limit,
         )
-        self._points = points
-        self._point_index = SupersingularPointIndex(points)
+        coordinates = [_power_basis_coordinates(point, self._field) for point in points]
+        order = list(range(self._dimension))
+        order.sort(key=lambda index: coordinates[index])
+        inverse = [0 for _index in range(self._dimension)]
+        for new_index, old_index in enumerate(order):
+            inverse[old_index] = new_index
+        canonical_offsets = [0]
+        canonical_columns = []
+        canonical_values = []
+        for old_row in order:
+            row = {}
+            for old_column, multiplicity in discovery_operator.row(old_row):
+                new_column = inverse[old_column]
+                row[new_column] = row.get(new_column, 0) + multiplicity
+            for column in sorted(row):
+                canonical_columns.append(column)
+                canonical_values.append(row[column])
+            canonical_offsets.append(len(canonical_columns))
+        operator = SparseHeckeOperator(
+            self._base_ring,
+            self._dimension,
+            self._dimension,
+            canonical_offsets,
+            canonical_columns,
+            canonical_values,
+            index=2,
+            name="Sparse Hecke operator T_2",
+            dense_entry_limit=self._dense_entry_limit,
+        )
+        self._points = [points[index] for index in order]
+        self._point_index = SupersingularPointIndex(self._points)
         self._operators[2] = operator
         self._verify_operator(2)
 
@@ -718,6 +860,211 @@ class SupersingularModule:
         if self._points is None or self._point_index is None:
             raise RuntimeError("supersingular points were not constructed")
         return (list(self._points), self._point_index)
+
+    def point_coordinates(self) -> tuple[tuple[Any, ...], ...]:
+        """Return the canonical ordered $GF(p^2)$ power-basis coordinates."""
+        points = self.supersingular_points()[0]
+        return tuple(_power_basis_coordinates(point, self._field) for point in points)
+
+    def basis_fingerprint(self) -> tuple[Any, ...]:
+        """Return the complete portable identity of the supersingular basis."""
+        modulus = tuple(
+            runtime.normalize_integer(value)
+            for value in self._field._modulusCoefficients
+        )
+        return (
+            "sagejs-supersingular-basis-v1",
+            self._prime,
+            self._level,
+            "power-basis-lexicographic-v1",
+            modulus,
+            self.point_coordinates(),
+            tuple(str(value) for value in self.mass_weights()),
+        )
+
+    def basis_digest(self) -> str:
+        """Return a SHA-256 digest of `basis_fingerprint()`."""
+        return _fingerprint_digest(self.basis_fingerprint())
+
+    def operator_fingerprint(self, index: Any) -> tuple[Any, ...]:
+        """Return a basis-bound canonical CSR fingerprint for one operator."""
+        operator = self.hecke_operator(index)
+        return (
+            "sagejs-supersingular-operator-v1",
+            self.basis_digest(),
+            operator.hecke_index(),
+            tuple(operator.rows()),
+        )
+
+    def operator_digest(self, index: Any) -> str:
+        """Return a SHA-256 digest of one canonical sparse Hecke operator."""
+        return _fingerprint_digest(self.operator_fingerprint(index))
+
+    def operator_cache_record(self, index: Any) -> dict[str, Any]:
+        """Return a content-addressed portable cache record for one operator."""
+        operator = self.hecke_operator(index)
+        ell = int(operator.hecke_index())
+        body = {
+            "schema": "sagejs-supersingular-operator-cache-v1",
+            "prime": self._prime,
+            "level": self._level,
+            "index": ell,
+            "field_modulus": [int(value) for value in self._field._modulusCoefficients],
+            "point_ordering": "power-basis-lexicographic-v1",
+            "point_coordinates": [
+                [int(value) for value in point] for point in self.point_coordinates()
+            ],
+            "basis_sha256": self.basis_digest(),
+            "mass_weights": [str(value) for value in self.mass_weights()],
+            "modular_polynomial_sha256": _fingerprint_digest(
+                _modular_polynomial_fingerprint(ell)
+            ),
+            "rows": [
+                [[column, multiplicity] for column, multiplicity in row]
+                for row in operator.rows()
+            ],
+        }
+        body["content_sha256"] = _cache_digest(body)
+        return body
+
+    def load_operator_cache(self, record: Any) -> SparseHeckeOperator:
+        """Verify and install one portable sparse-operator cache record."""
+        if not isinstance(record, dict):
+            raise TypeError("a supersingular operator cache record must be a dict")
+        expected_keys = [
+            "basis_sha256",
+            "content_sha256",
+            "field_modulus",
+            "index",
+            "level",
+            "mass_weights",
+            "modular_polynomial_sha256",
+            "point_coordinates",
+            "point_ordering",
+            "prime",
+            "rows",
+            "schema",
+        ]
+        if sorted(record.keys()) != expected_keys:
+            raise ValueError("a supersingular operator cache record has wrong fields")
+        body = dict(record)
+        content_digest = body.pop("content_sha256")
+        if not isinstance(content_digest, str) or _cache_digest(body) != content_digest:
+            raise ValueError("a supersingular operator cache digest is invalid")
+        if (
+            body["schema"] != "sagejs-supersingular-operator-cache-v1"
+            or body["prime"] != self._prime
+            or body["level"] != self._level
+            or body["point_ordering"] != "power-basis-lexicographic-v1"
+        ):
+            raise ValueError("a supersingular operator cache binding is incompatible")
+        ell = _integer(body["index"], "cached Hecke index")
+        if ell < 2 or not bool(sage.is_prime(ell)) or ell == self._prime:
+            raise ValueError("a cached Hecke index is not a good prime")
+        if ell != 2:
+            self._construct_t2()
+        modulus = tuple(
+            _integer(value, "cached field modulus") for value in body["field_modulus"]
+        )
+        expected_modulus = tuple(
+            int(value) for value in self._field._modulusCoefficients
+        )
+        if modulus != expected_modulus:
+            raise ValueError("a cached finite-field modulus is incompatible")
+        coordinates = tuple(
+            tuple(_integer(value, "cached point coordinate") for value in point)
+            for point in body["point_coordinates"]
+        )
+        if len(coordinates) != self._dimension or any(
+            len(point) != 2 for point in coordinates
+        ):
+            raise ValueError("cached supersingular points have the wrong shape")
+        if tuple(sorted(coordinates)) != coordinates:
+            raise ValueError("cached supersingular points have the wrong ordering")
+        for position, point in enumerate(coordinates):
+            if position and point == coordinates[position - 1]:
+                raise ValueError("cached supersingular points are not distinct")
+            if any(value < 0 or value >= self._prime for value in point):
+                raise ValueError("a cached supersingular point is not reduced")
+        points = []
+        generator = self._field.gen()
+        for constant, linear in coordinates:
+            points.append(self._field(constant) + self._field(linear) * generator)
+
+        rows = body["rows"]
+        if not isinstance(rows, list) or len(rows) != self._dimension:
+            raise ValueError("a cached sparse operator has the wrong row count")
+        row_offsets = [0]
+        columns = []
+        values = []
+        for row in rows:
+            if not isinstance(row, list):
+                raise TypeError("a cached sparse row must be a list")
+            previous = -1
+            for entry in row:
+                if not isinstance(entry, list) or len(entry) != 2:
+                    raise TypeError("a cached sparse entry must be [column,value]")
+                column = _integer(entry[0], "cached sparse column")
+                value = _integer(entry[1], "cached sparse multiplicity")
+                if column <= previous or column >= self._dimension or value <= 0:
+                    raise ValueError("a cached sparse row is not canonical")
+                previous = column
+                columns.append(column)
+                values.append(value)
+            row_offsets.append(len(columns))
+        operator = SparseHeckeOperator(
+            self._base_ring,
+            self._dimension,
+            self._dimension,
+            row_offsets,
+            columns,
+            values,
+            index=ell,
+            name="Cached sparse Hecke operator T_" + str(ell),
+            dense_entry_limit=self._dense_entry_limit,
+        )
+        source_digest = _fingerprint_digest(_modular_polynomial_fingerprint(ell))
+        if body["modular_polynomial_sha256"] != source_digest:
+            raise ValueError("a cached modular-polynomial binding is invalid")
+
+        # Recheck every stored edge against the exact modular relation.  This
+        # avoids trusting cached graph topology while still avoiding root
+        # discovery/factorization.  Multiplicities, masses, and degree are
+        # checked below by the ordinary publication path.
+        ring = _global("PolynomialRing")(self._field, "x")
+        variable = ring.gen()
+        polynomial = None if ell == 2 else classical_modular_polynomial(ell)
+        for row in range(self._dimension):
+            specialized = (
+                _phi2_polynomial(variable, points[row])
+                if polynomial is None
+                else polynomial.specialize_y(self._field, points[row])
+            )
+            for column, _multiplicity in operator.row(row):
+                if specialized(points[column]) != self._field(0):
+                    raise ArithmeticError("a cached edge violates its modular relation")
+
+        previous_points = self._points
+        previous_index = self._point_index
+        previous_operator = self._operators.get(ell)
+        self._points = points
+        self._point_index = SupersingularPointIndex(points)
+        self._operators[ell] = operator
+        try:
+            if self.basis_digest() != body["basis_sha256"]:
+                raise ValueError("a cached supersingular basis digest is invalid")
+            if [str(value) for value in self.mass_weights()] != body["mass_weights"]:
+                raise ValueError("cached supersingular masses are invalid")
+            self._verify_operator(ell)
+        except Exception:
+            self._points = previous_points
+            self._point_index = previous_index
+            if previous_operator is None:
+                del self._operators[ell]
+            else:
+                self._operators[ell] = previous_operator
+            raise
+        return operator
 
     def hecke_operator(self, index: Any) -> SparseHeckeOperator:
         ell = _integer(index, "Hecke index")

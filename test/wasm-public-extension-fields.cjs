@@ -22,6 +22,8 @@ left = x^160 + (a^3 + 2*a + 1)*x^80 + a + 2
 right = (x + a + 1)^96
 product = left * right
 power = (x^5 + a*x + 2)^17
+from sagejs.modular_forms import SupersingularModule
+S = SupersingularModule(37)
 [
     K.modulus(),
     a^81 == a,
@@ -37,13 +39,19 @@ power = (x^5 + a*x + 2)^17
     -power + power == 0,
     [product[0], product[80], product[160], product[256]],
     [power[0], power[1], power[5], power[85]],
+    S.point_coordinates(),
+    S.basis_digest(),
+    S.operator_digest(2),
 ]
 `;
 
 const expected =
   "[x^4 + 2*x^3 + 2, True, True, 1, True, True, True, 256, 85, True, True, True, " +
   "[2*a^3 + 2*a + 2, 2, 2*a^2 + 2*a + 1, 1], " +
-  "[2, 2*a, 2*a^3 + 2*a + 1, 1]]";
+  "[2, 2*a, 2*a^3 + 2*a + 1, 1], " +
+  "((8, 0), (20, 10), (23, 27)), " +
+  "'ab0d3799fc12661e698c973647320a3b2b0c023bfcdec50c1857625f1caf083d', " +
+  "'40aed650ea445b6ddee3393ad87e1c18791688b093df6cba1df9251e81ad86ec']";
 
 test(
   "public GF(p^n) elements and dense polynomials agree in native and Wasm",
@@ -76,6 +84,7 @@ test(
         "ffi:flint:fq_context",
         "ffi:flint:fq_element",
         "ffi:flint:fq_element_add",
+        "ffi:flint:fq_element_coordinate_bytes",
         "ffi:flint:fq_element_inverse",
         "ffi:flint:fq_element_mul",
         "ffi:flint:fq_element_neg",
