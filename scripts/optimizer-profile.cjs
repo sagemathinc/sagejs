@@ -17,6 +17,7 @@ function usage() {
     "  --language python|sage       source language (default: sage)",
     "  --sampling-interval MICROS  requested Inspector interval (default: 500)",
     "  --entry FUNCTION            call one zero-argument function after loading",
+    "  --envelope FILE             attach sampling to a validated phase receipt",
     "  --output FILE               write JSON receipt to FILE instead of stdout",
     "  --help                      show this message",
   ].join("\n");
@@ -27,6 +28,7 @@ function parseArguments(argv) {
   let samplingIntervalMicros = 500;
   let output;
   let entryPoint;
+  let envelope;
   let source;
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -56,6 +58,11 @@ function parseArguments(argv) {
       }
       continue;
     }
+    if (argument === "--envelope") {
+      envelope = argv[++index];
+      if (!envelope) throw new Error("--envelope requires a profile receipt path");
+      continue;
+    }
     if (argument.startsWith("-")) throw new Error(`unknown option: ${argument}`);
     if (source) throw new Error("only one source file may be profiled");
     source = argument;
@@ -64,7 +71,75 @@ function parseArguments(argv) {
     throw new Error(`unsupported language: ${language}`);
   }
   if (!source) throw new Error("a source file is required");
-  return { help: false, language, samplingIntervalMicros, output, entryPoint, source };
+  return {
+    help: false,
+    language,
+    samplingIntervalMicros,
+    output,
+    entryPoint,
+    envelope,
+    source,
+  };
+}
+
+function assembleReceipt(envelopeFilename, result, options) {
+  const phase = JSON.parse(readFileSync(resolve(envelopeFilename), "utf8"));
+  const {
+    assembleValidatedOptimizerProfileReceipt,
+  } = require("../dist/tools/optimizer-profiler.js");
+  const {
+    sourceBundleFromRecords,
+  } = require("../tools/optimizer-development/identity.cjs");
+  const {
+    canonicalJson,
+    sha256,
+  } = require("../tools/optimizer-development/common.cjs");
+  if (phase.schema !== "sagejs.optimizer-profile-receipt/v1") {
+    throw new Error("--envelope must name a validated optimizer profile receipt");
+  }
+  const files = new Map(phase.sourceBundle.files.map((file) => [file.path, file]));
+  for (const map of result.sourceMaps) {
+    const file = {
+      path: map.source.identity.path,
+      digest: map.source.identity.digest,
+      bytes: map.source.bytes,
+    };
+    const previous = files.get(file.path);
+    if (previous && (previous.digest !== file.digest || previous.bytes !== file.bytes)) {
+      throw new Error(`profile source conflicts with envelope source: ${file.path}`);
+    }
+    files.set(file.path, file);
+  }
+  const {
+    schema: _schema,
+    id: _id,
+    sampling: _sampling,
+    runtime: _runtime,
+    ...payload
+  } = phase;
+  payload.authority = "host-collector-with-private-evaluator-evidence";
+  payload.sourceBundle = sourceBundleFromRecords([...files.values()]);
+  payload.capability = {
+    ...payload.capability,
+    sourceSampling: "inspector-position-ticks",
+  };
+  payload.configuration = {
+    ...payload.configuration,
+    mode: options.language,
+    capabilities: [...new Set([
+      ...payload.configuration.capabilities,
+      "optimizer-source-sampling",
+    ])].sort(),
+    environmentDigest: sha256(canonicalJson({
+      phase: payload.configuration.environmentDigest,
+      language: options.language,
+      entryPoint: options.entryPoint ?? null,
+      samplingIntervalMicros: options.samplingIntervalMicros,
+      hyperellipticReceiptPolicy:
+        process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY ?? null,
+    })),
+  };
+  return assembleValidatedOptimizerProfileReceipt(payload, result.observation);
 }
 
 async function main(argv = process.argv.slice(2)) {
@@ -97,13 +172,15 @@ async function main(argv = process.argv.slice(2)) {
       entryPoint: options.entryPoint,
       suppressResult: options.entryPoint === undefined,
     });
-    const receipt = {
-      schema: "sagejs.optimizer-profile-cli/v1",
-      profileMap: result.sourceMap,
-      profileMaps: result.sourceMaps,
-      evaluation: result.evaluation,
-      observation: result.observation,
-    };
+    const receipt = options.envelope
+      ? assembleReceipt(options.envelope, result, options)
+      : {
+          schema: "sagejs.optimizer-profile-cli/v1",
+          profileMap: result.sourceMap,
+          profileMaps: result.sourceMaps,
+          evaluation: result.evaluation,
+          observation: result.observation,
+        };
     const json = `${JSON.stringify(receipt, null, 2)}\n`;
     if (options.output) writeFileSync(resolve(options.output), json);
     else process.stdout.write(json);
