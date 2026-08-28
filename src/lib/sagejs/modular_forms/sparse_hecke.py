@@ -90,6 +90,7 @@ class SparseHeckeOperator:
         self._index = index
         self._name = name if name is not None else "sparse Hecke operator"
         self._dense_entry_limit = limit
+        runtime.object.freeze(self)
 
     def base_ring(self) -> Any:
         return self._base_ring
@@ -207,6 +208,57 @@ class SparseHeckeOperator:
         if modulus is None:
             return [self.apply(vector) for vector in vectors]
         return [self.apply_mod(vector, modulus) for vector in vectors]
+
+    def wiedemann_certificate(
+        self,
+        modulus: Any,
+        *,
+        seed: Any = 0,
+        projections: Any = 8,
+        replay_count: Any = 2,
+        proof: str = "basis",
+        max_verification_work: Any = 50000000,
+    ) -> Any:
+        """Return a verified sparse Krylov certificate over `GF(modulus)`."""
+        from .sparse_krylov import sparse_wiedemann_certificate
+
+        return sparse_wiedemann_certificate(
+            self,
+            modulus,
+            seed=seed,
+            projections=projections,
+            replay_count=replay_count,
+            proof=proof,
+            max_verification_work=max_verification_work,
+        )
+
+    def minimal_polynomial(
+        self,
+        modulus: Any,
+        variable: str = "x",
+        *,
+        algorithm: str = "wiedemann",
+        seed: Any = 0,
+        projections: Any = 8,
+        max_verification_work: Any = 50000000,
+    ) -> Any:
+        """Return the exactly certified minimal polynomial over a prime field."""
+        if algorithm != "wiedemann":
+            raise ValueError(
+                "the sparse minimal-polynomial algorithm must be wiedemann"
+            )
+        certificate = self.wiedemann_certificate(
+            modulus,
+            seed=seed,
+            projections=projections,
+            proof="basis",
+            max_verification_work=max_verification_work,
+        )
+        if not certificate.is_exact():
+            raise ArithmeticError("a nonexact Krylov candidate was not accepted")
+        return certificate.polynomial(variable)
+
+    minpoly = minimal_polynomial
 
     def row_sums(self) -> tuple[int, ...]:
         answer = []

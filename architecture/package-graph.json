@@ -596,6 +596,7 @@
         "src/lib/sagejs/modular_forms/__init__.py",
         "src/lib/sagejs/modular_forms/modular_polynomial.py",
         "src/lib/sagejs/modular_forms/sparse_hecke.py",
+        "src/lib/sagejs/modular_forms/sparse_krylov.py",
         "src/lib/sagejs/modular_forms/supersingular.py"
       ],
       "prefixes": []

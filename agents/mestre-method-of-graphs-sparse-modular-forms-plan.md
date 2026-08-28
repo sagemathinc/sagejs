@@ -18,13 +18,24 @@ commutativity verification. The checked $T_3$ and $T_5$ operators agree with
 Magma's Gram/theta and neighboring-ideal Brandt modes and with pinned LMFDB
 newform data.
 
+The third slice supplies deterministic projected Wiedemann sequences,
+Berlekamp--Massey, exact polynomial least-common multiples, independent replay
+vectors, and a deliberately bounded full-basis annihilation proof. The public
+`minimal_polynomial` method returns only a globally proved answer; the cheaper
+projection-replay result is named and labeled as a nonexact candidate. At
+levels $37$, $67$, and $389$, the sparse certificates agree with independent
+dense FLINT minimal polynomials. The graph API now also exposes exact
+mass-orthogonal cuspidal coordinates, a sparse ambient cuspidal action, and the
+mass-normalized self-adjoint adjacency operator used for spectral and
+Ramanujan checks.
+
 The remaining classical portability gate is a uniform canonical
 power-basis-coordinate export for both finite-field backends. Exact equality
 currently defines point identity and no formatted representation is trusted,
 but cross-platform coordinate sorting must land before the basis digest is
 declared stable. Optimized large-index modular-polynomial construction,
-verified Krylov algorithms, Mestre reconstruction, and the Hilbert modules
-remain later implementation stages in this plan.
+scalable exact characteristic-polynomial certificates, Mestre reconstruction,
+and the Hilbert modules remain later implementation stages in this plan.
 
 This document is the review gate before implementation. The recommended first
 slice is the classical prime-level supersingular module and its sparse

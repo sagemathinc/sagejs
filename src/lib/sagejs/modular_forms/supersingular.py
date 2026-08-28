@@ -183,6 +183,99 @@ class SupersingularPointIndex:
     toString = __repr__
 
 
+class NormalizedAdjacencyOperator:
+    """Mass-normalized self-adjoint realization of a Brandt operator."""
+
+    def __init__(
+        self,
+        module: SupersingularModule,
+        operator: SparseHeckeOperator,
+        *,
+        dense_entry_limit: int = 1000000,
+    ) -> None:
+        self._module = module
+        self._operator = operator
+        self._dense_entry_limit = dense_entry_limit
+        self._masses = tuple(float(value) for value in module.mass_weights())
+        runtime.object.freeze(self)
+
+    def nrows(self) -> int:
+        return self._operator.nrows()
+
+    def ncols(self) -> int:
+        return self._operator.ncols()
+
+    def is_sparse(self) -> bool:
+        return True
+
+    def apply(self, vector: Any) -> Any:
+        entries = [float(value) for value in vector]
+        if len(entries) != self.ncols():
+            raise ValueError("vector length does not match the normalized operator")
+        scaled = [
+            entries[index] / runtime.math.sqrt(self._masses[index])
+            for index in range(self.ncols())
+        ]
+        answer = []
+        for row in range(self.nrows()):
+            total = 0.0
+            for column, multiplicity in self._operator.row(row):
+                total += float(multiplicity) * scaled[column]
+            answer.append(runtime.math.sqrt(self._masses[row]) * total)
+        return _global("vector")(_global("RDF"), answer)
+
+    def matrix(self, max_entries: Any = None, force: bool = False) -> Any:
+        limit = (
+            self._dense_entry_limit
+            if max_entries is None
+            else _integer(max_entries, "dense entry limit")
+        )
+        if limit < 0:
+            raise ValueError("dense entry limit must be nonnegative")
+        entries = self.nrows() * self.ncols()
+        if not force and entries > limit:
+            raise MemoryError(
+                "normalized dense materialization needs "
+                + str(entries)
+                + " entries, above the explicit limit "
+                + str(limit)
+            )
+        rows = []
+        for row in range(self.nrows()):
+            values = [0.0 for _column in range(self.ncols())]
+            row_scale = runtime.math.sqrt(self._masses[row])
+            for column, multiplicity in self._operator.row(row):
+                values[column] = (
+                    row_scale
+                    * float(multiplicity)
+                    / runtime.math.sqrt(self._masses[column])
+                )
+            rows.append(values)
+        return _global("matrix")(_global("RDF"), rows)
+
+    dense_matrix = matrix
+
+    def __mul__(self, vector: Any) -> Any:
+        return self.apply(vector)
+
+    def _sage_binop_(self, operator: str, other: Any, reflected: bool) -> Any:
+        if operator == "mul" and not reflected:
+            return self.apply(other)
+        raise TypeError(
+            "operation "
+            + operator
+            + " is not defined for normalized adjacency operators"
+        )
+
+    def __repr__(self) -> str:
+        return "Mass-normalized sparse adjacency operator of degree " + str(
+            self.nrows()
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class SupersingularIsogenyGraph:
     """Multiplicity- and mass-preserving view of a supersingular graph."""
 
@@ -227,8 +320,46 @@ class SupersingularIsogenyGraph:
     def adjacency_operator(self) -> SparseHeckeOperator:
         return self._operator
 
+    def normalized_adjacency_operator(self) -> NormalizedAdjacencyOperator:
+        return NormalizedAdjacencyOperator(self._module, self._operator)
+
+    def spectrum(
+        self,
+        *,
+        algorithm: str = "dense",
+        max_entries: Any = 1000000,
+    ) -> tuple[float, ...]:
+        if algorithm != "dense":
+            raise NotImplementedError(
+                "selected sparse spectral intervals are not implemented"
+            )
+        values = [
+            float(value)
+            for value in self.normalized_adjacency_operator()
+            .matrix(max_entries=max_entries)
+            .eigenvalues()
+        ]
+        values.sort()
+        return tuple(values)
+
     def ramanujan_bound(self) -> float:
         return 2.0 * runtime.math.sqrt(self.degree() - 1)
+
+    def verify_ramanujan(
+        self,
+        *,
+        algorithm: str = "dense",
+        max_entries: Any = 1000000,
+        tolerance: float = 1e-9,
+    ) -> bool:
+        degree = float(self.degree())
+        bound = self.ramanujan_bound()
+        for eigenvalue in self.spectrum(algorithm=algorithm, max_entries=max_entries):
+            if abs(abs(eigenvalue) - degree) <= tolerance:
+                continue
+            if abs(eigenvalue) > bound + tolerance:
+                return False
+        return True
 
     def __repr__(self) -> str:
         return (
@@ -237,6 +368,127 @@ class SupersingularIsogenyGraph:
             + "-isogeny multigraph on "
             + str(self.order())
             + " vertices"
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class CuspidalHeckeOperator:
+    """Sparse ambient Hecke action in exact mass-orthogonal coordinates."""
+
+    def __init__(
+        self,
+        module: SupersingularModule,
+        operator: SparseHeckeOperator,
+        *,
+        dense_entry_limit: int = 1000000,
+    ) -> None:
+        self._module = module
+        self._operator = operator
+        self._dimension = max(0, module.dimension() - 1)
+        self._dense_entry_limit = dense_entry_limit
+        self._masses = module.mass_weights()
+        runtime.object.freeze(self)
+
+    def base_ring(self) -> Any:
+        return sage.QQ
+
+    def nrows(self) -> int:
+        return self._dimension
+
+    def ncols(self) -> int:
+        return self._dimension
+
+    def degree(self) -> int:
+        return self._dimension
+
+    dimension = degree
+
+    def hecke_index(self) -> Any:
+        return self._operator.hecke_index()
+
+    def is_sparse(self) -> bool:
+        return True
+
+    def lift(self, vector: Any) -> Any:
+        entries = [sage.QQ(value) for value in vector]
+        if len(entries) != self._dimension:
+            raise ValueError("vector length does not match the cuspidal operator")
+        if self._dimension == 0:
+            return _global("vector")(sage.QQ, [])
+        weighted = sage.QQ(0)
+        for index, value in enumerate(entries):
+            weighted += self._masses[index] * value
+        entries.append(-weighted / self._masses[self._dimension])
+        return _global("vector")(sage.QQ, entries)
+
+    def coordinates(self, vector: Any) -> Any:
+        entries = [sage.QQ(value) for value in vector]
+        if len(entries) != self._dimension + 1:
+            raise ValueError("ambient vector length does not match the module")
+        if not self._module.is_cuspidal(entries):
+            raise ValueError("the ambient vector is not mass-orthogonal to Eisenstein")
+        return _global("vector")(sage.QQ, entries[: self._dimension])
+
+    def apply(self, vector: Any) -> Any:
+        ambient = list(self.lift(vector))
+        image = []
+        for row in range(self._dimension + 1):
+            total = sage.QQ(0)
+            for column, multiplicity in self._operator.row(row):
+                total += sage.QQ(multiplicity) * ambient[column]
+            image.append(total)
+        if not self._module.is_cuspidal(image):
+            raise ArithmeticError(
+                "a Hecke operator did not preserve the cuspidal space"
+            )
+        return _global("vector")(sage.QQ, image[: self._dimension])
+
+    def matrix(self, max_entries: Any = None, force: bool = False) -> Any:
+        limit = (
+            self._dense_entry_limit
+            if max_entries is None
+            else _integer(max_entries, "dense entry limit")
+        )
+        if limit < 0:
+            raise ValueError("dense entry limit must be nonnegative")
+        entries = self._dimension * self._dimension
+        if not force and entries > limit:
+            raise MemoryError(
+                "cuspidal dense materialization needs "
+                + str(entries)
+                + " entries, above the explicit limit "
+                + str(limit)
+            )
+        columns = []
+        for column in range(self._dimension):
+            basis = [sage.QQ(0) for _index in range(self._dimension)]
+            basis[column] = sage.QQ(1)
+            columns.append(list(self.apply(basis)))
+        rows = []
+        for row in range(self._dimension):
+            rows.append([columns[column][row] for column in range(self._dimension)])
+        return _global("matrix")(sage.QQ, rows)
+
+    dense_matrix = matrix
+
+    def __mul__(self, vector: Any) -> Any:
+        return self.apply(vector)
+
+    def _sage_binop_(self, operator: str, other: Any, reflected: bool) -> Any:
+        if operator == "mul" and not reflected:
+            return self.apply(other)
+        raise TypeError(
+            "operation " + operator + " is not defined for cuspidal Hecke operators"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            "Cuspidal Hecke operator T_"
+            + str(self.hecke_index())
+            + " of degree "
+            + str(self._dimension)
         )
 
     __str__ = __repr__
@@ -477,6 +729,10 @@ class SupersingularModule:
             sage.QQ(1) / sage.QQ(self._automorphism_weight(point)) for point in points
         )
 
+    def automorphism_weights(self) -> tuple[int, ...]:
+        points = self.supersingular_points()[0]
+        return tuple(self._automorphism_weight(point) for point in points)
+
     def mass_pairing(self) -> Any:
         weights = self.mass_weights()
         rows = []
@@ -495,6 +751,55 @@ class SupersingularModule:
             [self._base_ring(1) for _ in range(self._dimension)],
         )
 
+    def mass_inner_product(self, left: Any, right: Any) -> Any:
+        left_entries = list(left)
+        right_entries = list(right)
+        if (
+            len(left_entries) != self._dimension
+            or len(right_entries) != self._dimension
+        ):
+            raise ValueError("mass-pairing vectors have the wrong length")
+        total = sage.QQ(0)
+        for index, mass in enumerate(self.mass_weights()):
+            total += mass * sage.QQ(left_entries[index]) * sage.QQ(right_entries[index])
+        return total
+
+    def is_cuspidal(self, vector: Any) -> bool:
+        return self.mass_inner_product(vector, self.eisenstein_vector()) == 0
+
+    def cuspidal_projection(self, vector: Any) -> Any:
+        entries = list(vector)
+        if len(entries) != self._dimension:
+            raise ValueError("projection vector has the wrong length")
+        eisenstein = self.eisenstein_vector()
+        scale = self.mass_inner_product(entries, eisenstein) / self.mass_inner_product(
+            eisenstein, eisenstein
+        )
+        return _global("vector")(
+            sage.QQ,
+            [sage.QQ(value) - scale for value in entries],
+        )
+
+    def cuspidal_basis_matrix(self) -> Any:
+        if self._dimension <= 1:
+            return _global("matrix")(sage.QQ, 0, self._dimension, [])
+        masses = self.mass_weights()
+        anchor = self._dimension - 1
+        rows = []
+        for index in range(anchor):
+            row = [sage.QQ(0) for _column in range(self._dimension)]
+            row[index] = sage.QQ(1)
+            row[anchor] = -masses[index] / masses[anchor]
+            rows.append(row)
+        return _global("matrix")(sage.QQ, rows)
+
+    def cuspidal_operator(self, index: Any) -> CuspidalHeckeOperator:
+        return CuspidalHeckeOperator(
+            self,
+            self.hecke_operator(index),
+            dense_entry_limit=self._dense_entry_limit,
+        )
+
     def __repr__(self) -> str:
         return (
             "Module of supersingular points on X_0("
@@ -510,6 +815,8 @@ class SupersingularModule:
 
 
 __all__ = [
+    "CuspidalHeckeOperator",
+    "NormalizedAdjacencyOperator",
     "SparseHeckeOperator",
     "SupersingularIsogenyGraph",
     "SupersingularModule",

@@ -58,6 +58,50 @@ assert S.isogeny_graph().ramanujan_bound() == 2.0*sqrt(2.0)
 );
 
 test(
+  "mass-orthogonal cuspidal coordinates and normalized spectra are exact",
+  { timeout: 120_000 },
+  async () => {
+    const session = await createSage();
+    try {
+      const result = await session.evaluate(`
+S11 = SupersingularModule(11)
+assert S11.automorphism_weights() == (2,3)
+assert S11.mass_weights() == (QQ(1)/2, QQ(1)/3)
+assert S11.mass_inner_product([2,-3], S11.eisenstein_vector()) == 0
+assert S11.is_cuspidal([2,-3])
+assert S11.cuspidal_basis_matrix() == matrix(QQ, [[1,-QQ(3)/2]])
+C11 = S11.cuspidal_operator(2)
+assert C11.is_sparse()
+assert C11.dimension() == 1
+assert C11.matrix() == matrix(QQ, [[-2]])
+assert C11.coordinates(C11.lift([7])) == vector(QQ, [7])
+assert C11 * vector(QQ, [7]) == vector(QQ, [-14])
+
+G11 = S11.isogeny_graph(2)
+N11 = G11.normalized_adjacency_operator()
+M11 = N11.matrix()
+assert abs(float(M11[0,1] - M11[1,0])) < 1e-12
+assert G11.spectrum() == (-2.0, 3.0)
+assert G11.verify_ramanujan()
+
+S37 = SupersingularModule(37)
+projection = S37.cuspidal_projection([1,2,8])
+assert S37.is_cuspidal(projection)
+assert projection == vector(QQ, [-QQ(8)/3, -QQ(5)/3, QQ(13)/3])
+assert S37.cuspidal_operator(2).matrix() == matrix(QQ, [[0,0],[-1,-2]])
+(C11.matrix(), G11.spectrum(), projection)
+`);
+      assert.equal(
+        result.repr,
+        "([-2], (-2.0, 3.0), (-8/3, -5/3, 13/3))",
+      );
+    } finally {
+      await session.close();
+    }
+  },
+);
+
+test(
   "pinned Magma modes and LMFDB newforms are exact independent oracles",
   { timeout: 120_000 },
   async () => {
