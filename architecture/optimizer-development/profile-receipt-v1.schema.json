@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/profile-receipt-v1.schema.json",
+  "title": "Sage.js optimizer profile receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "workload", "sourceBundle", "compiler", "artifact", "host", "capability", "configuration", "outcome", "output", "compilation", "execution", "phases", "sampling", "optimizer", "runtime", "counters", "resources", "overhead"],
+  "properties": {
+    "schema": { "const": "sagejs.optimizer-profile-receipt/v1" },
+    "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+    "authority": { "enum": ["host-collector-with-private-evaluator-evidence", "host-workload-runner-phase-only"] },
+    "workload": { "$ref": "wire-definitions-v1.schema.json#/$defs/reference" },
+    "sourceBundle": { "type": "object" },
+    "compiler": { "type": "object" },
+    "artifact": { "type": "object" },
+    "host": { "type": "object" },
+    "capability": { "type": "object" },
+    "configuration": { "type": "object" },
+    "outcome": { "type": "object" },
+    "output": { "type": "object" },
+    "compilation": { "type": "object" },
+    "execution": { "type": "object" },
+    "phases": { "type": "array", "items": { "type": "object" } },
+    "sampling": { "type": "object" },
+    "optimizer": { "type": "object" },
+    "runtime": { "type": "object" },
+    "counters": { "type": "object" },
+    "resources": { "type": "object" },
+    "overhead": { "type": "object" }
+  }
+}

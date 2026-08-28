@@ -14,6 +14,7 @@ const reasons = require("../tools/optimizer-development/reason-codes.cjs");
 const schemas = require("../tools/optimizer-development/schemas.cjs");
 
 const FIXTURES = path.join(__dirname, "fixtures", "optimizer-development", "schemas");
+const CONTRACTS = path.join(__dirname, "..", "architecture", "optimizer-development");
 
 function fixture(name) {
   return JSON.parse(fs.readFileSync(path.join(FIXTURES, name), "utf8"));
@@ -30,6 +31,30 @@ function readdress(document) {
   const { schema, id: _id, ...payload } = document;
   return addressed(schema, payload);
 }
+
+test("wire schemas enumerate every frozen document boundary", () => {
+  const documents = new Map([
+    [schemas.SCHEMAS.workload, "workload-v1.schema.json"],
+    [schemas.SCHEMAS.workloadCatalog, "workload-catalog-v1.schema.json"],
+    [schemas.SCHEMAS.profile, "profile-receipt-v1.schema.json"],
+    [schemas.SCHEMAS.overlay, "hotness-overlay-v1.schema.json"],
+    [schemas.SCHEMAS.dossier, "dossier-v1.schema.json"],
+    [schemas.SCHEMAS.campaign, "campaign-v1.schema.json"],
+    [schemas.SCHEMAS.promotion, "promotion-receipt-v1.schema.json"],
+  ]);
+  for (const [instanceSchema, filename] of documents) {
+    const document = JSON.parse(fs.readFileSync(path.join(CONTRACTS, filename), "utf8"));
+    assert.equal(document.$schema, "https://json-schema.org/draft/2020-12/schema");
+    assert.equal(document.type, "object");
+    assert.equal(document.additionalProperties, false);
+    assert.equal(document.properties.schema.const, instanceSchema);
+    assert.deepEqual(new Set(document.required), new Set(Object.keys(document.properties)));
+  }
+  const adversarial = fixture("adversarial-cases.json");
+  assert.equal(adversarial.schema, "sagejs.optimizer-adversarial-schema-corpus/v1");
+  assert.equal(adversarial.cases.length, 10);
+  assert.equal(new Set(adversarial.cases.map((item) => item.id)).size, 10);
+});
 
 function distribution(samples = [10, 11, 12]) {
   const sorted = [...samples].sort((left, right) => left - right);
