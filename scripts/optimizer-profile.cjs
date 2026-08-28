@@ -114,6 +114,34 @@ function parseArguments(argv) {
   };
 }
 
+function profileProcessEvidence(
+  options,
+  phaseEnvironmentDigest,
+  execArgv = process.execArgv,
+  environment = process.env,
+) {
+  const nodeExecArgv = execArgv.map((argument) => String(argument));
+  const capabilities = ["optimizer-source-sampling"];
+  if (nodeExecArgv.includes("--no-turbo-inlining")) {
+    capabilities.push("v8-turbo-inlining-disabled");
+  }
+  return {
+    capabilities,
+    environment: {
+      phase: phaseEnvironmentDigest,
+      language: options.language,
+      entryPoint: options.entryPoint ?? null,
+      prepareEntryPoint: options.prepareEntryPoint ?? null,
+      warmupRuns: options.warmupRuns ?? (options.entryPoint ? 1 : 0),
+      repetitions: options.repetitions ?? 1,
+      samplingIntervalMicros: options.samplingIntervalMicros,
+      nodeExecArgv,
+      hyperellipticReceiptPolicy:
+        environment.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY ?? null,
+    },
+  };
+}
+
 function assembleReceipt(envelopeFilename, result, options) {
   const phase = JSON.parse(readFileSync(resolve(envelopeFilename), "utf8"));
   const {
@@ -155,24 +183,18 @@ function assembleReceipt(envelopeFilename, result, options) {
     ...payload.capability,
     sourceSampling: "inspector-position-ticks",
   };
+  const processEvidence = profileProcessEvidence(
+    options,
+    payload.configuration.environmentDigest,
+  );
   payload.configuration = {
     ...payload.configuration,
     mode: options.language,
     capabilities: [...new Set([
       ...payload.configuration.capabilities,
-      "optimizer-source-sampling",
+      ...processEvidence.capabilities,
     ])].sort(),
-    environmentDigest: sha256(canonicalJson({
-      phase: payload.configuration.environmentDigest,
-      language: options.language,
-      entryPoint: options.entryPoint ?? null,
-      prepareEntryPoint: options.prepareEntryPoint ?? null,
-      warmupRuns: options.warmupRuns ?? (options.entryPoint ? 1 : 0),
-      repetitions: options.repetitions ?? 1,
-      samplingIntervalMicros: options.samplingIntervalMicros,
-      hyperellipticReceiptPolicy:
-        process.env.SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY ?? null,
-    })),
+    environmentDigest: sha256(canonicalJson(processEvidence.environment)),
   };
   return assembleValidatedOptimizerProfileReceipt(payload, result.observation);
 }
@@ -234,4 +256,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { main, parseArguments, usage };
+module.exports = { main, parseArguments, profileProcessEvidence, usage };

@@ -13,6 +13,7 @@ const { Script } = require("node:vm");
 
 const {
   parseArguments,
+  profileProcessEvidence,
 } = require("../scripts/optimizer-profile.cjs");
 const {
   createPrivateProfileEventCollector,
@@ -238,4 +239,33 @@ test("the CLI exposes an explicit prepared sampling protocol", () => {
     () => parseArguments(["--warmups", "1", "workload.py"]),
     /require --entry/,
   );
+});
+
+test("profile receipts bind and label the no-inlining attribution mode", () => {
+  const options = parseArguments([
+    "--entry", "run_workload",
+    "--prepare", "prepare_workload",
+    "--warmups", "2",
+    "--repetitions", "7",
+    "workload.py",
+  ]);
+  const ordinary = profileProcessEvidence(
+    options,
+    "1".repeat(64),
+    [],
+    { SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off" },
+  );
+  const noInlining = profileProcessEvidence(
+    options,
+    "1".repeat(64),
+    ["--no-turbo-inlining"],
+    { SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY: "off" },
+  );
+  assert.deepEqual(ordinary.capabilities, ["optimizer-source-sampling"]);
+  assert.deepEqual(noInlining.capabilities, [
+    "optimizer-source-sampling",
+    "v8-turbo-inlining-disabled",
+  ]);
+  assert.deepEqual(noInlining.environment.nodeExecArgv, ["--no-turbo-inlining"]);
+  assert.notDeepEqual(ordinary.environment, noInlining.environment);
 });
