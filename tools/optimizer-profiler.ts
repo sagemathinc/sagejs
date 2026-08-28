@@ -28,11 +28,20 @@ export type OptimizerProfileEvent = Readonly<{
   outcome: OptimizerProfileEventOutcome;
 }>;
 
+export type OptimizerProfileEventAggregate = Readonly<{
+  regionId: string;
+  kind: string;
+  outcome: OptimizerProfileEventOutcome;
+  rawGuardReason: string | null;
+  count: number;
+}>;
+
 export type OptimizerProfileEventSnapshot = Readonly<{
   schema: typeof OPTIMIZER_PROFILE_EVENT_SCHEMA;
   authority: "private-lexical-capability";
   count: number;
   countsByOutcome: Readonly<Record<string, number>>;
+  aggregates: readonly OptimizerProfileEventAggregate[];
   events: readonly OptimizerProfileEvent[];
 }>;
 
@@ -41,6 +50,7 @@ export interface PrivateProfileEventCollector {
     regionId: string,
     kind: string,
     outcome: OptimizerProfileEventOutcome,
+    rawGuardReason?: string | null,
   ): void;
   snapshot(): OptimizerProfileEventSnapshot;
 }
@@ -77,8 +87,19 @@ export type OptimizerProfileObservation = Readonly<{
     scriptId: string;
     inspectorHash: string;
   }>;
+  artifacts: readonly Readonly<{
+    url: string;
+    sha256: string;
+    bytes: number;
+    scriptId: string;
+    inspectorHash: string;
+    sourceUnitId: string;
+    mapDigest: string;
+  }>[];
   sampling: Readonly<{
-    scope: "cold-generated-javascript-load-and-execution";
+    scope:
+      | "cold-generated-javascript-load-and-execution"
+      | "cold-generated-javascript-and-current-source-lazy-modules";
     requestedIntervalMicros: number;
     startTimeMicros: number;
     endTimeMicros: number;
@@ -187,6 +208,15 @@ export class OptimizerProfileAuthenticationError extends Error {
   }
 }
 
+export interface OptimizerProfileArtifactRegistry {
+  declare(map: OptimizerProfileMap, javascript: string): void;
+}
+
+type DeclaredArtifact = Readonly<{
+  map: OptimizerProfileMap;
+  javascript: string;
+}>;
+
 const PROFILE_OUTCOMES = new Set<OptimizerProfileEventOutcome>([
   "selected-static-entry",
   "guarded-fast",
@@ -210,35 +240,70 @@ function profileLabel(value: string, label: string): string {
  * by an evaluated program. Calling it is the authority to publish an event.
  */
 export function createPrivateProfileEventCollector(): PrivateProfileEventCollector {
-  const events: OptimizerProfileEvent[] = [];
+  const aggregates = new Map<string, {
+    regionId: string;
+    kind: string;
+    outcome: OptimizerProfileEventOutcome;
+    rawGuardReason: string | null;
+    count: number;
+  }>();
+  let count = 0;
   const observer = (
     regionId: string,
     kind: string,
     outcome: OptimizerProfileEventOutcome,
+    rawGuardReason: string | null = null,
   ): void => {
     profileLabel(regionId, "region id");
     profileLabel(kind, "kind");
     if (!PROFILE_OUTCOMES.has(outcome)) {
       throw new TypeError("invalid optimizer profile event outcome");
     }
-    events.push(Object.freeze({
-      sequence: events.length,
+    if (rawGuardReason !== null) profileLabel(rawGuardReason, "guard reason");
+    const requiresReason = outcome === "guarded-fallback" || outcome === "error";
+    if (requiresReason !== (rawGuardReason !== null)) {
+      throw new TypeError(
+        "optimizer profile guard reason is required exactly for fallback and error outcomes",
+      );
+    }
+    const key = JSON.stringify([regionId, kind, outcome, rawGuardReason]);
+    const group = aggregates.get(key) ?? {
       regionId,
       kind,
       outcome,
-    }));
+      rawGuardReason,
+      count: 0,
+    };
+    group.count += 1;
+    count += 1;
+    aggregates.set(key, group);
   };
   const snapshot = (): OptimizerProfileEventSnapshot => {
     const countsByOutcome: Record<string, number> = Object.create(null);
-    for (const event of events) {
-      countsByOutcome[event.outcome] = (countsByOutcome[event.outcome] ?? 0) + 1;
+    const groups = [...aggregates.values()].sort((left, right) =>
+      left.regionId.localeCompare(right.regionId) ||
+      left.kind.localeCompare(right.kind) ||
+      left.outcome.localeCompare(right.outcome) ||
+      String(left.rawGuardReason).localeCompare(String(right.rawGuardReason)));
+    for (const event of groups) {
+      countsByOutcome[event.outcome] =
+        (countsByOutcome[event.outcome] ?? 0) + event.count;
     }
     return Object.freeze({
       schema: OPTIMIZER_PROFILE_EVENT_SCHEMA,
       authority: "private-lexical-capability",
-      count: events.length,
+      count,
       countsByOutcome: Object.freeze({ ...countsByOutcome }),
-      events: Object.freeze([...events]),
+      aggregates: Object.freeze(groups.map((event) => Object.freeze({ ...event }))),
+      // Retain the original event projection for callers that only need to
+      // enumerate distinct routes. Counts live in `aggregates`, so collector
+      // memory is bounded by route diversity rather than loop trip count.
+      events: Object.freeze(groups.map((event, sequence) => Object.freeze({
+        sequence,
+        regionId: event.regionId,
+        kind: event.kind,
+        outcome: event.outcome,
+      }))),
     });
   };
   return Object.freeze({ observer, snapshot });
@@ -420,9 +485,11 @@ function frozenAccounting(value: {
 }
 
 function buildReceipt(options: {
-  map: OptimizerProfileMap;
-  javascript: string;
-  candidate: ScriptCandidate;
+  artifacts: readonly Readonly<{
+    map: OptimizerProfileMap;
+    javascript: string;
+    candidate: ScriptCandidate;
+  }>[];
   profile: InspectorProfile;
   requestedIntervalMicros: number;
   wallMicros: number;
@@ -430,9 +497,17 @@ function buildReceipt(options: {
   actionThrew: boolean;
   actionError?: unknown;
 }): OptimizerProfileObservation {
-  const { map, javascript, candidate, profile } = options;
+  const { artifacts, profile } = options;
+  if (artifacts.length === 0) throw new Error("optimizer profile has no artifacts");
+  const rootArtifact = artifacts[0];
   const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-  const starts = lineStarts(javascript);
+  const byScriptId = new Map(artifacts.map((artifact) => [
+    artifact.candidate.scriptId,
+    {
+      ...artifact,
+      starts: lineStarts(artifact.javascript),
+    },
+  ]));
   const sampleAccounting = { total: 0, attributed: 0, ambiguous: 0, unmatched: 0 };
   const tickAccounting = { total: 0, attributed: 0, ambiguous: 0, unmatched: 0 };
   const attributed = new Map<string, {
@@ -449,14 +524,14 @@ function buildReceipt(options: {
     }
     return value;
   };
-  const functionCandidate = (span: ProfileSpan) => ({
+  const functionCandidate = (map: OptimizerProfileMap, span: ProfileSpan) => ({
     sourceUnitId: map.source.identity.id,
     functionId: span.identity.id,
     path: map.source.identity.path,
     range: span.identity.range,
     confidence: 1,
   });
-  const regionCandidate = (span: ProfileSpan) => ({
+  const regionCandidate = (map: OptimizerProfileMap, span: ProfileSpan) => ({
     sourceUnitId: map.source.identity.id,
     functionId: String((span.identity as any).functionId),
     regionId: span.identity.id,
@@ -465,12 +540,13 @@ function buildReceipt(options: {
     confidence: 1,
   });
   const evidenceMapping = (
+    map: OptimizerProfileMap | null,
     mapping: Mapping,
     includeRegion: boolean,
   ): Readonly<Record<string, unknown>> => ({
     status: mapping.status,
     candidates: mapping.spans.map((span) =>
-      includeRegion ? regionCandidate(span) : functionCandidate(span)),
+      includeRegion ? regionCandidate(map!, span) : functionCandidate(map!, span)),
   });
 
   const samples = profile.samples ?? [];
@@ -486,11 +562,12 @@ function buildReceipt(options: {
     .map(([nodeId, quantity]) => {
       const node = nodes.get(nodeId);
       let mapping: Mapping = { status: "unmatched", spans: [] };
-      if (node?.callFrame.scriptId === candidate.scriptId) {
+      const artifact = node ? byScriptId.get(node.callFrame.scriptId) : undefined;
+      if (node && artifact) {
         mapping = mapPoint(
-          map,
-          starts,
-          javascript.length,
+          artifact.map,
+          artifact.starts,
+          artifact.javascript.length,
           node.callFrame.lineNumber + 1,
           node.callFrame.columnNumber,
         );
@@ -511,14 +588,15 @@ function buildReceipt(options: {
           line: Math.max(1, (node?.callFrame.lineNumber ?? 0) + 1),
           column: Math.max(0, node?.callFrame.columnNumber ?? 0),
         },
-        mapping: evidenceMapping(mapping, false),
+        mapping: evidenceMapping(artifact?.map ?? null, mapping, false),
       };
     });
   const positionTicks: Array<Record<string, unknown>> = [];
   for (const node of profile.nodes) {
     for (const tick of node.positionTicks ?? []) {
-      const mapping = node.callFrame.scriptId === candidate.scriptId
-        ? mapLine(map, tick.line)
+      const artifact = byScriptId.get(node.callFrame.scriptId);
+      const mapping = artifact
+        ? mapLine(artifact.map, tick.line)
         : { status: "unmatched" as const, spans: [] };
       account(tickAccounting, mapping, tick.ticks);
       if (mapping.status === "attributed") {
@@ -529,7 +607,7 @@ function buildReceipt(options: {
         scriptId: node.callFrame.scriptId || "(no-script)",
         line: tick.line,
         ticks: tick.ticks,
-        mapping: evidenceMapping(mapping, true),
+        mapping: evidenceMapping(artifact?.map ?? null, mapping, true),
       });
     }
   }
@@ -554,17 +632,24 @@ function buildReceipt(options: {
     optimizerRegionId: string;
     regionKind: string;
     outcome: string;
+    rawGuardReason: string | null;
     count: number;
   }>();
-  for (const event of options.privateEvents.events) {
-    const key = JSON.stringify([event.regionId, event.kind, event.outcome]);
+  for (const event of options.privateEvents.aggregates) {
+    const key = JSON.stringify([
+      event.regionId,
+      event.kind,
+      event.outcome,
+      event.rawGuardReason,
+    ]);
     const group = routeGroups.get(key) ?? {
       optimizerRegionId: event.regionId,
       regionKind: event.kind,
       outcome: event.outcome,
+      rawGuardReason: event.rawGuardReason,
       count: 0,
     };
-    group.count += 1;
+    group.count += event.count;
     routeGroups.set(key, group);
   }
   const routeCounts = { total: 0, attributed: 0, ambiguous: 0, unmatched: 0 };
@@ -572,20 +657,27 @@ function buildReceipt(options: {
     left.optimizerRegionId.localeCompare(right.optimizerRegionId) ||
     left.regionKind.localeCompare(right.regionKind) ||
     left.outcome.localeCompare(right.outcome)).map((group) => {
-    const spans = map.spans.filter((span) =>
-      span.category === "loop" && span.optimizerRegionId === group.optimizerRegionId);
+    const matches = artifacts.flatMap(({ map }) => map.spans
+      .filter((span) =>
+        span.category === "loop" && span.optimizerRegionId === group.optimizerRegionId)
+      .map((span) => ({ map, span })));
+    const spans = matches.map(({ span }) => span);
     const mapping: Mapping = spans.length === 0
       ? { status: "unmatched", spans: [] }
       : spans.length === 1
         ? { status: "attributed", spans }
         : { status: "ambiguous", spans };
     account(routeCounts, mapping, group.count);
+    const { rawGuardReason, ...event } = group;
     return {
-      ...group,
-      reason: null,
+      ...event,
+      reason: rawGuardReason === null ? null : {
+        code: "telemetry.guard-failure",
+        detail: { guard: rawGuardReason },
+      },
       mapping: {
         status: mapping.status,
-        candidates: mapping.spans.map((span) => ({
+        candidates: matches.filter(({ span }) => mapping.spans.includes(span)).map(({ map, span }) => ({
           sourceUnitId: map.source.identity.id,
           functionId: String((span.identity as any).functionId),
           regionId: span.identity.id,
@@ -601,19 +693,21 @@ function buildReceipt(options: {
       (total, delta) => total + (Number.isFinite(delta) ? Math.max(0, delta) : 0),
       0,
     ))),
-    scripts: [{
+    scripts: artifacts.map(({ candidate }) => ({
       url: candidate.url,
       sha256: candidate.sha256,
       bytes: candidate.bytes,
       authenticatedScriptIds: [candidate.scriptId],
       rejectedSameUrlScriptIds: [],
-    }],
-    mapBindings: [{
+    })).sort((left, right) => left.url.localeCompare(right.url)),
+    mapBindings: artifacts.map(({ map }) => ({
       schema: map.schema,
       digest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
       sourceUnitId: map.source.identity.id,
       generatedSha256: map.generated.sha256,
-    }],
+    })).sort((left, right) =>
+      left.sourceUnitId.localeCompare(right.sourceUnitId) ||
+      left.generatedSha256.localeCompare(right.generatedSha256)),
     functionSampleCounts: frozenAccounting(sampleAccounting),
     functionSamples,
     positionTickCounts: frozenAccounting(tickAccounting),
@@ -634,14 +728,25 @@ function buildReceipt(options: {
       architecture: process.arch,
     }),
     artifact: Object.freeze({
-      url: map.generated.url,
+      url: rootArtifact.map.generated.url,
+      sha256: rootArtifact.candidate.sha256,
+      bytes: rootArtifact.candidate.bytes,
+      scriptId: rootArtifact.candidate.scriptId,
+      inspectorHash: rootArtifact.candidate.inspectorHash,
+    }),
+    artifacts: Object.freeze(artifacts.map(({ map, candidate }) => Object.freeze({
+      url: candidate.url,
       sha256: candidate.sha256,
       bytes: candidate.bytes,
       scriptId: candidate.scriptId,
       inspectorHash: candidate.inspectorHash,
-    }),
+      sourceUnitId: map.source.identity.id,
+      mapDigest: evidenceCommon.sha256(evidenceCommon.canonicalJson(map)),
+    }))),
     sampling: Object.freeze({
-      scope: "cold-generated-javascript-load-and-execution",
+      scope: artifacts.length === 1
+        ? "cold-generated-javascript-load-and-execution"
+        : "cold-generated-javascript-and-current-source-lazy-modules",
       requestedIntervalMicros: options.requestedIntervalMicros,
       startTimeMicros: profile.startTime,
       endTimeMicros: profile.endTime,
@@ -706,32 +811,62 @@ export async function runAuthenticatedNodeProfile({
 }: {
   map: OptimizerProfileMap;
   javascript: string;
-  execute: () => unknown;
+  execute: (artifacts: OptimizerProfileArtifactRegistry) => unknown;
   samplingIntervalMicros?: number;
   privateEvents?: PrivateProfileEventCollector;
 }): Promise<OptimizerProfileObservation> {
-  try {
-    authenticateOptimizerProfileMap(map, javascript);
-  } catch (error) {
-    throw new OptimizerProfileAuthenticationError(
-      "evidence.stale-artifact",
-      error instanceof Error ? error.message : String(error),
-      { cause: error },
-    );
-  }
+  const declarations: DeclaredArtifact[] = [];
+  const declarationsByUrl = new Map<string, DeclaredArtifact>();
+  let acceptDeclarations = true;
+  const artifacts: OptimizerProfileArtifactRegistry = Object.freeze({
+    declare(candidateMap: OptimizerProfileMap, candidateJavaScript: string): void {
+      if (!acceptDeclarations) {
+        throw new OptimizerProfileAuthenticationError(
+          "evidence.stale-artifact",
+          "optimizer profile artifact was declared outside the active sampling interval",
+        );
+      }
+      try {
+        authenticateOptimizerProfileMap(candidateMap, candidateJavaScript);
+      } catch (error) {
+        throw new OptimizerProfileAuthenticationError(
+          "evidence.stale-artifact",
+          error instanceof Error ? error.message : String(error),
+          { cause: error },
+        );
+      }
+      if (declarationsByUrl.has(candidateMap.generated.url)) {
+        throw new OptimizerProfileAuthenticationError(
+          "evidence.ambiguous-attribution",
+          `optimizer profile artifact URL was declared twice: ${candidateMap.generated.url}`,
+        );
+      }
+      const declaration = Object.freeze({
+        map: immutableJsonCopy(candidateMap),
+        javascript: candidateJavaScript,
+      });
+      declarations.push(declaration);
+      declarationsByUrl.set(candidateMap.generated.url, declaration);
+    },
+  });
+  artifacts.declare(map, javascript);
   if (!Number.isSafeInteger(samplingIntervalMicros) ||
       samplingIntervalMicros < 50 || samplingIntervalMicros > 100_000) {
     throw new RangeError("samplingIntervalMicros must be an integer from 50 through 100000");
   }
   const session = new Session();
-  const candidatePromises: Promise<ScriptCandidate>[] = [];
+  const candidatePromisesByUrl = new Map<string, Promise<ScriptCandidate>[]>();
   let connected = false;
   let profilerEnabled = false;
   let debuggerEnabled = false;
   let profilerStarted = false;
   let acceptCandidates = false;
   let profile: InspectorProfile | undefined;
-  let candidates: ScriptCandidate[] = [];
+  let authenticatedArtifacts: Array<{
+    map: OptimizerProfileMap;
+    javascript: string;
+    candidate: ScriptCandidate;
+  }> = [];
   let actionError: unknown;
   let actionThrew = false;
   let wallMicros = 0;
@@ -740,8 +875,10 @@ export async function runAuthenticatedNodeProfile({
     connected = true;
     session.on("Debugger.scriptParsed", (message: any) => {
       const parsed = message.params;
-      if (!acceptCandidates || parsed.url !== map.generated.url) return;
-      candidatePromises.push(post<{ scriptSource: string }>(
+      if (!acceptCandidates || !declarationsByUrl.has(String(parsed.url))) return;
+      const url = String(parsed.url);
+      const candidates = candidatePromisesByUrl.get(url) ?? [];
+      candidates.push(post<{ scriptSource: string }>(
         session,
         "Debugger.getScriptSource",
         { scriptId: parsed.scriptId },
@@ -753,6 +890,7 @@ export async function runAuthenticatedNodeProfile({
         sha256: profileSha256(scriptSource),
         bytes: Buffer.byteLength(scriptSource),
       })));
+      candidatePromisesByUrl.set(url, candidates);
     });
     await post(session, "Debugger.enable");
     debuggerEnabled = true;
@@ -766,7 +904,7 @@ export async function runAuthenticatedNodeProfile({
     acceptCandidates = true;
     const wallStart = process.hrtime.bigint();
     try {
-      const result = execute();
+      const result = execute(artifacts);
       if (result !== null && typeof result === "object" &&
           typeof Reflect.get(result, "then") === "function") {
         throw new TypeError("profile execute callback must be synchronous");
@@ -776,14 +914,24 @@ export async function runAuthenticatedNodeProfile({
       actionError = error;
     } finally {
       wallMicros = Number(process.hrtime.bigint() - wallStart) / 1_000;
-      acceptCandidates = false;
+      acceptDeclarations = false;
     }
     const stopped = await post<{ profile: InspectorProfile }>(session, "Profiler.stop");
     profile = stopped.profile;
     profilerStarted = false;
+    acceptCandidates = false;
     // Source retrieval is an Inspector request too. Authenticate while the
     // Debugger domain and session are still alive, before cleanup can race it.
-    candidates = await Promise.all(candidatePromises);
+    authenticatedArtifacts = await Promise.all(declarations.map(async (declaration) => ({
+      ...declaration,
+      candidate: authenticateCandidate(
+        declaration.map,
+        declaration.javascript,
+        await Promise.all(
+          candidatePromisesByUrl.get(declaration.map.generated.url) ?? [],
+        ),
+      ),
+    })));
   } finally {
     if (profilerStarted) {
       try {
@@ -810,11 +958,8 @@ export async function runAuthenticatedNodeProfile({
     if (connected) session.disconnect();
   }
   if (!profile) throw new Error("Node Inspector did not return a CPU profile");
-  const candidate = authenticateCandidate(map, javascript, candidates);
   const observation = buildReceipt({
-    map,
-    javascript,
-    candidate,
+    artifacts: authenticatedArtifacts,
     profile,
     requestedIntervalMicros: samplingIntervalMicros,
     wallMicros,
