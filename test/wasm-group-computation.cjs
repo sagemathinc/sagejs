@@ -24,6 +24,7 @@ const {
   inventoryProductionKernels,
 } = require("../tools/native-kernel/wasm-production-pack.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 
 const descriptor = {
   id: "packed-permutation-center-production",
@@ -251,7 +252,7 @@ test.after(async () => {
 });
 
 test("the CPython body preserves closure order and all finite bounds", () => {
-  const oracle = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const oracle = spawnSync(pythonExecutable(), ["-c", String.raw`
 import sys
 sys.path.insert(0, "src/lib")
 from sagejs.kernels.groups.permutation import packed_permutation_center
@@ -310,6 +311,7 @@ print("cpython-bounds-ok")
     encoding: "utf8",
     env: { ...process.env, PYTHONPATH: "" },
   });
+  assert.equal(oracle.error, undefined, oracle.error?.message);
   assert.equal(oracle.status, 0, oracle.stderr || oracle.stdout);
   assert.equal(oracle.stdout.trim(), "cpython-bounds-ok");
 });

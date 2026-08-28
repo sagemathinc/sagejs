@@ -28,6 +28,7 @@ const {
   wasmKernelToolchain,
 } = require("../packages/wasm-toolchain/scripts/toolchain.cjs");
 const { createSage } = require("../dist/tools/kernel.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const {
   PRECOMPILED_MODULE_FILENAME,
   PRECOMPILED_PACKAGE_PATH,
@@ -295,7 +296,7 @@ test("heavy public shortest paths expose the exact installed route", async () =>
 });
 
 test("CPython fallback differentials cover directed, disconnected, and bounds", () => {
-  const result = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const result = spawnSync(pythonExecutable(), ["-c", String.raw`
 import random
 import sys
 sys.path.insert(0, "src/lib")
@@ -373,6 +374,7 @@ print("differential-ok")
     encoding: "utf8",
     env: { ...process.env, PYTHONPATH: "" },
   });
+  assert.equal(result.error, undefined, result.error?.message);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.equal(result.stdout.trim(), "differential-ok");
 });
