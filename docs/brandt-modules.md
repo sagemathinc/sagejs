@@ -301,7 +301,7 @@ For general $(D,N)$, timings must be labeled by realization. Magma and
 are an equal-work comparison. The default Jacquet--Langlands realization is a
 same-spectrum baseline with a different construction contract.
 
-The frozen integral-backend receipt at source commit `3d65fd23` compares
+The frozen _before_ integral-backend receipt at source commit `3d65fd23` compares
 Sage.js, SageMath 10.9, and Magma V2.18-5 on $(D,N,\ell)=(11,2,3)$ and
 $(37,2,3)$. All three systems return the same dimensions and complete Hecke
 characteristic polynomials. On the receipt's AMD EPYC 7B13 host, the combined
@@ -313,22 +313,39 @@ $15.771/12.291\,\mathrm{s}$ at $(11,2)$ and
 $34.980/29.669\,\mathrm{s}$ at $(37,2)$; cached operator access was below
 $0.1\,\mathrm{ms}$ in both cases.
 
-That receipt is the frozen _before_ measurement. The optimized implementation
-uses cached immutable rank-$4$ reduction plans, direct $\mathbf P^1$ neighbor
-generation, traversal-edge reuse, exact recursive Gram pruning, compiled GMP
-theta/vector recurrences, FLINT Gram-LLL and HNF boundaries, and lazy public
-quaternion materialization. On a source-current local diagnostic, the
-$(37,2)$ resident construction plus first $T_3$ fell from about
-$64.65\,\mathrm{s}$ to about $2.46\,\mathrm{s}$ with unchanged complete
-operator and pairing digests. A final source-pinned receipt is required before
-treating this diagnostic as a release comparison, and the result is still an
-honest miss against Magma rather than a $2\times$ competitiveness claim.
+The final optimized receipt is pinned to source commit `07bc15f6`. It uses two
+warmups and seven fresh-process samples, and repeats Magma work until every
+operator timing contains at least $100\,\mathrm{ms}$ of aggregate CPU. The
+median resident construction-plus-first-operator results are:
+
+| $(D,N,\ell)$ | before Sage.js | final Sage.js | Magma | final ratio |
+| --- | ---: | ---: | ---: | ---: |
+| $(11,2,3)$ | $28.063$ s | $1.654$ s | $0.0752$ s | $21.37\times$ |
+| $(37,2,3)$ | $64.649$ s | $3.503$ s | $0.2702$ s | $12.96\times$ |
+
+Thus the retained implementation is $16.97\times$ and $18.45\times$ faster
+than the original Sage.js backend, with unchanged complete matrices, pairings,
+masses, and competitor characteristic polynomials. It remains an honest miss
+against Magma, not a $2\times$ competitiveness claim. Descriptive larger rows
+also agree exactly: dimension $36$ takes $14.723$ seconds versus Magma's
+$1.7156$ seconds, and dimension $100$ takes $209.906$ seconds versus
+$12.2528$ seconds.
+
+The optimized implementation uses cached immutable rank-$4$ reduction plans,
+direct $\mathbf P^1$ neighbor generation, traversal-edge reuse, exact recursive
+Gram pruning, compiled GMP theta/vector recurrences, FLINT Gram-LLL and HNF
+boundaries, an independent Brandt-series path, and lazy public quaternion
+materialization. Dynamic, native Node, standalone GMP, and public Wasm paths
+have exact differential coverage.
 
 Use the integral realization when its certified quaternion ideal lattice,
 pairing, or component-group data is required. Spectral-only work should
 continue to use the much faster automatic realization. See the
-[frozen before receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json)
-for the original source hashes and exact results.
+[final performance report](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-29.md),
+[final JSON receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-29.json),
+and [frozen before receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json)
+for the complete contracts, source hashes, exact results, and named remaining
+gaps.
 
 ## Current boundaries
 

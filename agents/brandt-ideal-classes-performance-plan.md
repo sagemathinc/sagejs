@@ -21,24 +21,22 @@ produce exactly the same complete Hecke characteristic polynomials on the
 receipt corpus. The issue addressed here is performance, not a known
 correctness defect.
 
-The implementation program is now active on `feature/general-brandt-modules`.
-Commits `0478c3e7` and `56350fad` implement Phases 0--6: the named-stage
-profiler, immutable reduction plans, theta indexing, direct witness replay,
-traversal reuse, exact recursive enumeration, direct projective neighbors,
-the independent Brandt-series path, compiled exact rank-$4$ kernels, and the
-compact detached row representation. The final source-frozen competitor and
-cross-platform receipts remain the release boundary; diagnostics are not
-silently promoted to acceptance evidence.
+The implementation program is complete to its honest measured outcome on
+`feature/general-brandt-modules`. Commits `0478c3e7` through `07bc15f6`
+implement Phases 0--6: the named-stage profiler, immutable reduction plans,
+theta indexing, direct witness replay, traversal reuse, exact recursive
+enumeration, direct projective neighbors, the independent Brandt-series path,
+compiled exact rank-$4$ kernels, compact detached rows, timer-resolved
+competitor measurement, and standalone/public-Wasm evidence.
 
-The frozen $(37,2,3)$ combined resident time has fallen from about
-$64.649\,\mathrm{s}$ to $2.4$--$3.0\,\mathrm{s}$ depending on profiling and
-host noise, with unchanged complete operator and pairing digests. The direct
-first $T_3$ is $0.42$--$0.51\,\mathrm{s}$. The required $h\ge100$ row
-$(101,11,2)$ completes exactly (100 classes, mass 100, row sum 3) in a
-one-sample diagnostic of about $94.7\,\mathrm{s}$. These are substantial
-algorithmic results, but the final $2\times$ Magma gate is still expected to
-be an honest measured miss rather than a reason to weaken the integral
-contract.
+The final Linux x64 receipt is pinned to `07bc15f6`, uses two warmups and seven
+measured samples, and agrees exactly with SageMath and Magma. Combined resident
+time fell from $28.063$ to $1.654$ seconds at $(11,2,3)$ and from $64.649$ to
+$3.503$ seconds at $(37,2,3)$: $16.97\times$ and $18.45\times$ improvements.
+Magma takes $0.0752$ and $0.2702$ seconds, so the final $2\times$ gate is an
+honest miss at $21.37\times$ and $12.96\times$. The required $h\ge100$ row
+$(101,11,2)$ completes exactly in $209.906$ seconds versus Magma's $12.2528$
+seconds. See the checked-in 2026-08-29 JSON receipts and readable report.
 
 ## Executive decision
 
@@ -662,9 +660,9 @@ Reject or revert a change when:
   win; or
 - its memory use, cancellation latency, or cleanup cannot be bounded.
 
-## Definition of done
+## Definition of done and final disposition
 
-This performance program is complete when:
+This performance program is closed with the following disposition:
 
 - the source-current profiler attributes at least $90\%$ of every primary row;
 - genuine ideal classes, weights, matrices, witnesses, and certificates agree
@@ -672,31 +670,35 @@ This performance program is complete when:
 - direct and Brandt-series algorithms are both public, documented, and exact;
 - the retained native recurrence uses only accepted machine-model features and
   has dynamic/native/standalone/Wasm evidence;
-- resident construction plus first operator meets the final $2\times$ Magma
-  gate, with any exception labeled as an honest measured miss;
+- resident construction plus first operator misses the final $2\times$ Magma
+  gate by $12.96\times$--$21.37\times$ on the primary rows and is published as
+  an honest measured exception;
 - process-cold and memory results remain visible without being conflated with
   resident arithmetic;
 - component-group consumers reproduce their exact previous results;
-- focused, strict, architecture, unit, native, portable, cancellation,
-  sanitizer, and cross-platform checks pass; and
+- focused, strict, architecture, unit, portable, standalone, and public-Wasm
+  checks pass; the full native suite passes its build, kernel, lifecycle, and
+  sanitizer sections before stopping at an unrelated dense-rational-matrix
+  performance budget; complete release-platform timing and the 100-class-set
+  memory-growth campaign remain explicitly unclaimed; and
 - a durable source-pinned JSON receipt plus readable report supersedes the
   2026-08-28 baseline without rewriting it.
 
-## Immediate next experiment
+## Outcome and remaining work
 
-Implement only Phase 0 and the smallest part of Phase 1 first. On $(37,2,3)$,
-measure the independent effects of:
+The plan's central experiment succeeded: without weakening the integral
+contract, ordinary-source algorithm and representation work removed roughly
+$94$--$95\%$ of the original primary-row time. The source-current profiler
+attributes more than $99.7\%$ of the measured pipeline. Its remaining dominant
+costs are exact norm-plan setup, lattice canonicalization, Eichler-order
+construction, and direct neighbor construction; the compiled recurrence is no
+longer the dominant stage.
 
-1. caching one reduction plan per ideal;
-2. theta-prefix indexing;
-3. direct canonical replay of $\alpha J$ without temporary ideal construction;
-4. caching order/prime local splitting data; and
-5. retaining traversal classifications for the first $T_3$.
-
-Keep a change only when exact matrix, pairing, mass, class fingerprints, and
-witness replays remain identical. That experiment will tell us how much of the
-$100\times$ gap is avoidable host work before the new exact workspace is asked
-to solve the genuinely arithmetic remainder.
+Further work should be a new measured program rather than an unbounded
+continuation of this one. It should target reusable exact rank-$4$ lattice and
+order primitives, preserve the same certificates, and establish the missing
+incremental-memory and cross-platform timing contracts before changing public
+automatic selection. The fast spectral realizations remain the default.
 
 ## References and implementation oracles
 
