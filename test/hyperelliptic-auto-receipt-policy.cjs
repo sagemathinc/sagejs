@@ -199,7 +199,7 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in stale release policy fails closed until receipts are refreshed", () => {
+test("the checked-in release policy disables stale entries until receipts are refreshed", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -207,10 +207,10 @@ test("the checked-in stale release policy fails closed until receipts are refres
     root: ROOT,
     sourceCommit: raw.source_bundle.source_commit,
   });
-  assert.equal(policy.enabled, false);
+  assert.equal(policy.enabled, true);
   assert.equal(
     policy.source_bundle.sha256,
-    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+    "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
   );
   assert.deepEqual(
     policy.entries.map((entry) => entry.id),
@@ -245,7 +245,7 @@ test("the checked-in stale release policy fails closed until receipts are refres
   };
   assert.deepEqual(queryAutoReceiptPolicy(policy, query), {
     selected: false,
-    reason: "policy-disabled",
+    reason: "unreceipted-fallback",
   });
   for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
     for (const genus of [2, 3]) {
@@ -265,7 +265,7 @@ test("the checked-in stale release policy fails closed until receipts are refres
           });
           assert.deepEqual(selected, {
             selected: false,
-            reason: "policy-disabled",
+            reason: "unreceipted-fallback",
           });
         }
       }
@@ -285,7 +285,7 @@ test("the checked-in stale release policy fails closed until receipts are refres
   ]) {
     assert.deepEqual(queryAutoReceiptPolicy(policy, rejected), {
       selected: false,
-      reason: "policy-disabled",
+      reason: "unreceipted-fallback",
     });
   }
   assert(Object.isFrozen(policy));
