@@ -132,6 +132,46 @@ The integral backend additionally provides:
 | `B.degree_zero_submodule()` | saturated augmentation kernel |
 | `B.mass_certificate()` | replayable class-completeness certificate |
 
+### Direct graphs and Brandt theta series
+
+The ideal-class realization has two independent exact constructions of a good
+Hecke operator:
+
+```sage
+sage: B = BrandtModule(37, 2, realization="ideal-classes")
+sage: direct = B.hecke_matrix(3, algorithm="direct")
+sage: series = B.hecke_matrix(3, algorithm="brandt-series")
+sage: direct == series
+True
+```
+
+The direct algorithm constructs the $\ell+1$ local neighbors in
+$\mathbf P^1(\mathbf F_\ell)$ and classifies every edge with an exact
+connecting-quaternion witness. It is normally preferable for one operator or
+for a large class number. The Brandt-series algorithm constructs the
+lower-triangular family $I_i\overline{I_j}$ once and obtains many matrix
+coefficients from their theta series. Its unit-weight normalization is exact;
+it is often preferable for several small operators on a modest class set.
+
+`B.hecke_operators(indices)` and `B.hecke_matrices(indices)` expose the shared
+batch operation. With `algorithm="auto"`, a checked-in cost model compares
+the number of direct graph edges with the number of ideal-pair theta plans.
+Explicit `"direct"` and `"brandt-series"` choices are always available:
+
+```sage
+sage: T3, T5 = B.hecke_matrices((3, 5))
+sage: T3 == direct
+True
+sage: T5 == B.hecke_matrix(5, algorithm="direct")
+True
+```
+
+Calling `B.brandt_series(P)` returns the detached exact matrix coefficient
+vectors through $q^{P-1}$. Once this series is present, subsequent automatic
+requests within its precision use it. Cached operators are keyed by both
+index and resolved algorithm, so explicit differential checks never alias an
+operator produced by the other path.
+
 ## Monodromy and component groups
 
 For $p\nmid M$, the degree-zero Brandt lattice for discriminant $p$ and
@@ -273,13 +313,22 @@ $15.771/12.291\,\mathrm{s}$ at $(11,2)$ and
 $34.980/29.669\,\mathrm{s}$ at $(37,2)$; cached operator access was below
 $0.1\,\mathrm{ms}$ in both cases.
 
-This is an honest large performance gap in the initial pure exact-Python
-ideal-enumeration backend, not a competitiveness claim. The integral backend
-exists for its certified ideal lattice and component-group data; spectral-only
-work should continue to use the much faster automatic realization. See the
-[integral ideal-class receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json)
-for source hashes, exact row digests, pairing digests, row sums, masses, and
-the complete measurements.
+That receipt is the frozen _before_ measurement. The optimized implementation
+uses cached immutable rank-$4$ reduction plans, direct $\mathbf P^1$ neighbor
+generation, traversal-edge reuse, exact recursive Gram pruning, compiled GMP
+theta/vector recurrences, FLINT Gram-LLL and HNF boundaries, and lazy public
+quaternion materialization. On a source-current local diagnostic, the
+$(37,2)$ resident construction plus first $T_3$ fell from about
+$64.65\,\mathrm{s}$ to about $2.46\,\mathrm{s}$ with unchanged complete
+operator and pairing digests. A final source-pinned receipt is required before
+treating this diagnostic as a release comparison, and the result is still an
+honest miss against Magma rather than a $2\times$ competitiveness claim.
+
+Use the integral realization when its certified quaternion ideal lattice,
+pairing, or component-group data is required. Spectral-only work should
+continue to use the much faster automatic realization. See the
+[frozen before receipt](../bench/results/brandt-ideal-classes-competitive-linux-x64-2026-08-28.json)
+for the original source hashes and exact results.
 
 ## Current boundaries
 

@@ -163,13 +163,40 @@ test("composite discriminants produce genuine mass-complete ideal classes", asyn
         "rows=[]",
         "for D,N,ell in [(30,7,11),(66,5,7)]:",
         "    B=BrandtModule(D,N,realization='ideal-classes',use_cache=False)",
-        "    rows.append((D,N,B.dimension(),B.mass(),tuple(sorted(B.monodromy_weights())),B.T(ell).charpoly(),B.mass_certificate().verify()))",
+        "    direct=B.hecke_matrix(ell,algorithm='direct')",
+        "    series=B.hecke_matrix(ell,algorithm='brandt-series')",
+        "    rows.append((D,N,B.dimension(),B.mass(),tuple(sorted(B.monodromy_weights())),direct.charpoly(),direct==series,B.mass_certificate().verify()))",
         "rows",
       ].join("\n"),
     );
     assert.equal(
       result.repr,
-      "[(30, 7, 8, 16/3, (1, 1, 1, 1, 3, 3, 3, 3), x^8 - 8*x^7 - 64*x^6 + 128*x^5 + 768*x^4, True), (66, 5, 12, 10, (1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2), x^12 - 72*x^10 - 128*x^9 + 1296*x^8 + 3072*x^7 - 7168*x^6 - 18432*x^5 + 12288*x^4 + 32768*x^3, True)]",
+      "[(30, 7, 8, 16/3, (1, 1, 1, 1, 3, 3, 3, 3), x^8 - 8*x^7 - 64*x^6 + 128*x^5 + 768*x^4, True, True), (66, 5, 12, 10, (1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2), x^12 - 72*x^10 - 128*x^9 + 1296*x^8 + 3072*x^7 - 7168*x^6 - 18432*x^5 + 12288*x^4 + 32768*x^3, True, True)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("direct and Brandt-series operators agree through several good primes", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "rows=[]",
+        "for D,N,primes in [(11,2,(3,5)),(37,2,(3,5))]:",
+        "    B=BrandtModule(D,N,realization='ideal-classes',use_cache=False)",
+        "    theta=[I.theta_series_vector(4) for I in B.right_ideals()]",
+        "    collision=any(theta[i]==theta[j] for i in range(len(theta)) for j in range(i))",
+        "    selection=B._select_ideal_batch_algorithm(primes)",
+        "    automatic=B.hecke_matrices(primes)",
+        "    rows.append((D,N,collision,selection,tuple(automatic[i]==B.hecke_matrix(p,algorithm='direct') for i,p in enumerate(primes))))",
+        "rows",
+      ].join("\n"),
+    );
+    assert.equal(
+      result.repr,
+      "[(11, 2, False, 'brandt-series', (True, True)), (37, 2, True, 'brandt-series', (True, True))]",
     );
   } finally {
     await session.close();

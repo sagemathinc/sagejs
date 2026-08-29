@@ -114,7 +114,7 @@ function parseMagma(text) {
         ell: Number(match[3]),
         dimension: Number(match[4]),
         construction_cpu_seconds: Number(match[5]),
-        first_operator_cpu_seconds: Number(match[6]),
+        first_operator_cpu_seconds: Number(match[9]) / Number(match[8]),
         construction_repeats: Number(match[7]),
         operator_repeats: Number(match[8]),
         operator_total_cpu_seconds: Number(match[9]),
@@ -139,7 +139,7 @@ function parseMagma(text) {
       ) {
         throw new Error(`orphaned Magma coefficient: ${line}`);
       }
-      record.charpoly_coefficients.push(Number(match[5]));
+      record.charpoly_coefficients.push(match[5]);
     }
   }
   for (const record of records) {
@@ -164,11 +164,11 @@ function normalizedSagejsRecord(record) {
     cached_operator_seconds: Number(record.cached_operator_seconds),
     charpoly_seconds: Number(record.charpoly_seconds),
     mass: record.mass,
-    weights: record.weights.map(Number),
-    row_sums: record.row_sums.map(Number),
-    matrix_rows: record.matrix_rows.map((row) => row.map(Number)),
-    pairing_rows: record.pairing_rows.map((row) => row.map(Number)),
-    charpoly_coefficients: record.charpoly_coefficients.map(Number),
+    weights: record.weights.map(String),
+    row_sums: record.row_sums.map(String),
+    matrix_rows: record.matrix_rows.map((row) => row.map(String)),
+    pairing_rows: record.pairing_rows.map((row) => row.map(String)),
+    charpoly_coefficients: record.charpoly_coefficients.map(String),
     mass_verified: record.mass_verified,
   };
 }
@@ -241,6 +241,155 @@ function exactRows(records) {
   }));
 }
 
+function statistics(values) {
+  if (values.length === 0) throw new Error("a sampled statistic needs values");
+  const ordered = values.slice().sort((left, right) => left - right);
+  const middle = Math.floor(ordered.length / 2);
+  const median = ordered.length % 2
+    ? ordered[middle]
+    : (ordered[middle - 1] + ordered[middle]) / 2;
+  const deviations = ordered
+    .map((value) => Math.abs(value - median))
+    .sort((left, right) => left - right);
+  const mad = deviations.length % 2
+    ? deviations[middle]
+    : (deviations[middle - 1] + deviations[middle]) / 2;
+  return {
+    median,
+    minimum: ordered[0],
+    maximum: ordered[ordered.length - 1],
+    mad,
+  };
+}
+
+function sampledSystemSummary(receipts, system, constructionField, operatorField) {
+  const first = receipts[0][system];
+  return {
+    executable: first.executable,
+    process_cold_wall_seconds: statistics(
+      receipts.map((receipt) => receipt[system].process_cold_wall_seconds),
+    ),
+    peak_rss_bytes: statistics(
+      receipts.map((receipt) => receipt[system].peak_rss_bytes),
+    ),
+    records: first.records.map((record, index) => {
+      const construction = receipts.map(
+        (receipt) => receipt[system].records[index][constructionField],
+      );
+      const firstOperator = receipts.map(
+        (receipt) => receipt[system].records[index][operatorField],
+      );
+      return {
+        D: record.D,
+        N: record.N,
+        ell: record.ell,
+        dimension: record.dimension,
+        construction_seconds: statistics(construction),
+        first_operator_seconds: statistics(firstOperator),
+        combined_seconds: statistics(
+          construction.map((value, sample) => value + firstOperator[sample]),
+        ),
+      };
+    }),
+  };
+}
+
+async function sampledMain(sampleCount, warmupCount) {
+  const forwarded = process.argv
+    .slice(2)
+    .filter(
+      (argument) =>
+        !argument.startsWith("--samples=") &&
+        !argument.startsWith("--warmups=") &&
+        !argument.startsWith("--output="),
+    );
+  forwarded.push("--samples=1");
+  for (let index = 0; index < warmupCount; index += 1) {
+    await run(process.execPath, [__filename, ...forwarded]);
+  }
+  const receipts = [];
+  for (let index = 0; index < sampleCount; index += 1) {
+    const measured = await run(process.execPath, [__filename, ...forwarded]);
+    receipts.push(JSON.parse(measured.stdout));
+  }
+  const reference = JSON.stringify(exactRows(receipts[0].sagejs.records));
+  for (const receipt of receipts) {
+    if (
+      receipt.exact_agreement !== true ||
+      JSON.stringify(exactRows(receipt.sagejs.records)) !== reference ||
+      JSON.stringify(exactRows(receipt.sagemath.records)) !== reference ||
+      JSON.stringify(exactRows(receipt.magma.records)) !== reference
+    ) {
+      throw new Error("a measured sample changed an exact oracle row");
+    }
+  }
+  const sagejs = sampledSystemSummary(
+    receipts,
+    "sagejs",
+    "construction_seconds",
+    "first_operator_seconds",
+  );
+  const sagemath = sampledSystemSummary(
+    receipts,
+    "sagemath",
+    "construction_seconds",
+    "first_operator_seconds",
+  );
+  const magma = sampledSystemSummary(
+    receipts,
+    "magma",
+    "construction_cpu_seconds",
+    "first_operator_cpu_seconds",
+  );
+  const ratios = sagejs.records.map((record, caseIndex) => ({
+    D: record.D,
+    N: record.N,
+    ell: record.ell,
+    sagejs_over_magma_combined: statistics(
+      receipts.map((receipt) => {
+        const left = receipt.sagejs.records[caseIndex];
+        const right = receipt.magma.records[caseIndex];
+        return (
+          (left.construction_seconds + left.first_operator_seconds) /
+          (right.construction_cpu_seconds + right.first_operator_cpu_seconds)
+        );
+      }),
+    ),
+    sagejs_over_sagemath_combined: statistics(
+      receipts.map((receipt) => {
+        const left = receipt.sagejs.records[caseIndex];
+        const right = receipt.sagemath.records[caseIndex];
+        return (
+          (left.construction_seconds + left.first_operator_seconds) /
+          (right.construction_seconds + right.first_operator_seconds)
+        );
+      }),
+    ),
+  }));
+  const first = receipts[0];
+  const sampled = {
+    schema: "sagejs.brandt-ideal-classes-competitive-receipt.v3",
+    recorded_at: new Date().toISOString(),
+    source_commit: first.source_commit,
+    host: first.host,
+    contract: {
+      ...first.contract,
+      sample_count: sampleCount,
+      warmup_count: warmupCount,
+      sampling:
+        "each sample is a fresh Sage.js, SageMath, and Magma process; warmups are complete equal-contract runs discarded before measurement",
+    },
+    sources: first.sources,
+    summary: { sagejs, sagemath, magma, ratios },
+    samples: receipts,
+    exact_agreement: true,
+  };
+  const output = option("output", "");
+  const serialized = `${JSON.stringify(sampled, null, 2)}\n`;
+  if (output !== "") fs.writeFileSync(path.resolve(output), serialized);
+  process.stdout.write(serialized);
+}
+
 async function main() {
   const workerCases = option("sagejs-worker", "");
   if (workerCases !== "") {
@@ -249,6 +398,20 @@ async function main() {
       .map((item) => item.split(":").map(Number));
     const records = (await sagejsRecords(cases)).map(finalizedSagejsRecord);
     process.stdout.write(`SAGEJS_RECORDS ${JSON.stringify(records)}\n`);
+    return;
+  }
+  const sampleCount = Number(option("samples", "1"));
+  const warmupCount = Number(option("warmups", sampleCount > 1 ? "2" : "0"));
+  if (
+    !Number.isSafeInteger(sampleCount) ||
+    sampleCount < 1 ||
+    !Number.isSafeInteger(warmupCount) ||
+    warmupCount < 0
+  ) {
+    throw new Error("--samples and --warmups must be nonnegative exact integers");
+  }
+  if (sampleCount > 1) {
+    await sampledMain(sampleCount, warmupCount);
     return;
   }
   const casesText = option("cases", "11:2:3,37:2:3");
@@ -266,6 +429,8 @@ async function main() {
   const environment = {
     BRANDT_IDEAL_CASES: casesText,
     BRANDT_IDEAL_REPEATS: option("magma-repeats", "25"),
+    BRANDT_IDEAL_MAX_REPEATS: option("magma-max-repeats", "3200"),
+    BRANDT_IDEAL_TARGET_MILLISECONDS: option("magma-target-ms", "100"),
   };
   const sageScript = path.join(__dirname, "sage-oracle.py");
   const magmaScript = path.join(__dirname, "magma-oracle.m");
@@ -319,7 +484,7 @@ async function main() {
       work: "construct genuine right ideal classes, then the first full good-prime Hecke matrix",
       correctness: "dimension and complete characteristic polynomial agree exactly",
       timing:
-        "one descriptive process-cold run for Sage.js and SageMath; Magma construction and first-operator stages are averages over the recorded number of fresh BrandtModule objects, with aggregate operator CPU time retained so sub-resolution calls are never assigned a zero ratio; no competitiveness gate",
+        "one descriptive process-cold run for Sage.js and SageMath; Magma construction and first-operator stages are averages over the recorded number of fresh BrandtModule objects, with the operator repetition count doubled until aggregate CPU reaches 100 ms; no competitiveness gate",
     },
     sources: {
       runner: path.relative(root, __filename),

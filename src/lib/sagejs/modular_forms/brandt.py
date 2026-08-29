@@ -579,6 +579,25 @@ class BrandtModule_class(sage.Parent):
             result = result * prime_power
         return result, None
 
+    def _select_ideal_batch_algorithm(self, indices: tuple[int, ...]) -> str:
+        """Choose the measured integral Hecke strategy for a known batch."""
+
+        if self._ideal_classes is None:
+            return "direct"
+        maximum = max(indices)
+        if self._ideal_classes._brandt_series_precision > maximum:
+            return "brandt-series"
+        primes: set[int] = set()
+        for index in indices:
+            for prime, _exponent in _factorization(index):
+                primes.add(prime)
+        dimension = self._dimension
+        direct_units = 48 * dimension * sum(prime + 1 for prime in primes)
+        pair_count = dimension * (dimension + 1) // 2
+        required_precision = max(2, 2 * maximum + 10)
+        series_units = (72 + required_precision) * pair_count
+        return "brandt-series" if series_units <= direct_units else "direct"
+
     def hecke_operator(
         self, index: Any, *, algorithm: str = "auto"
     ) -> BrandtLinearOperator:
@@ -694,6 +713,51 @@ class BrandtModule_class(sage.Parent):
 
     def hecke_matrix(self, index: Any, *, algorithm: str = "auto") -> Any:
         return self.hecke_operator(index, algorithm=algorithm).matrix()
+
+    def hecke_operators(
+        self, indices: Iterable[Any], *, algorithm: str = "auto"
+    ) -> tuple[BrandtLinearOperator, ...]:
+        """Return a batch of $T_n$, sharing graph or Brandt-series setup.
+
+        For the integral ideal-class realization, `algorithm="auto"` uses a
+        checked-in cost model calibrated from complete direct-edge and
+        pair-theta workloads.  A single operator remains direct unless the
+        requested series is already available.  Explicit selection has the
+        same meaning as in `hecke_operator`.
+        """
+
+        normalized = tuple(_positive_integer(index, "Hecke index") for index in indices)
+        if not normalized:
+            return ()
+        if algorithm not in ("auto", "direct", "brandt-series"):
+            raise ValueError("algorithm must be 'auto', 'direct', or 'brandt-series'")
+        if self._ideal_classes is None:
+            if algorithm != "auto":
+                raise ValueError(
+                    "explicit Brandt Hecke algorithms require "
+                    "realization='ideal-classes'"
+                )
+            return tuple(self.hecke_operator(index) for index in normalized)
+        resolved = (
+            self._select_ideal_batch_algorithm(normalized)
+            if algorithm == "auto"
+            else algorithm
+        )
+        if resolved == "brandt-series":
+            self.brandt_series(max(2, 2 * max(normalized) + 10))
+        return tuple(
+            self.hecke_operator(index, algorithm=resolved) for index in normalized
+        )
+
+    def hecke_matrices(
+        self, indices: Iterable[Any], *, algorithm: str = "auto"
+    ) -> tuple[Any, ...]:
+        """Return the complete exact matrices for a shared Hecke batch."""
+
+        return tuple(
+            operator.matrix()
+            for operator in self.hecke_operators(indices, algorithm=algorithm)
+        )
 
     def brandt_series(self, precision: Any) -> Any:
         """Return the exact matrix coefficient vectors through $q^{P-1}$."""

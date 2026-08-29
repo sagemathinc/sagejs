@@ -21,8 +21,24 @@ produce exactly the same complete Hecke characteristic polynomials on the
 receipt corpus. The issue addressed here is performance, not a known
 correctness defect.
 
-No optimization described below is considered implemented merely because it
-appears in this plan.
+The implementation program is now active on `feature/general-brandt-modules`.
+Commits `0478c3e7` and `56350fad` implement Phases 0--6: the named-stage
+profiler, immutable reduction plans, theta indexing, direct witness replay,
+traversal reuse, exact recursive enumeration, direct projective neighbors,
+the independent Brandt-series path, compiled exact rank-$4$ kernels, and the
+compact detached row representation. The final source-frozen competitor and
+cross-platform receipts remain the release boundary; diagnostics are not
+silently promoted to acceptance evidence.
+
+The frozen $(37,2,3)$ combined resident time has fallen from about
+$64.649\,\mathrm{s}$ to $2.4$--$3.0\,\mathrm{s}$ depending on profiling and
+host noise, with unchanged complete operator and pairing digests. The direct
+first $T_3$ is $0.42$--$0.51\,\mathrm{s}$. The required $h\ge100$ row
+$(101,11,2)$ completes exactly (100 classes, mass 100, row sum 3) in a
+one-sample diagnostic of about $94.7\,\mathrm{s}$. These are substantial
+algorithmic results, but the final $2\times$ Magma gate is still expected to
+be an honest measured miss rather than a reason to weaken the integral
+contract.
 
 ## Executive decision
 

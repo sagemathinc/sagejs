@@ -31,7 +31,7 @@ for discriminant, conductor, prime in cases():
             "class_count": len(ideals),
             "construction_seconds": construction,
             "first_operator_seconds": first_operator,
-            "charpoly_coefficients": [int(value) for value in polynomial.list()],
+            "charpoly_coefficients": [str(value) for value in polynomial.list()],
         }
     )
 

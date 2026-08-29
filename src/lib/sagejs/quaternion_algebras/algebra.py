@@ -20,7 +20,6 @@ from typing import Any, Iterable, Iterator
 import sagejs as sage
 import sagejs.runtime as runtime
 
-
 _rank4_hnf_kernel: Any = None
 _rank4_hnf_native: Any = None
 _rank4_hnf_import_attempted = False
