@@ -763,6 +763,26 @@ assert [record.to_dict() for record in packed_factor_records] == (
     packed.certificate.factor_base
 )
 
+# A detached certificate is process/session portable even though ordinary
+# ideal deserialization remains deliberately bound to one live field/order.
+# Nontrivial norm-obstruction payloads used to call that general decoder and
+# therefore verified only against the producer instance.
+detached_payload = packed.certificate.to_dict()
+detached_field = NumberField(x**3 - x**2 - 6*x - 12, "detached")
+detached_order = detached_field.maximal_order()
+detached_certificate = type(packed.certificate).from_dict(
+    detached_field, detached_payload
+)
+assert detached_certificate.class_number == 3
+assert detached_certificate.verify()
+try:
+    detached_order.ideal_from_dict(
+        detached_payload["obstructions"][0]["integral_ideal"]
+    )
+    raise AssertionError("ordinary ideal deserialization crossed field instances")
+except ValueError as error:
+    assert "different exact field/order fingerprint" in str(error)
+
 # The low-norm prefix may become proof evidence only after exact batch
 # admission reproduces every planned row.  Its modular obstruction is computed
 # once and retained across that authority boundary.  Supplying a cancellation
