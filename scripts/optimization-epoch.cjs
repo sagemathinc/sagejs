@@ -11,7 +11,7 @@ const root = path.resolve(__dirname, "..");
 function usage(message = null) {
   if (message) process.stderr.write(`${message}\n\n`);
   process.stderr.write(`Usage:
-  node scripts/optimization-epoch.cjs create --workload FILE... --profiler-protocol ID --profiler-calibration ID --output FILE [--component-file FILE] [--no-build]
+  node scripts/optimization-epoch.cjs create (--workload FILE... | --workload-module MODULE:EXPORT) --profiler-protocol ID --profiler-calibration ID --output FILE [--component-file FILE] [--no-build]
   node scripts/optimization-epoch.cjs verify --manifest FILE [--allow-historical]
   node scripts/optimization-epoch.cjs scratch --manifest FILE --lane ID [--store-root DIR]
   node scripts/optimization-epoch.cjs ingest --manifest FILE --lane ID --document FILE... [--store-root DIR]
@@ -59,12 +59,40 @@ function requireOption(options, key) {
   return options[key];
 }
 
+function workloadsFromModule(specification) {
+  const separator = specification.lastIndexOf(":");
+  if (separator <= 0 || separator === specification.length - 1) {
+    usage("--workload-module must be MODULE:EXPORT");
+  }
+  const modulePath = specification.slice(0, separator);
+  const exportName = specification.slice(separator + 1);
+  const resolved = path.resolve(root, modulePath);
+  const relative = path.relative(root, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    usage("--workload-module must resolve inside the repository");
+  }
+  const factory = require(resolved)[exportName];
+  if (typeof factory !== "function") {
+    usage(`--workload-module export ${exportName} is not a function`);
+  }
+  const workloads = factory(root);
+  if (!Array.isArray(workloads) || workloads.length === 0) {
+    usage("--workload-module must produce a nonempty workload array");
+  }
+  return workloads;
+}
+
 function main(argv = process.argv.slice(2)) {
   const options = argumentsFor(argv);
   if (options.help) usage();
   const command = options._[0];
   if (command === "create") {
-    const workloads = requireOption(options, "workload").map(readJson);
+    if (options["workload-module"] && options.workload.length > 0) {
+      usage("use either --workload or --workload-module, not both");
+    }
+    const workloads = options["workload-module"]
+      ? workloadsFromModule(options["workload-module"])
+      : requireOption(options, "workload").map(readJson);
     const components = options["component-file"] ? readJson(options["component-file"]) : [];
     const created = service.createEpoch({
       root,
@@ -131,4 +159,4 @@ function main(argv = process.argv.slice(2)) {
 
 if (require.main === module) main();
 
-module.exports = Object.freeze({ argumentsFor, main });
+module.exports = Object.freeze({ argumentsFor, main, workloadsFromModule });
