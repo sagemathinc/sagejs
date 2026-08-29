@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 160000,
       "depends_on": [
         "core-runtime",
         "native-integration",

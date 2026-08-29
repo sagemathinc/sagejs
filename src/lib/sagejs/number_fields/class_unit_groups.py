@@ -1816,6 +1816,7 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
             "cubic_integral_sieve_dependency_relations": 0,
+            "cubic_integral_sieve_dependency_bound": 0,
             "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
@@ -2838,6 +2839,9 @@ class ClassUnitGroupEngine:
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
             )
+            bounded_dependencies = getattr(
+                cubic, "_bounded_cubic_dependency_candidates", None
+            )
             validate_batch = getattr(
                 cubic, "_validated_cubic_integral_relation_batch", None
             )
@@ -2845,6 +2849,7 @@ class ClassUnitGroupEngine:
                 not callable(propose)
                 or not callable(select)
                 or not callable(select_dependencies)
+                or not callable(bounded_dependencies)
             ):
                 return collector
             coefficient_bound = int(getattr(cubic, "_CUBIC_RELATION_SIEVE_BOUND", 2))
@@ -2892,10 +2897,15 @@ class ClassUnitGroupEngine:
             selected, _selected_rank = selected_result
             if selected is None or len(selected) > remaining:
                 return collector
-            dependency_candidates: Any = select_dependencies(
+            dependency_candidates, dependency_bound = bounded_dependencies(
+                self.order,
+                factor_base,
                 selected,
                 candidates,
                 unit_rank,
+                remaining,
+                cancelled=self.cancelled,
+                power_factor_base=packed_factor_base,
             )
             if len(dependency_candidates) > remaining - len(selected):
                 dependency_candidates = ()
@@ -2964,6 +2974,10 @@ class ClassUnitGroupEngine:
             self._resource_usage["cubic_integral_sieve_relations"] += len(selected)
             self._resource_usage["cubic_integral_sieve_dependency_relations"] += len(
                 dependency_candidates
+            )
+            self._resource_usage["cubic_integral_sieve_dependency_bound"] = max(
+                int(self._resource_usage["cubic_integral_sieve_dependency_bound"]),
+                int(dependency_bound),
             )
             return trial
         except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):

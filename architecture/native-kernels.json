@@ -463,8 +463,11 @@
     {
       "id": "class-group-resident-hnf-production",
       "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
-      "functions": ["resident_exact_relation_hnf_select"],
-      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through declared FLINT FFI",
+      "functions": [
+        "resident_exact_relation_hnf_select",
+        "resident_exact_relation_hnf_select_v2"
+      ],
+      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through one arena-owned declared FLINT resource graph",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],

@@ -336,6 +336,30 @@ lattice/ideal pipeline without a Brandt-specific compiler rule.
    state, then validate Linux x64/arm64, macOS arm64, Windows x64, and browser
    Wasm before automatic production selection.
 
+### C7 coarse-slice result
+
+The first C7 replacement is complete for the resident relation-HNF selection
+boundary.  The ordinary Python source now imports the authenticated relation
+matrix once, owns six fixed-shape FLINT matrices in one `NativeExactArena`,
+performs HNF, exact transform replay, support extraction, and bounded deletion
+trials without intermediate packed matrices, and publishes only the compact
+basis and masks after the transaction succeeds.  Guard failure and any native
+failure retain the original same-source route.
+
+On the dedicated four-core `opt` VM, the prepared-order public
+`class_number(proof=False)` call for tune field `3.3.2989441.2` took
+75.7958208 seconds at the pre-C7 revision and 19.758558208 seconds with the
+proof-checked C7 candidate, a 3.84x speedup.  Three additional candidate
+observations had median 18.028 seconds.  Both revisions returned class group
+`[3, 3]`, proof status `exact-relations-conditional-grh`, and byte-identical
+383,850-byte detached proof payloads with SHA-256
+`54afd22349f3f32f15d080e34aa5f8421cdda131a78e3b7d6db0cd96ad99c5dd`.
+Detached replay remained a separately timed roughly 176-second boundary; it
+was not hidden inside the improved public call.  This establishes the C7
+coarse 2x acceptance threshold, not PARI parity or complete-corpus promotion.
+The raw one-line receipts are retained outside Git as content-addressed
+campaign evidence; tune/heldout closure remains a separate freeze gate.
+
 ## Acceptance
 
 The language slice is accepted only when:

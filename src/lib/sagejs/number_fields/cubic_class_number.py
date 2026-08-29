@@ -1985,24 +1985,55 @@ def _bounded_cubic_dependency_candidates(
     maximum_candidates: int,
     *,
     cancelled: Callable[[], bool] | None,
+    power_factor_base: Any = None,
 ) -> tuple[tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...], int]:
-    """Find bounded duplicate rows, widening the coefficient box once."""
+    """Find bounded duplicate rows, widening the coefficient box once.
+
+    The small primary box can expose one unit dependency without spanning the
+    full cubic unit rank.  Widen whenever the requested bounded dependency
+    count is not yet present, then retain the deterministic prefix of distinct
+    exact proposals.  Every returned proposal still crosses the independent
+    integral norm and prime-power containment admission boundary before it can
+    affect a relation lattice.
+    """
     dependencies = _select_cubic_dependency_candidates(selected, primary, maximum)
+
+    selected_rows = tuple(tuple(row) for row, _coordinates, _norm in selected)
+
+    def dependency_count(
+        proposals: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    ) -> int:
+        count = 0
+        new_rows: list[tuple[int, ...]] = []
+        for row, _coordinates, _norm in proposals:
+            normalized_row = tuple(row)
+            if normalized_row in selected_rows:
+                count += 1
+            elif normalized_row not in new_rows:
+                new_rows.append(normalized_row)
+                count += 1
+        return count
+
+    achieved = dependency_count(dependencies)
     bound = _CUBIC_RELATION_SIEVE_BOUND
-    if not dependencies:
+    if achieved < maximum:
         widened = _packed_cubic_relation_candidates(
             order,
             factor_base,
             maximum_candidates=maximum_candidates,
             coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
             duplicate_row_norms=(norm for _row, _coordinates, norm in selected),
+            power_factor_base=power_factor_base,
             cancelled=cancelled,
         )
         if widened is not None:
-            dependencies = _select_cubic_dependency_candidates(
+            widened_dependencies = _select_cubic_dependency_candidates(
                 selected, widened, maximum
             )
-            if dependencies:
+            if dependency_count(widened_dependencies) > achieved and all(
+                dependency in widened_dependencies for dependency in dependencies
+            ):
+                dependencies = widened_dependencies
                 bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
     return dependencies, bound
 

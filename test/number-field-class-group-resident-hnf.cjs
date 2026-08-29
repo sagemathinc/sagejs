@@ -3,11 +3,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+
+const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = resolve(__dirname, "..");
 const kernelSource = join(
@@ -108,6 +111,56 @@ const fixtures = [
     trials: 1,
   },
 ];
+
+test("the cubic HNF region owns one resident exact resource graph", async () => {
+  const ir = await lowerSource(readFileSync(kernelSource, "utf8"), kernelSource);
+  const fn = ir.functions.find(
+    (candidate) => candidate.name === "resident_exact_relation_hnf_select_v2",
+  );
+  assert.ok(fn);
+  assert.equal(fn.analysis.backend.kind, "gmp");
+  assert.equal(fn.analysis.liveExactWorkspace.count, 1);
+  assert.deepEqual(
+    fn.analysis.liveExactWorkspace.scopes[0].children.map((child) => ({
+      owner: child.owner,
+      storage: child.storage,
+      resource: child.resourceId,
+    })),
+    [
+      "source_matrix",
+      "basis_matrix",
+      "transform_matrix",
+      "trial_source_matrix",
+      "trial_hnf_matrix",
+      "trial_transform_matrix",
+    ].map((owner) => ({
+      owner,
+      storage: "declared-owned-ffi-resource",
+      resource: "fmpz_matrix",
+    })),
+  );
+
+  const core = generateHostCore(ir).source;
+  const start = core.lastIndexOf(
+    "static int native_resident_exact_relation_hnf_select_v2(",
+  );
+  const end = core.indexOf(
+    "static int native_resident_exact_relation_hnf_select(",
+    start,
+  );
+  const region = core.slice(start, end);
+  const checkpoint = region.indexOf("sagejs_native_gmp_checkpoint_begin(");
+  const lastAllocation = region.lastIndexOf("sagejs_fmpz_matrix_init(", checkpoint);
+  const firstEntryWrite = region.indexOf("sagejs_fmpz_matrix_set_entry(", checkpoint);
+  const firstHnf = region.indexOf("sagejs_fmpz_matrix_hnf_transform(", checkpoint);
+  assert.ok(start >= 0);
+  assert.ok(lastAllocation > 0 && checkpoint > lastAllocation);
+  assert.ok(firstEntryWrite > checkpoint && firstHnf > firstEntryWrite);
+  assert.doesNotMatch(
+    region,
+    /packed_(?:fmpz|integer)|PyObject|napi_/,
+  );
+});
 
 function compileInto(cache) {
   return spawnSync(
@@ -272,9 +325,14 @@ try:
 finally:
     matrix._resident_hnf_kernel_override = saved_override
 
-from sagejs.kernels.matrix.class_group_hnf import resident_exact_relation_hnf_select
+from sagejs.kernels.matrix.class_group_hnf import (
+    resident_exact_relation_hnf_select,
+    resident_exact_relation_hnf_select_v2,
+)
 assert is_compiled(resident_exact_relation_hnf_select)
 assert resident_exact_relation_hnf_select.nativeAvailable
+assert is_compiled(resident_exact_relation_hnf_select_v2)
+assert resident_exact_relation_hnf_select_v2.nativeAvailable
 print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=True))
 `;
     const result = runSage(cache, program);

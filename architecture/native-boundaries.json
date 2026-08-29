@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 133,
+    "classified-native-file": 134,
     "declared-ffi": 455,
     "declared-ffi-resource": 34,
     "napi-export": 325,
@@ -9700,6 +9700,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
+    },
+    {
+      "id": "native-file:test/fixtures/native-exact-workspace-direct-reference.c",
+      "kind": "classified-native-file",
+      "path": "test/fixtures/native-exact-workspace-direct-reference.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
     },
     {
       "id": "native-file:tools/maple/src/parser.c",

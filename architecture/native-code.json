@@ -851,6 +851,13 @@
       "rationale": "Node adapter around nauty/Traces with some graph data conversion and orchestration."
     },
     {
+      "path": "test/fixtures/native-exact-workspace-direct-reference.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Standalone direct-GMP code-size and result oracle for the generated reusable exact workspace kernel; compiled only by focused tests and never linked into Sage.js."
+    },
+    {
       "path": "tools/maple/src/parser.c",
       "category": "generated-upstream",
       "review_status": "generated",

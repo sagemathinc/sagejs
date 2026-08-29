@@ -2408,7 +2408,8 @@ def resident_exact_relation_hnf_selection(
         raise RelationMatrixError("resident HNF entry exceeds its bit bound")
     bounded_trials = min(maximum_trials, len(candidates))
     required_work = (
-        3 * row_entries
+        row_count * row_entries
+        + 2 * row_entries
         + row_count * row_count
         + bounded_trials * (row_entries + 2 * columns)
     )
@@ -2440,7 +2441,7 @@ def resident_exact_relation_hnf_selection(
         base_kernel: Any = (
             _resident_hnf_kernel_override
             if callable(_resident_hnf_kernel_override)
-            else kernel_module.resident_exact_relation_hnf_select
+            else kernel_module.resident_exact_relation_hnf_select_v2
         )
         if backend == "javascript":
             kernel = base_kernel.javascript
@@ -2456,33 +2457,34 @@ def resident_exact_relation_hnf_selection(
         flat = [value for row in source for value in row]
         metadata_buffer = zeros(7, 2)
         basis_buffer = zeros(row_entries)
-        transform_buffer = zeros(row_count * row_count)
         support_buffer = zeros(row_count, 2)
         selected_buffer = zeros(len(candidates), 2)
-        trial_hnf_buffer = zeros(row_entries)
-        replay_buffer = zeros(row_entries)
-        # Exact replay is complete before deletion starts, so one bounded
-        # workspace can safely serve as both replay output and trial source.
-        trial_source_buffer = replay_buffer
-        determinant_buffer = zeros(1)
         source_buffer = native_module.kernel_integer_buffer(packing_kernel, flat)
+        resident_entries = 4 * row_entries + 2 * row_count * row_count
+        resident_memory_limit = max(
+            1_048_576,
+            min(
+                536_870_912,
+                65_536 + resident_entries * (32 + 8 * word_capacity),
+            ),
+        )
+        temporary_limit = max(
+            1_048_576,
+            min(67_108_864, 1_048_576 + required_work * 64),
+        )
         status = kernel(
             metadata_buffer,
             basis_buffer,
-            transform_buffer,
             support_buffer,
             selected_buffer,
-            trial_source_buffer,
-            trial_hnf_buffer,
-            replay_buffer,
-            determinant_buffer,
             source_buffer,
             row_count,
             len(initial),
             columns,
             bounded_trials,
             maximum_work,
-            1,
+            resident_memory_limit,
+            temporary_limit,
         )
         if status == 0:
             raise ArithmeticError("resident HNF kernel failed exact replay")
