@@ -587,6 +587,10 @@ class _LiveClassUnitArtifacts:
         self.analytic_workspace = analytic_workspace
         self.factored_logarithm_workspace = factored_logarithm_workspace
         self.analytic_proof: tuple[Any, ...] | None = None
+        self.minkowski_class_number_one_state: Any = None
+        self.minkowski_class_number_one_snapshot: Any = None
+        self.deferred_saturation_state: Any = None
+        self.deferred_saturation_snapshot: Any = None
         self.generation_artifact: _LiveClassGenerationArtifact | None = None
         self.generation_verification_active = True
         self.saturation_record: Any = None
@@ -602,6 +606,10 @@ class _LiveClassUnitArtifacts:
         self.terminal_upgrade_issued = False
         self.public_class_group_projection: Any = None
         self.public_class_group_projection_reserved = False
+        self.public_class_group_projection_source: Any = None
+        self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         self.sealed = False
 
     @staticmethod
@@ -726,6 +734,9 @@ class _LiveClassUnitArtifacts:
             ),
             "saturation_units": tuple(getattr(saturation, "units", ())),
             "saturation_content_sha256": getattr(saturation, "content_sha256", None),
+            "saturation_body_payload": getattr(
+                saturation, "_canonical_body_payload", None
+            ),
             "saturation_certificate": getattr(
                 saturation, "_analytic_certificate", None
             ),
@@ -805,6 +816,7 @@ class _LiveClassUnitArtifacts:
                 "presentation",
                 "collector",
                 "saturation",
+                "saturation_body_payload",
                 "class_group",
                 "group_relation_reconstructor",
                 "group_combine_relations",
@@ -1165,6 +1177,52 @@ class _LiveClassUnitArtifacts:
             raise ValueError("a live analytic proof must contain six exact components")
         self.analytic_proof = values
 
+    def bind_deferred_saturation_state(self, state: Any, snapshot: Any) -> bool:
+        if (
+            self.sealed
+            or not self.reusable
+            or self.deferred_saturation_state is not None
+            or not isinstance(snapshot, tuple)
+        ):
+            return False
+        self.deferred_saturation_state = state
+        self.deferred_saturation_snapshot = snapshot
+        return True
+
+    def bind_minkowski_class_number_one_state(self, state: Any, snapshot: Any) -> bool:
+        if (
+            self.sealed
+            or not self.reusable
+            or self.minkowski_class_number_one_state is not None
+            or not isinstance(snapshot, tuple)
+        ):
+            return False
+        self.minkowski_class_number_one_state = state
+        self.minkowski_class_number_one_snapshot = snapshot
+        return True
+
+    def minkowski_class_number_one_state_authenticated(
+        self, state: Any, snapshot: Any
+    ) -> bool:
+        return bool(
+            not self.sealed
+            and self.reusable
+            and state is self.minkowski_class_number_one_state
+            and isinstance(snapshot, tuple)
+            and snapshot == self.minkowski_class_number_one_snapshot
+        )
+
+    def deferred_saturation_state_authenticated(
+        self, state: Any, snapshot: Any
+    ) -> bool:
+        return bool(
+            not self.sealed
+            and self.reusable
+            and state is self.deferred_saturation_state
+            and isinstance(snapshot, tuple)
+            and snapshot == self.deferred_saturation_snapshot
+        )
+
     def dependency_hashes(
         self, collector: Any, presentation: Any
     ) -> tuple[str, str] | None:
@@ -1428,7 +1486,8 @@ class _LiveClassUnitArtifacts:
         if (
             not self.sealed
             or not self.reusable
-            or self.terminal_proof_status != "exact-relations-conditional-grh"
+            or self.terminal_proof_status
+            not in ("exact-relations-conditional-grh", "exact-unconditional")
             or self.terminal_identity_snapshot is None
             or self.terminal_semantic_snapshot is None
         ):
@@ -1471,12 +1530,164 @@ class _LiveClassUnitArtifacts:
             ):
                 return None
             return "published", self.public_class_group_projection
+        if (
+            self.terminal_proof_status == "exact-unconditional"
+            and self.terminal_identity_snapshot is None
+            and self.terminal_semantic_snapshot is None
+        ):
+            try:
+                self.terminal_identity_snapshot = self._capture_terminal_identity()
+                self.terminal_semantic_snapshot = self._capture_terminal_semantics()
+            except (AttributeError, TypeError, ValueError, ArithmeticError):
+                self.terminal_identity_snapshot = None
+                self.terminal_semantic_snapshot = None
+                return None
         if not self._terminal_source_matches(source, require_semantic_snapshot=True):
             return None
         if self.public_class_group_projection_reserved:
             return None
         self.public_class_group_projection_reserved = True
+        self.public_class_group_projection_source = source
+        self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         return "reserved", None
+
+    def consume_public_class_group_construction(
+        self, source: Any, engine_group: Any, public_group: Any
+    ) -> bool:
+        """Authenticate one live public shell without replaying generator ideals.
+
+        The terminal context already authenticated the engine presentation and
+        its exact generator rows before sealing.  During the one reserved public
+        transaction, bind the standard adapter's shell back to that exact engine
+        group.  This receipt is consumed once and authorizes only omission of
+        the shell's redundant defining-relation/presentation replay; the final
+        completeness proof is still independently verified before publication.
+        """
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_class_group_construction_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+            or not self._terminal_source_matches(source, require_semantic_snapshot=True)
+        ):
+            return False
+        try:
+            retained_group = self.class_group
+            retained_ideals = tuple(getattr(retained_group, "_generator_ideals", ()))
+            public_ideals = tuple(getattr(public_group, "_generator_ideals", ()))
+            retained_invariants = tuple(
+                int(value) for value in getattr(retained_group, "_invariants", ())
+            )
+            public_invariants = tuple(getattr(public_group, "_invariants", ()))
+            proof_record = getattr(public_group, "_proof_record", None)
+            if (
+                engine_group is not retained_group
+                or source.class_group() is not retained_group
+                or getattr(public_group, "_order", None) is not self.order
+                or public_invariants != retained_invariants
+                or not self._same_identity_sequence(public_ideals, retained_ideals)
+                or getattr(public_group, "_presentation_evidence", None)
+                is not self.presentation
+                or getattr(public_group, "_proof_status", None)
+                != self.terminal_proof_status
+                or getattr(public_group, "_algorithm", None)
+                != getattr(source, "algorithm", None)
+                or getattr(public_group, "_factor_base_theorem", None)
+                != getattr(retained_group, "factor_base_theorem", None)
+                or getattr(public_group, "_relation_count", None) != len(self.relations)
+                or len(getattr(public_group, "_relation_witnesses", ()))
+                != len(retained_invariants)
+                or not callable(getattr(public_group, "_ideal_log", None))
+                or proof_record is None
+                or getattr(proof_record, "proof_status", None)
+                != self.terminal_proof_status
+                or getattr(public_group, "_proof_context", None) is None
+            ):
+                return False
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+        self.public_class_group_construction_issued = True
+        return True
+
+    def consume_public_saturation_payload(
+        self, source: Any
+    ) -> tuple[dict[str, Any], str, str] | None:
+        """Issue the retained canonical saturation body to one public adapter.
+
+        This is a construction receipt, not proof authority.  The public group
+        still performs its ordinary detached saturation replay before it can
+        be returned.  Reusable uninterrupted contexts may avoid serializing
+        the same exact unit objects a second time while that transaction is
+        reserved.
+        """
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_saturation_payload_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+        ):
+            return None
+        record = self.saturation_record
+        snapshot = self.terminal_semantic_snapshot
+        identity_snapshot = self.terminal_identity_snapshot
+        if record is None or snapshot is None or identity_snapshot is None:
+            return None
+        body_json = getattr(record, "_canonical_body_json", None)
+        body_payload = getattr(record, "_canonical_body_payload", None)
+        content_sha256 = getattr(record, "content_sha256", None)
+        if (
+            not isinstance(body_payload, dict)
+            or identity_snapshot.get("saturation_body_payload") is not body_payload
+            or not isinstance(body_json, str)
+            or len(body_json) > 64 * 1024 * 1024
+            or not isinstance(content_sha256, str)
+            or len(content_sha256) != 64
+            or hashlib.sha256(body_json.encode("utf-8")).hexdigest() != content_sha256
+            or snapshot.get("saturation_body_json") != body_json
+            or snapshot.get("saturation_content_sha256") != content_sha256
+        ):
+            return None
+        self.public_saturation_payload_issued = True
+        return body_payload, body_json, content_sha256
+
+    def consume_public_generation_payload(self, source: Any) -> dict[str, Any] | None:
+        """Issue retained relation-presentation bytes as a construction hint."""
+        if (
+            not self.public_class_group_projection_reserved
+            or self.public_generation_payload_issued
+            or source is not self.public_class_group_projection_source
+            or int(self.field.degree()) != 4
+        ):
+            return None
+        artifact = self.generation_artifact
+        evidence = None if artifact is None else artifact.evidence
+        factors = tuple(getattr(source, "conditional_factor_base", ()))
+        relations = tuple(getattr(source, "conditional_relation_records", ()))
+        if (
+            artifact is None
+            or not artifact.producer_authenticated
+            or artifact.proof_status != "exact-relations-conditional-grh"
+            or not isinstance(evidence, dict)
+            or evidence.get("schema") != _CLASS_GENERATION_AUTHORITY_SCHEMA
+            or evidence.get("proof_status") != artifact.proof_status
+            or len(factors) != len(artifact.factor_base)
+            or any(
+                current is not retained
+                for current, retained in zip(factors, artifact.factor_base, strict=True)
+            )
+            or len(relations) != len(self.relations)
+            or any(
+                current is not retained
+                for current, retained in zip(relations, self.relations, strict=True)
+            )
+            or getattr(source, "conditional_presentation_evidence", None)
+            is not artifact.presentation
+        ):
+            return None
+        self.public_generation_payload_issued = True
+        return evidence
 
     def finish_public_class_group_projection(
         self, projection: Any = None, *, commit: bool
@@ -1484,6 +1695,10 @@ class _LiveClassUnitArtifacts:
         if not self.public_class_group_projection_reserved:
             return False
         self.public_class_group_projection_reserved = False
+        self.public_class_group_projection_source = None
+        self.public_saturation_payload_issued = False
+        self.public_generation_payload_issued = False
+        self.public_class_group_construction_issued = False
         if not commit:
             return True
         if projection is None or self.public_class_group_projection is not None:
@@ -1846,6 +2061,49 @@ class ClassUnitGroupContext:
         live = self._live_artifacts
         return None if live is None else live.analytic_proof
 
+    def _bind_live_deferred_saturation_state(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live deferred saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None and live.bind_deferred_saturation_state(state, snapshot)
+        )
+
+    def _bind_live_minkowski_class_number_one_state(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live Minkowski scalar state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.bind_minkowski_class_number_one_state(state, snapshot)
+        )
+
+    def _live_minkowski_class_number_one_state_authenticated(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live Minkowski scalar state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.minkowski_class_number_one_state_authenticated(state, snapshot)
+        )
+
+    def _live_deferred_saturation_state_authenticated(
+        self, token: Any, state: Any, snapshot: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("live deferred saturation state is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.deferred_saturation_state_authenticated(state, snapshot)
+        )
+
     def _live_generation_dependency_hashes(
         self, token: Any, collector: Any, presentation: Any
     ) -> tuple[str, str] | None:
@@ -1980,6 +2238,35 @@ class ClassUnitGroupContext:
         return bool(
             live is not None
             and live.finish_public_class_group_projection(projection, commit=commit)
+        )
+
+    def _consume_live_public_saturation_payload(
+        self, token: Any, source: Any
+    ) -> tuple[dict[str, Any], str, str] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public saturation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.consume_public_saturation_payload(source)
+
+    def _consume_live_public_generation_payload(
+        self, token: Any, source: Any
+    ) -> dict[str, Any] | None:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public generation payloads are engine-owned")
+        live = self._live_artifacts
+        return None if live is None else live.consume_public_generation_payload(source)
+
+    def _consume_live_public_class_group_construction(
+        self, token: Any, source: Any, engine_group: Any, public_group: Any
+    ) -> bool:
+        if token is not _LIVE_CLASS_UNIT_CONTEXT_TOKEN:
+            raise TypeError("public class-group construction is engine-owned")
+        live = self._live_artifacts
+        return bool(
+            live is not None
+            and live.consume_public_class_group_construction(
+                source, engine_group, public_group
+            )
         )
 
     def live_diagnostics(self) -> dict[str, Any]:

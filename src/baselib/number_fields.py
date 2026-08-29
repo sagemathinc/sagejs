@@ -106,6 +106,13 @@ def _nf_class_groups_module() -> Any:
     )
 
 
+def _nf_class_group_maps_module() -> Any:
+    return _nf_lazy_import(
+        "__sagejs_nf_class_group_maps_module__",
+        "sagejs.number_fields.class_group_maps",
+    )
+
+
 def _nf_class_unit_groups_module() -> Any:
     return _nf_lazy_import(
         "__sagejs_nf_class_unit_groups_module__",
@@ -2808,6 +2815,39 @@ class NumberFieldParent(sage.Parent):
         **limits: Any,
     ) -> Any:
         del names
+        general_algorithm = algorithm
+        if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
+            class_units = _nf_class_unit_groups_module()
+            if class_units.quartic_class_number_projection_pending(self, proof=proof):
+                bounded_projection = (
+                    class_units.quartic_class_number_one_projection_result(
+                        self, proof=proof
+                    )
+                )
+                if bounded_projection is not None:
+                    return (
+                        _nf_class_group_maps_module().class_group_from_minkowski_result(
+                            bounded_projection
+                        )
+                    )
+                return class_units.class_group(self, proof=proof, algorithm="auto")
+            bounded = self._global_class_group_cache
+            if (
+                bounded is runtime.undefined
+                or getattr(bounded, "field", None) is not self
+                or not bool(getattr(bounded, "complete", False))
+            ):
+                bounded = _nf_class_groups_module().bounded_minkowski_class_number_one(
+                    self
+                )
+            if bounded.field is not self:
+                raise ArithmeticError("the quartic class-group search changed fields")
+            if bounded.complete:
+                return _nf_class_group_maps_module().class_group_from_minkowski_result(
+                    bounded
+                )
+            if bounded.minkowski_factor_base_complete:
+                general_algorithm = "minkowski"
         use_cache = proof is None and algorithm == "auto" and len(limits) == 0
         if use_cache and self._class_group_cache is not runtime.undefined:
             return self._class_group_cache
@@ -2852,7 +2892,7 @@ class NumberFieldParent(sage.Parent):
                 result = NumberFieldClassGroup(self, backend)
         else:
             result = _nf_class_unit_groups_module().class_group(
-                self, proof=proof, algorithm=algorithm, **limits
+                self, proof=proof, algorithm=general_algorithm, **limits
             )
         if use_cache:
             self._class_group_cache = result
@@ -2923,6 +2963,11 @@ class NumberFieldParent(sage.Parent):
             return _nf_class_unit_groups_module().cubic_class_number_projection(
                 self, proof=proof
             )
+        if self.degree() == 4 and algorithm == "auto" and len(limits) == 0:
+            return _nf_class_unit_groups_module().quartic_class_number_projection(
+                self, proof=proof
+            )
+        general_algorithm = algorithm
         if self.degree() == 2:
             routing = self.quadratic_class_group_plan(algorithm, **limits)
             if routing.backend == "minkowski-triviality":
@@ -2963,7 +3008,7 @@ class NumberFieldParent(sage.Parent):
                 )
             return int(self._quadratic_backend()[0].class_number())
         return _nf_class_unit_groups_module().class_number(
-            self, proof=proof, algorithm=algorithm, **limits
+            self, proof=proof, algorithm=general_algorithm, **limits
         )
 
     def narrow_class_number(
