@@ -158,14 +158,18 @@ allocations have a distinct counter and are permitted only as hard-envelope
 failure scaffolding; they make the attempt ineligible for publication and must
 not be conflated with a successful allocation-stable route.
 
-Native Kernel v30 completes C4a with fixed-capacity record vectors. The first
-resident schema is deliberately scalar: every field is `uint64`, every record
-is copied as one value, and borrowed buffers, prime-modulus values,
-or exact-object references fail lowering. The portable Python contract,
-private JavaScript storage, contiguous C structs, and Wasm core use one
-deterministic semantic charge and checked-index contract. The compiler records
-the schema and child owner in source-mapped IR and generates reverse-order
-cleanup for success, range failure, memory failure, and cancellation edges.
+Native Kernel v30 completed C4a with fixed-capacity record vectors. Native
+Kernel v31 completes C4b with deterministic fixed-capacity record-keyed maps
+and sets using a specified FNV64 field hash and linear probing, plus compact
+append-only sparse exact rows. The first resident schema is deliberately
+scalar: every key field is `uint64`, every record is copied as one value, and
+borrowed buffers, prime-modulus values, or exact-object references fail
+lowering. Sparse entries own pre-sized GMP destinations and accept only strict
+row-major coordinates. The portable Python contract, private JavaScript
+storage, contiguous C structs, and Wasm core use one deterministic semantic
+charge and checked shape/capacity contract. The compiler records every schema
+and child owner in source-mapped IR and generates reverse-order cleanup for
+success, range failure, memory failure, and cancellation edges.
 
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no

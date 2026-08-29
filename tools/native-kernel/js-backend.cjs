@@ -199,6 +199,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   ) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
+  if (operation.kind === "value.discard") {
+    return `${indent}void ${operation.source};`;
+  }
   if (operation.kind === "record.construct") {
     const fields = operation.fields.map((field) =>
       `${jsString(field.name)}: ${field.value}`
@@ -334,6 +337,58 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.owner} = createNativeRecordVectorInBudget(` +
       `${operation.capacity}, ${JSON.stringify(operation.fields.map((field) =>
         field.name))}, ${operation.entryCharge}n, ${operation.arena}.budget);`;
+  }
+  if (operation.kind === "bounded.map.arena.allocate" ||
+      operation.kind === "bounded.set.arena.allocate") {
+    const isMap = operation.kind === "bounded.map.arena.allocate";
+    return `${indent}${operation.owner} = createNativeBoundedTableInBudget(` +
+      `${operation.capacity}, ${JSON.stringify(operation.fields.map((field) =>
+        field.name))}, ${operation.entryCharge}n, ${isMap}, ` +
+      `${operation.arena}.budget);`;
+  }
+  if (operation.kind === "bounded.map.insert") {
+    return `${indent}${operation.target} = nativeBoundedInsert(` +
+      `${operation.owner}, ${operation.key}, ${operation.value}, "Map");`;
+  }
+  if (operation.kind === "bounded.set.add") {
+    return `${indent}${operation.target} = nativeBoundedInsert(` +
+      `${operation.owner}, ${operation.key}, 0n, "Set");`;
+  }
+  if (operation.kind === "bounded.map.contains" ||
+      operation.kind === "bounded.set.contains") {
+    return `${indent}${operation.target} = nativeBoundedContains(` +
+      `${operation.owner}, ${operation.key});`;
+  }
+  if (operation.kind === "bounded.map.get") {
+    return `${indent}${operation.target} = nativeBoundedGet(` +
+      `${operation.owner}, ${operation.key}, ${operation.value});`;
+  }
+  if (operation.kind === "bounded.map.length" ||
+      operation.kind === "bounded.set.length") {
+    return `${indent}${operation.target} = nativeBoundedLength(` +
+      `${operation.owner});`;
+  }
+  if (operation.kind === "sparse.rows.arena.allocate") {
+    return `${indent}${operation.owner} = createNativeSparseIntegerRowsInBudget(` +
+      `${operation.rows}, ${operation.columns}, ${operation.entryCapacity}, ` +
+      `${operation.maximumBits}, ${operation.arena}.budget);`;
+  }
+  if (operation.kind === "sparse.rows.append") {
+    return `${indent}nativeSparseRowsAppend(${operation.owner}, ` +
+      `${operation.row}, ${operation.column}, ${operation.value});`;
+  }
+  if (operation.kind === "sparse.rows.get") {
+    return `${indent}${operation.target} = nativeSparseRowsGet(` +
+      `${operation.owner}, ${operation.row}, ${operation.column}, ` +
+      `${operation.defaultValue});`;
+  }
+  if (operation.kind === "sparse.rows.row_length") {
+    return `${indent}${operation.target} = nativeSparseRowsRowLength(` +
+      `${operation.owner}, ${operation.row});`;
+  }
+  if (operation.kind === "sparse.rows.length") {
+    return `${indent}${operation.target} = nativeSparseRowsLength(` +
+      `${operation.owner});`;
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
@@ -535,7 +590,12 @@ function emitExactStatement(operation, indent, resourceStack = null) {
         ? "nativeIntegerMatrixClose"
         : child.type === "NativeIntegerVector"
           ? "nativeIntegerVectorClose"
-          : "nativeRecordVectorClose"}(${child.owner});`
+          : child.type.startsWith("NativeBoundedMap:") ||
+              child.type.startsWith("NativeBoundedSet:")
+            ? "nativeBoundedTableClose"
+            : child.type === "NativeSparseIntegerRows"
+              ? "nativeSparseIntegerRowsClose"
+              : "nativeRecordVectorClose"}(${child.owner});`
     );
     return [
       ...operation.setup.map((item) =>
@@ -1714,6 +1774,250 @@ function nativeRecordVectorClose(vector) {
   nativeExactBudgetRelease(vector.budget, vector.chargedBytes);
   vector.chargedBytes = 0n;
   vector.open = false;
+}
+
+const nativeBoundedHashOffset = 1469598103934665603n;
+const nativeBoundedHashPrime = 1099511628211n;
+
+function createNativeBoundedTableInBudget(
+  capacity, fields, entryCharge, withValues, budget
+) {
+  const exactCapacity = BigInt(capacity);
+  if (exactCapacity < 0n || exactCapacity > BigInt(Number.MAX_SAFE_INTEGER) ||
+      entryCharge <= 0n || exactCapacity > 18446744073709551615n / entryCharge) {
+    throw new RangeError("NativeBoundedMap/Set capacity is too large");
+  }
+  const chargedBytes = exactCapacity * entryCharge;
+  nativeExactBudgetReplace(budget, 0n, chargedBytes);
+  try {
+    return {
+      keys: Array(Number(exactCapacity)).fill(null),
+      values: withValues ? Array(Number(exactCapacity)).fill(0n) : null,
+      fields: [...fields],
+      size: 0,
+      budget,
+      chargedBytes,
+      open: true,
+    };
+  } catch (error) {
+    nativeExactBudgetRelease(budget, chargedBytes);
+    throw error;
+  }
+}
+
+function nativeBoundedRequireOpen(table) {
+  if (table === null || typeof table !== "object" || table.open !== true) {
+    throw new RangeError("NativeBoundedMap/Set is closed");
+  }
+}
+
+function nativeBoundedKey(table, key) {
+  nativeBoundedRequireOpen(table);
+  const copy = {};
+  for (const field of table.fields) {
+    const exact = BigInt(key[field]);
+    if (exact < 0n || exact > 18446744073709551615n) {
+      throw new RangeError("NativeBoundedMap/Set key field is outside uint64");
+    }
+    copy[field] = exact;
+  }
+  return copy;
+}
+
+function nativeBoundedHash(table, key) {
+  let hash = nativeBoundedHashOffset;
+  for (const field of table.fields) {
+    hash = BigInt.asUintN(64, (hash ^ key[field]) * nativeBoundedHashPrime);
+  }
+  return hash;
+}
+
+function nativeBoundedEqual(table, left, right) {
+  for (const field of table.fields) {
+    if (left[field] !== right[field]) return false;
+  }
+  return true;
+}
+
+function nativeBoundedSlot(table, key) {
+  const capacity = table.keys.length;
+  if (capacity === 0) return { position: 0, found: false, full: true };
+  let position = Number(nativeBoundedHash(table, key) % BigInt(capacity));
+  for (let probe = 0; probe < capacity; probe += 1) {
+    const current = table.keys[position];
+    if (current === null) return { position, found: false, full: false };
+    if (nativeBoundedEqual(table, current, key)) {
+      return { position, found: true, full: false };
+    }
+    position += 1;
+    if (position === capacity) position = 0;
+  }
+  return { position: capacity, found: false, full: true };
+}
+
+function nativeBoundedInsert(table, key, value, kind) {
+  const exactKey = nativeBoundedKey(table, key);
+  const slot = nativeBoundedSlot(table, exactKey);
+  if (slot.found) {
+    if (table.values !== null) table.values[slot.position] = BigInt(value);
+    return false;
+  }
+  if (slot.full) {
+    nativeRaise("MemoryError", "NativeBounded" + kind + " capacity exceeded");
+  }
+  table.keys[slot.position] = exactKey;
+  if (table.values !== null) table.values[slot.position] = BigInt(value);
+  table.size += 1;
+  return true;
+}
+
+function nativeBoundedContains(table, key) {
+  const exactKey = nativeBoundedKey(table, key);
+  return nativeBoundedSlot(table, exactKey).found;
+}
+
+function nativeBoundedGet(table, key, defaultValue) {
+  const exactKey = nativeBoundedKey(table, key);
+  const slot = nativeBoundedSlot(table, exactKey);
+  return slot.found ? table.values[slot.position] : BigInt(defaultValue);
+}
+
+function nativeBoundedLength(table) {
+  nativeBoundedRequireOpen(table);
+  return BigInt(table.size);
+}
+
+function nativeBoundedTableClose(table) {
+  if (table === null || typeof table !== "object" || table.open !== true) return;
+  table.keys.length = 0;
+  if (table.values !== null) table.values.length = 0;
+  table.fields.length = 0;
+  table.size = 0;
+  nativeExactBudgetRelease(table.budget, table.chargedBytes);
+  table.chargedBytes = 0n;
+  table.open = false;
+}
+
+function createNativeSparseIntegerRowsInBudget(
+  rows, columns, entryCapacity, maximumBits, budget
+) {
+  const exactRows = BigInt(rows);
+  const exactColumns = BigInt(columns);
+  const exactCapacity = BigInt(entryCapacity);
+  for (const value of [exactRows, exactColumns, exactCapacity]) {
+    if (value < 0n || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new RangeError("NativeSparseIntegerRows shape is too large");
+    }
+  }
+  const metadataCharge = 32n + exactRows * 8n + exactCapacity * 16n;
+  if (metadataCharge > 18446744073709551615n) {
+    throw new RangeError("NativeSparseIntegerRows shape is too large");
+  }
+  nativeExactBudgetReplace(budget, 0n, metadataCharge);
+  let values = null;
+  try {
+    const result = {
+      values: null,
+      entryRows: Array(Number(exactCapacity)).fill(0n),
+      columns: Array(Number(exactCapacity)).fill(0n),
+      rowLengths: Array(Number(exactRows)).fill(0n),
+      columnCount: exactColumns,
+      length: 0,
+      lastRow: 0n,
+      lastColumn: 0n,
+      hasLast: false,
+      budget,
+      metadataCharge,
+      open: true,
+    };
+    values = createNativeIntegerVectorInBudget(
+      exactCapacity, maximumBits, budget);
+    result.values = values;
+    return result;
+  } catch (error) {
+    if (values !== null) nativeIntegerVectorClose(values);
+    nativeExactBudgetRelease(budget, metadataCharge);
+    throw error;
+  }
+}
+
+function nativeSparseRowsRequireOpen(rows) {
+  if (rows === null || typeof rows !== "object" || rows.open !== true) {
+    throw new RangeError("NativeSparseIntegerRows is closed");
+  }
+}
+
+function nativeSparseRowsIndex(rows, row, column) {
+  nativeSparseRowsRequireOpen(rows);
+  const exactRow = BigInt(row);
+  const exactColumn = BigInt(column);
+  if (exactRow < 0n || exactRow >= BigInt(rows.rowLengths.length) ||
+      exactColumn < 0n || exactColumn >= rows.columnCount) {
+    nativeRaise("IndexError", "NativeSparseIntegerRows index out of range");
+  }
+  return [exactRow, exactColumn];
+}
+
+function nativeSparseRowsAppend(rows, row, column, value) {
+  const [exactRow, exactColumn] = nativeSparseRowsIndex(rows, row, column);
+  if (rows.hasLast && (exactRow < rows.lastRow ||
+      (exactRow === rows.lastRow && exactColumn <= rows.lastColumn))) {
+    nativeRaise(
+      "ValueError",
+      "NativeSparseIntegerRows entries must be strictly row-major",
+    );
+  }
+  if (rows.length === rows.entryRows.length) {
+    nativeRaise("MemoryError", "NativeSparseIntegerRows capacity exceeded");
+  }
+  nativeIntegerVectorSet(rows.values, BigInt(rows.length), value);
+  rows.entryRows[rows.length] = exactRow;
+  rows.columns[rows.length] = exactColumn;
+  rows.rowLengths[Number(exactRow)] += 1n;
+  rows.length += 1;
+  rows.lastRow = exactRow;
+  rows.lastColumn = exactColumn;
+  rows.hasLast = true;
+}
+
+function nativeSparseRowsGet(rows, row, column, defaultValue) {
+  const [exactRow, exactColumn] = nativeSparseRowsIndex(rows, row, column);
+  for (let position = 0; position < rows.length; position += 1) {
+    const storedRow = rows.entryRows[position];
+    const storedColumn = rows.columns[position];
+    if (storedRow === exactRow && storedColumn === exactColumn) {
+      return nativeIntegerVectorGet(rows.values, BigInt(position));
+    }
+    if (storedRow > exactRow ||
+        (storedRow === exactRow && storedColumn > exactColumn)) break;
+  }
+  return BigInt(defaultValue);
+}
+
+function nativeSparseRowsRowLength(rows, row) {
+  nativeSparseRowsRequireOpen(rows);
+  const exactRow = BigInt(row);
+  if (exactRow < 0n || exactRow >= BigInt(rows.rowLengths.length)) {
+    nativeRaise("IndexError", "NativeSparseIntegerRows row out of range");
+  }
+  return rows.rowLengths[Number(exactRow)];
+}
+
+function nativeSparseRowsLength(rows) {
+  nativeSparseRowsRequireOpen(rows);
+  return BigInt(rows.length);
+}
+
+function nativeSparseIntegerRowsClose(rows) {
+  if (rows === null || typeof rows !== "object" || rows.open !== true) return;
+  nativeIntegerVectorClose(rows.values);
+  rows.entryRows.length = 0;
+  rows.columns.length = 0;
+  rows.rowLengths.length = 0;
+  rows.length = 0;
+  nativeExactBudgetRelease(rows.budget, rows.metadataCharge);
+  rows.metadataCharge = 0n;
+  rows.open = false;
 }
 
 function createNativeIntegerVectorInBudget(capacity, maximumBits, budget) {

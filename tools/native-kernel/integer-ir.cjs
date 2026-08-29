@@ -34,10 +34,14 @@ const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
 const LIVE_INTEGER_MATRIX_TYPE = "NativeIntegerMatrix";
 const LIVE_EXACT_ARENA_TYPE = "NativeExactArena";
 const LIVE_RECORD_VECTOR_PREFIX = "NativeRecordVector:";
+const LIVE_BOUNDED_MAP_PREFIX = "NativeBoundedMap:";
+const LIVE_BOUNDED_SET_PREFIX = "NativeBoundedSet:";
+const LIVE_SPARSE_INTEGER_ROWS_TYPE = "NativeSparseIntegerRows";
 const LIVE_EXACT_OWNER_TYPES = new Set([
   LIVE_EXACT_ARENA_TYPE,
   LIVE_INTEGER_VECTOR_TYPE,
   LIVE_INTEGER_MATRIX_TYPE,
+  LIVE_SPARSE_INTEGER_ROWS_TYPE,
 ]);
 
 function liveRecordVectorType(record) {
@@ -50,9 +54,26 @@ function recordVectorNameFromType(type) {
     : undefined;
 }
 
+function boundedCollectionType(kind, record) {
+  return `${kind === "map" ? LIVE_BOUNDED_MAP_PREFIX : LIVE_BOUNDED_SET_PREFIX}` +
+    record;
+}
+
+function boundedCollectionFromType(type) {
+  if (typeof type !== "string") return undefined;
+  if (type.startsWith(LIVE_BOUNDED_MAP_PREFIX)) {
+    return { kind: "map", record: type.slice(LIVE_BOUNDED_MAP_PREFIX.length) };
+  }
+  if (type.startsWith(LIVE_BOUNDED_SET_PREFIX)) {
+    return { kind: "set", record: type.slice(LIVE_BOUNDED_SET_PREFIX.length) };
+  }
+  return undefined;
+}
+
 function isLiveExactOwnerType(type) {
   return LIVE_EXACT_OWNER_TYPES.has(type) ||
-    recordVectorNameFromType(type) !== undefined;
+    recordVectorNameFromType(type) !== undefined ||
+    boundedCollectionFromType(type) !== undefined;
 }
 const INTEGER_BINARY = new Map([
   ["+", "add"],
@@ -380,6 +401,8 @@ function createContext(
     activeIntegerVectors: new Set(),
     activeIntegerMatrices: new Set(),
     activeRecordVectors: new Map(),
+    activeBoundedCollections: new Map(),
+    activeSparseIntegerRows: new Set(),
     activeExactArenas: new Map(),
     records,
     fn,
@@ -409,6 +432,43 @@ function liveRecordVector(node, context) {
     `NativeRecordVector ${node.name} is outside its lexical scope`,
   );
   return { owner: node.name, record: active };
+}
+
+function liveBoundedCollection(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef",
+    "bounded map/set operation requires a compiler-owned local",
+  );
+  const type = boundedCollectionFromType(context.variables.get(node.name));
+  const active = context.activeBoundedCollections.get(node.name);
+  expect(
+    context,
+    node,
+    type !== undefined && active?.kind === type.kind &&
+      active?.record.name === type.record && context.initialized.has(node.name),
+    `NativeBoundedMap/Set ${node.name} is outside its lexical scope`,
+  );
+  return { owner: node.name, ...active };
+}
+
+function liveSparseIntegerRowsName(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef" &&
+      context.variables.get(node.name) === LIVE_SPARSE_INTEGER_ROWS_TYPE,
+    "sparse-row operation requires a compiler-owned local",
+  );
+  expect(
+    context,
+    node,
+    context.activeSparseIntegerRows.has(node.name) &&
+      context.initialized.has(node.name),
+    `NativeSparseIntegerRows ${node.name} is outside its lexical scope`,
+  );
+  return node.name;
 }
 
 function liveExactArenaName(node, context) {
@@ -513,6 +573,23 @@ function lowerLiveVectorMethodStatement(call, context) {
     "native expression statements are unsupported; host callbacks are prohibited",
   );
   const ownerType = context.variables.get(method.owner.name);
+  if (boundedCollectionFromType(ownerType) !== undefined) {
+    const operations = [];
+    const value = lowerBoundedCollectionCall(call, context, operations);
+    operations.push({ kind: "value.discard", source: value.name });
+    return operations;
+  }
+  if (ownerType === LIVE_SPARSE_INTEGER_ROWS_TYPE) {
+    const operations = [];
+    const value = lowerSparseRowsCall(call, context, operations);
+    expect(
+      context,
+      call,
+      value.type === "None",
+      "sparse-row expression statements require append()",
+    );
+    return operations;
+  }
   if (ownerType === LIVE_INTEGER_MATRIX_TYPE) {
     const matrix = liveIntegerMatrixName(method.owner, context);
     const args = array(call.args);
@@ -922,7 +999,164 @@ function lowerExactSum(node, args, context, operations) {
   return { name: accumulator, type: "Integer" };
 }
 
+function lowerBoundedCollectionCall(node, context, operations) {
+  const expression = node.expression;
+  expect(
+    context,
+    node,
+    nodeType(expression) === "AST_Dot" &&
+      nodeType(expression.expression) === "AST_SymbolRef",
+    "bounded map/set calls require a direct compiler-owned local",
+  );
+  const collection = liveBoundedCollection(expression.expression, context);
+  const method = expression.property;
+  const args = array(node.args);
+  expect(
+    context,
+    node,
+    array(node.args?.kwarg_items).length === 0 && !node.args?.starargs,
+    "bounded map/set calls do not accept keyword or starred arguments",
+  );
+  const keyMethods = collection.kind === "map"
+    ? new Set(["insert", "contains", "get"])
+    : new Set(["add", "contains"]);
+  expect(
+    context,
+    expression,
+    keyMethods.has(method),
+    `unsupported NativeBounded${collection.kind === "map" ? "Map" : "Set"} ` +
+      `method ${method}`,
+  );
+  const expectedArguments = collection.kind === "map" && method === "insert"
+    ? 2
+    : collection.kind === "map" && method === "get"
+      ? 2
+      : 1;
+  expect(
+    context,
+    node,
+    args.length === expectedArguments,
+    `NativeBounded${collection.kind === "map" ? "Map" : "Set"}.${method}()` +
+      ` requires ${expectedArguments} argument(s)`,
+  );
+  const key = lowerExpression(args[0], context, operations);
+  expect(
+    context,
+    args[0],
+    key.type === collection.record.type,
+    `NativeBounded${collection.kind === "map" ? "Map" : "Set"} ` +
+      `requires ${collection.record.name} keys`,
+  );
+  let value;
+  if (expectedArguments === 2) {
+    value = lowerUint64Operand(args[1], context, operations);
+    expect(
+      context,
+      args[1],
+      value.type === "uint64",
+      `NativeBoundedMap.${method}() value must be uint64`,
+    );
+  }
+  const returnsBool = method === "insert" || method === "add" ||
+    method === "contains";
+  const target = temporary(context, node, returnsBool ? "bool" : "uint64");
+  operations.push({
+    kind: `bounded.${collection.kind}.${method}`,
+    target,
+    owner: collection.owner,
+    record: collection.record.name,
+    fields: collection.record.fields,
+    key: key.name,
+    ...(value === undefined ? {} : { value: value.name }),
+  });
+  return { name: target, type: returnsBool ? "bool" : "uint64" };
+}
+
+function lowerSparseRowsCall(node, context, operations) {
+  const expression = node.expression;
+  expect(
+    context,
+    node,
+    nodeType(expression) === "AST_Dot" &&
+      nodeType(expression.expression) === "AST_SymbolRef",
+    "sparse-row calls require a direct compiler-owned local",
+  );
+  const owner = liveSparseIntegerRowsName(expression.expression, context);
+  const method = expression.property;
+  const args = array(node.args);
+  expect(
+    context,
+    node,
+    array(node.args?.kwarg_items).length === 0 && !node.args?.starargs,
+    "sparse-row calls do not accept keyword or starred arguments",
+  );
+  expect(
+    context,
+    expression,
+    ["append", "get", "row_length"].includes(method),
+    `unsupported NativeSparseIntegerRows method ${method}`,
+  );
+  const expectedArguments = method === "row_length" ? 1 : 3;
+  expect(
+    context,
+    node,
+    args.length === expectedArguments,
+    `NativeSparseIntegerRows.${method}() requires ${expectedArguments} argument(s)`,
+  );
+  const row = lowerUint64Operand(args[0], context, operations);
+  if (method === "row_length") {
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "sparse.rows.row_length",
+      target,
+      owner,
+      row: row.name,
+    });
+    return { name: target, type: "uint64" };
+  }
+  const column = lowerUint64Operand(args[1], context, operations);
+  const value = coerceInteger(
+    lowerExpression(args[2], context, operations),
+    context,
+    args[2],
+    operations,
+  );
+  if (method === "append") {
+    operations.push({
+      kind: "sparse.rows.append",
+      owner,
+      row: row.name,
+      column: column.name,
+      value: value.name,
+    });
+    return { name: null, type: "None" };
+  }
+  const target = temporary(context, node, "Integer");
+  operations.push({
+    kind: "sparse.rows.get",
+    target,
+    owner,
+    row: row.name,
+    column: column.name,
+    defaultValue: value.name,
+  });
+  return { name: target, type: "Integer" };
+}
+
 function lowerCall(node, context, operations) {
+  if (nodeType(node.expression) === "AST_Dot") {
+    const owner = node.expression.expression;
+    const ownerType = nodeType(owner) === "AST_SymbolRef"
+      ? context.variables.get(owner.name)
+      : undefined;
+    if (boundedCollectionFromType(ownerType) !== undefined) {
+      return lowerBoundedCollectionCall(node, context, operations);
+    }
+    if (ownerType === LIVE_SPARSE_INTEGER_ROWS_TYPE) {
+      return lowerSparseRowsCall(node, context, operations);
+    }
+    fail(context, node, "native method call target is not a live exact owner");
+  }
   expect(
     context,
     node,
@@ -1090,6 +1324,30 @@ function lowerCall(node, context, operations) {
         target,
         vector: vector.owner,
       });
+      return { name: target, type: "uint64" };
+    }
+    if (nodeType(args[0]) === "AST_SymbolRef") {
+      const collectionType = boundedCollectionFromType(
+        context.variables.get(args[0].name),
+      );
+      if (collectionType !== undefined) {
+        const collection = liveBoundedCollection(args[0], context);
+        const target = temporary(context, node, "uint64");
+        operations.push({
+          kind: `bounded.${collection.kind}.length`,
+          target,
+          owner: collection.owner,
+        });
+        return { name: target, type: "uint64" };
+      }
+    }
+    if (
+      nodeType(args[0]) === "AST_SymbolRef" &&
+      context.variables.get(args[0].name) === LIVE_SPARSE_INTEGER_ROWS_TYPE
+    ) {
+      const owner = liveSparseIntegerRowsName(args[0], context);
+      const target = temporary(context, node, "uint64");
+      operations.push({ kind: "sparse.rows.length", target, owner });
       return { name: target, type: "uint64" };
     }
     const buffer = lowerExpression(args[0], context, operations);
@@ -1994,20 +2252,28 @@ function lowerArenaAllocation(statement, context) {
   const method = assign.right.expression.property;
   const args = array(assign.right.args);
   let record;
-  if (method === "records") {
+  if (["records", "bounded_map", "bounded_set"].includes(method)) {
     expect(
       context,
       assign.right,
-      args.length === 2 && nodeType(args[0]) === "AST_SymbolRef",
-      "NativeExactArena.records() requires a NativeRecord type and capacity",
+      nodeType(args[0]) === "AST_SymbolRef",
+      `NativeExactArena.${method}() requires a NativeRecord key type`,
     );
     record = recordSchema(context, args[0], args[0].name);
     expect(
       context,
       args[0],
       record.fields.every((field) => field.type === "uint64"),
-      `NativeExactArena.records() currently requires scalar uint64 fields; ` +
+      `NativeExactArena.${method}() currently requires scalar uint64 fields; ` +
         `${record.name} contains a borrowed or unsupported field`,
+    );
+  }
+  if (method === "bounded_map") {
+    expect(
+      context,
+      args[1],
+      nodeType(args[1]) === "AST_SymbolRef" && args[1].name === "uint64",
+      "NativeExactArena.bounded_map() value type must be uint64",
     );
   }
   const childType = method === "integer_vector"
@@ -2016,14 +2282,26 @@ function lowerArenaAllocation(statement, context) {
       ? LIVE_INTEGER_MATRIX_TYPE
       : method === "records"
         ? liveRecordVectorType(record.name)
-        : undefined;
+        : method === "bounded_map"
+          ? boundedCollectionType("map", record.name)
+          : method === "bounded_set"
+            ? boundedCollectionType("set", record.name)
+            : method === "sparse_integer_rows"
+              ? LIVE_SPARSE_INTEGER_ROWS_TYPE
+              : undefined;
   expect(
     context,
     assign.right.expression,
     childType !== undefined,
     `unsupported NativeExactArena allocation ${method}`,
   );
-  const expectedArguments = childType === LIVE_INTEGER_MATRIX_TYPE ? 3 : 2;
+  const collection = boundedCollectionFromType(childType);
+  const expectedArguments = childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+    ? 4
+    : childType === LIVE_INTEGER_MATRIX_TYPE ||
+      collection?.kind === "map"
+      ? 3
+      : 2;
   expect(
     context,
     assign.right,
@@ -2032,9 +2310,15 @@ function lowerArenaAllocation(statement, context) {
       !assign.right.args?.starargs,
     childType === LIVE_INTEGER_MATRIX_TYPE
       ? "NativeExactArena.integer_matrix() requires rows, columns, and maximum_bits"
-      : record !== undefined
+      : childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+        ? "NativeExactArena.sparse_integer_rows() requires rows, columns, entry_capacity, and maximum_bits"
+      : method === "records"
         ? "NativeExactArena.records() requires a NativeRecord type and capacity"
-        : "NativeExactArena.integer_vector() requires capacity and maximum_bits",
+        : collection?.kind === "map"
+          ? "NativeExactArena.bounded_map() requires key type, uint64, and capacity"
+          : collection?.kind === "set"
+            ? "NativeExactArena.bounded_set() requires key type and capacity"
+            : "NativeExactArena.integer_vector() requires capacity and maximum_bits",
   );
   const child = assign.left.name;
   expect(
@@ -2044,15 +2328,28 @@ function lowerArenaAllocation(statement, context) {
     `NativeExactArena child ${child} shadows an existing native value`,
   );
   const operations = [];
+  const capacityIndex = method === "records" || collection?.kind === "set"
+    ? 1
+    : collection?.kind === "map"
+      ? 2
+      : 0;
   const firstDimension = lowerUint64Operand(
-    args[record === undefined ? 0 : 1], context, operations,
+    args[capacityIndex], context, operations,
   );
   const secondDimension = childType === LIVE_INTEGER_MATRIX_TYPE
+      || childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
     ? lowerUint64Operand(args[1], context, operations)
+    : undefined;
+  const entryCapacity = childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+    ? lowerUint64Operand(args[2], context, operations)
     : undefined;
   const maximumBits = record === undefined
     ? lowerUint64Operand(
-        args[childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1],
+        args[childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+          ? 3
+          : childType === LIVE_INTEGER_MATRIX_TYPE
+            ? 2
+            : 1],
         context,
         operations,
       )
@@ -2062,12 +2359,17 @@ function lowerArenaAllocation(statement, context) {
     assign.right,
     firstDimension.type === "uint64" &&
       (secondDimension === undefined || secondDimension.type === "uint64") &&
+      (entryCapacity === undefined || entryCapacity.type === "uint64") &&
       (maximumBits === undefined || maximumBits.type === "uint64"),
     childType === LIVE_INTEGER_MATRIX_TYPE
       ? "arena matrix rows and columns must be uint64"
-      : record !== undefined
+      : childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+        ? "arena sparse rows shape, capacity, and maximum bits must be uint64"
+      : method === "records"
         ? "arena record-vector capacity must be uint64"
-        : "arena vector capacity must be uint64",
+        : collection !== undefined
+          ? "arena bounded collection capacity must be uint64"
+          : "arena vector capacity must be uint64",
   );
   ensureVariable(context, assign.left, child, childType);
   context.initialized.add(child);
@@ -2075,6 +2377,13 @@ function lowerArenaAllocation(statement, context) {
     context.activeIntegerMatrices.add(child);
   } else if (childType === LIVE_INTEGER_VECTOR_TYPE) {
     context.activeIntegerVectors.add(child);
+  } else if (collection !== undefined) {
+    context.activeBoundedCollections.set(child, {
+      kind: collection.kind,
+      record,
+    });
+  } else if (childType === LIVE_SPARSE_INTEGER_ROWS_TYPE) {
+    context.activeSparseIntegerRows.add(child);
   } else {
     context.activeRecordVectors.set(child, record);
   }
@@ -2086,11 +2395,31 @@ function lowerArenaAllocation(statement, context) {
         columns: secondDimension.name,
         maximumBits: maximumBits.name,
       }
+    : childType === LIVE_SPARSE_INTEGER_ROWS_TYPE ? {
+        owner: child,
+        type: childType,
+        rows: firstDimension.name,
+        columns: secondDimension.name,
+        entryCapacity: entryCapacity.name,
+        maximumBits: maximumBits.name,
+        metadataBaseCharge: 32,
+        rowCharge: 8,
+        entryCharge: 16,
+      }
     : record === undefined ? {
         owner: child,
         type: childType,
         capacity: firstDimension.name,
         maximumBits: maximumBits.name,
+      } : collection !== undefined ? {
+        owner: child,
+        type: childType,
+        capacity: firstDimension.name,
+        collectionKind: collection.kind,
+        record: record.name,
+        fields: record.fields,
+        entryCharge: (collection.kind === "map" ? 32 : 24) +
+          8 * record.fields.length,
       } : {
         owner: child,
         type: childType,
@@ -2103,7 +2432,11 @@ function lowerArenaAllocation(statement, context) {
   operations.push({
     kind: childType === LIVE_INTEGER_MATRIX_TYPE
       ? "integer.arena.matrix.allocate"
-      : record !== undefined
+      : childType === LIVE_SPARSE_INTEGER_ROWS_TYPE
+        ? "sparse.rows.arena.allocate"
+      : collection !== undefined
+        ? `bounded.${collection.kind}.arena.allocate`
+        : record !== undefined
         ? "record.arena.vector.allocate"
         : "integer.arena.vector.allocate",
     arena,
@@ -2539,6 +2872,10 @@ function lowerStatements(statements, context) {
             context.activeIntegerMatrices.delete(child.owner);
           } else if (child.type === LIVE_INTEGER_VECTOR_TYPE) {
             context.activeIntegerVectors.delete(child.owner);
+          } else if (boundedCollectionFromType(child.type) !== undefined) {
+            context.activeBoundedCollections.delete(child.owner);
+          } else if (child.type === LIVE_SPARSE_INTEGER_ROWS_TYPE) {
+            context.activeSparseIntegerRows.delete(child.owner);
           } else {
             context.activeRecordVectors.delete(child.owner);
           }

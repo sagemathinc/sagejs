@@ -282,6 +282,230 @@ function internalSignature(fn, prototype = false) {
   return `static int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
 }
 
+function emitBoundedCollectionOperation(operation, context, indent) {
+  const table = exactValue(operation.owner, context);
+  const target = exactValue(operation.target, context);
+  if (operation.kind === "bounded.map.length" ||
+      operation.kind === "bounded.set.length") {
+    return `${indent}${target} = (uint64_t) ${table}.size;`;
+  }
+  const key = exactValue(operation.key, context);
+  const recordType = recordCType(operation.record);
+  const equality = operation.fields.map((field) =>
+    `sagejs_bounded_entries[sagejs_bounded_position].` +
+      `sagejs_field_${field.name} == sagejs_bounded_key.sagejs_field_${field.name}`
+  ).join(" && ");
+  const hash = operation.fields.flatMap((field) => [
+    `${indent}    sagejs_bounded_hash ^= ` +
+      `sagejs_bounded_key.sagejs_field_${field.name};`,
+    `${indent}    sagejs_bounded_hash *= UINT64_C(1099511628211);`,
+  ]);
+  const common = [
+    `${indent}{`,
+    `${indent}    sagejs_native_bounded_table *sagejs_bounded_table = &${table};`,
+    `${indent}    ${recordType} *sagejs_bounded_entries = ` +
+      `(${recordType} *) sagejs_bounded_table->keys;`,
+    `${indent}    ${recordType} sagejs_bounded_key = ${key};`,
+    `${indent}    uint64_t sagejs_bounded_hash = ` +
+      `UINT64_C(1469598103934665603);`,
+    ...hash,
+  ];
+  if (operation.kind === "bounded.map.contains" ||
+      operation.kind === "bounded.set.contains" ||
+      operation.kind === "bounded.map.get") {
+    const initial = operation.kind === "bounded.map.get"
+      ? exactValue(operation.value, context)
+      : "0";
+    const found = operation.kind === "bounded.map.get"
+      ? "sagejs_bounded_table->values[sagejs_bounded_position]"
+      : "1";
+    return [
+      ...common,
+      `${indent}    ${target} = ${initial};`,
+      `${indent}    if (sagejs_bounded_table->capacity != 0)`,
+      `${indent}    {`,
+      `${indent}        size_t sagejs_bounded_position = (size_t) ` +
+        `(sagejs_bounded_hash % sagejs_bounded_table->capacity);`,
+      `${indent}        size_t sagejs_bounded_probe;`,
+      `${indent}        for (sagejs_bounded_probe = 0; ` +
+        `sagejs_bounded_probe < sagejs_bounded_table->capacity; ` +
+        `sagejs_bounded_probe++)`,
+      `${indent}        {`,
+      `${indent}            if (!sagejs_bounded_table->occupied[` +
+        `sagejs_bounded_position])`,
+      `${indent}                break;`,
+      `${indent}            if (${equality})`,
+      `${indent}            {`,
+      `${indent}                ${target} = ${found};`,
+      `${indent}                break;`,
+      `${indent}            }`,
+      `${indent}            sagejs_bounded_position++;`,
+      `${indent}            if (sagejs_bounded_position == ` +
+        `sagejs_bounded_table->capacity)`,
+      `${indent}                sagejs_bounded_position = 0;`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  const isMap = operation.kind === "bounded.map.insert";
+  const kindName = isMap ? "Map" : "Set";
+  const update = isMap
+    ? `${indent}                sagejs_bounded_table->values[` +
+      `sagejs_bounded_position] = ${exactValue(operation.value, context)};`
+    : "";
+  const insertValue = isMap
+    ? `${indent}                sagejs_bounded_table->values[` +
+      `sagejs_bounded_position] = ${exactValue(operation.value, context)};`
+    : "";
+  return [
+    ...common,
+    `${indent}    int sagejs_bounded_done = 0;`,
+    `${indent}    ${target} = 0;`,
+    `${indent}    if (sagejs_bounded_table->capacity != 0)`,
+    `${indent}    {`,
+    `${indent}        size_t sagejs_bounded_position = (size_t) ` +
+      `(sagejs_bounded_hash % sagejs_bounded_table->capacity);`,
+    `${indent}        size_t sagejs_bounded_probe;`,
+    `${indent}        for (sagejs_bounded_probe = 0; ` +
+      `sagejs_bounded_probe < sagejs_bounded_table->capacity; ` +
+      `sagejs_bounded_probe++)`,
+    `${indent}        {`,
+    `${indent}            if (!sagejs_bounded_table->occupied[` +
+      `sagejs_bounded_position])`,
+    `${indent}            {`,
+    `${indent}                sagejs_bounded_entries[sagejs_bounded_position] = ` +
+      `sagejs_bounded_key;`,
+    insertValue,
+    `${indent}                sagejs_bounded_table->occupied[` +
+      `sagejs_bounded_position] = 1;`,
+    `${indent}                sagejs_bounded_table->size++;`,
+    `${indent}                ${target} = 1;`,
+    `${indent}                sagejs_bounded_done = 1;`,
+    `${indent}                break;`,
+    `${indent}            }`,
+    `${indent}            if (${equality})`,
+    `${indent}            {`,
+    update,
+    `${indent}                sagejs_bounded_done = 1;`,
+    `${indent}                break;`,
+    `${indent}            }`,
+    `${indent}            sagejs_bounded_position++;`,
+    `${indent}            if (sagejs_bounded_position == ` +
+      `sagejs_bounded_table->capacity)`,
+    `${indent}                sagejs_bounded_position = 0;`,
+    `${indent}        }`,
+    `${indent}    }`,
+    `${indent}    if (!sagejs_bounded_done)`,
+    `${indent}    {`,
+    statusFailure(
+      "range",
+      `NativeBounded${kindName} capacity exceeded`,
+      `${indent}        `,
+    ),
+    `${indent}        goto fail;`,
+    `${indent}    }`,
+    `${indent}}`,
+  ].filter(Boolean).join("\n");
+}
+
+function emitSparseRowsOperation(operation, context, indent) {
+  const owner = exactValue(operation.owner, context);
+  const target = operation.target === undefined
+    ? undefined
+    : exactValue(operation.target, context);
+  if (operation.kind === "sparse.rows.length") {
+    return `${indent}${target} = (uint64_t) ${owner}.length;`;
+  }
+  const row = exactValue(operation.row, context);
+  if (operation.kind === "sparse.rows.row_length") {
+    return [
+      `${indent}if (${row} >= (uint64_t) ${owner}.rows)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "NativeSparseIntegerRows row out of range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = ${owner}.row_lengths[(size_t) ${row}];`,
+    ].join("\n");
+  }
+  const column = exactValue(operation.column, context);
+  const indexCheck = [
+    `${indent}if (${row} >= (uint64_t) ${owner}.rows || ` +
+      `${column} >= (uint64_t) ${owner}.column_count)`,
+    `${indent}{`,
+    statusFailure(
+      "range", "NativeSparseIntegerRows index out of range", `${indent}    `,
+    ),
+    `${indent}    goto fail;`,
+    `${indent}}`,
+  ];
+  if (operation.kind === "sparse.rows.append") {
+    return [
+      ...indexCheck,
+      `${indent}if (${owner}.has_last && ` +
+        `(${row} < ${owner}.last_row || ` +
+        `(${row} == ${owner}.last_row && ${column} <= ${owner}.last_column)))`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "NativeSparseIntegerRows entries must be strictly row-major",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}if (${owner}.length == ${owner}.entry_capacity)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "NativeSparseIntegerRows capacity exceeded", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}if (!sagejs_native_integer_vector_set(status, ` +
+        `&${owner}.values, ${owner}.length, ` +
+        `${exactValue(operation.value, context)}))`,
+      `${indent}    goto fail;`,
+      `${indent}${owner}.entry_rows[${owner}.length] = ${row};`,
+      `${indent}${owner}.columns[${owner}.length] = ${column};`,
+      `${indent}${owner}.row_lengths[(size_t) ${row}]++;`,
+      `${indent}${owner}.length++;`,
+      `${indent}${owner}.last_row = ${row};`,
+      `${indent}${owner}.last_column = ${column};`,
+      `${indent}${owner}.has_last = 1;`,
+    ].join("\n");
+  }
+  return [
+    ...indexCheck,
+    `${indent}{`,
+    `${indent}    size_t sagejs_sparse_position;`,
+    `${indent}    int sagejs_sparse_found = 0;`,
+    `${indent}    for (sagejs_sparse_position = 0; ` +
+      `sagejs_sparse_position < ${owner}.length; sagejs_sparse_position++)`,
+    `${indent}    {`,
+    `${indent}        uint64_t sagejs_sparse_row = ` +
+      `${owner}.entry_rows[sagejs_sparse_position];`,
+    `${indent}        uint64_t sagejs_sparse_column = ` +
+      `${owner}.columns[sagejs_sparse_position];`,
+    `${indent}        if (sagejs_sparse_row == ${row} && ` +
+      `sagejs_sparse_column == ${column})`,
+    `${indent}        {`,
+    `${indent}            mpz_set(${target}, ` +
+      `${owner}.values.entries[sagejs_sparse_position]);`,
+    `${indent}            sagejs_sparse_found = 1;`,
+    `${indent}            break;`,
+    `${indent}        }`,
+    `${indent}        if (sagejs_sparse_row > ${row} || ` +
+      `(sagejs_sparse_row == ${row} && sagejs_sparse_column > ${column}))`,
+    `${indent}            break;`,
+    `${indent}    }`,
+    `${indent}    if (!sagejs_sparse_found)`,
+    `${indent}        mpz_set(${target}, ` +
+      `${exactValue(operation.defaultValue, context)});`,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function emitExactOperation(operation, context, indent) {
   const target = exactValue(operation.target, context);
   if (operation.kind === "integer.constant") {
@@ -305,6 +529,9 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "value.discard") {
+    return `${indent}(void) ${exactValue(operation.source, context)};`;
   }
   if (operation.kind === "record.construct") {
     return operation.fields.map((field) =>
@@ -352,6 +579,14 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    ${action}`,
       `${indent}}`,
     ].join("\n");
+  }
+  if (operation.kind.startsWith("bounded.") &&
+      !operation.kind.endsWith(".arena.allocate")) {
+    return emitBoundedCollectionOperation(operation, context, indent);
+  }
+  if (operation.kind.startsWith("sparse.rows.") &&
+      operation.kind !== "sparse.rows.arena.allocate") {
+    return emitSparseRowsOperation(operation, context, indent);
   }
   if (operation.kind === "integer.mod_uint64") {
     const divisor = exactValue(operation.right, context);
@@ -771,6 +1006,35 @@ function emitExactOperation(operation, context, indent) {
       `${indent}${cName(operation.owner)}_initialized = 1;`,
     ].join("\n");
   }
+  if (operation.kind === "bounded.map.arena.allocate" ||
+      operation.kind === "bounded.set.arena.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    const withValues = operation.kind === "bounded.map.arena.allocate" ? 1 : 0;
+    return [
+      `${indent}if (!sagejs_native_bounded_table_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.capacity, context)}, ` +
+        `sizeof(${recordCType(operation.record)}), ${withValues}, ` +
+        `UINT64_C(${operation.entryCharge}), &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
+  if (operation.kind === "sparse.rows.arena.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_sparse_integer_rows_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.rows, context)}, ` +
+        `${exactValue(operation.columns, context)}, ` +
+        `${exactValue(operation.entryCapacity, context)}, ` +
+        `${exactValue(operation.maximumBits, context)}, &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
@@ -1112,7 +1376,10 @@ function emitExactStatements(statements, context, indent) {
       const lastAllocation = statement.body.findLastIndex((operation) =>
         operation.kind === "integer.arena.vector.allocate" ||
         operation.kind === "integer.arena.matrix.allocate" ||
-        operation.kind === "record.arena.vector.allocate"
+        operation.kind === "record.arena.vector.allocate" ||
+        operation.kind === "bounded.map.arena.allocate" ||
+        operation.kind === "bounded.set.arena.allocate" ||
+        operation.kind === "sparse.rows.arena.allocate"
       );
       const residentSetup = statement.body.slice(0, lastAllocation + 1);
       const checkpointBody = statement.body.slice(lastAllocation + 1);
@@ -1127,7 +1394,12 @@ function emitExactStatements(statements, context, indent) {
             ? "sagejs_native_integer_matrix_clear"
             : child.type === "NativeIntegerVector"
               ? "sagejs_native_integer_vector_clear"
-              : "sagejs_native_record_vector_clear";
+              : child.type.startsWith("NativeBoundedMap:") ||
+                  child.type.startsWith("NativeBoundedSet:")
+                ? "sagejs_native_bounded_table_clear"
+                : child.type === "NativeSparseIntegerRows"
+                  ? "sagejs_native_sparse_integer_rows_clear"
+                  : "sagejs_native_record_vector_clear";
           return [
             `${indent}if (${cName(child.owner)}_initialized)`,
             `${indent}{`,
@@ -1304,6 +1576,29 @@ function exactDeclarations(fn) {
       cleanup.unshift(
         `    if (${cName(local.name)}_initialized)`,
         `        sagejs_native_record_vector_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type.startsWith("NativeBoundedMap:") ||
+        local.type.startsWith("NativeBoundedSet:")) {
+      declarations.push(
+        `    sagejs_native_bounded_table ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_bounded_table_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type === "NativeSparseIntegerRows") {
+      declarations.push(
+        `    sagejs_native_sparse_integer_rows ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_sparse_integer_rows_clear(&${cName(local.name)});`,
       );
       continue;
     }
@@ -3334,7 +3629,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v30. */
+  return `/* Generated by Sage.js Native Kernel v31. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3499,7 +3794,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v30.
+  const source = `/* Generated by Sage.js Native Kernel v31.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3704,7 +3999,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v30.
+  return `/* Generated by Sage.js Native Kernel v31.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>

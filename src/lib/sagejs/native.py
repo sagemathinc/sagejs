@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v30 currently accepts a deliberately narrow typed numerical
+Native Kernel v31 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -520,14 +520,406 @@ class NativeRecordVector:
         self._require_open()[self._position(index)] = self._copy(value)
 
 
+class NativeBoundedMap:
+    """Deterministic fixed-capacity map from scalar records to `uint64`.
+
+    The fallback uses the same FNV-style hash and linear probing as generated
+    JavaScript and C. There is no deletion or resizing: inserting a new key
+    into a full table raises `MemoryError`, while reinserting an existing key
+    replaces its value and returns `False`.
+    """
+
+    _ENTRY_CHARGE = 32
+    _FIELD_CHARGE = 8
+    _HASH_OFFSET = 1469598103934665603
+    _HASH_PRIME = 1099511628211
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(
+        self,
+        key_type: type[NativeRecord],
+        capacity: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
+        if not isinstance(key_type, type) or not issubclass(key_type, NativeRecord):
+            raise TypeError("NativeBoundedMap requires a NativeRecord key type")
+        annotations = getattr(key_type, "__annotations__", {})
+        fields = tuple(annotations)
+        if not fields:
+            raise TypeError("NativeBoundedMap key schema has no fields")
+        for name, annotation in annotations.items():
+            if annotation is not int and annotation != "uint64":
+                raise TypeError(
+                    "NativeBoundedMap currently requires scalar uint64 keys; "
+                    f"{key_type.__name__}.{name} is unsupported"
+                )
+        exact_capacity = int(capacity)
+        exact_limit = int(memory_limit)
+        if (
+            exact_capacity < 0
+            or exact_capacity > self._UINT64_MAX
+            or exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+        ):
+            raise OverflowError("NativeBoundedMap capacity is outside uint64")
+        entry_charge = self._ENTRY_CHARGE + self._FIELD_CHARGE * len(fields)
+        if exact_capacity != 0 and entry_charge > self._UINT64_MAX // exact_capacity:
+            raise OverflowError("NativeBoundedMap capacity is outside uint64")
+        self._budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeBoundedMap memory limit exceeded",
+        )
+        if self._budget.limit != exact_limit:
+            raise ValueError("NativeBoundedMap budget limit mismatch")
+        charge = exact_capacity * entry_charge
+        self._budget.reserve(0, charge)
+        try:
+            self._keys: list[tuple[int, ...] | None] = [
+                None for _index in range(exact_capacity)
+            ]
+            self._values = [0 for _index in range(exact_capacity)]
+        except BaseException:
+            self._budget.release(charge)
+            raise
+        self._key_type = key_type
+        self._fields = fields
+        self._size = 0
+        self._charged_bytes = charge
+        self._open = True
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeBoundedMap is closed")
+
+    def _key(self, key: NativeRecord) -> tuple[int, ...]:
+        if type(key) is not self._key_type:
+            raise TypeError(f"NativeBoundedMap requires {self._key_type.__name__} keys")
+        values = []
+        for name in self._fields:
+            value = int(getattr(key, name))
+            if value < 0 or value > self._UINT64_MAX:
+                raise OverflowError(
+                    f"{self._key_type.__name__}.{name} is outside uint64"
+                )
+            values.append(value)
+        return tuple(values)
+
+    def _hash(self, key: tuple[int, ...]) -> int:
+        result = self._HASH_OFFSET
+        for value in key:
+            result ^= value
+            result = (result * self._HASH_PRIME) & self._UINT64_MAX
+        return result
+
+    def _slot(self, key: tuple[int, ...]) -> tuple[int, bool]:
+        self._require_open()
+        capacity = len(self._keys)
+        if capacity == 0:
+            return 0, False
+        start = self._hash(key) % capacity
+        for probe in range(capacity):
+            position = (start + probe) % capacity
+            current = self._keys[position]
+            if current is None:
+                return position, False
+            if current == key:
+                return position, True
+        return capacity, False
+
+    def insert(self, key: NativeRecord, value: int) -> bool:
+        """Insert or replace one key, returning whether a new slot was used."""
+        exact_key = self._key(key)
+        exact_value = int(value)
+        if exact_value < 0 or exact_value > self._UINT64_MAX:
+            raise OverflowError("NativeBoundedMap value is outside uint64")
+        position, found = self._slot(exact_key)
+        if found:
+            self._values[position] = exact_value
+            return False
+        if position == len(self._keys):
+            raise MemoryError("NativeBoundedMap capacity exceeded")
+        self._keys[position] = exact_key
+        self._values[position] = exact_value
+        self._size += 1
+        return True
+
+    def contains(self, key: NativeRecord) -> bool:
+        """Return whether `key` is present without mutating the table."""
+        _position, found = self._slot(self._key(key))
+        return found
+
+    def get(self, key: NativeRecord, default: int) -> int:
+        """Return the mapped value or the checked `uint64` default."""
+        exact_default = int(default)
+        if exact_default < 0 or exact_default > self._UINT64_MAX:
+            raise OverflowError("NativeBoundedMap default is outside uint64")
+        position, found = self._slot(self._key(key))
+        return self._values[position] if found else exact_default
+
+    def close(self) -> None:
+        """Release the complete table and shared charge."""
+        if not self._open:
+            return
+        self._keys.clear()
+        self._values.clear()
+        self._size = 0
+        self._budget.release(self._charged_bytes)
+        self._charged_bytes = 0
+        self._open = False
+
+    def __len__(self) -> int:
+        self._require_open()
+        return self._size
+
+
+class NativeBoundedSet:
+    """Deterministic fixed-capacity scalar-record set without resizing."""
+
+    _ENTRY_CHARGE = 24
+    _FIELD_CHARGE = 8
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(
+        self,
+        key_type: type[NativeRecord],
+        capacity: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
+        # Reuse the map's exact schema and probing implementation, but replace
+        # its deterministic charge with the smaller no-value table contract.
+        entry_charge = self._ENTRY_CHARGE + self._FIELD_CHARGE * len(
+            getattr(key_type, "__annotations__", {})
+        )
+        exact_capacity = int(capacity)
+        exact_limit = int(memory_limit)
+        if (
+            exact_capacity < 0
+            or exact_capacity > self._UINT64_MAX
+            or exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+        ):
+            raise OverflowError("NativeBoundedSet capacity is outside uint64")
+        if exact_capacity != 0 and entry_charge > self._UINT64_MAX // exact_capacity:
+            raise OverflowError("NativeBoundedSet capacity is outside uint64")
+        budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeBoundedSet memory limit exceeded",
+        )
+        if budget.limit != exact_limit:
+            raise ValueError("NativeBoundedSet budget limit mismatch")
+        charge = exact_capacity * entry_charge
+        budget.reserve(0, charge)
+        try:
+            map_budget = _NativeExactBudget(self._UINT64_MAX, budget.message)
+            self._map = NativeBoundedMap(
+                key_type,
+                exact_capacity,
+                self._UINT64_MAX,
+                _budget=map_budget,
+            )
+        except BaseException:
+            budget.release(charge)
+            raise
+        self._budget = budget
+        self._charged_bytes = charge
+        self._open = True
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeBoundedSet is closed")
+
+    def add(self, key: NativeRecord) -> bool:
+        """Insert `key`, returning `False` when it was already present."""
+        self._require_open()
+        try:
+            return self._map.insert(key, 0)
+        except MemoryError as error:
+            raise MemoryError("NativeBoundedSet capacity exceeded") from error
+
+    def contains(self, key: NativeRecord) -> bool:
+        """Return whether `key` is present."""
+        self._require_open()
+        return self._map.contains(key)
+
+    def close(self) -> None:
+        """Release the complete set and shared charge."""
+        if not self._open:
+            return
+        self._map.close()
+        self._budget.release(self._charged_bytes)
+        self._charged_bytes = 0
+        self._open = False
+
+    def __len__(self) -> int:
+        self._require_open()
+        return len(self._map)
+
+
+class NativeSparseIntegerRows:
+    """Append-only row-major sparse exact integers with fixed shape/capacity.
+
+    Entries must be appended in strictly increasing `(row, column)` order.
+    Missing lookup returns the caller-provided exact default. The values use
+    the same predeclared maximum-bit contract as `NativeIntegerVector`.
+    """
+
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(
+        self,
+        rows: int,
+        columns: int,
+        entry_capacity: int,
+        maximum_bits: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
+        exact_rows = int(rows)
+        exact_columns = int(columns)
+        exact_capacity = int(entry_capacity)
+        exact_bits = int(maximum_bits)
+        exact_limit = int(memory_limit)
+        if any(
+            value < 0 or value > self._UINT64_MAX
+            for value in (
+                exact_rows,
+                exact_columns,
+                exact_capacity,
+                exact_bits,
+                exact_limit,
+            )
+        ):
+            raise OverflowError("NativeSparseIntegerRows shape is outside uint64")
+        if exact_rows > self._UINT64_MAX // 8:
+            raise OverflowError("NativeSparseIntegerRows shape is outside uint64")
+        metadata_charge = 32 + exact_rows * 8
+        if exact_capacity > (self._UINT64_MAX - metadata_charge) // 16:
+            raise OverflowError("NativeSparseIntegerRows capacity is outside uint64")
+        metadata_charge += exact_capacity * 16
+        budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeSparseIntegerRows memory limit exceeded",
+        )
+        if budget.limit != exact_limit:
+            raise ValueError("NativeSparseIntegerRows budget limit mismatch")
+        budget.reserve(0, metadata_charge)
+        values: NativeIntegerVector | None = None
+        try:
+            values = NativeIntegerVector(
+                exact_capacity,
+                exact_limit,
+                _budget=budget,
+                _maximum_bits=exact_bits,
+            )
+            self._entry_rows = [0 for _index in range(exact_capacity)]
+            self._columns = [0 for _index in range(exact_capacity)]
+            self._row_lengths = [0 for _index in range(exact_rows)]
+        except BaseException:
+            if values is not None:
+                values.close()
+            budget.release(metadata_charge)
+            raise
+        self._values = values
+        self._rows = exact_rows
+        self._column_count = exact_columns
+        self._capacity = exact_capacity
+        self._length = 0
+        self._last_row = 0
+        self._last_column = 0
+        self._has_last = False
+        self._budget = budget
+        self._metadata_charge = metadata_charge
+        self._open = True
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeSparseIntegerRows is closed")
+
+    def _index(self, row: int, column: int) -> tuple[int, int]:
+        exact_row = int(row)
+        exact_column = int(column)
+        if (
+            exact_row < 0
+            or exact_row >= self._rows
+            or exact_column < 0
+            or exact_column >= self._column_count
+        ):
+            raise IndexError("NativeSparseIntegerRows index out of range")
+        return exact_row, exact_column
+
+    def append(self, row: int, column: int, value: int) -> None:
+        """Append one nonzero entry in strict row-major order."""
+        self._require_open()
+        exact_row, exact_column = self._index(row, column)
+        if self._has_last and (
+            exact_row < self._last_row
+            or (exact_row == self._last_row and exact_column <= self._last_column)
+        ):
+            raise ValueError(
+                "NativeSparseIntegerRows entries must be strictly row-major"
+            )
+        if self._length == self._capacity:
+            raise MemoryError("NativeSparseIntegerRows capacity exceeded")
+        self._values[self._length] = int(value)
+        self._entry_rows[self._length] = exact_row
+        self._columns[self._length] = exact_column
+        self._row_lengths[exact_row] += 1
+        self._length += 1
+        self._last_row = exact_row
+        self._last_column = exact_column
+        self._has_last = True
+
+    def get(self, row: int, column: int, default: int) -> int:
+        """Return an exact value or `default` without inserting."""
+        self._require_open()
+        exact_row, exact_column = self._index(row, column)
+        for position in range(self._length):
+            stored_row = self._entry_rows[position]
+            stored_column = self._columns[position]
+            if stored_row == exact_row and stored_column == exact_column:
+                return self._values[position]
+            if stored_row > exact_row or (
+                stored_row == exact_row and stored_column > exact_column
+            ):
+                break
+        return int(default)
+
+    def row_length(self, row: int) -> int:
+        """Return the number of admitted entries in one checked row."""
+        self._require_open()
+        exact_row = int(row)
+        if exact_row < 0 or exact_row >= self._rows:
+            raise IndexError("NativeSparseIntegerRows row out of range")
+        return self._row_lengths[exact_row]
+
+    def close(self) -> None:
+        """Release values and sparse metadata exactly once."""
+        if not self._open:
+            return
+        self._values.close()
+        self._entry_rows.clear()
+        self._columns.clear()
+        self._row_lengths.clear()
+        self._budget.release(self._metadata_charge)
+        self._metadata_charge = 0
+        self._length = 0
+        self._open = False
+
+    def __len__(self) -> int:
+        self._require_open()
+        return self._length
+
+
 class NativeExactArena:
     """One lexical semantic-memory budget for several resident exact owners.
 
-    Children are created only through `integer_vector`, `integer_matrix`, and
-    `records`. They share one deterministic byte limit, remain private to the
-    arena, and close in reverse creation order on every exit. Native
-    compilation lowers the complete ownership graph without materializing
-    child Python objects.
+    Children are created only through `integer_vector`, `integer_matrix`,
+    `records`, `bounded_map`, `bounded_set`, and `sparse_integer_rows`. They
+    share one deterministic byte limit, remain private to the arena, and close
+    in reverse creation order on every exit. Native compilation lowers the
+    complete ownership graph without materializing child Python objects.
     `temporary_limit` reserves the native checkpoint slab used by short-lived
     GMP allocations; it does not change the ordinary Python computation.
     """
@@ -550,7 +942,12 @@ class NativeExactArena:
         )
         self._temporary_limit = exact_temporary_limit
         self._children: list[
-            NativeIntegerVector | NativeIntegerMatrix | NativeRecordVector
+            NativeIntegerVector
+            | NativeIntegerMatrix
+            | NativeRecordVector
+            | NativeBoundedMap
+            | NativeBoundedSet
+            | NativeSparseIntegerRows
         ] = []
         self._open = True
         self._entered = False
@@ -613,6 +1010,61 @@ class NativeExactArena:
         child = NativeRecordVector(
             record_type,
             capacity,
+            self._budget.limit,
+            _budget=self._budget,
+        )
+        self._children.append(child)
+        return child
+
+    def bounded_map(
+        self,
+        key_type: type[NativeRecord],
+        value_type: type[uint64],
+        capacity: int,
+    ) -> NativeBoundedMap:
+        """Create a deterministic `NativeRecord` to `uint64` map."""
+        self._require_open()
+        if value_type is not int:
+            raise TypeError("NativeExactArena.bounded_map value type must be uint64")
+        child = NativeBoundedMap(
+            key_type,
+            capacity,
+            self._budget.limit,
+            _budget=self._budget,
+        )
+        self._children.append(child)
+        return child
+
+    def bounded_set(
+        self,
+        key_type: type[NativeRecord],
+        capacity: int,
+    ) -> NativeBoundedSet:
+        """Create a deterministic bounded set of scalar records."""
+        self._require_open()
+        child = NativeBoundedSet(
+            key_type,
+            capacity,
+            self._budget.limit,
+            _budget=self._budget,
+        )
+        self._children.append(child)
+        return child
+
+    def sparse_integer_rows(
+        self,
+        rows: int,
+        columns: int,
+        entry_capacity: int,
+        maximum_bits: int,
+    ) -> NativeSparseIntegerRows:
+        """Create append-only row-major sparse exact storage."""
+        self._require_open()
+        child = NativeSparseIntegerRows(
+            rows,
+            columns,
+            entry_capacity,
+            maximum_bits,
             self._budget.limit,
             _budget=self._budget,
         )
@@ -1132,6 +1584,9 @@ __all__ = [
     "Int64Buffer",
     "Int64Record",
     "NativeExactArena",
+    "NativeBoundedMap",
+    "NativeBoundedSet",
+    "NativeSparseIntegerRows",
     "NativeIntegerMatrix",
     "NativeIntegerVector",
     "NativeRecord",

@@ -1,6 +1,6 @@
-# Native Kernel v30
+# Native Kernel v31
 
-Native Kernel v30 asks whether selected Sage.js library functions can compile
+Native Kernel v31 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v30 is currently a source-tree development feature and uses the
+Native Kernel v31 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -144,8 +144,8 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to the serialized Native Kernel IR v30. Native Kernel
-v30 supports:
+lowers marked functions to the serialized Native Kernel IR v31. Native Kernel
+v31 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -556,6 +556,20 @@ charge before the arena body begins. Generated C stores contiguous structs,
 JavaScript stores private scalar records, and Wasm executes the same isolated C
 core. All targets clear record vectors in reverse child-construction order.
 
+V31 adds the first bounded dynamic structures without introducing a general
+heap. `workspace.bounded_map(Key, uint64, capacity)` and
+`workspace.bounded_set(Key, capacity)` use scalar record keys, one specified
+FNV64 field hash, linear probing, no deletion, and no resize. Replacement is
+value-copying and deterministic; a new key in a full table raises the same
+capacity failure on every target. `workspace.sparse_integer_rows(...)` owns a
+fixed number of pre-sized GMP destinations plus compact row/column metadata.
+It admits entries only in strictly increasing row-major order and provides
+checked lookup, row lengths, and total length without constructing public row
+objects. All three structures debit the parent arena before the checkpointed
+body and participate in reverse all-exit cleanup. Collision, full-capacity,
+wrong-order, shape, memory, sanitizer, and WASI witnesses are checked in
+`native-bounded-relations.cjs` and `native-sparse-exact-rows.cjs`.
+
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and
 [`native_live_exact_matrix.py`](native_live_exact_matrix.py), with the
@@ -563,10 +577,10 @@ multi-owner budget witness in
 [`native_live_exact_arena.py`](native_live_exact_arena.py) and the fixed-schema
 record witness in
 [`native_live_exact_records.py`](native_live_exact_records.py). These are
-deliberately not yet resizable containers, owned aggregate results, or
-cross-call reusable workspaces. The production relation-admission witness and
-its stage-resolved receipt determine which additional storage feature is
-implemented next.
+joined by [`native_bounded_relations.py`](native_bounded_relations.py) and
+[`native_sparse_exact_rows.py`](native_sparse_exact_rows.py). They remain
+deliberately bounded and are not owned aggregate results or cross-call reusable
+workspaces. The next dependency is declared-library residency.
 
 The first production-shaped witness is
 `packed_factor_base_rows_in_place` in
@@ -763,7 +777,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v30 limits
+## Deliberate v31 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
@@ -774,7 +788,8 @@ to fixed-shape signed-64-bit buffers, bounded record views, fixed-capacity
 arbitrary-precision integer vectors and dense matrices, and lexical exact
 arenas whose children share one deterministic semantic-memory budget. Arenas
 also own fixed-capacity scalar record vectors, while append-only vectors,
-sparse rows, and deterministic maps remain the next bounded-structure wave.
+sparse exact rows, and deterministic maps/sets. General resizable maps, raw
+pointers, and unbounded object graphs remain unsupported.
 Arena children are allocated unconditionally, cannot alias or escape, and are
 cleared in reverse creation order on every exit. Resizable lists,
 keyword-only native ABI

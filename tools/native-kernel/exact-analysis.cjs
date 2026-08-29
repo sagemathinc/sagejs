@@ -26,6 +26,7 @@ function operationInputs(operation) {
     case "integer.round_sqrt":
     case "bool.not":
     case "uint64.truth":
+    case "value.discard":
       return [operation.source];
     case "integer.pow_uint":
       return [operation.base];
@@ -135,6 +136,41 @@ function operationInputs(operation) {
       return [operation.vector, operation.index, operation.value];
     case "record.arena.vector.allocate":
       return [operation.arena, operation.capacity];
+    case "bounded.map.arena.allocate":
+    case "bounded.set.arena.allocate":
+      return [operation.arena, operation.capacity];
+    case "bounded.map.insert":
+      return [operation.owner, operation.key, operation.value];
+    case "bounded.map.get":
+      return [operation.owner, operation.key, operation.value];
+    case "bounded.map.contains":
+    case "bounded.set.add":
+    case "bounded.set.contains":
+      return [operation.owner, operation.key];
+    case "bounded.map.length":
+    case "bounded.set.length":
+      return [operation.owner];
+    case "sparse.rows.arena.allocate":
+      return [
+        operation.arena,
+        operation.rows,
+        operation.columns,
+        operation.entryCapacity,
+        operation.maximumBits,
+      ];
+    case "sparse.rows.append":
+      return [operation.owner, operation.row, operation.column, operation.value];
+    case "sparse.rows.get":
+      return [
+        operation.owner,
+        operation.row,
+        operation.column,
+        operation.defaultValue,
+      ];
+    case "sparse.rows.row_length":
+      return [operation.owner, operation.row];
+    case "sparse.rows.length":
+      return [operation.owner];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -569,9 +605,25 @@ function localEffects(fn) {
           operation.kind === "integer.arena.scope" ||
           operation.kind === "integer.arena.vector.allocate" ||
           operation.kind === "integer.arena.matrix.allocate" ||
-          operation.kind === "record.arena.vector.allocate") {
+          operation.kind === "record.arena.vector.allocate" ||
+          operation.kind === "bounded.map.arena.allocate" ||
+          operation.kind === "bounded.set.arena.allocate" ||
+          operation.kind === "sparse.rows.arena.allocate") {
         foreignMayAllocate = true;
         mayRaise.add("MemoryError");
+      }
+      if (operation.kind === "bounded.map.insert" ||
+          operation.kind === "bounded.set.add" ||
+          operation.kind === "sparse.rows.append") {
+        mayRaise.add("MemoryError");
+      }
+      if (operation.kind === "sparse.rows.append") {
+        mayRaise.add("ValueError");
+        mayRaise.add("IndexError");
+      }
+      if (operation.kind === "sparse.rows.get" ||
+          operation.kind === "sparse.rows.row_length") {
+        mayRaise.add("IndexError");
       }
       if (
         operation.kind === "integer.vector.get" ||
@@ -1052,7 +1104,33 @@ function liveExactWorkspaceAnalysis(fn) {
                     capacity: child.capacity,
                     maximumBits: child.maximumBits,
                   }
-                : {
+                : child.collectionKind === "map" ||
+                    child.collectionKind === "set"
+                  ? {
+                      owner: child.owner,
+                      storage: child.collectionKind === "map"
+                        ? "bounded-open-addressed-map"
+                        : "bounded-open-addressed-set",
+                      capacity: child.capacity,
+                      record: child.record,
+                      fields: child.fields,
+                      entryCharge: child.entryCharge,
+                      probing: "linear",
+                      hash: "fnv64-record-fields-v1",
+                    }
+                  : child.type === "NativeSparseIntegerRows"
+                    ? {
+                        owner: child.owner,
+                        storage: "append-only-row-major-sparse-mpz-rows",
+                        rows: child.rows,
+                        columns: child.columns,
+                        entryCapacity: child.entryCapacity,
+                        maximumBits: child.maximumBits,
+                        metadataBaseCharge: child.metadataBaseCharge,
+                        rowCharge: child.rowCharge,
+                        entryCharge: child.entryCharge,
+                      }
+                  : {
                     owner: child.owner,
                     storage: "fixed-schema-record-vector",
                     capacity: child.capacity,
