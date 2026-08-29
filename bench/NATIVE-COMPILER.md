@@ -1,6 +1,6 @@
-# Native Kernel v32
+# Native Kernel v33
 
-Native Kernel v32 asks whether selected Sage.js library functions can compile
+Native Kernel v33 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -11,6 +11,17 @@ resource constructor and resource-to-resource operations remain visible in
 source and IR; generated cleanup releases every owned resource before the
 arena checkpoint rewinds. The resident FLINT matrix witness performs HNF
 without staging a packed matrix between construction, reduction, and reads.
+
+Version 33 adds the first reusable context-owned exact workspace. The owner
+preallocates a fixed-capacity GMP vector and arithmetic scratch, records a
+128-bit specification identity and a generation, and cannot be serialized.
+Each compiled transaction acquires an owned lexical borrow through
+`NativeExactArena.foreign_resource`, so all normal, error, cancellation, and
+translation exits end the mutable borrow before returning. Reset increments
+the generation and fails while borrowed; stale generations, specification
+mismatches, overlapping borrows, and checked bit-capacity failures are
+transactional. The same declared owner and lease ABI runs in generated
+JavaScript, native C, and Wasm.
 
 The input is ordinary Sage.js source. `@native` is a no-op under CPython and
 remains the readable fallback in Sage.js. When a source-hash-matched compiled
@@ -71,7 +82,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v32 is currently a source-tree development feature and uses the
+Native Kernel v33 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -150,8 +161,8 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to the serialized Native Kernel IR v31. Native Kernel
-v31 supports:
+lowers marked functions to the serialized Native Kernel IR v33. Native Kernel
+v33 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -188,6 +199,10 @@ v31 supports:
 - non-escaping opaque owned FFI resources created in the top-level native
   block, with declaration-driven initialization flags, all-exit cleanup, and
   reverse-order cleanup in the generated JavaScript fallback;
+- context-owned `NativeExactWorkspace` resources with checked specification
+  and generation identity, explicit reset, one synchronous mutable borrow,
+  preallocated bounded GMP storage and scratch, and scalar/detached-only
+  transactional results;
 - generated, inspectable BigInt-versus-GMP selection based on call/loop shape,
   constant sizes, recursion, and runtime operand magnitude;
 - source-transparent binary64 kernels with mixed `uint64`/`Float64`

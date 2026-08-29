@@ -184,6 +184,23 @@ retains the declared allocated-byte callback as physical-memory telemetry;
 until C6 proves a foreign operation's allocation schedule, its internal
 allocations remain outside the allocation-free hot-region claim.
 
+Native Kernel v33 completes C5b's first reusable-owner slice. The declared
+`NativeExactWorkspace` resource owns one fixed-capacity vector of preallocated
+GMP destinations plus preallocated arithmetic scratch. Its immutable shape,
+positive bit bound, memory limit, 128-bit specification identity, generation,
+open state, and mutable-borrow state live in one reference-counted allocation.
+A compiled transaction acquires an owned lexical borrow as an arena child;
+reverse-order all-exit cleanup releases that borrow before arena rewind.
+Reset zeroes resident values without replacing their limb storage, increments
+the generation, and is rejected while borrowed. Stale generations, wrong
+specifications, overlapping borrows, closed owners, invalid indices, and
+result bit overflow fail before mutation or retain the previous exact value.
+The owner has no byte-transfer/serialization route and its private contents
+are not proof authority. Generated JavaScript, native C, sanitizer builds, and
+the isolated WASI core execute one differential witness; public owner creation
+and lease wrappers allocate only at the call/lifecycle boundary, while the
+compiled borrow operations themselves reuse resident storage.
+
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no
 general-heap allocation or reallocation after entry and before publication.

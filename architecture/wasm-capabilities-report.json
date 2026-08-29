@@ -1,12 +1,12 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d44f7253420f7b98d0be5db4c0d230455e89b91e1e58d2f8c447b901ff811894",
+  "source_sha256": "ef1953b8e8ec18142b4959753058169d0e813a73c6419bafc92bf9f39ea46cf5",
   "counts": {
-    "total": 1020,
+    "total": 1037,
     "by_kind": {
-      "declared-ffi-function": 440,
-      "declared-ffi-resource": 32,
+      "declared-ffi-function": 455,
+      "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 50,
       "runtime-intrinsic": 147,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 50,
       "desktop-only": 47,
-      "generated-wasm": 321,
+      "generated-wasm": 338,
       "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 558,
+      "available": 575,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -663,6 +663,30 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi-resource:flint:native_exact_workspace",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The reusable exact owner and its checked lifecycle are available in the generated FLINT Wasm module."
+    },
+    {
+      "id": "ffi-resource:flint:native_exact_workspace_borrow",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The synchronous reusable-workspace borrow lease is available in the generated FLINT Wasm module."
     },
     {
       "id": "ffi-resource:flint:nmod_matrix",
@@ -4676,6 +4700,186 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Checked reusable exact-workspace construction is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Authenticated synchronous workspace borrowing is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_addmul",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Bounded resident addmul is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_entry",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Checked exact entry publication is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_generation",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Borrow-generation inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_length",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Borrow-shape inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_set",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Transactional checked resident assignment is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_submul",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Bounded resident submul is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_swap",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Allocation-free resident entry swap is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_capacity",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Workspace-capacity inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_generation",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Workspace-generation inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_maximum_bits",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Workspace bit-bound inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_reset",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Authenticated workspace reset is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_specification_high",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Workspace specification identity inspection is available in Wasm."
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_specification_low",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "Workspace specification identity inspection is available in Wasm."
     },
     {
       "id": "ffi:flint:nmod_mat_charpoly",

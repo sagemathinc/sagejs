@@ -38,6 +38,7 @@ flint = Library(
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/hyperelliptic/rational_jacobian_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
+        "sagejs/native_exact_workspace_ffi.h",
         "sagejs/number_field_analysis_resource_ffi.h",
         "sagejs/number_field_order_ffi.h",
         "sagejs/number_field_order_resource_ffi.h",
@@ -172,6 +173,28 @@ NumberFieldAnalysisResource = flint.resource(
         wasm=False,
     ),
     wasm=False,
+)
+
+
+NativeExactWorkspace = flint.resource(
+    id="native_exact_workspace",
+    abi=sagejs_native_exact_workspace_t,
+    ownership="owned",
+    close="ffiNativeExactWorkspaceClose",
+    clear="sagejs_native_exact_workspace_clear",
+    size="sagejs_native_exact_workspace_allocated_bytes",
+    wasm=True,
+)
+
+
+NativeExactWorkspaceBorrow = flint.resource(
+    id="native_exact_workspace_borrow",
+    abi=sagejs_native_exact_workspace_borrow_t,
+    ownership="owned",
+    close="ffiNativeExactWorkspaceBorrowClose",
+    clear="sagejs_native_exact_workspace_borrow_clear",
+    size="sagejs_native_exact_workspace_borrow_allocated_bytes",
+    wasm=True,
 )
 
 
@@ -438,7 +461,7 @@ def fmpz_polynomial(length: uint64) -> FmpzPolynomial: ...
     ],
     effects=Effects(
         pure=False,
-        allocates=True,
+        allocates=False,
         raises=[ValueError],
         writes=["polynomial"],
     ),
@@ -3104,6 +3127,337 @@ def fmpz_vector_dot(left: FmpzVector, right: FmpzVector) -> Integer: ...
     wasm=True,
 )
 def fmpq_vector_dot(left: FmpqVector, right: FmpqVector) -> FmpqValue: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceCreate",
+    symbol="sagejs_native_exact_workspace_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_native_exact_workspace_t),
+        in_("capacity", uint64_t),
+        in_("maximum_bits", uint64_t),
+        in_("memory_limit", uint64_t),
+        in_("specification_high", uint64_t),
+        in_("specification_low", uint64_t),
+    ],
+    effects=Effects(pure=False, allocates=True, raises=[OverflowError]),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="NativeExactWorkspace allocation or capacity proof failed",
+    ),
+    wasm=True,
+)
+def native_exact_workspace(
+    capacity: uint64,
+    maximum_bits: uint64,
+    memory_limit: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> NativeExactWorkspace: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceCapacity",
+    symbol="sagejs_native_exact_workspace_capacity",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_native_exact_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_capacity(workspace: NativeExactWorkspace) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceMaximumBits",
+    symbol="sagejs_native_exact_workspace_maximum_bits",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_native_exact_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_maximum_bits(
+    workspace: NativeExactWorkspace,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceGeneration",
+    symbol="sagejs_native_exact_workspace_generation",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_native_exact_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_generation(
+    workspace: NativeExactWorkspace,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceSpecificationHigh",
+    symbol="sagejs_native_exact_workspace_specification_high",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_native_exact_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_specification_high(
+    workspace: NativeExactWorkspace,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceSpecificationLow",
+    symbol="sagejs_native_exact_workspace_specification_low",
+    returns=uint64_t,
+    abi=[in_("workspace", sagejs_native_exact_workspace_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_specification_low(
+    workspace: NativeExactWorkspace,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceReset",
+    symbol="sagejs_native_exact_workspace_reset",
+    returns=int,
+    abi=[
+        in_("workspace", sagejs_native_exact_workspace_t),
+        in_("expected_generation", uint64_t),
+        in_("specification_high", uint64_t),
+        in_("specification_low", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="NativeExactWorkspace reset authentication failed",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_reset(
+    workspace: Writable[NativeExactWorkspace],
+    expected_generation: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrow",
+    symbol="sagejs_native_exact_workspace_borrow_init",
+    returns=int,
+    abi=[
+        out("result", sagejs_native_exact_workspace_borrow_t),
+        in_("workspace", sagejs_native_exact_workspace_t),
+        in_("expected_generation", uint64_t),
+        in_("specification_high", uint64_t),
+        in_("specification_low", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["workspace"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="NativeExactWorkspace borrow authentication failed",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow(
+    workspace: Writable[NativeExactWorkspace],
+    expected_generation: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> NativeExactWorkspaceBorrow: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowLength",
+    symbol="sagejs_native_exact_workspace_borrow_length",
+    returns=uint64_t,
+    abi=[in_("borrow", sagejs_native_exact_workspace_borrow_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_borrow_length(
+    borrow: NativeExactWorkspaceBorrow,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowGeneration",
+    symbol="sagejs_native_exact_workspace_borrow_generation",
+    returns=uint64_t,
+    abi=[in_("borrow", sagejs_native_exact_workspace_borrow_t)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def native_exact_workspace_borrow_generation(
+    borrow: NativeExactWorkspaceBorrow,
+) -> uint64: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowSet",
+    symbol="sagejs_native_exact_workspace_borrow_set",
+    returns=int,
+    abi=[
+        in_("borrow", sagejs_native_exact_workspace_borrow_t),
+        in_("index", uint64_t),
+        in_("value", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=False,
+        raises=[OverflowError],
+        writes=["borrow"],
+    ),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="NativeExactWorkspace index, lifetime, or bit bound failed",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow_set(
+    borrow: Writable[NativeExactWorkspaceBorrow],
+    index: uint64,
+    value: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowEntry",
+    symbol="sagejs_native_exact_workspace_borrow_entry",
+    returns=int,
+    abi=[
+        out("result", fmpz_t),
+        in_("borrow", sagejs_native_exact_workspace_borrow_t),
+        in_("index", uint64_t),
+    ],
+    effects=Effects(pure=True, allocates=True, raises=[IndexError]),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="NativeExactWorkspace index or lifetime is invalid",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow_entry(
+    borrow: NativeExactWorkspaceBorrow,
+    index: uint64,
+) -> Integer: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowAddmul",
+    symbol="sagejs_native_exact_workspace_borrow_addmul",
+    returns=int,
+    abi=[
+        in_("borrow", sagejs_native_exact_workspace_borrow_t),
+        in_("index", uint64_t),
+        in_("left", fmpz_t),
+        in_("right", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=False,
+        raises=[OverflowError],
+        writes=["borrow"],
+    ),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="NativeExactWorkspace addmul exceeds a checked bound",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow_addmul(
+    borrow: Writable[NativeExactWorkspaceBorrow],
+    index: uint64,
+    left: Integer,
+    right: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowSubmul",
+    symbol="sagejs_native_exact_workspace_borrow_submul",
+    returns=int,
+    abi=[
+        in_("borrow", sagejs_native_exact_workspace_borrow_t),
+        in_("index", uint64_t),
+        in_("left", fmpz_t),
+        in_("right", fmpz_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=False,
+        raises=[OverflowError],
+        writes=["borrow"],
+    ),
+    result=Status(
+        1,
+        exception=OverflowError,
+        message="NativeExactWorkspace submul exceeds a checked bound",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow_submul(
+    borrow: Writable[NativeExactWorkspaceBorrow],
+    index: uint64,
+    left: Integer,
+    right: Integer,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNativeExactWorkspaceBorrowSwap",
+    symbol="sagejs_native_exact_workspace_borrow_swap",
+    returns=int,
+    abi=[
+        in_("borrow", sagejs_native_exact_workspace_borrow_t),
+        in_("left", uint64_t),
+        in_("right", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=False,
+        raises=[IndexError],
+        writes=["borrow"],
+    ),
+    result=Status(
+        1,
+        exception=IndexError,
+        message="NativeExactWorkspace swap index or lifetime is invalid",
+    ),
+    wasm=True,
+)
+def native_exact_workspace_borrow_swap(
+    borrow: Writable[NativeExactWorkspaceBorrow],
+    left: uint64,
+    right: uint64,
+) -> bool: ...
 
 
 @flint.function(

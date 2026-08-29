@@ -291,6 +291,13 @@
       "rationale": "Host-neutral generated owned-resource ABI over FLINT dense integer matrices, with physical retained-size accounting, structural arithmetic, exact algorithms, formatting, and stable serialization."
     },
     {
+      "path": "packages/flint/include/sagejs/native_exact_workspace_ffi.h",
+      "category": "representation-primitive",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Generic context-owned exact workspace primitive for Native Kernel C5b. It preallocates bounded GMP residents and arithmetic scratch once, authenticates shape/specification/generation before each synchronous mutable borrow, reference-counts owner and lexical lease lifetimes, rejects overlapping or stale borrows, and publishes no mathematical proof state. Ordinary typed Python remains the algorithm and dynamic fallback."
+    },
+    {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
       "category": "mathematical-algorithm",
       "review_status": "audited",
