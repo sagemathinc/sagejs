@@ -1,6 +1,6 @@
-# Native Kernel v29
+# Native Kernel v30
 
-Native Kernel v29 asks whether selected Sage.js library functions can compile
+Native Kernel v30 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v29 is currently a source-tree development feature and uses the
+Native Kernel v30 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -144,8 +144,8 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to the serialized Native Kernel IR v22. Native Kernel
-v22 supports:
+lowers marked functions to the serialized Native Kernel IR v30. Native Kernel
+v30 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -545,11 +545,24 @@ requires zero upstream allocations on its accepted attempt. POSIX and Windows
 cap the automatically enlarged virtual envelope at 64 GiB unless the explicit
 effective capacity is larger; WASI retains its physically allocated route.
 
+V30 completes the first shaped-aggregate wave with fixed-capacity resident
+record vectors. Ordinary source declares a `NativeRecord` schema and allocates
+`workspace.records(Schema, capacity)`. The initial admitted fields are scalar
+`uint64` values; borrowed buffers, prime-modulus values, and exact-object fields
+are rejected because their ownership has not yet been proved. Complete-record
+reads and writes have value semantics, every index is checked, zero
+initialization is deterministic, and each entry reserves a fixed semantic
+charge before the arena body begins. Generated C stores contiguous structs,
+JavaScript stores private scalar records, and Wasm executes the same isolated C
+core. All targets clear record vectors in reverse child-construction order.
+
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and
 [`native_live_exact_matrix.py`](native_live_exact_matrix.py), with the
 multi-owner budget witness in
-[`native_live_exact_arena.py`](native_live_exact_arena.py). These are
+[`native_live_exact_arena.py`](native_live_exact_arena.py) and the fixed-schema
+record witness in
+[`native_live_exact_records.py`](native_live_exact_records.py). These are
 deliberately not yet resizable containers, owned aggregate results, or
 cross-call reusable workspaces. The production relation-admission witness and
 its stage-resolved receipt determine which additional storage feature is
@@ -750,7 +763,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v25 limits
+## Deliberate v30 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
@@ -759,7 +772,9 @@ prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
 or a flat typed tuple. Their mutable exact containers are deliberately limited
 to fixed-shape signed-64-bit buffers, bounded record views, fixed-capacity
 arbitrary-precision integer vectors and dense matrices, and lexical exact
-arenas whose children share one deterministic semantic-memory budget.
+arenas whose children share one deterministic semantic-memory budget. Arenas
+also own fixed-capacity scalar record vectors, while append-only vectors,
+sparse rows, and deterministic maps remain the next bounded-structure wave.
 Arena children are allocated unconditionally, cannot alias or escape, and are
 cleared in reverse creation order on every exit. Resizable lists,
 keyword-only native ABI

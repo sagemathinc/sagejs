@@ -199,6 +199,31 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   ) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
+  if (operation.kind === "record.construct") {
+    const fields = operation.fields.map((field) =>
+      `${jsString(field.name)}: ${field.value}`
+    ).join(", ");
+    return `${indent}${operation.target} = { ${fields} };`;
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${operation.target} = { ...${operation.source} };`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${operation.target} = ` +
+      `${operation.source}[${jsString(operation.field)}];`;
+  }
+  if (operation.kind === "record.vector.length") {
+    return `${indent}${operation.target} = ` +
+      `nativeRecordVectorLength(${operation.vector});`;
+  }
+  if (operation.kind === "record.vector.get") {
+    return `${indent}${operation.target} = nativeRecordVectorGet(` +
+      `${operation.vector}, ${operation.index});`;
+  }
+  if (operation.kind === "record.vector.set") {
+    return `${indent}nativeRecordVectorSet(${operation.vector}, ` +
+      `${operation.index}, ${operation.value});`;
+  }
   if (operation.kind === "integer.mod_uint64") {
     return `${indent}${operation.target} = integerModUInt64(` +
       `${operation.left}, ${operation.right});`;
@@ -304,6 +329,11 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.owner} = createNativeIntegerMatrixInBudget(` +
       `${operation.rows}, ${operation.columns}, ${operation.maximumBits}, ` +
       `${operation.arena}.budget);`;
+  }
+  if (operation.kind === "record.arena.vector.allocate") {
+    return `${indent}${operation.owner} = createNativeRecordVectorInBudget(` +
+      `${operation.capacity}, ${JSON.stringify(operation.fields.map((field) =>
+        field.name))}, ${operation.entryCharge}n, ${operation.arena}.budget);`;
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
@@ -503,7 +533,9 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     const cleanup = [...operation.children].reverse().map((child) =>
       `${indent}  ${child.type === "NativeIntegerMatrix"
         ? "nativeIntegerMatrixClose"
-        : "nativeIntegerVectorClose"}(${child.owner});`
+        : child.type === "NativeIntegerVector"
+          ? "nativeIntegerVectorClose"
+          : "nativeRecordVectorClose"}(${child.owner});`
     );
     return [
       ...operation.setup.map((item) =>
@@ -1607,6 +1639,81 @@ function nativeExactBudgetRelease(budget, charge) {
     throw new RangeError("NativeExactArena semantic charge invariant failed");
   }
   budget.charged -= charge;
+}
+
+function createNativeRecordVectorInBudget(
+  capacity, fields, entryCharge, budget
+) {
+  const exactCapacity = BigInt(capacity);
+  if (exactCapacity < 0n || exactCapacity > BigInt(Number.MAX_SAFE_INTEGER) ||
+      entryCharge <= 0n || exactCapacity > 18446744073709551615n / entryCharge) {
+    throw new RangeError("NativeRecordVector capacity is too large");
+  }
+  const chargedBytes = exactCapacity * entryCharge;
+  nativeExactBudgetReplace(budget, 0n, chargedBytes);
+  try {
+    const zero = Object.fromEntries(fields.map((field) => [field, 0n]));
+    return {
+      values: Array.from(
+        { length: Number(exactCapacity) }, () => ({ ...zero })),
+      fields: [...fields],
+      budget,
+      chargedBytes,
+      open: true,
+    };
+  } catch (error) {
+    nativeExactBudgetRelease(budget, chargedBytes);
+    throw error;
+  }
+}
+
+function nativeRecordVectorRequireOpen(vector) {
+  if (vector === null || typeof vector !== "object" || vector.open !== true) {
+    throw new RangeError("NativeRecordVector is closed");
+  }
+  return vector.values;
+}
+
+function nativeRecordVectorPosition(vector, index) {
+  const values = nativeRecordVectorRequireOpen(vector);
+  const exact = BigInt(index);
+  if (exact < 0n || exact >= BigInt(values.length)) {
+    nativeRaise("IndexError", "NativeRecordVector index out of range");
+  }
+  return Number(exact);
+}
+
+function nativeRecordVectorLength(vector) {
+  return BigInt(nativeRecordVectorRequireOpen(vector).length);
+}
+
+function nativeRecordVectorGet(vector, index) {
+  return { ...nativeRecordVectorRequireOpen(vector)[
+    nativeRecordVectorPosition(vector, index)] };
+}
+
+function nativeRecordVectorSet(vector, index, value) {
+  const position = nativeRecordVectorPosition(vector, index);
+  const copy = {};
+  for (const field of vector.fields) {
+    const exact = BigInt(value[field]);
+    if (exact < 0n || exact > 18446744073709551615n) {
+      throw new RangeError("NativeRecord field is outside uint64");
+    }
+    copy[field] = exact;
+  }
+  vector.values[position] = copy;
+}
+
+function nativeRecordVectorClose(vector) {
+  if (vector === null || typeof vector !== "object" || vector.open !== true) {
+    return;
+  }
+  vector.values.length = 0;
+  vector.fields.length = 0;
+  nativeExactBudgetRelease(vector.budget, vector.chargedBytes);
+  vector.chargedBytes = 0n;
+  vector.open = false;
 }
 
 function createNativeIntegerVectorInBudget(capacity, maximumBits, budget) {

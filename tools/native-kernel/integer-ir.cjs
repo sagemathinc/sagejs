@@ -33,11 +33,27 @@ const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
 const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
 const LIVE_INTEGER_MATRIX_TYPE = "NativeIntegerMatrix";
 const LIVE_EXACT_ARENA_TYPE = "NativeExactArena";
+const LIVE_RECORD_VECTOR_PREFIX = "NativeRecordVector:";
 const LIVE_EXACT_OWNER_TYPES = new Set([
   LIVE_EXACT_ARENA_TYPE,
   LIVE_INTEGER_VECTOR_TYPE,
   LIVE_INTEGER_MATRIX_TYPE,
 ]);
+
+function liveRecordVectorType(record) {
+  return `${LIVE_RECORD_VECTOR_PREFIX}${record}`;
+}
+
+function recordVectorNameFromType(type) {
+  return typeof type === "string" && type.startsWith(LIVE_RECORD_VECTOR_PREFIX)
+    ? type.slice(LIVE_RECORD_VECTOR_PREFIX.length)
+    : undefined;
+}
+
+function isLiveExactOwnerType(type) {
+  return LIVE_EXACT_OWNER_TYPES.has(type) ||
+    recordVectorNameFromType(type) !== undefined;
+}
 const INTEGER_BINARY = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -302,6 +318,7 @@ function isIntegerSignature(signature) {
 }
 
 function copyKind(type) {
+  if (type.startsWith("Record:")) return "record.copy";
   if (type === "IntegerBuffer") return "integer.buffer.copy";
   if (type === "UInt64Buffer") return "uint64.buffer.copy";
   return INT64_BUFFER_TYPES.has(type)
@@ -315,6 +332,7 @@ function createContext(
   signatures,
   foreignFunctions,
   importedForeignResources,
+  records,
   filename,
   decorated,
 ) {
@@ -361,9 +379,36 @@ function createContext(
     variables,
     activeIntegerVectors: new Set(),
     activeIntegerMatrices: new Set(),
+    activeRecordVectors: new Map(),
     activeExactArenas: new Map(),
+    records,
     fn,
   };
+}
+
+function recordSchema(context, node, name) {
+  const record = context.records.get(name);
+  expect(context, node, record !== undefined, `unknown native record ${name}`);
+  return record;
+}
+
+function liveRecordVector(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef",
+    "live record-vector operation requires a NativeRecordVector local",
+  );
+  const recordName = recordVectorNameFromType(context.variables.get(node.name));
+  const active = context.activeRecordVectors.get(node.name);
+  expect(
+    context,
+    node,
+    recordName !== undefined && active?.name === recordName &&
+      context.initialized.has(node.name),
+    `NativeRecordVector ${node.name} is outside its lexical scope`,
+  );
+  return { owner: node.name, record: active };
 }
 
 function liveExactArenaName(node, context) {
@@ -887,6 +932,43 @@ function lowerCall(node, context, operations) {
   const name = node.expression.name;
   const args = array(node.args);
 
+  const record = context.records.get(name);
+  if (record !== undefined) {
+    expect(
+      context,
+      node,
+      args.length === record.fields.length &&
+        array(node.args?.kwarg_items).length === 0 && !node.args?.starargs,
+      `${name} expects ${record.fields.length} fields, got ${args.length}`,
+    );
+    const fields = args.map((argument, index) => {
+      const field = record.fields[index];
+      const value = lowerExpression(
+        argument,
+        context,
+        operations,
+        field.type === "uint64" || field.type === "PrimeModulusValue"
+          ? "uint64" : undefined,
+      );
+      expect(
+        context,
+        argument,
+        value.type === field.type ||
+          (field.type === "PrimeModulusValue" && value.type === "uint64"),
+        `${name}.${field.name} expects ${field.type}, got ${value.type}`,
+      );
+      return { ...field, value: value.name };
+    });
+    const target = temporary(context, node, record.type);
+    operations.push({
+      kind: "record.construct",
+      target,
+      record: name,
+      fields,
+    });
+    return { name: target, type: record.type };
+  }
+
   // An explicit module import shadows a builtin with the same local name,
   // exactly as it does in Python. The declaration identity, rather than that
   // local spelling, determines the native operation.
@@ -994,6 +1076,19 @@ function lowerCall(node, context, operations) {
         kind: "integer.matrix.length",
         target,
         matrix,
+      });
+      return { name: target, type: "uint64" };
+    }
+    if (
+      nodeType(args[0]) === "AST_SymbolRef" &&
+      recordVectorNameFromType(context.variables.get(args[0].name)) !== undefined
+    ) {
+      const vector = liveRecordVector(args[0], context);
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "record.vector.length",
+        target,
+        vector: vector.owner,
       });
       return { name: target, type: "uint64" };
     }
@@ -1229,7 +1324,7 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     expect(
       context,
       node,
-      !LIVE_EXACT_OWNER_TYPES.has(type),
+      !isLiveExactOwnerType(type),
       "live exact owners cannot be copied, passed, or returned",
     );
     expect(
@@ -1243,8 +1338,34 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
       type,
     };
   }
-  if (nodeType(node) === "AST_Call") {
+  if (["AST_Call", "AST_New"].includes(nodeType(node))) {
     return lowerCall(node, context, operations);
+  }
+  if (nodeType(node) === "AST_Dot") {
+    const source = lowerExpression(node.expression, context, operations);
+    expect(
+      context,
+      node,
+      source.type.startsWith("Record:"),
+      "native attribute access is only supported on compiler-owned records",
+    );
+    const name = source.type.slice("Record:".length);
+    const record = recordSchema(context, node, name);
+    const field = record.fields.find((candidate) =>
+      candidate.name === node.property
+    );
+    expect(context, node, field !== undefined,
+      `${name} has no field ${node.property}`);
+    const target = temporary(context, node, field.type);
+    operations.push({
+      kind: "record.get",
+      target,
+      source: source.name,
+      record: name,
+      field: field.name,
+      type: field.type,
+    });
+    return { name: target, type: field.type };
   }
   const elements = sequenceElements(node);
   if (elements !== undefined) {
@@ -1301,6 +1422,20 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         columnType: column.type,
       });
       return { name: target, type: "Integer" };
+    }
+    if (recordVectorNameFromType(liveOwnerType) !== undefined) {
+      const vector = liveRecordVector(node.expression, context);
+      const index = lowerLiveVectorIndex(node.property, context, operations);
+      const target = temporary(context, node, vector.record.type);
+      operations.push({
+        kind: "record.vector.get",
+        target,
+        vector: vector.owner,
+        record: vector.record.name,
+        index: index.name,
+        indexType: index.type,
+      });
+      return { name: target, type: vector.record.type };
     }
     const bufferType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
@@ -1609,6 +1744,9 @@ function assignScalar(targetNode, value, context, operations) {
     kind: copyKind(value.type),
     target: targetNode.name,
     source: value.name,
+    ...(value.type.startsWith("Record:")
+      ? { record: value.type.slice("Record:".length) }
+      : {}),
   });
   context.initialized.add(targetNode.name);
 }
@@ -1714,6 +1852,32 @@ function lowerBufferAssignment(item, right, operator, context) {
       rowType: row.type,
       column: column.name,
       columnType: column.type,
+      value: value.name,
+    });
+    return operations;
+  }
+  if (recordVectorNameFromType(liveOwnerType) !== undefined) {
+    expect(
+      context,
+      item,
+      operator === "=",
+      "NativeRecordVector entries do not support augmented assignment",
+    );
+    const vector = liveRecordVector(item.expression, context);
+    const index = lowerLiveVectorIndex(item.property, context, operations);
+    const value = lowerExpression(right, context, operations);
+    expect(
+      context,
+      right,
+      value.type === vector.record.type,
+      `NativeRecordVector ${vector.owner} requires ${vector.record.name} values`,
+    );
+    operations.push({
+      kind: "record.vector.set",
+      vector: vector.owner,
+      record: vector.record.name,
+      index: index.name,
+      indexType: index.type,
       value: value.name,
     });
     return operations;
@@ -1828,18 +1992,37 @@ function lowerArenaAllocation(statement, context) {
     "NativeExactArena children must be allocated unconditionally in its lexical body",
   );
   const method = assign.right.expression.property;
+  const args = array(assign.right.args);
+  let record;
+  if (method === "records") {
+    expect(
+      context,
+      assign.right,
+      args.length === 2 && nodeType(args[0]) === "AST_SymbolRef",
+      "NativeExactArena.records() requires a NativeRecord type and capacity",
+    );
+    record = recordSchema(context, args[0], args[0].name);
+    expect(
+      context,
+      args[0],
+      record.fields.every((field) => field.type === "uint64"),
+      `NativeExactArena.records() currently requires scalar uint64 fields; ` +
+        `${record.name} contains a borrowed or unsupported field`,
+    );
+  }
   const childType = method === "integer_vector"
     ? LIVE_INTEGER_VECTOR_TYPE
     : method === "integer_matrix"
       ? LIVE_INTEGER_MATRIX_TYPE
-      : undefined;
+      : method === "records"
+        ? liveRecordVectorType(record.name)
+        : undefined;
   expect(
     context,
     assign.right.expression,
     childType !== undefined,
     `unsupported NativeExactArena allocation ${method}`,
   );
-  const args = array(assign.right.args);
   const expectedArguments = childType === LIVE_INTEGER_MATRIX_TYPE ? 3 : 2;
   expect(
     context,
@@ -1849,7 +2032,9 @@ function lowerArenaAllocation(statement, context) {
       !assign.right.args?.starargs,
     childType === LIVE_INTEGER_MATRIX_TYPE
       ? "NativeExactArena.integer_matrix() requires rows, columns, and maximum_bits"
-      : "NativeExactArena.integer_vector() requires capacity and maximum_bits",
+      : record !== undefined
+        ? "NativeExactArena.records() requires a NativeRecord type and capacity"
+        : "NativeExactArena.integer_vector() requires capacity and maximum_bits",
   );
   const child = assign.left.name;
   expect(
@@ -1859,31 +2044,40 @@ function lowerArenaAllocation(statement, context) {
     `NativeExactArena child ${child} shadows an existing native value`,
   );
   const operations = [];
-  const firstDimension = lowerUint64Operand(args[0], context, operations);
+  const firstDimension = lowerUint64Operand(
+    args[record === undefined ? 0 : 1], context, operations,
+  );
   const secondDimension = childType === LIVE_INTEGER_MATRIX_TYPE
     ? lowerUint64Operand(args[1], context, operations)
     : undefined;
-  const maximumBits = lowerUint64Operand(
-    args[childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1],
-    context,
-    operations,
-  );
+  const maximumBits = record === undefined
+    ? lowerUint64Operand(
+        args[childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1],
+        context,
+        operations,
+      )
+    : undefined;
   expect(
     context,
     assign.right,
     firstDimension.type === "uint64" &&
       (secondDimension === undefined || secondDimension.type === "uint64") &&
-      maximumBits.type === "uint64",
+      (maximumBits === undefined || maximumBits.type === "uint64"),
     childType === LIVE_INTEGER_MATRIX_TYPE
       ? "arena matrix rows and columns must be uint64"
-      : "arena vector capacity must be uint64",
+      : record !== undefined
+        ? "arena record-vector capacity must be uint64"
+        : "arena vector capacity must be uint64",
   );
   ensureVariable(context, assign.left, child, childType);
   context.initialized.add(child);
-  const activeChildren = childType === LIVE_INTEGER_MATRIX_TYPE
-    ? context.activeIntegerMatrices
-    : context.activeIntegerVectors;
-  activeChildren.add(child);
+  if (childType === LIVE_INTEGER_MATRIX_TYPE) {
+    context.activeIntegerMatrices.add(child);
+  } else if (childType === LIVE_INTEGER_VECTOR_TYPE) {
+    context.activeIntegerVectors.add(child);
+  } else {
+    context.activeRecordVectors.set(child, record);
+  }
   const descriptor = childType === LIVE_INTEGER_MATRIX_TYPE
     ? {
         owner: child,
@@ -1892,17 +2086,26 @@ function lowerArenaAllocation(statement, context) {
         columns: secondDimension.name,
         maximumBits: maximumBits.name,
       }
-    : {
+    : record === undefined ? {
         owner: child,
         type: childType,
         capacity: firstDimension.name,
         maximumBits: maximumBits.name,
+      } : {
+        owner: child,
+        type: childType,
+        capacity: firstDimension.name,
+        record: record.name,
+        fields: record.fields,
+        entryCharge: 16 + 8 * record.fields.length,
       };
   arenaState.children.push(descriptor);
   operations.push({
     kind: childType === LIVE_INTEGER_MATRIX_TYPE
       ? "integer.arena.matrix.allocate"
-      : "integer.arena.vector.allocate",
+      : record !== undefined
+        ? "record.arena.vector.allocate"
+        : "integer.arena.vector.allocate",
     arena,
     ...descriptor,
   });
@@ -2332,10 +2535,13 @@ function lowerStatements(statements, context) {
         context.activeExactArenas.delete(owner);
         context.initialized.delete(owner);
         for (const child of arenaState.children) {
-          const activeChildren = child.type === LIVE_INTEGER_MATRIX_TYPE
-            ? context.activeIntegerMatrices
-            : context.activeIntegerVectors;
-          activeChildren.delete(child.owner);
+          if (child.type === LIVE_INTEGER_MATRIX_TYPE) {
+            context.activeIntegerMatrices.delete(child.owner);
+          } else if (child.type === LIVE_INTEGER_VECTOR_TYPE) {
+            context.activeIntegerVectors.delete(child.owner);
+          } else {
+            context.activeRecordVectors.delete(child.owner);
+          }
           context.initialized.delete(child.owner);
         }
         const operation = {
@@ -2605,6 +2811,7 @@ function lowerIntegerFunction(
   signatures,
   foreignFunctions,
   importedForeignResources,
+  records,
   filename,
   decorated,
 ) {
@@ -2614,6 +2821,7 @@ function lowerIntegerFunction(
     signatures,
     foreignFunctions,
     importedForeignResources,
+    records,
     filename,
     decorated,
   );
@@ -2639,6 +2847,7 @@ function lowerIntegerFunction(
     dependencies: Array.from(context.dependencies).sort(),
     foreignDependencies: Array.from(context.foreignDependencies).sort(),
     foreignResources: Array.from(context.usedForeignResources.values()),
+    records: Array.from(records.values()),
     resourceAliases: Object.fromEntries(context.resourceAliases),
   };
 }

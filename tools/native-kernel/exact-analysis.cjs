@@ -122,6 +122,19 @@ function operationInputs(operation) {
         operation.columns,
         operation.maximumBits,
       ];
+    case "record.construct":
+      return operation.fields.map((field) => field.value);
+    case "record.copy":
+    case "record.get":
+      return [operation.source];
+    case "record.vector.length":
+      return [operation.vector];
+    case "record.vector.get":
+      return [operation.vector, operation.index];
+    case "record.vector.set":
+      return [operation.vector, operation.index, operation.value];
+    case "record.arena.vector.allocate":
+      return [operation.arena, operation.capacity];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -555,7 +568,8 @@ function localEffects(fn) {
           operation.kind === "integer.matrix.scope" ||
           operation.kind === "integer.arena.scope" ||
           operation.kind === "integer.arena.vector.allocate" ||
-          operation.kind === "integer.arena.matrix.allocate") {
+          operation.kind === "integer.arena.matrix.allocate" ||
+          operation.kind === "record.arena.vector.allocate") {
         foreignMayAllocate = true;
         mayRaise.add("MemoryError");
       }
@@ -571,7 +585,9 @@ function localEffects(fn) {
         operation.kind === "integer.matrix.set" ||
         operation.kind === "integer.matrix.addmul" ||
         operation.kind === "integer.matrix.submul" ||
-        operation.kind === "integer.matrix.swap_rows"
+        operation.kind === "integer.matrix.swap_rows" ||
+        operation.kind === "record.vector.get" ||
+        operation.kind === "record.vector.set"
       ) {
         mayRaise.add("IndexError");
       }
@@ -1020,21 +1036,31 @@ function liveExactWorkspaceAnalysis(fn) {
           memoryLimit: operation.memoryLimit,
           temporaryLimit: operation.temporaryLimit,
           storage: "shared-budget-lexical-exact-arena",
-          children: operation.children.map((child) => child.type ===
-            "NativeIntegerMatrix"
-            ? {
-                owner: child.owner,
-                storage: "row-major-mpz-matrix",
-                rows: child.rows,
-                columns: child.columns,
-                maximumBits: child.maximumBits,
-              }
-            : {
-                owner: child.owner,
-                storage: "mpz-vector",
-                capacity: child.capacity,
-                maximumBits: child.maximumBits,
-              }),
+          children: operation.children.map((child) =>
+            child.type === "NativeIntegerMatrix"
+              ? {
+                  owner: child.owner,
+                  storage: "row-major-mpz-matrix",
+                  rows: child.rows,
+                  columns: child.columns,
+                  maximumBits: child.maximumBits,
+                }
+              : child.type === "NativeIntegerVector"
+                ? {
+                    owner: child.owner,
+                    storage: "mpz-vector",
+                    capacity: child.capacity,
+                    maximumBits: child.maximumBits,
+                  }
+                : {
+                    owner: child.owner,
+                    storage: "fixed-schema-record-vector",
+                    capacity: child.capacity,
+                    record: child.record,
+                    fields: child.fields,
+                    entryCharge: child.entryCharge,
+                  }
+          ),
           cleanup: "reverse-child-order-all-exit-idempotent",
           canonicalAuthority: false,
         });

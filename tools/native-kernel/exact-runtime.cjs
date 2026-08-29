@@ -167,6 +167,71 @@ static void sagejs_native_exact_budget_release(
 
 typedef struct
 {
+    void *entries;
+    size_t length;
+    size_t entry_size;
+    sagejs_native_exact_budget *budget;
+    uint64_t charged_bytes;
+} sagejs_native_record_vector;
+
+static void sagejs_native_record_vector_clear(
+    sagejs_native_record_vector *vector)
+{
+    if (vector == NULL)
+        return;
+    if (vector->entries != NULL && vector->entry_size != 0 && vector->length != 0)
+        memset(vector->entries, 0, vector->entry_size * vector->length);
+    free(vector->entries);
+    sagejs_native_exact_budget_release(vector->budget, vector->charged_bytes);
+    vector->entries = NULL;
+    vector->length = 0;
+    vector->entry_size = 0;
+    vector->budget = NULL;
+    vector->charged_bytes = 0;
+}
+
+static int sagejs_native_record_vector_init_in_budget(
+    sagejs_native_status *status,
+    sagejs_native_record_vector *vector,
+    uint64_t capacity,
+    size_t entry_size,
+    uint64_t semantic_entry_charge,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
+{
+    uint64_t charge;
+    if (capacity > (uint64_t) SIZE_MAX || entry_size == 0 ||
+        (capacity != 0 && entry_size > SIZE_MAX / (size_t) capacity) ||
+        (semantic_entry_charge != 0 &&
+            capacity > UINT64_MAX / semantic_entry_charge))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeRecordVector capacity is too large");
+        return 0;
+    }
+    charge = capacity * semantic_entry_charge;
+    if (!sagejs_native_exact_budget_replace(
+            status, budget, 0, charge, memory_error_message))
+        return 0;
+    vector->length = (size_t) capacity;
+    vector->entry_size = entry_size;
+    vector->budget = budget;
+    vector->charged_bytes = charge;
+    if (capacity == 0)
+        return 1;
+    vector->entries = calloc((size_t) capacity, entry_size);
+    if (vector->entries == NULL)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeRecordVector allocation failed");
+        sagejs_native_record_vector_clear(vector);
+        return 0;
+    }
+    return 1;
+}
+
+typedef struct
+{
     mpz_t *entries;
     mpz_t arithmetic_scratch;
     uint64_t *payload_charges;

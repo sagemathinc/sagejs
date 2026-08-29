@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v29 currently accepts a deliberately narrow typed numerical
+Native Kernel v30 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -401,13 +401,133 @@ class NativeIntegerMatrix:
             )
 
 
+class NativeRecordVector:
+    """Fixed-capacity scalar records owned by a `NativeExactArena`.
+
+    The first resident-record contract intentionally accepts only nonempty
+    `NativeRecord` schemas whose fields are `uint64` values. Reads and
+    writes copy complete records, so an entry cannot be aliased or mutated
+    behind the arena's ownership graph. Native compilation represents the
+    same values as fixed-layout C structs and never publishes their addresses.
+
+    A deterministic semantic charge of sixteen bytes plus eight bytes per
+    field is reserved for every entry. This is an architecture contract, not
+    a claim about CPython object sizes or a host allocator's physical RSS.
+    """
+
+    _ENTRY_CHARGE = 16
+    _FIELD_CHARGE = 8
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(
+        self,
+        record_type: type[NativeRecord],
+        capacity: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
+        if not isinstance(record_type, type) or not issubclass(
+            record_type, NativeRecord
+        ):
+            raise TypeError("NativeRecordVector requires a NativeRecord subclass")
+        annotations = getattr(record_type, "__annotations__", {})
+        fields = tuple(annotations)
+        if not fields:
+            raise TypeError("NativeRecordVector record schema has no fields")
+        for name, annotation in annotations.items():
+            if annotation is not int and annotation not in (
+                "uint64",
+                "PrimeFieldModulus",
+            ):
+                raise TypeError(
+                    "NativeRecordVector currently requires scalar uint64 fields; "
+                    f"{record_type.__name__}.{name} is unsupported"
+                )
+        exact_capacity = int(capacity)
+        exact_limit = int(memory_limit)
+        if (
+            exact_capacity < 0
+            or exact_capacity > self._UINT64_MAX
+            or exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+        ):
+            raise OverflowError("NativeRecordVector capacity is outside uint64")
+        entry_charge = self._ENTRY_CHARGE + self._FIELD_CHARGE * len(fields)
+        if exact_capacity != 0 and entry_charge > self._UINT64_MAX // exact_capacity:
+            raise OverflowError("NativeRecordVector capacity is outside uint64")
+        self._budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeRecordVector memory limit exceeded",
+        )
+        if self._budget.limit != exact_limit:
+            raise ValueError("NativeRecordVector budget limit mismatch")
+        charge = exact_capacity * entry_charge
+        self._budget.reserve(0, charge)
+        try:
+            zero = {name: 0 for name in fields}
+            self._values = [record_type(**zero) for _index in range(exact_capacity)]
+        except BaseException:
+            self._budget.release(charge)
+            raise
+        self._record_type = record_type
+        self._fields = fields
+        self._charged_bytes = charge
+        self._open = True
+
+    def _require_open(self) -> list[NativeRecord]:
+        if not self._open:
+            raise ValueError("NativeRecordVector is closed")
+        return self._values
+
+    def _position(self, index: int) -> int:
+        exact = int(index)
+        values = self._require_open()
+        if exact < 0 or exact >= len(values):
+            raise IndexError("NativeRecordVector index out of range")
+        return exact
+
+    def _copy(self, value: NativeRecord) -> NativeRecord:
+        if type(value) is not self._record_type:
+            raise TypeError(
+                f"NativeRecordVector requires {self._record_type.__name__} values"
+            )
+        copied: dict[str, int] = {}
+        for name in self._fields:
+            exact = int(getattr(value, name))
+            if exact < 0 or exact > self._UINT64_MAX:
+                raise OverflowError(
+                    f"{self._record_type.__name__}.{name} is outside uint64"
+                )
+            copied[name] = exact
+        return self._record_type(**copied)
+
+    def close(self) -> None:
+        """Release every record and its arena charge; repeated close is harmless."""
+        if not self._open:
+            return
+        self._values.clear()
+        self._budget.release(self._charged_bytes)
+        self._charged_bytes = 0
+        self._open = False
+
+    def __len__(self) -> int:
+        return len(self._require_open())
+
+    def __getitem__(self, index: int) -> NativeRecord:
+        return self._copy(self._require_open()[self._position(index)])
+
+    def __setitem__(self, index: int, value: NativeRecord) -> None:
+        self._require_open()[self._position(index)] = self._copy(value)
+
+
 class NativeExactArena:
     """One lexical semantic-memory budget for several resident exact owners.
 
-    Children are created only through `integer_vector` and `integer_matrix`.
-    They share one deterministic byte limit, remain private to the arena, and
-    close in reverse creation order on every exit. Native compilation lowers
-    the complete ownership graph without materializing child Python objects.
+    Children are created only through `integer_vector`, `integer_matrix`, and
+    `records`. They share one deterministic byte limit, remain private to the
+    arena, and close in reverse creation order on every exit. Native
+    compilation lowers the complete ownership graph without materializing
+    child Python objects.
     `temporary_limit` reserves the native checkpoint slab used by short-lived
     GMP allocations; it does not change the ordinary Python computation.
     """
@@ -429,7 +549,9 @@ class NativeExactArena:
             "NativeExactArena memory limit exceeded",
         )
         self._temporary_limit = exact_temporary_limit
-        self._children: list[NativeIntegerVector | NativeIntegerMatrix] = []
+        self._children: list[
+            NativeIntegerVector | NativeIntegerMatrix | NativeRecordVector
+        ] = []
         self._open = True
         self._entered = False
 
@@ -477,6 +599,22 @@ class NativeExactArena:
             self._budget.limit,
             _budget=self._budget,
             _maximum_bits=maximum_bits,
+        )
+        self._children.append(child)
+        return child
+
+    def records(
+        self,
+        record_type: type[NativeRecord],
+        capacity: int,
+    ) -> NativeRecordVector:
+        """Create one fixed-capacity scalar record vector in this arena."""
+        self._require_open()
+        child = NativeRecordVector(
+            record_type,
+            capacity,
+            self._budget.limit,
+            _budget=self._budget,
         )
         self._children.append(child)
         return child
@@ -997,6 +1135,7 @@ __all__ = [
     "NativeIntegerMatrix",
     "NativeIntegerVector",
     "NativeRecord",
+    "NativeRecordVector",
     "PrimeFieldMatrix",
     "PrimeFieldModulus",
     "RationalBuffer",

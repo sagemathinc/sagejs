@@ -101,6 +101,10 @@ function cName(name) {
   return `sagejs_${name}`;
 }
 
+function recordCType(record) {
+  return `sagejs_native_record_${record}`;
+}
+
 function nativeValue(local) {
   if (local.type === "Integer") return cName(local.name);
   return local.storage === "return"
@@ -301,6 +305,53 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.construct") {
+    return operation.fields.map((field) =>
+      `${indent}${target}.sagejs_field_${field.name} = ` +
+        `${exactValue(field.value, context)};`
+    ).join("\n");
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${target} = ${exactValue(operation.source, context)}.` +
+      `sagejs_field_${operation.field};`;
+  }
+  if (operation.kind === "record.vector.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.vector, context)}.length;`;
+  }
+  if (operation.kind === "record.vector.get" ||
+      operation.kind === "record.vector.set") {
+    const vector = exactValue(operation.vector, context);
+    const index = exactValue(operation.index, context);
+    const position = "sagejs_record_position";
+    const check = operation.indexType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${index}, ${vector}.length, ` +
+        "&sagejs_record_position)"
+      : `${index} >= (uint64_t) ${vector}.length`;
+    const entries = `((${recordCType(operation.record)} *) ${vector}.entries)`;
+    const action = operation.kind === "record.vector.get"
+      ? `${target} = ${entries}[${position}];`
+      : `${entries}[${position}] = ${exactValue(operation.value, context)};`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_record_position = ` +
+        `${operation.indexType === "Integer" ? "0" : `(size_t) ${index}`};`,
+      `${indent}    if (${check})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeRecordVector index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.mod_uint64") {
     const divisor = exactValue(operation.right, context);
@@ -707,6 +758,19 @@ function emitExactOperation(operation, context, indent) {
       `${indent}${cName(operation.owner)}_initialized = 1;`,
     ].join("\n");
   }
+  if (operation.kind === "record.arena.vector.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_record_vector_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.capacity, context)}, ` +
+        `sizeof(${recordCType(operation.record)}), ` +
+        `UINT64_C(${operation.entryCharge}), &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
@@ -1047,7 +1111,8 @@ function emitExactStatements(statements, context, indent) {
       const owner = exactValue(statement.owner, context);
       const lastAllocation = statement.body.findLastIndex((operation) =>
         operation.kind === "integer.arena.vector.allocate" ||
-        operation.kind === "integer.arena.matrix.allocate"
+        operation.kind === "integer.arena.matrix.allocate" ||
+        operation.kind === "record.arena.vector.allocate"
       );
       const residentSetup = statement.body.slice(0, lastAllocation + 1);
       const checkpointBody = statement.body.slice(lastAllocation + 1);
@@ -1060,7 +1125,9 @@ function emitExactStatements(statements, context, indent) {
         (child) => {
           const clear = child.type === "NativeIntegerMatrix"
             ? "sagejs_native_integer_matrix_clear"
-            : "sagejs_native_integer_vector_clear";
+            : child.type === "NativeIntegerVector"
+              ? "sagejs_native_integer_vector_clear"
+              : "sagejs_native_record_vector_clear";
           return [
             `${indent}if (${cName(child.owner)}_initialized)`,
             `${indent}{`,
@@ -1229,6 +1296,17 @@ function exactDeclarations(fn) {
       );
       continue;
     }
+    if (local.type.startsWith("NativeRecordVector:")) {
+      declarations.push(
+        `    sagejs_native_record_vector ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_record_vector_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
     if (local.type === "NativeExactArena") {
       declarations.push(
         `    sagejs_native_exact_arena ${cName(local.name)} = {0};`,
@@ -1241,6 +1319,13 @@ function exactDeclarations(fn) {
       continue;
     }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
+      continue;
+    }
+    if (local.type.startsWith("Record:")) {
+      declarations.push(
+        `    ${recordCType(local.type.slice("Record:".length))} ` +
+          `${cName(local.name)} = {0};`,
+      );
       continue;
     }
     const type = local.type === "uint64"
@@ -3249,7 +3334,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v29. */
+  return `/* Generated by Sage.js Native Kernel v30. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3414,7 +3499,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v29.
+  const source = `/* Generated by Sage.js Native Kernel v30.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3619,7 +3704,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v29.
+  return `/* Generated by Sage.js Native Kernel v30.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
