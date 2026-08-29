@@ -363,6 +363,29 @@ test("large Victor Miller bases retain their exact native-series normalization",
   }
 });
 
+test("Victor Miller bases use their known identity truncation", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "B=victor_miller_basis(2000,50)\n" +
+            "S=victor_miller_basis(2000,50,cusp_only=True)\n" +
+            "edge=victor_miller_basis(24,3)\n" +
+            "[len(B),str(B[0]),str(B[1]),str(B[49]),str(B[50])," +
+            "str(B[-1]),len(S),str(S[0]),str(S[48]),str(S[49]),edge]",
+        )
+      ).repr,
+      "[167, '1 + O(q^50)', 'q + O(q^50)', 'q^49 + O(q^50)', " +
+        "'O(q^50)', 'O(q^50)', 166, 'q + O(q^50)', " +
+        "'q^49 + O(q^50)', 'O(q^50)', " +
+        "[1 + O(q^3), q + O(q^3), q^2 + O(q^3)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("level-one ambient and cusp bases carry replayable certificates", async () => {
   const session = await createSage();
   try {

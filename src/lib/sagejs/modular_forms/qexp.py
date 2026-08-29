@@ -660,6 +660,25 @@ def _victor_miller_series_data(
     residue, exponent_four, exponent_six = _residual_exponents(weight)
     cusp_dimension = (weight - residue) // 12
     dimension = cusp_dimension + 1
+    if not include_operations and precision <= dimension:
+        # The Victor Miller basis has leading terms 1, q, ..., q^(d-1).
+        # Modulo q^prec with prec <= d, its entire visible coefficient matrix
+        # is therefore the identity.  Construct that known truncation directly
+        # instead of expanding E4, E6, and Delta to the full dimension.
+        ring = _global("PowerSeriesRing")(
+            sage.ZZ,
+            variable,
+            default_prec=max(1, precision),
+        )
+        zero = ring(0).add_bigoh(precision)
+        basis = [zero for _index in range(dimension)]
+        monomial = ring(1)
+        generator = ring.gen()
+        for exponent in range(precision):
+            basis[exponent] = monomial.add_bigoh(precision)
+            if exponent + 1 < precision:
+                monomial = (monomial * generator).add_bigoh(precision)
+        return basis, []
     work_precision = max(precision, dimension)
     ring = _global("PowerSeriesRing")(
         sage.ZZ,
