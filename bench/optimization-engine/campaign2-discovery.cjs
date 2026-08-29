@@ -21,6 +21,7 @@ const {
   validateSubject,
 } = require("../../tools/optimization-engine/contracts.cjs");
 const {
+  HARD_GATE_CODES,
   adjudicateCandidates,
   auditIntervention,
 } = require("../../tools/optimization-engine/auditors.cjs");
@@ -37,7 +38,7 @@ const {
 const DISCOVERY_SCHEMA = "sagejs.optimization-campaign2-discovery-evidence/v1";
 const AUTHORITATIVE_INPUT_SCHEMA =
   "sagejs.optimization-campaign2-authoritative-input/v2";
-const BLOCKER_SCHEMA = "sagejs.optimization-campaign2-family-blocker/v1";
+const BLOCKER_SCHEMA = "sagejs.optimization-campaign2-family-blocker/v2";
 const CAPABILITY_AUTHORITY_SCHEMA =
   "sagejs.optimization-campaign2-capability-authority/v1";
 const DECLARATION_AUTHORITY_SCHEMA =
@@ -407,9 +408,7 @@ function validateBlocker(raw, epoch) {
   ]);
   if (raw.schema !== BLOCKER_SCHEMA) fail(`${label}.schema`, `unknown schema ${raw.schema}`);
   if (raw.epochId !== epoch.id) fail(`${label}.epochId`, "must equal the discovery epoch");
-  if (raw.family !== "cubic-factorization") {
-    fail(`${label}.family`, "only cubic-factorization has the reviewed blocker policy");
-  }
+  if (!EXPECTED_FAMILIES.includes(raw.family)) fail(`${label}.family`, "is unknown");
   exactKeys(`${label}.provenance`, raw.provenance, [
     "producerCommand", "artifactDigest", "recordedAt",
   ]);
@@ -453,20 +452,47 @@ function validateBlocker(raw, epoch) {
   ]);
   checkedString(`${label}.proposedIntervention.mechanism`,
     raw.proposedIntervention.mechanism);
-  if (raw.proposedIntervention.capabilityStatus !== "unavailable" ||
-      raw.proposedIntervention.disposition !== "reject" ||
-      canonicalJson(raw.proposedIntervention.failedGates) !==
-        canonicalJson(BLOCKER_FAILED_GATES)) {
+  if (!Array.isArray(raw.proposedIntervention.failedGates) ||
+      raw.proposedIntervention.failedGates.length === 0) {
+    fail(`${label}.proposedIntervention.failedGates`, "must be a nonempty array");
+  }
+  const failedGates = uniqueSorted(raw.proposedIntervention.failedGates.map(
+    (gate, index) => checkedString(`${label}.proposedIntervention.failedGates[${index}]`, gate),
+  ), `${label}.proposedIntervention.failedGates`);
+  if (canonicalJson(failedGates) !== canonicalJson(raw.proposedIntervention.failedGates) ||
+      failedGates.some((gate) => !HARD_GATE_CODES.includes(gate))) {
+    fail(`${label}.proposedIntervention.failedGates`, "must be sorted known hard gates");
+  }
+  for (const gate of BLOCKER_FAILED_GATES) {
+    if (!failedGates.includes(gate)) {
+      fail(`${label}.proposedIntervention.failedGates`, `must include ${gate}`);
+    }
+  }
+  if (raw.family === "cubic-factorization") {
+    if (raw.proposedIntervention.capabilityStatus !== "unavailable" ||
+        raw.proposedIntervention.disposition !== "reject" ||
+        canonicalJson(failedGates) !== canonicalJson(BLOCKER_FAILED_GATES)) {
+      fail(`${label}.proposedIntervention`,
+        "must reject the unavailable complete batch proposal with exact failed gates");
+    }
+  } else if (!new Set(["available", "incomplete"]).has(
+    raw.proposedIntervention.capabilityStatus,
+  ) || raw.proposedIntervention.disposition !== "investigate") {
     fail(`${label}.proposedIntervention`,
-      "must reject the unavailable complete batch proposal with exact failed gates");
+      "an incomplete non-cubic proposal must remain investigate");
   }
   exactKeys(`${label}.retainedRoute`, raw.retainedRoute, [
     "mechanism", "boundaryId", "capabilityId", "declarationId", "libraryArtifactId",
     "disposition", "missingAuthorities",
   ]);
   checkedString(`${label}.retainedRoute.mechanism`, raw.retainedRoute.mechanism);
-  if (raw.retainedRoute.boundaryId !== "ffi:flint:nmod_poly_factor" ||
-      raw.retainedRoute.disposition !== "investigate") {
+  if (raw.retainedRoute.disposition !== "investigate") {
+    fail(`${label}.retainedRoute`, raw.family === "cubic-factorization"
+      ? "must preserve the per-prime FLINT route as investigate"
+      : "must preserve the current route as investigate");
+  }
+  if (raw.family === "cubic-factorization" &&
+      raw.retainedRoute.boundaryId !== "ffi:flint:nmod_poly_factor") {
     fail(`${label}.retainedRoute`, "must preserve the per-prime FLINT route as investigate");
   }
   for (const field of ["capabilityId", "declarationId", "libraryArtifactId"]) {
@@ -483,7 +509,13 @@ function validateBlocker(raw, epoch) {
   if (canonicalJson(retainedMissing) !== canonicalJson(raw.retainedRoute.missingAuthorities)) {
     fail(`${label}.retainedRoute.missingAuthorities`, "must be sorted");
   }
-  return { ...raw, provenance, missingAuthorities };
+  return {
+    ...raw,
+    provenance,
+    missingAuthorities,
+    proposedIntervention: { ...raw.proposedIntervention, failedGates },
+    retainedRoute: { ...raw.retainedRoute, missingAuthorities: retainedMissing },
+  };
 }
 
 function logicalDocument(schema, value, label) {
@@ -728,7 +760,11 @@ function validateAuthoritativeInput(raw, { root, epoch }) {
           retained.libraryArtifactId !== entry.capability.libraryArtifactId ||
           retained.boundaryId !== entry.capability.boundaryId ||
           entry.capability.status !== "available") {
-        fail(entry.family, "retained per-prime route does not join current validated authority");
+        fail(entry.family, "retained route does not join current validated authority");
+      }
+      if (entry.family !== "cubic-factorization" &&
+          entry.evidence.proposedIntervention.capabilityStatus !== entry.capability.status) {
+        fail(entry.family, "incomplete proposal does not join current capability status");
       }
     }
   }
@@ -881,6 +917,13 @@ function alternativeDispositions(entry) {
       reason: `${alternative.mechanism}; physical evidence ${alternative.evidenceDigest}`,
     })).sort((left, right) => left.category.localeCompare(right.category));
   }
+  if (entry.family !== "cubic-factorization") {
+    return ALTERNATIVE_CATEGORIES.map((category) => ({
+      category,
+      disposition: "investigate",
+      reason: `zero-sample blocker retains no current ${category} comparison authority`,
+    })).sort((left, right) => left.category.localeCompare(right.category));
+  }
   const reasons = {
     algorithm: "a broader class-number algorithm remains outside this rejected batch proposal",
     boundary: "a new full-factor batch adapter is the unavailable mechanism",
@@ -926,7 +969,8 @@ function proposalForEntry(entry, observation) {
       adds: [...mechanism.adds].sort(),
     },
     matureCapability: {
-      status: isComplete ? evidence.matureCapability.status : "unavailable",
+      status: isComplete ? evidence.matureCapability.status :
+        evidence.proposedIntervention.capabilityStatus,
       capabilityIds: [entry.capability.id],
       auditEvidenceIds: [entry.declaration.id, observation.id].sort(),
     },
@@ -1050,15 +1094,21 @@ function familyDispositions(analyses, adjudication) {
   ));
   return analyses.map((analysis) => {
     if (analysis.kind === "blocker") {
-      return {
+      const blocker = analysis.observation.details.evidence;
+      const disposition = {
         family: analysis.family,
         interventionId: analysis.intervention.id,
-        disposition: "reject",
-        failedGates: [...BLOCKER_FAILED_GATES],
-        rejectedMechanism: "unavailable batch full-factor mature-library route",
-        retainedInvestigation: "available per-prime mature FLINT factor route",
+        disposition: blocker.proposedIntervention.disposition,
+        failedGates: [...blocker.proposedIntervention.failedGates],
+        missingAuthorities: [...blocker.missingAuthorities],
+        retainedInvestigation: blocker.retainedRoute.mechanism,
         fixtureTimingsUsed: false,
       };
+      if (analysis.family === "cubic-factorization") {
+        disposition.rejectedMechanism =
+          "unavailable batch full-factor mature-library route";
+      }
+      return disposition;
     }
     const id = analysis.intervention.id;
     let disposition = "reject";
@@ -1166,8 +1216,10 @@ function createOpportunities({ epoch, analyses, dispositions, decisionObservatio
       classifications: [{
         kind: "library-capability",
         observationIds: [analysis.observation.id],
-        explanation: analysis.kind === "blocker"
+        explanation: analysis.kind === "blocker" && analysis.family === "cubic-factorization"
           ? "the exact batch full-factor proposal is unavailable; the per-prime route remains investigate"
+          : analysis.kind === "blocker"
+            ? "current evidence is zero-sample and the declared route remains investigate"
           : "the reviewed library route is bound to complete physical evidence",
       }],
       interventionIds: [intervention.id],
@@ -1176,7 +1228,10 @@ function createOpportunities({ epoch, analyses, dispositions, decisionObservatio
           item.intervention.id).sort()
         : [decisionObservation.id],
       unresolvedObligations: analysis.kind === "blocker"
-        ? ["broader per-prime mature FLINT factor route remains investigate"]
+        ? uniqueSorted([
+          ...analysis.observation.details.evidence.missingAuthorities,
+          ...disposition.failedGates,
+        ], `${analysis.family}.blocker.unresolved`)
         : disposition.disposition === "investigate"
           ? uniqueSorted([
             "one or more required authorities are missing", ...disposition.failedGates,
@@ -1184,8 +1239,10 @@ function createOpportunities({ epoch, analyses, dispositions, decisionObservatio
       decision: {
         status: disposition.disposition,
         selectedInterventionId: disposition.disposition === "select" ? intervention.id : null,
-        reasons: [analysis.kind === "blocker"
+        reasons: [analysis.kind === "blocker" && disposition.disposition === "reject"
           ? "the exact proposed batched full-factor mature capability is unavailable"
+          : analysis.kind === "blocker"
+            ? "current zero-sample evidence lacks required authorities"
           : disposition.disposition === "select"
             ? "every hard gate passed and deterministic adjudication selected this intervention"
             : disposition.disposition === "investigate"
@@ -1212,7 +1269,23 @@ function adjudicateCampaign2({ root, epoch: rawEpoch, input: rawInput }) {
   const candidates = analyses.filter((analysis) => analysis.candidate !== null)
     .map((analysis) => analysis.candidate)
     .sort((left, right) => left.intervention.id.localeCompare(right.intervention.id));
-  const adjudication = adjudicateCandidates({ epochId: epoch.id, candidates });
+  const adjudication = candidates.length > 0
+    ? adjudicateCandidates({ epochId: epoch.id, candidates })
+    : Object.freeze({
+      status: analyses.some((analysis) =>
+        analysis.observation.details.evidence.proposedIntervention.disposition ===
+          "investigate") ? "investigate" : "reject",
+      selectedInterventionId: null,
+      hardGates: analyses.map((analysis) => ({
+        interventionId: analysis.intervention.id,
+        gates: analysis.observation.details.evidence.proposedIntervention.failedGates
+          .map((code) => ({ code, status: "fail" })),
+      })).sort((left, right) =>
+        left.interventionId.localeCompare(right.interventionId)),
+      dimensions: [],
+      pairwiseComparisons: [],
+      reasons: ["every family is a zero-sample typed blocker; no selectable candidate exists"],
+    });
   const dispositions = familyDispositions(analyses, adjudication);
   const decision = createDecisionObservation({
     epoch, input, analyses, adjudication, dispositions,

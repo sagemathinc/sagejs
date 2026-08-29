@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Make Campaign 2 adjudication bind exact evidence attachments, support typed incomplete/blocker families, emit content-addressed v2 decision records, and reject fixture/counterfeit authority",
-  "base_commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+  "base_commit": "a5484b36b94e93af8d43145497f9d6ae05741a20",
   "claims": [
     "bench/optimization-engine/campaign2-discovery.cjs",
     "test/optimization-campaign2-evidence.cjs"
