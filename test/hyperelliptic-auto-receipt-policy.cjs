@@ -199,7 +199,7 @@ function exactQuery(bundleSha = null) {
   };
 }
 
-test("the checked-in release policy gates auto after the combined source merge", () => {
+test("the checked-in stale release policy fails closed until receipts are refreshed", () => {
   const raw = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
@@ -207,7 +207,7 @@ test("the checked-in release policy gates auto after the combined source merge",
     root: ROOT,
     sourceCommit: raw.source_bundle.source_commit,
   });
-  assert.equal(policy.enabled, true);
+  assert.equal(policy.enabled, false);
   assert.equal(
     policy.source_bundle.sha256,
     "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
@@ -220,7 +220,7 @@ test("the checked-in release policy gates auto after the combined source merge",
       "prime-cantor-domain-progression-c5622982-v1",
     ],
   );
-  assert.equal(policy.verified_receipts.length, 12);
+  assert.equal(policy.verified_receipts.length, 0);
   const query = {
     platform: "linux-x64",
     backend: "prime-cantor",
@@ -244,10 +244,8 @@ test("the checked-in release policy gates auto after the combined source merge",
     },
   };
   assert.deepEqual(queryAutoReceiptPolicy(policy, query), {
-    selected: true,
-    reason: "exact-receipt-policy-match",
-    entry_id: "prime-cantor-domain-add-c5622982-v1",
-    backend: "prime-cantor",
+    selected: false,
+    reason: "policy-disabled",
   });
   for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
     for (const genus of [2, 3]) {
@@ -265,7 +263,10 @@ test("the checked-in release policy gates auto after the combined source merge",
               batch_items: prime === 5 ? 1 : 1000,
             },
           });
-          assert.equal(selected.selected, true);
+          assert.deepEqual(selected, {
+            selected: false,
+            reason: "policy-disabled",
+          });
         }
       }
     }
@@ -284,7 +285,7 @@ test("the checked-in release policy gates auto after the combined source merge",
   ]) {
     assert.deepEqual(queryAutoReceiptPolicy(policy, rejected), {
       selected: false,
-      reason: "unreceipted-fallback",
+      reason: "policy-disabled",
     });
   }
   assert(Object.isFrozen(policy));
