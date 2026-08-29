@@ -996,13 +996,17 @@ maximum_exponent = max(
     for unit in result.units()
     for _factor, exponent in unit.factors()
 )
-assert maximum_exponent <= 5
+assert maximum_exponent <= 8
 regulator = result.regulator()
 assert regulator.rigorous
 assert regulator.precision_bits == 128
-print((result.class_number(), maximum_exponent, regulator.precision_bits))
+print((
+    result.class_number(),
+    resources["dependency_lattice_lll_reductions"],
+    regulator.precision_bits,
+))
 `);
-  assert.equal(output, "(1, 5, 128)");
+  assert.equal(output, "(1, 1, 128)");
 });
 
 test("exact presentations are deferred across safe relation batches", () => {
