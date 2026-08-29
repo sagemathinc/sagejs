@@ -1,0 +1,113 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "opt2-adjudication-v2",
+  "title": "Campaign 2 authoritative adjudication",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make Campaign 2 adjudication bind exact evidence attachments, support typed incomplete/blocker families, emit content-addressed v2 decision records, and reject fixture/counterfeit authority",
+  "base_commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+  "claims": [
+    "bench/optimization-engine/campaign2-discovery.cjs",
+    "test/optimization-campaign2-evidence.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "canonical attachment byte/digest recomputation",
+      "real blocker and counterfeit evidence fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.328,
+      "started_at": "2026-08-29T02:53:40.591Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.916,
+      "started_at": "2026-08-29T02:54:14.024Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 338.759,
+      "started_at": "2026-08-29T02:54:27.736Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:unit",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 2.972,
+      "started_at": "2026-08-29T03:00:48.752Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.742,
+      "started_at": "2026-08-29T03:01:31.460Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.815,
+      "started_at": "2026-08-29T03:01:57.226Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Campaign 2 authoritative input now verifies every physical evidence/attachment descriptor, joins content-addressed capability and declaration authority to exact epoch components, supports a zero-sample typed cubic blocker, and emits canonical v2 observation/intervention/opportunity/dossier records. Real mode rejects fixture timings; deterministic tests cover physical counterfeits, cross-epoch authority, exact platform coverage, canonical round trips, and global identity invalidation.",
+    "risks": [
+      "Integration must regenerate Campaign 2 input bundles with provenance.timingAuthority and the v2 physical descriptor envelope; the greenfield change intentionally does not accept the older bundle-list API.",
+      "The branch-wide unit tier remains blocked by the pre-existing checked-in hyperelliptic policy source-bundle mismatch after a successful build.",
+      "pnpm test:changed and pnpm architecture:check stop on pre-existing native export inventory drift across the branch delta from origin/main.",
+      "pnpm test:compiler cannot load the optional packages/flint/build/Release/sagejs_flint.node addon in this worktree; its non-FLINT fixtures pass."
+    ],
+    "next_steps": [
+      "Integration should construct real capability/declaration authority documents and complete physical attachment manifests for the exact frozen epoch.",
+      "Run the real adjudicator only after the dense bundle carries authoritative current platform/interruption evidence; do not publish fixture output.",
+      "Resolve the shared hyperelliptic policy and native export inventory drift before relying on full-repository validation."
+    ]
+  }
+}
