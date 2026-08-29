@@ -8,7 +8,7 @@ This generated dashboard compiles every ordinary Python module under `src/lib` a
 without executing it. Imports are stubbed, optimizer IR is independently verified, and
 every loop-bearing function or method is retained with its exact source location.
 
-Input identity: `72613766959982863fc4ea47b7ed615530fdcad60a597e191e36290cef271bee` (498 files, 10687351 bytes).
+Input identity: `dfb0daa055fae3055d3882c69f31fec0bd5722875b80c9b43ffadc7141779e09` (498 files, 10686202 bytes).
 
 Regenerate or verify it with:
 

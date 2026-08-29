@@ -12,7 +12,12 @@ from itertools import product
 from typing import Any, Iterable, Iterator
 
 import sagejs as sage
+import sagejs.native as native_runtime
 import sagejs.runtime as runtime
+from sagejs.kernels.quaternion.brandt_rank4 import (
+    brandt_rank4_theta_counts,
+    brandt_rank4_vectors_of_norm,
+)
 
 from .algebra import (
     QuaternionElement,
@@ -30,12 +35,10 @@ _THEOREM_DERIVED_CONSTRUCTION = object()
 _gram_lll_kernel: Any = None
 _gram_lll_native: Any = None
 _gram_lll_import_attempted = False
-_theta_kernel: Any = None
-_theta_native: Any = None
-_theta_import_attempted = False
-_vector_kernel: Any = None
-_vector_native: Any = None
-_vector_import_attempted = False
+_theta_kernel: Any = brandt_rank4_theta_counts
+_theta_native: Any = native_runtime
+_vector_kernel: Any = brandt_rank4_vectors_of_norm
+_vector_native: Any = native_runtime
 
 
 def _nearest_integer(value: Any) -> Any:
@@ -502,29 +505,12 @@ def _try_native_theta_counts(
 ) -> tuple[int, ...] | None:
     """Count one theta prefix in the accepted live-exact workspace."""
 
-    global _theta_import_attempted, _theta_kernel, _theta_native
     if precision <= 0:
         return ()
     normalized = sage.QQ(normalization)
     if normalized <= 0:
         return None
-    if not _theta_import_attempted:
-        _theta_import_attempted = True
-        try:
-            kernel_module = __import__(
-                "sagejs.kernels.quaternion.brandt_rank4",
-                fromlist=["brandt_rank4"],
-            )
-            _theta_native = __import__("sagejs.native", fromlist=["native"])
-            _theta_kernel = kernel_module.brandt_rank4_theta_counts
-        except (ImportError, AttributeError):
-            _theta_kernel = None
-            _theta_native = None
-    if (
-        _theta_kernel is None
-        or _theta_native is None
-        or not _theta_native.is_compiled(_theta_kernel)
-    ):
+    if not _theta_native.is_compiled(_theta_kernel):
         return None
     numerator, denominator = _rational_parts(normalized)
     normalization_multiplier = sage.ZZ(denominator)
@@ -575,27 +561,10 @@ def _try_native_vectors_of_norm(
     source implementation; a partial native result is never published.
     """
 
-    global _vector_import_attempted, _vector_kernel, _vector_native
     exact_target = sage.QQ(target)
     if exact_target < 0 or max_results <= 0:
         return () if exact_target < 0 else None
-    if not _vector_import_attempted:
-        _vector_import_attempted = True
-        try:
-            kernel_module = __import__(
-                "sagejs.kernels.quaternion.brandt_rank4",
-                fromlist=["brandt_rank4"],
-            )
-            _vector_native = __import__("sagejs.native", fromlist=["native"])
-            _vector_kernel = kernel_module.brandt_rank4_vectors_of_norm
-        except (ImportError, AttributeError):
-            _vector_kernel = None
-            _vector_native = None
-    if (
-        _vector_kernel is None
-        or _vector_native is None
-        or not _vector_native.is_compiled(_vector_kernel)
-    ):
+    if not _vector_native.is_compiled(_vector_kernel):
         return None
     numerator, denominator = _rational_parts(exact_target)
     bounds = [
