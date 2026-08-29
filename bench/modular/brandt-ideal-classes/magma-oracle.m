@@ -39,9 +39,8 @@ for item in cases do
     // computed this Hecke operator.  Time the aggregate so a sub-resolution
     // individual call cannot be reported as zero.
     operatorRepeatCount := repeatCount;
+    operatorModules := constructionModules;
     while true do
-        operatorModules := [BrandtModule(D, N : ComputeGrams := true) :
-            index in [1..operatorRepeatCount]];
         started := Cputime();
         operators := [HeckeOperator(operatorModules[index], ell) :
             index in [1..operatorRepeatCount]];
@@ -52,7 +51,21 @@ for item in cases do
         if operatorRepeatCount ge maximumRepeatCount then
             error "Magma first-operator aggregate did not reach 100 ms";
         end if;
-        operatorRepeatCount := Min(2 * operatorRepeatCount, maximumRepeatCount);
+        if operatorTotal eq 0 then
+            operatorRepeatCount := Min(
+                16 * operatorRepeatCount, maximumRepeatCount
+            );
+        else
+            projected := Ceiling(
+                1.25 * operatorRepeatCount * targetMilliseconds /
+                (1000 * operatorTotal)
+            );
+            operatorRepeatCount := Min(
+                Max(operatorRepeatCount + 1, projected), maximumRepeatCount
+            );
+        end if;
+        operatorModules := [BrandtModule(D, N : ComputeGrams := true) :
+            index in [1..operatorRepeatCount]];
     end while;
     firstOperator := operatorTotal / operatorRepeatCount;
     B := constructionModules[1];
