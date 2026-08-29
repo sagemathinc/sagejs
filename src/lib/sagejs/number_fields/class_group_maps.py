@@ -71,6 +71,8 @@ _CONDITIONAL_MAX_IDEAL_ROW_WORK = 262_144
 _CONDITIONAL_MAX_IDEAL_REPLAY_WORK = 4_000_000
 _CONDITIONAL_MAX_WITNESS_EXPONENT = 256
 _CONDITIONAL_MAX_WITNESS_WORK = 4_096
+_GENERATOR_RELATION_SCHEMA = "sagejs.number-fields/class-group-generator-relation-v1"
+_CONDITIONAL_MAX_RELATION_COMBINATION_WORK = 100_000_000
 
 
 def _integer(value: Any, purpose: str) -> int:
@@ -349,6 +351,57 @@ def _conditional_ideal_row_work(
     return work
 
 
+def _combined_relation_generator_factors(
+    relation_payloads: list[dict[str, Any]], coefficients: tuple[int, ...]
+) -> list[dict[str, Any]]:
+    """Combine factored relation generators without expanding field elements."""
+    combined: dict[str, list[Any]] = {}
+    for relation, coefficient in zip(relation_payloads, coefficients, strict=True):
+        witness = relation.get("witness")
+        factors = witness.get("factors") if isinstance(witness, dict) else None
+        if not isinstance(factors, list):
+            raise TypeError("a relation combination lost its factored witness")
+        for factor in factors:
+            if not isinstance(factor, dict) or set(factor) != {
+                "element",
+                "exponent",
+            }:
+                raise TypeError("a relation combination has a malformed factor")
+            element = factor["element"]
+            exponent = _integer(
+                factor["exponent"], "relation-combination factor exponent"
+            ) * int(coefficient)
+            key = json.dumps(element, sort_keys=True, separators=(",", ":"))
+            if key in combined:
+                combined[key][1] += exponent
+            else:
+                combined[key] = [element, exponent]
+    return [
+        {"element": element, "exponent": exponent}
+        for element, exponent in (
+            (combined[key][0], int(combined[key][1])) for key in sorted(combined)
+        )
+        if exponent
+    ]
+
+
+def _factored_generator_exponent_map(factors: Any) -> dict[str, int] | None:
+    if not isinstance(factors, list):
+        return None
+    answer: dict[str, int] = {}
+    for factor in factors:
+        if not isinstance(factor, dict) or set(factor) != {"element", "exponent"}:
+            return None
+        key = json.dumps(factor["element"], sort_keys=True, separators=(",", ":"))
+        if key in answer:
+            return None
+        exponent = _integer(factor["exponent"], "factored generator exponent")
+        if exponent == 0:
+            return None
+        answer[key] = exponent
+    return answer
+
+
 def _portable_ideal_fingerprint(ideal: Any) -> dict[str, Any]:
     arithmetic = __import__(
         "sagejs.number_fields.ideal_arithmetic", fromlist=["serialize_ideal"]
@@ -433,6 +486,33 @@ def _conditional_factor_base_plan(
     return module, plan, _canonical_payload(plan, "conditional factor-base plan")
 
 
+def _finalize_generator_relation_receipt(
+    payload: Any, invariant: int
+) -> dict[str, Any] | None:
+    """Bind an engine relation combination to one public invariant."""
+    if payload is None:
+        return None
+    if not isinstance(payload, dict) or set(payload) != {
+        "schema",
+        "target_row",
+        "coordinates",
+        "reduced_row",
+        "relation_coefficients",
+        "generator",
+        "content_sha256",
+    }:
+        raise TypeError("an engine generator relation has malformed evidence")
+    if payload.get(
+        "schema"
+    ) != _GENERATOR_RELATION_SCHEMA or not _authenticated_payload(payload):
+        raise ArithmeticError("an engine generator relation failed authentication")
+    body = dict(payload)
+    del body["content_sha256"]
+    body["invariant"] = _integer(invariant, "class-group invariant")
+    body["content_sha256"] = _payload_hash(body)
+    return _canonical_payload(body, "conditional generator-relation receipt")
+
+
 def _producer_conditional_evidence(
     result: Any,
     engine_group: Any,
@@ -441,6 +521,7 @@ def _producer_conditional_evidence(
     theorem: str,
     bound: int,
     relation_count: int,
+    generator_relations: tuple[dict[str, Any], ...],
 ) -> dict[str, Any]:
     """Detach the exact relation lattice used by a conditional result."""
     factor_base = getattr(result, "conditional_factor_base", None)
@@ -500,6 +581,10 @@ def _producer_conditional_evidence(
         "presentation": _canonical_payload(
             presentation, "conditional relation presentation"
         ),
+        "generator_relations": [
+            _canonical_payload(value, "conditional generator-relation receipt")
+            for value in generator_relations
+        ],
     }
     if not _conditional_payload_within_caps(body):
         raise ArithmeticError("conditional relation evidence exceeds replay caps")
@@ -602,6 +687,28 @@ def _producer_dependency_hashes(result: Any) -> dict[str, str]:
     return answer
 
 
+class _ConditionalGeneratorRelationCertificate:
+    """Private exact receipt for one compact Smith-generator power product."""
+
+    def __init__(self, context: Any, payload: dict[str, Any]) -> None:
+        self._context = context
+        self._payload = _canonical_payload(
+            payload, "conditional generator-relation receipt"
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return _canonical_payload(
+            self._payload, "conditional generator-relation receipt"
+        )
+
+    def verify(self, ideal: Any, generator: Any, order: Any) -> bool:
+        verifier = getattr(self._context, "verify_generator_relation_receipt", None)
+        return bool(
+            callable(verifier)
+            and verifier(self._payload, ideal, generator, order) is True
+        )
+
+
 class PrincipalIdealWitness:
     """Exact, optionally factored witness that one ideal is principal."""
 
@@ -611,12 +718,14 @@ class PrincipalIdealWitness:
         generator: Any,
         *,
         source: str = "exact principal-ideal relation",
+        relation_certificate: Any = None,
     ) -> None:
         if not isinstance(source, str) or source == "":
             raise ValueError("a principal witness must describe its source")
         self._ideal = ideal
         self._generator = generator
         self._source = source
+        self._relation_certificate = relation_certificate
 
     @property
     def ideal(self) -> Any:
@@ -636,6 +745,14 @@ class PrincipalIdealWitness:
             self._generator, "principal_ideal"
         )
 
+    @property
+    def relation_certificate_payload(self) -> dict[str, Any] | None:
+        encoder = getattr(self._relation_certificate, "to_dict", None)
+        if not callable(encoder):
+            return None
+        payload = encoder()
+        return payload if isinstance(payload, dict) else None
+
     def verify(self, order: Any = None) -> bool:
         try:
             if order is None:
@@ -645,6 +762,12 @@ class PrincipalIdealWitness:
                 order = ring()
             if not _same_order(self._ideal, order):
                 return False
+            if self._relation_certificate is not None:
+                return bool(
+                    self._relation_certificate.verify(
+                        self._ideal, self._generator, order
+                    )
+                )
             verifier = getattr(self._generator, "verify_principal_ideal", None)
             if callable(verifier):
                 try:
@@ -995,7 +1118,13 @@ class IdealClassGroup:
         )
         self._one = IdealClassElement(self, [0 for _value in values])
         self._map = IdealClassMap(self)
-        if not self._verify_relations():
+        has_compact_relations = any(
+            witness._relation_certificate is not None for witness in witnesses
+        )
+        relations_verified = (
+            self.verify() if has_compact_relations else self._verify_relations()
+        )
+        if not relations_verified:
             raise ArithmeticError("a class-group defining relation witness failed")
         if (
             presentation_evidence is not None
@@ -1344,6 +1473,13 @@ class IdealClassGroup:
         try:
             if proof_label(self._proof_status) not in COMPLETE_PROOF_LABELS:
                 return False
+            proof_verified = False
+            if isinstance(self._proof_record, ConditionalGRHProofRecord):
+                if proof_label(self._proof_record.proof_status) != self._proof_status:
+                    return False
+                if self._proof_record.verify(self, self._proof_context) is not True:
+                    return False
+                proof_verified = True
             if not self._verify_relations() or not self._verify_presentation_evidence():
                 return False
             for index, generator in enumerate(self._generators):
@@ -1351,7 +1487,7 @@ class IdealClassGroup:
                     return False
                 if self(generator.ideal()) != generator:
                     return False
-            if self._proof_record is not None:
+            if self._proof_record is not None and not proof_verified:
                 if proof_label(self._proof_record.proof_status) != self._proof_status:
                     return False
                 if self._proof_record.verify(self, self._proof_context) is not True:
@@ -1376,7 +1512,7 @@ class _IdealClassGroupProjectionView:
     def __init__(
         self,
         generator_payloads: tuple[str, ...],
-        witness_generators: tuple[tuple[Any, str, str], ...],
+        witness_generators: tuple[tuple[Any, str, str, Any], ...],
         presentation_json: str,
         proof_payload_json: str,
         metadata: tuple[Any, ...],
@@ -1454,26 +1590,38 @@ class _IdealClassGroupProjectionView:
         )
         order, invariants, status, algorithm, theorem, bound, count = self._metadata
         ideals = self._ideals()
-        witnesses = []
-        field = order.number_field()
-        for invariant, ideal, (generator_type, payload, source) in zip(
-            invariants, ideals, self._witness_generators, strict=True
-        ):
-            generator = generator_type.from_dict(field, json.loads(payload))
-            witnesses.append(
-                PrincipalIdealWitness(
-                    _ideal_power(ideal, invariant), generator, source=source
-                )
-            )
-        presentation = matrix_module.RelationPresentation.from_dict(
-            json.loads(self._presentation_json)
-        )
         context = _detached_conditional_replay_context(
             order,
             invariants,
             ideals,
             self._proof_payload_json,
             self._generation_verifier,
+        )
+        witnesses = []
+        field = order.number_field()
+        for invariant, ideal, (
+            generator_type,
+            payload,
+            source,
+            certificate_payload,
+        ) in zip(invariants, ideals, self._witness_generators, strict=True):
+            generator = generator_type.from_dict(field, json.loads(payload))
+            witnesses.append(
+                PrincipalIdealWitness(
+                    _ideal_power(ideal, invariant),
+                    generator,
+                    source=source,
+                    relation_certificate=(
+                        None
+                        if certificate_payload is None
+                        else _ConditionalGeneratorRelationCertificate(
+                            context, certificate_payload
+                        )
+                    ),
+                )
+            )
+        presentation = matrix_module.RelationPresentation.from_dict(
+            json.loads(self._presentation_json)
         )
         return IdealClassGroup(
             order,
@@ -1587,7 +1735,12 @@ class _SealedIdealClassGroupProjection:
                     "a projected principal witness needs canonical serialization"
                 )
             witness_generators.append(
-                (type(generator), _canonical_json(encoder()), witness.source)
+                (
+                    type(generator),
+                    _canonical_json(encoder()),
+                    witness.source,
+                    witness.relation_certificate_payload,
+                )
             )
         presentation_encoder = getattr(source._presentation_evidence, "to_dict", None)
         if not callable(presentation_encoder):
@@ -1696,6 +1849,39 @@ class _EngineProofReplayContext:
         self._dependency_hashes = dependency_hashes
         self._conditional_evidence_payload = conditional_evidence_payload
         self._conditional_plan_cache: Any = None
+        self._verified_generator_relations: dict[str, tuple[str, str, str]] = {}
+
+    def verify_generator_relation_receipt(
+        self,
+        payload: dict[str, Any],
+        ideal: Any,
+        generator: Any,
+        order: Any,
+    ) -> bool:
+        """Accept only a receipt authenticated by the current proof replay."""
+        try:
+            if order is not self.order or not _same_order(ideal, self.order):
+                return False
+            content_hash = payload.get("content_sha256")
+            if not isinstance(content_hash, str):
+                return False
+            cached = self._verified_generator_relations.get(content_hash)
+            encoder = getattr(generator, "to_dict", None)
+            if cached is None or not callable(encoder):
+                return False
+            ideal_payload = _canonical_payload(
+                ideal, "conditional generator-relation target ideal"
+            )
+            generator_payload = _canonical_payload(
+                encoder(), "conditional generator-relation factored generator"
+            )
+            return cached == (
+                _payload_hash(payload),
+                _payload_hash(ideal_payload),
+                _payload_hash(generator_payload),
+            )
+        except (TypeError, ValueError, ArithmeticError, AttributeError):
+            return False
 
     def verify_saturation_record(self, record: Any) -> bool:
         if (
@@ -1873,6 +2059,7 @@ class _EngineProofReplayContext:
             "factor_base",
             "relations",
             "presentation",
+            "generator_relations",
             "content_sha256",
         }
         if (
@@ -1892,15 +2079,19 @@ class _EngineProofReplayContext:
         plan_payload = evidence.get("factor_base_plan")
         relation_payloads = evidence.get("relations")
         presentation_payload = evidence.get("presentation")
+        generator_relation_payloads = evidence.get("generator_relations")
         if (
             not isinstance(prime_payloads, list)
             or not isinstance(plan_payload, dict)
             or not isinstance(relation_payloads, list)
             or not isinstance(presentation_payload, dict)
+            or not isinstance(generator_relation_payloads, list)
             or len(relation_payloads) != record.relation_count
             or len(relation_payloads) > _CONDITIONAL_MAX_RELATIONS
             or len(prime_payloads) > _CONDITIONAL_MAX_FACTOR_BASE
             or record.relation_count > _CONDITIONAL_MAX_RELATIONS
+            or len(generator_relation_payloads)
+            not in (0, len(tuple(group.invariants())))
         ):
             return False
         column_count = len(prime_payloads)
@@ -2050,6 +2241,133 @@ class _EngineProofReplayContext:
             reconstructed = reconstructor.reconstruct(transform)
             if reconstructed != ideal:
                 return False
+        if generator_relation_payloads:
+            relation_witnesses = tuple(getattr(group, "_relation_witnesses", ()))
+            invariants = tuple(int(value) for value in group.invariants())
+            if len(relation_witnesses) != len(invariants):
+                return False
+            verified_receipts: dict[str, tuple[str, str, str]] = {}
+            for payload, invariant, ideal, witness in zip(
+                generator_relation_payloads,
+                invariants,
+                generator_ideals,
+                relation_witnesses,
+                strict=True,
+            ):
+                if (
+                    not isinstance(payload, dict)
+                    or set(payload)
+                    != {
+                        "schema",
+                        "target_row",
+                        "coordinates",
+                        "reduced_row",
+                        "relation_coefficients",
+                        "generator",
+                        "invariant",
+                        "content_sha256",
+                    }
+                    or payload.get("schema") != _GENERATOR_RELATION_SCHEMA
+                    or not _authenticated_payload(payload)
+                    or _integer(
+                        payload.get("invariant"), "generator-relation invariant"
+                    )
+                    != invariant
+                    or invariant < 1
+                ):
+                    return False
+                target_row = tuple(
+                    _integer(value, "generator-relation target exponent")
+                    for value in payload.get("target_row", ())
+                )
+                coordinates = tuple(
+                    _integer(value, "generator-relation class coordinate")
+                    for value in payload.get("coordinates", ())
+                )
+                reduced_row = tuple(
+                    _integer(value, "generator-relation reduced exponent")
+                    for value in payload.get("reduced_row", ())
+                )
+                coefficients = tuple(
+                    _integer(value, "generator-relation coefficient")
+                    for value in payload.get("relation_coefficients", ())
+                )
+                if (
+                    len(target_row) != column_count
+                    or len(reduced_row) != column_count
+                    or len(coordinates) != len(invariants)
+                    or any(coordinates)
+                    or len(coefficients) != len(relations)
+                    or sum(abs(value) for value in coefficients)
+                    > _CONDITIONAL_MAX_RELATION_COMBINATION_WORK
+                    or _conditional_ideal_row_work(target_row, exact_norm_costs) is None
+                ):
+                    return False
+                if (
+                    tuple(presentation.class_coordinates(target_row)) != coordinates
+                    or tuple(presentation.lift_class_coordinates(coordinates))
+                    != reduced_row
+                ):
+                    return False
+                delta = tuple(
+                    left - right
+                    for left, right in zip(target_row, reduced_row, strict=True)
+                )
+                combined_row = tuple(
+                    sum(
+                        coefficients[row_index]
+                        * int(relations[row_index].row[column_index])
+                        for row_index in range(len(relations))
+                    )
+                    for column_index in range(column_count)
+                )
+                if combined_row != delta:
+                    return False
+                generator_payload = payload.get("generator")
+                if not isinstance(generator_payload, dict):
+                    return False
+                generator = _decode_factored_generator(
+                    self.order.number_field(), generator_payload
+                )
+                if _canonical_payload(
+                    generator, "conditional generator-relation generator"
+                ) != generator_payload or _factored_generator_exponent_map(
+                    generator_payload.get("factors")
+                ) != _factored_generator_exponent_map(
+                    _combined_relation_generator_factors(
+                        relation_payloads, coefficients
+                    )
+                ):
+                    return False
+                witness_generator = getattr(witness, "generator", None)
+                witness_encoder = getattr(witness_generator, "to_dict", None)
+                if (
+                    not callable(witness_encoder)
+                    or _canonical_payload(
+                        witness_encoder(),
+                        "conditional public generator-relation generator",
+                    )
+                    != generator_payload
+                    or getattr(witness, "relation_certificate_payload", None) != payload
+                ):
+                    return False
+                target_ideal = _ideal_power(ideal, invariant)
+                if reconstructor.reconstruct(target_row) != target_ideal:
+                    return False
+                content_hash = payload.get("content_sha256")
+                if not isinstance(content_hash, str):
+                    return False
+                verified_receipts[content_hash] = (
+                    _payload_hash(payload),
+                    _payload_hash(
+                        _canonical_payload(
+                            target_ideal,
+                            "conditional generator-relation target ideal",
+                        )
+                    ),
+                    _payload_hash(generator_payload),
+                )
+            self._verified_generator_relations = verified_receipts
         return True
 
     def verify_conditional_evidence_payload(
@@ -2226,7 +2544,7 @@ class _EngineProofReplayContext:
         except (TypeError, ValueError, ArithmeticError, AttributeError, IndexError):
             return False
 
-    def verify_conditional_grh_record(self, record: Any) -> bool:
+    def verify_conditional_grh_record(self, record: Any, presentation: Any) -> bool:
         proof_stage = _stage(self.result, "proof")
         diagnostics = self.result.diagnostics
         return (
@@ -2241,7 +2559,7 @@ class _EngineProofReplayContext:
             and "GRH" in record.assumption.upper()
             and self._conditional_evidence_payload is not None
             and self._verify_conditional_evidence(
-                self._conditional_evidence_payload, record, self.engine_group
+                self._conditional_evidence_payload, record, presentation
             )
         )
 
@@ -2727,20 +3045,27 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         raise TypeError("the engine class group has no exact presentation material")
     invariants = tuple(int(value) for value in engine_group.invariants())
     generator_ideals = tuple(engine_group.gens_ideals())
-    relation_witnesses = []
+    proof_status = proof_label(result.proof_status)
+    relation_material = []
     for invariant, ideal in zip(invariants, generator_ideals, strict=False):
         relation_ideal = _ideal_power(ideal, invariant)
-        coordinates, generator = engine_group.discrete_log(relation_ideal)
+        receipt_method = getattr(engine_group, "discrete_log_with_receipt", None)
+        if callable(receipt_method):
+            raw_material = receipt_method(relation_ideal)
+            if not isinstance(raw_material, (tuple, list)) or len(raw_material) != 3:
+                raise TypeError("an engine generator relation has malformed material")
+            coordinates, generator, raw_receipt = raw_material
+        else:
+            coordinates, generator = engine_group.discrete_log(relation_ideal)
+            raw_receipt = None
         if any(int(value) for value in coordinates):
             raise ArithmeticError("an engine generator has the wrong claimed order")
-        relation_witnesses.append(
-            PrincipalIdealWitness(
-                relation_ideal,
-                generator,
-                source="engine Smith-generator order relation",
-            )
+        receipt = (
+            _finalize_generator_relation_receipt(raw_receipt, invariant)
+            if proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+            else None
         )
-    proof_status = proof_label(result.proof_status)
+        relation_material.append((relation_ideal, generator, receipt))
     proof_stage = _stage(result, "proof")
     if proof_stage is None or proof_stage.state != "complete":
         raise ArithmeticError("the engine result has no completed proof stage")
@@ -2794,6 +3119,11 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
                 theorem=str(engine_group.factor_base_theorem),
                 bound=bound,
                 relation_count=relation_count,
+                generator_relations=tuple(
+                    receipt
+                    for _ideal, _generator, receipt in relation_material
+                    if receipt is not None
+                ),
             )
     replay = _EngineProofReplayContext(
         result,
@@ -2881,11 +3211,24 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         )
     else:
         raise ValueError("an incomplete proof label cannot expose a class group")
+    relation_witnesses = tuple(
+        PrincipalIdealWitness(
+            relation_ideal,
+            generator,
+            source="engine Smith-generator order relation",
+            relation_certificate=(
+                None
+                if receipt is None
+                else _ConditionalGeneratorRelationCertificate(replay, receipt)
+            ),
+        )
+        for relation_ideal, generator, receipt in relation_material
+    )
     answer = IdealClassGroup(
         order,
         invariants,
         generator_ideals,
-        tuple(relation_witnesses),
+        relation_witnesses,
         engine_group.discrete_log,
         proof_status=proof_status,
         algorithm=str(result.algorithm),

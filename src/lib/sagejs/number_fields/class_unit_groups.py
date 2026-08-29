@@ -41,6 +41,9 @@ MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 _CUBIC_RELATION_SEED_UNREAD = object()
 _TERMINAL_SATURATION_CLONE_TOKEN = object()
 _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN = object()
+_CLASS_GROUP_GENERATOR_RELATION_SCHEMA = (
+    "sagejs.number-fields/class-group-generator-relation-v1"
+)
 
 
 def _context_matches_engine_limits(
@@ -959,7 +962,9 @@ class _EngineClassGroup:
             raise ArithmeticError("an ideal quotient has a nonzero free class")
         return tuple(coefficients)
 
-    def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+    def _discrete_log_material(
+        self, ideal: Any
+    ) -> tuple[tuple[int, ...], Any, dict[str, Any] | None]:
         reduction_witness = None
         try:
             row = tuple(
@@ -976,10 +981,39 @@ class _EngineClassGroup:
         for index in range(len(row)):
             delta_values.append(row[index] - reduced[index])
         delta = tuple(delta_values)
-        witness = self._combine_relations(self._relation_coefficients(delta))
+        coefficients = self._relation_coefficients(delta)
+        witness = self._combine_relations(coefficients)
         if reduction_witness is not None:
             witness = self._combine_reduction_witness(witness, reduction_witness)
+        receipt = None
+        encoder = getattr(witness, "to_dict", None)
+        if reduction_witness is None and callable(encoder):
+            body = {
+                "schema": _CLASS_GROUP_GENERATOR_RELATION_SCHEMA,
+                "target_row": list(row),
+                "coordinates": list(coordinates),
+                "reduced_row": list(reduced),
+                "relation_coefficients": list(coefficients),
+                "generator": encoder(),
+            }
+            receipt = {**body, "content_sha256": _canonical_payload_hash(body)}
+        return coordinates, witness, receipt
+
+    def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+        coordinates, witness, _receipt = self._discrete_log_material(ideal)
         return coordinates, witness
+
+    def discrete_log_with_receipt(
+        self, ideal: Any
+    ) -> tuple[tuple[int, ...], Any, dict[str, Any] | None]:
+        """Return exact coordinates, witness, and a compact relation receipt.
+
+        A receipt is available only when the ideal already factors over the
+        authenticated factor base.  Reduction witnesses retain the untouched
+        materialized verification path because they add independent factors
+        not represented by the relation-lattice coefficient vector.
+        """
+        return self._discrete_log_material(ideal)
 
     def __call__(self, ideal: Any) -> _EngineClassElement:
         if isinstance(ideal, _EngineClassElement):

@@ -25,7 +25,7 @@ const fixture = JSON.parse(
   ),
 );
 
-function run(source) {
+function run(source, timeout = 120_000) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-class-unit-engine-"));
   try {
     const moduleSource = readFileSync(
@@ -45,7 +45,7 @@ function run(source) {
     const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
-      timeout: 120_000,
+      timeout,
     });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     return result.stdout.trim();
@@ -1027,13 +1027,50 @@ assert resources["class_p_torsion_source_work"] == 924
 assert resources["class_p_torsion_source_candidates"] == 12
 assert resources["class_p_torsion_source_uses"] >= 1
 assert resources["class_p_torsion_source_fallbacks"] == 0
+maps = __import__(
+    "sagejs.number_fields.class_group_maps",
+    fromlist=["class_group_from_engine_result"],
+)
+adapted = maps.class_group_from_engine_result(result)
+payload = adapted.proof_payload()
+receipts = payload["conditional_evidence"]["generator_relations"]
+assert len(receipts) == 1
+receipt = receipts[0]
+assert receipt["coordinates"] == [0]
+assert sum(abs(value) for value in receipt["relation_coefficients"]) == 336499
+projection = maps.seal_public_class_group_projection(adapted)
+view = maps.public_class_group_projection_view(projection)
+assert view.order() == 9
+assert view.invariants() == (9,)
+assert view.verify()
+assert view.verify_proof_payload(payload)
+
+copy = __import__("copy")
+def rehash(document):
+    body = dict(document)
+    del body["content_sha256"]
+    document["content_sha256"] = maps._payload_hash(body)
+
+bad_coefficient = copy.deepcopy(payload)
+bad_receipt = bad_coefficient["conditional_evidence"]["generator_relations"][0]
+bad_receipt["relation_coefficients"][0] += 1
+rehash(bad_receipt)
+rehash(bad_coefficient["conditional_evidence"])
+assert not view.verify_proof_payload(bad_coefficient)
+
+bad_generator = copy.deepcopy(payload)
+bad_receipt = bad_generator["conditional_evidence"]["generator_relations"][0]
+bad_receipt["generator"]["factors"][0]["exponent"] += 1
+rehash(bad_receipt)
+rehash(bad_generator["conditional_evidence"])
+assert not view.verify_proof_payload(bad_generator)
 print((
     result.class_number(),
     result.class_group().invariants(),
     resources["class_p_torsion_source_candidates"],
     result.saturation_record.remaining_index_bound,
 ))
-`);
+`, 300_000);
   assert.equal(output, "(9, (9,), 12, 1)");
 });
 

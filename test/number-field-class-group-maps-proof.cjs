@@ -302,7 +302,8 @@ conditional = ConditionalGRHProofRecord.from_dict(conditional_data)
 
 class ConditionalContext:
     saturation_record = conditional.saturation
-    def verify_conditional_grh_record(self, record):
+    def verify_conditional_grh_record(self, record, presentation):
+        assert presentation is Cgrh
         return record.to_dict() == conditional.to_dict()
 
 CONDITIONAL_CONTEXT = ConditionalContext()
