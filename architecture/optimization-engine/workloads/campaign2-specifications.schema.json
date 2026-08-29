@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/campaign2-specifications.schema.json",
+  "title": "Sage.js Campaign 2 workload specifications",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "campaign", "owner", "subjects"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-campaign-workload-specifications/v1" },
+    "campaign": { "const": "mature-capability-routing-calibration" },
+    "owner": { "const": "optimization-engine" },
+    "subjects": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "family", "role", "title", "publicEntry", "sourcePaths", "corpus", "oracles", "protocol", "platforms", "browsers", "instrumentation", "costBoundary"],
+        "properties": {
+          "key": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+          "family": { "enum": ["dense-integral", "cubic-factorization", "hyperelliptic-normalization"] },
+          "role": { "enum": ["representative", "held-out"] },
+          "title": { "type": "string", "minLength": 1 },
+          "publicEntry": { "type": "object" },
+          "sourcePaths": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "corpus": { "type": "object" },
+          "oracles": { "type": "array", "minItems": 2, "items": { "type": "object" } },
+          "protocol": { "type": "object" },
+          "platforms": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "browsers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+          "instrumentation": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "costBoundary": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["included", "excluded"],
+            "properties": {
+              "included": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "excluded": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "key": { "const": "dense-integral-held-out" } },
+              "required": ["key"]
+            },
+            "then": {
+              "properties": {
+                "corpus": {
+                  "type": "object",
+                  "required": ["id", "definition"],
+                  "properties": {
+                    "id": { "const": "dense-integral-gf257-thirty-eight-holes" },
+                    "definition": {
+                      "type": "object",
+                      "required": ["modulus", "degree", "forcedZeroRule"],
+                      "properties": {
+                        "modulus": { "const": 257 },
+                        "degree": { "const": 9999 },
+                        "forcedZeroRule": { "const": "set coefficient i to zero exactly when (i+1) mod 257 is zero" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

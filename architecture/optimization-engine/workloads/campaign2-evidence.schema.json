@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/campaign2-evidence.schema.json",
+  "title": "Sage.js Campaign 2 discovery evidence bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "epochId", "family", "provenance", "matureCapability", "semantics", "platform", "boundary", "alternatives", "nativeAlternative"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-campaign2-discovery-evidence/v1" },
+    "epochId": { "$ref": "../wire-definitions-v2.schema.json#/$defs/contentId" },
+    "family": { "enum": ["dense-integral", "cubic-factorization", "hyperelliptic-normalization"] },
+    "provenance": { "type": "object" },
+    "matureCapability": { "type": "object" },
+    "semantics": { "type": "object" },
+    "platform": { "type": "object" },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complete", "included", "excluded", "roles"],
+      "properties": {
+        "complete": { "type": "boolean" },
+        "included": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "excluded": { "type": "array", "items": { "type": "string" } },
+        "roles": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "workloadId", "pairs", "baseline", "candidate", "cleanupComplete"],
+            "properties": {
+              "role": { "enum": ["representative", "held-out"] },
+              "workloadId": { "$ref": "../wire-definitions-v2.schema.json#/$defs/contentId" },
+              "pairs": { "type": "array", "minItems": 11, "maxItems": 11, "items": { "type": "object" } },
+              "baseline": { "type": "object" },
+              "candidate": { "type": "object" },
+              "cleanupComplete": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "alternatives": { "type": "array", "minItems": 7, "maxItems": 7, "items": { "type": "object" } },
+    "nativeAlternative": { "type": "object" }
+  }
+}
