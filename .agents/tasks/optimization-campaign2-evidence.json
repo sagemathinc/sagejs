@@ -9,8 +9,13 @@
   "objective": "Implement v2 representative and held-out Campaign 2 workload contracts plus deterministic discovery/adjudication harnesses for dense integral, cubic factorization, and hyperelliptic normalization without modifying production routes",
   "base_commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
   "claims": [
-    "bench/optimization-engine/",
-    "architecture/optimization-engine/workloads/",
+    "architecture/optimization-engine/workloads/README.md",
+    "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+    "architecture/optimization-engine/workloads/campaign2-specifications.json",
+    "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+    "bench/optimization-engine/campaign2-discovery.cjs",
+    "bench/optimization-engine/campaign2-workloads.cjs",
+    "bench/optimization-engine/integral-library-candidate.py",
     "test/optimization-campaign2-evidence.cjs"
   ],
   "dependencies": [],
