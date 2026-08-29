@@ -1037,6 +1037,24 @@ print((
   assert.equal(output, "(9, (9,), 12, 1)");
 });
 
+test("conditional cubic groups detach a canonical seeded factor base", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 9*x - 16, "a")
+group = K.class_group(proof=False)
+assert group.order() == 4
+assert group.invariants() == (2, 2)
+assert group._proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert group.verify()
+payload = group.proof_payload()
+assert payload["schema"] == "sagejs.number-fields.class-group.grh-proof.v1"
+assert group.verify_proof_payload(payload)
+print((group.order(), group.invariants(), payload["proof_status"]))
+`);
+  assert.equal(output, "(4, (2, 2), 'exact-relations-conditional-grh')");
+});
+
 test("exact presentations are deferred across safe relation batches", () => {
   const output = run(String.raw`
 class FakeRecord:

@@ -462,7 +462,22 @@ def _producer_conditional_evidence(
     relations = tuple(relations)
     if len(relations) != relation_count:
         raise ArithmeticError("conditional relation evidence has the wrong count")
-    _module, _plan, plan_payload = _conditional_factor_base_plan(order, theorem, bound)
+    module, plan, plan_payload = _conditional_factor_base_plan(order, theorem, bound)
+    rebuilt_records = module.build_factor_base(plan)
+    rebuilt_factor_base = tuple(
+        _value(record, ("prime_ideal", "ideal"), None) for record in rebuilt_records
+    )
+    if (
+        len(rebuilt_factor_base) != len(factor_base)
+        or any(prime is None for prime in rebuilt_factor_base)
+        or any(
+            rebuilt != retained
+            for rebuilt, retained in zip(rebuilt_factor_base, factor_base, strict=True)
+        )
+    ):
+        raise ArithmeticError(
+            "conditional relation evidence changed its ordered factor base"
+        )
     body = {
         "schema": _CONDITIONAL_EVIDENCE_SCHEMA,
         "proof_status": EXACT_RELATIONS_CONDITIONAL_GRH,
@@ -476,7 +491,7 @@ def _producer_conditional_evidence(
         "factor_base_plan": plan_payload,
         "factor_base": [
             _canonical_payload(prime, "conditional factor-base prime")
-            for prime in factor_base
+            for prime in rebuilt_factor_base
         ],
         "relations": [
             _canonical_payload(record, "conditional relation record")
