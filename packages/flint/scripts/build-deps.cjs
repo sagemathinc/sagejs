@@ -492,7 +492,7 @@ function extract(archive, dependency) {
       "xf",
       basename(archive),
       "-C",
-      relative(archiveDirectory, source),
+      relative(archiveDirectory, source).replaceAll("\\", "/"),
       "--strip-components=1",
     ],
     { cwd: archiveDirectory },

@@ -2,9 +2,16 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const { existsSync, mkdtempSync, readFileSync } = require("node:fs");
+const {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
 const { tmpdir } = require("node:os");
-const { join, resolve } = require("node:path");
+const { basename, join, relative, resolve } = require("node:path");
 const test = require("node:test");
 
 const packageRoot = resolve(__dirname, "..");
@@ -47,6 +54,10 @@ test("Unix smalljac builds expose dependency headers to implicit Make rules", ()
     buildScript,
     /prepareSources\(ffpolySource, smalljacSource\);/,
   );
+  assert.match(
+    buildScript,
+    /relative\(archiveDirectory, source\)\.replaceAll\("\\\\", "\/"\)/,
+  );
 });
 
 test("tiny-prime traces retain their sign when plain char is unsigned", () => {
@@ -67,6 +78,40 @@ test("tiny-prime traces retain their sign when plain char is unsigned", () => {
     /normalize\(join\(smalljacSource, "smalljac_tiny\.c"\)\)/,
   );
 });
+
+test(
+  "Windows tar extracts into a normalized sibling path",
+  { skip: process.platform !== "win32" },
+  () => {
+    const directory = mkdtempSync(join(tmpdir(), "sagejs-tar-path-"));
+    const downloads = join(directory, "downloads");
+    const payload = join(directory, "payload");
+    const destination = join(directory, "sources", "ffpoly");
+    const archive = join(downloads, "ffpoly.tar");
+    try {
+      mkdirSync(downloads, { recursive: true });
+      mkdirSync(payload, { recursive: true });
+      mkdirSync(destination, { recursive: true });
+      writeFileSync(join(payload, "sentinel.txt"), "portable\n");
+      run("tar", ["cf", basename(archive), "-C", payload, "sentinel.txt"], {
+        cwd: downloads,
+      });
+      run(
+        "tar",
+        [
+          "xf",
+          basename(archive),
+          "-C",
+          relative(downloads, destination).replaceAll("\\", "/"),
+        ],
+        { cwd: downloads },
+      );
+      assert.equal(readFileSync(join(destination, "sentinel.txt"), "utf8"), "portable\n");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  },
+);
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { encoding: "utf8", ...options });
