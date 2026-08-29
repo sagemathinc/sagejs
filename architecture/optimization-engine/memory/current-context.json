@@ -1,0 +1,18 @@
+{
+  "schema": "sagejs.optimization-memory-context/v2",
+  "id": "sha256:eb5c43c9d8cfe900544518679ae76b7260808e73e66cd667c2a4a7dee4e37a51",
+  "sourceClosureId": "sha256:b79f6d3f97d104d207e520ddcb2449c2648457931bb9d4870b1cac7f1e21c84a",
+  "workloadIds": [
+    "sha256:6c2a315a80f8567c1b25a8451b9fef3e3f487df411281f8b8fe1dd538cdf8c49",
+    "sha256:89aa8d18509cb79592ecbb89bc82866580899a03287f9add0c6ad62ae6176150"
+  ],
+  "opportunityIds": [
+    "sha256:0edc45e028eec7c75d139767895347090c6958809f9f9b5d81b3ca08eefb5eab"
+  ],
+  "subjects": [
+    {
+      "id": "sha256:1b888e5cc426630fb14cf3ad835f7db052bfcf2e566fdbf8844661f6032f39c9",
+      "predecessorIds": []
+    }
+  ]
+}
