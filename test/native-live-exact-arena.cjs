@@ -77,7 +77,7 @@ assert source["live_arena_shared_limit"](264, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 28);
+  assert.equal(ir.version, 29);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
@@ -134,9 +134,13 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.match(core.source, /SAGEJS_NATIVE_RETRY/);
   assert.match(
     core.source,
-    /static int native_live_arena_machine_result[\s\S]*?spill_allocations != 0[\s\S]*?\*sagejs_native_output =/,
+    /static int native_live_arena_machine_result[\s\S]*?soft_limit_exhaustions != 0[\s\S]*?upstream_allocations != 0[\s\S]*?\*sagejs_native_output =/,
   );
-  assert.match(generateArtifacts(ir).adapterSource, /sagejs_checkpoint_retry/);
+  assert.match(generateArtifacts(ir).adapterSource, /sagejs_checkpoint_shift/);
+  assert.match(
+    generateArtifacts(ir).adapterSource,
+    /sagejs_native_gmp_recommended_retry_shift/,
+  );
   assert.match(
     core.source,
     /success:\n(?:(?!fail:)[\s\S])*mpz_clear\(sagejs_scratch_0\);(?:(?!fail:)[\s\S])*sagejs_native_exact_arena_clear\(&sagejs_workspace\);/,

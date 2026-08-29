@@ -1,4 +1,4 @@
-"""Neutral virtual-checkpoint exact-arena witnesses for Native Kernel v28."""
+"""Neutral virtual-checkpoint exact-arena witnesses for Native Kernel v29."""
 
 from sagejs.native import NativeExactArena, native, uint64
 

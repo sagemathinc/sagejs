@@ -125,11 +125,12 @@ no arena-backed limb or foreign resource can escape.  Resident values and
 published outputs are never silently allocated from rewindable storage.
 
 On 64-bit operating systems the temporary capacity should reserve one stable
-virtual address range and activate physical pages only as the high-water mark
-advances.  A large default reservation is therefore cheap in resident memory
-and retains bump-pointer arithmetic.  WASI or another host without this virtual
-memory contract must expose its different allocation route rather than pretend
-to provide it.
+virtual address range and make pages accessible only as the high-water mark
+advances; the operating system backs touched pages according to its virtual
+memory policy.  A large default reservation is therefore cheap in resident
+memory and retains bump-pointer arithmetic.  WASI or another host without this
+virtual memory contract must expose its different allocation route rather than
+pretend to provide it.
 
 Native Kernel v27 initially admits a deliberately narrower proof: the arena
 body must end in an unconditional return, publication temporarily suspends the
@@ -147,6 +148,15 @@ pointers and erase the allocation proof.  Native Kernel v28 implements stable
 virtual reservation, activation telemetry, and bounded doubling retry for
 replay-safe Node execution.  Extending the same retry authority to browser/Wasm
 dispatch remains a separate platform obligation.
+
+Native Kernel v29 separates the current soft capacity estimate from the hard
+virtual retry envelope.  Crossing the estimate is still serviced by the same
+private bump region, records a retry requirement, and does not call the general
+allocator while the bounded envelope suffices.  The discarded attempt's
+high-water mark selects the next capacity directly.  Actual upstream GMP
+allocations have a distinct counter and are permitted only as hard-envelope
+failure scaffolding; they make the attempt ineligible for publication and must
+not be conflated with a successful allocation-stable route.
 
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no

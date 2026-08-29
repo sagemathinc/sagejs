@@ -25,6 +25,11 @@ const GMP_CHECKPOINT_ALLOCATOR_C_SOURCE = String.raw`
 #define SAGEJS_NATIVE_ALIGNOF(type) _Alignof(type)
 #endif
 
+#define SAGEJS_NATIVE_GMP_MAX_RETRY_SHIFT 8U
+#define SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_SHIFT 8U
+#define SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_CEILING \
+    (UINT64_C(64) << 30)
+
 typedef union
 {
     max_align_t alignment;
@@ -48,7 +53,8 @@ typedef struct sagejs_native_gmp_checkpoint
     uint64_t reallocation_calls;
     uint64_t free_calls;
     uint64_t requested_bytes;
-    uint64_t spill_allocations;
+    uint64_t soft_limit_exhaustions;
+    uint64_t upstream_allocations;
     uint32_t storage_kind;
     unsigned retry_shift;
     int open;
@@ -65,7 +71,8 @@ typedef struct
     uint64_t reallocation_calls;
     uint64_t free_calls;
     uint64_t requested_bytes;
-    uint64_t spill_allocations;
+    uint64_t soft_limit_exhaustions;
+    uint64_t upstream_allocations;
     uint32_t storage_kind;
     unsigned retry_shift;
 } sagejs_native_gmp_checkpoint_stats;
@@ -89,6 +96,8 @@ int sagejs_native_gmp_pointer_is_checkpoint_owned(const void *pointer);
 int sagejs_native_gmp_last_checkpoint_stats(
     sagejs_native_gmp_checkpoint_stats *result);
 int sagejs_native_gmp_set_retry_shift(unsigned shift);
+int sagejs_native_gmp_recommended_retry_shift(
+    unsigned current_shift, unsigned maximum_shift, unsigned *result);
 #else
 
 #ifndef SAGEJS_NATIVE_GMP_ALLOCATOR_API
@@ -137,10 +146,38 @@ static size_t sagejs_native_gmp_page_size(void)
 #endif
 }
 
-static int sagejs_native_gmp_checkpoint_reserve(
-    sagejs_native_gmp_checkpoint *checkpoint, size_t capacity)
+static size_t sagejs_native_gmp_reservation_size(
+    size_t base_capacity, size_t effective_capacity)
 {
-    const size_t reservation_size = capacity == 0 ? 1 : capacity;
+#if defined(__wasi__)
+    (void) base_capacity;
+    return effective_capacity;
+#else
+    const size_t ceiling = sizeof(size_t) >= 8
+        ? (size_t) SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_CEILING
+        : SIZE_MAX;
+    size_t reservation = base_capacity;
+    if (base_capacity <= (SIZE_MAX >>
+            SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_SHIFT))
+        reservation = base_capacity <<
+            SAGEJS_NATIVE_GMP_VIRTUAL_ENVELOPE_SHIFT;
+    else
+        reservation = SIZE_MAX;
+    if (reservation > ceiling)
+        reservation = ceiling;
+    if (reservation < effective_capacity)
+        reservation = effective_capacity;
+    return reservation;
+#endif
+}
+
+static int sagejs_native_gmp_checkpoint_reserve(
+    sagejs_native_gmp_checkpoint *checkpoint,
+    size_t capacity,
+    size_t reservation_size)
+{
+    if (reservation_size == 0)
+        reservation_size = 1;
     checkpoint->capacity = capacity;
     checkpoint->reservation_size = reservation_size;
     checkpoint->page_size = sagejs_native_gmp_page_size();
@@ -171,21 +208,22 @@ static int sagejs_native_gmp_checkpoint_activate(
     size_t growth;
     if (required <= checkpoint->activated)
         return 1;
-    if (required > checkpoint->capacity)
+    if (required > checkpoint->reservation_size)
         return 0;
     growth = checkpoint->activated == 0
         ? checkpoint->page_size : checkpoint->activated;
-    if (growth > checkpoint->capacity - checkpoint->activated)
-        target = checkpoint->capacity;
+    if (growth > checkpoint->reservation_size - checkpoint->activated)
+        target = checkpoint->reservation_size;
     else
         target = checkpoint->activated + growth;
     if (target < required)
         target = required;
-    if (target < checkpoint->capacity)
+    if (target < checkpoint->reservation_size)
     {
         const size_t remainder = target % checkpoint->page_size;
         if (remainder != 0 &&
-            checkpoint->page_size - remainder <= checkpoint->capacity - target)
+            checkpoint->page_size - remainder <=
+                checkpoint->reservation_size - target)
             target += checkpoint->page_size - remainder;
     }
 #if defined(_WIN32)
@@ -232,7 +270,8 @@ static sagejs_native_gmp_checkpoint *sagejs_native_gmp_owner(
     while (checkpoint != NULL)
     {
         const uintptr_t start = (uintptr_t) checkpoint->storage;
-        if (address > start && address < start + checkpoint->capacity)
+        if (address > start &&
+            address - start < checkpoint->reservation_size)
             return checkpoint;
         checkpoint = checkpoint->previous;
     }
@@ -246,11 +285,15 @@ static void *sagejs_native_gmp_checkpoint_allocate(
     const size_t raw = sizeof(sagejs_native_gmp_arena_header) + payload;
     const size_t span = sagejs_native_gmp_align(raw);
     sagejs_native_gmp_arena_header *header;
-    if (span == SIZE_MAX || checkpoint->used > checkpoint->capacity ||
-        span > checkpoint->capacity - checkpoint->used ||
+    if (span == SIZE_MAX ||
+        checkpoint->used > checkpoint->reservation_size ||
+        span > checkpoint->reservation_size - checkpoint->used ||
         !sagejs_native_gmp_checkpoint_activate(
             checkpoint, checkpoint->used + span))
         return NULL;
+    if (checkpoint->used > checkpoint->capacity ||
+        span > checkpoint->capacity - checkpoint->used)
+        checkpoint->soft_limit_exhaustions += 1;
     header = (sagejs_native_gmp_arena_header *)
         (checkpoint->storage + checkpoint->used);
     header->value.requested = requested;
@@ -273,7 +316,7 @@ static void *sagejs_native_gmp_malloc(size_t requested)
             sagejs_native_gmp_active_checkpoint, requested);
         if (result != NULL)
             return result;
-        sagejs_native_gmp_active_checkpoint->spill_allocations += 1;
+        sagejs_native_gmp_active_checkpoint->upstream_allocations += 1;
     }
     result = sagejs_native_gmp_upstream_allocate(requested == 0 ? 1 : requested);
     if (result == NULL)
@@ -309,9 +352,12 @@ static void *sagejs_native_gmp_realloc(
     checkpoint->reallocation_calls += 1;
     checkpoint->requested_bytes += (uint64_t) requested;
     if (span != SIZE_MAX && offset + header->value.span == checkpoint->used &&
-        span <= checkpoint->capacity - offset &&
+        span <= checkpoint->reservation_size - offset &&
         sagejs_native_gmp_checkpoint_activate(checkpoint, offset + span))
     {
+        if (offset > checkpoint->capacity ||
+            span > checkpoint->capacity - offset)
+            checkpoint->soft_limit_exhaustions += 1;
         checkpoint->used = offset + span;
         if (checkpoint->used > checkpoint->high_water)
             checkpoint->high_water = checkpoint->used;
@@ -322,7 +368,7 @@ static void *sagejs_native_gmp_realloc(
     result = sagejs_native_gmp_checkpoint_allocate(checkpoint, requested);
     if (result == NULL)
     {
-        checkpoint->spill_allocations += 1;
+        checkpoint->upstream_allocations += 1;
         result = sagejs_native_gmp_upstream_allocate(payload);
         if (result == NULL)
             abort();
@@ -370,6 +416,7 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_checkpoint_begin(
     sagejs_native_gmp_checkpoint *checkpoint, size_t capacity)
 {
     size_t effective_capacity = capacity;
+    size_t reservation_size;
     if (checkpoint == NULL || checkpoint->open ||
         sagejs_native_gmp_checkpoint_suspended != 0)
         return 0;
@@ -377,10 +424,12 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_checkpoint_begin(
         capacity > (SIZE_MAX >> sagejs_native_gmp_retry_shift))
         return 0;
     effective_capacity <<= sagejs_native_gmp_retry_shift;
+    reservation_size = sagejs_native_gmp_reservation_size(
+        capacity, effective_capacity);
     memset(checkpoint, 0, sizeof(*checkpoint));
     checkpoint->retry_shift = sagejs_native_gmp_retry_shift;
     if (!sagejs_native_gmp_checkpoint_reserve(
-            checkpoint, effective_capacity))
+            checkpoint, effective_capacity, reservation_size))
         return 0;
     checkpoint->previous = sagejs_native_gmp_active_checkpoint;
     checkpoint->open = 1;
@@ -407,8 +456,10 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_checkpoint_end(
     sagejs_native_gmp_completed_checkpoint.free_calls = checkpoint->free_calls;
     sagejs_native_gmp_completed_checkpoint.requested_bytes =
         checkpoint->requested_bytes;
-    sagejs_native_gmp_completed_checkpoint.spill_allocations =
-        checkpoint->spill_allocations;
+    sagejs_native_gmp_completed_checkpoint.soft_limit_exhaustions =
+        checkpoint->soft_limit_exhaustions;
+    sagejs_native_gmp_completed_checkpoint.upstream_allocations =
+        checkpoint->upstream_allocations;
     sagejs_native_gmp_completed_checkpoint.storage_kind =
         checkpoint->storage_kind;
     sagejs_native_gmp_completed_checkpoint.retry_shift =
@@ -460,6 +511,36 @@ SAGEJS_NATIVE_GMP_ALLOCATOR_API int sagejs_native_gmp_set_retry_shift(
         sagejs_native_gmp_checkpoint_suspended != 0)
         return 0;
     sagejs_native_gmp_retry_shift = shift;
+    return 1;
+}
+
+SAGEJS_NATIVE_GMP_ALLOCATOR_API int
+sagejs_native_gmp_recommended_retry_shift(
+    unsigned current_shift, unsigned maximum_shift, unsigned *result)
+{
+    size_t base_capacity;
+    size_t required;
+    unsigned shift;
+    if (result == NULL || !sagejs_native_gmp_has_completed_checkpoint ||
+        current_shift > maximum_shift ||
+        sagejs_native_gmp_completed_checkpoint.retry_shift != current_shift)
+        return 0;
+    base_capacity = sagejs_native_gmp_completed_checkpoint.capacity >>
+        current_shift;
+    if (base_capacity == 0)
+        return 0;
+    required = sagejs_native_gmp_completed_checkpoint.high_water;
+    if (sagejs_native_gmp_completed_checkpoint.upstream_allocations != 0 &&
+        required < sagejs_native_gmp_completed_checkpoint.reservation_size)
+        required = sagejs_native_gmp_completed_checkpoint.reservation_size;
+    shift = current_shift + 1;
+    while (shift < maximum_shift &&
+        base_capacity <= (SIZE_MAX >> shift) &&
+        (base_capacity << shift) < required)
+        shift += 1;
+    if (shift > maximum_shift)
+        shift = maximum_shift;
+    *result = shift;
     return 1;
 }
 

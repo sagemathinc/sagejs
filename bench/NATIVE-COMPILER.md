@@ -1,6 +1,6 @@
-# Native Kernel v28
+# Native Kernel v29
 
-Native Kernel v28 asks whether selected Sage.js library functions can compile
+Native Kernel v29 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v28 is currently a source-tree development feature and uses the
+Native Kernel v29 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -524,7 +524,8 @@ geometrically; Windows uses `VirtualAlloc` reservation and commitment. WASI,
 which has no comparable virtual-memory API, retains the authenticated upstream
 allocator path. Thus a 64-bit host can reserve a PARI-sized temporary region
 without immediately consuming that much physical memory, while every receipt
-reports reserved bytes, activated bytes, high-water use, and spills. V28 does
+reports reserved bytes, activated bytes, high-water use, and capacity
+exhaustion. V28 does
 not silently move or grow an active region. When a replay-safe arena exhausts
 its reservation, the core returns an internal typed retry status before
 publication. The Node boundary doubles only the next virtual reservation and
@@ -532,6 +533,17 @@ replays the complete transaction, up to eight times; resident outputs and
 caller-visible state remain untouched between attempts. Non-replay-safe
 functions never receive this automatic policy. Exhausting all attempts becomes
 one ordinary range failure instead of a process abort or partial publication.
+
+V29 reserves the complete bounded retry envelope separately from the current
+soft estimate. An estimate overrun continues in the same private bump region,
+without using the upstream GMP allocator, as long as it fits that envelope.
+The failed attempt records its high-water mark, so the dispatcher jumps to the
+smallest sufficient power-of-two capacity instead of paying every intermediate
+doubling. Soft-limit crossings and true upstream allocations are separate
+telemetry. Either prevents publication; a production allocation-stable route
+requires zero upstream allocations on its accepted attempt. POSIX and Windows
+cap the automatically enlarged virtual envelope at 64 GiB unless the explicit
+effective capacity is larger; WASI retains its physically allocated route.
 
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and
