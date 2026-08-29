@@ -1009,6 +1009,34 @@ print((
   assert.equal(output, "(1, 1, 128)");
 });
 
+test("cubic class saturation searches nonzero p-torsion cosets", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 21*x + 388, "a")
+result = compute_class_unit_group(K, proof=False, algorithm="auto")
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 9
+assert result.class_group().invariants() == (9,)
+assert result.saturation_record.verify(K, K.maximal_order())
+assert result.saturation_record.remaining_index_bound == 1
+resources = result.diagnostics["resources"]
+assert resources["class_p_torsion_source_searches"] == 1
+assert resources["class_p_torsion_source_work"] == 924
+assert resources["class_p_torsion_source_candidates"] == 12
+assert resources["class_p_torsion_source_uses"] >= 1
+assert resources["class_p_torsion_source_fallbacks"] == 0
+print((
+    result.class_number(),
+    result.class_group().invariants(),
+    resources["class_p_torsion_source_candidates"],
+    result.saturation_record.remaining_index_bound,
+))
+`);
+  assert.equal(output, "(9, (9,), 12, 1)");
+});
+
 test("exact presentations are deferred across safe relation batches", () => {
   const output = run(String.raw`
 class FakeRecord:

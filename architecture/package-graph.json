@@ -199,6 +199,21 @@
       "prefixes": ["src/lib/sagejs/number_fields/"]
     },
     {
+      "id": "number-field-relation-matrix",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 115000,
+      "depends_on": [
+        "core-runtime",
+        "linear-algebra",
+        "python-stdlib",
+        "number-field-algorithms"
+      ],
+      "modules": ["sagejs.number_fields.class_group_matrix"],
+      "files": ["src/lib/sagejs/number_fields/class_group_matrix.py"],
+      "prefixes": []
+    },
+    {
       "id": "number-field-prime-arithmetic",
       "layer": 6,
       "startup": "lazy",
@@ -269,11 +284,11 @@
         "numeric-compat",
         "python-stdlib",
         "number-field-algorithms",
-        "number-field-prime-arithmetic"
+        "number-field-prime-arithmetic",
+        "number-field-relation-matrix"
       ],
       "modules": [
         "sagejs.number_fields.class_group_factor_base",
-        "sagejs.number_fields.class_group_matrix",
         "sagejs.number_fields.class_group_maps",
         "sagejs.number_fields.class_group_proof",
         "sagejs.number_fields.class_group_relations",
@@ -290,7 +305,6 @@
       ],
       "files": [
         "src/lib/sagejs/number_fields/class_group_factor_base.py",
-        "src/lib/sagejs/number_fields/class_group_matrix.py",
         "src/lib/sagejs/number_fields/class_group_maps.py",
         "src/lib/sagejs/number_fields/class_group_proof.py",
         "src/lib/sagejs/number_fields/class_group_relations.py",

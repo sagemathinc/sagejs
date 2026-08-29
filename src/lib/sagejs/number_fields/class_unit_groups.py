@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence, cast
 
 import sagejs.runtime as runtime
 
@@ -1734,6 +1734,12 @@ class ClassUnitGroupEngine:
             "unit_principal_authority_fallbacks": 0,
             "presentation_extractions": 0,
             "saturation_rounds": 0,
+            "class_p_torsion_source_searches": 0,
+            "class_p_torsion_source_cache_hits": 0,
+            "class_p_torsion_source_work": 0,
+            "class_p_torsion_source_candidates": 0,
+            "class_p_torsion_source_uses": 0,
+            "class_p_torsion_source_fallbacks": 0,
             "proof_primes_completed": 0,
             "generation_verification_calls": 0,
             "generation_verification_cache_hits": 0,
@@ -1799,6 +1805,9 @@ class ClassUnitGroupEngine:
         self._relation_presentation_policy: Any = None
         self._relation_presentation_record_count = 0
         self._relation_steering_context: Any = None
+        self._class_p_torsion_source_cache: dict[
+            tuple[int, int], tuple[Any, tuple[tuple[int, ...], ...]]
+        ] = {}
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
@@ -2528,6 +2537,7 @@ class ClassUnitGroupEngine:
         coefficient_bound: int,
         *,
         saturation_prime: int | None = None,
+        saturation_presentation: Any = None,
         target_missing_pivots: bool = False,
         steering: Any = None,
     ) -> tuple[Any, tuple[int, ...], str]:
@@ -2543,6 +2553,15 @@ class ClassUnitGroupEngine:
         row = [0] * width
         if saturation_prime is not None:
             prime = _positive(saturation_prime, "saturation_prime")
+            candidates = self._small_p_torsion_source_rows(
+                saturation_presentation, prime
+            )
+            if candidates:
+                source_row = candidates[attempt % len(candidates)]
+                self._resource_usage["class_p_torsion_source_uses"] += 1
+                ideal = search.collector.reconstruct_factor_base_ideal(source_row)
+                return ideal, source_row, "targeted-class-p-torsion-coset"
+            self._resource_usage["class_p_torsion_source_fallbacks"] += 1
             target = (attempt + prime + self.seed) % width
             row[target] = prime
             if width > 1 and attempt % 2:
@@ -2576,6 +2595,47 @@ class ClassUnitGroupEngine:
         # instead of rebuilding the prime powers and ideal product.
         ideal = search.collector.reconstruct_factor_base_ideal(source_row)
         return ideal, source_row, strategy
+
+    def _small_p_torsion_source_rows(
+        self, presentation: Any, prime: int
+    ) -> tuple[tuple[int, ...], ...]:
+        """Cache bounded sparse source rows in nonzero exact `p`-torsion classes."""
+        if (
+            presentation is None
+            or int(getattr(presentation, "free_rank", -1)) != 0
+            or getattr(presentation, "order", None) is None
+        ):
+            return ()
+        checked_prime = _positive(prime, "saturation_prime")
+        cache_key = (id(presentation), checked_prime)
+        cached = self._class_p_torsion_source_cache.get(cache_key)
+        if cached is not None and cached[0] is presentation:
+            self._resource_usage["class_p_torsion_source_cache_hits"] += 1
+            return cached[1]
+        self._resource_usage["class_p_torsion_source_searches"] += 1
+        raw_producer: Any = getattr(
+            self.components.matrix, "small_p_torsion_source_rows", None
+        )
+        if not callable(raw_producer):
+            answer: tuple[tuple[int, ...], ...] = ()
+            self._class_p_torsion_source_cache[cache_key] = (presentation, answer)
+            return answer
+        producer = cast(Callable[..., Any], raw_producer)
+        raw_answer, raw_work = producer(
+            presentation,
+            checked_prime,
+            maximum_target_classes=self.limits.max_saturation_target_classes,
+            maximum_work=self.limits.max_saturation_work,
+            maximum_candidates=min(64, self.limits.max_candidates_per_ideal),
+        )
+        answer = tuple(tuple(int(value) for value in row) for row in raw_answer)
+        work = _integer(raw_work, "p-torsion source search work")
+        if work < 0:
+            raise ValueError("p-torsion source search work must be nonnegative")
+        self._resource_usage["class_p_torsion_source_work"] += work
+        self._resource_usage["class_p_torsion_source_candidates"] += len(answer)
+        self._class_p_torsion_source_cache[cache_key] = (presentation, answer)
+        return answer
 
     def _search_relation_ideal(
         self,
@@ -3635,6 +3695,7 @@ class ClassUnitGroupEngine:
                     attempts,
                     coefficient_bound,
                     saturation_prime=saturation_prime,
+                    saturation_presentation=presentation,
                     steering=steering if steering_active else None,
                 )
             before = len(collector.records)
@@ -4219,15 +4280,17 @@ class ClassUnitGroupEngine:
         ):
             return source
         self._resource_usage["dependency_lattice_lll_requests"] += 1
-        reducer = getattr(
+        reducer: Any = getattr(
             self.components.relations, "_exact_lll_reduce_with_transform", None
         )
-        determinant = getattr(self.components.matrix, "_determinant_exact", None)
+        determinant: Any = getattr(self.components.matrix, "_determinant_exact", None)
         if not callable(reducer) or not callable(determinant):
             self._resource_usage["dependency_lattice_lll_fallbacks"] += 1
             return source
+        reduce_exact = cast(Callable[..., Any], reducer)
+        determinant_exact = cast(Callable[..., Any], determinant)
         try:
-            raw_reduced, raw_transform = reducer(source)
+            raw_reduced, raw_transform = reduce_exact(source)
             reduced = tuple(tuple(int(value) for value in row) for row in raw_reduced)
             transform = tuple(
                 tuple(int(value) for value in row) for row in raw_transform
@@ -4239,7 +4302,7 @@ class ClassUnitGroupEngine:
                 or any(len(row) != relation_count for row in reduced)
                 or len(transform) != row_count
                 or any(len(row) != row_count for row in transform)
-                or abs(int(determinant(transform))) != 1
+                or abs(int(determinant_exact(transform))) != 1
             ):
                 raise ArithmeticError("LLL returned a malformed dependency basis")
             for row_index, row in enumerate(reduced):

@@ -1810,6 +1810,114 @@ class RelationPresentation:
         return answer
 
 
+def small_p_torsion_source_rows(
+    presentation: RelationPresentation,
+    prime: int,
+    *,
+    maximum_target_classes: int,
+    maximum_work: int,
+    maximum_candidates: int,
+) -> tuple[tuple[tuple[int, ...], ...], int]:
+    """Find bounded sparse ambient rows in nonzero exact `p`-torsion classes.
+
+    This chooses source ideals for an external principal-relation search; it
+    does not assert that any selected row is a relation.  Every returned row
+    is replayed through the presentation-owned Smith coordinate map.
+    """
+    if not isinstance(presentation, RelationPresentation):
+        raise RelationMatrixError("p-torsion search needs a relation presentation")
+    checked_prime = _integer(prime, "p-torsion prime")
+    if not _is_prime(checked_prime):
+        raise RelationMatrixError("p-torsion search needs a prime")
+    target_limit = _integer(maximum_target_classes, "maximum target classes")
+    work_limit = _integer(maximum_work, "maximum p-torsion search work")
+    candidate_limit = _integer(maximum_candidates, "maximum p-torsion candidates")
+    if target_limit <= 0 or work_limit <= 0 or candidate_limit <= 0:
+        raise RelationMatrixError("p-torsion search limits must be positive")
+    if presentation.free_rank or presentation.order is None:
+        return (), 0
+    invariants = tuple(int(value) for value in presentation.invariants)
+    divisible = tuple(
+        index
+        for index, invariant in enumerate(invariants)
+        if invariant % checked_prime == 0
+    )
+    if not divisible:
+        return (), 0
+
+    # Dictionary-key membership supplies the exact tuple-key semantics needed
+    # here and avoids a separate Sage.js runtime defect in tuple-valued sets.
+    targets: dict[tuple[int, ...], None] = {}
+    for index in divisible:
+        step = invariants[index] // checked_prime
+        for multiplier in range(1, checked_prime):
+            coordinates = [0] * len(invariants)
+            coordinates[index] = multiplier * step
+            targets[tuple(coordinates)] = None
+            if len(targets) >= target_limit:
+                break
+        if len(targets) >= target_limit:
+            break
+    encoded_limit = 1
+    for _index in divisible:
+        encoded_limit = min(target_limit + 1, encoded_limit * checked_prime)
+    encoded = 1
+    while len(targets) < target_limit and encoded < encoded_limit:
+        value = encoded
+        coordinates = [0] * len(invariants)
+        for index in divisible:
+            digit = value % checked_prime
+            value //= checked_prime
+            coordinates[index] = digit * (invariants[index] // checked_prime)
+        if any(coordinates):
+            targets[tuple(coordinates)] = None
+        encoded += 1
+
+    coefficient_values = (-2, -1, 1, 2)
+    candidates: list[tuple[int, ...]] = []
+    width = presentation.column_count
+    work = 0
+    for left in range(width):
+        for left_value in coefficient_values:
+            if work >= work_limit:
+                break
+            row = [0] * width
+            row[left] = left_value
+            if tuple(presentation.class_coordinates(row)) in targets:
+                candidates.append(tuple(row))
+            work += 1
+            for right in range(left + 1, width):
+                for right_value in coefficient_values:
+                    if work >= work_limit:
+                        break
+                    row[right] = right_value
+                    if tuple(presentation.class_coordinates(row)) in targets:
+                        candidates.append(tuple(row))
+                    work += 1
+                row[right] = 0
+                if work >= work_limit:
+                    break
+        if work >= work_limit:
+            break
+    candidates.sort(
+        key=lambda candidate: (
+            any(value < 0 for value in candidate),
+            max(abs(value) for value in candidate),
+            sum(abs(value) for value in candidate),
+            candidate,
+        )
+    )
+    answer = tuple(candidates[:candidate_limit])
+    for row in answer:
+        coordinates = tuple(presentation.class_coordinates(row))
+        if coordinates not in targets or any(
+            (checked_prime * coordinate) % invariant
+            for coordinate, invariant in zip(coordinates, invariants, strict=True)
+        ):
+            raise ArithmeticError("a sparse row lost its exact p-torsion class")
+    return answer, work
+
+
 def extend_relation_presentation_with_duplicate_rows(
     presentation: RelationPresentation,
     rows: Iterable[Any],
