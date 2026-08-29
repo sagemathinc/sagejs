@@ -1051,7 +1051,11 @@ function emitExactStatements(statements, context, indent) {
       );
       const residentSetup = statement.body.slice(0, lastAllocation + 1);
       const checkpointBody = statement.body.slice(lastAllocation + 1);
-      const checkpointContext = { ...context, checkpointActive: true };
+      const checkpointContext = {
+        ...context,
+        checkpointActive: true,
+        checkpointOwner: owner,
+      };
       const cleanupChildren = [...statement.children].reverse().flatMap(
         (child) => {
           const clear = child.type === "NativeIntegerMatrix"
@@ -1097,6 +1101,16 @@ function emitExactStatements(statements, context, indent) {
       const publishesExact = tuple !== undefined
         ? tuple.includes("Integer")
         : statement.type === "Integer";
+      if (context.checkpointActive) {
+        lines.push(
+          `${indent}if (${context.checkpointOwner}.checkpoint.spill_allocations != 0)`,
+          `${indent}{`,
+          `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RETRY,`,
+          `${indent}        "NativeExactArena temporary capacity exhausted");`,
+          `${indent}    goto fail;`,
+          `${indent}}`,
+        );
+      }
       if (context.checkpointActive && publishesExact) {
         lines.push(`${indent}sagejs_native_gmp_checkpoint_suspend();`);
       }
@@ -1317,6 +1331,76 @@ function wrapperIdentifierContext(fn) {
       return parameters.get(param.name);
     },
   };
+}
+
+function exactArenaRetryable(fn) {
+  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+    scope.storage === "shared-budget-lexical-exact-arena"
+  ) && fn.analysis?.effects?.replaySafe === true &&
+    (fn.analysis.effects.externalWrites || []).length === 0;
+}
+
+function exactWrapperExecution(
+  fn,
+  call,
+  wrapperStatus,
+  failureRefresh,
+  identifiers,
+  declarations,
+) {
+  if (!exactArenaRetryable(fn)) {
+    return `    if (!${call})\n` +
+      "    {\n" +
+      `${failureRefresh.join("\n")}` +
+      `${failureRefresh.length ? "\n" : ""}` +
+      `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
+      "        goto fail;\n" +
+      "    }";
+  }
+  if (failureRefresh.length !== 0) {
+    throw new Error(
+      `${fn.name} cannot retry an exact arena with external refresh effects`,
+    );
+  }
+  const attempt = identifiers.fresh("sagejs_checkpoint_retry");
+  const completed = identifiers.fresh("sagejs_checkpoint_completed");
+  declarations.push(
+    `    unsigned ${attempt} = 0;`,
+    `    int ${completed} = 0;`,
+  );
+  return [
+    `    for (${attempt} = 0; ${attempt} <= 8; ${attempt} += 1)`,
+    "    {",
+    `        sagejs_native_status_reset(&${wrapperStatus});`,
+    `        if (!sagejs_native_gmp_set_retry_shift(${attempt}))`,
+    "        {",
+    `            sagejs_native_status_set(&${wrapperStatus},`,
+    "                SAGEJS_NATIVE_ERROR,",
+    '                "unable to configure exact checkpoint retry");',
+    "            break;",
+    "        }",
+    `        if (${call})`,
+    "        {",
+    `            ${completed} = 1;`,
+    "            break;",
+    "        }",
+    `        if (${wrapperStatus}.code != SAGEJS_NATIVE_RETRY)`,
+    "            break;",
+    "    }",
+    "    (void) sagejs_native_gmp_set_retry_shift(0);",
+    `    if (!${completed})`,
+    "    {",
+    `        if (${wrapperStatus}.code == SAGEJS_NATIVE_RETRY)`,
+    "        {",
+    `            sagejs_native_status_reset(&${wrapperStatus});`,
+    `            sagejs_native_status_set(&${wrapperStatus},`,
+    "                SAGEJS_NATIVE_RANGE_ERROR,",
+    '                "NativeExactArena temporary capacity exhausted after retry");',
+    "        }",
+    `        sagejs_native_throw_status(env, &${wrapperStatus});`,
+    "        goto fail;",
+    "    }",
+  ].join("\n");
 }
 
 function resourceCName(resource) {
@@ -1562,15 +1646,16 @@ function emitTaggedWrapper(fn) {
       : parameterValue(param)
   );
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
-  const execution = `    if (!tagged_${fn.name}(&${wrapperStatus}, ` +
-    `${resultArguments.join(", ")}` +
-    `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "    {\n" +
-    `${failureRefresh.join("\n")}` +
-    `${failureRefresh.length ? "\n" : ""}` +
-    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
-    "        goto fail;\n" +
-    "    }";
+  const execution = exactWrapperExecution(
+    fn,
+    `tagged_${fn.name}(&${wrapperStatus}, ` +
+      `${resultArguments.join(", ")}` +
+      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
+    wrapperStatus,
+    failureRefresh,
+    identifiers,
+    declarations,
+  );
   return `
 static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
 {
@@ -1763,14 +1848,15 @@ function emitExactWrapper(fn) {
       : parameterValue(param)
   );
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
-  const execution = `    if (!native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
-    `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "    {\n" +
-    `${failureRefresh.join("\n")}` +
-    `${failureRefresh.length ? "\n" : ""}` +
-    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
-    "        goto fail;\n" +
-    "    }";
+  const execution = exactWrapperExecution(
+    fn,
+    `native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
+      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
+    wrapperStatus,
+    failureRefresh,
+    identifiers,
+    declarations,
+  );
   return `
 static napi_value compiled_${fn.name}_gmp(napi_env env, napi_callback_info info)
 {
@@ -3149,7 +3235,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v27. */
+  return `/* Generated by Sage.js Native Kernel v28. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3314,7 +3400,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v27.
+  const source = `/* Generated by Sage.js Native Kernel v28.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3519,7 +3605,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v27.
+  return `/* Generated by Sage.js Native Kernel v28.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>

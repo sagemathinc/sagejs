@@ -124,12 +124,29 @@ system allocator.  Rewind is legal only after ownership analysis proves that
 no arena-backed limb or foreign resource can escape.  Resident values and
 published outputs are never silently allocated from rewindable storage.
 
+On 64-bit operating systems the temporary capacity should reserve one stable
+virtual address range and activate physical pages only as the high-water mark
+advances.  A large default reservation is therefore cheap in resident memory
+and retains bump-pointer arithmetic.  WASI or another host without this virtual
+memory contract must expose its different allocation route rather than pretend
+to provide it.
+
 Native Kernel v27 initially admits a deliberately narrower proof: the arena
 body must end in an unconditional return, publication temporarily suspends the
 checkpoint, and generated all-exit cleanup destroys exact scratch and child
 owners before rewinding the parent.  This restriction may be relaxed only when
 the IR records capacity and ownership for every scalar live-out; ordinary
 Python lexical scope alone is not an allocation-lifetime proof.
+
+Capacity exhaustion is transactional.  A checked internal execution result
+prevents publication and retains the observed high-water mark; a
+source-transparent dispatcher may then enlarge the workspace and replay from
+the same authenticated inputs.  It must never relocate the region silently in
+the middle of a computation, because doing so would invalidate resident
+pointers and erase the allocation proof.  Native Kernel v28 implements stable
+virtual reservation, activation telemetry, and bounded doubling retry for
+replay-safe Node execution.  Extending the same retry authority to browser/Wasm
+dispatch remains a separate platform obligation.
 
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no

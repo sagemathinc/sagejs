@@ -33,8 +33,9 @@ const harness = String.raw`
 int main(void)
 {
     sagejs_native_status status = { SAGEJS_NATIVE_OK, NULL };
-    mpz_t value, result;
-    mpz_inits(value, result, NULL);
+    mpz_t value, result, left, right, relation, pivot;
+    uint64_t row_count = 97;
+    mpz_inits(value, result, left, right, relation, pivot, NULL);
     mpz_set_ui(value, 1);
     for (unsigned round = 0; round < 1000; round += 1)
     {
@@ -54,7 +55,33 @@ int main(void)
     assert(sagejs_kernel_live_arena_shared_limit(
         &status, result, 512, value));
     assert(mpz_cmp_ui(result, 14) == 0);
-    mpz_clears(value, result, NULL);
+
+    mpz_set_ui(left, 1);
+    mpz_mul_2exp(left, left, 300);
+    mpz_neg(left, left);
+    mpz_set_ui(right, 1);
+    mpz_mul_2exp(right, right, 199);
+    mpz_add_ui(right, right, 3);
+    mpz_set_ui(relation, 101);
+    mpz_set_ui(pivot, 103);
+    status.code = SAGEJS_NATIVE_OK;
+    status.message = NULL;
+    assert(!sagejs_kernel_live_arena_relation_step(
+        &status, relation, pivot, &row_count,
+        8192, 16, 4096, left, right, 5));
+    assert(status.code == SAGEJS_NATIVE_RETRY);
+    assert(mpz_cmp_ui(relation, 101) == 0);
+    assert(mpz_cmp_ui(pivot, 103) == 0);
+    assert(row_count == 97);
+    row_count = 107;
+    status.code = SAGEJS_NATIVE_OK;
+    status.message = NULL;
+    assert(!sagejs_kernel_live_arena_machine_result(
+        &status, &row_count, 8192, 16, 4096, left, right, 5));
+    assert(status.code == SAGEJS_NATIVE_RETRY);
+    assert(row_count == 107);
+
+    mpz_clears(value, result, left, right, relation, pivot, NULL);
     return 0;
 }
 `;

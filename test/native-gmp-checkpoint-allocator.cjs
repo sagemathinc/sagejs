@@ -79,6 +79,7 @@ int main(void)
     sagejs_native_gmp_checkpoint outer = {0};
     sagejs_native_gmp_checkpoint nested = {0};
     sagejs_native_gmp_checkpoint tiny = {0};
+    sagejs_native_gmp_checkpoint virtual_only = {0};
     mpz_t persistent, left, right, output, nested_value, spill;
     sagejs_native_gmp_checkpoint_stats completed = {0};
     pthread_t first_thread, second_thread;
@@ -132,6 +133,18 @@ int main(void)
     assert(sagejs_native_gmp_checkpoint_end(&outer));
     assert(sagejs_native_gmp_last_checkpoint_stats(&completed));
     assert(completed.capacity == (1U << 20));
+    assert(completed.reservation_size == (1U << 20));
+    assert(completed.activated > 0);
+    assert(completed.activated < completed.reservation_size);
+#if defined(_WIN32)
+    assert(completed.storage_kind ==
+        SAGEJS_NATIVE_GMP_STORAGE_WINDOWS_VIRTUAL);
+#elif defined(__wasi__)
+    assert(completed.storage_kind == SAGEJS_NATIVE_GMP_STORAGE_UPSTREAM);
+#else
+    assert(completed.storage_kind ==
+        SAGEJS_NATIVE_GMP_STORAGE_POSIX_VIRTUAL);
+#endif
     assert(completed.high_water > 0);
     assert(completed.spill_allocations == 0);
     assert(mpz_sgn(output) != 0);
@@ -142,6 +155,25 @@ int main(void)
     assert(!sagejs_native_gmp_pointer_is_checkpoint_owned(mpz_limbs_read(spill)));
     mpz_clear(spill);
     assert(sagejs_native_gmp_checkpoint_end(&tiny));
+
+    if (sizeof(size_t) >= 8)
+    {
+        const size_t large_reservation = (size_t) 64U << 30;
+        assert(sagejs_native_gmp_checkpoint_begin(
+            &virtual_only, large_reservation));
+        assert(virtual_only.reservation_size == large_reservation);
+#if !defined(__wasi__)
+        assert(virtual_only.activated == 0);
+#endif
+        assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    }
+
+    assert(sagejs_native_gmp_set_retry_shift(3));
+    assert(sagejs_native_gmp_checkpoint_begin(&virtual_only, 1024));
+    assert(virtual_only.capacity == 8192);
+    assert(virtual_only.retry_shift == 3);
+    assert(sagejs_native_gmp_checkpoint_end(&virtual_only));
+    assert(sagejs_native_gmp_set_retry_shift(0));
 
     assert(pthread_create(&first_thread, NULL, thread_witness,
         (void *) (uintptr_t) 11) == 0);

@@ -13,7 +13,10 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
 
-const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  generateArtifacts,
+  generateHostCore,
+} = require("../tools/native-kernel/c-backend.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
@@ -74,7 +77,7 @@ assert source["live_arena_shared_limit"](264, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 27);
+  assert.equal(ir.version, 28);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
@@ -128,6 +131,12 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_13/);
   assert.match(core.source, /arithmetic_scratch/);
   assert.match(core.source, /NativeExactArena memory limit exceeded/);
+  assert.match(core.source, /SAGEJS_NATIVE_RETRY/);
+  assert.match(
+    core.source,
+    /static int native_live_arena_machine_result[\s\S]*?spill_allocations != 0[\s\S]*?\*sagejs_native_output =/,
+  );
+  assert.match(generateArtifacts(ir).adapterSource, /sagejs_checkpoint_retry/);
   assert.match(
     core.source,
     /success:\n(?:(?!fail:)[\s\S])*mpz_clear\(sagejs_scratch_0\);(?:(?!fail:)[\s\S])*sagejs_native_exact_arena_clear\(&sagejs_workspace\);/,
@@ -160,6 +169,26 @@ for (const implementation of [
     Array.from(implementation(
       8192n, 1048576n, 4096n, left, right, repetitions,
     )),
+    [relation, pivot, 2n],
+  );
+}
+for (const implementation of [
+  module.live_arena_machine_result,
+  module.live_arena_machine_result.gmp,
+  module.live_arena_machine_result.tagged,
+]) {
+  assert.equal(
+    implementation(8192n, 16n, 4096n, left, right, repetitions),
+    2n,
+  );
+}
+for (const implementation of [
+  module.live_arena_relation_step,
+  module.live_arena_relation_step.gmp,
+  module.live_arena_relation_step.tagged,
+]) {
+  assert.deepEqual(
+    Array.from(implementation(8192n, 16n, 4096n, left, right, repetitions)),
     [relation, pivot, 2n],
   );
 }

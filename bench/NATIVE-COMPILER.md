@@ -1,6 +1,6 @@
-# Native Kernel v27
+# Native Kernel v28
 
-Native Kernel v27 asks whether selected Sage.js library functions can compile
+Native Kernel v28 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v27 is currently a source-tree development feature and uses the
+Native Kernel v28 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -517,6 +517,21 @@ exact scratch before the single rewind. The allocation audit records the slab
 high-water mark and rejects spills. For now an arena body must end in an
 unconditional return; this fail-closed rule prevents scalar live-outs until the
 IR can represent their ownership and capacity explicitly.
+
+V28 separates reserved address space from activated checkpoint pages. Linux
+and macOS use an inaccessible anonymous mapping and activate pages
+geometrically; Windows uses `VirtualAlloc` reservation and commitment. WASI,
+which has no comparable virtual-memory API, retains the authenticated upstream
+allocator path. Thus a 64-bit host can reserve a PARI-sized temporary region
+without immediately consuming that much physical memory, while every receipt
+reports reserved bytes, activated bytes, high-water use, and spills. V28 does
+not silently move or grow an active region. When a replay-safe arena exhausts
+its reservation, the core returns an internal typed retry status before
+publication. The Node boundary doubles only the next virtual reservation and
+replays the complete transaction, up to eight times; resident outputs and
+caller-visible state remain untouched between attempts. Non-replay-safe
+functions never receive this automatic policy. Exhausting all attempts becomes
+one ordinary range failure instead of a process abort or partial publication.
 
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and

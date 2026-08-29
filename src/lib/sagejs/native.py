@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v27 currently accepts a deliberately narrow typed numerical
+Native Kernel v28 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.

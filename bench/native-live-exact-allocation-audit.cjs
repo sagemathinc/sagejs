@@ -52,14 +52,16 @@ static void run_case(
     assert(rows == 2);
     assert(sagejs_native_gmp_last_checkpoint_stats(&stats));
     printf(
-        "%s|%llu|%llu|%llu|%llu|%llu|%llu\n",
+        "%s|%llu|%llu|%llu|%llu|%llu|%llu|%llu|%llu\n",
         label,
         (unsigned long long) stats.allocation_calls,
         (unsigned long long) stats.reallocation_calls,
         (unsigned long long) stats.free_calls,
         (unsigned long long) stats.requested_bytes,
         (unsigned long long) stats.high_water,
-        (unsigned long long) stats.spill_allocations);
+        (unsigned long long) stats.spill_allocations,
+        (unsigned long long) stats.reservation_size,
+        (unsigned long long) stats.activated);
 }
 
 int main(void)
@@ -158,6 +160,8 @@ async function main() {
         bytes,
         highWater,
         spills,
+        reserved,
+        activated,
       ] = line.split("|");
       return {
         label,
@@ -167,6 +171,8 @@ async function main() {
         allocatedBytes: Number(bytes),
         highWaterBytes: Number(highWater),
         spills: Number(spills),
+        reservedBytes: Number(reserved),
+        activatedBytes: Number(activated),
       };
     });
     const setup = records[0];
@@ -183,6 +189,7 @@ async function main() {
       );
       assert.equal(record.frees, record.allocations);
       assert.equal(record.spills, 0);
+      assert.ok(record.activatedBytes <= record.reservedBytes);
     }
     process.stdout.write(`${JSON.stringify({
       schema: "sagejs.native-exact-allocation-audit/v1",
