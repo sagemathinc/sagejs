@@ -1,0 +1,17 @@
+[
+  {
+    "kind": "compiler-implementation",
+    "id": "sha256:703e211ea6c8808e4ab5fbe07fbf653c5b076a3f0cc8b4081966d83544e6e0ad",
+    "digest": "703e211ea6c8808e4ab5fbe07fbf653c5b076a3f0cc8b4081966d83544e6e0ad"
+  },
+  {
+    "kind": "dashboard",
+    "id": "sha256:6b3b749ed31283250c6d65855ce993e9204c2067cb75d79544ca85187d73e94d",
+    "digest": "89e08050bf5e5f6aaa635ceaa82a9f94ebadc2d36677d9185f8aa22e6c0c9e56"
+  },
+  {
+    "kind": "native-artifact",
+    "id": "sha256:dd9c7881576d5ff0a7206cab1b939662497e416809f7d03f81e46196937cbc04",
+    "digest": "08ebc49908d179e8984e823c21ab0bf139b662105c03520aefa837c6b135165c"
+  }
+]
