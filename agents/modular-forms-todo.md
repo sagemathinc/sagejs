@@ -64,7 +64,7 @@ classical API.
 
 ### Recommended execution order
 
-- [ ] Slice 1: exact modular-form expansion metadata and arithmetic, followed
+- [x] Slice 1: exact modular-form expansion metadata and arithmetic, followed
   by $E_4$, $E_6$, $\Delta$, and certified level-$1$ bases.
 - [ ] Slice 2: general $\Gamma_0$ trivial-character cusp bases from modular
   symbols, beginning with weight $2$ and then arbitrary $k\geq2$.
@@ -146,18 +146,18 @@ many coefficients and an independently known dimension.
 
 #### Exact $q$-expansion algebra
 
-- [ ] Define a first-class exact modular-form expansion carrying weight,
+- [x] Define a first-class exact modular-form expansion carrying weight,
   level, character, coefficient ring, valuation, precision, and provenance.
-- [ ] Implement exact addition and scalar multiplication with strict parent
+- [x] Implement exact addition and scalar multiplication with strict parent
   compatibility.
 - [ ] Implement products with certified weight addition, character
   multiplication, and a correct common level.
-- [ ] Implement powers and bounded products without losing exact truncation
+- [x] Implement powers and bounded products without losing exact truncation
   semantics.
 - [ ] Implement $V_d:f(q)\mapsto f(q^d)$ and the resulting oldform metadata.
 - [ ] Implement twists by Dirichlet characters with certified resulting
   level and character in a declared initial domain.
-- [ ] Distinguish a proved modular form from a bare power series; arbitrary
+- [x] Distinguish a proved modular form from a bare power series; arbitrary
   coefficient lists must never acquire modularity metadata by assertion.
 - [ ] Track absolute and relative precision through every operation and reject
   a rank or membership conclusion when the available precision is
@@ -170,7 +170,7 @@ many coefficients and an independently known dimension.
 - [ ] General Eisenstein series $E_k(\chi,\psi)$, including exact generalized
   Bernoulli constant terms and the correct parity/conductor conditions.
 - [ ] Degeneracy images of Eisenstein and cusp forms at higher levels.
-- [ ] Level-$1$ generators $E_4$, $E_6$, and $\Delta$, with the relation
+- [x] Level-$1$ generators $E_4$, $E_6$, and $\Delta$, with the relation
   $E_4^3-E_6^2=1728\Delta$ checked exactly.
 - [ ] Eta products and quotients in a declared domain with a proof of
   holomorphy at every cusp, rather than only a formal product expansion.
@@ -184,26 +184,26 @@ many coefficients and an independently known dimension.
 
 #### Certified span and basis selection
 
-- [ ] Generate a finite, deterministic candidate family for the requested
+- [x] Generate a finite, deterministic candidate family for the requested
   weight, level, and character under explicit work bounds.
-- [ ] Compute an exact coefficient matrix through a certified bound and select
+- [x] Compute an exact coefficient matrix through a certified bound and select
   a canonical independent subset by exact row reduction.
-- [ ] Compare the candidate rank with an independently computed dimension;
+- [x] Compare the candidate rank with an independently computed dimension;
   publish a full basis only when equality is proved.
 - [ ] When candidates do not span the ambient space, return an explicitly
   labeled certified subspace rather than calling it a basis.
-- [ ] Separate Eisenstein and cuspidal candidates using exact constant terms
+- [x] Separate Eisenstein and cuspidal candidates using exact constant terms
   at all required cusps or another audited criterion.
 - [ ] Certify old/new placement using degeneracy maps and Hecke data where
   available.
 - [ ] Recover Hecke-stable subspaces and eigenforms from the constructed span
   without assuming that the chosen formula generators are eigenforms.
-- [ ] Make formula search deterministic and bounded; no unbounded enumeration
+- [x] Make formula search deterministic and bounded; no unbounded enumeration
   of eta products, theta lattices, or products is allowed in `auto` mode.
 
 #### Initial P0B domain
 
-- [ ] Full level-$1$ integral-weight spaces from $E_4$ and $E_6$.
+- [x] Full level-$1$ integral-weight spaces from $E_4$ and $E_6$.
 - [ ] Eisenstein spaces for general implemented $\Gamma_0(N)$ and Dirichlet
   characters.
 - [ ] A composite-level integral-weight corpus where Eisenstein series,
@@ -247,9 +247,9 @@ many coefficients and an independently known dimension.
   defined and certified.
 - [ ] Make returned $q$-expansions ordinary Sage.js power-series elements over
   the exact coefficient field.
-- [ ] Expose the provenance and verification certificate for every
+- [x] Expose the provenance and verification certificate for every
   formula-generated form and basis.
-- [ ] Support serialization with authenticated reconstruction of the parent,
+- [x] Support serialization with authenticated reconstruction of the parent,
   coefficient field, normalization, and precision.
 - [ ] Define equality and hashing from mathematical identity, not display
   precision or a chosen complex embedding.
@@ -257,7 +257,7 @@ many coefficients and an independently known dimension.
 
 ### Correctness corpus
 
-- [ ] Cover level $1$ forms including $\Delta\in S_{12}(\mathrm{SL}_2(\ZZ))$.
+- [x] Cover level $1$ forms including $\Delta\in S_{12}(\mathrm{SL}_2(\ZZ))$.
 - [ ] Independently construct the level-$1$ basis through both modular symbols
   and the exact $\QQ[E_4,E_6]$ formula algebra.
 - [ ] Cover rational weight-$2$ newforms at prime and composite levels.
@@ -292,7 +292,7 @@ many coefficients and an independently known dimension.
 
 ### Performance and architecture
 
-- [ ] Start with ordinary CPython-parseable source and existing exact FLINT
+- [x] Start with ordinary CPython-parseable source and existing exact FLINT
   matrix/number-field operations.
 - [ ] Profile construction, Hecke assembly, decomposition, field construction,
   and coefficient production separately.
@@ -342,7 +342,7 @@ many coefficients and an independently known dimension.
 - [ ] Membership and coordinate recovery from sufficiently precise
   $q$-expansions.
 - [ ] Graded rings of classical modular forms.
-- [ ] Victor Miller bases and efficient level-$1$ arithmetic.
+- [x] Victor Miller bases and efficient level-$1$ arithmetic.
 - [ ] Rankin--Cohen brackets.
 - [ ] CM detection and systematic twist recognition.
 - [ ] General Atkin--Lehner operators and eigenvalues.

@@ -31,6 +31,7 @@ Start with:
 - [Jacobian arithmetic for genus-2 and genus-3 hyperelliptic curves](hyperelliptic-jacobian-arithmetic.md)
 - [Split even-degree hyperelliptic Jacobians](hyperelliptic-even-degree-jacobians.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
+- [Exact modular forms and Victor Miller bases](modular-form-q-expansions.md)
 - [Brandt modules over the rational numbers](brandt-modules.md)
 - [Mestre's method of graphs and sparse modular forms](mestre-method-of-graphs.md)
 - [WebAssembly browser support and capabilities](webassembly-browser-support.md)

@@ -21,6 +21,7 @@ ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
 ExactHeckeSubspace: Any
+ExactModularForm: Any
 FiniteHeckeSet: Any
 HilbertModularFormsQsqrt3: Any
 HilbertModularFormsQsqrt5: Any
@@ -29,6 +30,7 @@ IcosianLocalSplitting: Any
 IcosianModularForms: Any
 IcosianOrbitSet: Any
 MestreQExpansion: Any
+LevelOneBasisCertificate: Any
 NormalizedAdjacencyOperator: Any
 SupersingularIsogenyGraph: Any
 SupersingularEigenpacket: Any
@@ -56,11 +58,15 @@ supersingular_j: Any
 sparse_wiedemann_certificate: Any
 sparse_characteristic_polynomial_certificate: Any
 algebraic_supersingular_eigenpacket: Any
+delta_form: Any
+delta_qexp: Any
 finite_hecke_set: Any
+level_one_basis_certificate: Any
 sqrt3_hecke_prime: Any
 sqrt3_prime_ideals: Any
 sqrt5_hecke_prime: Any
 sqrt5_prime_ideals: Any
+victor_miller_basis: Any
 
 __all__ = [
     "SparseHeckeOperator",
@@ -80,6 +86,7 @@ __all__ = [
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
     "ExactHeckeSubspace",
+    "ExactModularForm",
     "FiniteHeckeSet",
     "HilbertModularFormsQsqrt3",
     "HilbertModularFormsQsqrt5",
@@ -88,6 +95,7 @@ __all__ = [
     "IcosianModularForms",
     "IcosianOrbitSet",
     "MestreQExpansion",
+    "LevelOneBasisCertificate",
     "NormalizedAdjacencyOperator",
     "SupersingularIsogenyGraph",
     "SupersingularEigenpacket",
@@ -115,11 +123,15 @@ __all__ = [
     "sparse_wiedemann_certificate",
     "sparse_characteristic_polynomial_certificate",
     "algebraic_supersingular_eigenpacket",
+    "delta_form",
+    "delta_qexp",
     "finite_hecke_set",
+    "level_one_basis_certificate",
     "sqrt3_hecke_prime",
     "sqrt3_prime_ideals",
     "sqrt5_hecke_prime",
     "sqrt5_prime_ideals",
+    "victor_miller_basis",
 ]
 
 
@@ -215,6 +227,17 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import mestre
 
         return getattr(mestre, name)
+    if name in [
+        "ExactModularForm",
+        "LevelOneBasisCertificate",
+        "delta_form",
+        "delta_qexp",
+        "level_one_basis_certificate",
+        "victor_miller_basis",
+    ]:
+        from . import qexp
+
+        return getattr(qexp, name)
     if name in [
         "ClassicalModularPolynomial",
         "classical_modular_polynomial",

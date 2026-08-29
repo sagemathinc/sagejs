@@ -270,3 +270,100 @@ test("ModularForms exposes Sage-style ambient and subspaces", async () => {
     await session.close();
   }
 });
+
+test("E4, E6, and Delta retain exact modular-form formulas", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "E4=EisensteinForms(1,4,prec=7).gen()\n" +
+            "E6=EisensteinForms(1,6,prec=7).gen()\n" +
+            "D=(E4^3-E6^2)/1728\n" +
+            "[D.weight(),D.level(),D.base_ring(),D.is_cuspidal(),D.valuation()," +
+            "D[0],D[1],D.prec(),E4^2==EisensteinForms(1,8).gen()," +
+            "E4*E6==EisensteinForms(1,10).gen(),D.q_expansion(7)," +
+            "delta_qexp(7),D==ModularForms(1,12,prec=7).delta()]",
+        )
+      ).repr,
+      "[12, 1, Rational Field, True, 1, 0, 1, 7, True, True, " +
+        "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - " +
+        "6048*q^6 + O(q^7), q - 24*q^2 + 252*q^3 - 1472*q^4 + " +
+        "4830*q^5 - 6048*q^6 + O(q^7), True]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          "[delta_qexp(6,var='t'),delta_qexp(6,K=GF(5),var='z')]",
+        )
+      ).repr,
+      "[t - 24*t^2 + 252*t^3 - 1472*t^4 + 4830*t^5 + O(t^6), " +
+        "z + z^2 + 2*z^3 + 3*z^4 + O(z^6)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Victor Miller bases match Sage's integral leading-term normalization", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "[victor_miller_basis(12,6),victor_miller_basis(24,6)]",
+        )
+      ).repr,
+      "[[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + " +
+        "4629381120*q^5 + O(q^6), q - 24*q^2 + 252*q^3 - " +
+        "1472*q^4 + 4830*q^5 + O(q^6)], " +
+        "[1 + 52416000*q^3 + 39007332000*q^4 + " +
+        "6609020221440*q^5 + O(q^6), q + 195660*q^3 + " +
+        "12080128*q^4 + 44656110*q^5 + O(q^6), q^2 - 48*q^3 + " +
+        "1080*q^4 - 15040*q^5 + O(q^6)]]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          "[victor_miller_basis(0,4),victor_miller_basis(2,4)," +
+            "victor_miller_basis(7,4)," +
+            "victor_miller_basis(24,6,cusp_only=True,var='t')]",
+        )
+      ).repr,
+      "[[1 + O(q^4)], [], [], [t + 195660*t^3 + 12080128*t^4 + " +
+        "44656110*t^5 + O(t^6), t^2 - 48*t^3 + 1080*t^4 - " +
+        "15040*t^5 + O(t^6)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("level-one ambient and cusp bases carry replayable certificates", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "M=ModularForms(1,24,prec=6)\n" +
+            "C=M.basis_certificate()\n" +
+            "S=M.cuspidal_subspace()\n" +
+            "CS=S.basis_certificate()\n" +
+            "B=C.basis()\n" +
+            "[C.is_verified(),C.verify(),C.dimension(),C.sturm_bound()," +
+            "C.algorithm(),len(B),[f.weight() for f in B]," +
+            "[f.parent() is M for f in B],M.gens()==B," +
+            "CS.is_verified(),CS.dimension(),S.dimension()," +
+            "S.q_expansion_basis(4)]",
+        )
+      ).repr,
+      "[True, True, 3, 2, 'victor-miller-e4-e6-delta', 3, " +
+        "[24, 24, 24], [True, True, True], True, True, 2, 2, " +
+        "[q + 195660*q^3 + O(q^4), q^2 - 48*q^3 + O(q^4)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
