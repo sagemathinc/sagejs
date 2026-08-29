@@ -300,6 +300,108 @@ static int sagejs_native_integer_vector_addmul(
     return 1;
 }
 
+typedef struct
+{
+    sagejs_native_integer_vector storage;
+    size_t rows;
+    size_t columns;
+} sagejs_native_integer_matrix;
+
+static void sagejs_native_integer_matrix_clear(
+    sagejs_native_integer_matrix *matrix)
+{
+    if (matrix == NULL)
+        return;
+    sagejs_native_integer_vector_clear(&matrix->storage);
+    matrix->rows = 0;
+    matrix->columns = 0;
+}
+
+static int sagejs_native_integer_matrix_init(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    uint64_t rows,
+    uint64_t columns,
+    uint64_t memory_limit)
+{
+    uint64_t capacity;
+    memset(matrix, 0, sizeof(*matrix));
+    if (rows > (uint64_t) SIZE_MAX || columns > (uint64_t) SIZE_MAX ||
+        (rows != 0 && columns > UINT64_MAX / rows))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerMatrix dimensions are too large");
+        return 0;
+    }
+    capacity = rows * columns;
+    if (capacity > (uint64_t) SIZE_MAX ||
+        capacity > (uint64_t) (SIZE_MAX / sizeof(mpz_t)) ||
+        capacity > UINT64_MAX / SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerMatrix dimensions are too large");
+        return 0;
+    }
+    if (capacity * SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE > memory_limit)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerMatrix memory limit exceeded");
+        return 0;
+    }
+    if (!sagejs_native_integer_vector_init(
+            status, &matrix->storage, capacity, memory_limit))
+        return 0;
+    matrix->rows = (size_t) rows;
+    matrix->columns = (size_t) columns;
+    return 1;
+}
+
+static int sagejs_native_mpz_bounded_index(
+    const mpz_t index, size_t bound, size_t *position)
+{
+    uint64_t exact = 0;
+    size_t count = 0;
+    if (mpz_sgn(index) < 0 || mpz_sizeinbase(index, 2) > 64)
+        return 0;
+    mpz_export(&exact, &count, -1, sizeof(exact), 0, 0, index);
+    if (count > 1 || exact >= (uint64_t) bound)
+        return 0;
+    *position = (size_t) exact;
+    return 1;
+}
+
+static int sagejs_native_integer_matrix_set(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    size_t position,
+    const mpz_t value)
+{
+    if (sagejs_native_integer_vector_set(
+            status, &matrix->storage, position, value))
+        return 1;
+    sagejs_native_status_reset(status);
+    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+        "NativeIntegerMatrix memory limit exceeded");
+    return 0;
+}
+
+static int sagejs_native_integer_matrix_addmul(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    size_t position,
+    const mpz_t left,
+    const mpz_t right,
+    int subtract)
+{
+    if (sagejs_native_integer_vector_addmul(
+            status, &matrix->storage, position, left, right, subtract))
+        return 1;
+    sagejs_native_status_reset(status);
+    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+        "NativeIntegerMatrix memory limit exceeded");
+    return 0;
+}
+
 #define SAGEJS_WORD_PROMOTE 0
 #define SAGEJS_WORD_OK 1
 #define SAGEJS_WORD_ERROR -1

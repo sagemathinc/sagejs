@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v23 currently accepts a deliberately narrow typed numerical
+Native Kernel v24 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -206,6 +206,139 @@ class NativeIntegerVector:
             self._payload_charges[right],
             self._payload_charges[left],
         )
+
+
+class NativeIntegerMatrix:
+    """Lexical bounded dense exact-integer matrix for native kernels.
+
+    The portable implementation deliberately shares the exact entry and
+    semantic-memory contract of `NativeIntegerVector`, while exposing
+    a checked rectangular shape. Native compilation keeps the GMP entries
+    resident and lowers `(row, column)` accesses without constructing Python
+    tuples or flattening indices in mathematical source.
+
+    Both dimensions are fixed. Negative indices and Python-style wrapping are
+    intentionally unsupported so the dynamic, C, and Wasm implementations
+    have one checked contract. A matrix is invalid after its `with` scope.
+    """
+
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(self, rows: int, columns: int, memory_limit: int) -> None:
+        exact_rows = int(rows)
+        exact_columns = int(columns)
+        exact_limit = int(memory_limit)
+        if (
+            exact_rows < 0
+            or exact_rows > self._UINT64_MAX
+            or exact_columns < 0
+            or exact_columns > self._UINT64_MAX
+            or exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+            or (exact_rows != 0 and exact_columns > self._UINT64_MAX // exact_rows)
+        ):
+            raise OverflowError("NativeIntegerMatrix dimensions are outside uint64")
+        try:
+            self._storage = NativeIntegerVector(
+                exact_rows * exact_columns,
+                exact_limit,
+            )
+        except OverflowError as error:
+            raise OverflowError(
+                "NativeIntegerMatrix dimensions are outside uint64"
+            ) from error
+        except MemoryError as error:
+            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+        self._rows = exact_rows
+        self._columns = exact_columns
+        self._open = True
+        self._entered = False
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeIntegerMatrix is closed")
+
+    def _position(self, row: int, column: int) -> int:
+        self._require_open()
+        exact_row = int(row)
+        exact_column = int(column)
+        if (
+            exact_row < 0
+            or exact_row >= self._rows
+            or exact_column < 0
+            or exact_column >= self._columns
+        ):
+            raise IndexError("NativeIntegerMatrix index out of range")
+        return exact_row * self._columns + exact_column
+
+    def __enter__(self) -> NativeIntegerMatrix:
+        if self._entered or not self._open:
+            raise ValueError("NativeIntegerMatrix cannot be re-entered")
+        self._entered = True
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def close(self) -> None:
+        """Release the fallback matrix; repeated close is harmless."""
+        if not self._open:
+            return
+        self._storage.close()
+        self._rows = 0
+        self._columns = 0
+        self._open = False
+
+    def __getitem__(self, index: tuple[int, int]) -> int:
+        row, column = index
+        return self._storage[self._position(row, column)]
+
+    def __len__(self) -> int:
+        self._require_open()
+        return self._rows
+
+    def __setitem__(self, index: tuple[int, int], value: int) -> None:
+        row, column = index
+        try:
+            self._storage[self._position(row, column)] = value
+        except MemoryError as error:
+            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+
+    def addmul(self, row: int, column: int, left: int, right: int) -> None:
+        """Add `left * right` to one checked entry in place."""
+        try:
+            self._storage.addmul(
+                self._position(row, column),
+                left,
+                right,
+            )
+        except MemoryError as error:
+            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+
+    def submul(self, row: int, column: int, left: int, right: int) -> None:
+        """Subtract `left * right` from one checked entry in place."""
+        try:
+            self._storage.submul(
+                self._position(row, column),
+                left,
+                right,
+            )
+        except MemoryError as error:
+            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+
+    def swap_rows(self, left_row: int, right_row: int) -> None:
+        """Swap two complete rows without allocating exact integers."""
+        self._require_open()
+        left = int(left_row)
+        right = int(right_row)
+        if left < 0 or left >= self._rows or right < 0 or right >= self._rows:
+            raise IndexError("NativeIntegerMatrix row index out of range")
+        for column in range(self._columns):
+            self._storage.swap(
+                left * self._columns + column,
+                right * self._columns + column,
+            )
 
 
 class RationalBuffer:
@@ -710,6 +843,7 @@ __all__ = [
     "IntegerBuffer",
     "Int64Buffer",
     "Int64Record",
+    "NativeIntegerMatrix",
     "NativeIntegerVector",
     "NativeRecord",
     "PrimeFieldMatrix",

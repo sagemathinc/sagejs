@@ -31,6 +31,11 @@ const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
 const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
 const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
+const LIVE_INTEGER_MATRIX_TYPE = "NativeIntegerMatrix";
+const LIVE_EXACT_OWNER_TYPES = new Set([
+  LIVE_INTEGER_VECTOR_TYPE,
+  LIVE_INTEGER_MATRIX_TYPE,
+]);
 const INTEGER_BINARY = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -353,6 +358,7 @@ function createContext(
     usedForeignResources,
     variables,
     activeIntegerVectors: new Set(),
+    activeIntegerMatrices: new Set(),
     fn,
   };
 }
@@ -375,6 +381,24 @@ function liveIntegerVectorName(node, context) {
   return node.name;
 }
 
+function liveIntegerMatrixName(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef" &&
+      context.variables.get(node.name) === LIVE_INTEGER_MATRIX_TYPE,
+    "live exact-matrix operation requires a NativeIntegerMatrix local",
+  );
+  expect(
+    context,
+    node,
+    context.activeIntegerMatrices.has(node.name) &&
+      context.initialized.has(node.name),
+    `NativeIntegerMatrix ${node.name} is outside its lexical scope`,
+  );
+  return node.name;
+}
+
 function lowerLiveVectorIndex(node, context, operations) {
   const literal = integerLiteral(node);
   const value = literal !== undefined && literal >= 0n &&
@@ -388,6 +412,19 @@ function lowerLiveVectorIndex(node, context, operations) {
     "NativeIntegerVector index must be an exact integer",
   );
   return value;
+}
+
+function lowerLiveMatrixIndices(node, context, operations) {
+  const indices = sequenceElements(node);
+  expect(
+    context,
+    node,
+    indices !== undefined && indices.length === 2,
+    "NativeIntegerMatrix indexing requires row, column",
+  );
+  return indices.map((index) =>
+    lowerLiveVectorIndex(index, context, operations)
+  );
 }
 
 function liveVectorMethod(call) {
@@ -409,6 +446,69 @@ function lowerLiveVectorMethodStatement(call, context) {
     method !== undefined,
     "native expression statements are unsupported; host callbacks are prohibited",
   );
+  const ownerType = context.variables.get(method.owner.name);
+  if (ownerType === LIVE_INTEGER_MATRIX_TYPE) {
+    const matrix = liveIntegerMatrixName(method.owner, context);
+    const args = array(call.args);
+    const operations = [];
+    if (method.method === "addmul" || method.method === "submul") {
+      expect(
+        context,
+        call,
+        args.length === 4,
+        `NativeIntegerMatrix.${method.method}() requires row, column, left, and right`,
+      );
+      const row = lowerLiveVectorIndex(args[0], context, operations);
+      const column = lowerLiveVectorIndex(args[1], context, operations);
+      const left = coerceInteger(
+        lowerExpression(args[2], context, operations),
+        context,
+        args[2],
+        operations,
+      );
+      const right = coerceInteger(
+        lowerExpression(args[3], context, operations),
+        context,
+        args[3],
+        operations,
+      );
+      operations.push({
+        kind: `integer.matrix.${method.method}`,
+        matrix,
+        row: row.name,
+        rowType: row.type,
+        column: column.name,
+        columnType: column.type,
+        left: left.name,
+        right: right.name,
+      });
+      return operations;
+    }
+    if (method.method === "swap_rows") {
+      expect(
+        context,
+        call,
+        args.length === 2,
+        "NativeIntegerMatrix.swap_rows() requires two row indices",
+      );
+      const left = lowerLiveVectorIndex(args[0], context, operations);
+      const right = lowerLiveVectorIndex(args[1], context, operations);
+      operations.push({
+        kind: "integer.matrix.swap_rows",
+        matrix,
+        left: left.name,
+        leftType: left.type,
+        right: right.name,
+        rightType: right.type,
+      });
+      return operations;
+    }
+    fail(
+      context,
+      call,
+      `unsupported NativeIntegerMatrix method ${method.method}`,
+    );
+  }
   const vector = liveIntegerVectorName(method.owner, context);
   const args = array(call.args);
   const operations = [];
@@ -863,6 +963,19 @@ function lowerCall(node, context, operations) {
       });
       return { name: target, type: "uint64" };
     }
+    if (
+      nodeType(args[0]) === "AST_SymbolRef" &&
+      context.variables.get(args[0].name) === LIVE_INTEGER_MATRIX_TYPE
+    ) {
+      const matrix = liveIntegerMatrixName(args[0], context);
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "integer.matrix.length",
+        target,
+        matrix,
+      });
+      return { name: target, type: "uint64" };
+    }
     const buffer = lowerExpression(args[0], context, operations);
     expect(
       context,
@@ -1095,8 +1208,8 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     expect(
       context,
       node,
-      type !== LIVE_INTEGER_VECTOR_TYPE,
-      "NativeIntegerVector owners cannot be copied, passed, or returned",
+      !LIVE_EXACT_OWNER_TYPES.has(type),
+      "live exact owners cannot be copied, passed, or returned",
     );
     expect(
       context,
@@ -1129,10 +1242,10 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
     };
   }
   if (nodeType(node) === "AST_ItemAccess") {
-    const liveVectorType = nodeType(node.expression) === "AST_SymbolRef"
+    const liveOwnerType = nodeType(node.expression) === "AST_SymbolRef"
       ? context.variables.get(node.expression.name)
       : undefined;
-    if (liveVectorType === LIVE_INTEGER_VECTOR_TYPE) {
+    if (liveOwnerType === LIVE_INTEGER_VECTOR_TYPE) {
       const vector = liveIntegerVectorName(node.expression, context);
       const index = lowerLiveVectorIndex(
         node.property,
@@ -1146,6 +1259,25 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
         vector,
         index: index.name,
         indexType: index.type,
+      });
+      return { name: target, type: "Integer" };
+    }
+    if (liveOwnerType === LIVE_INTEGER_MATRIX_TYPE) {
+      const matrix = liveIntegerMatrixName(node.expression, context);
+      const [row, column] = lowerLiveMatrixIndices(
+        node.property,
+        context,
+        operations,
+      );
+      const target = temporary(context, node, "Integer");
+      operations.push({
+        kind: "integer.matrix.get",
+        target,
+        matrix,
+        row: row.name,
+        rowType: row.type,
+        column: column.name,
+        columnType: column.type,
       });
       return { name: target, type: "Integer" };
     }
@@ -1462,10 +1594,10 @@ function assignScalar(targetNode, value, context, operations) {
 
 function lowerBufferAssignment(item, right, operator, context) {
   const operations = [];
-  const liveVectorType = nodeType(item.expression) === "AST_SymbolRef"
+  const liveOwnerType = nodeType(item.expression) === "AST_SymbolRef"
     ? context.variables.get(item.expression.name)
     : undefined;
-  if (liveVectorType === LIVE_INTEGER_VECTOR_TYPE) {
+  if (liveOwnerType === LIVE_INTEGER_VECTOR_TYPE) {
     const vector = liveIntegerVectorName(item.expression, context);
     const index = lowerLiveVectorIndex(item.property, context, operations);
     let value = coerceInteger(
@@ -1507,6 +1639,60 @@ function lowerBufferAssignment(item, right, operator, context) {
       vector,
       index: index.name,
       indexType: index.type,
+      value: value.name,
+    });
+    return operations;
+  }
+  if (liveOwnerType === LIVE_INTEGER_MATRIX_TYPE) {
+    const matrix = liveIntegerMatrixName(item.expression, context);
+    const [row, column] = lowerLiveMatrixIndices(
+      item.property,
+      context,
+      operations,
+    );
+    let value = coerceInteger(
+      lowerExpression(right, context, operations),
+      context,
+      right,
+      operations,
+    );
+    if (operator !== "=") {
+      const arithmetic = INTEGER_BINARY.get(
+        operator.endsWith("=") ? operator.slice(0, -1) : "",
+      );
+      expect(
+        context,
+        item,
+        arithmetic !== undefined,
+        `unsupported indexed augmented operator ${operator}`,
+      );
+      const current = temporary(context, item, "Integer");
+      operations.push({
+        kind: "integer.matrix.get",
+        target: current,
+        matrix,
+        row: row.name,
+        rowType: row.type,
+        column: column.name,
+        columnType: column.type,
+      });
+      const target = temporary(context, item, "Integer");
+      operations.push({
+        kind: "integer.binary",
+        operation: arithmetic,
+        target,
+        left: current,
+        right: value.name,
+      });
+      value = { name: target, type: "Integer" };
+    }
+    operations.push({
+      kind: "integer.matrix.set",
+      matrix,
+      row: row.name,
+      rowType: row.type,
+      column: column.name,
+      columnType: column.type,
       value: value.name,
     });
     return operations;
@@ -1921,73 +2107,97 @@ function lowerStatements(statements, context) {
         context,
         statement,
         statement.is_async !== true && clauses.length === 1,
-        "NativeIntegerVector requires one synchronous with clause",
-      );
-      expect(
-        context,
-        statement,
-        context.activeIntegerVectors.size === 0,
-        "nested NativeIntegerVector scopes are not supported in this slice",
+        "a live exact owner requires one synchronous with clause",
       );
       const clause = clauses[0];
       const constructor = clause.expression;
       const constructorArgs = array(constructor?.args);
+      const constructorName = nodeType(constructor) === "AST_Call" &&
+          nodeType(constructor.expression) === "AST_SymbolRef"
+        ? constructor.expression.name
+        : undefined;
+      const ownerType = constructorName === LIVE_INTEGER_VECTOR_TYPE
+        ? LIVE_INTEGER_VECTOR_TYPE
+        : constructorName === LIVE_INTEGER_MATRIX_TYPE
+          ? LIVE_INTEGER_MATRIX_TYPE
+          : undefined;
+      const expectedArguments = ownerType === LIVE_INTEGER_MATRIX_TYPE ? 3 : 2;
       expect(
         context,
         constructor,
-        nodeType(constructor) === "AST_Call" &&
-          nodeType(constructor.expression) === "AST_SymbolRef" &&
-          constructor.expression.name === LIVE_INTEGER_VECTOR_TYPE &&
-          constructorArgs.length === 2 &&
+        ownerType !== undefined &&
+          constructorArgs.length === expectedArguments &&
           array(constructor.args?.kwarg_items).length === 0 &&
           !constructor.args?.starargs,
-        "NativeIntegerVector() requires capacity and memory_limit",
+        ownerType === LIVE_INTEGER_MATRIX_TYPE
+          ? "NativeIntegerMatrix() requires rows, columns, and memory_limit"
+          : "NativeIntegerVector() requires capacity and memory_limit",
       );
       expect(
         context,
         clause.alias,
         nodeType(clause.alias) === "AST_SymbolAlias" &&
           isCIdentifier(clause.alias.name),
-        "NativeIntegerVector owner must be a simple local name",
+        "a live exact owner must be a simple local name",
       );
       const owner = clause.alias.name;
       expect(
         context,
         clause.alias,
         !context.variables.has(owner),
-        `NativeIntegerVector owner ${owner} shadows an existing native value`,
+        `live exact owner ${owner} shadows an existing native value`,
       );
       const setup = [];
-      const capacity = lowerUint64Operand(
+      const firstDimension = lowerUint64Operand(
         constructorArgs[0],
         context,
         setup,
       );
+      const secondDimension = ownerType === LIVE_INTEGER_MATRIX_TYPE
+        ? lowerUint64Operand(constructorArgs[1], context, setup)
+        : undefined;
       const memoryLimit = lowerUint64Operand(
-        constructorArgs[1],
+        constructorArgs[ownerType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1],
         context,
         setup,
       );
       expect(
         context,
         constructor,
-        capacity.type === "uint64" && memoryLimit.type === "uint64",
-        "NativeIntegerVector capacity and memory_limit must be uint64",
+        firstDimension.type === "uint64" &&
+          (secondDimension === undefined || secondDimension.type === "uint64") &&
+          memoryLimit.type === "uint64",
+        ownerType === LIVE_INTEGER_MATRIX_TYPE
+          ? "NativeIntegerMatrix rows, columns, and memory_limit must be uint64"
+          : "NativeIntegerVector capacity and memory_limit must be uint64",
       );
-      ensureVariable(context, clause.alias, owner, LIVE_INTEGER_VECTOR_TYPE);
+      ensureVariable(context, clause.alias, owner, ownerType);
       context.initialized.add(owner);
-      context.activeIntegerVectors.add(owner);
+      const activeOwners = ownerType === LIVE_INTEGER_MATRIX_TYPE
+        ? context.activeIntegerMatrices
+        : context.activeIntegerVectors;
+      activeOwners.add(owner);
       const body = lowerBlock(statement.body, context);
-      context.activeIntegerVectors.delete(owner);
+      activeOwners.delete(owner);
       context.initialized.delete(owner);
-      const operation = {
-        kind: "integer.vector.scope",
-        owner,
-        capacity: capacity.name,
-        memoryLimit: memoryLimit.name,
-        setup,
-        body,
-      };
+      const operation = ownerType === LIVE_INTEGER_MATRIX_TYPE
+        ? {
+            kind: "integer.matrix.scope",
+            owner,
+            rows: firstDimension.name,
+            columns: secondDimension.name,
+            memoryLimit: memoryLimit.name,
+            setup,
+            body,
+          }
+        : {
+            kind: "integer.vector.scope",
+            owner,
+            capacity: firstDimension.name,
+            memoryLimit: memoryLimit.name,
+            setup,
+            body,
+          };
       annotateOperations([operation], sourceSpan(statement, context.filename));
       result.push(operation);
       continue;
@@ -2174,7 +2384,8 @@ function containsReturn(statements) {
           containsReturn(statement.alternative))) ||
       ((statement.kind === "while" || statement.kind === "loop.range" ||
         statement.kind === "loop.range_exact" ||
-        statement.kind === "integer.vector.scope") &&
+        statement.kind === "integer.vector.scope" ||
+        statement.kind === "integer.matrix.scope") &&
         containsReturn(statement.body))
     ) {
       return true;

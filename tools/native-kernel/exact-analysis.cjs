@@ -85,6 +85,30 @@ function operationInputs(operation) {
       ];
     case "integer.vector.swap":
       return [operation.vector, operation.left, operation.right];
+    case "integer.matrix.scope":
+      return [operation.rows, operation.columns, operation.memoryLimit];
+    case "integer.matrix.length":
+      return [operation.matrix];
+    case "integer.matrix.get":
+      return [operation.matrix, operation.row, operation.column];
+    case "integer.matrix.set":
+      return [
+        operation.matrix,
+        operation.row,
+        operation.column,
+        operation.value,
+      ];
+    case "integer.matrix.addmul":
+    case "integer.matrix.submul":
+      return [
+        operation.matrix,
+        operation.row,
+        operation.column,
+        operation.left,
+        operation.right,
+      ];
+    case "integer.matrix.swap_rows":
+      return [operation.matrix, operation.left, operation.right];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -141,7 +165,8 @@ function walkStatements(statements, handlers) {
       handlers.exitLoop?.("range");
       continue;
     }
-    if (statement.kind === "integer.vector.scope") {
+    if (statement.kind === "integer.vector.scope" ||
+        statement.kind === "integer.matrix.scope") {
       handlers.operation(statement);
       walkStatements(statement.setup, handlers);
       walkStatements(statement.body, handlers);
@@ -351,7 +376,8 @@ function executionProfile(fn) {
       if (operation.kind === "native.call" || operation.kind === "ffi.call") {
         profile.nativeCalls += 1;
       }
-      if (operation.kind === "integer.vector.scope") {
+      if (operation.kind === "integer.vector.scope" ||
+          operation.kind === "integer.matrix.scope") {
         profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
@@ -439,7 +465,8 @@ function localEffects(fn) {
       ) {
         mayRaise.add("IndexError");
       }
-      if (operation.kind === "integer.vector.scope") {
+      if (operation.kind === "integer.vector.scope" ||
+          operation.kind === "integer.matrix.scope") {
         foreignMayAllocate = true;
         mayRaise.add("MemoryError");
       }
@@ -448,14 +475,22 @@ function localEffects(fn) {
         operation.kind === "integer.vector.set" ||
         operation.kind === "integer.vector.addmul" ||
         operation.kind === "integer.vector.submul" ||
-        operation.kind === "integer.vector.swap"
+        operation.kind === "integer.vector.swap" ||
+        operation.kind === "integer.matrix.get" ||
+        operation.kind === "integer.matrix.set" ||
+        operation.kind === "integer.matrix.addmul" ||
+        operation.kind === "integer.matrix.submul" ||
+        operation.kind === "integer.matrix.swap_rows"
       ) {
         mayRaise.add("IndexError");
       }
       if (
         operation.kind === "integer.vector.set" ||
         operation.kind === "integer.vector.addmul" ||
-        operation.kind === "integer.vector.submul"
+        operation.kind === "integer.vector.submul" ||
+        operation.kind === "integer.matrix.set" ||
+        operation.kind === "integer.matrix.addmul" ||
+        operation.kind === "integer.matrix.submul"
       ) {
         mayRaise.add("MemoryError");
       }
@@ -561,7 +596,8 @@ function bufferWrites(fn, dependencyEffects) {
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
           statement.kind === "loop.range_exact" ||
-          statement.kind === "integer.vector.scope") {
+          statement.kind === "integer.vector.scope" ||
+          statement.kind === "integer.matrix.scope") {
         if (statement.setup) {
           changed = visit(statement.setup) || changed;
         }
@@ -863,15 +899,26 @@ function liveExactWorkspaceAnalysis(fn) {
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
-      if (operation.kind !== "integer.vector.scope") return;
-      scopes.push({
-        owner: operation.owner,
-        capacity: operation.capacity,
-        memoryLimit: operation.memoryLimit,
-        storage: "lexical-owned-mpz-vector",
-        cleanup: "all-exit-idempotent",
-        canonicalAuthority: false,
-      });
+      if (operation.kind === "integer.vector.scope") {
+        scopes.push({
+          owner: operation.owner,
+          capacity: operation.capacity,
+          memoryLimit: operation.memoryLimit,
+          storage: "lexical-owned-mpz-vector",
+          cleanup: "all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      } else if (operation.kind === "integer.matrix.scope") {
+        scopes.push({
+          owner: operation.owner,
+          rows: operation.rows,
+          columns: operation.columns,
+          memoryLimit: operation.memoryLimit,
+          storage: "lexical-owned-row-major-mpz-matrix",
+          cleanup: "all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      }
     },
     read() {},
     write() {},

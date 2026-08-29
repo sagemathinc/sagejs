@@ -271,6 +271,28 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}nativeIntegerVectorSwap(${operation.vector}, ` +
       `${operation.left}, ${operation.right});`;
   }
+  if (operation.kind === "integer.matrix.length") {
+    return `${indent}${operation.target} = ` +
+      `nativeIntegerMatrixLength(${operation.matrix});`;
+  }
+  if (operation.kind === "integer.matrix.get") {
+    return `${indent}${operation.target} = nativeIntegerMatrixGet(` +
+      `${operation.matrix}, ${operation.row}, ${operation.column});`;
+  }
+  if (operation.kind === "integer.matrix.set") {
+    return `${indent}nativeIntegerMatrixSet(${operation.matrix}, ` +
+      `${operation.row}, ${operation.column}, ${operation.value});`;
+  }
+  if (operation.kind === "integer.matrix.addmul" ||
+      operation.kind === "integer.matrix.submul") {
+    return `${indent}nativeIntegerMatrixAddmul(${operation.matrix}, ` +
+      `${operation.row}, ${operation.column}, ${operation.left}, ` +
+      `${operation.right}, ${operation.kind === "integer.matrix.submul"});`;
+  }
+  if (operation.kind === "integer.matrix.swap_rows") {
+    return `${indent}nativeIntegerMatrixSwapRows(${operation.matrix}, ` +
+      `${operation.left}, ${operation.right});`;
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
@@ -446,6 +468,22 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       ),
       `${indent}} finally {`,
       `${indent}  nativeIntegerVectorClose(${operation.owner});`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.matrix.scope") {
+    return [
+      ...operation.setup.map((item) =>
+        emitExactStatement(item, indent, resourceStack)
+      ),
+      `${indent}${operation.owner} = createNativeIntegerMatrix(` +
+        `${operation.rows}, ${operation.columns}, ${operation.memoryLimit});`,
+      `${indent}try {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}} finally {`,
+      `${indent}  nativeIntegerMatrixClose(${operation.owner});`,
       `${indent}}`,
     ].join("\n");
   }
@@ -1615,6 +1653,125 @@ function nativeIntegerVectorClose(vector) {
   vector.payloadCharges.length = 0;
   vector.chargedBytes = 0n;
   vector.open = false;
+}
+
+function createNativeIntegerMatrix(rows, columns, memoryLimit) {
+  const exactRows = BigInt(rows);
+  const exactColumns = BigInt(columns);
+  const exactLimit = BigInt(memoryLimit);
+  if (exactRows < 0n || exactColumns < 0n ||
+      exactRows > BigInt(Number.MAX_SAFE_INTEGER) ||
+      exactColumns > BigInt(Number.MAX_SAFE_INTEGER) ||
+      (exactRows !== 0n &&
+        exactColumns > BigInt(Number.MAX_SAFE_INTEGER) / exactRows)) {
+    throw new RangeError("NativeIntegerMatrix dimensions are too large");
+  }
+  const capacity = exactRows * exactColumns;
+  if (capacity * nativeIntegerVectorEntryCharge > exactLimit) {
+    nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
+  }
+  return {
+    storage: createNativeIntegerVector(capacity, exactLimit),
+    rows: exactRows,
+    columns: exactColumns,
+    open: true,
+  };
+}
+
+function nativeIntegerMatrixRequireOpen(matrix) {
+  if (matrix === null || typeof matrix !== "object" || matrix.open !== true) {
+    throw new RangeError("NativeIntegerMatrix is closed");
+  }
+  nativeIntegerVectorRequireOpen(matrix.storage);
+  return matrix;
+}
+
+function nativeIntegerMatrixPosition(matrix, row, column) {
+  const open = nativeIntegerMatrixRequireOpen(matrix);
+  const exactRow = BigInt(row);
+  const exactColumn = BigInt(column);
+  if (exactRow < 0n || exactRow >= open.rows ||
+      exactColumn < 0n || exactColumn >= open.columns) {
+    nativeRaise("IndexError", "NativeIntegerMatrix index out of range");
+  }
+  return exactRow * open.columns + exactColumn;
+}
+
+function nativeIntegerMatrixRow(matrix, row) {
+  const open = nativeIntegerMatrixRequireOpen(matrix);
+  const exact = BigInt(row);
+  if (exact < 0n || exact >= open.rows) {
+    nativeRaise("IndexError", "NativeIntegerMatrix row index out of range");
+  }
+  return exact;
+}
+
+function nativeIntegerMatrixLength(matrix) {
+  return nativeIntegerMatrixRequireOpen(matrix).rows;
+}
+
+function nativeIntegerMatrixGet(matrix, row, column) {
+  return nativeIntegerVectorGet(
+    nativeIntegerMatrixRequireOpen(matrix).storage,
+    nativeIntegerMatrixPosition(matrix, row, column),
+  );
+}
+
+function nativeIntegerMatrixSet(matrix, row, column, value) {
+  const open = nativeIntegerMatrixRequireOpen(matrix);
+  try {
+    nativeIntegerVectorSet(
+      open.storage,
+      nativeIntegerMatrixPosition(open, row, column),
+      value,
+    );
+  } catch (error) {
+    if (String(error?.message).includes("NativeIntegerVector memory limit")) {
+      nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
+    }
+    throw error;
+  }
+}
+
+function nativeIntegerMatrixAddmul(matrix, row, column, left, right, subtract) {
+  const open = nativeIntegerMatrixRequireOpen(matrix);
+  try {
+    nativeIntegerVectorAddmul(
+      open.storage,
+      nativeIntegerMatrixPosition(open, row, column),
+      left,
+      right,
+      subtract,
+    );
+  } catch (error) {
+    if (String(error?.message).includes("NativeIntegerVector memory limit")) {
+      nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
+    }
+    throw error;
+  }
+}
+
+function nativeIntegerMatrixSwapRows(matrix, leftRow, rightRow) {
+  const open = nativeIntegerMatrixRequireOpen(matrix);
+  const left = nativeIntegerMatrixRow(open, leftRow);
+  const right = nativeIntegerMatrixRow(open, rightRow);
+  for (let column = 0n; column < open.columns; column += 1n) {
+    nativeIntegerVectorSwap(
+      open.storage,
+      left * open.columns + column,
+      right * open.columns + column,
+    );
+  }
+}
+
+function nativeIntegerMatrixClose(matrix) {
+  if (matrix === null || typeof matrix !== "object" || matrix.open !== true) {
+    return;
+  }
+  nativeIntegerVectorClose(matrix.storage);
+  matrix.rows = 0n;
+  matrix.columns = 0n;
+  matrix.open = false;
 }
 
 function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {

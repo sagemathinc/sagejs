@@ -563,6 +563,114 @@ function emitExactOperation(operation, context, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "integer.matrix.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.matrix, context)}.rows;`;
+  }
+  if (
+    operation.kind === "integer.matrix.get" ||
+    operation.kind === "integer.matrix.set" ||
+    operation.kind === "integer.matrix.addmul" ||
+    operation.kind === "integer.matrix.submul"
+  ) {
+    const matrix = exactValue(operation.matrix, context);
+    const row = exactValue(operation.row, context);
+    const column = exactValue(operation.column, context);
+    const rowCheck = operation.rowType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${row}, ${matrix}.rows, ` +
+        "&sagejs_matrix_row)"
+      : `${row} >= (uint64_t) ${matrix}.rows`;
+    const columnCheck = operation.columnType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${column}, ${matrix}.columns, ` +
+        "&sagejs_matrix_column)"
+      : `${column} >= (uint64_t) ${matrix}.columns`;
+    let action;
+    if (operation.kind === "integer.matrix.get") {
+      action = `mpz_set(${target}, ` +
+        `${matrix}.storage.entries[sagejs_matrix_position]);`;
+    } else if (operation.kind === "integer.matrix.set") {
+      action = `if (!sagejs_native_integer_matrix_set(status, &${matrix}, ` +
+        `sagejs_matrix_position, ${exactValue(operation.value, context)}))\n` +
+        `${indent}        goto fail;`;
+    } else {
+      action = `if (!sagejs_native_integer_matrix_addmul(status, &${matrix}, ` +
+        `sagejs_matrix_position, ${exactValue(operation.left, context)}, ` +
+        `${exactValue(operation.right, context)}, ` +
+        `${operation.kind === "integer.matrix.submul" ? 1 : 0}))\n` +
+        `${indent}        goto fail;`;
+    }
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_matrix_row = ` +
+        `${operation.rowType === "Integer" ? "0" : `(size_t) ${row}`};`,
+      `${indent}    size_t sagejs_matrix_column = ` +
+        `${operation.columnType === "Integer" ? "0" : `(size_t) ${column}`};`,
+      `${indent}    size_t sagejs_matrix_position;`,
+      `${indent}    if (${rowCheck} || ${columnCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerMatrix index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    sagejs_matrix_position = ` +
+        `sagejs_matrix_row * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.matrix.swap_rows") {
+    const matrix = exactValue(operation.matrix, context);
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    const leftCheck = operation.leftType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${left}, ${matrix}.rows, ` +
+        "&sagejs_matrix_left)"
+      : `${left} >= (uint64_t) ${matrix}.rows`;
+    const rightCheck = operation.rightType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${right}, ${matrix}.rows, ` +
+        "&sagejs_matrix_right)"
+      : `${right} >= (uint64_t) ${matrix}.rows`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_matrix_left = ` +
+        `${operation.leftType === "Integer" ? "0" : `(size_t) ${left}`};`,
+      `${indent}    size_t sagejs_matrix_right = ` +
+        `${operation.rightType === "Integer" ? "0" : `(size_t) ${right}`};`,
+      `${indent}    size_t sagejs_matrix_column;`,
+      `${indent}    if (${leftCheck} || ${rightCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerMatrix row index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    for (sagejs_matrix_column = 0; ` +
+        `sagejs_matrix_column < ${matrix}.columns; sagejs_matrix_column += 1)`,
+      `${indent}    {`,
+      `${indent}        const size_t sagejs_matrix_left_position = ` +
+        `sagejs_matrix_left * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}        const size_t sagejs_matrix_right_position = ` +
+        `sagejs_matrix_right * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}        uint64_t sagejs_matrix_charge;`,
+      `${indent}        mpz_swap(` +
+        `${matrix}.storage.entries[sagejs_matrix_left_position], ` +
+        `${matrix}.storage.entries[sagejs_matrix_right_position]);`,
+      `${indent}        sagejs_matrix_charge = ` +
+        `${matrix}.storage.payload_charges[sagejs_matrix_left_position];`,
+      `${indent}        ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_left_position] = ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_right_position];`,
+      `${indent}        ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_right_position] = sagejs_matrix_charge;`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
       `${exactValue(operation.source, context)});`;
@@ -883,6 +991,22 @@ function emitExactStatements(statements, context, indent) {
       );
       continue;
     }
+    if (statement.kind === "integer.matrix.scope") {
+      const owner = exactValue(statement.owner, context);
+      lines.push(
+        emitExactStatements(statement.setup, context, indent),
+        `${indent}if (!sagejs_native_integer_matrix_init(status, &${owner}, ` +
+          `${exactValue(statement.rows, context)}, ` +
+          `${exactValue(statement.columns, context)}, ` +
+          `${exactValue(statement.memoryLimit, context)}))`,
+        `${indent}    goto fail;`,
+        `${indent}${cName(statement.owner)}_initialized = 1;`,
+        emitExactStatements(statement.body, context, indent),
+        `${indent}sagejs_native_integer_matrix_clear(&${owner});`,
+        `${indent}${cName(statement.owner)}_initialized = 0;`,
+      );
+      continue;
+    }
     if (statement.kind === "return") {
       const tuple = tupleElementTypes(statement.type);
       if (tuple !== undefined) {
@@ -968,6 +1092,17 @@ function exactDeclarations(fn) {
       cleanup.unshift(
         `    if (${cName(local.name)}_initialized)`,
         `        sagejs_native_integer_vector_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type === "NativeIntegerMatrix") {
+      declarations.push(
+        `    sagejs_native_integer_matrix ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_integer_matrix_clear(&${cName(local.name)});`,
       );
       continue;
     }
@@ -2890,7 +3025,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v23. */
+  return `/* Generated by Sage.js Native Kernel v24. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3054,7 +3189,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v23.
+  const source = `/* Generated by Sage.js Native Kernel v24.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3254,7 +3389,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v23.
+  return `/* Generated by Sage.js Native Kernel v24.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
