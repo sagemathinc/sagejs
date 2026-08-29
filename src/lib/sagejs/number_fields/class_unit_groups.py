@@ -1725,6 +1725,9 @@ class ClassUnitGroupEngine:
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
             "dependency_unit_steering_basis_hits": 0,
+            "dependency_lattice_lll_requests": 0,
+            "dependency_lattice_lll_reductions": 0,
+            "dependency_lattice_lll_fallbacks": 0,
             "unit_live_relation_authority_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
@@ -4059,6 +4062,8 @@ class ClassUnitGroupEngine:
         records: Sequence[Any],
         dependencies: Sequence[Sequence[int]],
         unit_rank: int,
+        *,
+        allow_steering_basis: bool = True,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
         # Cubic relation prefixes contain only a handful of dependencies.
@@ -4082,7 +4087,8 @@ class ClassUnitGroupEngine:
         # calls this method again and deliberately takes the complete
         # minimum-volume path below.
         if (
-            not self._relation_initial_basis_selected
+            allow_steering_basis
+            and not self._relation_initial_basis_selected
             and retained_prefix
             and unit_rank > 0
             and len(self._relation_independent_dependency_keys) >= unit_rank
@@ -4183,6 +4189,93 @@ class ClassUnitGroupEngine:
             self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
 
+    def _reduce_dependency_lattice(
+        self,
+        records: Sequence[Any],
+        dependencies: Sequence[Sequence[int]],
+    ) -> tuple[tuple[int, ...], ...]:
+        """Return an exactly authenticated short basis of a cubic unit kernel.
+
+        Smith transforms expose the complete integral left kernel, but their
+        coefficients can be enormous even when the corresponding fundamental
+        units are small.  Evaluating such a basis as factored units causes
+        catastrophic interval cancellation.  Exact LLL applies a unimodular
+        row transform, so it preserves the complete dependency lattice while
+        producing substantially shorter unit products.
+
+        This optimization is deliberately bounded to the small cubic kernel
+        regime.  Every transform and every resulting kernel row is replayed
+        exactly; an unavailable accelerator or any failed check returns the
+        untouched Smith basis.
+        """
+        source = tuple(
+            tuple(int(value) for value in dependency) for dependency in dependencies
+        )
+        if (
+            int(self.field.degree()) != 3
+            or len(source) < 2
+            or len(source) > 32
+            or len(records) > 64
+        ):
+            return source
+        self._resource_usage["dependency_lattice_lll_requests"] += 1
+        reducer = getattr(
+            self.components.relations, "_exact_lll_reduce_with_transform", None
+        )
+        determinant = getattr(self.components.matrix, "_determinant_exact", None)
+        if not callable(reducer) or not callable(determinant):
+            self._resource_usage["dependency_lattice_lll_fallbacks"] += 1
+            return source
+        try:
+            raw_reduced, raw_transform = reducer(source)
+            reduced = tuple(tuple(int(value) for value in row) for row in raw_reduced)
+            transform = tuple(
+                tuple(int(value) for value in row) for row in raw_transform
+            )
+            row_count = len(source)
+            relation_count = len(records)
+            if (
+                len(reduced) != row_count
+                or any(len(row) != relation_count for row in reduced)
+                or len(transform) != row_count
+                or any(len(row) != row_count for row in transform)
+                or abs(int(determinant(transform))) != 1
+            ):
+                raise ArithmeticError("LLL returned a malformed dependency basis")
+            for row_index, row in enumerate(reduced):
+                rebuilt = tuple(
+                    sum(
+                        transform[row_index][basis_index] * source[basis_index][column]
+                        for basis_index in range(row_count)
+                    )
+                    for column in range(relation_count)
+                )
+                if rebuilt != row:
+                    raise ArithmeticError(
+                        "LLL dependency transform failed exact replay"
+                    )
+                for column in range(len(records[0].row) if records else 0):
+                    if sum(
+                        row[index] * int(records[index].row[column])
+                        for index in range(relation_count)
+                    ):
+                        raise ArithmeticError(
+                            "an LLL-reduced dependency left the exact kernel"
+                        )
+            self._resource_usage["dependency_lattice_lll_reductions"] += 1
+            return reduced
+        except (
+            AttributeError,
+            ImportError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            self._resource_usage["dependency_lattice_lll_fallbacks"] += 1
+            return source
+
     def _decode_relation_witness(self, record: Any) -> Any:
         """Decode one live witness with a bounded mutation-safe memo."""
         self._resource_usage["relation_witness_decode_requests"] += 1
@@ -4239,12 +4332,16 @@ class ClassUnitGroupEngine:
                 admission_verifier(self.order, collector.factor_base, record)
                 for record in records
             )
-        dependencies = tuple(presentation.dependency_transforms)
+        source_dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
+        dependencies = self._reduce_dependency_lattice(records, source_dependencies)
         units, selected_dependencies = self._select_dependency_unit_basis(
-            records, dependencies, unit_rank
+            records,
+            dependencies,
+            unit_rank,
+            allow_steering_basis=dependencies == source_dependencies,
         )
         selected_unit_hashes: list[str] = []
         for dependency, unit in zip(selected_dependencies, units, strict=True):

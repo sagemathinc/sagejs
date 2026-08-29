@@ -976,6 +976,35 @@ print("monotone-log-steering")
   assert.equal(output, "monotone-log-steering");
 });
 
+test("cubic unit kernels are reduced before rigorous regulator evaluation", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 36*x - 18, "a")
+result = compute_class_unit_group(K, proof=False, algorithm="auto")
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 1
+assert result.class_group().invariants() == ()
+assert result.saturation_record.verify(K, K.maximal_order())
+resources = result.diagnostics["resources"]
+assert resources["dependency_lattice_lll_requests"] == 1
+assert resources["dependency_lattice_lll_reductions"] == 1
+assert resources["dependency_lattice_lll_fallbacks"] == 0
+maximum_exponent = max(
+    abs(int(exponent))
+    for unit in result.units()
+    for _factor, exponent in unit.factors()
+)
+assert maximum_exponent <= 5
+regulator = result.regulator()
+assert regulator.rigorous
+assert regulator.precision_bits == 128
+print((result.class_number(), maximum_exponent, regulator.precision_bits))
+`);
+  assert.equal(output, "(1, 5, 128)");
+});
+
 test("exact presentations are deferred across safe relation batches", () => {
   const output = run(String.raw`
 class FakeRecord:
