@@ -1,0 +1,74 @@
+{
+  "schema": "sagejs.optimization-memory-record/v2",
+  "id": "sha256:fde5bbc3725bb87a4519c641591fb6a29fae99d9088e1f045dd9fd3cf46998e7",
+  "authority": {
+    "kind": "optimization-outcome-v2",
+    "producer": "optimization.campaign2-memory.v2",
+    "validatedInputIds": [
+      "sha256:e2225184bf964e96cc51198ad927de0f27508a5c0f200f7e2692afab549f15c4",
+      "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043"
+    ]
+  },
+  "subject": {
+    "id": "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203",
+    "scope": "public-call",
+    "publicOperation": "HyperellipticCurve.local_reduction",
+    "sourcePath": "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+    "regionId": "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203",
+    "parentIds": [],
+    "predecessorIds": []
+  },
+  "category": "library-route",
+  "mechanism": "Map the genus-one normalization to an elliptic cubic and use the mature smalljac point-count capability",
+  "interventionId": "sha256:ac13365ed43b89b419ae567423bdd8f1c881c0fb831c68a32aad217b1a894f93",
+  "result": {
+    "outcomeId": "sha256:e2225184bf964e96cc51198ad927de0f27508a5c0f200f7e2692afab549f15c4",
+    "opportunityId": "sha256:567963c53d9a1ac52ee6307ffbbafa827c5dc4ce2a268d98ff6dffdcf3858453",
+    "campaignId": null,
+    "promotionId": null,
+    "disposition": "investigate",
+    "regressionState": "not-applicable",
+    "reasons": [
+      "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+      "Failed deterministic gate: complete-cost-boundary.",
+      "Failed deterministic gate: mature-capability-audit.",
+      "Failed deterministic gate: positive-eleven-pair-separation.",
+      "Failed deterministic gate: semantic-obligations.",
+      "Failed deterministic gate: worst-pair-ten-percent.",
+      "current zero-sample evidence lacks required authorities"
+    ]
+  },
+  "binding": {
+    "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+    "sourceClosureId": "sha256:bfae0f95838bb367607852a9d139b17f420231b0cb7a0782c7aa38495261b817",
+    "workloadIds": [
+      "sha256:87b4e5901e3cdd0907e8bb8dff085e9fc2a24ba23626d5ee5a2f5e7075f68ea5",
+      "sha256:a4a5c1bb9d62a4bc7ac62ea4b479b1728e789dd9fb4e5d6cbdd52f2ef11a5fbf"
+    ],
+    "compatibleSourceClosureIds": [],
+    "revision": {
+      "commit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+      "tree": "6b1bc0ce4b3472c2f506f09c9ac9d9020aacf2eb"
+    }
+  },
+  "evidence": [
+    {
+      "id": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "kind": "outcome",
+      "logicalId": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "path": "architecture/optimization-engine/memory/manifests/campaign-2-adjudication.json",
+      "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimization-engine-campaign2-2026-08-29",
+      "sha256": "952be18a85bf6c9425bd823ec1df42aeca504c08b14aa02b68b13fc401280356",
+      "producerCommand": [
+        "node bench/optimization-engine/campaign2-discovery.cjs adjudicate /scratch/campaign2-adjudication-epoch.json campaign2-authoritative-input.json"
+      ],
+      "roles": [
+        "negative",
+        "outcome"
+      ],
+      "validationStatus": "accepted"
+    }
+  ],
+  "fallbackEvidenceIds": [],
+  "supersedesIds": []
+}
