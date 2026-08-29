@@ -293,6 +293,14 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}nativeIntegerMatrixSwapRows(${operation.matrix}, ` +
       `${operation.left}, ${operation.right});`;
   }
+  if (operation.kind === "integer.arena.vector.allocate") {
+    return `${indent}${operation.owner} = createNativeIntegerVectorInBudget(` +
+      `${operation.capacity}, ${operation.arena}.budget);`;
+  }
+  if (operation.kind === "integer.arena.matrix.allocate") {
+    return `${indent}${operation.owner} = createNativeIntegerMatrixInBudget(` +
+      `${operation.rows}, ${operation.columns}, ${operation.arena}.budget);`;
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
@@ -484,6 +492,28 @@ function emitExactStatement(operation, indent, resourceStack = null) {
       ),
       `${indent}} finally {`,
       `${indent}  nativeIntegerMatrixClose(${operation.owner});`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.arena.scope") {
+    const cleanup = [...operation.children].reverse().map((child) =>
+      `${indent}  ${child.type === "NativeIntegerMatrix"
+        ? "nativeIntegerMatrixClose"
+        : "nativeIntegerVectorClose"}(${child.owner});`
+    );
+    return [
+      ...operation.setup.map((item) =>
+        emitExactStatement(item, indent, resourceStack)
+      ),
+      `${indent}${operation.owner} = createNativeExactArena(` +
+        `${operation.memoryLimit});`,
+      `${indent}try {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `, resourceStack)
+      ),
+      `${indent}} finally {`,
+      ...cleanup,
+      `${indent}  nativeExactArenaClose(${operation.owner});`,
       `${indent}}`,
     ].join("\n");
   }
@@ -1547,23 +1577,58 @@ function nativeIntegerPayloadCharge(value) {
   return exact === 0n ? 0n : BigInt(Math.ceil(exact.toString(2).length / 8));
 }
 
-function createNativeIntegerVector(capacity, memoryLimit) {
-  const exactCapacity = BigInt(capacity);
+function createNativeExactBudget(memoryLimit, message) {
   const exactLimit = BigInt(memoryLimit);
+  if (exactLimit < 0n || exactLimit > 18446744073709551615n) {
+    throw new RangeError("NativeExactArena memory limit is outside uint64");
+  }
+  return { limit: exactLimit, charged: 0n, open: true, message };
+}
+
+function nativeExactBudgetReplace(budget, oldCharge, newCharge) {
+  if (budget === null || typeof budget !== "object" || budget.open !== true ||
+      oldCharge > budget.charged) {
+    throw new RangeError("NativeExactArena semantic charge invariant failed");
+  }
+  const retained = budget.charged - oldCharge;
+  if (newCharge > budget.limit - retained) {
+    nativeRaise("MemoryError", budget.message);
+  }
+  budget.charged = retained + newCharge;
+}
+
+function nativeExactBudgetRelease(budget, charge) {
+  if (budget === null || typeof budget !== "object" ||
+      charge > budget.charged) {
+    throw new RangeError("NativeExactArena semantic charge invariant failed");
+  }
+  budget.charged -= charge;
+}
+
+function createNativeIntegerVectorInBudget(capacity, budget) {
+  const exactCapacity = BigInt(capacity);
   if (exactCapacity < 0n || exactCapacity > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError("NativeIntegerVector capacity is too large");
   }
   const baseCharge = exactCapacity * nativeIntegerVectorEntryCharge;
-  if (baseCharge > exactLimit) {
-    nativeRaise("MemoryError", "NativeIntegerVector memory limit exceeded");
-  }
+  nativeExactBudgetReplace(budget, 0n, baseCharge);
   return {
     values: Array(Number(exactCapacity)).fill(0n),
     payloadCharges: Array(Number(exactCapacity)).fill(0n),
-    memoryLimit: exactLimit,
+    budget,
     chargedBytes: baseCharge,
     open: true,
   };
+}
+
+function createNativeIntegerVector(capacity, memoryLimit) {
+  return createNativeIntegerVectorInBudget(
+    capacity,
+    createNativeExactBudget(
+      memoryLimit,
+      "NativeIntegerVector memory limit exceeded",
+    ),
+  );
 }
 
 function nativeIntegerVectorRequireOpen(vector) {
@@ -1584,12 +1649,10 @@ function nativeIntegerVectorPosition(vector, index) {
 
 function nativeIntegerVectorReserve(vector, position, payload) {
   nativeIntegerVectorRequireOpen(vector);
-  const retained = vector.chargedBytes - vector.payloadCharges[position];
-  const charge = retained + payload;
-  if (charge > vector.memoryLimit) {
-    nativeRaise("MemoryError", "NativeIntegerVector memory limit exceeded");
-  }
-  vector.chargedBytes = charge;
+  const oldPayload = vector.payloadCharges[position];
+  const retained = vector.chargedBytes - oldPayload;
+  nativeExactBudgetReplace(vector.budget, oldPayload, payload);
+  vector.chargedBytes = retained + payload;
   vector.payloadCharges[position] = payload;
 }
 
@@ -1651,14 +1714,14 @@ function nativeIntegerVectorClose(vector) {
   vector.values.length = 0;
   vector.payloadCharges.fill(0n);
   vector.payloadCharges.length = 0;
+  nativeExactBudgetRelease(vector.budget, vector.chargedBytes);
   vector.chargedBytes = 0n;
   vector.open = false;
 }
 
-function createNativeIntegerMatrix(rows, columns, memoryLimit) {
+function createNativeIntegerMatrixInBudget(rows, columns, budget) {
   const exactRows = BigInt(rows);
   const exactColumns = BigInt(columns);
-  const exactLimit = BigInt(memoryLimit);
   if (exactRows < 0n || exactColumns < 0n ||
       exactRows > BigInt(Number.MAX_SAFE_INTEGER) ||
       exactColumns > BigInt(Number.MAX_SAFE_INTEGER) ||
@@ -1667,15 +1730,23 @@ function createNativeIntegerMatrix(rows, columns, memoryLimit) {
     throw new RangeError("NativeIntegerMatrix dimensions are too large");
   }
   const capacity = exactRows * exactColumns;
-  if (capacity * nativeIntegerVectorEntryCharge > exactLimit) {
-    nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
-  }
   return {
-    storage: createNativeIntegerVector(capacity, exactLimit),
+    storage: createNativeIntegerVectorInBudget(capacity, budget),
     rows: exactRows,
     columns: exactColumns,
     open: true,
   };
+}
+
+function createNativeIntegerMatrix(rows, columns, memoryLimit) {
+  return createNativeIntegerMatrixInBudget(
+    rows,
+    columns,
+    createNativeExactBudget(
+      memoryLimit,
+      "NativeIntegerMatrix memory limit exceeded",
+    ),
+  );
 }
 
 function nativeIntegerMatrixRequireOpen(matrix) {
@@ -1719,36 +1790,22 @@ function nativeIntegerMatrixGet(matrix, row, column) {
 
 function nativeIntegerMatrixSet(matrix, row, column, value) {
   const open = nativeIntegerMatrixRequireOpen(matrix);
-  try {
-    nativeIntegerVectorSet(
-      open.storage,
-      nativeIntegerMatrixPosition(open, row, column),
-      value,
-    );
-  } catch (error) {
-    if (String(error?.message).includes("NativeIntegerVector memory limit")) {
-      nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
-    }
-    throw error;
-  }
+  nativeIntegerVectorSet(
+    open.storage,
+    nativeIntegerMatrixPosition(open, row, column),
+    value,
+  );
 }
 
 function nativeIntegerMatrixAddmul(matrix, row, column, left, right, subtract) {
   const open = nativeIntegerMatrixRequireOpen(matrix);
-  try {
-    nativeIntegerVectorAddmul(
-      open.storage,
-      nativeIntegerMatrixPosition(open, row, column),
-      left,
-      right,
-      subtract,
-    );
-  } catch (error) {
-    if (String(error?.message).includes("NativeIntegerVector memory limit")) {
-      nativeRaise("MemoryError", "NativeIntegerMatrix memory limit exceeded");
-    }
-    throw error;
-  }
+  nativeIntegerVectorAddmul(
+    open.storage,
+    nativeIntegerMatrixPosition(open, row, column),
+    left,
+    right,
+    subtract,
+  );
 }
 
 function nativeIntegerMatrixSwapRows(matrix, leftRow, rightRow) {
@@ -1772,6 +1829,27 @@ function nativeIntegerMatrixClose(matrix) {
   matrix.rows = 0n;
   matrix.columns = 0n;
   matrix.open = false;
+}
+
+function createNativeExactArena(memoryLimit) {
+  return {
+    budget: createNativeExactBudget(
+      memoryLimit,
+      "NativeExactArena memory limit exceeded",
+    ),
+    open: true,
+  };
+}
+
+function nativeExactArenaClose(arena) {
+  if (arena === null || typeof arena !== "object" || arena.open !== true) {
+    return;
+  }
+  if (arena.budget.charged !== 0n) {
+    throw new RangeError("NativeExactArena closed with live exact children");
+  }
+  arena.budget.open = false;
+  arena.open = false;
 }
 
 function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {
@@ -2254,6 +2332,8 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
       nativeRaise("IndexError", message);
     }
     if (message.includes("NativeIntegerVector memory limit") ||
+        message.includes("NativeIntegerMatrix memory limit") ||
+        message.includes("NativeExactArena memory limit") ||
         message.includes("NativeIntegerVector allocation failed")) {
       nativeRaise("MemoryError", message);
     }

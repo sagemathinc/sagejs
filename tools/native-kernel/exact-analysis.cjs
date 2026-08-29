@@ -109,6 +109,12 @@ function operationInputs(operation) {
       ];
     case "integer.matrix.swap_rows":
       return [operation.matrix, operation.left, operation.right];
+    case "integer.arena.scope":
+      return [operation.memoryLimit];
+    case "integer.arena.vector.allocate":
+      return [operation.arena, operation.capacity];
+    case "integer.arena.matrix.allocate":
+      return [operation.arena, operation.rows, operation.columns];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -166,7 +172,8 @@ function walkStatements(statements, handlers) {
       continue;
     }
     if (statement.kind === "integer.vector.scope" ||
-        statement.kind === "integer.matrix.scope") {
+        statement.kind === "integer.matrix.scope" ||
+        statement.kind === "integer.arena.scope") {
       handlers.operation(statement);
       walkStatements(statement.setup, handlers);
       walkStatements(statement.body, handlers);
@@ -377,7 +384,8 @@ function executionProfile(fn) {
         profile.nativeCalls += 1;
       }
       if (operation.kind === "integer.vector.scope" ||
-          operation.kind === "integer.matrix.scope") {
+          operation.kind === "integer.matrix.scope" ||
+          operation.kind === "integer.arena.scope") {
         profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
@@ -466,7 +474,10 @@ function localEffects(fn) {
         mayRaise.add("IndexError");
       }
       if (operation.kind === "integer.vector.scope" ||
-          operation.kind === "integer.matrix.scope") {
+          operation.kind === "integer.matrix.scope" ||
+          operation.kind === "integer.arena.scope" ||
+          operation.kind === "integer.arena.vector.allocate" ||
+          operation.kind === "integer.arena.matrix.allocate") {
         foreignMayAllocate = true;
         mayRaise.add("MemoryError");
       }
@@ -597,7 +608,8 @@ function bufferWrites(fn, dependencyEffects) {
           statement.kind === "loop.range" ||
           statement.kind === "loop.range_exact" ||
           statement.kind === "integer.vector.scope" ||
-          statement.kind === "integer.matrix.scope") {
+          statement.kind === "integer.matrix.scope" ||
+          statement.kind === "integer.arena.scope") {
         if (statement.setup) {
           changed = visit(statement.setup) || changed;
         }
@@ -853,13 +865,17 @@ function taggedIntegerProof(fn, effects) {
     read() {},
     write() {},
   });
-  const ownsLiveExactWorkspace = operations.has("tagged-vector.scope");
+  const ownsLiveExactWorkspace = [
+    "tagged-vector.scope",
+    "tagged-matrix.scope",
+    "tagged-arena.scope",
+  ].some((operation) => operations.has(operation));
   if (ownsLiveExactWorkspace) {
     return {
       eligible: true,
       representation: "gmp-live-exact-workspace",
       smallRepresentation: "tagged entry bridge only",
-      largeRepresentation: "lexical-owned-mpz-vector",
+      largeRepresentation: "lexical-owned-mpz-workspace",
       entry: "lossless-tagged-to-gmp",
       operations: Array.from(operations).sort(),
       promotion: "before lexical workspace entry",
@@ -916,6 +932,27 @@ function liveExactWorkspaceAnalysis(fn) {
           memoryLimit: operation.memoryLimit,
           storage: "lexical-owned-row-major-mpz-matrix",
           cleanup: "all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      } else if (operation.kind === "integer.arena.scope") {
+        scopes.push({
+          owner: operation.owner,
+          memoryLimit: operation.memoryLimit,
+          storage: "shared-budget-lexical-exact-arena",
+          children: operation.children.map((child) => child.type ===
+            "NativeIntegerMatrix"
+            ? {
+                owner: child.owner,
+                storage: "row-major-mpz-matrix",
+                rows: child.rows,
+                columns: child.columns,
+              }
+            : {
+                owner: child.owner,
+                storage: "mpz-vector",
+                capacity: child.capacity,
+              }),
+          cleanup: "reverse-child-order-all-exit-idempotent",
           canonicalAuthority: false,
         });
       }

@@ -32,7 +32,9 @@ const EXACT_BUFFER_TYPES = new Set([...INT64_BUFFER_TYPES, "IntegerBuffer"]);
 const BORROWED_BUFFER_TYPES = new Set([...EXACT_BUFFER_TYPES, "UInt64Buffer"]);
 const LIVE_INTEGER_VECTOR_TYPE = "NativeIntegerVector";
 const LIVE_INTEGER_MATRIX_TYPE = "NativeIntegerMatrix";
+const LIVE_EXACT_ARENA_TYPE = "NativeExactArena";
 const LIVE_EXACT_OWNER_TYPES = new Set([
+  LIVE_EXACT_ARENA_TYPE,
   LIVE_INTEGER_VECTOR_TYPE,
   LIVE_INTEGER_MATRIX_TYPE,
 ]);
@@ -359,8 +361,27 @@ function createContext(
     variables,
     activeIntegerVectors: new Set(),
     activeIntegerMatrices: new Set(),
+    activeExactArenas: new Map(),
     fn,
   };
+}
+
+function liveExactArenaName(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_SymbolRef" &&
+      context.variables.get(node.name) === LIVE_EXACT_ARENA_TYPE,
+    "live exact-arena operation requires a NativeExactArena local",
+  );
+  expect(
+    context,
+    node,
+    context.activeExactArenas.has(node.name) &&
+      context.initialized.has(node.name),
+    `NativeExactArena ${node.name} is outside its lexical scope`,
+  );
+  return node.name;
 }
 
 function liveIntegerVectorName(node, context) {
@@ -1782,6 +1803,104 @@ function lowerBufferAssignment(item, right, operator, context) {
   return operations;
 }
 
+function lowerArenaAllocation(statement, context) {
+  const assign = statement.body;
+  if (
+    nodeType(assign) !== "AST_Assign" ||
+    assign.operator !== "=" ||
+    nodeType(assign.left) !== "AST_SymbolRef" ||
+    nodeType(assign.right) !== "AST_Call" ||
+    nodeType(assign.right.expression) !== "AST_Dot" ||
+    nodeType(assign.right.expression.expression) !== "AST_SymbolRef"
+  ) {
+    return undefined;
+  }
+  const arenaNode = assign.right.expression.expression;
+  if (context.variables.get(arenaNode.name) !== LIVE_EXACT_ARENA_TYPE) {
+    return undefined;
+  }
+  const arena = liveExactArenaName(arenaNode, context);
+  const arenaState = context.activeExactArenas.get(arena);
+  expect(
+    context,
+    statement,
+    context.controlDepth === arenaState.controlDepth,
+    "NativeExactArena children must be allocated unconditionally in its lexical body",
+  );
+  const method = assign.right.expression.property;
+  const childType = method === "integer_vector"
+    ? LIVE_INTEGER_VECTOR_TYPE
+    : method === "integer_matrix"
+      ? LIVE_INTEGER_MATRIX_TYPE
+      : undefined;
+  expect(
+    context,
+    assign.right.expression,
+    childType !== undefined,
+    `unsupported NativeExactArena allocation ${method}`,
+  );
+  const args = array(assign.right.args);
+  const expectedArguments = childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1;
+  expect(
+    context,
+    assign.right,
+    args.length === expectedArguments &&
+      array(assign.right.args?.kwarg_items).length === 0 &&
+      !assign.right.args?.starargs,
+    childType === LIVE_INTEGER_MATRIX_TYPE
+      ? "NativeExactArena.integer_matrix() requires rows and columns"
+      : "NativeExactArena.integer_vector() requires capacity",
+  );
+  const child = assign.left.name;
+  expect(
+    context,
+    assign.left,
+    !context.variables.has(child),
+    `NativeExactArena child ${child} shadows an existing native value`,
+  );
+  const operations = [];
+  const firstDimension = lowerUint64Operand(args[0], context, operations);
+  const secondDimension = childType === LIVE_INTEGER_MATRIX_TYPE
+    ? lowerUint64Operand(args[1], context, operations)
+    : undefined;
+  expect(
+    context,
+    assign.right,
+    firstDimension.type === "uint64" &&
+      (secondDimension === undefined || secondDimension.type === "uint64"),
+    childType === LIVE_INTEGER_MATRIX_TYPE
+      ? "arena matrix rows and columns must be uint64"
+      : "arena vector capacity must be uint64",
+  );
+  ensureVariable(context, assign.left, child, childType);
+  context.initialized.add(child);
+  const activeChildren = childType === LIVE_INTEGER_MATRIX_TYPE
+    ? context.activeIntegerMatrices
+    : context.activeIntegerVectors;
+  activeChildren.add(child);
+  const descriptor = childType === LIVE_INTEGER_MATRIX_TYPE
+    ? {
+        owner: child,
+        type: childType,
+        rows: firstDimension.name,
+        columns: secondDimension.name,
+      }
+    : {
+        owner: child,
+        type: childType,
+        capacity: firstDimension.name,
+      };
+  arenaState.children.push(descriptor);
+  operations.push({
+    kind: childType === LIVE_INTEGER_MATRIX_TYPE
+      ? "integer.arena.matrix.allocate"
+      : "integer.arena.vector.allocate",
+    arena,
+    ...descriptor,
+  });
+  return operations;
+}
+
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
@@ -2075,6 +2194,15 @@ function lowerStatements(statements, context) {
   const result = [];
   for (const statement of statements) {
     if (nodeType(statement) === "AST_SimpleStatement") {
+      const arenaAllocation = lowerArenaAllocation(statement, context);
+      if (arenaAllocation !== undefined) {
+        annotateOperations(
+          arenaAllocation,
+          sourceSpan(statement, context.filename),
+        );
+        result.push(...arenaAllocation);
+        continue;
+      }
       if (nodeType(statement.body) === "AST_Call") {
         const method = liveVectorMethod(statement.body);
         if (method === undefined) {
@@ -2120,8 +2248,14 @@ function lowerStatements(statements, context) {
         ? LIVE_INTEGER_VECTOR_TYPE
         : constructorName === LIVE_INTEGER_MATRIX_TYPE
           ? LIVE_INTEGER_MATRIX_TYPE
-          : undefined;
-      const expectedArguments = ownerType === LIVE_INTEGER_MATRIX_TYPE ? 3 : 2;
+          : constructorName === LIVE_EXACT_ARENA_TYPE
+            ? LIVE_EXACT_ARENA_TYPE
+            : undefined;
+      const expectedArguments = ownerType === LIVE_INTEGER_MATRIX_TYPE
+        ? 3
+        : ownerType === LIVE_EXACT_ARENA_TYPE
+          ? 1
+          : 2;
       expect(
         context,
         constructor,
@@ -2131,7 +2265,9 @@ function lowerStatements(statements, context) {
           !constructor.args?.starargs,
         ownerType === LIVE_INTEGER_MATRIX_TYPE
           ? "NativeIntegerMatrix() requires rows, columns, and memory_limit"
-          : "NativeIntegerVector() requires capacity and memory_limit",
+          : ownerType === LIVE_EXACT_ARENA_TYPE
+            ? "NativeExactArena() requires memory_limit"
+            : "NativeIntegerVector() requires capacity and memory_limit",
       );
       expect(
         context,
@@ -2147,6 +2283,54 @@ function lowerStatements(statements, context) {
         !context.variables.has(owner),
         `live exact owner ${owner} shadows an existing native value`,
       );
+      if (ownerType === LIVE_EXACT_ARENA_TYPE) {
+        expect(
+          context,
+          statement,
+          context.activeExactArenas.size === 0,
+          "nested NativeExactArena scopes are not supported",
+        );
+        const setup = [];
+        const memoryLimit = lowerUint64Operand(
+          constructorArgs[0],
+          context,
+          setup,
+        );
+        expect(
+          context,
+          constructor,
+          memoryLimit.type === "uint64",
+          "NativeExactArena memory_limit must be uint64",
+        );
+        ensureVariable(context, clause.alias, owner, ownerType);
+        context.initialized.add(owner);
+        const arenaState = {
+          children: [],
+          controlDepth: context.controlDepth,
+        };
+        context.activeExactArenas.set(owner, arenaState);
+        const body = lowerBlock(statement.body, context);
+        context.activeExactArenas.delete(owner);
+        context.initialized.delete(owner);
+        for (const child of arenaState.children) {
+          const activeChildren = child.type === LIVE_INTEGER_MATRIX_TYPE
+            ? context.activeIntegerMatrices
+            : context.activeIntegerVectors;
+          activeChildren.delete(child.owner);
+          context.initialized.delete(child.owner);
+        }
+        const operation = {
+          kind: "integer.arena.scope",
+          owner,
+          memoryLimit: memoryLimit.name,
+          setup,
+          children: arenaState.children,
+          body,
+        };
+        annotateOperations([operation], sourceSpan(statement, context.filename));
+        result.push(operation);
+        continue;
+      }
       const setup = [];
       const firstDimension = lowerUint64Operand(
         constructorArgs[0],
@@ -2385,7 +2569,8 @@ function containsReturn(statements) {
       ((statement.kind === "while" || statement.kind === "loop.range" ||
         statement.kind === "loop.range_exact" ||
         statement.kind === "integer.vector.scope" ||
-        statement.kind === "integer.matrix.scope") &&
+        statement.kind === "integer.matrix.scope" ||
+        statement.kind === "integer.arena.scope") &&
         containsReturn(statement.body))
     ) {
       return true;

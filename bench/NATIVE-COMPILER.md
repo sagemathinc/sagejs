@@ -1,6 +1,6 @@
-# Native Kernel v24
+# Native Kernel v25
 
-Native Kernel v24 asks whether selected Sage.js library functions can compile
+Native Kernel v25 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v24 is currently a source-tree development feature and uses the
+Native Kernel v25 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -488,12 +488,23 @@ Every backend authenticates both dimensions before computing the row-major
 position, rejects shape-product overflow before allocation, and preserves the
 same all-exit cleanup and nonescape rules as the vector.
 
+V25 adds `NativeExactArena`, a parent owner for several vectors and matrices.
+Source allocates children explicitly with `workspace.integer_vector(...)` and
+`workspace.integer_matrix(...)`; the compiler records that ownership graph,
+requires allocation on the arena body's unconditional path, and rejects child
+aliases or escape. Base storage and changing GMP payload charges debit one
+shared limit. Every backend clears children in reverse creation order before
+closing the parent, including on exceptions and early returns.
+
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and
-[`native_live_exact_matrix.py`](native_live_exact_matrix.py). These are
-deliberately not yet a general arena, resizable container, or owned aggregate
-result. The production relation-admission witness and its stage-resolved
-receipt determine which additional storage feature is implemented next.
+[`native_live_exact_matrix.py`](native_live_exact_matrix.py), with the
+multi-owner budget witness in
+[`native_live_exact_arena.py`](native_live_exact_arena.py). These are
+deliberately not yet resizable containers, owned aggregate results, or
+cross-call reusable workspaces. The production relation-admission witness and
+its stage-resolved receipt determine which additional storage feature is
+implemented next.
 
 The first production-shaped witness is
 `packed_factor_base_rows_in_place` in
@@ -690,15 +701,18 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v24 limits
+## Deliberate v25 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
 prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
 or a flat typed tuple. Their mutable exact containers are deliberately limited
-to fixed-shape signed-64-bit buffers, bounded record views, and fixed-capacity
-arbitrary-precision integer vectors and dense matrices; resizable lists,
+to fixed-shape signed-64-bit buffers, bounded record views, fixed-capacity
+arbitrary-precision integer vectors and dense matrices, and lexical exact
+arenas whose children share one deterministic semantic-memory budget.
+Arena children are allocated unconditionally, cannot alias or escape, and are
+cleared in reverse creation order on every exit. Resizable lists,
 keyword-only native ABI
 arguments, general iterators, exception
 handlers, and calls into uncompiled Python remain outside the typed subset.

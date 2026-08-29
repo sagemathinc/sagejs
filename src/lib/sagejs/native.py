@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v24 currently accepts a deliberately narrow typed numerical
+Native Kernel v25 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -70,6 +70,34 @@ PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
 
 
+class _NativeExactBudget:
+    """Shared deterministic semantic-memory budget for portable exact owners."""
+
+    def __init__(self, memory_limit: int, message: str) -> None:
+        self.limit = memory_limit
+        self.used = 0
+        self.message = message
+        self.open = True
+
+    def reserve(self, old_charge: int, new_charge: int) -> None:
+        if not self.open:
+            raise ValueError("NativeExactArena is closed")
+        retained = self.used - old_charge
+        if new_charge > self.limit - retained:
+            raise MemoryError(self.message)
+        self.used = retained + new_charge
+
+    def release(self, charge: int) -> None:
+        if charge > self.used:
+            raise RuntimeError("NativeExactArena semantic charge underflow")
+        self.used -= charge
+
+    def close(self) -> None:
+        if self.used != 0:
+            raise RuntimeError("NativeExactArena closed with live exact children")
+        self.open = False
+
+
 class NativeIntegerVector:
     """Lexical bounded exact-integer workspace for native kernels.
 
@@ -86,7 +114,12 @@ class NativeIntegerVector:
     _ENTRY_CHARGE = 32
     _UINT64_MAX = (1 << 64) - 1
 
-    def __init__(self, capacity: int, memory_limit: int) -> None:
+    def __init__(
+        self,
+        capacity: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
         exact_capacity = int(capacity)
         exact_limit = int(memory_limit)
         if (
@@ -96,12 +129,20 @@ class NativeIntegerVector:
             or exact_limit > self._UINT64_MAX
         ):
             raise OverflowError("NativeIntegerVector dimensions are outside uint64")
+        self._budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeIntegerVector memory limit exceeded",
+        )
+        if self._budget.limit != exact_limit:
+            raise ValueError("NativeIntegerVector budget limit mismatch")
         base_charge = exact_capacity * self._ENTRY_CHARGE
-        if base_charge > exact_limit:
-            raise MemoryError("NativeIntegerVector memory limit exceeded")
-        self._values = [0 for _index in range(exact_capacity)]
-        self._payload_charges = [0 for _index in range(exact_capacity)]
-        self._memory_limit = exact_limit
+        self._budget.reserve(0, base_charge)
+        try:
+            self._values = [0 for _index in range(exact_capacity)]
+            self._payload_charges = [0 for _index in range(exact_capacity)]
+        except BaseException:
+            self._budget.release(base_charge)
+            raise
         self._charged_bytes = base_charge
         self._open = True
         self._entered = False
@@ -125,16 +166,12 @@ class NativeIntegerVector:
     def _replace(self, index: int, value: int) -> None:
         values = self._require_open()
         exact = int(value)
-        charge = (
-            self._charged_bytes
-            - self._payload_charges[index]
-            + self._payload_charge(exact)
-        )
-        if charge > self._memory_limit:
-            raise MemoryError("NativeIntegerVector memory limit exceeded")
+        payload = self._payload_charge(exact)
+        old_payload = self._payload_charges[index]
+        self._budget.reserve(old_payload, payload)
         values[index] = exact
-        self._payload_charges[index] = self._payload_charge(exact)
-        self._charged_bytes = charge
+        self._payload_charges[index] = payload
+        self._charged_bytes = self._charged_bytes - old_payload + payload
 
     def __enter__(self) -> NativeIntegerVector:
         if self._entered or not self._open:
@@ -152,6 +189,7 @@ class NativeIntegerVector:
             return
         self._values.clear()
         self._payload_charges.clear()
+        self._budget.release(self._charged_bytes)
         self._charged_bytes = 0
         self._open = False
 
@@ -174,10 +212,11 @@ class NativeIntegerVector:
         )
         result_bits = max(abs(current).bit_length(), product_bits) + 1
         conservative_payload = (result_bits + 7) // 8
-        peak = self._charged_bytes - self._payload_charges[index] + conservative_payload
-        if peak > self._memory_limit:
-            raise MemoryError("NativeIntegerVector memory limit exceeded")
-        self._charged_bytes = peak
+        old_payload = self._payload_charges[index]
+        self._budget.reserve(old_payload, conservative_payload)
+        self._charged_bytes = (
+            self._charged_bytes - old_payload + conservative_payload
+        )
         self._payload_charges[index] = conservative_payload
 
     def addmul(self, index: int, left: int, right: int) -> None:
@@ -224,7 +263,13 @@ class NativeIntegerMatrix:
 
     _UINT64_MAX = (1 << 64) - 1
 
-    def __init__(self, rows: int, columns: int, memory_limit: int) -> None:
+    def __init__(
+        self,
+        rows: int,
+        columns: int,
+        memory_limit: int,
+        _budget: _NativeExactBudget | None = None,
+    ) -> None:
         exact_rows = int(rows)
         exact_columns = int(columns)
         exact_limit = int(memory_limit)
@@ -238,17 +283,24 @@ class NativeIntegerMatrix:
             or (exact_rows != 0 and exact_columns > self._UINT64_MAX // exact_rows)
         ):
             raise OverflowError("NativeIntegerMatrix dimensions are outside uint64")
+        budget = _budget or _NativeExactBudget(
+            exact_limit,
+            "NativeIntegerMatrix memory limit exceeded",
+        )
+        if budget.limit != exact_limit:
+            raise ValueError("NativeIntegerMatrix budget limit mismatch")
         try:
             self._storage = NativeIntegerVector(
                 exact_rows * exact_columns,
                 exact_limit,
+                _budget=budget,
             )
         except OverflowError as error:
             raise OverflowError(
                 "NativeIntegerMatrix dimensions are outside uint64"
             ) from error
-        except MemoryError as error:
-            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+        except MemoryError:
+            raise
         self._rows = exact_rows
         self._columns = exact_columns
         self._open = True
@@ -300,32 +352,23 @@ class NativeIntegerMatrix:
 
     def __setitem__(self, index: tuple[int, int], value: int) -> None:
         row, column = index
-        try:
-            self._storage[self._position(row, column)] = value
-        except MemoryError as error:
-            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+        self._storage[self._position(row, column)] = value
 
     def addmul(self, row: int, column: int, left: int, right: int) -> None:
         """Add `left * right` to one checked entry in place."""
-        try:
-            self._storage.addmul(
-                self._position(row, column),
-                left,
-                right,
-            )
-        except MemoryError as error:
-            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+        self._storage.addmul(
+            self._position(row, column),
+            left,
+            right,
+        )
 
     def submul(self, row: int, column: int, left: int, right: int) -> None:
         """Subtract `left * right` from one checked entry in place."""
-        try:
-            self._storage.submul(
-                self._position(row, column),
-                left,
-                right,
-            )
-        except MemoryError as error:
-            raise MemoryError("NativeIntegerMatrix memory limit exceeded") from error
+        self._storage.submul(
+            self._position(row, column),
+            left,
+            right,
+        )
 
     def swap_rows(self, left_row: int, right_row: int) -> None:
         """Swap two complete rows without allocating exact integers."""
@@ -339,6 +382,76 @@ class NativeIntegerMatrix:
                 left * self._columns + column,
                 right * self._columns + column,
             )
+
+
+class NativeExactArena:
+    """One lexical semantic-memory budget for several resident exact owners.
+
+    Children are created only through `integer_vector` and `integer_matrix`.
+    They share one deterministic byte limit, remain private to the arena, and
+    close in reverse creation order on every exit. Native compilation lowers
+    the complete ownership graph without materializing child Python objects.
+    """
+
+    _UINT64_MAX = (1 << 64) - 1
+
+    def __init__(self, memory_limit: int) -> None:
+        exact_limit = int(memory_limit)
+        if exact_limit < 0 or exact_limit > self._UINT64_MAX:
+            raise OverflowError("NativeExactArena memory limit is outside uint64")
+        self._budget = _NativeExactBudget(
+            exact_limit,
+            "NativeExactArena memory limit exceeded",
+        )
+        self._children: list[NativeIntegerVector | NativeIntegerMatrix] = []
+        self._open = True
+        self._entered = False
+
+    def _require_open(self) -> None:
+        if not self._open:
+            raise ValueError("NativeExactArena is closed")
+
+    def __enter__(self) -> NativeExactArena:
+        if self._entered or not self._open:
+            raise ValueError("NativeExactArena cannot be re-entered")
+        self._entered = True
+        return self
+
+    def __exit__(self, _type: Any, _value: Any, _traceback: Any) -> bool:
+        self.close()
+        return False
+
+    def integer_vector(self, capacity: int) -> NativeIntegerVector:
+        """Create one fixed-capacity vector charged to this arena."""
+        self._require_open()
+        child = NativeIntegerVector(
+            capacity,
+            self._budget.limit,
+            _budget=self._budget,
+        )
+        self._children.append(child)
+        return child
+
+    def integer_matrix(self, rows: int, columns: int) -> NativeIntegerMatrix:
+        """Create one fixed-shape row-major matrix charged to this arena."""
+        self._require_open()
+        child = NativeIntegerMatrix(
+            rows,
+            columns,
+            self._budget.limit,
+            _budget=self._budget,
+        )
+        self._children.append(child)
+        return child
+
+    def close(self) -> None:
+        """Close every child in reverse creation order, then the arena."""
+        if not self._open:
+            return
+        while self._children:
+            self._children.pop().close()
+        self._budget.close()
+        self._open = False
 
 
 class RationalBuffer:
@@ -843,6 +956,7 @@ __all__ = [
     "IntegerBuffer",
     "Int64Buffer",
     "Int64Record",
+    "NativeExactArena",
     "NativeIntegerMatrix",
     "NativeIntegerVector",
     "NativeRecord",

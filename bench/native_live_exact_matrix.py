@@ -1,4 +1,4 @@
-"""Neutral live exact-matrix witnesses for Native Kernel v24."""
+"""Neutral live exact-matrix witnesses for Native Kernel v25."""
 
 from sagejs.native import NativeIntegerMatrix, NativeIntegerVector, native, uint64
 

@@ -284,10 +284,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 24);
-assert.equal(scalarExactIr.version, 24);
-assert.equal(scalarFloatIr.version, 24);
-assert.equal(reductionsIr.version, 24);
+assert.equal(ir.version, 25);
+assert.equal(scalarExactIr.version, 25);
+assert.equal(scalarFloatIr.version, 25);
+assert.equal(reductionsIr.version, 25);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -3311,7 +3311,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v24 canonical isolated cores, records, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
+  "Native Kernel v25 canonical isolated cores, records, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);
