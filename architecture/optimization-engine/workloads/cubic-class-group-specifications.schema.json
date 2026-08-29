@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/cubic-class-group-specifications.schema.json",
+  "title": "Sage.js cubic class-group frontier workload specifications",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "campaign",
+    "owner",
+    "normativePlan",
+    "corpus",
+    "roles",
+    "proofContracts",
+    "measurementCells",
+    "protocol",
+    "externalSystems",
+    "sourcePaths",
+    "liveSchemaExtension"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.cubic-class-group-workload-specifications/v1" },
+    "campaign": { "const": "cubic-class-group-pari-frontier" },
+    "owner": { "const": "optimization-engine" },
+    "normativePlan": { "const": "agents/cubic-number-field-class-group-pari-frontier-plan.md" },
+    "corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "schema", "recordsSha256", "labelsSha256", "selectionSqlSha256"],
+      "properties": {
+        "path": { "const": "test/fixtures/number-field-lmfdb-cubic-100.json" },
+        "sha256": { "const": "9da77a37aa98decb2fc9e4df2173dc2daa1514ca27ce3ace8ef88a49d2b8e0fe" },
+        "schema": { "const": "sagejs.number-fields/lmfdb-cubic-stratified-corpus-v2" },
+        "recordsSha256": { "$ref": "../wire-definitions-v2.schema.json#/$defs/digest" },
+        "labelsSha256": { "$ref": "../wire-definitions-v2.schema.json#/$defs/digest" },
+        "selectionSqlSha256": { "$ref": "../wire-definitions-v2.schema.json#/$defs/digest" }
+      }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "workloadRole", "fixtureRole", "expectedCount", "exposure", "candidateFreezeRequired", "authority"],
+        "properties": {
+          "id": { "enum": ["control", "held-out", "representative"] },
+          "workloadRole": { "enum": ["control", "held-out", "representative"] },
+          "fixtureRole": { "enum": ["smoke", "holdout", "tune"] },
+          "expectedCount": { "enum": [10, 30, 60] },
+          "exposure": { "enum": ["visible-control", "visible-policy-held-out", "visible-tuning"] },
+          "candidateFreezeRequired": { "type": "boolean" },
+          "authority": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "proofContracts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sageArgument", "allowedAchieved", "requiredClassGroupStrength", "strongerResultRetainsLabel"],
+        "properties": {
+          "id": { "enum": ["conditional-grh", "unconditional"] },
+          "sageArgument": { "type": "boolean" },
+          "allowedAchieved": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "enum": ["exact-relations-conditional-grh", "exact-unconditional"] },
+            "uniqueItems": true
+          },
+          "requiredClassGroupStrength": { "enum": ["exact-relations-conditional-grh", "exact-unconditional"] },
+          "strongerResultRetainsLabel": { "const": true }
+        }
+      }
+    },
+    "measurementCells": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "publicEntry", "outputContract", "preparation", "rootTimer", "included", "excluded", "postTimerOracles"],
+        "properties": {
+          "id": { "enum": ["certificate-replay", "class-unit-prepared", "fresh-complete", "group-prepared", "scalar-prepared"] },
+          "title": { "type": "string", "minLength": 1 },
+          "publicEntry": { "type": "object" },
+          "outputContract": { "type": "string", "minLength": 1 },
+          "preparation": { "type": "object" },
+          "rootTimer": { "const": "one-contiguous-root" },
+          "included": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "excluded": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "postTimerOracles": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warmupRuns", "pairs", "orders", "freshProcessPerLetter", "freshFieldPerCellProofAndRecord", "digestOutsideRoot", "minimumRetainedBatchMicroseconds", "minimumWorstPairFraction", "rootTiming", "phaseTotalsMayReplaceRoot"],
+      "properties": {
+        "warmupRuns": { "const": 3 },
+        "pairs": { "const": 11 },
+        "orders": { "type": "array", "minItems": 11, "maxItems": 11, "items": { "enum": ["ABBA", "BAAB"] } },
+        "freshProcessPerLetter": { "const": true },
+        "freshFieldPerCellProofAndRecord": { "const": true },
+        "digestOutsideRoot": { "const": true },
+        "minimumRetainedBatchMicroseconds": { "const": 1200000 },
+        "minimumWorstPairFraction": { "const": 0.1 },
+        "rootTiming": { "const": "one-contiguous-root" },
+        "phaseTotalsMayReplaceRoot": { "const": false }
+      }
+    },
+    "externalSystems": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "object" } },
+    "sourcePaths": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+    "liveSchemaExtension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "workloadFields", "observationFields", "promotionFields", "reason"],
+      "properties": {
+        "status": { "const": "required-before-generic-v2-projection-or-frontier-claim" },
+        "workloadFields": { "const": ["holdoutFreeze", "measurementBoundary", "semanticContract"] },
+        "observationFields": { "const": ["availability", "comparability", "origin"] },
+        "promotionFields": { "const": ["frontierClaim"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

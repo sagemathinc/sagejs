@@ -1,0 +1,99 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "cubic-class-group-frontier-contracts",
+  "title": "Cubic class-group frontier contracts",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Define checked non-promotional cubic class-group workload and external-frontier contracts with exact proof, boundary, comparator-coverage, and holdout-freeze semantics",
+  "base_commit": "1f875e3606d39916c9deb2812d49c50035ea1274",
+  "claims": [
+    "architecture/optimization-engine/workloads/cubic-class-group-specifications.json",
+    "architecture/optimization-engine/workloads/cubic-class-group-specifications.schema.json",
+    "architecture/optimization-engine/workloads/cubic-class-group-frontier.schema.json",
+    "bench/optimization-engine/cubic-class-group-workloads.cjs",
+    "bench/optimization-engine/cubic-class-group-frontier.cjs",
+    "test/optimization-cubic-class-group-frontier.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/cubic-number-field-class-group-pari-frontier-plan.md",
+    "test/fixtures/number-field-lmfdb-cubic-100.json"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Pinned LMFDB class number, invariant factors, discriminant, and policy proof contract",
+      "Authenticated Sage.js, PARI, Magma, and Hecke proof and boundary receipts"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimization-cubic-class-group-frontier.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.454,
+      "started_at": "2026-08-29T05:12:45.838Z",
+      "commit": "1f875e3606d39916c9deb2812d49c50035ea1274",
+      "workspace_fingerprint": "b2676cbaa5232659e74ca3499bcba9672afac7ee70b1656faf71875328263e02",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/cubic-class-group-frontier.cjs contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.094,
+      "started_at": "2026-08-29T05:12:56.624Z",
+      "commit": "1f875e3606d39916c9deb2812d49c50035ea1274",
+      "workspace_fingerprint": "b2676cbaa5232659e74ca3499bcba9672afac7ee70b1656faf71875328263e02",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimization-cubic-class-group-frontier.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.473,
+      "started_at": "2026-08-29T05:14:45.057Z",
+      "commit": "1f875e3606d39916c9deb2812d49c50035ea1274",
+      "workspace_fingerprint": "9c88581f665eefd7a5b42f7542ea014382aa53a43516e30557f96955e59c2b44",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/optimization-engine/cubic-class-group-frontier.cjs contracts",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.098,
+      "started_at": "2026-08-29T05:14:47.201Z",
+      "commit": "1f875e3606d39916c9deb2812d49c50035ea1274",
+      "workspace_fingerprint": "9c88581f665eefd7a5b42f7542ea014382aa53a43516e30557f96955e59c2b44",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a checked, content-addressed Campaign 3 cubic class-group frontier layer: five public measurement cells across control/representative/policy-heldout roles; exact proof, carrier, boundary, output-partial-order, availability, accounting, contiguous-root, 11-pair, oracle, comparator-coverage, and predecessor-freeze validation; and focused counterfeit tests. The layer is deliberately observation-only and creates no production route or parity/promotion claim.",
+    "risks": [
+      "Generic optimization-engine v2 cannot yet express semanticContract, measurementBoundary, holdoutFreeze, origin, availability, comparability, or frontierClaim; the checked campaign layer reports this as required-before-generic-v2-projection-or-frontier-claim.",
+      "No external timing receipt or production candidate is created here. PARI bnfinit remains a one-sided coupled superset for scalar/group cells, conditional PARI class-unit output remains diagnostic, and non-Sage systems have no reviewed detached replay carrier.",
+      "pnpm test:changed selected broad integration gates from 256 origin/main changes and stopped at pre-existing native export inventory drift; no native file or inventory is in this lane's claims. The task remains active with the required broad validation commands honestly deferred to integration."
+    ],
+    "next_steps": [
+      "Integrate the explicit v2 schema extensions before projecting these observations into generic promotion or making a frontier claim.",
+      "Have authenticated Sage.js, PARI, Magma, and Hecke runners emit the checked available/unavailable observation documents, then freeze representative evidence before any heldout observation.",
+      "Run the unchanged broad build/compiler/architecture gates once on the integrated revision after resolving or refreshing the native export inventory."
+    ]
+  }
+}
