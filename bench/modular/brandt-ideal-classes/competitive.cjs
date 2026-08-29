@@ -317,7 +317,8 @@ async function sampledMain(sampleCount, warmupCount) {
     if (
       receipt.exact_agreement !== true ||
       JSON.stringify(exactRows(receipt.sagejs.records)) !== reference ||
-      JSON.stringify(exactRows(receipt.sagemath.records)) !== reference ||
+      (receipt.sagemath.available !== false &&
+        JSON.stringify(exactRows(receipt.sagemath.records)) !== reference) ||
       JSON.stringify(exactRows(receipt.magma.records)) !== reference
     ) {
       throw new Error("a measured sample changed an exact oracle row");
@@ -329,12 +330,14 @@ async function sampledMain(sampleCount, warmupCount) {
     "construction_seconds",
     "first_operator_seconds",
   );
-  const sagemath = sampledSystemSummary(
-    receipts,
-    "sagemath",
-    "construction_seconds",
-    "first_operator_seconds",
-  );
+  const sagemath = receipts[0].sagemath.available === false
+    ? receipts[0].sagemath
+    : sampledSystemSummary(
+        receipts,
+        "sagemath",
+        "construction_seconds",
+        "first_operator_seconds",
+      );
   const magma = sampledSystemSummary(
     receipts,
     "magma",
@@ -355,16 +358,18 @@ async function sampledMain(sampleCount, warmupCount) {
         );
       }),
     ),
-    sagejs_over_sagemath_combined: statistics(
-      receipts.map((receipt) => {
-        const left = receipt.sagejs.records[caseIndex];
-        const right = receipt.sagemath.records[caseIndex];
-        return (
-          (left.construction_seconds + left.first_operator_seconds) /
-          (right.construction_seconds + right.first_operator_seconds)
-        );
-      }),
-    ),
+    sagejs_over_sagemath_combined: receipts[0].sagemath.available === false
+      ? null
+      : statistics(
+          receipts.map((receipt) => {
+            const left = receipt.sagejs.records[caseIndex];
+            const right = receipt.sagemath.records[caseIndex];
+            return (
+              (left.construction_seconds + left.first_operator_seconds) /
+              (right.construction_seconds + right.first_operator_seconds)
+            );
+          }),
+        ),
   }));
   const first = receipts[0];
   const sampled = {
@@ -434,6 +439,7 @@ async function main() {
   };
   const sageScript = path.join(__dirname, "sage-oracle.py");
   const magmaScript = path.join(__dirname, "magma-oracle.m");
+  const skipSagemath = process.argv.includes("--skip-sagemath");
 
   const sagejsRun = await run(process.execPath, [
     __filename,
@@ -446,19 +452,24 @@ async function main() {
     throw new Error("Sage.js worker emitted no JSON payload");
   }
   const sagejs = JSON.parse(sagejsPayload.slice("SAGEJS_RECORDS ".length));
-  const sageRun = await run(sageExecutable, [sageScript], environment);
+  const sageRun = skipSagemath
+    ? null
+    : await run(sageExecutable, [sageScript], environment);
   const magmaRun = await run(magmaExecutable, ["-b", magmaScript], environment);
-  const sagePayload = sageRun.stdout
-    .split(/\r?\n/)
-    .find((line) => line.trimStart().startsWith("{"));
-  if (sagePayload === undefined) {
-    throw new Error("SageMath oracle emitted no JSON payload");
+  let sage = [];
+  if (sageRun !== null) {
+    const sagePayload = sageRun.stdout
+      .split(/\r?\n/)
+      .find((line) => line.trimStart().startsWith("{"));
+    if (sagePayload === undefined) {
+      throw new Error("SageMath oracle emitted no JSON payload");
+    }
+    sage = JSON.parse(sagePayload).records;
   }
-  const sage = JSON.parse(sagePayload).records;
   const magma = parseMagma(magmaRun.stdout);
   const reference = JSON.stringify(exactRows(sagejs));
   if (
-    JSON.stringify(exactRows(sage)) !== reference ||
+    (sageRun !== null && JSON.stringify(exactRows(sage)) !== reference) ||
     JSON.stringify(exactRows(magma)) !== reference
   ) {
     throw new Error("Sage.js, SageMath, and Magma exact rows disagree");
@@ -502,14 +513,28 @@ async function main() {
       stderr_sha256: crypto.createHash("sha256").update(sagejsRun.stderr).digest("hex"),
       records: sagejs,
     },
-    sagemath: {
-      executable: sageExecutable,
-      process_cold_wall_seconds: sageRun.wallSeconds,
-      peak_rss_bytes: sageRun.peakRssBytes,
-      stdout_sha256: crypto.createHash("sha256").update(sageRun.stdout).digest("hex"),
-      stderr_sha256: crypto.createHash("sha256").update(sageRun.stderr).digest("hex"),
-      records: sage,
-    },
+    sagemath: sageRun === null
+      ? {
+          available: false,
+          reason:
+            "SageMath BrandtModule rejects composite quaternion discriminants; Sage.js uses its independent Jacquet-Langlands spectrum oracle internally",
+          records: [],
+        }
+      : {
+          available: true,
+          executable: sageExecutable,
+          process_cold_wall_seconds: sageRun.wallSeconds,
+          peak_rss_bytes: sageRun.peakRssBytes,
+          stdout_sha256: crypto
+            .createHash("sha256")
+            .update(sageRun.stdout)
+            .digest("hex"),
+          stderr_sha256: crypto
+            .createHash("sha256")
+            .update(sageRun.stderr)
+            .digest("hex"),
+          records: sage,
+        },
     magma: {
       executable: magmaExecutable,
       process_cold_wall_seconds: magmaRun.wallSeconds,
