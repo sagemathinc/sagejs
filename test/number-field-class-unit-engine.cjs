@@ -1114,6 +1114,23 @@ print((
   assert.equal(output, "(9, (9,), 12, 1)");
 });
 
+test("cubic unit saturation closes an index beyond coordinate search", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 576*x - 1665, "a")
+result = class_unit_context(K, proof=False)
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 9
+assert result.class_group().invariants() == (3, 3)
+assert result.saturation_record.remaining_index_bound == 1
+assert result.saturation_record.verify(K, K.maximal_order())
+print("cubic-large-unit-saturated")
+`, 180_000);
+  assert.equal(output, "cubic-large-unit-saturated");
+});
+
 test("conditional cubic groups detach a canonical seeded factor base", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")

@@ -230,6 +230,53 @@ print("unit-lattice-ok")
   assert.equal(output, "unit-lattice-ok");
 });
 
+test("cubic trace equations recover large exact unit square roots", () => {
+  const output = runSagejs(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 576*x - 1665, "a")
+a = K.gen()
+O = K.maximal_order()
+v1 = K(2048447) + QQ(71697)/5*a - QQ(18149)/5*a**2
+v2 = K(-1109) - 7*a + 2*a**2
+target = -(v1*v2)
+expected = K(47706) + QQ(5009)/15*a - QQ(1268)/15*a**2
+
+root = analytic._exact_cubic_unit_square_root(K, O, target, None)
+assert root in (expected, -expected)
+assert root**2 == target and root in O and root.norm() in (-1, 1)
+
+try:
+    analytic._exact_cubic_unit_square_root(K, O, target, lambda: True)
+    raise AssertionError("cubic exact square-root recovery ignored cancellation")
+except analytic.AnalyticResourceError:
+    pass
+
+result = analytic.saturate_unit_lattice(
+    K,
+    O,
+    (v1, v2),
+    2,
+    maximum_saturation_work=1000000,
+)
+assert result.remaining_index_bound == 1
+assert len(result.evidence) == 1
+certificate = result.evidence[0]
+assert certificate.method == "exact-pth-root-identity"
+torsion = __import__(
+    "sagejs.number_fields.units", fromlist=["units"]
+).roots_of_unity(K)
+assert certificate.replay(K, O, (v1, v2), torsion.elements) is not None
+
+# The bare integer is only a search bound, never proof authority.
+assert not result.complete and result.unresolved_primes == (2,)
+print("cubic-exact-square-root")
+`);
+  assert.equal(output, "cubic-exact-square-root");
+});
+
 test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
   runPython(String.raw`
 module._shared_integer_log_endpoints.clear()

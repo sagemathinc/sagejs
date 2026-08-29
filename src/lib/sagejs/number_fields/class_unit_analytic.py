@@ -40,6 +40,8 @@ _MAXIMUM_SATURATION_REPLAY_PRECISION_STEPS = 32
 _MAXIMUM_SATURATION_REPLAY_RECORDS = 4_096
 _MAXIMUM_SATURATION_REPLAY_DEPTH = 64
 _MAXIMUM_SATURATION_REPLAY_STRING = 1_000_000
+_MAXIMUM_CUBIC_SQUARE_ROOT_COEFFICIENT_BITS = 4_096
+_CUBIC_SQUARE_ROOT_WORK_PER_TARGET = 64
 _MAXIMUM_ANALYTIC_REPLAY_PRIME_BOUND = 1_000_000
 _MAXIMUM_ANALYTIC_REPLAY_PRECISION_BITS = 4096
 _MAXIMUM_ANALYTIC_REPLAY_BLOCK_SIZE = 1_000_000
@@ -1814,6 +1816,123 @@ def _bounded_exact_pth_root(
     return None
 
 
+def _rational_size_bits(value: Any) -> int:
+    """Return the largest exact numerator/denominator bit length."""
+    numerator = int(value._numerator)
+    denominator = int(value._denominator)
+    return max(abs(numerator).bit_length(), denominator.bit_length())
+
+
+def _exact_cubic_unit_square_root(
+    field: Any,
+    order: Any,
+    target: Any,
+    cancelled: Callable[[], Any] | None,
+) -> Any | None:
+    """Recover an integral unit square root in a cubic field exactly.
+
+    If `t = r^2`, write `s1`, `s2`, and `s3` for the elementary symmetric
+    functions of the three conjugates of `r`.  From the traces of `t` we have
+
+    `s2 = (s1^2 - Tr(t)) / 2`
+
+    and `s1` is a rational root of
+
+    `(s1^2 - Tr(t))^2 - 8*s3*s1 - 4*e2(t) = 0`.
+
+    A unit root has `s3 = Norm(r)` in `{1, -1}`.  Once a rational `s1` is
+    known, the cubic characteristic equation gives
+
+    `r = (s1*t + s3) / (t + s2)`.
+
+    Factoring the degree-four trace equation replaces an impossible search in
+    the coordinate size of `r` by an exact fixed-degree computation.  Every
+    returned candidate is still checked by multiplication, norm, and maximal
+    order membership; returning `None` never proves that no square root exists.
+    """
+    if int(field.degree()) != 3:
+        return None
+    if callable(cancelled) and cancelled():
+        raise AnalyticResourceError("cubic unit square-root recovery was cancelled")
+    target = _ordinary_unit(target)
+    if target.norm() != 1:
+        return None
+    trace = target.trace()
+    second_trace = (target * target).trace()
+    second_symmetric = (trace * trace - second_trace) / 2
+    if (
+        max(
+            _rational_size_bits(trace),
+            _rational_size_bits(second_symmetric),
+        )
+        > _MAXIMUM_CUBIC_SQUARE_ROOT_COEFFICIENT_BITS
+    ):
+        return None
+    base_module = __import__(
+        "sagejs._baselib.number_fields", fromlist=["number_fields"]
+    )
+    rational_field = base_module._nf_global("QQ")
+    polynomial_ring = base_module._nf_global("PolynomialRing")(
+        rational_field, "_unit_trace"
+    )
+    variable = polynomial_ring.gen()
+    for root_norm in (-1, 1):
+        if callable(cancelled) and cancelled():
+            raise AnalyticResourceError("cubic unit square-root recovery was cancelled")
+        trace_equation = (
+            (variable * variable - trace) ** 2
+            - 8 * root_norm * variable
+            - 4 * second_symmetric
+        )
+        for factor, _multiplicity in trace_equation.factor():
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError(
+                    "cubic unit square-root recovery was cancelled"
+                )
+            if int(factor.degree()) != 1:
+                continue
+            coefficients = list(factor.coefficients(sparse=False))
+            if len(coefficients) != 2 or coefficients[1] == 0:
+                continue
+            root_trace = -coefficients[0] / coefficients[1]
+            root_second_symmetric = (root_trace * root_trace - trace) / 2
+            denominator = target + root_second_symmetric
+            if denominator.is_zero():
+                continue
+            root = (root_trace * target + root_norm) / denominator
+            if (
+                root * root == target
+                and root.norm() == root_norm
+                and _exact_unit(field, order, root)
+            ):
+                return root
+    return None
+
+
+def _exact_cubic_square_root_candidate(
+    field: Any,
+    order: Any,
+    units: Sequence[Any],
+    torsion_elements: Sequence[Any],
+    prime: int,
+    cancelled: Callable[[], Any] | None,
+) -> tuple[tuple[int, ...], int, Any] | None:
+    """Find the first exact cubic index-two enlargement in source order."""
+    if prime != 2 or int(field.degree()) != 3:
+        return None
+    for exponents in _residue_vectors(prime, len(units)):
+        if not any(exponents):
+            continue
+        for torsion in range(len(torsion_elements)):
+            if callable(cancelled) and cancelled():
+                raise AnalyticResourceError("unit p-saturation was cancelled")
+            target = _target_element(field, units, torsion_elements, exponents, torsion)
+            root = _exact_cubic_unit_square_root(field, order, target, cancelled)
+            if root is not None:
+                return (tuple(exponents), torsion, root)
+    return None
+
+
 def _exact_local_obstruction(
     field: Any,
     order: Any,
@@ -2157,13 +2276,16 @@ def saturate_unit_lattice(
             residue_work += modulus_power
 
     for prime in required_primes:
+        exact_cubic_square_root = prime == 2 and degree == 3
         torsion_count = len(torsion_elements)
         target_power_limit = min(
             maximum_target_classes // torsion_count + 1,
             saturation_work_remaining // torsion_count + 1,
         )
         prime_power = _checked_power_at_most(prime, rank, target_power_limit, cancelled)
-        if prime_power is None or candidate_count is None:
+        if prime_power is None or (
+            candidate_count is None and not exact_cubic_square_root
+        ):
             unresolved.append(prime)
             incomplete_reason = (
                 "unit p-saturation preflight exceeds target or work caps"
@@ -2174,7 +2296,13 @@ def saturate_unit_lattice(
         # complete local obstruction constructs every target once and its
         # mandatory replay constructs/enumerates them again, so reserve a
         # conservative global upper bound before either phase starts.
-        per_target_work = candidate_count + 3 + 2 * residue_work
+        bounded_candidate_work = candidate_count if candidate_count is not None else 0
+        exact_cubic_work = (
+            _CUBIC_SQUARE_ROOT_WORK_PER_TARGET if exact_cubic_square_root else 0
+        )
+        per_target_work = (
+            bounded_candidate_work + exact_cubic_work + 3 + 2 * residue_work
+        )
         planned_work = (
             maximum_saturation_work + 1
             if per_target_work > 0
@@ -2211,7 +2339,20 @@ def saturate_unit_lattice(
                     )
                     if supplied is not None:
                         candidate = _coerce_pth_root_candidate(supplied)
-                    elif candidate_count <= maximum_root_candidates:
+                    elif exact_cubic_square_root:
+                        candidate = _exact_cubic_square_root_candidate(
+                            field,
+                            order,
+                            selected_units,
+                            torsion_elements,
+                            prime,
+                            cancelled,
+                        )
+                    if (
+                        candidate is None
+                        and candidate_count is not None
+                        and candidate_count <= maximum_root_candidates
+                    ):
                         candidate = _bounded_exact_pth_root(
                             field,
                             order,
