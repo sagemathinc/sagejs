@@ -94,20 +94,28 @@
       "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
       "workspace_fingerprint": "b51c6a4b43c6a183416fb0580c474473e8fc1778d6fc193af55e4ed772f60e27",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.519,
+      "started_at": "2026-08-29T04:02:45.964Z",
+      "commit": "1f05a0a2625899c1162036671de204ca5918e7a5",
+      "workspace_fingerprint": "803a8454d7a1dd60608afc67fc8e65862f19b5777c1013dddb0e551515f954c8",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Campaign 2 authoritative input now verifies every physical evidence/attachment descriptor, joins content-addressed capability and declaration authority to exact epoch components, supports a zero-sample typed cubic blocker, and emits canonical v2 observation/intervention/opportunity/dossier records. Real mode rejects fixture timings; deterministic tests cover physical counterfeits, cross-epoch authority, exact platform coverage, canonical round trips, and global identity invalidation.",
+    "summary": "Campaign 2 authoritative input verifies every physical evidence/attachment descriptor, joins content-addressed capability and declaration authority to exact epoch components, and now supports zero-sample typed blockers for every family. Dense and hyperelliptic blockers remain investigate, while the cubic policy rejects only the unavailable batch-full-factor proposal and retains the per-prime route. An all-blocker campaign emits deterministic failed-gate, observation, intervention, global decision, and opportunity records without fabricating a selection or dossier.",
     "risks": [
-      "Integration must regenerate Campaign 2 input bundles with provenance.timingAuthority and the v2 physical descriptor envelope; the greenfield change intentionally does not accept the older bundle-list API.",
-      "The branch-wide unit tier remains blocked by the pre-existing checked-in hyperelliptic policy source-bundle mismatch after a successful build.",
       "pnpm test:changed and pnpm architecture:check stop on pre-existing native export inventory drift across the branch delta from origin/main.",
-      "pnpm test:compiler cannot load the optional packages/flint/build/Release/sagejs_flint.node addon in this worktree; its non-FLINT fixtures pass."
+      "The current physical run records implementation commit 1f05a0a2 separately from exact integration epoch a5484b36; integrating the adjudicator changes may require freezing a successor epoch before publication."
     ],
     "next_steps": [
-      "Integration should construct real capability/declaration authority documents and complete physical attachment manifests for the exact frozen epoch.",
-      "Run the real adjudicator only after the dense bundle carries authoritative current platform/interruption evidence; do not publish fixture output.",
-      "Resolve the shared hyperelliptic policy and native export inventory drift before relying on full-repository validation."
+      "Cherry-pick 1f05a0a2 and rerun the focused test on the integration branch.",
+      "If the adjudicator source is inside the repository source closure, freeze a successor epoch and replay the immutable producer against it before publishing records.",
+      "Keep dossierId null until a real current-epoch candidate passes every selection gate."
     ]
   }
 }
