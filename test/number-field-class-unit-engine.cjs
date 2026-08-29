@@ -971,6 +971,36 @@ assert nontorsion_probe._unit_logarithmic_rank(
 ) == 1
 assert nontorsion_probe.logs == 0
 assert nontorsion_probe._resource_usage["relation_exact_rank_one_units"] == 1
+
+class LargeFactoredUnit:
+    def stable_hash(self):
+        return "large-factored-unit"
+    def factors(self):
+        return ((C.gen(), MAX_RELATION_STEERING_EXACT_EXPONENT_L1 + 1),)
+    def evaluate(self):
+        raise AssertionError("large producer-only units must stay factored")
+
+class LargeFactoredRankOneProbe(ClassUnitGroupEngine):
+    def __init__(self, field):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.logs = 0
+    def _combine(self, records, coefficients):
+        return LargeFactoredUnit()
+    def _unit_logarithms(self, unit, precision):
+        self.logs += 1
+        return (1.0, 0.0)
+
+large_probe = LargeFactoredRankOneProbe(C)
+assert large_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 1
+assert large_probe.logs == 1
+assert large_probe._resource_usage[
+    "relation_exact_rank_one_expansion_attempts"
+] == 0
+assert large_probe._resource_usage["relation_exact_rank_one_expansion_skips"] == 1
+assert large_probe._resource_usage["relation_factored_log_rank_units"] == 1
+assert large_probe._resource_usage["relation_exact_rank_one_units"] == 0
 print("monotone-log-steering")
 `);
   assert.equal(output, "monotone-log-steering");
@@ -1090,6 +1120,38 @@ assert group.verify_proof_payload(payload)
 print((group.order(), group.invariants(), payload["proof_status"]))
 `);
   assert.equal(output, "(4, (2, 2), 'exact-relations-conditional-grh')");
+});
+
+test("large cubic relation units remain factored during log-rank steering", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - 137*x - 630, "a")
+result = class_unit_context(K, proof=False)
+group = class_group(K, proof=False)
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 3
+assert result.class_group().invariants() == (3,)
+assert result.saturation_record.verify(K, K.maximal_order())
+assert group.order() == 3
+assert group.invariants() == (3,)
+assert group.verify()
+payload = group.proof_payload()
+assert group.verify_proof_payload(payload)
+resources = result.diagnostics["resources"]
+assert resources["relation_exact_rank_one_expansion_skips"] >= 1
+assert resources["relation_factored_log_rank_units"] >= 1
+print((
+    group.order(),
+    group.invariants(),
+    result.proof_status,
+    resources["relation_exact_rank_one_expansion_skips"] >= 1,
+))
+`, 600_000);
+  assert.equal(
+    output,
+    "(3, (3,), 'exact-relations-conditional-grh', True)",
+  );
 });
 
 test("exact presentations are deferred across safe relation batches", () => {

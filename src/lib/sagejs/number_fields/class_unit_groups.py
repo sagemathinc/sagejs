@@ -37,6 +37,14 @@ MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
+# Exact expansion is useful for cheaply distinguishing +/-1 from a genuine
+# rank-one unit, but relation dependencies can encode enormous powers.  The
+# expanded coordinate height grows roughly with the exponent L1 norm even
+# though the factored representation stays small.  Above this producer-only
+# cap, retain the factors and use their archimedean logarithms instead.  Final
+# unit recovery, regulator evaluation, saturation, and proof replay remain
+# exact and do not rely on this steering decision.
+MAX_RELATION_STEERING_EXACT_EXPONENT_L1 = 1_024
 
 _CUBIC_RELATION_SEED_UNREAD = object()
 _TERMINAL_SATURATION_CLONE_TOKEN = object()
@@ -1743,6 +1751,9 @@ class ClassUnitGroupEngine:
             "unit_logarithm_cache_hits": 0,
             "relation_log_rank_calls": 0,
             "relation_exact_rank_one_units": 0,
+            "relation_exact_rank_one_expansion_attempts": 0,
+            "relation_exact_rank_one_expansion_skips": 0,
+            "relation_factored_log_rank_units": 0,
             "relation_dependency_unit_requests": 0,
             "relation_dependency_unit_cache_hits": 0,
             "relation_dependency_unit_object_cache_hits": 0,
@@ -4010,7 +4021,25 @@ class ClassUnitGroupEngine:
             # to steer relation collection. The retained factored unit still
             # enters the rigorous regulator and hR computation normally.
             evaluator = getattr(unit, "evaluate", None)
-            if unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator):
+            factors = getattr(unit, "factors", None)
+            exact_expansion_allowed = True
+            if callable(factors):
+                exponent_l1 = 0
+                try:
+                    for _factor, exponent in factors():
+                        exponent_l1 += abs(int(exponent))
+                        if exponent_l1 > MAX_RELATION_STEERING_EXACT_EXPONENT_L1:
+                            exact_expansion_allowed = False
+                            break
+                except (TypeError, ValueError):
+                    exact_expansion_allowed = False
+            if (
+                unit_rank == 1
+                and int(self.field.degree()) == 3
+                and callable(evaluator)
+                and exact_expansion_allowed
+            ):
+                self._resource_usage["relation_exact_rank_one_expansion_attempts"] += 1
                 value = evaluator()
                 one = self.field.one()
                 if value != one and value != -one:
@@ -4020,6 +4049,11 @@ class ClassUnitGroupEngine:
                     self._resource_usage["relation_exact_rank_one_units"] += 1
                     current_rank = 1
                     break
+            elif (
+                unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator)
+            ):
+                self._resource_usage["relation_exact_rank_one_expansion_skips"] += 1
+                self._resource_usage["relation_factored_log_rank_units"] += 1
             row = tuple(self._unit_logarithms(unit, 80)[:-1])
             candidate = [*logarithms, row]
             candidate_rank = _floating_matrix_rank(candidate)
