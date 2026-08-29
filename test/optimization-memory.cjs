@@ -220,12 +220,14 @@ test("Campaign 1 anchor validates exact checked evidence and remains historical"
   const frozen = memory.validateContext(JSON.parse(fs.readFileSync(
     path.join(directory, "current-context.json"), "utf8",
   )));
-  const report = memory.buildReport([anchor], frozen, {
+  const report = memory.buildReport(memory.loadRecords([directory]), frozen, {
     repositoryRoot: path.join(__dirname, ".."),
   });
-  assert.equal(report.entries[0].bindingState, "historical");
-  assert.equal(report.entries[0].actionable, false);
-  assert.deepEqual(report.entries[0].provenanceProblems, []);
+  const anchorEntry = report.entries.find((entry) => entry.recordId === anchor.id);
+  assert.ok(anchorEntry);
+  assert.equal(anchorEntry.bindingState, "historical");
+  assert.equal(anchorEntry.actionable, false);
+  assert.deepEqual(anchorEntry.provenanceProblems, []);
   assert.equal(JSON.stringify(report), JSON.stringify(JSON.parse(fs.readFileSync(
     path.join(directory, "current-memory.json"), "utf8",
   ))));
