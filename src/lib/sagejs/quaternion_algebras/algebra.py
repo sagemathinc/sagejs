@@ -21,6 +21,11 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+_rank4_hnf_kernel: Any = None
+_rank4_hnf_native: Any = None
+_rank4_hnf_import_attempted = False
+
+
 def _global(name: str) -> Any:
     return runtime.reflect.get(runtime.global_object, name)
 
@@ -172,6 +177,65 @@ def _rational_parts(value: Any) -> tuple[Any, Any]:
     return rational._numerator, rational._denominator
 
 
+def _try_packed_rank4_hnf(integer_rows: list[list[Any]]) -> list[list[Any]] | None:
+    """Return the row HNF through the existing isolated FLINT boundary."""
+
+    global _rank4_hnf_import_attempted, _rank4_hnf_kernel, _rank4_hnf_native
+    row_count = len(integer_rows)
+    if row_count < 4 or row_count > 4096 or any(len(row) != 4 for row in integer_rows):
+        return None
+    if not _rank4_hnf_import_attempted:
+        _rank4_hnf_import_attempted = True
+        try:
+            kernel_module = __import__(
+                "sagejs.kernels.matrix.dense_integer_flint",
+                fromlist=["dense_integer_flint"],
+            )
+            _rank4_hnf_native = __import__("sagejs.native", fromlist=["native"])
+            _rank4_hnf_kernel = kernel_module.flint_dense_integer_matrix_hnf
+        except (AttributeError, ImportError):
+            _rank4_hnf_kernel = None
+            _rank4_hnf_native = None
+    if (
+        _rank4_hnf_kernel is None
+        or _rank4_hnf_native is None
+        or not _rank4_hnf_native.is_compiled(_rank4_hnf_kernel)
+    ):
+        return None
+    try:
+        flattened = [sage.ZZ(value) for row in integer_rows for value in row]
+        maximum_bits = max(runtime.number(abs(value).nbits()) for value in flattened)
+        # Every nonzero output row is controlled by a rank-four minor.  Leave
+        # substantial extra room so a capacity miss falls back instead of
+        # becoming an accidental limitation on public lattice input.
+        output_bits = 4 * (maximum_bits + 4) + 64
+        word_capacity = max(8, (output_bits + 63) // 64 + 2)
+        source = _rank4_hnf_native.kernel_integer_buffer(_rank4_hnf_kernel, flattened)
+        output = _rank4_hnf_native.kernel_integer_zeros(
+            _rank4_hnf_kernel, row_count * 4, word_capacity
+        )
+        if not _rank4_hnf_kernel(output, source, row_count, 4):
+            return None
+        values = [
+            sage.ZZ(value) for value in _rank4_hnf_native.integer_buffer_values(output)
+        ]
+        answer = [
+            values[index * 4 : (index + 1) * 4]
+            for index in range(row_count)
+            if any(values[index * 4 + column] != 0 for column in range(4))
+        ]
+        return answer if len(answer) == 4 else None
+    except (
+        ArithmeticError,
+        AttributeError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+
+
 def _canonical_lattice(rows: Iterable[Iterable[Any]]) -> tuple[tuple[Any, ...], ...]:
     rational_rows: list[list[Any]] = []
     denominator = 1
@@ -195,13 +259,20 @@ def _canonical_lattice(rows: Iterable[Iterable[Any]]) -> tuple[tuple[Any, ...], 
                 raise ArithmeticError("failed to clear quaternion lattice denominator")
             integer_row.append(numerator)
         integer_rows.append(integer_row)
-    hermite = _global("matrix")(sage.ZZ, integer_rows).hermite_form(
-        include_zero_rows=False
-    )
-    if hermite.nrows() != 4:
+    packed_hermite = _try_packed_rank4_hnf(integer_rows)
+    if packed_hermite is None:
+        hermite = _global("matrix")(sage.ZZ, integer_rows).hermite_form(
+            include_zero_rows=False
+        )
+        if hermite.nrows() != 4:
+            raise ValueError("a quaternion order or ideal must have rank four")
+        hermite_rows = hermite.rows()
+    else:
+        hermite_rows = packed_hermite
+    if len(hermite_rows) != 4:
         raise ValueError("a quaternion order or ideal must have rank four")
     return tuple(
-        tuple(sage.QQ(value) / denominator for value in row) for row in hermite.rows()
+        tuple(sage.QQ(value) / denominator for value in row) for row in hermite_rows
     )
 
 

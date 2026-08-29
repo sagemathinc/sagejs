@@ -129,6 +129,32 @@ test("quaternion orders, equivalence witnesses, and component groups are exact",
   }
 });
 
+test("packed and public rank-four HNF canonicalization agree exactly", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "import sagejs.quaternion_algebras.algebra as algebra",
+        "corpus=[",
+        " [(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)],",
+        " [(2,0,0,0),(1,3,0,0),(4,-2,5,0),(7,8,-3,11),(13,5,2,-7)],",
+        " [(1/2,0,0,0),(1/3,1/5,0,0),(2/7,-1/11,1/13,0),(3/17,5/19,-2/23,1/29)],",
+        " [(17,3,-5,7),(0,19,11,-13),(23,-2,29,5),(31,37,-3,41),(43,-47,53,-59),(61,67,-71,73)]",
+        "]",
+        "packed=[algebra._canonical_lattice(rows) for rows in corpus]",
+        "compiled=algebra._rank4_hnf_native.is_compiled(algebra._rank4_hnf_kernel)",
+        "algebra._rank4_hnf_kernel=None",
+        "algebra._rank4_hnf_import_attempted=True",
+        "public=[algebra._canonical_lattice(rows) for rows in corpus]",
+        "[compiled,packed==public]",
+      ].join("\n"),
+    );
+    assert.equal(result.repr, "[True, True]");
+  } finally {
+    await session.close();
+  }
+});
+
 test("composite discriminants produce genuine mass-complete ideal classes", async () => {
   const session = await createSage();
   try {

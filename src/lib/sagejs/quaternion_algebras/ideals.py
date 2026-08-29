@@ -78,14 +78,14 @@ def _ldl_decomposition(
 ) -> tuple[tuple[tuple[Any, ...], ...], tuple[Any, ...]]:
     r"""Return the exact unit-lower $LDL^{\mathsf T}$ decomposition of `gram`."""
 
-    dimension = gram.nrows()
+    dimension = len(gram)
     lower = [
         [sage.QQ(1 if row == column else 0) for column in range(dimension)]
         for row in range(dimension)
     ]
     diagonal: list[Any] = []
     for row in range(dimension):
-        value = sage.QQ(gram[row, row])
+        value = sage.QQ(gram[row][row])
         for previous in range(row):
             value -= lower[row][previous] ** 2 * diagonal[previous]
         if value <= 0:
@@ -94,7 +94,7 @@ def _ldl_decomposition(
             )
         diagonal.append(value)
         for following in range(row + 1, dimension):
-            numerator = sage.QQ(gram[following, row])
+            numerator = sage.QQ(gram[following][row])
             for previous in range(row):
                 numerator -= (
                     lower[following][previous]
@@ -112,7 +112,7 @@ def _dot_gram(left: list[Any], gram: Any, right: list[Any]) -> Any:
             continue
         for column in range(len(right)):
             if right[column] != 0:
-                answer += left[row] * gram[row, column] * right[column]
+                answer += left[row] * gram[row][column] * right[column]
     return answer
 
 
@@ -127,11 +127,11 @@ def _exact_gcd(left: Any, right: Any) -> Any:
 def _integer_gram_data(gram: Any) -> tuple[list[list[Any]], Any]:
     """Clear one common denominator from a rational Gram matrix."""
 
-    dimension = gram.nrows()
+    dimension = len(gram)
     denominator = sage.ZZ(1)
     for row in range(dimension):
         for column in range(dimension):
-            _numerator, entry_denominator = _rational_parts(gram[row, column])
+            _numerator, entry_denominator = _rational_parts(gram[row][column])
             denominator = (
                 denominator
                 // _exact_gcd(denominator, entry_denominator)
@@ -141,7 +141,7 @@ def _integer_gram_data(gram: Any) -> tuple[list[list[Any]], Any]:
     for row in range(dimension):
         result_row = []
         for column in range(dimension):
-            scaled = sage.QQ(gram[row, column]) * denominator
+            scaled = sage.QQ(gram[row][column]) * denominator
             numerator, entry_denominator = _rational_parts(scaled)
             if entry_denominator != 1:
                 raise ArithmeticError("failed to clear a Gram-matrix denominator")
@@ -392,40 +392,97 @@ def _linear_combination(
     return answer
 
 
+def _quaternion_norm_pair_rows(
+    algebra: Any, left: Iterable[Any], right: Iterable[Any]
+) -> Any:
+    """Return the reduced-norm polarization directly on four coordinates."""
+
+    x0, x1, x2, x3 = left
+    y0, y1, y2, y3 = right
+    a = algebra.a()
+    b = algebra.b()
+    return x0 * y0 - a * x1 * y1 - b * x2 * y2 + a * b * x3 * y3
+
+
 class _LatticeNormPlan:
     """Immutable exact reduction data for repeated rank-$4$ norm searches."""
 
-    def __init__(self, algebra: Any, rows: Iterable[Iterable[Any]]) -> None:
+    def __init__(
+        self,
+        algebra: Any,
+        rows: Iterable[Iterable[Any]],
+        *,
+        canonical: bool = False,
+    ) -> None:
         self.algebra = algebra
-        self.canonical_rows = _canonical_lattice(rows)
-        self.basis = tuple(algebra(row) for row in self.canonical_rows)
-        self.gram = _global("matrix")(
-            sage.QQ,
-            [[left.pair(right) / 2 for right in self.basis] for left in self.basis],
+        self.canonical_rows = (
+            tuple(tuple(sage.QQ(value) for value in row) for row in rows)
+            if canonical
+            else _canonical_lattice(rows)
         )
-        self.integer_gram, self.gram_denominator = _integer_gram_data(self.gram)
+        gram_rows = tuple(
+            tuple(
+                sage.QQ(_quaternion_norm_pair_rows(algebra, left, right))
+                for right in self.canonical_rows
+            )
+            for left in self.canonical_rows
+        )
+        self.integer_gram, self.gram_denominator = _integer_gram_data(gram_rows)
         self.transform = tuple(
             tuple(value for value in row)
             for row in _integer_gram_lll_transform(self.integer_gram)
         )
-        self.reduced_basis = tuple(
-            _linear_combination(algebra, row, self.basis) for row in self.transform
+        self.reduced_basis_rows = tuple(
+            tuple(
+                sum(
+                    (
+                        self.transform[row][source]
+                        * self.canonical_rows[source][coordinate]
+                        for source in range(4)
+                    ),
+                    sage.QQ(0),
+                )
+                for coordinate in range(4)
+            )
+            for row in range(4)
         )
+        self._reduced_basis_elements: tuple[QuaternionElement, ...] | None = None
         self.reduced_integer_gram = _transformed_integer_gram(
             self.integer_gram, [list(row) for row in self.transform]
         )
-        self.reduced_gram = _global("matrix")(
-            sage.QQ,
-            [
-                [sage.QQ(value) / self.gram_denominator for value in integer_row]
-                for integer_row in self.reduced_integer_gram
-            ],
+        self.reduced_gram = tuple(
+            tuple(sage.QQ(value) / self.gram_denominator for value in integer_row)
+            for integer_row in self.reduced_integer_gram
         )
         self.lower, self.diagonal = _ldl_decomposition(self.reduced_gram)
-        inverse = self.reduced_gram.inverse()
-        self.inverse_diagonal = tuple(inverse[index, index] for index in range(4))
+        determinant = _integer_determinant(self.reduced_integer_gram)
+        if determinant <= 0:
+            raise ArithmeticError("a quaternion norm Gram determinant is not positive")
+        self.inverse_diagonal = tuple(
+            sage.QQ(self.gram_denominator)
+            * _integer_determinant(
+                [
+                    [
+                        self.reduced_integer_gram[row][column]
+                        for column in range(4)
+                        if column != index
+                    ]
+                    for row in range(4)
+                    if row != index
+                ]
+            )
+            / determinant
+            for index in range(4)
+        )
         self._kernel_gram: Any = None
         self._kernel_gram_owner: Any = None
+
+    def reduced_basis_elements(self) -> tuple[QuaternionElement, ...]:
+        if self._reduced_basis_elements is None:
+            self._reduced_basis_elements = tuple(
+                self.algebra(row) for row in self.reduced_basis_rows
+            )
+        return self._reduced_basis_elements
 
 
 def _packed_kernel_gram(plan: _LatticeNormPlan, kernel: Any, native_module: Any) -> Any:
@@ -856,7 +913,9 @@ class QuaternionRightIdeal:
     def _left_order_product_norm_plan(self) -> _LatticeNormPlan:
         if self._left_order_product_plan is None:
             self._left_order_product_plan = _LatticeNormPlan(
-                self._algebra, self._left_order_product_lattice()
+                self._algebra,
+                self._left_order_product_lattice(),
+                canonical=True,
             )
         return self._left_order_product_plan
 
@@ -914,11 +973,13 @@ class QuaternionRightIdeal:
 
     def _lattice_norm_plan(self) -> _LatticeNormPlan:
         if self._norm_plan is None:
-            self._norm_plan = _LatticeNormPlan(self._algebra, self._basis_rows)
+            self._norm_plan = _LatticeNormPlan(
+                self._algebra, self._basis_rows, canonical=True
+            )
         return self._norm_plan
 
     def reduced_basis(self) -> tuple[QuaternionElement, ...]:
-        return self._lattice_norm_plan().reduced_basis
+        return self._lattice_norm_plan().reduced_basis_elements()
 
     def elements_with_normalized_norm_at_most(
         self, bound: Any
@@ -930,7 +991,9 @@ class QuaternionRightIdeal:
         plan = self._lattice_norm_plan()
         for coordinates, norm in _enumerate_plan_by_norm(plan, absolute_bound):
             yield (
-                _linear_combination(self._algebra, coordinates, plan.reduced_basis),
+                _linear_combination(
+                    self._algebra, coordinates, plan.reduced_basis_elements()
+                ),
                 norm / self.norm(),
             )
 
@@ -990,13 +1053,17 @@ class QuaternionRightIdeal:
                         "native rank-four norm enumeration failed exact replay"
                     )
                 answer.append(
-                    _linear_combination(self._algebra, coordinates, plan.reduced_basis)
+                    _linear_combination(
+                        self._algebra, coordinates, plan.reduced_basis_elements()
+                    )
                 )
             return tuple(answer)
         for coordinates, norm in _enumerate_plan_by_norm(plan, absolute_target):
             if norm == absolute_target:
                 answer.append(
-                    _linear_combination(self._algebra, coordinates, plan.reduced_basis)
+                    _linear_combination(
+                        self._algebra, coordinates, plan.reduced_basis_elements()
+                    )
                 )
         return tuple(answer)
 
@@ -1048,7 +1115,7 @@ class QuaternionRightIdeal:
             tuple(value / other.norm() for value in row) for row in connecting_rows
         ]
         target = self.norm() / other.norm()
-        plan = _LatticeNormPlan(self._algebra, scaled_rows)
+        plan = _LatticeNormPlan(self._algebra, scaled_rows, canonical=True)
         native_coordinates = _try_native_vectors_of_norm(plan, target)
         if native_coordinates is None:
             candidates = (
@@ -1059,7 +1126,9 @@ class QuaternionRightIdeal:
         else:
             candidates = iter(native_coordinates)
         for coordinates in candidates:
-            alpha = _linear_combination(self._algebra, coordinates, plan.reduced_basis)
+            alpha = _linear_combination(
+                self._algebra, coordinates, plan.reduced_basis_elements()
+            )
             if self._basis_rows == _canonical_lattice(
                 tuple(alpha * value for value in other._basis)
             ):

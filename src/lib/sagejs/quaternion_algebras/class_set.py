@@ -437,6 +437,7 @@ class EichlerIdealClassSet:
                     _LatticeNormPlan(
                         self._algebra,
                         ideal.multiply_by_conjugate(self._ideals[prior]),
+                        canonical=True,
                     )
                     for prior in range(index + 1)
                 )

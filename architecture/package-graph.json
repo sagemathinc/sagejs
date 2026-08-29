@@ -587,7 +587,7 @@
       "id": "rational-quaternion-algebras",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 110000,
+      "max_source_bytes": 115000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra"
