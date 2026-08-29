@@ -8,7 +8,7 @@ This generated dashboard compiles every ordinary Python module under `src/lib` a
 without executing it. Imports are stubbed, optimizer IR is independently verified, and
 every loop-bearing function or method is retained with its exact source location.
 
-Input identity: `197dada685ca29b4b3f0e379490c0fb1eba3cd588c094b69397fab885a5abfaa` (491 files, 10664632 bytes).
+Input identity: `13c49a49ef5ac27ccb33798cb661c60dacc06af4b2a8f366961210088172bb2c` (491 files, 10665782 bytes).
 
 Regenerate or verify it with:
 
@@ -23,12 +23,12 @@ pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_gr
 | Measure | Count |
 | --- | ---: |
 | Source modules compiled | 431 / 431 |
-| Functions and methods compiled | 12162 |
-| Loop-bearing functions and methods | 3837 |
-| Loops in functions | 10810 |
+| Functions and methods compiled | 12163 |
+| Loop-bearing functions and methods | 3838 |
+| Loops in functions | 10811 |
 | Selected optimized loops | 44 |
 | Compiler-rejected loops | 2829 |
-| Unrecognized loops | 7937 |
+| Unrecognized loops | 7938 |
 | One-reason compiler near-misses | 243 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -37,11 +37,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 72124
-- Collection-allocation sites: 8687
+- Potential object-result sites: 72132
+- Collection-allocation sites: 8688
 - Known coercion sites: 15526
 - Potential boundary-call sites: 72
-- Unresolved call sites: 36406
+- Unresolved call sites: 36412
 - Selected-target allocations: 0 known; 44 runtime-dependent
 - Selected-target representation conversions: 0 known; 44 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -110,13 +110,13 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 7937 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 7144 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 6736 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.no-current-pass-claimed` | 7938 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 7145 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 6738 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
 | `dashboard.comprehension-loop` | 3689 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 2815 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2253 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| `dashboard.control-flow-sites` | 1877 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
+| `dashboard.control-flow-sites` | 1878 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `bounded-integer.unsupported-iterator` | 1812 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `bounded-integer.mutable-buffer-access` | 1647 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | `dashboard.nested-loop-sites` | 1546 | Consider a fused multidimensional region with explicit shape and work bounds. |

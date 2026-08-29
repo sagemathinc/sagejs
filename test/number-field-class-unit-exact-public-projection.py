@@ -1,5 +1,7 @@
 """Exact public projection regression executed as an ordinary Python program."""
 
+# DISABLED: full-runtime FLINT integration fixture, covered by its dedicated CJS test
+
 import json
 import time
 

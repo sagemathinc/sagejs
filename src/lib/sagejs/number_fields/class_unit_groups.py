@@ -2343,6 +2343,36 @@ class ClassUnitGroupEngine:
             and authenticate(self._live_context_token, collector, presentation)
         )
 
+    def _relation_stage_exactly_authenticated(
+        self, collector: Any, presentation: Any
+    ) -> bool:
+        """Authenticate a live relation stage or replay its detached evidence."""
+        if self._context_relation_stage_authenticated(collector, presentation):
+            return True
+        try:
+            records = tuple(collector.records)
+            relation_rows = tuple(presentation.relation_rows)
+            if len(relation_rows) != len(records) or not presentation.verify():
+                return False
+            for relation_row, record in zip(relation_rows, records, strict=True):
+                dense_row = (
+                    relation_row.dense()
+                    if hasattr(relation_row, "dense")
+                    else list(relation_row)
+                )
+                if list(dense_row) != list(record.row):
+                    return False
+            verify_admission = getattr(collector, "verify_admission_receipt", None)
+            return bool(
+                callable(verify_admission)
+                and all(
+                    verify_admission(self.order, collector.factor_base, record)
+                    for record in records
+                )
+            )
+        except (AttributeError, TypeError, ValueError, ArithmeticError):
+            return False
+
     def _retain_context_dependency_units(
         self,
         collector: Any,
@@ -4673,12 +4703,8 @@ class ClassUnitGroupEngine:
         if live_relations_authenticated:
             self._resource_usage["unit_live_relation_authority_hits"] += 1
         else:
-            if not presentation.verify():
+            if not self._relation_stage_exactly_authenticated(collector, presentation):
                 raise ArithmeticError("the relation presentation failed exact replay")
-            live_relations_authenticated = callable(admission_verifier) and all(
-                admission_verifier(self.order, collector.factor_base, record)
-                for record in records
-            )
         dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
@@ -5617,7 +5643,7 @@ class ClassUnitGroupEngine:
                 from_deferred_projection
                 and not self._context_deferred_saturation_state_authenticated(state)
             )
-            or not self._context_relation_stage_authenticated(collector, presentation)
+            or not self._relation_stage_exactly_authenticated(collector, presentation)
             or live_proof is None
             or len(live_proof) != 6
             or len(live_proof[0]) != len(units)
