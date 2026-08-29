@@ -1,4 +1,4 @@
-"""Append-only compact sparse exact rows for Native Kernel v31."""
+"""Append-only compact sparse exact rows for Native Kernel v32."""
 
 from sagejs.native import NativeExactArena, native, uint64
 

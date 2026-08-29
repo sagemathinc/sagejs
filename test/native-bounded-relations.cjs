@@ -94,7 +94,7 @@ else:
 
 test("bounded relation IR records hash, probing, ownership, and effects", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 31);
+  assert.equal(ir.version, 32);
   const fn = ir.functions.find((candidate) =>
     candidate.name === "bounded_relation_summary"
   );

@@ -1,4 +1,4 @@
-"""Fixed-schema resident-record witnesses for Native Kernel v31."""
+"""Fixed-schema resident-record witnesses for Native Kernel v32."""
 
 from sagejs.native import NativeExactArena, NativeRecord, native, uint64
 

@@ -1,4 +1,4 @@
-"""Deterministic bounded-relation witnesses for Native Kernel v31."""
+"""Deterministic bounded-relation witnesses for Native Kernel v32."""
 
 from sagejs.native import NativeExactArena, NativeRecord, native, uint64
 

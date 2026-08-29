@@ -29,7 +29,8 @@ function shieldedFunctions(ir) {
   function visit(value) {
     if (value === null || typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
-    if (value.kind === "ffi.call" &&
+    if ((value.kind === "ffi.call" ||
+        value.kind === "ffi.arena.resource.allocate") &&
         value.foreign?.function?.exceptions?.policy === "cxx_to_status") {
       const fn = value.foreign.function;
       functions.set(fn.call_plan.declaration_id, fn);
@@ -1284,6 +1285,17 @@ function sagejsFfiCloseResources(resources) {
     resource.closed = true;
     resource.handle = null;
   }
+}
+
+function sagejsFfiCloseResource(value, resources) {
+  if (value === null || value === undefined || resources === null) return;
+  const root = value.root || value;
+  const index = resources.lastIndexOf(root);
+  if (index >= 0) resources.splice(index, 1);
+  if (root.ownership !== "owned" || root.closed) return;
+  Reflect.apply(root.close, root.backend, [root.handle]);
+  root.closed = true;
+  root.handle = null;
 }
 
 function sagejsFfiTransferResource(value, resources) {

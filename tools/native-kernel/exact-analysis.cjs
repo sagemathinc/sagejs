@@ -173,6 +173,7 @@ function operationInputs(operation) {
       return [operation.owner];
     case "native.call":
     case "ffi.call":
+    case "ffi.arena.resource.allocate":
       return operation.arguments.map((argument) => argument.name);
     case "return":
       return operation.values || [operation.value];
@@ -507,7 +508,8 @@ function executionProfile(fn) {
       if (operation.kind === "uint64.binary") {
         profile.uint64ArithmeticOperations += 1;
       }
-      if (operation.kind === "native.call" || operation.kind === "ffi.call") {
+      if (operation.kind === "native.call" || operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
         profile.nativeCalls += 1;
       }
       if (operation.kind === "integer.vector.scope" ||
@@ -658,7 +660,8 @@ function localEffects(fn) {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "raise") mayRaise.add(operation.errorType);
-      if (operation.kind === "ffi.call") {
+      if (operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
         const effects = operation.foreign.function.effects;
         foreignPure = foreignPure && effects.pure;
         foreignDeterministic = foreignDeterministic && effects.deterministic;
@@ -738,7 +741,8 @@ function bufferWrites(fn, dependencyEffects) {
             for (const root of roots(argument.name)) writes.add(root);
           }
         }
-      } else if (statement.kind === "ffi.call") {
+      } else if (statement.kind === "ffi.call" ||
+          statement.kind === "ffi.arena.resource.allocate") {
         const parameters = statement.foreign.function.signature.parameters;
         for (const written of statement.foreign.function.effects.writes || []) {
           const position = parameters.findIndex((param) => param.name === written);
@@ -1008,7 +1012,10 @@ function taggedIntegerProof(fn, effects) {
         operations.add(operation.kind.replace("integer.", "tagged-"));
       }
       if (operation.kind === "native.call") operations.add("direct-tagged-call");
-      if (operation.kind === "ffi.call") operations.add("direct-ffi-call");
+      if (operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
+        operations.add("direct-ffi-call");
+      }
     },
     read() {},
     write() {},
@@ -1089,7 +1096,20 @@ function liveExactWorkspaceAnalysis(fn) {
           temporaryLimit: operation.temporaryLimit,
           storage: "shared-budget-lexical-exact-arena",
           children: operation.children.map((child) =>
-            child.type === "NativeIntegerMatrix"
+            child.childKind === "foreign-resource"
+              ? {
+                  owner: child.owner,
+                  storage: "declared-owned-ffi-resource",
+                  type: child.type,
+                  resourceId: child.resourceId,
+                  resourceIdentity: child.resourceIdentity,
+                  abiType: child.abiType,
+                  clearSymbol: child.clearSymbol,
+                  sizeSymbol: child.sizeSymbol,
+                  constructorDeclarationId: child.constructorDeclarationId,
+                  cleanup: "before-arena-rewind-all-exit-idempotent",
+                }
+            : child.type === "NativeIntegerMatrix"
               ? {
                   owner: child.owner,
                   storage: "row-major-mpz-matrix",

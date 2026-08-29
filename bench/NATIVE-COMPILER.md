@@ -1,10 +1,16 @@
-# Native Kernel v31
+# Native Kernel v32
 
-Native Kernel v31 asks whether selected Sage.js library functions can compile
+Native Kernel v32 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
 and resumes at that exact instruction. There is no whole-function replay.
+
+Version 32 adds explicit arena ownership for declared FLINT resources. A
+resource constructor and resource-to-resource operations remain visible in
+source and IR; generated cleanup releases every owned resource before the
+arena checkpoint rewinds. The resident FLINT matrix witness performs HNF
+without staging a packed matrix between construction, reduction, and reads.
 
 The input is ordinary Sage.js source. `@native` is a no-op under CPython and
 remains the readable fallback in Sage.js. When a source-hash-matched compiled
@@ -65,7 +71,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v31 is currently a source-tree development feature and uses the
+Native Kernel v32 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every

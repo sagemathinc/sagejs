@@ -404,6 +404,7 @@ function createContext(
     activeBoundedCollections: new Map(),
     activeSparseIntegerRows: new Set(),
     activeExactArenas: new Map(),
+    activeArenaForeignResources: new Set(),
     records,
     fn,
   };
@@ -1253,8 +1254,9 @@ function lowerCall(node, context, operations) {
       expect(
         context,
         node,
-        context.controlDepth === 0,
-        "owned FFI resources must be created in the top-level native block",
+        context.controlDepth === 0 && context.activeExactArenas.size === 0,
+        "owned FFI resources must be created in the top-level native block " +
+          "or explicitly with NativeExactArena.foreign_resource()",
       );
     }
     operations.push({
@@ -1991,6 +1993,12 @@ function assignScalar(targetNode, value, context, operations) {
   );
   ensureVariable(context, targetNode, targetNode.name, value.type);
   if (context.foreignResources.has(value.type)) {
+    expect(
+      context,
+      targetNode,
+      !context.activeArenaForeignResources.has(value.name),
+      "arena-owned FFI resources cannot escape through aliases",
+    );
     context.resourceAliases.set(
       targetNode.name,
       context.resourceAliases.get(value.name) || value.name,
@@ -2225,6 +2233,107 @@ function lowerBufferAssignment(item, right, operator, context) {
   return operations;
 }
 
+function lowerArenaForeignResourceAllocation(
+  assign,
+  arena,
+  arenaState,
+  context,
+) {
+  const call = assign.right;
+  if (call.expression.property !== "foreign_resource") return undefined;
+  const args = array(call.args);
+  expect(
+    context,
+    call,
+    args.length >= 1 && nodeType(args[0]) === "AST_SymbolRef" &&
+      array(call.args?.kwarg_items).length === 0 && !call.args?.starargs,
+    "NativeExactArena.foreign_resource() requires a declared resource " +
+      "constructor followed by positional arguments",
+  );
+  const foreign = context.foreignFunctions.get(args[0].name);
+  expect(
+    context,
+    args[0],
+    foreign !== undefined && foreign.function.targets.native,
+    "NativeExactArena.foreign_resource() requires a native-capable declared " +
+      "FFI constructor",
+  );
+  const signature = foreign.function.signature;
+  const resource = context.foreignResources.get(signature.return_type);
+  expect(
+    context,
+    args[0],
+    resource !== undefined && resource.ownership === "owned" &&
+      typeof resource.native?.clear_symbol === "string" &&
+      typeof resource.native?.size_symbol === "string",
+    "NativeExactArena.foreign_resource() requires an owned declared resource " +
+      "with native clear and size protocols",
+  );
+  expect(
+    context,
+    call,
+    args.length - 1 === signature.parameters.length,
+    `${args[0].name} expects ${signature.parameters.length} arguments, got ` +
+      `${args.length - 1}`,
+  );
+  const operations = [];
+  const lowered = signature.parameters.map((param, index) => {
+    const argument = args[index + 1];
+    let value = lowerExpression(
+      argument,
+      context,
+      operations,
+      param.type === "uint64" ? "uint64" : undefined,
+    );
+    if (param.type === "Integer") {
+      value = coerceInteger(value, context, argument, operations);
+    }
+    expect(
+      context,
+      argument,
+      value.type === param.type,
+      `${args[0].name} argument ${index + 1} expects ${param.type}, got ` +
+        `${value.type}`,
+    );
+    return value;
+  });
+  const child = assign.left.name;
+  expect(
+    context,
+    assign.left,
+    !context.variables.has(child),
+    `NativeExactArena child ${child} shadows an existing native value`,
+  );
+  ensureVariable(context, assign.left, child, signature.return_type);
+  context.initialized.add(child);
+  context.activeArenaForeignResources.add(child);
+  context.usedForeignResources.set(signature.return_type, resource);
+  context.foreignDependencies.add(foreign.declarationIdentity);
+  const descriptor = {
+    owner: child,
+    type: signature.return_type,
+    childKind: "foreign-resource",
+    resourceId: resource.id,
+    resourceIdentity: `resource:${foreign.declarationIdentity.split(":")[0]}:` +
+      `${resource.id}`,
+    abiType: resource.abi_type,
+    clearSymbol: resource.native.clear_symbol,
+    sizeSymbol: resource.native.size_symbol,
+    constructorDeclarationId: foreign.declarationId,
+  };
+  arenaState.children.push(descriptor);
+  operations.push({
+    kind: "ffi.arena.resource.allocate",
+    arena,
+    target: child,
+    arguments: lowered,
+    returnType: signature.return_type,
+    foreign,
+    resource: descriptor,
+  });
+  return operations;
+}
+
 function lowerArenaAllocation(statement, context) {
   const assign = statement.body;
   if (
@@ -2250,6 +2359,13 @@ function lowerArenaAllocation(statement, context) {
     "NativeExactArena children must be allocated unconditionally in its lexical body",
   );
   const method = assign.right.expression.property;
+  const foreignResource = lowerArenaForeignResourceAllocation(
+    assign,
+    arena,
+    arenaState,
+    context,
+  );
+  if (foreignResource !== undefined) return foreignResource;
   const args = array(assign.right.args);
   let record;
   if (["records", "bounded_map", "bounded_set"].includes(method)) {
@@ -2868,7 +2984,9 @@ function lowerStatements(statements, context) {
         context.activeExactArenas.delete(owner);
         context.initialized.delete(owner);
         for (const child of arenaState.children) {
-          if (child.type === LIVE_INTEGER_MATRIX_TYPE) {
+          if (child.childKind === "foreign-resource") {
+            context.activeArenaForeignResources.delete(child.owner);
+          } else if (child.type === LIVE_INTEGER_MATRIX_TYPE) {
             context.activeIntegerMatrices.delete(child.owner);
           } else if (child.type === LIVE_INTEGER_VECTOR_TYPE) {
             context.activeIntegerVectors.delete(child.owner);
@@ -2973,7 +3091,8 @@ function lowerStatements(statements, context) {
           context,
           statement,
           returnedResource.ownership === "owned" &&
-            context.locals.has(value.name),
+            context.locals.has(value.name) &&
+            !context.activeArenaForeignResources.has(value.name),
           "native resource returns must transfer a newly owned local resource",
         );
       }

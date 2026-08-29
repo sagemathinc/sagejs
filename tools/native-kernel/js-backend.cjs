@@ -489,7 +489,8 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${targets} = javascript_${operation.function}(` +
       `${operation.arguments.map((argument) => argument.name).join(", ")});`;
   }
-  if (operation.kind === "ffi.call") {
+  if (operation.kind === "ffi.call" ||
+      operation.kind === "ffi.arena.resource.allocate") {
     return javascriptForeignCall(operation, indent);
   }
   if (operation.kind === "if") {
@@ -586,7 +587,10 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "integer.arena.scope") {
     const cleanup = [...operation.children].reverse().map((child) =>
-      `${indent}  ${child.type === "NativeIntegerMatrix"
+      child.childKind === "foreign-resource"
+        ? `${indent}  sagejsFfiCloseResource(${child.owner}, ` +
+          `${resourceStack});`
+        : `${indent}  ${child.type === "NativeIntegerMatrix"
         ? "nativeIntegerMatrixClose"
         : child.type === "NativeIntegerVector"
           ? "nativeIntegerVectorClose"

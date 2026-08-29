@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v31 currently accepts a deliberately narrow typed numerical
+Native Kernel v32 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -916,10 +916,13 @@ class NativeExactArena:
     """One lexical semantic-memory budget for several resident exact owners.
 
     Children are created only through `integer_vector`, `integer_matrix`,
-    `records`, `bounded_map`, `bounded_set`, and `sparse_integer_rows`. They
+    `records`, `bounded_map`, `bounded_set`, `sparse_integer_rows`, and
+    `foreign_resource`. They
     share one deterministic byte limit, remain private to the arena, and close
     in reverse creation order on every exit. Native compilation lowers the
     complete ownership graph without materializing child Python objects.
+    A declared foreign child's size protocol remains physical-memory telemetry
+    until its library operation schedule has a separate allocation proof.
     `temporary_limit` reserves the native checkpoint slab used by short-lived
     GMP allocations; it does not change the ordinary Python computation.
     """
@@ -941,14 +944,9 @@ class NativeExactArena:
             "NativeExactArena memory limit exceeded",
         )
         self._temporary_limit = exact_temporary_limit
-        self._children: list[
-            NativeIntegerVector
-            | NativeIntegerMatrix
-            | NativeRecordVector
-            | NativeBoundedMap
-            | NativeBoundedSet
-            | NativeSparseIntegerRows
-        ] = []
+        # Exact containers and declared foreign resources share the same
+        # reverse-order lexical ownership protocol.
+        self._children: list[Any] = []
         self._open = True
         self._entered = False
 
@@ -1068,6 +1066,21 @@ class NativeExactArena:
             self._budget.limit,
             _budget=self._budget,
         )
+        self._children.append(child)
+        return child
+
+    def foreign_resource(self, factory: Any, *arguments: Any) -> Any:
+        """Own one declared foreign resource for the arena's lexical lifetime.
+
+        CPython executes `factory` normally and requires an idempotent `close`
+        method. Native compilation accepts only a statically imported declared
+        resource constructor with an owned result and generated clear/size
+        metadata; arbitrary callables fail lowering.
+        """
+        self._require_open()
+        child = factory(*arguments)
+        if not callable(getattr(child, "close", None)):
+            raise TypeError("NativeExactArena foreign resource must be closeable")
         self._children.append(child)
         return child
 

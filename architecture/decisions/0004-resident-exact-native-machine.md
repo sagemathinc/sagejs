@@ -171,6 +171,19 @@ charge and checked shape/capacity contract. The compiler records every schema
 and child owner in source-mapped IR and generates reverse-order cleanup for
 success, range failure, memory failure, and cancellation edges.
 
+Native Kernel v32 completes C5a's first declared-library residency slice.
+`NativeExactArena.foreign_resource()` admits only statically declared,
+native-capable constructors whose result has owned clear and size protocols.
+The resulting FLINT owner is a child in the same compiler-visible graph: it
+cannot be aliased or returned, resource-to-resource calls pass the live ABI
+value directly, and generated JavaScript and C close foreign children in
+reverse construction order before the arena is rewound. FLINT HNF now has a
+cross-tier witness which constructs, fills, reduces, reads, and destroys
+resident `fmpz_mat` values without an intermediate packed matrix. The IR
+retains the declared allocated-byte callback as physical-memory telemetry;
+until C6 proves a foreign operation's allocation schedule, its internal
+allocations remain outside the allocation-free hot-region claim.
+
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no
 general-heap allocation or reallocation after entry and before publication.
