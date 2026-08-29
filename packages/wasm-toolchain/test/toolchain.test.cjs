@@ -57,6 +57,10 @@ test("the v2 lock and neutral source catalog are complete", () => {
     assert.match(object.sha256, /^[0-9a-f]{64}$/);
     assert.ok(object.upstreamUrls.every((url) => url.startsWith("https://")));
   }
+  assert.ok(
+    catalog.objects.find(({ id }) => id === "m4ri").upstreamUrls.length >= 2,
+    "the routine browser build must not depend on one M4RI mirror",
+  );
   assert.match(toolchainDigest(lock, catalog, "linux-x64"), /^[0-9a-f]{64}$/);
 });
 
