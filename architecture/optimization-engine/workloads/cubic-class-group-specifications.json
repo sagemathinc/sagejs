@@ -1,0 +1,342 @@
+{
+  "schema": "sagejs.cubic-class-group-workload-specifications/v1",
+  "campaign": "cubic-class-group-pari-frontier",
+  "owner": "optimization-engine",
+  "normativePlan": "agents/cubic-number-field-class-group-pari-frontier-plan.md",
+  "corpus": {
+    "path": "test/fixtures/number-field-lmfdb-cubic-100.json",
+    "sha256": "9da77a37aa98decb2fc9e4df2173dc2daa1514ca27ce3ace8ef88a49d2b8e0fe",
+    "schema": "sagejs.number-fields/lmfdb-cubic-stratified-corpus-v2",
+    "recordsSha256": "5ec41c9d82626576f6680506802518b50cf381c70e65d778ad2e52a9f21ca95d",
+    "labelsSha256": "5f184acd2c4523fc9bffd6da8b4490bb20674157f4a02eae29d464f7d033828a",
+    "selectionSqlSha256": "86e7261347789c4817c891b4bb59563b59b0ceff5fe95ec48ed57dd4fe7de6de"
+  },
+  "roles": [
+    {
+      "id": "control",
+      "workloadRole": "control",
+      "fixtureRole": "smoke",
+      "expectedCount": 10,
+      "exposure": "visible-control",
+      "candidateFreezeRequired": false,
+      "authority": "permanent semantic guard and rapid diagnostic; never production promotion evidence"
+    },
+    {
+      "id": "held-out",
+      "workloadRole": "held-out",
+      "fixtureRole": "holdout",
+      "expectedCount": 30,
+      "exposure": "visible-policy-held-out",
+      "candidateFreezeRequired": true,
+      "authority": "complete generalization corpus observed only after an immutable candidate freeze"
+    },
+    {
+      "id": "representative",
+      "workloadRole": "representative",
+      "fixtureRole": "tune",
+      "expectedCount": 60,
+      "exposure": "visible-tuning",
+      "candidateFreezeRequired": false,
+      "authority": "complete representative optimization corpus; no favorable subset may replace it"
+    }
+  ],
+  "proofContracts": [
+    {
+      "id": "conditional-grh",
+      "sageArgument": false,
+      "allowedAchieved": [
+        "exact-relations-conditional-grh",
+        "exact-unconditional"
+      ],
+      "requiredClassGroupStrength": "exact-relations-conditional-grh",
+      "strongerResultRetainsLabel": true
+    },
+    {
+      "id": "unconditional",
+      "sageArgument": true,
+      "allowedAchieved": [
+        "exact-unconditional"
+      ],
+      "requiredClassGroupStrength": "exact-unconditional",
+      "strongerResultRetainsLabel": true
+    }
+  ],
+  "measurementCells": [
+    {
+      "id": "certificate-replay",
+      "title": "Detached cubic class-number certificate replay",
+      "publicEntry": {
+        "path": "src/lib/sagejs/number_fields/cubic_class_number.py",
+        "name": "verify_cubic_minkowski_class_number_certificate",
+        "mode": "sage",
+        "outputBoundary": "complete detached certificate replay on a separately constructed isomorphic field"
+      },
+      "outputContract": "detached-class-number-certificate-replay",
+      "preparation": {
+        "process": "warm-sealed",
+        "field": "fresh-isomorphic",
+        "maximalOrder": "prepared-before-root",
+        "resultCache": "empty",
+        "certificate": "prepared-before-root"
+      },
+      "rootTimer": "one-contiguous-root",
+      "included": [
+        "certificate decode",
+        "complete independent mathematical replay",
+        "replay result materialization",
+        "synchronous cleanup"
+      ],
+      "excluded": [
+        "certificate construction",
+        "field construction",
+        "maximal-order construction",
+        "process startup"
+      ],
+      "postTimerOracles": [
+        "certificate binds the exact field and maximal order",
+        "certificate proves the returned class number and proof strength",
+        "tampered factor, relation, presentation, obstruction, or proof data is rejected"
+      ]
+    },
+    {
+      "id": "class-unit-prepared",
+      "title": "Prepared-order public cubic class and unit group",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_unit_group",
+        "mode": "sage",
+        "outputBoundary": "complete class group, exact units and torsion, and rigorous regulator"
+      },
+      "outputContract": "ordinary-class-group-units-torsion-rigorous-regulator",
+      "preparation": {
+        "process": "warm-sealed",
+        "field": "fresh-isomorphic",
+        "maximalOrder": "prepared-before-root",
+        "resultCache": "empty",
+        "certificate": "not-prepared"
+      },
+      "rootTimer": "one-contiguous-root",
+      "included": [
+        "cache and route decisions",
+        "class and unit computation",
+        "exact proof work",
+        "public result construction and cache publication",
+        "rigorous regulator enclosure",
+        "synchronous cleanup"
+      ],
+      "excluded": [
+        "field construction",
+        "maximal-order construction",
+        "post-return detached replay",
+        "process startup"
+      ],
+      "postTimerOracles": [
+        "exact ordinary class number and invariant factors",
+        "exact unit rank and torsion",
+        "proof request is satisfied without relabeling a stronger result",
+        "rigorous regulator enclosure contains the pinned oracle"
+      ]
+    },
+    {
+      "id": "fresh-complete",
+      "title": "Fresh coefficient-to-public-class-group call",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_group",
+        "mode": "sage",
+        "outputBoundary": "one coefficient-to-field-to-maximal-order-to-public-class-group operation"
+      },
+      "outputContract": "ordinary-class-group",
+      "preparation": {
+        "process": "warm-sealed",
+        "field": "constructed-inside-root",
+        "maximalOrder": "constructed-inside-root",
+        "resultCache": "empty",
+        "certificate": "not-prepared"
+      },
+      "rootTimer": "one-contiguous-root",
+      "included": [
+        "field construction from ascending integral coefficients",
+        "maximal-order construction",
+        "one complete public class-group call",
+        "public group construction and cache publication",
+        "synchronous cleanup"
+      ],
+      "excluded": [
+        "post-return detached replay",
+        "process startup"
+      ],
+      "postTimerOracles": [
+        "exact field discriminant",
+        "exact ordinary class number and invariant factors",
+        "proof request is satisfied without relabeling a stronger result"
+      ]
+    },
+    {
+      "id": "group-prepared",
+      "title": "Prepared-order public cubic class group",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_group",
+        "mode": "sage",
+        "outputBoundary": "complete ordinary public class group and proof status"
+      },
+      "outputContract": "ordinary-class-group",
+      "preparation": {
+        "process": "warm-sealed",
+        "field": "fresh-isomorphic",
+        "maximalOrder": "prepared-before-root",
+        "resultCache": "empty",
+        "certificate": "not-prepared"
+      },
+      "rootTimer": "one-contiguous-root",
+      "included": [
+        "cache and route decisions",
+        "complete class-group and proof computation",
+        "public group construction and cache publication",
+        "synchronous cleanup"
+      ],
+      "excluded": [
+        "field construction",
+        "maximal-order construction",
+        "post-return detached replay",
+        "process startup"
+      ],
+      "postTimerOracles": [
+        "exact ordinary class number and invariant factors",
+        "proof request is satisfied without relabeling a stronger result",
+        "public group verification succeeds"
+      ]
+    },
+    {
+      "id": "scalar-prepared",
+      "title": "Prepared-order public cubic class number",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_number",
+        "mode": "sage",
+        "outputBoundary": "complete integer class number, achieved proof status, proof seal, publication, and synchronous cleanup"
+      },
+      "outputContract": "ordinary-class-number",
+      "preparation": {
+        "process": "warm-sealed",
+        "field": "fresh-isomorphic",
+        "maximalOrder": "prepared-before-root",
+        "resultCache": "empty",
+        "certificate": "not-prepared"
+      },
+      "rootTimer": "one-contiguous-root",
+      "included": [
+        "cache and route decisions",
+        "complete scalar class-number and proof computation",
+        "live proof sealing and cache publication",
+        "synchronous cleanup"
+      ],
+      "excluded": [
+        "field construction",
+        "maximal-order construction",
+        "post-return class-group projection",
+        "post-return detached replay",
+        "process startup"
+      ],
+      "postTimerOracles": [
+        "exact ordinary class number",
+        "proof request is satisfied without relabeling a stronger result",
+        "route-specific proof carrier validates independently"
+      ]
+    }
+  ],
+  "protocol": {
+    "warmupRuns": 3,
+    "pairs": 11,
+    "orders": [
+      "ABBA",
+      "BAAB",
+      "ABBA",
+      "BAAB",
+      "ABBA",
+      "BAAB",
+      "ABBA",
+      "BAAB",
+      "ABBA",
+      "BAAB",
+      "ABBA"
+    ],
+    "freshProcessPerLetter": true,
+    "freshFieldPerCellProofAndRecord": true,
+    "digestOutsideRoot": true,
+    "minimumRetainedBatchMicroseconds": 1200000,
+    "minimumWorstPairFraction": 0.1,
+    "rootTiming": "one-contiguous-root",
+    "phaseTotalsMayReplaceRoot": false
+  },
+  "externalSystems": [
+    {
+      "id": "hecke",
+      "role": "independent-comparator",
+      "proofSettings": {
+        "conditional-grh": "grh-true",
+        "unconditional": "grh-true-plus-cached-grh-false-with-audited-context"
+      },
+      "portableCertificate": false
+    },
+    {
+      "id": "magma",
+      "role": "independent-comparator",
+      "proofSettings": {
+        "conditional-grh": "class-group-proof-grh-in-fresh-default-process",
+        "unconditional": "class-group-proof-full-in-fresh-default-process"
+      },
+      "portableCertificate": false
+    },
+    {
+      "id": "pari",
+      "role": "primary-frontier",
+      "proofSettings": {
+        "conditional-grh": "bnfinit-nf-flag-0",
+        "unconditional": "bnfinit-nf-flag-1-plus-bnfcertify-flag-0"
+      },
+      "portableCertificate": false
+    },
+    {
+      "id": "sagejs",
+      "role": "production-subject",
+      "proofSettings": {
+        "conditional-grh": "proof-false",
+        "unconditional": "proof-true"
+      },
+      "portableCertificate": true
+    }
+  ],
+  "sourcePaths": [
+    "agents/cubic-number-field-class-group-pari-frontier-plan.md",
+    "architecture/optimization-engine/workloads/cubic-class-group-frontier.schema.json",
+    "architecture/optimization-engine/workloads/cubic-class-group-specifications.json",
+    "architecture/optimization-engine/workloads/cubic-class-group-specifications.schema.json",
+    "bench/class-unit-groups/class-unit-evidence-schema.cjs",
+    "bench/class-unit-groups/run-class-unit-corpus.cjs",
+    "bench/optimization-engine/cubic-class-group-frontier.cjs",
+    "bench/optimization-engine/cubic-class-group-workloads.cjs",
+    "src/baselib/number_fields.py",
+    "src/lib/sagejs/number_fields/class_unit_groups.py",
+    "src/lib/sagejs/number_fields/cubic_class_number.py",
+    "test/fixtures/number-field-lmfdb-cubic-100.json"
+  ],
+  "liveSchemaExtension": {
+    "status": "required-before-generic-v2-projection-or-frontier-claim",
+    "workloadFields": [
+      "holdoutFreeze",
+      "measurementBoundary",
+      "semanticContract"
+    ],
+    "observationFields": [
+      "availability",
+      "comparability",
+      "origin"
+    ],
+    "promotionFields": [
+      "frontierClaim"
+    ],
+    "reason": "The current generic v2 documents cannot independently reject proof-label, inclusive-root, external-availability, partial-order comparability, or policy-held-out freeze counterfeits. This campaign layer validates them but must not claim that generic v2 promotion already carries them."
+  }
+}
