@@ -428,7 +428,7 @@ class BrandtModule_class(sage.Parent):
         self._weight = weight
         self._base_ring = base_ring
         self._dense_entry_limit = dense_entry_limit
-        self._operator_cache: list[tuple[int, BrandtLinearOperator]] = []
+        self._operator_cache: list[tuple[int, str, BrandtLinearOperator]] = []
         self._atkin_cache: list[tuple[int, BrandtLinearOperator]] = []
         self._supersingular = None
         self._cusp_symbols = None
@@ -538,9 +538,13 @@ class BrandtModule_class(sage.Parent):
     def free_module(self) -> Any:
         return _global("VectorSpace")(self._base_ring, self._dimension)
 
-    def _cached_operator(self, index: int) -> BrandtLinearOperator | None:
-        for cached_index, operator in self._operator_cache:
-            if cached_index == index:
+    def _cached_operator(
+        self, index: int, algorithm: str
+    ) -> BrandtLinearOperator | None:
+        for cached_index, cached_algorithm, operator in self._operator_cache:
+            if cached_index == index and (
+                algorithm == "auto" or cached_algorithm == algorithm
+            ):
                 return operator
         return None
 
@@ -575,34 +579,64 @@ class BrandtModule_class(sage.Parent):
             result = result * prime_power
         return result, None
 
-    def hecke_operator(self, index: Any) -> BrandtLinearOperator:
+    def hecke_operator(
+        self, index: Any, *, algorithm: str = "auto"
+    ) -> BrandtLinearOperator:
+        """Return $T_n$, optionally choosing an ideal-class Hecke algorithm.
+
+        `algorithm` is one of `"auto"`, `"direct"`, or `"brandt-series"`.
+        Explicit algorithm selection applies only to the integral ideal-class
+        realization; the other realizations already have one canonical
+        backend.
+        """
+
         hecke_index = _positive_integer(index, "Hecke index")
+        if algorithm not in ("auto", "direct", "brandt-series"):
+            raise ValueError("algorithm must be 'auto', 'direct', or 'brandt-series'")
+        if self._ideal_classes is None and algorithm != "auto":
+            raise ValueError(
+                "explicit Brandt Hecke algorithms require realization='ideal-classes'"
+            )
         if _gcd(hecke_index, self._level) != 1:
             raise NotImplementedError(
                 "Brandt T_n currently requires n coprime to D*N; use "
                 "atkin_lehner_operator() at ramified primes"
             )
-        cached = self._cached_operator(hecke_index)
+        cached = self._cached_operator(hecke_index, algorithm)
         if cached is not None:
             return cached
         sparse_source = None
+        resolved_algorithm = algorithm
         if self._supersingular is not None:
             matrix_value, sparse_source = self._canonical_hecke_matrix(hecke_index)
         elif self._ideal_classes is not None:
-            factors = _factorization(hecke_index)
-            matrix_value = _identity_matrix(sage.ZZ, self._dimension)
-            for prime, exponent in factors:
-                prime_matrix = self._ideal_classes.hecke_matrix(prime)
-                if exponent == 1:
-                    prime_power = prime_matrix
-                else:
-                    previous = _identity_matrix(sage.ZZ, self._dimension)
-                    current = prime_matrix
-                    for _power in range(2, exponent + 1):
-                        following = prime_matrix * current - previous * prime
-                        previous, current = current, following
-                    prime_power = current
-                matrix_value = matrix_value * prime_power
+            if algorithm == "auto":
+                resolved_algorithm = (
+                    "brandt-series"
+                    if self._ideal_classes._brandt_series_precision > hecke_index
+                    else "direct"
+                )
+            if resolved_algorithm == "brandt-series":
+                matrix_value = self._ideal_classes.hecke_matrix(
+                    hecke_index, algorithm="brandt-series"
+                )
+            else:
+                factors = _factorization(hecke_index)
+                matrix_value = _identity_matrix(sage.ZZ, self._dimension)
+                for prime, exponent in factors:
+                    prime_matrix = self._ideal_classes.hecke_matrix(
+                        prime, algorithm="direct"
+                    )
+                    if exponent == 1:
+                        prime_power = prime_matrix
+                    else:
+                        previous = _identity_matrix(sage.ZZ, self._dimension)
+                        current = prime_matrix
+                        for _power in range(2, exponent + 1):
+                            following = prime_matrix * current - previous * prime
+                            previous, current = current, following
+                        prime_power = current
+                    matrix_value = matrix_value * prime_power
             if self._base_ring is not sage.ZZ:
                 matrix_value = matrix_value.change_ring(self._base_ring)
             if self._cusp_symbols is None:
@@ -631,7 +665,11 @@ class BrandtModule_class(sage.Parent):
                 raise ArithmeticError(
                     "the Brandt operator has the wrong Eisenstein eigenvalue"
                 )
-            for _cached_index, cached_operator in self._operator_cache:
+            for (
+                _cached_index,
+                _cached_algorithm,
+                cached_operator,
+            ) in self._operator_cache:
                 cached_matrix = cached_operator.matrix().change_ring(sage.QQ)
                 if cached_matrix * rational_matrix != rational_matrix * cached_matrix:
                     raise ArithmeticError("good Brandt operators do not commute")
@@ -649,13 +687,23 @@ class BrandtModule_class(sage.Parent):
             index=hecke_index,
             sparse_source=sparse_source,
         )
-        self._operator_cache.append((hecke_index, operator))
+        self._operator_cache.append((hecke_index, resolved_algorithm, operator))
         return operator
 
     T = hecke_operator
 
-    def hecke_matrix(self, index: Any) -> Any:
-        return self.hecke_operator(index).matrix()
+    def hecke_matrix(self, index: Any, *, algorithm: str = "auto") -> Any:
+        return self.hecke_operator(index, algorithm=algorithm).matrix()
+
+    def brandt_series(self, precision: Any) -> Any:
+        """Return the exact matrix coefficient vectors through $q^{P-1}$."""
+
+        if self._ideal_classes is None:
+            raise ValueError("Brandt theta series require realization='ideal-classes'")
+        bound = _positive_integer(precision, "Brandt-series precision")
+        if bound < 2:
+            raise ValueError("a Brandt-series precision must be at least 2")
+        return self._ideal_classes.brandt_series_vectors(bound)
 
     def _canonical_atkin_prime(self) -> Any:
         if self._supersingular is None:

@@ -539,6 +539,7 @@ class QuaternionOrder:
             rows.append(tuple(algebra(value)))
         self._basis_rows = _canonical_lattice(rows)
         self._basis = tuple(algebra(row) for row in self._basis_rows)
+        self._neighbor_split_cache: list[tuple[int, Any, Any, Any, int]] = []
         self._maximal = False
         if not self.contains(algebra.one()):
             raise ValueError("a quaternion order must contain one")
@@ -668,12 +669,12 @@ class QuaternionOrder:
         return result
 
     def unit_ideal(self) -> Any:
-        from .ideals import _LOCAL_PRINCIPAL_CONSTRUCTION, QuaternionRightIdeal
+        from .ideals import _THEOREM_DERIVED_CONSTRUCTION, QuaternionRightIdeal
 
         return QuaternionRightIdeal(
             self,
             self._basis,
-            _construction_proof=_LOCAL_PRINCIPAL_CONSTRUCTION,
+            _construction_proof=_THEOREM_DERIVED_CONSTRUCTION,
         )
 
     def right_ideal(self, generators: Iterable[Any], *, is_basis: bool = False) -> Any:

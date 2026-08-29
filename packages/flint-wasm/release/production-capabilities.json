@@ -139,6 +139,7 @@
         "ffi:flint:fmpz_mat_hnf",
         "ffi:flint:fmpz_mat_hnf_modular_eldiv",
         "ffi:flint:fmpz_mat_hnf_transform",
+        "ffi:flint:fmpz_mat_gram_lll_transform",
         "ffi:flint:fmpz_mat_lll_transform",
         "ffi:flint:fmpz_mat_mul",
         "ffi:flint:fmpz_mat_rank",
@@ -411,6 +412,7 @@
       "artifact": "native-kernels/kernel-gmp.wasm",
       "capabilities": [],
       "additionalCapabilities": [
+        "kernel:brandt-rank4-production",
         "kernel:buchmann-lenstra-row-hnf-production",
         "kernel:dense-integer-production",
         "kernel:dense-rational-production",

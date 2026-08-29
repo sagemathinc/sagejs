@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "a2bc76c05619bb3afcedb9a23b1499e113b517c51638639742c3bbaf80dd9fcc",
+  "source_sha256": "d3fa826c94da5afc99379729b4f9de68933d4f585512c08e4555119919fb5eac",
   "counts": {
-    "total": 1021,
+    "total": 1023,
     "by_kind": {
-      "declared-ffi-function": 440,
+      "declared-ffi-function": 441,
       "declared-ffi-resource": 32,
       "napi-export": 325,
-      "production-kernel": 51,
+      "production-kernel": 52,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 51,
+      "compiled-source": 52,
       "desktop-only": 47,
-      "generated-wasm": 321,
+      "generated-wasm": 322,
       "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 559,
+      "available": 561,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -2660,6 +2660,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_gram_lll_transform",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The exact Gram-mode FLINT LLL declaration is available in generated WebAssembly with a same-source authenticated consumer fallback."
     },
     {
       "id": "ffi:flint:fmpz_mat_hnf",
@@ -6046,6 +6058,19 @@
       "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
+      "id": "kernel:brandt-rank4-production",
+      "family": "brandt-rank4",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "eichler-ideal-classes",
+        "brandt-series"
+      ],
+      "explanation": "Exact rank-four theta counts and one-norm vector enumeration run as source-compiled WebAssembly with the same-source Python fallback."
+    },
+    {
       "id": "kernel:buchmann-lenstra-row-hnf-production",
       "family": "buchmann-lenstra-row-hnf",
       "disposition": "compiled-source",
@@ -6104,7 +6129,7 @@
       "public_consumers": [
         "dense-integer-flint"
       ],
-      "explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 18 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:dense-integer-production",

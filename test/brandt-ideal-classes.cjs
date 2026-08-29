@@ -71,11 +71,13 @@ test("ideal-class Brandt matrices match Sage up to an explicit class isometry", 
         [
           "import json",
           `B=BrandtModule(${expected.D},${expected.N},realization='ideal-classes',use_cache=False)`,
-          `T=B.hecke_matrix(${expected.ell})`,
+          `T=B.hecke_matrix(${expected.ell},algorithm='direct')`,
+          `T_series=B.hecke_matrix(${expected.ell},algorithm='brandt-series')`,
           "json.dumps({'weights':[str(w) for w in B.monodromy_weights()],",
           " 'theta':[[str(a) for a in I.theta_series_vector(12)] for I in B.right_ideals()],",
           " 'T':[[str(a) for a in r] for r in T.rows()], 'mass':str(B.mass()),",
           " 'verified':B.mass_certificate().verify(),",
+          " 'series_equal':T_series==T,",
           " 'new_dimension':B.new_subspace().dimension(),",
           " 'new_charpoly':str(B.new_subspace().hecke_matrix(3).charpoly())})",
         ].join("\n"),
@@ -85,6 +87,7 @@ test("ideal-class Brandt matrices match Sage up to an explicit class isometry", 
       actual.theta = actual.theta.map((row) => row.map(Number));
       actual.T = actual.T.map((row) => row.map(Number));
       assert.equal(actual.verified, true);
+      assert.equal(actual.series_equal, true);
       assert.ok(classIsometry(actual, expected), `class isometry at (${expected.D},${expected.N})`);
       const newOracle = new Map([
         ["11:1", [1, "x + 1"]],
@@ -190,6 +193,10 @@ test("invalid quaternion and ideal-class boundaries fail closed", async () => {
         /did not reach the exact Eichler mass/,
       ],
       ["BrandtModule(11,realization='mystery')", /realization must be/],
+      [
+        "BrandtModule(11,2,realization='ideal-classes').hecke_matrix(3,algorithm='mystery')",
+        /algorithm must be/,
+      ],
       [
         "BrandtModule(11,5,realization='jacquet-langlands').degree_zero_submodule()",
         /needs the ideal-class realization/,

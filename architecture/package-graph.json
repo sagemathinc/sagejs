@@ -587,7 +587,7 @@
       "id": "rational-quaternion-algebras",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 85000,
+      "max_source_bytes": 110000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic",
         "linear-algebra"
@@ -599,7 +599,7 @@
         "src/lib/sagejs/quaternion_algebras/class_set.py",
         "src/lib/sagejs/quaternion_algebras/ideals.py"
       ],
-      "prefixes": []
+      "prefixes": ["src/lib/sagejs/kernels/quaternion/"]
     },
     {
       "id": "sparse-modular-forms",

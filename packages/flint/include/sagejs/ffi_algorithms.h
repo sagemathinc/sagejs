@@ -1284,6 +1284,25 @@ static inline int sagejs_flint_fmpz_mat_lll_transform(
     return 1;
 }
 
+static inline int sagejs_flint_fmpz_mat_gram_lll_transform(
+    fmpz_mat_t output, fmpz_mat_t transform, const fmpz_mat_t source)
+{
+    const slong rows = fmpz_mat_nrows(source);
+    const slong columns = fmpz_mat_ncols(source);
+    fmpz_lll_t context;
+    if (rows <= 0 || rows != columns ||
+        fmpz_mat_nrows(output) != rows ||
+        fmpz_mat_ncols(output) != columns ||
+        fmpz_mat_nrows(transform) != rows ||
+        fmpz_mat_ncols(transform) != rows)
+        return 0;
+    fmpz_mat_set(output, source);
+    fmpz_mat_one(transform);
+    fmpz_lll_context_init(context, 0.75, 0.5, GRAM, EXACT);
+    fmpz_lll(output, transform, context);
+    return 1;
+}
+
 static inline int sagejs_flint_fmpz_mat_snf_transform(
     fmpz_mat_t output,
     fmpz_mat_t left_transform,

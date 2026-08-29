@@ -105,7 +105,7 @@ function parseMagma(text) {
   const records = [];
   for (const line of text.split(/\r?\n/)) {
     let match = line.match(
-      /^BRANDT D=(\d+) N=(\d+) ell=(\d+) dimension=(\d+) construction=([0-9.eE+-]+) first=([0-9.eE+-]+) count=(\d+)$/,
+      /^BRANDT D=(\d+) N=(\d+) ell=(\d+) dimension=(\d+) construction=([0-9.eE+-]+) first=([0-9.eE+-]+) construction_repeats=(\d+) operator_repeats=(\d+) operator_total=([0-9.eE+-]+) count=(\d+)$/,
     );
     if (match !== null) {
       records.push({
@@ -115,7 +115,10 @@ function parseMagma(text) {
         dimension: Number(match[4]),
         construction_cpu_seconds: Number(match[5]),
         first_operator_cpu_seconds: Number(match[6]),
-        coefficient_count: Number(match[7]),
+        construction_repeats: Number(match[7]),
+        operator_repeats: Number(match[8]),
+        operator_total_cpu_seconds: Number(match[9]),
+        coefficient_count: Number(match[10]),
         charpoly_coefficients: [],
       });
       continue;
@@ -260,7 +263,10 @@ async function main() {
   }
   const sageExecutable = option("sage", "/home/user/sagelite/sage");
   const magmaExecutable = option("magma", "/home/user/magma-2.18/bin/magma");
-  const environment = { BRANDT_IDEAL_CASES: casesText };
+  const environment = {
+    BRANDT_IDEAL_CASES: casesText,
+    BRANDT_IDEAL_REPEATS: option("magma-repeats", "25"),
+  };
   const sageScript = path.join(__dirname, "sage-oracle.py");
   const magmaScript = path.join(__dirname, "magma-oracle.m");
 
@@ -294,7 +300,7 @@ async function main() {
   }
 
   const receipt = {
-    schema: "sagejs.brandt-ideal-classes-competitive-receipt.v1",
+    schema: "sagejs.brandt-ideal-classes-competitive-receipt.v2",
     recorded_at: new Date().toISOString(),
     source_commit: execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: root,
@@ -313,7 +319,7 @@ async function main() {
       work: "construct genuine right ideal classes, then the first full good-prime Hecke matrix",
       correctness: "dimension and complete characteristic polynomial agree exactly",
       timing:
-        "one descriptive process-cold run per system; Sage.js records resident construction, first/cached operator, and characteristic-polynomial stages; no competitiveness gate",
+        "one descriptive process-cold run for Sage.js and SageMath; Magma construction and first-operator stages are averages over the recorded number of fresh BrandtModule objects, with aggregate operator CPU time retained so sub-resolution calls are never assigned a zero ratio; no competitiveness gate",
     },
     sources: {
       runner: path.relative(root, __filename),
