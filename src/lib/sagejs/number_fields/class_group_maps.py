@@ -73,6 +73,7 @@ _CONDITIONAL_MAX_WITNESS_EXPONENT = 256
 _CONDITIONAL_MAX_WITNESS_WORK = 4_096
 _GENERATOR_RELATION_SCHEMA = "sagejs.number-fields/class-group-generator-relation-v1"
 _CONDITIONAL_MAX_RELATION_COMBINATION_WORK = 100_000_000
+_VERIFIED_ENGINE_PROJECTION_TOKEN = object()
 
 
 def _integer(value: Any, purpose: str) -> int:
@@ -1121,13 +1122,19 @@ class IdealClassGroup:
         has_compact_relations = any(
             witness._relation_certificate is not None for witness in witnesses
         )
+        # Compact conditional witnesses depend on the proof replay context, so
+        # their constructor check is already one complete group verification.
+        # Noncompact groups retain the cheaper local constructor checks and are
+        # verified once by the engine adapter after construction.
+        complete_verified = has_compact_relations
         relations_verified = (
-            self.verify() if has_compact_relations else self._verify_relations()
+            self.verify() if complete_verified else self._verify_relations()
         )
         if not relations_verified:
             raise ArithmeticError("a class-group defining relation witness failed")
         if (
             presentation_evidence is not None
+            and not complete_verified
             and not self._verify_presentation_evidence()
         ):
             raise ArithmeticError(
@@ -1704,12 +1711,15 @@ class _SealedIdealClassGroupProjection:
         "_witness_generators",
     )
 
-    def __init__(self, source: IdealClassGroup) -> None:
+    def __init__(self, source: IdealClassGroup, verified_token: Any = None) -> None:
         if type(source) is not IdealClassGroup:
             raise TypeError("a public projection needs an ordinary exact group")
         if not isinstance(source._proof_record, ConditionalGRHProofRecord):
             raise TypeError("only conditional public projections are reusable")
-        if IdealClassGroup.verify(source) is not True:
+        if (
+            verified_token is not _VERIFIED_ENGINE_PROJECTION_TOKEN
+            and IdealClassGroup.verify(source) is not True
+        ):
             raise ArithmeticError("a public projection source failed exact replay")
         context = source._proof_context
         if type(context) is not _EngineProofReplayContext:
@@ -1795,6 +1805,14 @@ def seal_public_class_group_projection(
     source: IdealClassGroup,
 ) -> _SealedIdealClassGroupProjection:
     return _SealedIdealClassGroupProjection(source)
+
+
+def class_group_projection_from_engine_result(
+    result: Any,
+) -> _SealedIdealClassGroupProjection:
+    """Adapt, verify once, and seal one private standard engine result."""
+    source = class_group_from_engine_result(result)
+    return _SealedIdealClassGroupProjection(source, _VERIFIED_ENGINE_PROJECTION_TOKEN)
 
 
 def public_class_group_projection_view(projection: Any) -> IdealClassGroup:
@@ -3039,6 +3057,8 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         raise ValueError("an incomplete engine result has no public class group")
     engine_group = result.class_group()
     if isinstance(engine_group, IdealClassGroup):
+        if engine_group.verify() is not True:
+            raise ArithmeticError("the engine public class group failed proof replay")
         return engine_group
     order, presentation = _engine_material(engine_group, result)
     if order is None or presentation is None:
@@ -3224,6 +3244,9 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         )
         for relation_ideal, generator, receipt in relation_material
     )
+    has_compact_relations = any(
+        receipt is not None for _ideal, _generator, receipt in relation_material
+    )
     answer = IdealClassGroup(
         order,
         invariants,
@@ -3239,7 +3262,7 @@ def class_group_from_engine_result(result: Any) -> IdealClassGroup:
         proof_context=replay,
         relation_count=relation_count,
     )
-    if not answer.verify():
+    if not has_compact_relations and not answer.verify():
         raise ArithmeticError("the adapted public class group failed proof replay")
     return answer
 
@@ -3252,6 +3275,7 @@ __all__ = [
     "PrincipalIdealWitness",
     "PrincipalityResult",
     "class_group_from_engine_result",
+    "class_group_projection_from_engine_result",
     "class_group_from_context",
     "public_class_group_projection_view",
     "seal_public_class_group_projection",

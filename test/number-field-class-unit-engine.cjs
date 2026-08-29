@@ -1068,7 +1068,17 @@ assert len(receipts) == 1
 receipt = receipts[0]
 assert receipt["coordinates"] == [0]
 assert sum(abs(value) for value in receipt["relation_coefficients"]) == 336499
-projection = maps.seal_public_class_group_projection(adapted)
+seal_verify_calls = [0]
+original_group_verify = maps.IdealClassGroup.verify
+def counted_seal_verify(group):
+    seal_verify_calls[0] += 1
+    return original_group_verify(group)
+maps.IdealClassGroup.verify = counted_seal_verify
+try:
+    projection = maps.seal_public_class_group_projection(adapted)
+finally:
+    maps.IdealClassGroup.verify = original_group_verify
+assert seal_verify_calls[0] == 1
 view = maps.public_class_group_projection_view(projection)
 assert view.order() == 9
 assert view.invariants() == (9,)
@@ -1128,7 +1138,21 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 K = NumberField(x**3 - 137*x - 630, "a")
 result = class_unit_context(K, proof=False)
-group = class_group(K, proof=False)
+maps = __import__(
+    "sagejs.number_fields.class_group_maps",
+    fromlist=["class_group_from_engine_result"],
+)
+public_verify_calls = [0]
+original_group_verify = maps.IdealClassGroup.verify
+def counted_public_verify(group):
+    public_verify_calls[0] += 1
+    return original_group_verify(group)
+maps.IdealClassGroup.verify = counted_public_verify
+try:
+    group = class_group(K, proof=False)
+finally:
+    maps.IdealClassGroup.verify = original_group_verify
+assert public_verify_calls[0] == 1
 assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
 assert result.class_number() == 3
 assert result.class_group().invariants() == (3,)

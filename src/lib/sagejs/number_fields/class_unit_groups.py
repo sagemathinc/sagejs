@@ -6777,6 +6777,9 @@ _STANDARD_PUBLIC_CLASS_GROUP_MAPS = __import__(
 _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_from_engine_result
 )
+_STANDARD_PUBLIC_CLASS_GROUP_PROJECTOR = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_projection_from_engine_result
+)
 _STANDARD_PUBLIC_CLASS_GROUP_SEALER = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.seal_public_class_group_projection
 )
@@ -6825,8 +6828,10 @@ def class_group(
     else:
         maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result
+        projector = maps.class_group_projection_from_engine_result
         helpers_are_standard = bool(
             adapter is _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER
+            and projector is _STANDARD_PUBLIC_CLASS_GROUP_PROJECTOR
             and maps.seal_public_class_group_projection
             is _STANDARD_PUBLIC_CLASS_GROUP_SEALER
             and maps.public_class_group_projection_view
@@ -6862,9 +6867,11 @@ def class_group(
             if not callable(finish):
                 raise ArithmeticError("the public projection lost its transaction")
             try:
-                # The adapter publishes only after its independent `verify()` replay.
-                adapted = adapter(result)
-                projection = maps.seal_public_class_group_projection(adapted)
+                # The standard combined projector consumes the adapter's one
+                # complete verification without replaying the same private
+                # group again during sealing. Interposed helpers retain the
+                # independently verified two-step fallback below.
+                projection = projector(result)
                 # Constructing the first view performs the exact projection-type
                 # check before the context can publish anything.  A replaced
                 # helper therefore owns only this reservation and retry remains
