@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "d3fa826c94da5afc99379729b4f9de68933d4f585512c08e4555119919fb5eac",
+  "source_sha256": "a32b81b4697553f11c5935ac7ab132727711851cb3d6cf76d5ea4c8f0c701380",
   "counts": {
-    "total": 1023,
+    "total": 1026,
     "by_kind": {
       "declared-ffi-function": 441,
       "declared-ffi-resource": 32,
-      "napi-export": 325,
+      "napi-export": 328,
       "production-kernel": 52,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
@@ -16,13 +16,13 @@
       "compiled-source": 52,
       "desktop-only": 47,
       "generated-wasm": 322,
-      "portable-fallback": 557,
+      "portable-fallback": 560,
       "shared-core": 45
     },
     "by_status": {
       "available": 561,
       "desktop-only": 47,
-      "fallback": 415
+      "fallback": 418
     }
   },
   "workflow_aliases": {
@@ -9214,6 +9214,18 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficient",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:polyCoefficients",
       "family": "polynomials",
       "disposition": "portable-fallback",
@@ -9913,6 +9925,18 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/modular.py"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realAdd",
       "family": "numerical",
       "disposition": "generated-wasm",
@@ -10413,6 +10437,18 @@
       "wasm_module": "host-runtime",
       "public_consumers": [
         "polynomials"
+      ],
+      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyUnitriangularBasis",
+      "family": "polynomials",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-public-operation",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/series.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },

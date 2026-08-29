@@ -1332,6 +1332,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficient",
+      "family": "polynomials",
+      "decision": "retain-representation-primitive"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:polyCoefficients",
       "family": "polynomials",
       "decision": "migrate-to-declared-ffi"
@@ -1617,6 +1622,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
+      "family": "polynomials",
+      "decision": "retain-representation-primitive"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:rforestCapabilities",
       "family": "hyperelliptic",
       "decision": "retain-host-adapter"
@@ -1810,6 +1820,11 @@
       "id": "napi:@sagemath/sagejs-flint:zzPolyGen",
       "family": "polynomials",
       "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyUnitriangularBasis",
+      "family": "polynomials",
+      "decision": "retain-representation-primitive"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyToNmod",

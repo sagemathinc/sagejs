@@ -86,12 +86,26 @@ class SeriesElement(sage.Element):
         index = exponent - self._shift
         if index < 0:
             return self._parent.base_ring()(0)
-        coefficients = self._parent._polynomial_ring._from_native(
-            self._native
-        ).coefficients()
-        if index >= len(coefficients):
-            return self._parent.base_ring()(0)
-        return coefficients[index]
+        base = self._parent.base_ring()
+        if base._kind == "GF_EXTENSION":
+            coefficients = self._parent._polynomial_ring._from_native(
+                self._native
+            ).coefficients()
+            if index >= len(coefficients):
+                return base(0)
+            return coefficients[index]
+        coefficient = runtime.flint_backend().polyCoefficient(
+            self._native,
+            runtime.integer_bigint(index),
+        )
+        if base is sage.ZZ:
+            return runtime.normalize_integer(coefficient)
+        if base is sage.QQ:
+            return base(
+                runtime.reflect.get(coefficient, "numerator"),
+                runtime.reflect.get(coefficient, "denominator"),
+            )
+        return base(coefficient)
 
     def padded_list(self, length: Any = None) -> list[Any]:
         if length is None:
@@ -371,6 +385,33 @@ class SeriesRingParent(sage.Parent):
 
     def variable_name(self) -> str:
         return self._variable
+
+    def _unitriangular_basis(self, values: Any) -> list[SeriesElement]:
+        """Reduce an integral series basis without publishing coefficients."""
+        if self._base is not sage.ZZ:
+            raise TypeError("unitriangular series reduction requires ZZ")
+        native_values = []
+        precision = None
+        for value in values:
+            if not isinstance(value, SeriesElement) or value._parent is not self:
+                raise TypeError("series basis elements must have the same parent")
+            if precision is None:
+                precision = value._precision
+            elif value._precision != precision:
+                raise ValueError("series basis elements must have equal precision")
+            native_value = value._native
+            if value._shift > 0:
+                native_value = runtime.flint_backend().polyShiftLeft(
+                    native_value,
+                    runtime.integer_bigint(value._shift),
+                )
+            elif value._shift < 0:
+                raise ValueError(
+                    "power-series basis elements cannot have negative shift"
+                )
+            native_values.append(native_value)
+        reduced = runtime.flint_backend().zzPolyUnitriangularBasis(native_values)
+        return [self._from_native(value, 0, precision) for value in reduced]
 
     def default_prec(self) -> int:
         return self._default_precision

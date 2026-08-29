@@ -234,6 +234,30 @@ test("provides exact portable polynomial construction and arithmetic", () => {
     ),
     "-5",
   );
+  assert.equal(
+    flint.polyCoefficient(flint.qqPolyToZZExact(value), 1n),
+    -2n,
+  );
+  assert.equal(flint.polyCoefficient(value, 20n).numerator, 0n);
+  assert.throws(
+    () => flint.qqPolyToZZExact(flint.qqPolyConstant(2n, 3n)),
+    /nonintegral coefficients/,
+  );
+  const integerX = flint.zzPolyGen();
+  const integerX2 = flint.polyPow(integerX, 2n);
+  const unitriangularRows = flint.zzPolyUnitriangularBasis([
+    flint.polyAdd(flint.zzPolyConstant(1n), integerX),
+    flint.polyAdd(integerX, integerX2),
+    integerX2,
+  ]);
+  assert.deepEqual(
+    unitriangularRows.map((row) => flint.polyCoefficients(row)),
+    [
+      [1n],
+      [0n, 1n],
+      [0n, 0n, 1n],
+    ],
+  );
   assert.ok(
     flint.polyEqual(
       value,

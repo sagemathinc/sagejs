@@ -341,6 +341,28 @@ test("Victor Miller bases match Sage's integral leading-term normalization", asy
   }
 });
 
+test("large Victor Miller bases retain their exact native-series normalization", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "B=victor_miller_basis(200,50)\n" +
+            "d=len(B)\n" +
+            "leading=all(B[i][j]==(1 if i==j else 0) " +
+            "for i in range(d) for j in range(d))\n" +
+            "digest=sum((i+1)*(j+1)*B[i][j] for i in range(d) " +
+            "for j in range(50)) % 1000000007\n" +
+            "[d,leading,digest]",
+        )
+      ).repr,
+      "[17, True, 694217421]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("level-one ambient and cusp bases carry replayable certificates", async () => {
   const session = await createSage();
   try {

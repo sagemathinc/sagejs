@@ -356,6 +356,15 @@ function polyCoefficients(value) {
   return assertPolynomial(value).coefficients.slice();
 }
 
+function polyCoefficient(value, index) {
+  value = assertPolynomial(value);
+  index = BigInt(index);
+  if (index < 0n || index > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError("polynomial coefficient index is out of range");
+  }
+  return coefficientAt(value, Number(index));
+}
+
 function zzPolyGen() {
   return polynomial("ZZ", [0n, 1n]);
 }
@@ -397,6 +406,60 @@ function zzPolyToQQ(value) {
   );
 }
 
+function qqPolyToZZExact(value) {
+  value = assertPolynomial(value);
+  if (value.kind !== "QQ") {
+    throw new TypeError("expected a polynomial over QQ");
+  }
+  if (
+    value.coefficients.some((coefficient) => coefficient.denominator !== 1n)
+  ) {
+    throw new RangeError("rational polynomial has nonintegral coefficients");
+  }
+  return polynomial(
+    "ZZ",
+    value.coefficients.map((coefficient) => coefficient.numerator),
+  );
+}
+
+function zzPolyUnitriangularBasis(values) {
+  if (!Array.isArray(values)) {
+    throw new TypeError("expected an array of ZZ polynomials");
+  }
+  const rows = values.map((value) => {
+    value = assertPolynomial(value);
+    if (value.kind !== "ZZ") {
+      throw new TypeError("expected a polynomial over ZZ");
+    }
+    return value.coefficients.slice();
+  });
+  for (let row = 0; row < rows.length; row += 1) {
+    for (let column = 0; column < row; column += 1) {
+      if ((rows[row][column] ?? 0n) !== 0n) {
+        throw new RangeError("polynomial basis is not unitriangular");
+      }
+    }
+    if ((rows[row][row] ?? 0n) !== 1n) {
+      throw new RangeError("polynomial basis is not unitriangular");
+    }
+  }
+  for (let pivot = 1; pivot < rows.length; pivot += 1) {
+    for (let previous = 0; previous < pivot; previous += 1) {
+      const coefficient = rows[previous][pivot] ?? 0n;
+      if (coefficient === 0n) {
+        continue;
+      }
+      const length = Math.max(rows[previous].length, rows[pivot].length);
+      for (let column = 0; column < length; column += 1) {
+        rows[previous][column] =
+          (rows[previous][column] ?? 0n) -
+          coefficient * (rows[pivot][column] ?? 0n);
+      }
+    }
+  }
+  return rows.map((coefficients) => polynomial("ZZ", coefficients));
+}
+
 function zzPolyToNmod(value, modulus) {
   value = assertPolynomial(value);
   if (value.kind !== "ZZ") {
@@ -419,6 +482,7 @@ export function createPortablePolynomialBackend() {
     zmodPolyConstant,
     zmodPolyGen,
     polyAdd,
+    polyCoefficient,
     polyCoefficients,
     polyEqual,
     polyMul,
@@ -428,8 +492,10 @@ export function createPortablePolynomialBackend() {
     polyToString,
     qqPolyConstant,
     qqPolyGen,
+    qqPolyToZZExact,
     zzPolyConstant,
     zzPolyGen,
+    zzPolyUnitriangularBasis,
     zzPolyToNmod,
     zzPolyToZmod,
     zzPolyToQQ,

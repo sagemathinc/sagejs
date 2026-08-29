@@ -16,7 +16,7 @@
     "classified-native-file": 131,
     "declared-ffi": 441,
     "declared-ffi-resource": 32,
-    "napi-export": 325,
+    "napi-export": 328,
     "runtime-intrinsic": 147,
     "wasm-export": 72
   },
@@ -7426,6 +7426,16 @@
       "family": "polynomials"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficient",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyCoefficient",
+      "symbol": "poly_coefficient",
+      "disposition": "retain-representation-primitive",
+      "family": "polynomials"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:polyCoefficients",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -7996,6 +8006,16 @@
       "family": "polynomials"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyToZZExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyToZZExact",
+      "symbol": "qq_poly_to_zz_exact",
+      "disposition": "retain-representation-primitive",
+      "family": "polynomials"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:realAdd",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
@@ -8414,6 +8434,16 @@
       "export": "zzPolyToZmod",
       "symbol": "zz_poly_to_zmod",
       "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyUnitriangularBasis",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyUnitriangularBasis",
+      "symbol": "zz_poly_unitriangular_basis",
+      "disposition": "retain-representation-primitive",
       "family": "polynomials"
     },
     {

@@ -681,6 +681,12 @@ def eisenstein_series_qexp(
     )
     if coefficient_ring is sage.QQ:
         return ring._from_native(native_value, 0, precision)
+    if coefficient_ring is sage.ZZ:
+        return ring._from_native(
+            runtime.flint_backend().qqPolyToZZExact(native_value),
+            0,
+            precision,
+        )
 
     rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(
         native_value
