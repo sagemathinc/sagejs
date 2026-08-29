@@ -1,4 +1,4 @@
-"""Neutral capacity-planned exact-arena witnesses for Native Kernel v26."""
+"""Neutral checkpoint-allocated exact-arena witnesses for Native Kernel v27."""
 
 from sagejs.native import NativeExactArena, native, uint64
 
@@ -6,13 +6,14 @@ from sagejs.native import NativeExactArena, native, uint64
 @native
 def live_arena_relation_step(
     memory_limit: uint64,
+    temporary_limit: uint64,
     maximum_bits: uint64,
     left: int,
     right: int,
     repetitions: uint64,
 ) -> tuple[int, int, uint64]:
     """Keep a relation matrix and pivot vector in one exact ownership region."""
-    with NativeExactArena(memory_limit) as workspace:
+    with NativeExactArena(memory_limit, temporary_limit) as workspace:
         relations = workspace.integer_matrix(2, 3, maximum_bits)
         pivots = workspace.integer_vector(2, maximum_bits)
         relations[0, 1] = left
@@ -27,7 +28,7 @@ def live_arena_relation_step(
 @native
 def live_arena_shared_limit(memory_limit: uint64, value: int) -> int:
     """Expose aggregate base and payload charging across two child owners."""
-    with NativeExactArena(memory_limit) as workspace:
+    with NativeExactArena(memory_limit, 4096) as workspace:
         matrix = workspace.integer_matrix(2, 2, 8)
         vector = workspace.integer_vector(2, 8)
         matrix[0, 0] = value

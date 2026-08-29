@@ -510,7 +510,7 @@ function emitExactStatement(operation, indent, resourceStack = null) {
         emitExactStatement(item, indent, resourceStack)
       ),
       `${indent}${operation.owner} = createNativeExactArena(` +
-        `${operation.memoryLimit});`,
+      `${operation.memoryLimit}, ${operation.temporaryLimit});`,
       `${indent}try {`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `, resourceStack)
@@ -1855,12 +1855,18 @@ function nativeIntegerMatrixClose(matrix) {
   matrix.open = false;
 }
 
-function createNativeExactArena(memoryLimit) {
+function createNativeExactArena(memoryLimit, temporaryLimit) {
+  const exactTemporaryLimit = BigInt(temporaryLimit);
+  if (exactTemporaryLimit < 0n ||
+      exactTemporaryLimit > 18446744073709551615n) {
+    throw new RangeError("NativeExactArena memory limit is outside uint64");
+  }
   return {
     budget: createNativeExactBudget(
       memoryLimit,
       "NativeExactArena memory limit exceeded",
     ),
+    temporaryLimit: exactTemporaryLimit,
     open: true,
   };
 }

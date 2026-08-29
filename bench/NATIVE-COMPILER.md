@@ -1,6 +1,6 @@
-# Native Kernel v26
+# Native Kernel v27
 
-Native Kernel v26 asks whether selected Sage.js library functions can compile
+Native Kernel v27 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v26 is currently a source-tree development feature and uses the
+Native Kernel v27 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -506,6 +506,17 @@ memory hooks and requires allocator-call counts to remain independent of the
 hot-loop iteration count. This is the fixed-resident half of the allocation
 model; checkpoint-rewind storage for opaque GMP and FLINT temporaries is the
 next layer.
+
+V27 adds that checkpoint-rewind layer. `NativeExactArena` now takes separate
+resident and temporary byte limits. Generated exact cores install one GMP
+allocation hook, route allocations made only during the compiler-delimited
+arena region to a thread-local bump slab, preserve system-allocation provenance
+for persistent values, and suspend the checkpoint while publishing results.
+Cleanup destroys foreign resources, resident children, and checkpoint-backed
+exact scratch before the single rewind. The allocation audit records the slab
+high-water mark and rejects spills. For now an arena body must end in an
+unconditional return; this fail-closed rule prevents scalar live-outs until the
+IR can represent their ownership and capacity explicitly.
 
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and

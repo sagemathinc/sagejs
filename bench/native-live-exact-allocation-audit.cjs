@@ -13,6 +13,9 @@ const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
+} = require("../tools/native-kernel/gmp-checkpoint-allocator.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = resolve(__dirname, "..");
@@ -30,41 +33,6 @@ const harness = String.raw`
 #include <gmp.h>
 #include "kernel_core.h"
 
-static uint64_t allocation_calls = 0;
-static uint64_t reallocation_calls = 0;
-static uint64_t free_calls = 0;
-static uint64_t allocated_bytes = 0;
-static int tracking = 0;
-
-static void *counting_malloc(size_t size)
-{
-    if (tracking)
-    {
-        allocation_calls += 1;
-        allocated_bytes += (uint64_t) size;
-    }
-    return malloc(size);
-}
-
-static void *counting_realloc(void *pointer, size_t old_size, size_t new_size)
-{
-    (void) old_size;
-    if (tracking)
-    {
-        reallocation_calls += 1;
-        allocated_bytes += (uint64_t) new_size;
-    }
-    return realloc(pointer, new_size);
-}
-
-static void counting_free(void *pointer, size_t size)
-{
-    (void) size;
-    if (tracking)
-        free_calls += 1;
-    free(pointer);
-}
-
 static void run_case(
     const char *label,
     uint64_t repetitions,
@@ -74,32 +42,30 @@ static void run_case(
     const mpz_t right)
 {
     sagejs_native_status status = { SAGEJS_NATIVE_OK, NULL };
+    sagejs_native_gmp_checkpoint_stats stats = {0};
     uint64_t rows = 0;
-    allocation_calls = 0;
-    reallocation_calls = 0;
-    free_calls = 0;
-    allocated_bytes = 0;
-    tracking = 1;
     assert(sagejs_kernel_live_arena_relation_step(
         &status, first, second, &rows, UINT64_C(67108864),
-        UINT64_C(1048576), left, right, repetitions));
-    tracking = 0;
+        UINT64_C(2097152), UINT64_C(1048576),
+        left, right, repetitions));
     assert(status.code == SAGEJS_NATIVE_OK);
     assert(rows == 2);
+    assert(sagejs_native_gmp_last_checkpoint_stats(&stats));
     printf(
-        "%s|%llu|%llu|%llu|%llu\n",
+        "%s|%llu|%llu|%llu|%llu|%llu|%llu\n",
         label,
-        (unsigned long long) allocation_calls,
-        (unsigned long long) reallocation_calls,
-        (unsigned long long) free_calls,
-        (unsigned long long) allocated_bytes);
+        (unsigned long long) stats.allocation_calls,
+        (unsigned long long) stats.reallocation_calls,
+        (unsigned long long) stats.free_calls,
+        (unsigned long long) stats.requested_bytes,
+        (unsigned long long) stats.high_water,
+        (unsigned long long) stats.spill_allocations);
 }
 
 int main(void)
 {
     mpz_t left, right, first, second;
-    mp_set_memory_functions(
-        counting_malloc, counting_realloc, counting_free);
+    assert(sagejs_native_gmp_allocator_install());
     mpz_init2(left, 512);
     mpz_init2(right, 512);
     mpz_init2(first, 1048576);
@@ -124,9 +90,14 @@ async function main() {
   try {
     writeFileSync(join(temporary, "kernel_core.c"), core.source);
     writeFileSync(join(temporary, "kernel_core.h"), core.header);
-    writeFileSync(join(temporary, "harness.c"), harness);
+    writeFileSync(
+      join(temporary, "harness.c"),
+      `#define SAGEJS_NATIVE_GMP_ALLOCATOR_API\n` +
+        `${GMP_CHECKPOINT_ALLOCATOR_C_SOURCE}\n${harness}`,
+    );
     const executable = join(temporary, "allocation-audit");
-    const compile = spawnSync(process.env.CC || "cc", [
+    const coreObject = join(temporary, "kernel_core.o");
+    const compileCore = spawnSync(process.env.CC || "cc", [
       "-std=c11",
       "-O3",
       "-Wall",
@@ -135,8 +106,28 @@ async function main() {
       "-Wno-error=unused-function",
       `-I${temporary}`,
       `-I${join(prefix, "include")}`,
+      "-DSAGEJS_NATIVE_GMP_ALLOCATOR_EXTERNAL=1",
+      "-c",
       join(temporary, "kernel_core.c"),
+      "-o",
+      coreObject,
+    ], { cwd: root, encoding: "utf8", timeout: 120_000 });
+    assert.equal(
+      compileCore.status,
+      0,
+      `allocation-audit core compile failed:\n` +
+        `${compileCore.stdout}${compileCore.stderr}`,
+    );
+    const compile = spawnSync(process.env.CC || "cc", [
+      "-std=c11",
+      "-O3",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      `-I${temporary}`,
+      `-I${join(prefix, "include")}`,
       join(temporary, "harness.c"),
+      coreObject,
       join(prefix, "lib", "libgmp.a"),
       "-lm",
       "-o",
@@ -159,13 +150,23 @@ async function main() {
         `${run.stdout}${run.stderr}`,
     );
     const records = run.stdout.trim().split("\n").map((line) => {
-      const [label, allocations, reallocations, frees, bytes] = line.split("|");
+      const [
+        label,
+        allocations,
+        reallocations,
+        frees,
+        bytes,
+        highWater,
+        spills,
+      ] = line.split("|");
       return {
         label,
         allocations: Number(allocations),
         reallocations: Number(reallocations),
         frees: Number(frees),
         allocatedBytes: Number(bytes),
+        highWaterBytes: Number(highWater),
+        spills: Number(spills),
       };
     });
     const setup = records[0];
@@ -181,6 +182,7 @@ async function main() {
         `${record.label} introduced GMP reallocations`,
       );
       assert.equal(record.frees, record.allocations);
+      assert.equal(record.spills, 0);
     }
     process.stdout.write(`${JSON.stringify({
       schema: "sagejs.native-exact-allocation-audit/v1",

@@ -62,8 +62,10 @@ class RelationMetadata(NativeRecord):
 
 
 @native
-def admit_and_present(..., memory_limit: uint64) -> bool:
-    with NativeExactArena(memory_limit) as arena:
+def admit_and_present(
+    ..., resident_limit: uint64, temporary_limit: uint64
+) -> bool:
+    with NativeExactArena(resident_limit, temporary_limit) as arena:
         rows = arena.integer_matrix(maximum_rows, columns, relation_bits)
         row_lengths = arena.uint64_vector(maximum_rows)
         metadata = arena.records(RelationMetadata, maximum_rows)
@@ -121,6 +123,13 @@ provenance so ordinary GMP/FLINT state outside the scope continues to use the
 system allocator.  Rewind is legal only after ownership analysis proves that
 no arena-backed limb or foreign resource can escape.  Resident values and
 published outputs are never silently allocated from rewindable storage.
+
+Native Kernel v27 initially admits a deliberately narrower proof: the arena
+body must end in an unconditional return, publication temporarily suspends the
+checkpoint, and generated all-exit cleanup destroys exact scratch and child
+owners before rewinding the parent.  This restriction may be relaxed only when
+the IR records capacity and ownership for every scalar live-out; ordinary
+Python lexical scope alone is not an allocation-lifetime proof.
 
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no

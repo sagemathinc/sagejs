@@ -112,7 +112,7 @@ function operationInputs(operation) {
     case "integer.matrix.swap_rows":
       return [operation.matrix, operation.left, operation.right];
     case "integer.arena.scope":
-      return [operation.memoryLimit];
+      return [operation.memoryLimit, operation.temporaryLimit];
     case "integer.arena.vector.allocate":
       return [operation.arena, operation.capacity, operation.maximumBits];
     case "integer.arena.matrix.allocate":
@@ -1018,6 +1018,7 @@ function liveExactWorkspaceAnalysis(fn) {
         scopes.push({
           owner: operation.owner,
           memoryLimit: operation.memoryLimit,
+          temporaryLimit: operation.temporaryLimit,
           storage: "shared-budget-lexical-exact-arena",
           children: operation.children.map((child) => child.type ===
             "NativeIntegerMatrix"

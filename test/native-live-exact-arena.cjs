@@ -52,7 +52,7 @@ for _iteration in range(repetitions):
     relation += pivot * right
     pivot -= relation * left
 assert source["live_arena_relation_step"](
-    8192, 4096, left, right, repetitions
+    8192, 1048576, 4096, left, right, repetitions
 ) == (relation, pivot, 2)
 for limit in (261, 262, 263):
     try:
@@ -74,7 +74,7 @@ assert source["live_arena_shared_limit"](264, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 26);
+  assert.equal(ir.version, 27);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
@@ -87,6 +87,7 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.deepEqual(fn.analysis.liveExactWorkspace.scopes, [{
     owner: "workspace",
     memoryLimit: "memory_limit",
+    temporaryLimit: "temporary_limit",
     storage: "shared-budget-lexical-exact-arena",
     children: [{
       owner: "relations",
@@ -127,6 +128,11 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_13/);
   assert.match(core.source, /arithmetic_scratch/);
   assert.match(core.source, /NativeExactArena memory limit exceeded/);
+  assert.match(
+    core.source,
+    /success:\n(?:(?!fail:)[\s\S])*mpz_clear\(sagejs_scratch_0\);(?:(?!fail:)[\s\S])*sagejs_native_exact_arena_clear\(&sagejs_workspace\);/,
+    "checkpoint-backed exact scratch must clear before arena rewind",
+  );
 
   const cacheRoot = mkdtempSync(join(tmpdir(), "sagejs-live-arena-"));
   try {
@@ -151,7 +157,9 @@ for (const implementation of [
   module.live_arena_relation_step.tagged,
 ]) {
   assert.deepEqual(
-    Array.from(implementation(8192n, 4096n, left, right, repetitions)),
+    Array.from(implementation(
+      8192n, 1048576n, 4096n, left, right, repetitions,
+    )),
     [relation, pivot, 2n],
   );
 }
@@ -188,7 +196,7 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
     () => lowerSource(
       header +
         "def f(n: uint64) -> int:\n" +
-        "    with NativeExactArena(n) as workspace:\n" +
+        "    with NativeExactArena(n, n) as workspace:\n" +
         "        values = workspace.integer_vector(1, 64)\n" +
         "        alias = values\n" +
         "        return 0\n",
@@ -200,7 +208,7 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
     () => lowerSource(
       header +
         "def f(n: uint64) -> int:\n" +
-        "    with NativeExactArena(n) as workspace:\n" +
+        "    with NativeExactArena(n, n) as workspace:\n" +
         "        if n > 0:\n" +
         "            values = workspace.integer_vector(1, 64)\n" +
         "        return 0\n",
@@ -212,11 +220,23 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
     () => lowerSource(
       header +
         "def f(n: uint64) -> int:\n" +
-        "    with NativeExactArena(n) as workspace:\n" +
+        "    with NativeExactArena(n, n) as workspace:\n" +
         "        return workspace\n",
       "live-arena-return.py",
     ),
     /live exact owners cannot be copied, passed, or returned/,
+  );
+  await assert.rejects(
+    () => lowerSource(
+      header +
+        "def f(n: uint64) -> int:\n" +
+        "    with NativeExactArena(n, n) as workspace:\n" +
+        "        values = workspace.integer_vector(1, 64)\n" +
+        "        value = values[0]\n" +
+        "    return value\n",
+      "live-arena-scalar-escape.py",
+    ),
+    /body must end with an unconditional return/,
   );
 });
 

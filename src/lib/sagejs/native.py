@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v26 currently accepts a deliberately narrow typed numerical
+Native Kernel v27 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -408,18 +408,27 @@ class NativeExactArena:
     They share one deterministic byte limit, remain private to the arena, and
     close in reverse creation order on every exit. Native compilation lowers
     the complete ownership graph without materializing child Python objects.
+    `temporary_limit` reserves the native checkpoint slab used by short-lived
+    GMP allocations; it does not change the ordinary Python computation.
     """
 
     _UINT64_MAX = (1 << 64) - 1
 
-    def __init__(self, memory_limit: int) -> None:
+    def __init__(self, memory_limit: int, temporary_limit: int) -> None:
         exact_limit = int(memory_limit)
-        if exact_limit < 0 or exact_limit > self._UINT64_MAX:
+        exact_temporary_limit = int(temporary_limit)
+        if (
+            exact_limit < 0
+            or exact_limit > self._UINT64_MAX
+            or exact_temporary_limit < 0
+            or exact_temporary_limit > self._UINT64_MAX
+        ):
             raise OverflowError("NativeExactArena memory limit is outside uint64")
         self._budget = _NativeExactBudget(
             exact_limit,
             "NativeExactArena memory limit exceeded",
         )
+        self._temporary_limit = exact_temporary_limit
         self._children: list[NativeIntegerVector | NativeIntegerMatrix] = []
         self._open = True
         self._entered = False

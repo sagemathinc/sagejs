@@ -2262,7 +2262,7 @@ function lowerStatements(statements, context) {
       const expectedArguments = ownerType === LIVE_INTEGER_MATRIX_TYPE
         ? 3
         : ownerType === LIVE_EXACT_ARENA_TYPE
-          ? 1
+          ? 2
           : 2;
       expect(
         context,
@@ -2274,7 +2274,7 @@ function lowerStatements(statements, context) {
         ownerType === LIVE_INTEGER_MATRIX_TYPE
           ? "NativeIntegerMatrix() requires rows, columns, and memory_limit"
           : ownerType === LIVE_EXACT_ARENA_TYPE
-            ? "NativeExactArena() requires memory_limit"
+            ? "NativeExactArena() requires memory_limit and temporary_limit"
             : "NativeIntegerVector() requires capacity and memory_limit",
       );
       expect(
@@ -2304,11 +2304,16 @@ function lowerStatements(statements, context) {
           context,
           setup,
         );
+        const temporaryLimit = lowerUint64Operand(
+          constructorArgs[1],
+          context,
+          setup,
+        );
         expect(
           context,
           constructor,
-          memoryLimit.type === "uint64",
-          "NativeExactArena memory_limit must be uint64",
+          memoryLimit.type === "uint64" && temporaryLimit.type === "uint64",
+          "NativeExactArena memory_limit and temporary_limit must be uint64",
         );
         ensureVariable(context, clause.alias, owner, ownerType);
         context.initialized.add(owner);
@@ -2318,6 +2323,12 @@ function lowerStatements(statements, context) {
         };
         context.activeExactArenas.set(owner, arenaState);
         const body = lowerBlock(statement.body, context);
+        expect(
+          context,
+          statement,
+          body.at(-1)?.kind === "return",
+          "NativeExactArena body must end with an unconditional return",
+        );
         context.activeExactArenas.delete(owner);
         context.initialized.delete(owner);
         for (const child of arenaState.children) {
@@ -2331,6 +2342,7 @@ function lowerStatements(statements, context) {
           kind: "integer.arena.scope",
           owner,
           memoryLimit: memoryLimit.name,
+          temporaryLimit: temporaryLimit.name,
           setup,
           children: arenaState.children,
           body,

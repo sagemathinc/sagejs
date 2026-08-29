@@ -500,16 +500,25 @@ static int sagejs_native_integer_matrix_init(
 typedef struct
 {
     sagejs_native_exact_budget budget;
+    sagejs_native_gmp_checkpoint checkpoint;
+    uint64_t temporary_limit;
 } sagejs_native_exact_arena;
 
 static int sagejs_native_exact_arena_init(
     sagejs_native_status *status,
     sagejs_native_exact_arena *arena,
-    uint64_t memory_limit)
+    uint64_t memory_limit,
+    uint64_t temporary_limit)
 {
-    (void) status;
     memset(arena, 0, sizeof(*arena));
+    if (!sagejs_native_gmp_allocator_install())
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeExactArena GMP allocator installation failed");
+        return 0;
+    }
     sagejs_native_exact_budget_init(&arena->budget, memory_limit);
+    arena->temporary_limit = temporary_limit;
     return 1;
 }
 
@@ -518,9 +527,12 @@ static void sagejs_native_exact_arena_clear(
 {
     if (arena == NULL)
         return;
+    if (arena->checkpoint.open)
+        (void) sagejs_native_gmp_checkpoint_end(&arena->checkpoint);
     arena->budget.limit = 0;
     arena->budget.charged = 0;
     arena->budget.open = 0;
+    arena->temporary_limit = 0;
 }
 
 static int sagejs_native_mpz_bounded_index(

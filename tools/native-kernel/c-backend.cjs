@@ -44,6 +44,9 @@ const {
   generateExactNodeHelpers,
 } = require("./exact-runtime.cjs");
 const {
+  GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
+} = require("./gmp-checkpoint-allocator.cjs");
+const {
   emitExactForeignCall,
   exceptionShimInclude,
   foreignDependencies,
@@ -1042,6 +1045,13 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "integer.arena.scope") {
       const owner = exactValue(statement.owner, context);
+      const lastAllocation = statement.body.findLastIndex((operation) =>
+        operation.kind === "integer.arena.vector.allocate" ||
+        operation.kind === "integer.arena.matrix.allocate"
+      );
+      const residentSetup = statement.body.slice(0, lastAllocation + 1);
+      const checkpointBody = statement.body.slice(lastAllocation + 1);
+      const checkpointContext = { ...context, checkpointActive: true };
       const cleanupChildren = [...statement.children].reverse().flatMap(
         (child) => {
           const clear = child.type === "NativeIntegerMatrix"
@@ -1059,10 +1069,23 @@ function emitExactStatements(statements, context, indent) {
       lines.push(
         emitExactStatements(statement.setup, context, indent),
         `${indent}if (!sagejs_native_exact_arena_init(status, &${owner}, ` +
-          `${exactValue(statement.memoryLimit, context)}))`,
+          `${exactValue(statement.memoryLimit, context)}, ` +
+          `${exactValue(statement.temporaryLimit, context)}))`,
         `${indent}    goto fail;`,
         `${indent}${cName(statement.owner)}_initialized = 1;`,
-        emitExactStatements(statement.body, context, indent),
+        emitExactStatements(residentSetup, context, indent),
+        `${indent}if (${owner}.temporary_limit > (uint64_t) SIZE_MAX ||`,
+        `${indent}    !sagejs_native_gmp_checkpoint_begin(` +
+          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit))`,
+        `${indent}{`,
+        statusFailure(
+          "error",
+          "NativeExactArena checkpoint allocation failed",
+          `${indent}    `,
+        ),
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        emitExactStatements(checkpointBody, checkpointContext, indent),
         ...cleanupChildren,
         `${indent}sagejs_native_exact_arena_clear(&${owner});`,
         `${indent}${cName(statement.owner)}_initialized = 0;`,
@@ -1071,6 +1094,12 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "return") {
       const tuple = tupleElementTypes(statement.type);
+      const publishesExact = tuple !== undefined
+        ? tuple.includes("Integer")
+        : statement.type === "Integer";
+      if (context.checkpointActive && publishesExact) {
+        lines.push(`${indent}sagejs_native_gmp_checkpoint_suspend();`);
+      }
       if (tuple !== undefined) {
         tuple.forEach((type, index) => {
           if (type === "Integer") {
@@ -1095,6 +1124,19 @@ function emitExactStatements(statements, context, indent) {
         lines.push(`${indent}*sagejs_native_output = ` +
           `${exactValue(statement.value, context)};`);
       }
+      if (context.checkpointActive && publishesExact) {
+        lines.push(
+          `${indent}if (!sagejs_native_gmp_checkpoint_resume())`,
+          `${indent}{`,
+          statusFailure(
+            "error",
+            "NativeExactArena checkpoint publication failed",
+            `${indent}    `,
+          ),
+          `${indent}    goto fail;`,
+          `${indent}}`,
+        );
+      }
       lines.push(`${indent}goto success;`);
       continue;
     }
@@ -1115,6 +1157,7 @@ function exactDeclarations(fn) {
   const declarations = [];
   const initialization = [];
   const cleanup = [];
+  const arenaCleanup = [];
   for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
     declarations.push(`    mpz_t sagejs_scratch_${slot};`);
     initialization.push(`    mpz_init(sagejs_scratch_${slot});`);
@@ -1176,7 +1219,7 @@ function exactDeclarations(fn) {
         `    sagejs_native_exact_arena ${cName(local.name)} = {0};`,
         `    int ${cName(local.name)}_initialized = 0;`,
       );
-      cleanup.unshift(
+      arenaCleanup.unshift(
         `    if (${cName(local.name)}_initialized)`,
         `        sagejs_native_exact_arena_clear(&${cName(local.name)});`,
       );
@@ -1213,6 +1256,11 @@ function exactDeclarations(fn) {
       `    mpz_set(${exactValue(name, context)}, sagejs_arg_${name});`,
     );
   }
+  /* Any GMP value whose limbs were obtained while an exact checkpoint was
+     active must be cleared while that checkpoint still owns its slab.  Arena
+     owners therefore always come after exact scratch, resident children, and
+     foreign resources in both success and failure cleanup. */
+  cleanup.push(...arenaCleanup);
   return { context, declarations, initialization, cleanup };
 }
 
@@ -3101,7 +3149,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v26. */
+  return `/* Generated by Sage.js Native Kernel v27. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3245,6 +3293,7 @@ function generateHostCore(ir, options = {}) {
   );
   const pieces = [
     generateStatusRuntime(),
+    exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
     usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
@@ -3265,7 +3314,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v26.
+  const source = `/* Generated by Sage.js Native Kernel v27.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3320,6 +3369,11 @@ ${pieces.join("\n\n")}
 function generateNodeAdapter(ir) {
   const functions = ir.functions;
   const exact = exactFunctions(ir);
+  const usesExactArena = exact.some((fn) =>
+    fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+      scope.storage === "shared-budget-lexical-exact-arena"
+    )
+  );
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
   const fields = functions.filter((fn) =>
     ["real-field", "complex-field"].includes(fn.kernelKind)
@@ -3465,7 +3519,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v26.
+  return `/* Generated by Sage.js Native Kernel v27.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
@@ -3528,6 +3582,9 @@ SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(
     napi_property_descriptor properties[] = {
 ${properties}
     };
+${usesExactArena
+    ? "    if (!sagejs_native_gmp_allocator_install()) return NULL;"
+    : ""}
     if (!sagejs_native_check_napi(env,
         napi_define_properties(env, exports,
             sizeof(properties) / sizeof(properties[0]), properties)))
