@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v25 currently accepts a deliberately narrow typed numerical
+Native Kernel v26 currently accepts a deliberately narrow typed numerical
 subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. Typed `uint64` kernels support full-word
 `&`, `|`, `^`, `<<`, and `>>`, including augmented scalar and buffer forms.
@@ -119,14 +119,18 @@ class NativeIntegerVector:
         capacity: int,
         memory_limit: int,
         _budget: _NativeExactBudget | None = None,
+        _maximum_bits: int = 0,
     ) -> None:
         exact_capacity = int(capacity)
         exact_limit = int(memory_limit)
+        exact_maximum_bits = int(_maximum_bits)
         if (
             exact_capacity < 0
             or exact_capacity > self._UINT64_MAX
             or exact_limit < 0
             or exact_limit > self._UINT64_MAX
+            or exact_maximum_bits < 0
+            or exact_maximum_bits > self._UINT64_MAX
         ):
             raise OverflowError("NativeIntegerVector dimensions are outside uint64")
         self._budget = _budget or _NativeExactBudget(
@@ -135,7 +139,11 @@ class NativeIntegerVector:
         )
         if self._budget.limit != exact_limit:
             raise ValueError("NativeIntegerVector budget limit mismatch")
-        base_charge = exact_capacity * self._ENTRY_CHARGE
+        self._maximum_payload = (exact_maximum_bits + 7) // 8
+        charged_entries = exact_capacity + (
+            1 if self._maximum_payload != 0 and exact_capacity != 0 else 0
+        )
+        base_charge = charged_entries * (self._ENTRY_CHARGE + self._maximum_payload)
         self._budget.reserve(0, base_charge)
         try:
             self._values = [0 for _index in range(exact_capacity)]
@@ -167,6 +175,11 @@ class NativeIntegerVector:
         values = self._require_open()
         exact = int(value)
         payload = self._payload_charge(exact)
+        if self._maximum_payload != 0:
+            if payload > self._maximum_payload:
+                raise MemoryError(self._budget.message)
+            values[index] = exact
+            return
         old_payload = self._payload_charges[index]
         self._budget.reserve(old_payload, payload)
         values[index] = exact
@@ -212,11 +225,13 @@ class NativeIntegerVector:
         )
         result_bits = max(abs(current).bit_length(), product_bits) + 1
         conservative_payload = (result_bits + 7) // 8
+        if self._maximum_payload != 0:
+            if conservative_payload > self._maximum_payload:
+                raise MemoryError(self._budget.message)
+            return
         old_payload = self._payload_charges[index]
         self._budget.reserve(old_payload, conservative_payload)
-        self._charged_bytes = (
-            self._charged_bytes - old_payload + conservative_payload
-        )
+        self._charged_bytes = self._charged_bytes - old_payload + conservative_payload
         self._payload_charges[index] = conservative_payload
 
     def addmul(self, index: int, left: int, right: int) -> None:
@@ -269,6 +284,7 @@ class NativeIntegerMatrix:
         columns: int,
         memory_limit: int,
         _budget: _NativeExactBudget | None = None,
+        _maximum_bits: int = 0,
     ) -> None:
         exact_rows = int(rows)
         exact_columns = int(columns)
@@ -294,6 +310,7 @@ class NativeIntegerMatrix:
                 exact_rows * exact_columns,
                 exact_limit,
                 _budget=budget,
+                _maximum_bits=_maximum_bits,
             )
         except OverflowError as error:
             raise OverflowError(
@@ -421,18 +438,28 @@ class NativeExactArena:
         self.close()
         return False
 
-    def integer_vector(self, capacity: int) -> NativeIntegerVector:
+    def integer_vector(
+        self,
+        capacity: int,
+        maximum_bits: int,
+    ) -> NativeIntegerVector:
         """Create one fixed-capacity vector charged to this arena."""
         self._require_open()
         child = NativeIntegerVector(
             capacity,
             self._budget.limit,
             _budget=self._budget,
+            _maximum_bits=maximum_bits,
         )
         self._children.append(child)
         return child
 
-    def integer_matrix(self, rows: int, columns: int) -> NativeIntegerMatrix:
+    def integer_matrix(
+        self,
+        rows: int,
+        columns: int,
+        maximum_bits: int,
+    ) -> NativeIntegerMatrix:
         """Create one fixed-shape row-major matrix charged to this arena."""
         self._require_open()
         child = NativeIntegerMatrix(
@@ -440,6 +467,7 @@ class NativeExactArena:
             columns,
             self._budget.limit,
             _budget=self._budget,
+            _maximum_bits=maximum_bits,
         )
         self._children.append(child)
         return child

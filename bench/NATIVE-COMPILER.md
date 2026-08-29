@@ -1,6 +1,6 @@
-# Native Kernel v25
+# Native Kernel v26
 
-Native Kernel v25 asks whether selected Sage.js library functions can compile
+Native Kernel v26 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v25 is currently a source-tree development feature and uses the
+Native Kernel v26 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -495,6 +495,17 @@ requires allocation on the arena body's unconditional path, and rejects child
 aliases or escape. Base storage and changing GMP payload charges debit one
 shared limit. Every backend clears children in reverse creation order before
 closing the parent, including on exceptions and early returns.
+
+V26 makes physical exact allocation part of that source contract. Arena-owned
+vectors and matrices take a declared `maximum_bits`; native code initializes
+every resident limb and one owned arithmetic scratch at entry, checks bounds
+before each update, and borrows resident operands for their single consuming
+operation instead of copying them through growing scalar temporaries. The
+allocation audit in `native-live-exact-allocation-audit.cjs` installs GMP's
+memory hooks and requires allocator-call counts to remain independent of the
+hot-loop iteration count. This is the fixed-resident half of the allocation
+model; checkpoint-rewind storage for opaque GMP and FLINT temporaries is the
+next layer.
 
 The neutral witnesses are
 [`native_live_exact_vector.py`](native_live_exact_vector.py) and

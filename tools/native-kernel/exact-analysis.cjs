@@ -72,6 +72,7 @@ function operationInputs(operation) {
     case "integer.vector.length":
       return [operation.vector];
     case "integer.vector.get":
+    case "integer.vector.borrow":
       return [operation.vector, operation.index];
     case "integer.vector.set":
       return [operation.vector, operation.index, operation.value];
@@ -90,6 +91,7 @@ function operationInputs(operation) {
     case "integer.matrix.length":
       return [operation.matrix];
     case "integer.matrix.get":
+    case "integer.matrix.borrow":
       return [operation.matrix, operation.row, operation.column];
     case "integer.matrix.set":
       return [
@@ -112,9 +114,14 @@ function operationInputs(operation) {
     case "integer.arena.scope":
       return [operation.memoryLimit];
     case "integer.arena.vector.allocate":
-      return [operation.arena, operation.capacity];
+      return [operation.arena, operation.capacity, operation.maximumBits];
     case "integer.arena.matrix.allocate":
-      return [operation.arena, operation.rows, operation.columns];
+      return [
+        operation.arena,
+        operation.rows,
+        operation.columns,
+        operation.maximumBits,
+      ];
     case "native.call":
     case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
@@ -190,6 +197,66 @@ function walkStatements(statements, handlers) {
   }
 }
 
+function introduceResidentBorrows(fn) {
+  const uses = new Map();
+  const recordUse = (name) => {
+    uses.set(name, (uses.get(name) || 0) + 1);
+  };
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      for (const name of operationInputs(operation)) recordUse(name);
+    },
+    read: recordUse,
+    write() {},
+  });
+
+  const rewrite = (statements) => {
+    for (const statement of statements) {
+      if (statement.kind === "if") {
+        rewrite(statement.condition.operations);
+        rewrite(statement.body);
+        rewrite(statement.alternative);
+      } else if (statement.kind === "while") {
+        rewrite(statement.condition.operations);
+        rewrite(statement.body);
+      } else if (
+        statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact"
+      ) {
+        rewrite(statement.body);
+      } else if (
+        statement.kind === "integer.vector.scope" ||
+        statement.kind === "integer.matrix.scope" ||
+        statement.kind === "integer.arena.scope"
+      ) {
+        rewrite(statement.setup);
+        rewrite(statement.body);
+      }
+    }
+    for (let index = 0; index + 1 < statements.length; index += 1) {
+      const load = statements[index];
+      const consumer = statements[index + 1];
+      if (
+        !["integer.vector.get", "integer.matrix.get"].includes(load.kind) ||
+        uses.get(load.target) !== 1 ||
+        ![
+          "integer.vector.addmul",
+          "integer.vector.submul",
+          "integer.matrix.addmul",
+          "integer.matrix.submul",
+        ].includes(consumer.kind) ||
+        !operationInputs(consumer).includes(load.target)
+      ) {
+        continue;
+      }
+      load.kind = load.kind.replace(".get", ".borrow");
+      load.borrowLifetime = "next-operation";
+    }
+  };
+  rewrite(fn.body);
+}
+
 function storageAnalysis(fn) {
   const types = exactTypes(fn);
   const integerParams = new Set(
@@ -198,10 +265,17 @@ function storageAnalysis(fn) {
       .map((param) => param.name),
   );
   const mutatedParams = new Set();
+  const borrowedLocals = new Set();
   let position = 0;
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
+      if (
+        operation.kind === "integer.vector.borrow" ||
+        operation.kind === "integer.matrix.borrow"
+      ) {
+        borrowedLocals.add(operation.target);
+      }
       for (const target of operationTargets(operation)) {
         if (integerParams.has(target)) mutatedParams.add(target);
       }
@@ -282,7 +356,8 @@ function storageAnalysis(fn) {
 
   const candidates = Array.from(intervals.values())
     .filter((interval) =>
-      !integerParams.has(interval.name) || mutatedParams.has(interval.name)
+      !borrowedLocals.has(interval.name) &&
+      (!integerParams.has(interval.name) || mutatedParams.has(interval.name))
     )
     .sort((left, right) =>
       left.start - right.start || left.end - right.end ||
@@ -308,6 +383,9 @@ function storageAnalysis(fn) {
           param.type === "Integer" && !mutatedParams.has(param.name),
       )
       .map((param) => param.name),
+    ...(borrowedLocals.size > 0
+      ? { borrowedLocals: Array.from(borrowedLocals).sort() }
+      : {}),
     mutableParameters: Array.from(mutatedParams).sort(),
     scratchSlots: slots.length,
     slots: assignments,
@@ -483,11 +561,13 @@ function localEffects(fn) {
       }
       if (
         operation.kind === "integer.vector.get" ||
+        operation.kind === "integer.vector.borrow" ||
         operation.kind === "integer.vector.set" ||
         operation.kind === "integer.vector.addmul" ||
         operation.kind === "integer.vector.submul" ||
         operation.kind === "integer.vector.swap" ||
         operation.kind === "integer.matrix.get" ||
+        operation.kind === "integer.matrix.borrow" ||
         operation.kind === "integer.matrix.set" ||
         operation.kind === "integer.matrix.addmul" ||
         operation.kind === "integer.matrix.submul" ||
@@ -946,11 +1026,13 @@ function liveExactWorkspaceAnalysis(fn) {
                 storage: "row-major-mpz-matrix",
                 rows: child.rows,
                 columns: child.columns,
+                maximumBits: child.maximumBits,
               }
             : {
                 owner: child.owner,
                 storage: "mpz-vector",
                 capacity: child.capacity,
+                maximumBits: child.maximumBits,
               }),
           cleanup: "reverse-child-order-all-exit-idempotent",
           canonicalAuthority: false,
@@ -960,12 +1042,19 @@ function liveExactWorkspaceAnalysis(fn) {
     read() {},
     write() {},
   });
+  const fixedCapacityArena = scopes.some(
+    (scope) => scope.storage === "shared-budget-lexical-exact-arena",
+  );
   return {
     count: scopes.length,
     scopes,
     ownership: "compiler-owned-lexical",
-    allocation: "bounded-capacity-and-semantic-charge",
-    physicalMemory: "reported-by-receipt-not-semantic-limit",
+    allocation: fixedCapacityArena
+      ? "fixed-limb-capacity-with-owned-arithmetic-scratch"
+      : "bounded-capacity-and-semantic-charge",
+    physicalMemory: fixedCapacityArena
+      ? "declared-resident-capacity-plus-receipt-audited-library-temporaries"
+      : "reported-by-receipt-not-semantic-limit",
     automaticSelection: "receipt-gated",
   };
 }
@@ -1103,6 +1192,9 @@ function backendPolicy(fn, profile, recursive) {
 }
 
 function analyzeExactModule(functions) {
+  for (const fn of functions) {
+    if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
+  }
   const recursive = recursiveFunctions(functions);
   const effects = effectAnalyses(functions);
   const exact = new Map(

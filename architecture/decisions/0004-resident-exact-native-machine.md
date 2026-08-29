@@ -64,7 +64,7 @@ class RelationMetadata(NativeRecord):
 @native
 def admit_and_present(..., memory_limit: uint64) -> bool:
     with NativeExactArena(memory_limit) as arena:
-        rows = arena.integer_matrix(maximum_rows, columns)
+        rows = arena.integer_matrix(maximum_rows, columns, relation_bits)
         row_lengths = arena.uint64_vector(maximum_rows)
         metadata = arena.records(RelationMetadata, maximum_rows)
         seen = arena.bounded_map(KeyRecord, uint64, map_capacity)
@@ -104,6 +104,29 @@ The implementation proceeds in dependency order.
 Every structure has an exact capacity, element type, shape, semantic memory
 charge, and failure contract.  No operation silently allocates an unbounded
 Python, JavaScript, GMP, FLINT, or Wasm object graph.
+
+### Physical allocation
+
+Exact capacities are part of the mathematical program, not accounting added
+after code generation.  Every resident GMP destination declares a positive
+maximum bit length.  The compiler initializes its limbs once, preallocates
+owned arithmetic scratch for the declared operation schedule, and proves each
+update fits before invoking GMP.  Loads consumed by the next exact operation
+are read-only borrows of resident limbs rather than copied `mpz_t` values.
+
+Short-lived exact temporaries use compiler-delimited checkpoints in a
+thread-local bump arena.  A process-wide GMP allocation hook routes memory to
+that arena only while such a proved scope is active; pointers retain allocator
+provenance so ordinary GMP/FLINT state outside the scope continues to use the
+system allocator.  Rewind is legal only after ownership analysis proves that
+no arena-backed limb or foreign resource can escape.  Resident values and
+published outputs are never silently allocated from rewindable storage.
+
+Allocator receipts report setup, hot-loop, foreign-call, publication, and
+cleanup calls separately.  An accepted allocation-free region must have no
+general-heap allocation or reallocation after entry and before publication.
+Opaque GMP or FLINT operations that allocate internally must either execute in
+the checkpoint allocator or remain outside the claimed allocation-free region.
 
 ## Ownership and lifetime
 

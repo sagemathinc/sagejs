@@ -52,16 +52,16 @@ for _iteration in range(repetitions):
     relation += pivot * right
     pivot -= relation * left
 assert source["live_arena_relation_step"](
-    4096, left, right, repetitions
+    8192, 4096, left, right, repetitions
 ) == (relation, pivot, 2)
-for limit in (191, 192, 193):
+for limit in (261, 262, 263):
     try:
         source["live_arena_shared_limit"](limit, 1)
     except MemoryError as error:
         assert str(error) == "NativeExactArena memory limit exceeded"
     else:
         raise AssertionError(f"aggregate arena limit {limit} unexpectedly passed")
-assert source["live_arena_shared_limit"](194, 1) == 2
+assert source["live_arena_shared_limit"](264, 1) == 2
 `], {
     cwd: resolve(__dirname, ".."),
     encoding: "utf8",
@@ -74,12 +74,16 @@ assert source["live_arena_shared_limit"](194, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 25);
+  assert.equal(ir.version, 26);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );
   assert.equal(fn.analysis.backend.kind, "gmp");
   assert.equal(fn.analysis.execution.liveExactScopes, 1);
+  assert.deepEqual(fn.analysis.storage.borrowedLocals, [
+    "sagejs_native_tmp_13",
+    "sagejs_native_tmp_9",
+  ]);
   assert.deepEqual(fn.analysis.liveExactWorkspace.scopes, [{
     owner: "workspace",
     memoryLimit: "memory_limit",
@@ -89,10 +93,12 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
       storage: "row-major-mpz-matrix",
       rows: "sagejs_native_tmp_0",
       columns: "sagejs_native_tmp_1",
+      maximumBits: "maximum_bits",
     }, {
       owner: "pivots",
       storage: "mpz-vector",
       capacity: "sagejs_native_tmp_2",
+      maximumBits: "maximum_bits",
     }],
     cleanup: "reverse-child-order-all-exit-idempotent",
     canonicalAuthority: false,
@@ -116,6 +122,10 @@ test("the compiler emits one shared-budget exact ownership graph", async () => {
   assert.match(core.source, /sagejs_native_exact_budget_replace/);
   assert.match(core.source, /sagejs_native_integer_matrix_init_in_budget/);
   assert.match(core.source, /sagejs_native_integer_vector_init_in_budget/);
+  assert.match(core.source, /mpz_init2/);
+  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_9/);
+  assert.match(core.source, /mpz_srcptr sagejs_sagejs_native_tmp_13/);
+  assert.match(core.source, /arithmetic_scratch/);
   assert.match(core.source, /NativeExactArena memory limit exceeded/);
 
   const cacheRoot = mkdtempSync(join(tmpdir(), "sagejs-live-arena-"));
@@ -141,7 +151,7 @@ for (const implementation of [
   module.live_arena_relation_step.tagged,
 ]) {
   assert.deepEqual(
-    Array.from(implementation(4096n, left, right, repetitions)),
+    Array.from(implementation(8192n, 4096n, left, right, repetitions)),
     [relation, pivot, 2n],
   );
 }
@@ -151,15 +161,15 @@ for (const implementation of [
   module.live_arena_shared_limit.gmp,
   module.live_arena_shared_limit.tagged,
 ]) {
-  for (const limit of [191n, 192n, 193n]) {
+  for (const limit of [261n, 262n, 263n]) {
     assert.throws(
       () => implementation(limit, 1n),
       /NativeExactArena memory limit exceeded/,
     );
   }
-  assert.equal(implementation(194n, 1n), 2n);
+  assert.equal(implementation(264n, 1n), 2n);
   assert.throws(
-    () => implementation(194n, 1n << 20n),
+    () => implementation(264n, 1n << 20n),
     /NativeExactArena memory limit exceeded/,
   );
   assert.equal(implementation(512n, 7n), 14n);
@@ -179,7 +189,7 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
       header +
         "def f(n: uint64) -> int:\n" +
         "    with NativeExactArena(n) as workspace:\n" +
-        "        values = workspace.integer_vector(1)\n" +
+        "        values = workspace.integer_vector(1, 64)\n" +
         "        alias = values\n" +
         "        return 0\n",
       "live-arena-child-alias.py",
@@ -192,7 +202,7 @@ test("arena children cannot escape, alias, or allocate conditionally", async () 
         "def f(n: uint64) -> int:\n" +
         "    with NativeExactArena(n) as workspace:\n" +
         "        if n > 0:\n" +
-        "            values = workspace.integer_vector(1)\n" +
+        "            values = workspace.integer_vector(1, 64)\n" +
         "        return 0\n",
       "live-arena-conditional.py",
     ),
@@ -243,12 +253,12 @@ int main(void)
     mpz_inits(value, result, NULL);
     mpz_set_ui(value, 1);
     assert(!sagejs_kernel_live_arena_shared_limit(
-        &status, result, 193, value));
+        &status, result, 263, value));
     assert(status.code == SAGEJS_NATIVE_RANGE_ERROR);
     status.code = SAGEJS_NATIVE_OK;
     status.message = 0;
     assert(sagejs_kernel_live_arena_shared_limit(
-        &status, result, 194, value));
+        &status, result, 264, value));
     assert(mpz_cmp_ui(result, 2) == 0);
     mpz_clears(value, result, NULL);
     return 0;

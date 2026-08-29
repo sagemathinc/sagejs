@@ -39,10 +39,10 @@ int main(void)
     for (unsigned round = 0; round < 1000; round += 1)
     {
         assert(!sagejs_kernel_live_arena_shared_limit(
-            &status, result, 193, value));
+            &status, result, 263, value));
         assert(status.code == SAGEJS_NATIVE_RANGE_ERROR);
         assert(sagejs_kernel_live_arena_shared_limit(
-            &status, result, 194, value));
+            &status, result, 264, value));
         assert(status.code == SAGEJS_NATIVE_OK);
         assert(mpz_cmp_ui(result, 2) == 0);
     }

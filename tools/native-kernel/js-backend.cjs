@@ -253,7 +253,8 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ` +
       `nativeIntegerVectorLength(${operation.vector});`;
   }
-  if (operation.kind === "integer.vector.get") {
+  if (operation.kind === "integer.vector.get" ||
+      operation.kind === "integer.vector.borrow") {
     return `${indent}${operation.target} = nativeIntegerVectorGet(` +
       `${operation.vector}, ${operation.index});`;
   }
@@ -275,7 +276,8 @@ function emitExactStatement(operation, indent, resourceStack = null) {
     return `${indent}${operation.target} = ` +
       `nativeIntegerMatrixLength(${operation.matrix});`;
   }
-  if (operation.kind === "integer.matrix.get") {
+  if (operation.kind === "integer.matrix.get" ||
+      operation.kind === "integer.matrix.borrow") {
     return `${indent}${operation.target} = nativeIntegerMatrixGet(` +
       `${operation.matrix}, ${operation.row}, ${operation.column});`;
   }
@@ -295,11 +297,13 @@ function emitExactStatement(operation, indent, resourceStack = null) {
   }
   if (operation.kind === "integer.arena.vector.allocate") {
     return `${indent}${operation.owner} = createNativeIntegerVectorInBudget(` +
-      `${operation.capacity}, ${operation.arena}.budget);`;
+      `${operation.capacity}, ${operation.maximumBits}, ` +
+      `${operation.arena}.budget);`;
   }
   if (operation.kind === "integer.arena.matrix.allocate") {
     return `${indent}${operation.owner} = createNativeIntegerMatrixInBudget(` +
-      `${operation.rows}, ${operation.columns}, ${operation.arena}.budget);`;
+      `${operation.rows}, ${operation.columns}, ${operation.maximumBits}, ` +
+      `${operation.arena}.budget);`;
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
@@ -1605,17 +1609,26 @@ function nativeExactBudgetRelease(budget, charge) {
   budget.charged -= charge;
 }
 
-function createNativeIntegerVectorInBudget(capacity, budget) {
+function createNativeIntegerVectorInBudget(capacity, maximumBits, budget) {
   const exactCapacity = BigInt(capacity);
+  const exactMaximumBits = BigInt(maximumBits);
   if (exactCapacity < 0n || exactCapacity > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new RangeError("NativeIntegerVector capacity is too large");
   }
-  const baseCharge = exactCapacity * nativeIntegerVectorEntryCharge;
+  if (exactMaximumBits < 0n || exactMaximumBits > 18446744073709551615n) {
+    throw new RangeError("NativeIntegerVector capacity is too large");
+  }
+  const maximumPayload = (exactMaximumBits + 7n) / 8n;
+  const chargedEntries = exactCapacity +
+    (maximumPayload !== 0n && exactCapacity !== 0n ? 1n : 0n);
+  const baseCharge = chargedEntries *
+    (nativeIntegerVectorEntryCharge + maximumPayload);
   nativeExactBudgetReplace(budget, 0n, baseCharge);
   return {
     values: Array(Number(exactCapacity)).fill(0n),
     payloadCharges: Array(Number(exactCapacity)).fill(0n),
     budget,
+    maximumPayload,
     chargedBytes: baseCharge,
     open: true,
   };
@@ -1624,6 +1637,7 @@ function createNativeIntegerVectorInBudget(capacity, budget) {
 function createNativeIntegerVector(capacity, memoryLimit) {
   return createNativeIntegerVectorInBudget(
     capacity,
+    0n,
     createNativeExactBudget(
       memoryLimit,
       "NativeIntegerVector memory limit exceeded",
@@ -1649,6 +1663,12 @@ function nativeIntegerVectorPosition(vector, index) {
 
 function nativeIntegerVectorReserve(vector, position, payload) {
   nativeIntegerVectorRequireOpen(vector);
+  if (vector.maximumPayload !== 0n) {
+    if (payload > vector.maximumPayload) {
+      nativeRaise("MemoryError", vector.budget.message);
+    }
+    return;
+  }
   const oldPayload = vector.payloadCharges[position];
   const retained = vector.chargedBytes - oldPayload;
   nativeExactBudgetReplace(vector.budget, oldPayload, payload);
@@ -1719,7 +1739,9 @@ function nativeIntegerVectorClose(vector) {
   vector.open = false;
 }
 
-function createNativeIntegerMatrixInBudget(rows, columns, budget) {
+function createNativeIntegerMatrixInBudget(
+  rows, columns, maximumBits, budget
+) {
   const exactRows = BigInt(rows);
   const exactColumns = BigInt(columns);
   if (exactRows < 0n || exactColumns < 0n ||
@@ -1731,7 +1753,8 @@ function createNativeIntegerMatrixInBudget(rows, columns, budget) {
   }
   const capacity = exactRows * exactColumns;
   return {
-    storage: createNativeIntegerVectorInBudget(capacity, budget),
+    storage: createNativeIntegerVectorInBudget(
+      capacity, maximumBits, budget),
     rows: exactRows,
     columns: exactColumns,
     open: true,
@@ -1742,6 +1765,7 @@ function createNativeIntegerMatrix(rows, columns, memoryLimit) {
   return createNativeIntegerMatrixInBudget(
     rows,
     columns,
+    0n,
     createNativeExactBudget(
       memoryLimit,
       "NativeIntegerMatrix memory limit exceeded",

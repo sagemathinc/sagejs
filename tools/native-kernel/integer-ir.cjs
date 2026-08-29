@@ -1840,7 +1840,7 @@ function lowerArenaAllocation(statement, context) {
     `unsupported NativeExactArena allocation ${method}`,
   );
   const args = array(assign.right.args);
-  const expectedArguments = childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1;
+  const expectedArguments = childType === LIVE_INTEGER_MATRIX_TYPE ? 3 : 2;
   expect(
     context,
     assign.right,
@@ -1848,8 +1848,8 @@ function lowerArenaAllocation(statement, context) {
       array(assign.right.args?.kwarg_items).length === 0 &&
       !assign.right.args?.starargs,
     childType === LIVE_INTEGER_MATRIX_TYPE
-      ? "NativeExactArena.integer_matrix() requires rows and columns"
-      : "NativeExactArena.integer_vector() requires capacity",
+      ? "NativeExactArena.integer_matrix() requires rows, columns, and maximum_bits"
+      : "NativeExactArena.integer_vector() requires capacity and maximum_bits",
   );
   const child = assign.left.name;
   expect(
@@ -1863,11 +1863,17 @@ function lowerArenaAllocation(statement, context) {
   const secondDimension = childType === LIVE_INTEGER_MATRIX_TYPE
     ? lowerUint64Operand(args[1], context, operations)
     : undefined;
+  const maximumBits = lowerUint64Operand(
+    args[childType === LIVE_INTEGER_MATRIX_TYPE ? 2 : 1],
+    context,
+    operations,
+  );
   expect(
     context,
     assign.right,
     firstDimension.type === "uint64" &&
-      (secondDimension === undefined || secondDimension.type === "uint64"),
+      (secondDimension === undefined || secondDimension.type === "uint64") &&
+      maximumBits.type === "uint64",
     childType === LIVE_INTEGER_MATRIX_TYPE
       ? "arena matrix rows and columns must be uint64"
       : "arena vector capacity must be uint64",
@@ -1884,11 +1890,13 @@ function lowerArenaAllocation(statement, context) {
         type: childType,
         rows: firstDimension.name,
         columns: secondDimension.name,
+        maximumBits: maximumBits.name,
       }
     : {
         owner: child,
         type: childType,
         capacity: firstDimension.name,
+        maximumBits: maximumBits.name,
       };
   arenaState.children.push(descriptor);
   operations.push({
