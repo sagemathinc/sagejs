@@ -250,11 +250,17 @@ function bundle(currentEpoch, family, authority, artifactDigest, options = {}) {
   };
 }
 
-function blocker(currentEpoch, authority, artifactDigest) {
+function blocker(currentEpoch, family, authority, artifactDigest, options = {}) {
+  const cubic = family === "cubic-factorization";
+  const failedGates = cubic ? [...BLOCKER_FAILED_GATES]
+    : [...new Set([
+      ...BLOCKER_FAILED_GATES,
+      ...(options.additionalFailedGates ?? ["semantic-obligations"]),
+    ])].sort();
   return {
     schema: BLOCKER_SCHEMA,
     epochId: currentEpoch.id,
-    family: "cubic-factorization",
+    family,
     provenance: {
       producerCommand: "bounded complete-public cubic probe",
       artifactDigest,
@@ -274,25 +280,37 @@ function blocker(currentEpoch, authority, artifactDigest) {
       "reviewed batch full-factor capability",
     ],
     proposedIntervention: {
-      mechanism: "Batch complete cubic factor records across moduli through a reviewed mature FLINT capability",
-      capabilityStatus: "unavailable",
-      disposition: "reject",
-      failedGates: [...BLOCKER_FAILED_GATES],
+      mechanism: FAMILY_BLOCKER_MECHANISMS[family],
+      capabilityStatus: cubic ? "unavailable" : "available",
+      disposition: cubic ? "reject" : "investigate",
+      failedGates,
     },
     retainedRoute: {
-      mechanism: "Use the declared per-prime full-factorization boundary inside the complete public route",
-      boundaryId: "ffi:flint:nmod_poly_factor",
+      mechanism: cubic
+        ? "Use the declared per-prime full-factorization boundary inside the complete public route"
+        : "Preserve the current guarded public route until all promotion authorities exist",
+      boundaryId: BOUNDARIES[family][0],
       capabilityId: authority.capability.id,
       declarationId: authority.declaration.id,
       libraryArtifactId: LIBRARY_ARTIFACT_ID,
       disposition: "investigate",
       missingAuthorities: [
         "complete public paired measurements",
-        "transactional factor reconstruction and fallback",
+        cubic ? "transactional factor reconstruction and fallback" :
+          "transactional candidate construction and fallback",
       ],
     },
   };
 }
+
+const FAMILY_BLOCKER_MECHANISMS = Object.freeze({
+  "cubic-factorization":
+    "Batch complete cubic factor records across moduli through a reviewed mature FLINT capability",
+  "dense-integral":
+    "Split at characteristic holes and run FLINT nmod_poly_integral on every legal block",
+  "hyperelliptic-normalization":
+    "Map the genus-one normalization to an elliptic cubic and use the mature smalljac point-count capability",
+});
 
 function descriptor(filename, label = null) {
   const bytes = fs.readFileSync(filename);
@@ -344,7 +362,7 @@ function familyInput(directory, currentEpoch, family, options = {}) {
   const nativeAlternative = negativeAttachments.find((item) =>
     item.label === "native-alternative");
   const evidence = options.kind === "blocker"
-    ? blocker(currentEpoch, authority, rawReceipt.sha256)
+    ? blocker(currentEpoch, family, authority, rawReceipt.sha256, options)
     : bundle(currentEpoch, family, authority, rawReceipt.sha256, {
       ...options,
       alternativeEvidenceDigests,
@@ -362,15 +380,17 @@ function familyInput(directory, currentEpoch, family, options = {}) {
 }
 
 function authoritativeInput(directory, currentEpoch, options = {}) {
+  const allBlockers = options.allBlockers === true;
   const families = [
     familyInput(directory, currentEpoch, "dense-integral", {
-      baseline: 2000,
-      candidate: 200,
+      ...(allBlockers ? { kind: "blocker", additionalFailedGates: [
+        "fallback-or-rollback", "platform-fallback", "semantic-obligations",
+      ] } : { baseline: 2000, candidate: 200 }),
       timingAuthority: options.timingAuthority ?? "real",
     }),
     familyInput(directory, currentEpoch, "cubic-factorization", { kind: "blocker" }),
     familyInput(directory, currentEpoch, "hyperelliptic-normalization", {
-      interruption: "missing",
+      ...(allBlockers ? { kind: "blocker" } : { interruption: "missing" }),
     }),
   ];
   return {
@@ -630,6 +650,65 @@ test("typed blocker has zero samples, explicit missing authority, and cannot rej
   );
   assert.equal(validateBundle(completeCubic, currentEpoch,
     grouped.get("cubic-factorization")).provenance.timingAuthority, "fixture");
+});
+
+test("all-blocker current evidence yields investigate without fabricating a dossier", (t) => {
+  const currentEpoch = epoch();
+  const baselineInput = authoritativeInput(temporary(t), currentEpoch, {
+    allBlockers: true,
+  });
+  const baseline = adjudicateCampaign2({ root, epoch: currentEpoch, input: baselineInput });
+  assert.equal(baseline.adjudication.status, "investigate");
+  assert.equal(baseline.adjudication.selectedInterventionId, null);
+  assert.equal(baseline.adjudication.hardGates.length, 3);
+  assert.ok(baseline.adjudication.hardGates.every((entry) =>
+    entry.gates.length >= BLOCKER_FAILED_GATES.length &&
+    entry.gates.every((gate) => gate.status === "fail")));
+  assert.equal(baseline.dossierId, null);
+  assert.equal(baseline.documents.some((document) =>
+    document.schema === contracts.SCHEMAS.dossier), false);
+  assert.deepEqual(
+    Object.fromEntries(baseline.familyDispositions.map((item) =>
+      [item.family, item.disposition])),
+    {
+      "cubic-factorization": "reject",
+      "dense-integral": "investigate",
+      "hyperelliptic-normalization": "investigate",
+    },
+  );
+  const blockerObservations = baseline.documents.filter((document) =>
+    document.schema === contracts.SCHEMAS.observation &&
+    document.details?.kind === "typed-blocker");
+  assert.equal(blockerObservations.length, 3);
+  assert.ok(blockerObservations.every((observation) =>
+    observation.measurement.samples.length === 1 &&
+    observation.measurement.samples[0] === 0));
+
+  const changedInput = authoritativeInput(temporary(t), currentEpoch, {
+    allBlockers: true,
+  });
+  const dense = changedInput.families.find((entry) => entry.family === "dense-integral");
+  const changedAuthority = rewriteAttachment(dense, "blocker-authority", (value) => {
+    value.nonce = "new-current-feasibility-receipt";
+  });
+  rewriteEvidence(dense, (value) => {
+    value.provenance.artifactDigest = changedAuthority.sha256;
+  });
+  const changed = adjudicateCampaign2({ root, epoch: currentEpoch, input: changedInput });
+  assert.notEqual(changed.decisionObservationId, baseline.decisionObservationId);
+  assert.notEqual(changed.canonical.logicalId, baseline.canonical.logicalId);
+
+  const invalidInput = authoritativeInput(temporary(t), currentEpoch, {
+    allBlockers: true,
+  });
+  const invalidDense = invalidInput.families.find((entry) =>
+    entry.family === "dense-integral");
+  rewriteEvidence(invalidDense, (value) => {
+    value.proposedIntervention.disposition = "reject";
+  });
+  assert.throws(() => adjudicateCampaign2({
+    root, epoch: currentEpoch, input: invalidInput,
+  }), /non-cubic proposal must remain investigate/);
 });
 
 test("every complete evidence dimension changes global content identities", (t) => {
