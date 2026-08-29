@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/dossier-v2.schema.json",
+  "title": "Sage.js optimization dossier v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "opportunityId", "subjectId", "interventionId", "category", "observationIds", "evidence", "measurementBoundary", "fallbackPlan", "promotionRequirements"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-dossier/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "opportunityId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "subjectId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "interventionId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "category": { "type": "string" },
+    "observationIds": { "type": "array", "minItems": 1 },
+    "evidence": { "type": "object" },
+    "measurementBoundary": { "type": "array", "minItems": 1 },
+    "fallbackPlan": { "type": "object" },
+    "promotionRequirements": { "type": "array", "minItems": 1 }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/wire-definitions-v2.schema.json",
+  "$defs": {
+    "contentId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "identifier": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "producer", "validatedInputIds"],
+      "properties": {
+        "kind": { "enum": ["reviewed-contract", "trusted-integration", "validated-input-set", "observation-only", "historical-fixture"] },
+        "producer": { "type": "string", "minLength": 1 },
+        "validatedInputIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/contentId" } }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["epochId", "state", "predecessorIds"],
+      "properties": {
+        "epochId": { "$ref": "#/$defs/contentId" },
+        "state": { "enum": ["current", "predecessor-compatible", "historical", "invalid"] },
+        "predecessorIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/contentId" } }
+      }
+    }
+  }
+}

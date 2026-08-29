@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/subject-v2.schema.json",
+  "title": "Sage.js optimization subject v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "name", "scope", "locator", "relations"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-subject/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "name": { "type": "string", "minLength": 1 },
+    "scope": { "enum": ["public-call", "reviewed-phase", "source-region", "runtime-component", "representation-lifetime", "foreign-boundary", "cache-lifecycle", "algorithmic-operation"] },
+    "locator": { "type": "object" },
+    "relations": { "type": "array", "items": { "type": "object" } }
+  }
+}

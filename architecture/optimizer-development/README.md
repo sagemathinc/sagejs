@@ -74,6 +74,40 @@ The first accepted pilot campaign is documented in `CAMPAIGN-1.md`. It used
 the general evidence process and selected a compiler intervention; the broader
 schema is a consequence of the campaign, not a relaxation of its gates.
 
+## Optimization-engine v2
+
+New campaigns use the neutral contracts in
+`tools/optimization-engine/contracts.cjs` and the ten
+`architecture/optimization-engine/*-v2.schema.json` wire schemas. Version one
+remains the immutable historical contract for Campaign 1; it is not an alias
+for version two and new optimization-engine producers must not emit it.
+
+Version two makes workloads epoch-independent, then addresses one clean build
+epoch, scoped subjects, observations, interventions, adjudication, dossiers,
+campaigns, promotions, and durable outcomes in that order. Subjects cover
+public calls, reviewed phases, source regions, runtime components,
+representation lifetimes, foreign boundaries, cache lifecycles, and
+algorithmic operations. Observation channels conserve timing, samples, calls,
+routes, bytes, allocations, resources, cache events, and correctness
+independently; sample counts or call counts cannot be presented as wall time.
+
+The category contract in `tools/optimization-engine/category-contracts.cjs`
+defines the evidence and campaign roles for algorithm, library-route,
+representation, runtime, boundary, cache, source, and compiler interventions.
+Only the compiler branch can contain optimizer IR, decisions, passes,
+lowerings, or compiler routes. The adjudicator can select, investigate,
+reject, or record an already-optimized boundary, and its result does not read
+the diagnostic hotspot classification.
+
+`pnpm optimization:epoch -- create ...` performs the one-build epoch capture.
+The logical epoch excludes absolute paths, timestamps, and Release locations;
+those are sidecar data. It binds the clean Git tree, whole-repository source
+closure, build receipt and complete output manifest, workload set, schemas,
+runtime, components, profiler protocol, and reason registry. Parallel lanes
+receive distinct Git-common scratch shards and consume the same immutable
+build read-only. Canonical NDJSON is semantic authority; SQLite and compressed
+assets are reproducible indexed/transport views with separate physical hashes.
+
 ## Large evidence artifacts
 
 Git stores schemas, generators, workload definitions, accepted outcomes, the

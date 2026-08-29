@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/intervention-v2.schema.json",
+  "title": "Sage.js optimization intervention v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "subjectId", "category", "owner", "mechanism", "changedComponents", "sourceRelationship", "evidenceBoundary", "fallback", "costTransfer", "matureCapability", "semanticObligations", "architectureObligations", "platformObligations", "rejectionConditions", "alternativeDispositions", "specific"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-intervention/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "subjectId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "category": { "enum": ["algorithm", "library-route", "representation", "runtime", "boundary", "cache", "source", "compiler"] },
+    "owner": { "$ref": "wire-definitions-v2.schema.json#/$defs/identifier" },
+    "mechanism": { "type": "string", "minLength": 1 },
+    "changedComponents": { "type": "array", "minItems": 1 },
+    "sourceRelationship": { "type": "string" },
+    "evidenceBoundary": { "type": "string" },
+    "fallback": { "type": "object" },
+    "costTransfer": { "type": "object" },
+    "matureCapability": { "type": "object" },
+    "semanticObligations": { "type": "array", "minItems": 1 },
+    "architectureObligations": { "type": "array", "minItems": 1 },
+    "platformObligations": { "type": "array", "minItems": 1 },
+    "rejectionConditions": { "type": "array", "minItems": 1 },
+    "alternativeDispositions": { "type": "array", "minItems": 7, "maxItems": 7 },
+    "specific": { "type": "object" }
+  }
+}
