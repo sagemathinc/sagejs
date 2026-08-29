@@ -836,7 +836,7 @@ function createEvidenceObservation({ epoch, entry, subject }) {
     binding: { epochId: epoch.id, state: "current", predecessorIds: [] },
     subjectId: subject.id,
     workloadId: null,
-    channel: "wall-time",
+    channel: isComplete ? "wall-time" : "output-semantics",
     scope: {
       kind: "complete-public",
       subjectId: subject.id,
@@ -845,7 +845,7 @@ function createEvidenceObservation({ epoch, entry, subject }) {
       mutuallyExclusiveGroup: null,
     },
     measurement: {
-      unit: "microseconds",
+      unit: isComplete ? "microseconds" : "count",
       samples,
       total: samples.reduce((sum, item) => sum + item, 0),
       attributed: 0,

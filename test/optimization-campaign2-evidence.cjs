@@ -541,6 +541,8 @@ test("authoritative adjudication emits the exact select/reject/investigate v2 ch
     document.schema === contracts.SCHEMAS.observation &&
     document.details?.kind === "typed-blocker");
   assert.deepEqual(blockerObservation.measurement.samples, [0]);
+  assert.equal(blockerObservation.channel, "output-semantics");
+  assert.equal(blockerObservation.measurement.unit, "count");
   assert.equal(blockerObservation.details.evidence.observed.fixtureTimingsUsed, false);
 });
 
@@ -681,6 +683,8 @@ test("all-blocker current evidence yields investigate without fabricating a doss
     document.details?.kind === "typed-blocker");
   assert.equal(blockerObservations.length, 3);
   assert.ok(blockerObservations.every((observation) =>
+    observation.channel === "output-semantics" &&
+    observation.measurement.unit === "count" &&
     observation.measurement.samples.length === 1 &&
     observation.measurement.samples[0] === 0));
 
