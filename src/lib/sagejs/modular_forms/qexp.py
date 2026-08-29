@@ -459,14 +459,18 @@ class LevelOneBasisCertificate:
         self,
         parent: Any,
         basis: Any,
+        expansion_basis: Any,
         cusp_only: bool,
         display_precision: int,
+        certificate_precision: int,
     ) -> None:
         self._kind = "LevelOneBasisCertificate"
         self._parent = parent
         self._basis = tuple(basis)
+        self._expansion_basis = tuple(expansion_basis)
         self._cusp_only = bool(cusp_only)
         self._display_precision = display_precision
+        self._certificate_precision = certificate_precision
         self._sturm_bound = parent.weight() // 12
         self._verified = self._verify()
         runtime.object.freeze(self)
@@ -481,10 +485,14 @@ class LevelOneBasisCertificate:
         precision = (
             self._display_precision if prec is None else _nonnegative(prec, "precision")
         )
-        return [
-            _series_over_ring(form.q_expansion(precision), sage.ZZ, "q", precision)
-            for form in self._basis
-        ]
+        if precision <= self._certificate_precision:
+            return [series.add_bigoh(precision) for series in self._expansion_basis]
+        return _victor_miller_series_basis(
+            self._parent.weight(),
+            precision,
+            "q",
+            self._cusp_only,
+        )
 
     def cusp_only(self) -> bool:
         return self._cusp_only
@@ -506,18 +514,43 @@ class LevelOneBasisCertificate:
         )
         if len(self._basis) != expected:
             raise ArithmeticError("Victor Miller basis has the wrong dimension")
+        if len(self._expansion_basis) != expected:
+            raise ArithmeticError(
+                "Victor Miller expansion basis has the wrong dimension"
+            )
         first_exponent = 1 if self._cusp_only else 0
         precision = max(1, first_exponent + expected, self._sturm_bound + 2)
+        if self._certificate_precision < precision:
+            raise ArithmeticError("Victor Miller certificate precision is insufficient")
         for row, form in enumerate(self._basis):
             if form.parent().weight() != self._parent.weight() or form.level() != 1:
                 raise ArithmeticError("Victor Miller basis has incompatible metadata")
-            expansion = form.q_expansion(precision)
+            expansion = self._expansion_basis[row]
             for column in range(expected):
                 wanted = sage.QQ(1 if row == column else 0)
                 if expansion[first_exponent + column] != wanted:
                     raise ArithmeticError(
                         "Victor Miller leading coefficient certificate failed"
                     )
+        replay_expansions, replay_operations = _victor_miller_series_data(
+            self._parent.weight(),
+            self._certificate_precision,
+            "q",
+            True,
+        )
+        replay_forms = _transformed_level_one_forms(
+            self._parent,
+            self._display_precision,
+            replay_operations,
+        )
+        if self._cusp_only:
+            replay_expansions = replay_expansions[1:]
+            replay_forms = replay_forms[1:]
+        for row in range(expected):
+            if replay_forms[row] != self._basis[row]:
+                raise ArithmeticError("Victor Miller formula replay failed")
+            if replay_expansions[row] != self._expansion_basis[row]:
+                raise ArithmeticError("Victor Miller expansion replay failed")
         return True
 
     def verify(self) -> bool:
@@ -615,6 +648,88 @@ def _raw_level_one_basis(parent: Any, display_precision: int) -> list[Any]:
     return answer
 
 
+def _victor_miller_series_data(
+    weight: int,
+    precision: int,
+    variable: str,
+    include_operations: bool = False,
+) -> tuple[list[Any], list[tuple[int, int, Any]]]:
+    r"""Construct the integral basis without publishing coefficient arrays."""
+    if weight % 2 == 1 or weight == 2:
+        return [], []
+    residue, exponent_four, exponent_six = _residual_exponents(weight)
+    cusp_dimension = (weight - residue) // 12
+    dimension = cusp_dimension + 1
+    work_precision = max(precision, dimension)
+    ring = _global("PowerSeriesRing")(
+        sage.ZZ,
+        variable,
+        default_prec=max(1, work_precision),
+    )
+    if weight == 0:
+        return [ring(1).add_bigoh(precision)], []
+    eisenstein = _global("eisenstein_series_qexp")
+    e4 = eisenstein(4, work_precision, sage.ZZ, variable, "constant")
+    e6 = eisenstein(6, work_precision, sage.ZZ, variable, "constant")
+    residual = (e4**exponent_four) * (e6**exponent_six)
+    delta = delta_qexp(work_precision, variable, sage.ZZ)
+    delta_powers = [ring(1)]
+    e6_square_powers = [ring(1)]
+    e6_square = (e6 * e6).add_bigoh(work_precision)
+    for _index in range(cusp_dimension):
+        delta_powers.append((delta_powers[-1] * delta).add_bigoh(work_precision))
+        e6_square_powers.append(
+            (e6_square_powers[-1] * e6_square).add_bigoh(work_precision)
+        )
+    basis = [
+        (
+            residual * delta_powers[index] * e6_square_powers[cusp_dimension - index]
+        ).add_bigoh(work_precision)
+        for index in range(dimension)
+    ]
+    operations = []
+    if include_operations:
+        operation_basis = list(basis)
+        for pivot in range(1, dimension):
+            for previous in range(pivot):
+                coefficient = operation_basis[previous][pivot]
+                if coefficient != 0:
+                    operation_basis[previous] = (
+                        operation_basis[previous] - coefficient * operation_basis[pivot]
+                    ).add_bigoh(work_precision)
+                    operations.append((previous, pivot, coefficient))
+    basis = ring._unitriangular_basis(basis)
+    return [series.add_bigoh(precision) for series in basis], operations
+
+
+def _transformed_level_one_forms(
+    parent: Any,
+    display_precision: int,
+    operations: Any,
+) -> list[Any]:
+    forms = _raw_level_one_basis(parent, display_precision)
+    for previous, pivot, coefficient in operations:
+        forms[previous] = forms[previous] - coefficient * forms[pivot]
+    return [
+        form._with_parent_and_precision(
+            parent,
+            display_precision,
+            "victor-miller-basis",
+        )
+        for form in forms
+    ]
+
+
+def _victor_miller_series_basis(
+    weight: int,
+    precision: int,
+    variable: str,
+    cusp_only: bool,
+) -> list[Any]:
+    basis, _operations = _victor_miller_series_data(weight, precision, variable)
+    return basis[1:] if cusp_only and len(basis) else basis
+
+
 def level_one_basis_certificate(
     parent: Any,
     prec: Any = None,
@@ -630,49 +745,36 @@ def level_one_basis_certificate(
     weight = parent.weight()
     if weight < 0:
         raise ValueError("weight must be nonnegative")
-    forms = _raw_level_one_basis(parent, display_precision)
-    if len(forms) > 1:
-        work_precision = max(2, len(forms) + 1, weight // 12 + 2)
-        expansions = [form.q_expansion(work_precision) for form in forms]
-        for pivot in range(1, len(forms)):
-            for previous in range(pivot):
-                coefficient = expansions[previous][pivot]
-                if coefficient != 0:
-                    forms[previous] = forms[previous] - coefficient * forms[pivot]
-                    expansions[previous] = (
-                        expansions[previous] - coefficient * expansions[pivot]
-                    ).add_bigoh(work_precision)
-    forms = [
-        form._with_parent_and_precision(
-            parent,
-            display_precision,
-            "victor-miller-basis",
-        )
-        for form in forms
-    ]
+    expected = (
+        parent.cuspidal_subspace().dimension() if cusp_only else parent.dimension()
+    )
+    first_exponent = 1 if cusp_only else 0
+    certificate_precision = max(
+        1,
+        first_exponent + expected,
+        weight // 12 + 2,
+    )
+    expansions, operations = _victor_miller_series_data(
+        weight,
+        certificate_precision,
+        "q",
+        True,
+    )
+    forms = _transformed_level_one_forms(parent, display_precision, operations)
     if cusp_only and len(forms):
         forms = forms[1:]
+        expansions = expansions[1:]
     certificate = LevelOneBasisCertificate(
         parent,
         forms,
+        expansions,
         cusp_only,
         display_precision,
+        certificate_precision,
     )
     if not certificate.is_verified():
         raise ArithmeticError("Victor Miller basis did not verify")
     return certificate
-
-
-def _series_over_ring(
-    series: Any, coefficient_ring: Any, variable: str, precision: int
-) -> Any:
-    ring = _global("PowerSeriesRing")(
-        coefficient_ring,
-        variable,
-        default_prec=max(1, precision),
-    )
-    coefficients = [coefficient_ring(series[index]) for index in range(precision)]
-    return ring(coefficients).add_bigoh(precision)
 
 
 def delta_qexp(
@@ -724,14 +826,7 @@ def victor_miller_basis(
     precision = _nonnegative(prec, "precision")
     if weight % 2 == 1 or weight == 2:
         return []
-    parent = _ambient(weight, precision)
-    certificate = level_one_basis_certificate(parent, precision, cusp_only)
-    return [
-        _series_over_ring(
-            form.q_expansion(precision, variable), sage.ZZ, variable, precision
-        )
-        for form in certificate.basis()
-    ]
+    return _victor_miller_series_basis(weight, precision, variable, cusp_only)
 
 
 def from_serialized_element(
