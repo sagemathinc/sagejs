@@ -367,6 +367,21 @@ static inline int sagejs_native_exact_workspace_borrow_set(
     return 1;
 }
 
+/* Exact-native compiler ABI. Dynamic FFI deliberately retains fmpz_t. */
+static inline int sagejs_native_exact_workspace_borrow_set_mpz(
+    sagejs_native_exact_workspace_borrow_t borrow,
+    uint64_t index,
+    const mpz_t value)
+{
+    if (!sagejs_native_exact_workspace_borrow_valid(borrow) ||
+        index >= borrow->state->capacity ||
+        sagejs_native_exact_workspace_mpz_bits(value) >
+            borrow->state->maximum_bits)
+        return 0;
+    mpz_set(borrow->state->values[index], value);
+    return 1;
+}
+
 static inline int sagejs_native_exact_workspace_borrow_entry(
     fmpz_t result,
     const sagejs_native_exact_workspace_borrow_t borrow,
@@ -377,6 +392,70 @@ static inline int sagejs_native_exact_workspace_borrow_entry(
         return 0;
     fmpz_set_mpz(result, borrow->state->values[index]);
     return 1;
+}
+
+static inline int sagejs_native_exact_workspace_borrow_entry_mpz(
+    mpz_t result,
+    const sagejs_native_exact_workspace_borrow_t borrow,
+    uint64_t index)
+{
+    if (!sagejs_native_exact_workspace_borrow_valid(borrow) ||
+        index >= borrow->state->capacity)
+        return 0;
+    mpz_set(result, borrow->state->values[index]);
+    return 1;
+}
+
+static inline int sagejs_native_exact_workspace_borrow_addmul_signed_mpz(
+    sagejs_native_exact_workspace_borrow_t borrow,
+    uint64_t index,
+    const mpz_t left,
+    const mpz_t right,
+    int subtract)
+{
+    if (!sagejs_native_exact_workspace_borrow_valid(borrow) ||
+        index >= borrow->state->capacity ||
+        sagejs_native_exact_workspace_mpz_bits(left) >
+            borrow->state->maximum_bits ||
+        sagejs_native_exact_workspace_mpz_bits(right) >
+            borrow->state->maximum_bits)
+        return 0;
+    mpz_mul(borrow->state->product, left, right);
+    if (subtract)
+        mpz_sub(
+            borrow->state->result,
+            borrow->state->values[index],
+            borrow->state->product);
+    else
+        mpz_add(
+            borrow->state->result,
+            borrow->state->values[index],
+            borrow->state->product);
+    if (sagejs_native_exact_workspace_mpz_bits(borrow->state->result) >
+        borrow->state->maximum_bits)
+        return 0;
+    mpz_set(borrow->state->values[index], borrow->state->result);
+    return 1;
+}
+
+static inline int sagejs_native_exact_workspace_borrow_addmul_mpz(
+    sagejs_native_exact_workspace_borrow_t borrow,
+    uint64_t index,
+    const mpz_t left,
+    const mpz_t right)
+{
+    return sagejs_native_exact_workspace_borrow_addmul_signed_mpz(
+        borrow, index, left, right, 0);
+}
+
+static inline int sagejs_native_exact_workspace_borrow_submul_mpz(
+    sagejs_native_exact_workspace_borrow_t borrow,
+    uint64_t index,
+    const mpz_t left,
+    const mpz_t right)
+{
+    return sagejs_native_exact_workspace_borrow_addmul_signed_mpz(
+        borrow, index, left, right, 1);
 }
 
 static inline int sagejs_native_exact_workspace_borrow_addmul_signed(

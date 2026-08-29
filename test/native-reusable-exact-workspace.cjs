@@ -56,7 +56,7 @@ function closePublicResource(value) {
 
 test("C5b exposes one authenticated owner and one lexical mutable borrow", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 33);
+  assert.equal(ir.version, 34);
   const [create, accumulate, reset] = ir.functions;
   assert.equal(create.returnType, "NativeExactWorkspace");
   assert.equal(create.params.length, 5);
@@ -90,8 +90,34 @@ test("C5b exposes one authenticated owner and one lexical mutable borrow", async
   assert.equal(core.audit.hostCallbacks, 0);
   assert.match(core.source, /sagejs_native_exact_workspace_init\(/);
   assert.match(core.source, /sagejs_native_exact_workspace_borrow_init\(/);
-  assert.match(core.source, /sagejs_native_exact_workspace_borrow_addmul\(/);
-  assert.match(core.source, /sagejs_native_exact_workspace_borrow_submul\(/);
+  assert.match(core.source, /sagejs_native_exact_workspace_borrow_addmul_mpz\(/);
+  assert.match(core.source, /sagejs_native_exact_workspace_borrow_submul_mpz\(/);
+  assert.doesNotMatch(core.source, /fmpz_t sagejs_ffi_sagejs_native_tmp/);
+  assert.deepEqual(accumulate.analysis.residentCodeQuality, {
+    authenticatedBorrows: 1,
+    authenticationPlacement: "once-before-resident-operations",
+    hoistedInvariants: [
+      "exclusive-mutable-borrow",
+      "generation",
+      "owner-open-state",
+      "specification-identity",
+    ],
+    exactBridgeCalls: 6,
+    exactBridgeLoopCalls: 2,
+    exactBridgeSymbols: [
+      "sagejs_native_exact_workspace_borrow_addmul_mpz",
+      "sagejs_native_exact_workspace_borrow_entry_mpz",
+      "sagejs_native_exact_workspace_borrow_set_mpz",
+      "sagejs_native_exact_workspace_borrow_submul_mpz",
+    ],
+    eliminatedFmpzConversions: 8,
+    fusedExactUpdates: 2,
+    allocationFreeLoopCalls: 2,
+    scratchPolicy:
+      "one-owner-preallocated-nonoverlapping-product-and-result",
+    cleanup:
+      "reverse-owner-order-on-success-error-cancellation-and-publication-failure",
+  });
   assert.match(core.source, /sagejs_native_exact_workspace_borrow_clear\(/);
   assert.doesNotMatch(core.source, /packed_(?:fmpz|integer)|JSON|PyObject|napi_/);
   const borrow = core.source.indexOf(
@@ -265,6 +291,103 @@ test("workspace ownership and transfer counterfeits fail lowering", async () => 
     ),
     /newly owned local resource/,
   );
+});
+
+test("C6 generated resident code stays within the direct-reference budget", {
+  skip: process.platform !== "linux"
+    ? "ELF symbol-size comparison is Linux-only"
+    : false,
+}, async () => {
+  const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
+  const core = generateHostCore(ir);
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-workspace-c6-"));
+  const prefix = resolve(
+    process.env.SAGEJS_FLINT_PREFIX ||
+      join(root, "packages", "flint", ".native", "prefix"),
+  );
+  try {
+    const reference = readFileSync(join(
+      root, "test", "fixtures", "native-exact-workspace-direct-reference.c",
+    ), "utf8");
+    writeFileSync(join(temporary, "kernel_core.c"), `${core.source}\n${reference}`);
+    writeFileSync(join(temporary, "kernel_core.h"), core.header);
+    writeFileSync(join(temporary, "driver.c"), String.raw`
+#include <assert.h>
+#include <gmp.h>
+#include "kernel_core.h"
+int sagejs_direct_accumulate_relation_workspace(
+    sagejs_native_status *, mpz_t, mpz_t, uint64_t *,
+    sagejs_native_exact_workspace_t, uint64_t, uint64_t, uint64_t,
+    const mpz_t, const mpz_t, uint64_t, uint64_t, uint64_t);
+int main(void)
+{
+    sagejs_native_status status = { SAGEJS_NATIVE_OK, 0 };
+    sagejs_native_exact_workspace_t generated = {{0}}, direct = {{0}};
+    mpz_t first, second, generated0, generated1, direct0, direct1;
+    uint64_t generated_generation = 0, direct_generation = 0;
+    mpz_inits(first, second, generated0, generated1, direct0, direct1, NULL);
+    mpz_set_ui(first, 7);
+    mpz_set_ui(second, 5);
+    assert(sagejs_kernel_create_relation_workspace(
+        &status, generated, 4, 128, 1000000, 11, 22));
+    assert(sagejs_kernel_create_relation_workspace(
+        &status, direct, 4, 128, 1000000, 11, 22));
+    assert(sagejs_kernel_accumulate_relation_workspace(
+        &status, generated0, generated1, &generated_generation,
+        generated, 1, 11, 22, first, second, 4, 1048576, 1048576));
+    assert(sagejs_direct_accumulate_relation_workspace(
+        &status, direct0, direct1, &direct_generation,
+        direct, 1, 11, 22, first, second, 4, 1048576, 1048576));
+    assert(mpz_cmp(generated0, direct0) == 0);
+    assert(mpz_cmp(generated1, direct1) == 0);
+    assert(generated_generation == direct_generation);
+    sagejs_native_exact_workspace_clear(direct);
+    sagejs_native_exact_workspace_clear(generated);
+    mpz_clears(direct1, direct0, generated1, generated0, second, first, NULL);
+    return 0;
+}
+`);
+    const executable = join(temporary, "workspace-quality");
+    const build = spawnSync(process.env.CC || "cc", [
+      "-std=c11", "-O3", "-ffunction-sections",
+      `-I${temporary}`, `-I${join(root, "packages", "flint", "include")}`,
+      `-I${join(prefix, "include")}`,
+      join(temporary, "kernel_core.c"), join(temporary, "driver.c"),
+      "-Wl,--start-group", join(prefix, "lib", "libflint.a"),
+      join(prefix, "lib", "libmpfr.a"), join(prefix, "lib", "libgmp.a"),
+      join(prefix, "lib", "libopenblas.a"), "-Wl,--end-group",
+      "-lm", "-lpthread", "-ldl", "-o", executable,
+    ], { cwd: root, encoding: "utf8", timeout: 120_000 });
+    assert.equal(build.status, 0, build.stderr || build.stdout);
+    const run = spawnSync(executable, [], {
+      cwd: root, encoding: "utf8", timeout: 120_000,
+    });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+    const symbols = spawnSync("nm", ["-S", "--defined-only", executable], {
+      cwd: root, encoding: "utf8", timeout: 30_000,
+    });
+    assert.equal(symbols.status, 0, symbols.stderr || symbols.stdout);
+    const sizes = new Map();
+    for (const line of symbols.stdout.split("\n")) {
+      const match = line.trim().match(
+        /^[0-9a-fA-F]+\s+([0-9a-fA-F]+)\s+[Tt]\s+(\S+)$/,
+      );
+      if (match) sizes.set(match[2], Number.parseInt(match[1], 16));
+    }
+    const generatedSize = sizes.get(
+      "sagejs_kernel_accumulate_relation_workspace",
+    );
+    const referenceSize = sizes.get(
+      "sagejs_direct_accumulate_relation_workspace",
+    );
+    assert.ok(generatedSize > 0 && referenceSize > 0, symbols.stdout);
+    assert.ok(
+      generatedSize <= Math.ceil(referenceSize * 1.5),
+      `generated ${generatedSize} bytes exceeds 1.5x direct ${referenceSize}`,
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("workspace owner and borrow cleanup are sanitizer-clean", {

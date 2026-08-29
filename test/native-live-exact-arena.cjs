@@ -77,7 +77,7 @@ assert source["live_arena_shared_limit"](264, 1) == 2
 test("the compiler emits one shared-budget exact ownership graph", async () => {
   const source = readFileSync(sourcePath, "utf8");
   const ir = await lowerSource(source, sourcePath);
-  assert.equal(ir.version, 33);
+  assert.equal(ir.version, 34);
   const fn = ir.functions.find(
     (candidate) => candidate.name === "live_arena_relation_step",
   );

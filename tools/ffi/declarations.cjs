@@ -480,10 +480,14 @@ function validateFunction(
   if (!identifier(fn.dynamic.export)) {
     fail(filename, `${fn.id}.dynamic.export must be an identifier`);
   }
-  exactKeys(filename, fn.native,
-    ["symbol", "return_type", "arguments"], `${fn.id}.native`);
+  knownKeys(filename, fn.native,
+    ["symbol", "return_type", "arguments"], ["exact_symbol"], `${fn.id}.native`);
   if (!identifier(fn.native.symbol)) {
     fail(filename, `${fn.id}.native.symbol must be a C identifier`);
+  }
+  if (fn.native.exact_symbol !== undefined &&
+      !identifier(fn.native.exact_symbol)) {
+    fail(filename, `${fn.id}.native.exact_symbol must be a C identifier`);
   }
   if (!catalog.abiTypes.get(fn.native.return_type)?.return) {
     fail(filename, `${fn.id}.native.return_type is unsupported`);
@@ -623,6 +627,11 @@ function validateFunction(
   const result = fn.native.arguments.find((argument) =>
     argument.source === "result"
   );
+  if (fn.native.exact_symbol !== undefined &&
+      !fn.native.arguments.some((argument) => argument.abi_type === "fmpz_t")) {
+    fail(filename,
+      `${fn.id}.native.exact_symbol requires at least one fmpz_t argument`);
+  }
   if (returnResource !== undefined) {
     if (fn.native.return_type !== "int" || resultArguments !== 1 ||
         result?.abi_type !== returnResource.abi_type) {
@@ -734,6 +743,18 @@ function validateFunction(
        fn.targets?.wasm !== false)) {
     fail(filename,
       `${fn.id} C++ shields require a distinct failure status and no wasm target`);
+  }
+  if (fn.native.exact_symbol !== undefined) {
+    const resourceCall = returnResource !== undefined ||
+      fn.signature.parameters.some((parameter) =>
+        resourcesByType.has(parameter.type)
+      );
+    if (!resourceCall || fn.exceptions.policy !== "none" ||
+        fn.native.arguments.some((argument) => argument.adapter !== null)) {
+      fail(filename,
+        `${fn.id}.native.exact_symbol currently requires an unshielded ` +
+          `resource call without packed adapters`);
+    }
   }
   exactKeys(filename, fn.targets, ["dynamic", "native", "wasm"],
     `${fn.id}.targets`);

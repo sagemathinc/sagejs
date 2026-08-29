@@ -521,7 +521,7 @@ function parseFunction(
     positional: [0],
     required: ["dynamic", "symbol", "returns", "abi", "effects", "result", "wasm"],
     keywords: [
-      "id", "dynamic", "symbol", "returns", "abi", "effects", "result",
+      "id", "dynamic", "symbol", "exact_symbol", "returns", "abi", "effects", "result",
       "exceptions", "borrow_from", "wasm",
     ],
   });
@@ -571,6 +571,9 @@ function parseFunction(
     dynamic: { export: requiredString(filename, call, "dynamic") },
     native: {
       symbol: requiredString(filename, call, "symbol"),
+      ...(call.keywords.has("exact_symbol")
+        ? { exact_symbol: requiredString(filename, call, "exact_symbol") }
+        : {}),
       return_type: returns,
       arguments: array(abiNode.elements).map((argument) =>
         parseAbiArgument(filename, argument)),

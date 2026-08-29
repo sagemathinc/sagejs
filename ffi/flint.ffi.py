@@ -3320,6 +3320,7 @@ def native_exact_workspace_borrow_generation(
 @flint.function(
     dynamic="ffiNativeExactWorkspaceBorrowSet",
     symbol="sagejs_native_exact_workspace_borrow_set",
+    exact_symbol="sagejs_native_exact_workspace_borrow_set_mpz",
     returns=int,
     abi=[
         in_("borrow", sagejs_native_exact_workspace_borrow_t),
@@ -3349,6 +3350,7 @@ def native_exact_workspace_borrow_set(
 @flint.function(
     dynamic="ffiNativeExactWorkspaceBorrowEntry",
     symbol="sagejs_native_exact_workspace_borrow_entry",
+    exact_symbol="sagejs_native_exact_workspace_borrow_entry_mpz",
     returns=int,
     abi=[
         out("result", fmpz_t),
@@ -3372,6 +3374,7 @@ def native_exact_workspace_borrow_entry(
 @flint.function(
     dynamic="ffiNativeExactWorkspaceBorrowAddmul",
     symbol="sagejs_native_exact_workspace_borrow_addmul",
+    exact_symbol="sagejs_native_exact_workspace_borrow_addmul_mpz",
     returns=int,
     abi=[
         in_("borrow", sagejs_native_exact_workspace_borrow_t),
@@ -3403,6 +3406,7 @@ def native_exact_workspace_borrow_addmul(
 @flint.function(
     dynamic="ffiNativeExactWorkspaceBorrowSubmul",
     symbol="sagejs_native_exact_workspace_borrow_submul",
+    exact_symbol="sagejs_native_exact_workspace_borrow_submul_mpz",
     returns=int,
     abi=[
         in_("borrow", sagejs_native_exact_workspace_borrow_t),

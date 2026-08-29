@@ -84,7 +84,7 @@ with module.NativeExactArena(264, 4096) as arena:
 
 test("sparse exact IR records shape, capacity, source, and failure effects", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 33);
+  assert.equal(ir.version, 34);
   const fn = ir.functions.find((candidate) =>
     candidate.name === "sparse_relation_summary"
   );

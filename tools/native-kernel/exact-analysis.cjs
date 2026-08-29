@@ -1184,6 +1184,73 @@ function liveExactWorkspaceAnalysis(fn) {
   };
 }
 
+function residentCodeQualityAnalysis(fn) {
+  const exactBridges = new Set();
+  let exactBridgeCalls = 0;
+  let exactBridgeLoopCalls = 0;
+  let eliminatedFmpzConversions = 0;
+  let fusedExactUpdates = 0;
+  let allocationFreeLoopCalls = 0;
+  let authenticatedBorrows = 0;
+  function visit(statements, loopDepth = 0) {
+    for (const operation of statements || []) {
+      const nextDepth = loopDepth + (operation.kind.startsWith("loop.") ? 1 : 0);
+      if (operation.kind === "ffi.arena.resource.allocate" &&
+          operation.resource?.resourceId?.includes("workspace_borrow")) {
+        authenticatedBorrows += 1;
+      }
+      if (operation.kind === "ffi.call" &&
+          typeof operation.foreign?.function?.native?.exact_symbol === "string") {
+        const foreign = operation.foreign.function;
+        exactBridgeCalls += 1;
+        if (loopDepth > 0) exactBridgeLoopCalls += 1;
+        exactBridges.add(foreign.native.exact_symbol);
+        eliminatedFmpzConversions += foreign.native.arguments.filter(
+          (argument) => argument.abi_type === "fmpz_t",
+        ).length;
+        if (foreign.effects.writes.length > 0 &&
+            foreign.signature.parameters.filter(
+              (parameter) => parameter.type === "Integer",
+            ).length >= 2) {
+          fusedExactUpdates += 1;
+        }
+        if (loopDepth > 0 && foreign.effects.may_allocate === false) {
+          allocationFreeLoopCalls += 1;
+        }
+      }
+      visit(operation.condition?.operations, loopDepth);
+      visit(operation.right?.operations, loopDepth);
+      visit(operation.body, nextDepth);
+      visit(operation.alternative, nextDepth);
+    }
+  }
+  visit(fn.body);
+  if (exactBridgeCalls === 0 && authenticatedBorrows === 0) return undefined;
+  return {
+    authenticatedBorrows,
+    authenticationPlacement: authenticatedBorrows === 1
+      ? "once-before-resident-operations" : "not-proved-single",
+    hoistedInvariants: authenticatedBorrows === 1 ? [
+      "exclusive-mutable-borrow",
+      "generation",
+      "owner-open-state",
+      "specification-identity",
+    ] : [],
+    exactBridgeCalls,
+    exactBridgeLoopCalls,
+    exactBridgeSymbols: Array.from(exactBridges).sort(),
+    eliminatedFmpzConversions,
+    fusedExactUpdates,
+    allocationFreeLoopCalls,
+    scratchPolicy: fusedExactUpdates > 0
+      ? "one-owner-preallocated-nonoverlapping-product-and-result"
+      : "not-applicable",
+    cleanup: authenticatedBorrows > 0
+      ? "reverse-owner-order-on-success-error-cancellation-and-publication-failure"
+      : "ordinary-generated-cleanup",
+  };
+}
+
 function backendPolicy(fn, profile, recursive) {
   if (profile.liveExactScopes > 0) {
     return {
@@ -1356,6 +1423,7 @@ function analyzeExactModule(functions) {
       };
     }
     const effect = effects.get(fn.name);
+    const residentCodeQuality = residentCodeQualityAnalysis(fn);
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
@@ -1365,6 +1433,7 @@ function analyzeExactModule(functions) {
       ...(profile.liveExactScopes > 0
         ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
         : {}),
+      ...(residentCodeQuality === undefined ? {} : { residentCodeQuality }),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
   }
@@ -1387,4 +1456,5 @@ module.exports = {
   primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
+  residentCodeQualityAnalysis,
 };

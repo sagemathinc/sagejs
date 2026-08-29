@@ -2867,13 +2867,19 @@ function lowerStatements(statements, context) {
         const method = liveVectorMethod(statement.body);
         if (method === undefined) {
           const operations = [];
-          lowerExpression(statement.body, context, operations);
-          fail(
+          const value = lowerExpression(statement.body, context, operations);
+          const last = operations.at(-1);
+          expect(
             context,
             statement,
-            "native expression statements are unsupported; " +
+            last?.kind === "ffi.call" && last.target === value.name,
+            "native expression statements require one declared FFI call; " +
               "host callbacks are prohibited",
           );
+          operations.push({ kind: "value.discard", source: value.name });
+          annotateOperations(operations, sourceSpan(statement, context.filename));
+          result.push(...operations);
+          continue;
         }
         const operations = lowerLiveVectorMethodStatement(
           statement.body,

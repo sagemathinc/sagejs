@@ -201,6 +201,20 @@ the isolated WASI core execute one differential witness; public owner creation
 and lease wrappers allocate only at the call/lifecycle boundary, while the
 compiled borrow operations themselves reuse resident storage.
 
+Native Kernel v34 completes C6's first code-quality slice. Declared exact
+resource operations may expose a reviewed compiler-only `mpz_t` symbol beside
+their public `fmpz_t` ABI. The dynamic boundary remains unchanged, while the
+host-isolated C and isolated compiled Wasm cores eliminate temporary FLINT
+integer construction and copy directly between compiler-owned GMP values and
+resident workspace entries. The first witness removes eight conversions per
+source iteration shape, performs generation/specification/exclusive-borrow
+authentication once before the loop, reuses the owner's preallocated
+product/result scratch, and retains checked transactional result bounds.
+`native explain` records the hoisted invariants, fused updates, allocation-free
+loop calls, scratch policy, and reverse cleanup contract. A separately compiled
+and executed direct C reference must agree exactly, and the optimized generated
+symbol is mechanically capped at 1.5x its machine-code size.
+
 Allocator receipts report setup, hot-loop, foreign-call, publication, and
 cleanup calls separately.  An accepted allocation-free region must have no
 general-heap allocation or reallocation after entry and before publication.
