@@ -129,6 +129,51 @@ function kernelSummary(output) {
   );
 }
 
+async function reconcileInstalledNative() {
+  const flintAdapter = join(
+    root,
+    "packages",
+    "flint",
+    "build",
+    "generated-ffi",
+    "sagejs_flint_ffi.node",
+  );
+  const hadFlintAdapter = existsSync(flintAdapter);
+  const addon = await run(process.execPath, [
+    join(root, "packages", "flint", "scripts", "build-addon.cjs"),
+    "--reconcile-installed",
+  ]);
+  const restoredFlintAdapter = hadFlintAdapter && !existsSync(flintAdapter)
+    ? await run(process.execPath, [
+        join(root, "scripts", "build-ffi-host-adapter.cjs"),
+        "flint",
+      ])
+    : "";
+  const adapters = await run(process.execPath, [
+    join(root, "scripts", "build-ffi-host-adapter.cjs"),
+    "--reconcile-installed",
+  ]);
+  return adapterSummary(`${addon}\n${restoredFlintAdapter}\n${adapters}`);
+}
+
+async function publishProductionNative() {
+  const generatedFlintAdapter = join(
+    root,
+    "packages",
+    "flint",
+    "build",
+    "generated-ffi",
+    "sagejs_flint_ffi.node",
+  );
+  if (existsSync(generatedFlintAdapter)) {
+    const output = await run(process.execPath, [
+      join(root, "scripts", "build-production-native-kernels.cjs"),
+    ]);
+    return kernelSummary(output);
+  }
+  return "Skipped production kernels: the optional generated FLINT adapter is absent.";
+}
+
 async function runStage(index, action) {
   const [label, expectedSeconds] = stages[index];
   const started = Date.now();
@@ -241,48 +286,11 @@ async function main() {
   });
 
   await runStage(5, async () => {
-    const flintAdapter = join(
-      root,
-      "packages",
-      "flint",
-      "build",
-      "generated-ffi",
-      "sagejs_flint_ffi.node",
-    );
-    const hadFlintAdapter = existsSync(flintAdapter);
-    const addon = await run(process.execPath, [
-      join(root, "packages", "flint", "scripts", "build-addon.cjs"),
-      "--reconcile-installed",
-    ]);
-    const restoredFlintAdapter = hadFlintAdapter && !existsSync(flintAdapter)
-      ? await run(process.execPath, [
-        join(root, "scripts", "build-ffi-host-adapter.cjs"),
-        "flint",
-      ])
-      : "";
-    const adapters = await run(process.execPath, [
-      join(root, "scripts", "build-ffi-host-adapter.cjs"),
-      "--reconcile-installed",
-    ]);
-    return adapterSummary(`${addon}\n${restoredFlintAdapter}\n${adapters}`);
+    return reconcileInstalledNative();
   });
 
   await runStage(6, async () => {
-    const generatedFlintAdapter = join(
-      root,
-      "packages",
-      "flint",
-      "build",
-      "generated-ffi",
-      "sagejs_flint_ffi.node",
-    );
-    if (existsSync(generatedFlintAdapter)) {
-      const output = await run(process.execPath, [
-        join(root, "scripts", "build-production-native-kernels.cjs"),
-      ]);
-      return kernelSummary(output);
-    }
-    return "Skipped production kernels: the optional generated FLINT adapter is absent.";
+    return publishProductionNative();
   });
 
   writeBuildReceipt({ root, durationMilliseconds: Date.now() - started });
@@ -311,5 +319,7 @@ module.exports = {
   ffiSummary,
   kernelSummary,
   main,
+  publishProductionNative,
+  reconcileInstalledNative,
   stages,
 };

@@ -203,6 +203,42 @@ function inspectBuildReceipt(root = repositoryRoot) {
   return validateBuildReceipt(receipt, currentBuildIdentity(root), root);
 }
 
+function inspectSourceBuildReceipt(root = repositoryRoot) {
+  let receipt;
+  try {
+    receipt = JSON.parse(readFileSync(join(root, receiptRelativePath), "utf8"));
+  } catch {
+    return { current: false, reason: "no valid successful-build receipt" };
+  }
+  const current = currentBuildIdentity(root);
+  const stableIdentityKeys = [
+    "workspaceSha256",
+    "node",
+    "v8",
+    "platform",
+    "architecture",
+  ];
+  if (
+    receipt?.schema !== receiptSchema ||
+    stableIdentityKeys.some((key) => receipt.identity?.[key] !== current[key])
+  ) {
+    return { current: false, reason: "source or runtime inputs changed" };
+  }
+  if (!Array.isArray(receipt.outputs) || receipt.outputs.length === 0) {
+    return { current: false, reason: "receipt has no output witnesses" };
+  }
+  for (const witness of receipt.outputs) {
+    if (!existsSync(join(root, witness))) {
+      return { current: false, reason: `build output is missing: ${witness}` };
+    }
+  }
+  return {
+    current: true,
+    reason: "source inputs and required outputs match",
+    receipt,
+  };
+}
+
 function writeBuildReceipt({
   root = repositoryRoot,
   durationMilliseconds,
@@ -222,11 +258,28 @@ function writeBuildReceipt({
   return receipt;
 }
 
+function refreshBuildReceiptAfterNative(root = repositoryRoot) {
+  const sourceStatus = inspectSourceBuildReceipt(root);
+  if (!sourceStatus.current) {
+    throw new Error(
+      `cannot refresh the build receipt: ${sourceStatus.reason}`,
+    );
+  }
+  const previous = sourceStatus.receipt;
+  return writeBuildReceipt({
+    root,
+    durationMilliseconds: previous.durationMilliseconds,
+    identity: currentBuildIdentity(root),
+  });
+}
+
 module.exports = {
   currentBuildIdentity,
   inspectBuildReceipt,
+  inspectSourceBuildReceipt,
   nativeInputIdentity,
   outputWitnesses,
+  refreshBuildReceiptAfterNative,
   receiptRelativePath,
   validateBuildReceipt,
   workspaceFingerprint,

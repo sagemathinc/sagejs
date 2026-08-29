@@ -5,6 +5,10 @@ const { existsSync } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+const {
+  refreshBuildReceiptAfterNative,
+} = require("./build-receipt.cjs");
+
 const root = join(__dirname, "..");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const pnpmCommand =
@@ -249,6 +253,7 @@ function main(inputArguments = process.argv.slice(2)) {
 
   step(6, "Precompiling Python modules and publishing production kernels");
   executeBuildPhase(buildPlan, "production");
+  refreshBuildReceiptAfterNative(root);
 
   if (!withoutSea) {
     step(7, "Building the self-contained mathematics executable");

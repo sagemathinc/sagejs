@@ -29,6 +29,10 @@ const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
 const {
   normalizeAutomaticSelections,
 } = require("./automatic-selection.cjs");
+const {
+  buildJobs,
+  runBufferedCommand,
+} = require("../../scripts/build-parallelism.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const windowsTriplet = "x64-windows-static-md-release";
@@ -976,10 +980,14 @@ async function compileKernel(options) {
   const buildWorkspace = nativeBuildWorkspace(outputPath);
   let build;
   try {
-    build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
+    build = await runBufferedCommand(
+      process.execPath,
+      [nodeGyp, "rebuild", "--jobs", String(options.jobs ?? buildJobs())],
+      {
       cwd: buildWorkspace.directory,
-      encoding: "utf8",
-    });
+      signal: options.signal,
+      },
+    );
   } finally {
     buildWorkspace.close();
   }

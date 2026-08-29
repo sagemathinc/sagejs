@@ -55,3 +55,18 @@ test("routine gate does not build native dependencies or SEA executables", () =>
     /test:integration|test:native|test:sea|pnpm bootstrap/,
   );
 });
+
+test("release jobs reuse one required native bootstrap", () => {
+  for (const job of ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]) {
+    const start = workflow.indexOf(`  ${job}:`);
+    const nextJob = workflow.slice(start + 3).search(/^  [a-z][a-z0-9-]*:/m);
+    const end = nextJob === -1 ? workflow.length : start + 3 + nextJob;
+    const section = workflow.slice(start, end);
+    assert.match(section, /SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"/);
+    assert.match(section, /pnpm bootstrap/);
+    assert.match(section, /pnpm test:native:run/);
+    assert.match(section, /pnpm test:sea:reuse/);
+    assert.doesNotMatch(section, /run: pnpm test:native\s*$/m);
+    assert.doesNotMatch(section, /run: pnpm test:sea\s*$/m);
+  }
+});

@@ -91,6 +91,20 @@ The long-term interface should be a single checked-in command, for example
 Until that exists, treat the workflow steps as executable specifications and
 record the exact commands and SHA in the release notes or an agent receipt.
 
+After `pnpm bootstrap`, use the run-only test and packaging boundaries. They
+consume the exact validated native prefixes and generated artifacts instead of
+preparing them again:
+
+```sh
+pnpm test:integration:run
+pnpm test:native:run
+pnpm test:sea:reuse
+```
+
+The unsuffixed `test:native` and `test:sea` commands remain self-contained
+developer entry points: they prepare missing inputs first. Release jobs must not
+use those rebuilding entry points after a successful bootstrap.
+
 Run the Wasm release workflow's build, Node-Wasm parity, browser parity,
 security, and performance commands before tagging as well. Persistent browser
 caches are acceptable for iteration; GitHub will later prove a clean,
@@ -170,7 +184,31 @@ runtime receipt names the release SHA, evaluate `number_of_partitions(10)` and
 `Partitions(10).cardinality()` (both must return `42`), and check that the
 npm/embed documentation links are live.
 
-## Improvements to make before the next release
+## Build and test parallelism
+
+Production native kernels are lowered by a bounded family queue. Independent
+standalone addons compile concurrently, and the final dependency-deduplicated
+pack keeps one generated translation unit per source family; node-gyp compiles
+those units with the host build-job limit before linking the single `.node`
+module. `SAGEJS_BUILD_JOBS` controls compiler jobs and
+`SAGEJS_NATIVE_KERNEL_JOBS` controls concurrent kernel families. Scheduling
+values do not participate in content identities.
+
+The native dependency catalog is immutable and content addressed. When native
+dependency inputs change, bump `catalogRelease` in
+`scripts/native-prebuilt-dependencies.cjs` and the matching workflow value,
+publish every supported target with `native-dependencies.yml`, and only then
+enable required-prebuild release jobs. A checksum or asset miss is a release
+configuration failure, not permission to spend an hour silently rebuilding
+GMP/FLINT/FFLAS.
+
+Test files are scheduled longest-first from learned per-host timings with
+bounded concurrency. A failing file terminates active process trees and stops
+new work. The repository test plan runs independent post-build phases through
+resource slots while source builds, native preparation, and performance
+budgets remain exclusive.
+
+## Further improvements
 
 The current workflows prove a great deal, but the release interface should be
 simpler and faster:
@@ -179,11 +217,9 @@ simpler and faster:
   one implementation instead of duplicating shell sequences.
 - Add a coordinator which runs the four cached hosts concurrently, streams
   stage progress, records durations, and emits one source-bound receipt.
-- Split the generated production native pack into multiple deterministic C
-  translation units which compile in parallel and link into the same single
-  `.node` addon. The current monolithic `kernel_pack.c` leaves all but one CPU
-  idle during a long optimized compile; dependency deduplication does not
-  require one source file.
+- Record native family and final-pack compile timings in the same learned timing
+  store used by tests, so heterogeneous hosts can tune the two concurrency
+  limits automatically without changing artifact identities.
 - Preflight Wasm/browser release workloads on a persistent browser host.
 - Preserve dependency caches across candidates, while keeping the final
   GitHub build clean and authenticated. Key native artifacts by the actual

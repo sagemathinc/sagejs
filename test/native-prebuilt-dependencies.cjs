@@ -55,7 +55,7 @@ function fixture() {
 }
 
 test("native dependency assets have stable platform and source identities", () => {
-  assert.equal(catalogRelease, "native-dependencies-5");
+  assert.equal(catalogRelease, "native-dependencies-6");
   const workflow = readFileSync(
     join(repositoryRoot, ".github", "workflows", "native-dependencies.yml"),
     "utf8",

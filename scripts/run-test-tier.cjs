@@ -1,13 +1,23 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawn } = require("node:child_process");
-const { availableParallelism } = require("node:os");
-const { resolve } = require("node:path");
+const {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} = require("node:fs");
+const { homedir, availableParallelism } = require("node:os");
+const { dirname, join, resolve } = require("node:path");
 
-const root = resolve(__dirname, "..");
+const {
+  runBufferedCommand,
+} = require("./build-parallelism.cjs");
 const manifest = require("../test/node-test-manifest.cjs");
 
+const root = resolve(__dirname, "..");
+const timingSchema = "sagejs.test-timings/v1";
 const historicalSeconds = {
   portable: 25,
   unit: 30,
@@ -16,6 +26,12 @@ const historicalSeconds = {
   integration: 900,
   all: 930,
 };
+
+function childTestEnvironment() {
+  const environment = { ...process.env };
+  delete environment.NODE_TEST_CONTEXT;
+  return environment;
+}
 
 function formatDuration(milliseconds) {
   const totalSeconds = Math.max(0, Math.round(milliseconds / 1000));
@@ -45,14 +61,18 @@ function positiveInteger(value, option) {
 
 function parseRunnerOptions(rawArguments, defaults = {}) {
   const runnerArguments = [];
-  let batchSize = defaults.batchSize;
+  let concurrency = defaults.concurrency ?? defaults.batchSize;
   let heartbeatSeconds = defaults.heartbeatSeconds;
   for (let index = 0; index < rawArguments.length; index += 1) {
     const argument = rawArguments[index];
-    if (argument.startsWith("--batch-size=")) {
-      batchSize = positiveInteger(argument.slice(13), "--batch-size");
+    if (argument.startsWith("--concurrency=")) {
+      concurrency = positiveInteger(argument.slice(14), "--concurrency");
+    } else if (argument === "--concurrency") {
+      concurrency = positiveInteger(rawArguments[++index], "--concurrency");
+    } else if (argument.startsWith("--batch-size=")) {
+      concurrency = positiveInteger(argument.slice(13), "--batch-size");
     } else if (argument === "--batch-size") {
-      batchSize = positiveInteger(rawArguments[++index], "--batch-size");
+      concurrency = positiveInteger(rawArguments[++index], "--batch-size");
     } else if (argument.startsWith("--heartbeat-seconds=")) {
       heartbeatSeconds = positiveInteger(
         argument.slice(20),
@@ -67,7 +87,7 @@ function parseRunnerOptions(rawArguments, defaults = {}) {
       runnerArguments.push(argument);
     }
   }
-  return { batchSize, heartbeatSeconds, runnerArguments };
+  return { concurrency, heartbeatSeconds, runnerArguments };
 }
 
 function selectedByNamePattern(files, runnerArguments) {
@@ -91,69 +111,247 @@ function estimateRemaining({ elapsed, completed, total, historical }) {
   return historical * ((total - completed) / total);
 }
 
-function runNodeBatch({
-  batch,
-  batchIndex,
-  batches,
-  completedFiles,
+function timingFilename(environment = process.env) {
+  return environment.SAGEJS_TEST_TIMINGS ||
+    join(homedir(), ".cache", "sagejs", "test-timings-v1.json");
+}
+
+function timingHostKey() {
+  return `${process.platform}-${process.arch}-node${process.versions.node.split(".")[0]}`;
+}
+
+function readTimings(filename = timingFilename()) {
+  try {
+    const parsed = JSON.parse(readFileSync(filename, "utf8"));
+    if (parsed.schema === timingSchema && typeof parsed.hosts === "object") {
+      return parsed;
+    }
+  } catch {}
+  return { schema: timingSchema, hosts: {} };
+}
+
+function writeTimings(timings, filename = timingFilename()) {
+  mkdirSync(dirname(filename), { recursive: true });
+  const temporary = `${filename}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(timings, null, 2)}\n`);
+  renameSync(temporary, filename);
+}
+
+function estimatedFileMilliseconds(file, learned, fallback) {
+  const value = learned[file];
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function longestFirst(files, learned, fallback) {
+  return [...files].sort((left, right) =>
+    estimatedFileMilliseconds(right, learned, fallback) -
+      estimatedFileMilliseconds(left, learned, fallback) ||
+    left.localeCompare(right),
+  );
+}
+
+function queueEtaMilliseconds(files, learned, fallback, concurrency) {
+  const work = files.reduce(
+    (sum, file) => sum + estimatedFileMilliseconds(file, learned, fallback),
+    0,
+  );
+  return work / Math.max(1, concurrency);
+}
+
+function activeRemainingMilliseconds(file, started, learned, fallback, now) {
+  const expected = estimatedFileMilliseconds(file, learned, fallback);
+  const elapsed = Math.max(0, now - started);
+  if (elapsed < expected) return expected - elapsed;
+  // Once a test exceeds its learned duration there is no defensible exact ETA.
+  // Keep a diminishing-but-nonzero estimate so progress never claims completion
+  // while an overdue child is visibly still running.
+  return Math.max(1_000, elapsed / 2);
+}
+
+function scheduledEtaMilliseconds({
+  active,
   concurrency,
-  heartbeatMilliseconds,
-  historicalMilliseconds,
-  overallStarted,
+  fallback,
+  learned,
+  pending,
+  now = Date.now(),
+}) {
+  const laneLoads = [...active.entries()].map(([file, started]) =>
+    activeRemainingMilliseconds(file, started, learned, fallback, now)
+  );
+  while (laneLoads.length < concurrency) laneLoads.push(0);
+  const work = longestFirst([...pending], learned, fallback);
+  for (const file of work) {
+    let lane = 0;
+    for (let index = 1; index < laneLoads.length; index += 1) {
+      if (laneLoads[index] < laneLoads[lane]) lane = index;
+    }
+    laneLoads[lane] += estimatedFileMilliseconds(file, learned, fallback);
+  }
+  return Math.max(0, ...laneLoads);
+}
+
+function rememberTiming(learned, file, duration) {
+  const previous = learned[file];
+  learned[file] = previous === undefined
+    ? duration
+    : Math.round(previous * 0.7 + duration * 0.3);
+}
+
+async function runStructuredReporter({
+  concurrency,
+  files,
   reporter,
   runnerArguments,
-  tier,
-  totalFiles,
 }) {
-  return new Promise((resolvePromise, rejectPromise) => {
-    const batchStarted = Date.now();
-    const first = completedFiles + 1;
-    const last = completedFiles + batch.length;
+  const result = await runBufferedCommand(
+    process.execPath,
+    [
+      "--test",
+      `--test-concurrency=${concurrency}`,
+      `--test-reporter=${reporter}`,
+      ...runnerArguments,
+      ...files,
+    ],
+    { cwd: root, env: childTestEnvironment() },
+  );
+  process.stdout.write(result.stdout);
+  process.stderr.write(result.stderr);
+  return result.status;
+}
+
+async function runFileQueue({
+  concurrency,
+  fallbackMilliseconds,
+  files,
+  heartbeatMilliseconds,
+  learned,
+  replayFailure = true,
+  runnerArguments,
+  tier,
+}) {
+  const queue = longestFirst(files, learned, fallbackMilliseconds);
+  const pending = new Set(queue);
+  const active = new Map();
+  const controller = new AbortController();
+  const verbose = process.env.SAGEJS_TEST_VERBOSE === "1";
+  const started = Date.now();
+  let completed = 0;
+  let next = 0;
+  let firstFailure = null;
+  let interrupted = false;
+  const interrupt = () => {
+    interrupted = true;
+    controller.abort();
+  };
+  process.once("SIGINT", interrupt);
+  process.once("SIGTERM", interrupt);
+
+  const heartbeat = setInterval(() => {
+    const eta = scheduledEtaMilliseconds({
+      active,
+      concurrency,
+      fallback: fallbackMilliseconds,
+      learned,
+      pending: [...pending].filter((file) => !active.has(file)),
+    });
     process.stdout.write(
-      `\n[test:${tier}] batch ${batchIndex + 1}/${batches}: ` +
-        `files ${first}-${last} of ${totalFiles}\n`,
+      `[test:${tier}] ${completed}/${files.length} files complete; ` +
+        `elapsed ${formatDuration(Date.now() - started)}, ` +
+        `approximately ${formatDuration(eta)} remaining\n`,
     );
-    const child = spawn(
-      process.execPath,
-      [
-        "--test",
-        `--test-concurrency=${concurrency}`,
-        `--test-reporter=${reporter}`,
-        ...runnerArguments,
-        ...batch,
-      ],
-      { cwd: root, env: process.env, stdio: "inherit" },
-    );
-    const heartbeat = setInterval(() => {
-      const now = Date.now();
-      const elapsed = now - overallStarted;
-      const remaining = estimateRemaining({
-        elapsed,
-        completed: completedFiles,
-        total: totalFiles,
-        historical: historicalMilliseconds,
+  }, heartbeatMilliseconds);
+  heartbeat.unref();
+
+  async function worker() {
+    while (firstFailure === null && !interrupted) {
+      const index = next;
+      next += 1;
+      if (index >= queue.length) return;
+      const file = queue[index];
+      const fileStarted = Date.now();
+      active.set(file, fileStarted);
+      let result;
+      try {
+        result = await runBufferedCommand(
+          process.execPath,
+          [
+            "--test",
+            "--test-concurrency=1",
+            "--test-reporter=spec",
+            ...runnerArguments,
+            file,
+          ],
+          {
+            cwd: root,
+            env: childTestEnvironment(),
+            signal: controller.signal,
+            onStdout: verbose ? (data) => process.stdout.write(data) : undefined,
+            onStderr: verbose ? (data) => process.stderr.write(data) : undefined,
+          },
+        );
+      } catch (error) {
+        result = { status: 1, stdout: "", stderr: `${error.stack || error}\n` };
+      }
+      const duration = Date.now() - fileStarted;
+      pending.delete(file);
+      active.delete(file);
+      if (interrupted || firstFailure !== null) return;
+      rememberTiming(learned, file, duration);
+      if (result.status !== 0) {
+        firstFailure = { file, duration, ...result };
+        controller.abort();
+        return;
+      }
+      completed += 1;
+      const eta = scheduledEtaMilliseconds({
+        active,
+        concurrency,
+        fallback: fallbackMilliseconds,
+        learned,
+        pending: [...pending].filter((pendingFile) => !active.has(pendingFile)),
       });
       process.stdout.write(
-        `[test:${tier}] still running batch ${batchIndex + 1}/${batches}; ` +
-          `batch ${formatDuration(now - batchStarted)}, ` +
-          `total ${formatDuration(elapsed)}, ` +
-          `approximately ${formatDuration(remaining)} remaining\n`,
+        `[test:${tier}] PASS ${completed}/${files.length} ${file} ` +
+          `(${formatDuration(duration)}); elapsed ` +
+          `${formatDuration(Date.now() - started)}, ETA ${formatDuration(eta)}\n`,
       );
-    }, heartbeatMilliseconds);
-    heartbeat.unref();
-    child.once("error", (error) => {
-      clearInterval(heartbeat);
-      rejectPromise(error);
-    });
-    child.once("exit", (status, signal) => {
-      clearInterval(heartbeat);
-      resolvePromise({
-        status: status ?? 1,
-        signal,
-        duration: Date.now() - batchStarted,
-      });
-    });
-  });
+    }
+  }
+
+  try {
+    await Promise.all(Array.from({ length: concurrency }, worker));
+  } finally {
+    clearInterval(heartbeat);
+    process.removeListener("SIGINT", interrupt);
+    process.removeListener("SIGTERM", interrupt);
+  }
+  if (interrupted) return 130;
+  if (firstFailure !== null) {
+    if (replayFailure) {
+      process.stderr.write(
+        `\n[test:${tier}] FAIL ${firstFailure.file} after ` +
+          `${formatDuration(firstFailure.duration)}; cancelled active siblings and ` +
+          `did not start ${Math.max(0, queue.length - next)} remaining files.\n`,
+      );
+      if (!verbose) {
+        process.stdout.write(firstFailure.stdout);
+        process.stderr.write(firstFailure.stderr);
+      }
+    }
+    if (process.env.GITHUB_ACTIONS) {
+      process.stderr.write(
+        `::error title=${tier} tests failed::${firstFailure.file} failed; ` +
+          `active siblings were cancelled.\n`,
+      );
+    }
+    return firstFailure.status || 1;
+  }
+  process.stdout.write(
+    `\n[test:${tier}] PASS: ${files.length} files in ` +
+      `${formatDuration(Date.now() - started)}\n`,
+  );
+  return 0;
 }
 
 async function main(arguments_ = process.argv.slice(2)) {
@@ -163,18 +361,21 @@ async function main(arguments_ = process.argv.slice(2)) {
     console.error(
       `usage: node scripts/run-test-tier.cjs ` +
         `<${Object.keys(manifest).join("|")}> [node:test options] ` +
-        `[--batch-size N] [--heartbeat-seconds N]`,
+        `[--concurrency N] [--heartbeat-seconds N]`,
     );
     return 2;
   }
-
   const reporter = process.env.SAGEJS_TEST_REPORTER || "spec";
-  const defaultBatchSize =
-    reporter === "spec"
-      ? Number(process.env.SAGEJS_TEST_BATCH_SIZE || 12)
-      : files.length;
+  const hostConcurrency = typeof availableParallelism === "function"
+    ? availableParallelism()
+    : 4;
+  const defaultConcurrency = Number(
+    process.env.SAGEJS_TEST_CONCURRENCY ||
+      process.env.SAGEJS_TEST_BATCH_SIZE ||
+      Math.min(tier === "integration" || tier === "all" ? 2 : 4, hostConcurrency),
+  );
   const options = parseRunnerOptions(rawRunnerArguments, {
-    batchSize: defaultBatchSize,
+    concurrency: defaultConcurrency,
     heartbeatSeconds: Number(process.env.SAGEJS_TEST_HEARTBEAT_SECONDS || 20),
   });
   if (options.runnerArguments[0] === "--") options.runnerArguments.shift();
@@ -183,79 +384,57 @@ async function main(arguments_ = process.argv.slice(2)) {
     console.error(`no ${tier} test file matches the requested pattern`);
     return 1;
   }
+  const concurrency = Math.min(options.concurrency, selectedFiles.length);
+  if (reporter !== "spec") {
+    return runStructuredReporter({
+      concurrency,
+      files: selectedFiles,
+      reporter,
+      runnerArguments: options.runnerArguments,
+    });
+  }
 
-  const hostConcurrency =
-    typeof availableParallelism === "function" ? availableParallelism() : 4;
-  const concurrency = Math.max(
-    1,
-    Math.min(tier === "integration" || tier === "all" ? 2 : 4, hostConcurrency),
-  );
-  const batchSize = Math.min(options.batchSize, selectedFiles.length);
-  const fileBatches = partition(selectedFiles, batchSize);
   const historicalMilliseconds =
     (historicalSeconds[tier] || Math.max(30, selectedFiles.length * 2)) * 1000;
+  // Historical tier values are wall-clock observations from the old bounded
+  // runner. Convert them to per-file work before feeding the queue simulator;
+  // otherwise a cold timing database divides the old wall time by concurrency
+  // twice and advertises an implausibly short first-run ETA.
+  const fallbackMilliseconds =
+    historicalMilliseconds * concurrency / selectedFiles.length;
+  const timings = readTimings();
+  const hostKey = timingHostKey();
+  const learned = timings.hosts[hostKey] ?? {};
+  timings.hosts[hostKey] = learned;
+  const expected = queueEtaMilliseconds(
+    selectedFiles,
+    learned,
+    fallbackMilliseconds,
+    concurrency,
+  );
   process.stdout.write(
     `\nSage.js ${tier} test plan\n` +
       `  files:       ${selectedFiles.length}\n` +
-      `  batches:     ${fileBatches.length} (up to ${batchSize} files each)\n` +
-      `  concurrency: ${concurrency} files\n` +
-      `  expected:    about ${formatDuration(historicalMilliseconds)} on a warm ` +
-      `developer build; host speed varies\n` +
-      `  failure:     stop before starting the next batch\n`,
+      `  concurrency: ${concurrency} independent files\n` +
+      `  ordering:    longest learned files first\n` +
+      `  expected:    about ${formatDuration(expected)} on this host\n` +
+      `  failure:     cancel active siblings and stop scheduling immediately\n`,
   );
-
-  const overallStarted = Date.now();
-  let completedFiles = 0;
-  for (let index = 0; index < fileBatches.length; index += 1) {
-    const result = await runNodeBatch({
-      batch: fileBatches[index],
-      batchIndex: index,
-      batches: fileBatches.length,
-      completedFiles,
-      concurrency,
-      heartbeatMilliseconds: options.heartbeatSeconds * 1000,
-      historicalMilliseconds,
-      overallStarted,
-      reporter,
-      runnerArguments: options.runnerArguments,
-      tier,
-      totalFiles: selectedFiles.length,
-    });
-    if (result.status !== 0) {
-      const remaining =
-        selectedFiles.length - completedFiles - fileBatches[index].length;
-      process.stderr.write(
-        `\n[test:${tier}] FAILED in batch ${index + 1}/${fileBatches.length} ` +
-          `after ${formatDuration(Date.now() - overallStarted)}; ` +
-          `${Math.max(0, remaining)} later files were not started.\n`,
-      );
-      if (process.env.GITHUB_ACTIONS) {
-        process.stderr.write(
-          `::error title=${tier} tests failed::Batch ${index + 1}/${fileBatches.length} ` +
-            `failed; later batches were stopped.\n`,
-        );
-      }
-      return result.status;
-    }
-    completedFiles += fileBatches[index].length;
-    const elapsed = Date.now() - overallStarted;
-    const remaining = estimateRemaining({
-      elapsed,
-      completed: completedFiles,
-      total: selectedFiles.length,
-      historical: historicalMilliseconds,
-    });
-    process.stdout.write(
-      `[test:${tier}] passed batch ${index + 1}/${fileBatches.length} in ` +
-        `${formatDuration(result.duration)}; ${completedFiles}/${selectedFiles.length} ` +
-        `files complete, approximately ${formatDuration(remaining)} remaining\n`,
-    );
+  const status = await runFileQueue({
+    concurrency,
+    fallbackMilliseconds,
+    files: selectedFiles,
+    heartbeatMilliseconds: options.heartbeatSeconds * 1000,
+    learned,
+    runnerArguments: options.runnerArguments,
+    tier,
+  });
+  try {
+    writeTimings(timings);
+  } catch (error) {
+    process.stderr.write(`[test:${tier}] could not save timings: ${error.message}\n`);
   }
-  process.stdout.write(
-    `\n[test:${tier}] PASS: ${selectedFiles.length} files in ` +
-      `${formatDuration(Date.now() - overallStarted)}\n`,
-  );
-  return 0;
+  return status;
 }
 
 if (require.main === module) {
@@ -272,8 +451,17 @@ if (require.main === module) {
 
 module.exports = {
   estimateRemaining,
+  estimatedFileMilliseconds,
   formatDuration,
+  longestFirst,
   main,
   parseRunnerOptions,
   partition,
+  queueEtaMilliseconds,
+  scheduledEtaMilliseconds,
+  readTimings,
+  rememberTiming,
+  runFileQueue,
+  selectedByNamePattern,
+  writeTimings,
 };

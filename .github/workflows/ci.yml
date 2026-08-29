@@ -117,6 +117,8 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 90
+    env:
+      SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -197,8 +199,8 @@ jobs:
       - name: Run unit, host integration, and native tests
         run: |
           pnpm test:unit
-          pnpm test:integration
-          pnpm test:native
+          pnpm test:integration:run
+          pnpm test:native:run
           pnpm --dir packages/flint test:eclib:corpus
           pnpm test:installer
           pnpm test:release
@@ -230,7 +232,7 @@ jobs:
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea
+        run: pnpm test:sea:reuse
 
       - name: Exercise the SEA Jupyter wire protocol
         run: pnpm test:jupyter:sea
@@ -294,6 +296,8 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 90
+    env:
+      SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -364,12 +368,12 @@ jobs:
       - name: Run portable and native tests
         run: |
           pnpm test:portable
-          pnpm test:native
+          pnpm test:native:run
 
       - name: Build and relocation-test both SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea
+        run: pnpm test:sea:reuse
 
       - name: Package the Linux arm64 SEA distribution
         run: |
@@ -401,6 +405,8 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 180
+    env:
+      SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
     permissions:
       contents: read
       id-token: write
@@ -489,17 +495,10 @@ jobs:
           key: windows-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
           restore-keys: windows-x64-graph-
 
-      - name: Build the compiler and native mathematics stack
+      - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: |
-          pnpm --dir packages/flint build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --dir packages/fflas build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --dir packages/graph build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm build
+        run: pnpm bootstrap --without-sea
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
@@ -509,15 +508,15 @@ jobs:
 
       - name: Run host integration tests
         timeout-minutes: 75
-        run: pnpm test:integration
+        run: pnpm test:integration:run
 
       - name: Run native addon tests
-        run: pnpm test:native
+        run: pnpm test:native:run
 
       - name: Build and relocation-test both Windows SEA executables
         env:
           SAGEJS_BUILD_JOBS: "8"
-        run: pnpm test:sea
+        run: pnpm test:sea:reuse
 
       - name: Authenticate to Azure Artifact Signing
         if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
@@ -602,6 +601,8 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
+    env:
+      SAGEJS_NATIVE_PREBUILT_REQUIRED: "1"
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -671,15 +672,10 @@ jobs:
           key: macos-arm64-m4ri-${{ hashFiles('packages/m4ri/scripts/build-deps.cjs', 'packages/m4ri/scripts/native-prefix.cjs', 'packages/m4ri/package.json') }}
           restore-keys: macos-arm64-m4ri-
 
-      - name: Build the compiler and native mathematics stack
+      - name: Bootstrap the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: |
-          pnpm --dir packages/flint build
-          pnpm --dir packages/fflas build
-          pnpm --dir packages/graph build
-          pnpm --dir packages/m4ri build
-          pnpm build
+        run: pnpm bootstrap --without-sea
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
@@ -689,13 +685,13 @@ jobs:
           PYTHON: python3
         run: |
           pnpm test:portable
-          pnpm test:integration
-          pnpm test:native
+          pnpm test:integration:run
+          pnpm test:native:run
 
       - name: Build and relocation-test both macOS SEA executables
         env:
           SAGEJS_BUILD_JOBS: "6"
-        run: pnpm test:sea
+        run: pnpm test:sea:reuse
 
       - name: Upload validated macOS executables for signing
         if: startsWith(github.ref, 'refs/tags/v')

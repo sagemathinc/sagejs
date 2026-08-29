@@ -11,7 +11,6 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, relative, resolve } = require("node:path");
-const { spawnSync } = require("node:child_process");
 
 const {
   NATIVE_ABI_VERSION,
@@ -21,6 +20,10 @@ const {
   NATIVE_PACK_ABI_VERSION,
 } = require("./js-backend.cjs");
 const { portableKernelIdentity } = require("./portable-identity.cjs");
+const {
+  buildJobs,
+  runBufferedCommand,
+} = require("../../scripts/build-parallelism.cjs");
 
 const PACK_IDENTITY_SCHEMA = "sagejs.native-pack-identity/v2";
 const PACK_MANIFEST_SCHEMA = "sagejs.native-pack/v2";
@@ -304,7 +307,7 @@ function validCachedPack(directory, identity, packKey) {
   }
 }
 
-function buildProductionPack({ items, cacheRoot }) {
+async function buildProductionPack({ items, cacheRoot, signal }) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("a production native pack requires at least one kernel");
   }
@@ -332,10 +335,14 @@ function buildProductionPack({ items, cacheRoot }) {
   const workspace = nativeBuildWorkspace(packDirectory);
   let build;
   try {
-    build = spawnSync(process.execPath, [nodeGyp, "rebuild"], {
+    build = await runBufferedCommand(
+      process.execPath,
+      [nodeGyp, "rebuild", "--jobs", String(buildJobs())],
+      {
       cwd: workspace.directory,
-      encoding: "utf8",
-    });
+      signal,
+      },
+    );
   } finally {
     workspace.close();
   }

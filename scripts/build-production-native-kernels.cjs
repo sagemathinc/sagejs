@@ -26,6 +26,10 @@ const {
   descriptorSelectionReceipts,
   mergeAutomaticSelections,
 } = require("../tools/native-kernel/automatic-selection.cjs");
+const {
+  mapConcurrent,
+  nativeKernelJobs,
+} = require("./build-parallelism.cjs");
 
 const root = resolve(__dirname, "..");
 const manifestPath = join(root, "architecture", "native-kernels.json");
@@ -162,9 +166,15 @@ async function main() {
   const production = [...productionBySource.values()];
 
   mkdirSync(options.cacheRoot, { recursive: true });
-  const built = [];
-  const missingCapabilities = [];
-  for (const kernel of production) {
+  const kernelJobs = nativeKernelJobs();
+  process.stdout.write(
+    `Compiling ${production.length} production kernel families with ` +
+      `${kernelJobs} concurrent workers\n`,
+  );
+  const compiledProduction = await mapConcurrent(
+    production,
+    kernelJobs,
+    async (kernel, _index, signal) => {
     const absoluteSource = join(root, kernel.source);
     const logicalSource = sourceKey(kernel.source);
     const source = readFileSync(absoluteSource, "utf8");
@@ -176,6 +186,7 @@ async function main() {
     const skippedFunctions = kernel.functions.filter(
       (name) => !functions.includes(name),
     );
+    const missingCapabilities = [];
     if (skippedFunctions.length !== 0) {
       for (const descriptor of productionDescriptors.filter(
         (item) => item.source === kernel.source,
@@ -192,7 +203,7 @@ async function main() {
       process.stdout.write(
         `skipped ${kernel.id}: optional native dependencies unavailable\n`,
       );
-      continue;
+      return { built: null, missingCapabilities };
     }
     const compiled = await compileKernel({
       sourcePath: absoluteSource,
@@ -200,6 +211,8 @@ async function main() {
       cacheRoot: options.cacheRoot,
       functions,
       automaticSelections: kernel.automaticSelections,
+      jobs: 1,
+      signal,
     });
     const actualFunctions = compiled.ir.functions.map((fn) => fn.name);
     const missingFunctions = functions.filter(
@@ -211,7 +224,7 @@ async function main() {
           missingFunctions.join(", "),
       );
     }
-    built.push({
+    const built = {
       absoluteSource,
       cacheKey: compiled.cacheKey,
       moduleIdentity: compiled.moduleIdentity,
@@ -228,15 +241,23 @@ async function main() {
       outputPath: compiled.outputPath,
       shimSourcePath: compiled.shimSourcePath,
       shimHeaderPath: compiled.shimHeaderPath,
-    });
+    };
     process.stdout.write(
       `${compiled.cached ? "cached" : "built"} ${kernel.ids.join("+")} ` +
         `(${actualFunctions.length} functions` +
         `${skippedFunctions.length === 0 ? "" : `; skipped ${skippedFunctions.join(", ")}`})\n`,
     );
-  }
+    return { built, missingCapabilities };
+    },
+  );
+  const built = compiledProduction
+    .map((item) => item.built)
+    .filter((item) => item !== null);
+  const missingCapabilities = compiledProduction.flatMap(
+    (item) => item.missingCapabilities,
+  );
 
-  const pack = buildProductionPack({
+  const pack = await buildProductionPack({
     items: built,
     cacheRoot: options.cacheRoot,
   });

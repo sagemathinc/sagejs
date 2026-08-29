@@ -62,19 +62,27 @@ commit, and workspace fingerprint. See
   symbolic expressions, and polyglot sessions.
 - `test:native` covers the native FLINT binding and its Sage-facing boundary.
 
-The Node test tiers run in small file batches. The runner reports completed and
-remaining files after each batch, estimates the remaining duration, and does not
-start later batches after a failure. Override the defaults when diagnosing an
-individual machine:
+The Node test tiers run each file in an independently supervised process. The
+runner learns file durations per host, starts the longest files first, reports
+every completed file with elapsed time and ETA, and cancels active siblings as
+soon as one file fails. Override the bounded concurrency or heartbeat interval
+when diagnosing an individual machine:
 
 ```sh
-pnpm test:integration -- --batch-size 4 --heartbeat-seconds 10
-SAGEJS_TEST_BATCH_SIZE=1 SAGEJS_TEST_HEARTBEAT_SECONDS=5 pnpm test:unit
+pnpm test:integration -- --concurrency 4 --heartbeat-seconds 10
+SAGEJS_TEST_CONCURRENCY=1 SAGEJS_TEST_HEARTBEAT_SECONDS=5 pnpm test:unit
 ```
 
-Noninteractive reporters such as JUnit use one batch by default so they produce
-one document. Set `SAGEJS_TEST_BATCH_SIZE` explicitly if separate documents are
-desired.
+`--batch-size` and `SAGEJS_TEST_BATCH_SIZE` remain accepted as spellings of the
+concurrency limit for old command lines. Learned timings are stored outside the
+checkout under `~/.cache/sagejs`; set `SAGEJS_TEST_TIMINGS` to choose another
+file. Noninteractive reporters such as JUnit run in one Node process so they
+produce one valid document.
+
+Repository plans (`pnpm test`, `pnpm test:ci`, and `pnpm test:full`) keep source
+builds, native preparation, and performance budgets behind exclusive barriers.
+Independent read-only phases use two resource slots by default. Set
+`SAGEJS_TEST_PHASE_CONCURRENCY` to change that limit.
 
 The historical command
 

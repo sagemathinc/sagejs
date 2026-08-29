@@ -51,6 +51,7 @@ const {
   nativeCacheProcessIdentity,
   nativeCacheStatus,
   prepareNativeArtifact,
+  prepareNativeSpec,
   restoreNativeArtifact,
   restoreNativePackages,
   snapshot,
@@ -906,6 +907,33 @@ test("native artifact cache builds cold and restores immutable warm snapshots", 
   }
 });
 
+test("warm addon preparation bypasses compiler convergence", () => {
+  const { directory, workspace, cacheRoot } = nativeCacheFixture();
+  const counter = { count: 0 };
+  let compilerChecks = 0;
+  try {
+    const spec = { ...nativeCacheSpec(workspace), stage: "addon" };
+    const options = {
+      build: buildNativeCacheFixture(counter),
+      ensureCompiler() {
+        compilerChecks += 1;
+      },
+    };
+    assert.equal(
+      prepareNativeSpec(workspace, cacheRoot, spec, options).status,
+      "built",
+    );
+    assert.equal(compilerChecks, 1);
+    assert.equal(
+      prepareNativeSpec(workspace, cacheRoot, spec, options).status,
+      "present",
+    );
+    assert.equal(compilerChecks, 1);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("native addon preparation builds the compiler once in a fresh workspace", () => {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-native-compiler-test-"));
   let builds = 0;
@@ -1714,6 +1742,21 @@ test("native keys ignore invocation-only pnpm lifecycle variables", () => {
     else process.env.npm_execpath = savedExecPath;
     if (savedUserAgent === undefined) delete process.env.npm_config_user_agent;
     else process.env.npm_config_user_agent = savedUserAgent;
+  }
+});
+
+test("native keys ignore build scheduling concurrency", () => {
+  const workspace = resolve(__dirname, "..");
+  const savedBuildJobs = process.env.SAGEJS_BUILD_JOBS;
+  try {
+    process.env.SAGEJS_BUILD_JOBS = "1";
+    const serial = nativeArtifactSpecs(workspace).map(({ id, key }) => ({ id, key }));
+    process.env.SAGEJS_BUILD_JOBS = "8";
+    const parallel = nativeArtifactSpecs(workspace).map(({ id, key }) => ({ id, key }));
+    assert.deepEqual(parallel, serial);
+  } finally {
+    if (savedBuildJobs === undefined) delete process.env.SAGEJS_BUILD_JOBS;
+    else process.env.SAGEJS_BUILD_JOBS = savedBuildJobs;
   }
 });
 

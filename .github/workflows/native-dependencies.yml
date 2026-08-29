@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 env:
-  NATIVE_DEPENDENCY_RELEASE: native-dependencies-5
+  NATIVE_DEPENDENCY_RELEASE: native-dependencies-6
 
 concurrency:
   group: sagejs-native-dependencies
