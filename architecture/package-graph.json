@@ -82,7 +82,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 742000,
+      "max_source_bytes": 752000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 160000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -176,6 +176,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
@@ -598,6 +599,32 @@
         "src/lib/sagejs/kernels/p1.py"
       ],
       "typescript_files": ["tools/serialization-codecs/modular-forms.ts"],
+      "prefixes": []
+    },
+    {
+      "id": "sparse-modular-forms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 265000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
+        "graph-theory", "modular-forms", "matrix-native-kernels"
+      ],
+      "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
+      "files": [
+        "src/lib/sage/modular/ssmod/__init__.py",
+        "src/lib/sage/modular/ssmod/ssmod.py",
+        "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/algebraic.py",
+        "src/lib/sagejs/modular_forms/finite_hecke.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",
+        "src/lib/sagejs/modular_forms/mestre.py",
+        "src/lib/sagejs/modular_forms/modular_polynomial.py",
+        "src/lib/sagejs/modular_forms/sparse_hecke.py",
+        "src/lib/sagejs/modular_forms/sparse_krylov.py",
+        "src/lib/sagejs/modular_forms/supersingular.py"
+      ],
       "prefixes": []
     },
     {

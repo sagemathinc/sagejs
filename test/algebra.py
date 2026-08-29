@@ -277,8 +277,9 @@ def exhaust_prime_field_iterator():
 
 assrt.throws(exhaust_prime_field_iterator, StopIteration)
 
-# Extension fields use FLINT Conway polynomials and keep their elements as
-# opaque native fq values.
+# Extension fields prefer FLINT or packaged Conway polynomials and keep their
+# elements as opaque native fq values. Named quadratic fields use a
+# deterministic irreducible modulus when no Conway entry exists.
 F9 = GF(9, "a")
 assrt.ok(F9 is GF(9, "a"))
 assrt.ok(F9 is not GF(9, "b"))
@@ -397,12 +398,20 @@ def divide_by_zero_in_F9():
     return a9 / F9(0)
 
 
-def construct_extension_without_conway_polynomial():
-    return GF(BigInt(65537) ** BigInt(2), "a")
+F117223_squared = GF(BigInt(117223) ** BigInt(2), "q")
+assrt.equal(repr(F117223_squared.modulus()), "x^2 + 117220")
+assrt.ok(F117223_squared.gen() ** 2 == 3)
+
+
+def construct_unnamed_extension_without_conway_polynomial():
+    return GF(BigInt(117223) ** BigInt(2))
 
 
 assrt.throws(divide_by_zero_in_F9, ZeroDivisionError)
-assrt.throws(construct_extension_without_conway_polynomial, NotImplementedError)
+assrt.throws(
+    construct_unnamed_extension_without_conway_polynomial,
+    NotImplementedError,
+)
 
 
 def divide_by_zero_in_F5():

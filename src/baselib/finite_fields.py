@@ -1849,6 +1849,36 @@ def _database_conway_coefficients(prime: int, degree: int) -> list[int] | None:
     return [runtime.integer_bigint(value) for value in coefficients]
 
 
+def _deterministic_quadratic_modulus_coefficients(prime: int) -> list[int]:
+    """Return a canonical irreducible quadratic when Conway data is absent.
+
+    For odd `prime`, the polynomial is `x^2 - d`, where `d` is the least
+    positive quadratic nonresidue.  This is deterministic, requires no
+    factorization of `prime - 1`, and gives the named finite-field constructor
+    the same freedom Sage has to choose an arbitrary irreducible modulus.  In
+    characteristic two the unique monic irreducible quadratic is used.
+    """
+    prime = runtime.integer_bigint(prime)
+    if prime == runtime.bigint(2):
+        return [runtime.bigint(1), runtime.bigint(1), runtime.bigint(1)]
+
+    exponent = (prime - runtime.bigint(1)) // runtime.bigint(2)
+    nonresidue = runtime.bigint(2)
+    minus_one = prime - runtime.bigint(1)
+    while runtime.modular_power(nonresidue, exponent, prime) != minus_one:
+        nonresidue += runtime.bigint(1)
+    return [prime - nonresidue, runtime.bigint(0), runtime.bigint(1)]
+
+
+def _deterministic_extension_modulus_coefficients(
+    prime: int, degree: int
+) -> list[int] | None:
+    """Return a deterministic non-Conway modulus for supported degrees."""
+    if degree == 2:
+        return _deterministic_quadratic_modulus_coefficients(prime)
+    return None
+
+
 def _make_extension_field(
     order: int,
     prime: int,
@@ -1857,8 +1887,15 @@ def _make_extension_field(
     names: Any,
     modulus: Any,
 ) -> FiniteFieldExtensionParent:
+    named_extension = (
+        name is not runtime.undefined
+        and name is not None
+        or names is not runtime.undefined
+        and names is not None
+    )
     variable = _finite_field_name(name, names, degree)
     prime_field = GF(prime)
+    primitive_requested = modulus == "primitive"
     coefficients = None
     explicit_modulus = False
     if (
@@ -1893,7 +1930,9 @@ def _make_extension_field(
         ]
 
     key = runtime.string(order) + "|" + variable
-    if coefficients is not None:
+    if primitive_requested:
+        key += "|primitive"
+    elif coefficients is not None:
         key += "|mod:" + ",".join(
             [runtime.string(coefficient) for coefficient in coefficients]
         )
@@ -1918,6 +1957,8 @@ def _make_extension_field(
     )
     if coefficients is None and generated_resource_backend:
         coefficients = _database_conway_coefficients(prime, degree)
+        if coefficients is None and named_extension and not primitive_requested:
+            coefficients = _deterministic_extension_modulus_coefficients(prime, degree)
         if coefficients is None:
             generated_resource_backend = False
     try:
@@ -1941,6 +1982,10 @@ def _make_extension_field(
             "Conway polynomial"
         ).test(message):
             coefficients = _database_conway_coefficients(prime, degree)
+            if coefficients is None and named_extension and not primitive_requested:
+                coefficients = _deterministic_extension_modulus_coefficients(
+                    prime, degree
+                )
             if coefficients is None:
                 missing_conway = True
             else:
@@ -2018,8 +2063,10 @@ def GF(
     Univariate Polynomial Ring in x over Finite Field in a of size 3^2
     ```
 
-    Extension moduli are irreducible and normalized to monic. Passing
-    `modulus='primitive'` uses the backend's primitive Conway polynomial.
+    Extension moduli are irreducible and normalized to monic. Named quadratic
+    extensions use a deterministic irreducible polynomial when the Conway
+    tables have no entry. Passing `modulus='primitive'` requires a primitive
+    Conway polynomial and does not use this fallback.
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):

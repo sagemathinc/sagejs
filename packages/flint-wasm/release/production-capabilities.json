@@ -403,7 +403,8 @@
         "kernel:packed-polynomial-flint-production",
         "kernel:packed-prime-polynomial-production",
         "kernel:sparse-random-matrix-production",
-        "kernel:word-prime-krylov-production"
+        "kernel:word-prime-krylov-production",
+        "kernel:word-prime-sparse-krylov-production"
       ]
     },
     "kernel-gmp": {
