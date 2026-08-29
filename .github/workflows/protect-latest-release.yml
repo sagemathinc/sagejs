@@ -1,0 +1,38 @@
+name: Protect the latest Sage.js product release
+
+on:
+  release:
+    types: [published, released, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sagejs-protect-latest-product-release
+  cancel-in-progress: true
+
+jobs:
+  protect-latest-product-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the default branch policy
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Keep infrastructure and evidence releases out of latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(gh api "/repos/$GITHUB_REPOSITORY/releases/latest" \
+            --jq .tag_name)
+          product=$(node scripts/release-latest-policy.cjs \
+            --repository "$GITHUB_REPOSITORY")
+          if [ "$current" = "$product" ]; then
+            echo "$product is already the latest Sage.js product release"
+            exit 0
+          fi
+          echo "Restoring latest from $current to $product"
+          gh release edit "$product" --repo "$GITHUB_REPOSITORY" --latest

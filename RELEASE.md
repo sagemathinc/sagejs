@@ -49,6 +49,12 @@ when the fix is a one-line test-portability correction.
 - npm publication uses GitHub/npm Trusted Publishing (OIDC), not a long-lived
   npm token. macOS signing/notarization and optional Windows signing happen in
   the protected GitHub release environments.
+- Only a Sage.js product release tag such as `v0.4.1+release.23` may own
+  GitHub's **Latest** pointer. The public installer resolves its default archive
+  through `releases/latest`, so benchmark evidence, optimizer snapshots, and
+  native dependency catalogs must be created with `--latest=false` (or as a
+  prerelease). The release-event guard restores the highest published product
+  version if an infrastructure release is accidentally made latest.
 - Do not publish when a required gate is skipped, timed out, or merely passed
   on an older commit.
 
