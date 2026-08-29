@@ -130,6 +130,7 @@ test("dashboard output and location queries are deterministic", async () => {
   const second = await fixture();
   assert.equal(dashboardJson(first), dashboardJson(second));
   assert.equal(renderMarkdown(first), renderMarkdown(second));
+  assert.equal(dashboardJson(first).includes(root), false);
 
   const query = queryDashboard(first, "src/lib/dashboard_selected.py:3");
   assert.equal(query.loops.length, 1);

@@ -705,9 +705,9 @@ function finalizeDashboard({ root, identity, files, functions, loops, orphans })
   };
 }
 
-function parserOptions(root, filename) {
+function parserOptions(root, filename, logicalFilename = repositoryPath(root, filename)) {
   return {
-    filename,
+    filename: logicalFilename,
     basedir: path.dirname(filename),
     libdir: path.join(root, "src", "lib"),
     import_dirs: [],
@@ -766,7 +766,7 @@ async function analyzeSources({ root = ROOT, sources, identity }) {
       try {
         const ast = frontend.parse(
           item.source,
-          parserOptions(root, item.filename),
+          parserOptions(root, item.filename, item.relativePath),
         );
         verifyOptimizationProgram(ast.optimization_ir);
         const program = explainOptimizationProgram(ast.optimization_ir);
