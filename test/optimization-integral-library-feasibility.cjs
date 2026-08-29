@@ -138,5 +138,9 @@ test("browser mode fails closed when a current release or engine is unavailable"
     assert.equal(receipt.status, "passed");
     assert.match(receipt.executedPlatform, /^browser-chromium-/);
     assert.equal(receipt.execution.executedRoute, "untouched-generic-fallback");
+    assert.equal(
+      receipt.authority.exactCurrentExecution,
+      receipt.source.exactCurrent && receipt.browserRelease.exactCurrent,
+    );
   }
 });

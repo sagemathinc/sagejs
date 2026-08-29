@@ -225,13 +225,16 @@ function validateNodeExecution(execution) {
 }
 
 function finalize(receipt, argv) {
+  const runtimeArtifactExact = receipt.kind !== "browser" ||
+    receipt.browserRelease?.exactCurrent === true;
   receipt.authority = {
     executionPassed: receipt.status === "passed",
     sourceExactCurrent: receipt.source.exactCurrent,
+    runtimeArtifactExactCurrent: runtimeArtifactExact,
     frozenEvidenceBound: receipt.frozenEvidence.complete,
     executedPlatform: receipt.status === "passed" ? receipt.executedPlatform : null,
     exactCurrentExecution:
-      receipt.status === "passed" && receipt.source.exactCurrent,
+      receipt.status === "passed" && receipt.source.exactCurrent && runtimeArtifactExact,
     promotionAuthority: false,
     reason:
       "This bench-only receipt establishes feasibility; promotion requires the production candidate epoch and its required platform matrix.",
