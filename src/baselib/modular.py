@@ -24,6 +24,7 @@ def _qexp_module() -> Any:
         )
     return _qexp_module_cache
 
+
 def _native_p1_modules() -> tuple[Any, Any]:
     loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
     if loader is runtime.undefined:

@@ -566,6 +566,40 @@ Plot a radial function in cylindrical coordinates.
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
+## `delta_qexp`
+
+```sage
+delta_qexp(prec: Any=10, variable: str='q', K: Any=None, **opts: Any) -> Any
+```
+
+Return the exact $q$-expansion of the weight-$12$ form $\Delta$.
+
+### Examples
+
+```sage
+sage: delta_qexp(6)
+q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.vm_basis`
+- Tags: modular forms, q-expansions, level one, Delta, cusp forms
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: compatible — The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath.
+- Algorithm: Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization
+- Limitations: This first exact formula algebra is level one over QQ.
+
+### Provenance
+
+- `sage-derived` — [SageMath Victor Miller basis](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html); license GPL-2.0-or-later
+- `literature-implemented` — The graded-ring identity QQ[E4,E6]
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/) (2007).
+
 ## `density_plot`
 
 ```sage
@@ -1019,8 +1053,8 @@ sage: b.q_expansion(100).precision_absolute()
 - Tags: modular forms, spaces, Eisenstein series, q-expansions
 - Backends: FLINT, Sage.js exact arithmetic
 - Sage compatibility: extension — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
-- Algorithm: Exact dimension formulas and native Eisenstein coefficient generation
-- Limitations: Only QQ is currently accepted as the ambient base ring. General Hecke operators and cusp-form bases are not implemented.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
 
 ### Provenance
 
@@ -5473,8 +5507,8 @@ Hecke-module implementation.
 - Tags: modular forms, spaces, ambient spaces
 - Backends: FLINT, Sage.js exact arithmetic
 - Sage compatibility: partial — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
-- Algorithm: Exact dimension formulas and native Eisenstein coefficient generation
-- Limitations: Only QQ is currently accepted as the ambient base ring. General Hecke operators and cusp-form bases are not implemented.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
 
 ### Provenance
 
@@ -8179,6 +8213,40 @@ Sage.js
 ### Provenance
 
 - `sagejs-original`
+
+## `victor_miller_basis`
+
+```sage
+victor_miller_basis(k: Any, prec: Any=10, cusp_only: bool=False, variable: str='q', **opts: Any) -> list[Any]
+```
+
+Return the integral Victor Miller basis in level $1$ and weight $k$.
+
+### Examples
+
+```sage
+sage: victor_miller_basis(12, 5)
+[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.vm_basis`
+- Tags: modular forms, q-expansions, level one, Victor Miller basis, cusp forms
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: compatible — The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath.
+- Algorithm: Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization
+- Limitations: This first exact formula algebra is level one over QQ.
+
+### Provenance
+
+- `sage-derived` — [SageMath Victor Miller basis](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html); license GPL-2.0-or-later
+- `literature-implemented` — The graded-ring identity QQ[E4,E6]
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/) (2007).
 
 ## `Zmod`
 
