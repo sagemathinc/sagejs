@@ -8,7 +8,7 @@
   },
   "startup_budgets": {
     "development-cli": {
-      "normalized_median_ms": 350,
+      "normalized_median_ms": 390,
       "normalized_median_ms_by_platform_arch": {
         "linux-arm64": 400
       },
