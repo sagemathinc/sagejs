@@ -1,0 +1,278 @@
+{
+  "schema": "sagejs.optimization-campaign2-no-selection-memory/v1",
+  "id": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+  "adjudication": {
+    "campaignId": null,
+    "canonicalLogicalId": "sha256:9d513775e5e6341518e2de560057ab593e352c9a30938e1db94c1f71b7acf66f",
+    "canonicalNdjsonSha256": "9d513775e5e6341518e2de560057ab593e352c9a30938e1db94c1f71b7acf66f",
+    "canonicalRecordCount": 20,
+    "decisionObservationId": "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b",
+    "dossierId": null,
+    "promotionId": null,
+    "selectedInterventionId": null,
+    "status": "investigate"
+  },
+  "epoch": {
+    "id": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+    "revision": {
+      "commit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+      "tree": "6b1bc0ce4b3472c2f506f09c9ac9d9020aacf2eb"
+    },
+    "sourceClosureId": "sha256:bfae0f95838bb367607852a9d139b17f420231b0cb7a0782c7aa38495261b817",
+    "workloadIds": [
+      "sha256:078adf96a0d90f93be420adb84787753ad6f3b3e6076a186e3659ef3bafa38a8",
+      "sha256:8444343ab1a6f8cdda2c504498bdf4654f36d6deb540d2b8d9061f4cb75e4277",
+      "sha256:87b4e5901e3cdd0907e8bb8dff085e9fc2a24ba23626d5ee5a2f5e7075f68ea5",
+      "sha256:9080b39e88580db7372d4122279f8ec615c94350b55eaea4e7cc70ff6c5b9081",
+      "sha256:a4a5c1bb9d62a4bc7ac62ea4b479b1728e789dd9fb4e5d6cbdd52f2ef11a5fbf",
+      "sha256:bb1c203d1bd95d1314dc0794c0f6606ed59505af3345f90b4e10ae79ed3dc3bb"
+    ]
+  },
+  "families": [
+    {
+      "disposition": "rejected",
+      "failedGates": [
+        "complete-cost-boundary",
+        "mature-capability-audit",
+        "positive-eleven-pair-separation",
+        "worst-pair-ten-percent"
+      ],
+      "family": "cubic-factorization",
+      "interventionId": "sha256:3a0362cbc49036061626c6487667f18cf302427fa6162126295f8c0509831f16",
+      "mechanism": "Batch complete cubic factor records across moduli through a reviewed mature FLINT capability",
+      "missingAuthorities": [
+        "complete public resource accounting",
+        "eleven held-out public timing pairs",
+        "eleven representative public timing pairs",
+        "reviewed batch full-factor capability"
+      ],
+      "observationId": "sha256:eccdd2ab2e82427a117334bcc1ee37c4caf750ce350aa0d6cb17a5491c9be406",
+      "opportunityId": "sha256:cf19c1c54eaea269dd6073d6b5e539c44cb2182f9cc52afc9e0dd85000d0d9ab",
+      "outcome": {
+        "authority": {
+          "kind": "validated-input-set",
+          "producer": "optimization.campaign2-memory.v2",
+          "validatedInputIds": [
+            "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+            "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6",
+            "sha256:3a0362cbc49036061626c6487667f18cf302427fa6162126295f8c0509831f16",
+            "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b",
+            "sha256:cf19c1c54eaea269dd6073d6b5e539c44cb2182f9cc52afc9e0dd85000d0d9ab",
+            "sha256:eccdd2ab2e82427a117334bcc1ee37c4caf750ce350aa0d6cb17a5491c9be406"
+          ]
+        },
+        "binding": {
+          "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+          "predecessorIds": [],
+          "state": "current"
+        },
+        "campaignId": null,
+        "disposition": "rejected",
+        "evidenceIds": [
+          "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b",
+          "sha256:eccdd2ab2e82427a117334bcc1ee37c4caf750ce350aa0d6cb17a5491c9be406"
+        ],
+        "id": "sha256:2a3ae85b8c5fe6303acc889a2f9a4a477660994cdfed6f05076c479863fdec49",
+        "interventionId": "sha256:3a0362cbc49036061626c6487667f18cf302427fa6162126295f8c0509831f16",
+        "opportunityId": "sha256:cf19c1c54eaea269dd6073d6b5e539c44cb2182f9cc52afc9e0dd85000d0d9ab",
+        "promotionId": null,
+        "reasons": [
+          "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+          "Failed deterministic gate: complete-cost-boundary.",
+          "Failed deterministic gate: mature-capability-audit.",
+          "Failed deterministic gate: positive-eleven-pair-separation.",
+          "Failed deterministic gate: worst-pair-ten-percent.",
+          "the exact proposed batched full-factor mature capability is unavailable"
+        ],
+        "regressionState": "not-applicable",
+        "schema": "sagejs.optimization-outcome/v2",
+        "subjectId": "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6",
+        "supersedesIds": []
+      },
+      "rejectedMechanism": "unavailable batch full-factor mature-library route",
+      "retainedInvestigation": "Use the declared per-prime full-factorization boundary inside the complete public route",
+      "subjectId": "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6"
+    },
+    {
+      "disposition": "investigate",
+      "failedGates": [
+        "complete-cost-boundary",
+        "fallback-or-rollback",
+        "mature-capability-audit",
+        "platform-fallback",
+        "positive-eleven-pair-separation",
+        "semantic-obligations",
+        "worst-pair-ten-percent"
+      ],
+      "family": "dense-integral",
+      "interventionId": "sha256:9ed3772c29fe81dc986c34f0efc0bac6707d4420d409f757854f9c138e78414f",
+      "mechanism": "Split at characteristic holes and run FLINT nmod_poly_integral on every legal block",
+      "missingAuthorities": [
+        "direct synchronous hard-latency authority",
+        "eleven current-epoch held-out public timing pairs",
+        "eleven current-epoch representative public timing pairs",
+        "native Windows x64 execution authority",
+        "production candidate implementation authority",
+        "promotion-grade complete public resource accounting"
+      ],
+      "observationId": "sha256:32d4ad192c0626a41942108055c67172205dd0044d914d3853a50cae33852062",
+      "opportunityId": "sha256:02d9163e685939393139304041617602a6b1dcbdeece4e0a85590b99eb04f1f7",
+      "outcome": {
+        "authority": {
+          "kind": "validated-input-set",
+          "producer": "optimization.campaign2-memory.v2",
+          "validatedInputIds": [
+            "sha256:02d9163e685939393139304041617602a6b1dcbdeece4e0a85590b99eb04f1f7",
+            "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+            "sha256:32d4ad192c0626a41942108055c67172205dd0044d914d3853a50cae33852062",
+            "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe",
+            "sha256:9ed3772c29fe81dc986c34f0efc0bac6707d4420d409f757854f9c138e78414f",
+            "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b"
+          ]
+        },
+        "binding": {
+          "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+          "predecessorIds": [],
+          "state": "current"
+        },
+        "campaignId": null,
+        "disposition": "investigate",
+        "evidenceIds": [
+          "sha256:32d4ad192c0626a41942108055c67172205dd0044d914d3853a50cae33852062",
+          "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b"
+        ],
+        "id": "sha256:17efd94fa0991f6bcc3072ee4e28cb062f106f21dc9f794155f53f7192d71d70",
+        "interventionId": "sha256:9ed3772c29fe81dc986c34f0efc0bac6707d4420d409f757854f9c138e78414f",
+        "opportunityId": "sha256:02d9163e685939393139304041617602a6b1dcbdeece4e0a85590b99eb04f1f7",
+        "promotionId": null,
+        "reasons": [
+          "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+          "Failed deterministic gate: complete-cost-boundary.",
+          "Failed deterministic gate: fallback-or-rollback.",
+          "Failed deterministic gate: mature-capability-audit.",
+          "Failed deterministic gate: platform-fallback.",
+          "Failed deterministic gate: positive-eleven-pair-separation.",
+          "Failed deterministic gate: semantic-obligations.",
+          "Failed deterministic gate: worst-pair-ten-percent.",
+          "current zero-sample evidence lacks required authorities"
+        ],
+        "regressionState": "not-applicable",
+        "schema": "sagejs.optimization-outcome/v2",
+        "subjectId": "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe",
+        "supersedesIds": []
+      },
+      "retainedInvestigation": "Preserve the current guarded public route until all promotion authorities exist",
+      "subjectId": "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe"
+    },
+    {
+      "disposition": "investigate",
+      "failedGates": [
+        "complete-cost-boundary",
+        "mature-capability-audit",
+        "positive-eleven-pair-separation",
+        "semantic-obligations",
+        "worst-pair-ten-percent"
+      ],
+      "family": "hyperelliptic-normalization",
+      "interventionId": "sha256:ac13365ed43b89b419ae567423bdd8f1c881c0fb831c68a32aad217b1a894f93",
+      "mechanism": "Map the genus-one normalization to an elliptic cubic and use the mature smalljac point-count capability",
+      "missingAuthorities": [
+        "bounded interruption authority",
+        "eleven current-epoch held-out public timing pairs",
+        "eleven current-epoch representative public timing pairs",
+        "production candidate implementation authority",
+        "promotion-grade complete public resource accounting"
+      ],
+      "observationId": "sha256:a9c52d00aa836a8acd9a8674cc337453b77c57b4caf483007e090ff7bf25f702",
+      "opportunityId": "sha256:567963c53d9a1ac52ee6307ffbbafa827c5dc4ce2a268d98ff6dffdcf3858453",
+      "outcome": {
+        "authority": {
+          "kind": "validated-input-set",
+          "producer": "optimization.campaign2-memory.v2",
+          "validatedInputIds": [
+            "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203",
+            "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+            "sha256:567963c53d9a1ac52ee6307ffbbafa827c5dc4ce2a268d98ff6dffdcf3858453",
+            "sha256:a9c52d00aa836a8acd9a8674cc337453b77c57b4caf483007e090ff7bf25f702",
+            "sha256:ac13365ed43b89b419ae567423bdd8f1c881c0fb831c68a32aad217b1a894f93",
+            "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b"
+          ]
+        },
+        "binding": {
+          "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+          "predecessorIds": [],
+          "state": "current"
+        },
+        "campaignId": null,
+        "disposition": "investigate",
+        "evidenceIds": [
+          "sha256:a9c52d00aa836a8acd9a8674cc337453b77c57b4caf483007e090ff7bf25f702",
+          "sha256:c464748e53b4805154e59f9a2ba62ea43222a49512ba595afefde1f7c637e61b"
+        ],
+        "id": "sha256:e2225184bf964e96cc51198ad927de0f27508a5c0f200f7e2692afab549f15c4",
+        "interventionId": "sha256:ac13365ed43b89b419ae567423bdd8f1c881c0fb831c68a32aad217b1a894f93",
+        "opportunityId": "sha256:567963c53d9a1ac52ee6307ffbbafa827c5dc4ce2a268d98ff6dffdcf3858453",
+        "promotionId": null,
+        "reasons": [
+          "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+          "Failed deterministic gate: complete-cost-boundary.",
+          "Failed deterministic gate: mature-capability-audit.",
+          "Failed deterministic gate: positive-eleven-pair-separation.",
+          "Failed deterministic gate: semantic-obligations.",
+          "Failed deterministic gate: worst-pair-ten-percent.",
+          "current zero-sample evidence lacks required authorities"
+        ],
+        "regressionState": "not-applicable",
+        "schema": "sagejs.optimization-outcome/v2",
+        "subjectId": "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203",
+        "supersedesIds": []
+      },
+      "retainedInvestigation": "Preserve the current guarded public route until all promotion authorities exist",
+      "subjectId": "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203"
+    }
+  ],
+  "producer": {
+    "adjudicationResultSha256": "2bf9b24e06e75020eb02d7c9fcf391d025748e92b7b20d5e57de31c1789d307f",
+    "adjudicationRunSha256": "06bd82ab22ed302f15de89302e074de6c5b5734f61a5b535bee8c78532f299f0",
+    "authoritativeInputSha256": "d0a1c58b7eeeb53dc00fe6a80e53b0729b3d8865f1fd2a2c11f2d527bcf3c622",
+    "command": "node bench/optimization-engine/campaign2-discovery.cjs adjudicate /scratch/campaign2-adjudication-epoch.json campaign2-authoritative-input.json"
+  },
+  "release": {
+    "tag": "optimization-engine-campaign2-2026-08-29",
+    "targetCommit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+    "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimization-engine-campaign2-2026-08-29",
+    "assets": [
+      {
+        "bytes": 11671,
+        "name": "9d513775e5e6341518e2de560057ab593e352c9a30938e1db94c1f71b7acf66f.canonical.ndjson.gz",
+        "sha256": "ff3d33f90827f23af1d8712dd3281a848e81feb183fc86048bb99fa387fb94c5"
+      },
+      {
+        "bytes": 15460,
+        "name": "9d513775e5e6341518e2de560057ab593e352c9a30938e1db94c1f71b7acf66f.sqlite.gz",
+        "sha256": "58d85e0419be7b06a1acc798827590abff7878277e0ae220d2091232e3aa22be"
+      },
+      {
+        "bytes": 98460,
+        "name": "campaign2-adjudication-result.json",
+        "sha256": "2bf9b24e06e75020eb02d7c9fcf391d025748e92b7b20d5e57de31c1789d307f"
+      },
+      {
+        "bytes": 5234,
+        "name": "campaign2-adjudication-run.json",
+        "sha256": "06bd82ab22ed302f15de89302e074de6c5b5734f61a5b535bee8c78532f299f0"
+      },
+      {
+        "bytes": 8181,
+        "name": "campaign2-authoritative-input.json",
+        "sha256": "d0a1c58b7eeeb53dc00fe6a80e53b0729b3d8865f1fd2a2c11f2d527bcf3c622"
+      },
+      {
+        "bytes": 3926,
+        "name": "campaign2-adjudication-epoch.json",
+        "sha256": "8607bdb0906942cdd37d0db6d3e7d8efc56ac3684bc6adfdc82c992a1aa39d61"
+      }
+    ]
+  },
+  "status": "accepted-no-selection"
+}
