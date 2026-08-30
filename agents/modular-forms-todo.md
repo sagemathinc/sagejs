@@ -70,7 +70,7 @@ classical API.
   symbols, beginning with weight $2$ and then arbitrary $k\geq2$.
 - [x] Slice 3: one shared public `q_expansion_basis(..., algorithm=...)` API and
   exact P0A/P0B span comparison on their overlap.
-- [ ] Slice 4: coefficient fields, normalized newforms, and composite-level
+- [x] Slice 4: coefficient fields, normalized newforms, and composite-level
   old/new spaces.
 - [ ] Slice 5: general Eisenstein-character formulas and character-valued
   modular-symbol reconstruction.
@@ -84,7 +84,7 @@ classical API.
 - [x] For every formula-generated space in the declared P0B domain, construct
   an exact basis or certified subspace using known forms and $q$-expansion
   arithmetic.
-- [ ] Reconstruct normalized newforms and their coefficient fields from exact
+- [x] Reconstruct normalized newforms and their coefficient fields from exact
   simple Hecke constituents.
 - [x] Expose the result through the ordinary Sage-compatible `ModularForms`
   and `ModularSymbols` APIs rather than only through Brandt-specific packet
@@ -100,7 +100,7 @@ classical API.
 - [x] $\Gamma_0(N)$ with trivial character, $k\geq2$, over $\QQ$.
 - [x] All signs of the corresponding modular-symbol spaces, with documented
   handling of the common modular-form image of the sign spaces.
-- [ ] Ambient cuspidal, new, old, and simple Hecke subspaces.
+- [x] Ambient cuspidal, new, old, and simple Hecke subspaces.
 - [x] Composite levels, including repeated prime factors and bad-prime
   operators.
 - [ ] Dirichlet-character spaces over their exact cyclotomic value fields.
@@ -121,13 +121,13 @@ classical API.
   multiplicativity, and prime-power recurrences where valid.
 - [x] Handle $U_p$ coefficients at primes dividing the level without applying
   a good-prime recurrence incorrectly.
-- [ ] Construct coefficient fields from irreducible Hecke factors using exact
+- [x] Construct coefficient fields from irreducible Hecke factors using exact
   defining polynomials and deterministic embeddings of Hecke eigenvalues.
-- [ ] Prove simultaneous eigenvector/eigenvalue compatibility for enough
+- [x] Prove simultaneous eigenvector/eigenvalue compatibility for enough
   commuting Hecke operators to certify each newform packet.
-- [ ] Normalize each eigenform by $a_1=1$ and reject spaces where this cannot
+- [x] Normalize each eigenform by $a_1=1$ and reject spaces where this cannot
   be certified.
-- [ ] Detect and represent Galois-conjugate forms without choosing numerical
+- [x] Detect and represent Galois-conjugate forms without choosing numerical
   roots prematurely.
 - [x] Preserve integral coefficients or a coefficient order when the exact
   Hecke data proves one, rather than needlessly publishing only a fraction
@@ -135,7 +135,7 @@ classical API.
 - [x] Cache Hecke matrices and use their authenticated parent identity;
   coefficient-functional, decomposition, and newform caches remain part of
   later slices.
-- [ ] Cache coefficient functionals, decompositions, and
+- [x] Cache coefficient functionals, decompositions, and
   reconstructed coefficients with authenticated parent/space identity.
 - [x] Keep construction transactional: cancellation or failure must not
   publish a partial basis or poison a cache.
@@ -172,6 +172,9 @@ many coefficients and an independently known dimension.
 
 - [ ] General Eisenstein series $E_k(\chi,\psi)$, including exact generalized
   Bernoulli constant terms and the correct parity/conductor conditions.
+- [x] Primitive-pair first slice of $E_k(\chi,\psi)(q^t)$ with exact
+  cyclotomic coefficients, generalized Bernoulli constant terms, and parity
+  rejection; imprimitive character reduction remains.
 - [ ] Degeneracy images of Eisenstein and cusp forms at higher levels.
 - [x] Level-$1$ generators $E_4$, $E_6$, and $\Delta$, with the relation
   $E_4^3-E_6^2=1728\Delta$ checked exactly.
@@ -197,7 +200,7 @@ many coefficients and an independently known dimension.
   labeled certified subspace rather than calling it a basis.
 - [x] Separate Eisenstein and cuspidal candidates using exact constant terms
   at all required cusps or another audited criterion.
-- [ ] Certify old/new placement using degeneracy maps and Hecke data where
+- [x] Certify old/new placement using degeneracy maps and Hecke data where
   available.
 - [ ] Recover Hecke-stable subspaces and eigenforms from the constructed span
   without assuming that the chosen formula generators are eigenforms.
@@ -233,22 +236,22 @@ many coefficients and an independently known dimension.
 
 ### Public API
 
-- [ ] Implement
+- [x] Implement
   `ModularForms(...).cuspidal_subspace().q_expansion_basis(prec,
   algorithm=...)`.
 - [ ] Implement `q_expansion_basis(..., algorithm="formulas")` on every
   declared constructive space and return a certified-subspace object when the
   formulas do not span the ambient space.
-- [ ] Implement `ModularForms(...).new_subspace()` and
+- [x] Implement `ModularForms(...).new_subspace()` and
   `ModularForms(...).old_subspace()` in the initial domain.
-- [ ] Implement `ModularForms(...).newforms(...)` and top-level
+- [x] Implement `ModularForms(...).newforms(...)` and top-level
   `Newforms(...)` with deterministic Galois-orbit ordering.
-- [ ] Implement a first-class normalized newform element exposing `level()`,
+- [x] Implement a first-class normalized newform element exposing `level()`,
   `weight()`, `character()`, `base_ring()`, `coefficient_field()`,
   `q_expansion(prec)`, and coefficient access.
 - [ ] Implement Hecke and Atkin--Lehner eigenvalue access where the operator is
   defined and certified.
-- [ ] Make returned $q$-expansions ordinary Sage.js power-series elements over
+- [x] Make returned $q$-expansions ordinary Sage.js power-series elements over
   the exact coefficient field.
 - [x] Expose the provenance and verification certificate for every
   formula-generated form and basis.
@@ -263,7 +266,7 @@ many coefficients and an independently known dimension.
 - [x] Cover level $1$ forms including $\Delta\in S_{12}(\mathrm{SL}_2(\ZZ))$.
 - [ ] Independently construct the level-$1$ basis through both modular symbols
   and the exact $\QQ[E_4,E_6]$ formula algebra.
-- [ ] Cover rational weight-$2$ newforms at prime and composite levels.
+- [x] Cover rational weight-$2$ newforms at prime and composite levels.
 - [ ] Cover a higher-weight trivial-character space of dimension greater than
   one.
 - [ ] Cover quadratic and higher-degree coefficient fields.

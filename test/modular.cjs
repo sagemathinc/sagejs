@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const newformOracles = require("./fixtures/modular-newform-lmfdb.json");
 
 test("level-one Eisenstein q-expansions match Sage normalizations", async () => {
   const session = await createSage();
@@ -407,6 +408,90 @@ test("level-one ambient and cusp bases carry replayable certificates", async () 
       "[True, True, 3, 2, 'victor-miller-e4-e6-delta', 3, " +
         "[24, 24, 24], [True, True, True], True, True, 2, 2, " +
         "[q + 195660*q^3 + O(q^4), q^2 - 48*q^3 + O(q^4)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("normalized newforms reconstruct exact coefficient fields and LMFDB rows", async () => {
+  const session = await createSage();
+  try {
+    const rational = newformOracles.oracles[0];
+    const quadratic = newformOracles.oracles[1];
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            `f=CuspForms(${rational.level},${rational.weight}).newforms('a')[0]`,
+            `g=CuspForms(${quadratic.level},${quadratic.weight}).newforms('a')[0]`,
+            "[[f[i] for i in [0..7]],f.certificate(8).verify()," +
+              "str(g.defining_polynomial()),[g[i].list() for i in [0..7]]," +
+              "g.certificate(8).verify(),g.q_expansion(8)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[0, 1, -2, -1, 2, 1, 2, -2], True, " +
+        "'x^2 + x - 1', [[0, 0], [1, 0], [0, 1], [-1, -2], " +
+        "[-1, -1], [0, 2], [-2, 1], [2, 2]], True, " +
+        "q + a0*q^2 + (-2*a0 - 1)*q^3 + (-a0 - 1)*q^4 + " +
+        "2*a0*q^5 + (a0 - 2)*q^6 + (2*a0 + 2)*q^7 + O(q^8)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("composite-level cusp spaces have certified old/new decompositions", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "S=CuspForms(22,2,prec=10)\n" +
+            "O=S.old_subspace()\nN=S.new_subspace()\n" +
+            "C=O.q_expansion_basis_certificate(10)\n" +
+            "[S.dimension(),O.dimension(),N.dimension()," +
+            "C.old_dimension(),C.new_dimension(),C.dimension(),C.verify()," +
+            "len(O.q_expansion_basis(10))]",
+        )
+      ).repr,
+      "[2, 2, 0, 2, 0, 2, True, 2]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "F=Newforms(26,2,names='b')\n" +
+            "[[f.q_expansion(8) for f in F]," +
+            "[f.certificate().verify() for f in F]," +
+            "ModularForms(26,2).new_subspace().dimension()]",
+        )
+      ).repr,
+      "[[q + q^2 - 3*q^3 + q^4 - q^5 - 3*q^6 + q^7 + O(q^8), " +
+        "q - q^2 + q^3 + q^4 - 3*q^5 - q^6 - q^7 + O(q^8)], " +
+        "[True, True], 2]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("primitive character pairs give exact generalized Eisenstein series", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "G=DirichletGroup(5)\nchi=G.gen(0)\n" +
+            "one=DirichletGroup(1)(1)\n" +
+            "f=eisenstein_series_qexp(3,10,chi=chi,psi=one)\n" +
+            "[f,f[1],f[2]==chi(2)+4,f[3]==chi(3)+9,f.prec()]",
+        )
+      ).repr,
+      "[q + (zeta4 + 4)*q^2 + (-zeta4 + 9)*q^3 + " +
+        "(4*zeta4 + 15)*q^4 + 25*q^5 + (5*zeta4 + 37)*q^6 + " +
+        "(zeta4 + 49)*q^7 + (15*zeta4 + 60)*q^8 + " +
+        "(-9*zeta4 + 80)*q^9 + O(q^10), 1, True, True, 10]",
     );
   } finally {
     await session.close();

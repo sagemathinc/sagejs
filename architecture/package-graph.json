@@ -82,7 +82,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 752000,
+      "max_source_bytes": 760000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -572,7 +572,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 275000,
+      "max_source_bytes": 280000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -586,14 +586,19 @@
       "id": "modular-form-expansions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 50000,
+      "max_source_bytes": 65000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "modular-forms"
       ],
-      "modules": ["sagejs.modular_forms", "sagejs.modular_forms.qexp"],
+      "modules": [
+        "sagejs.modular_forms",
+        "sagejs.modular_forms.newforms",
+        "sagejs.modular_forms.qexp"
+      ],
       "files": [
         "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/newforms.py",
         "src/lib/sagejs/modular_forms/qexp.py"
       ],
       "prefixes": []

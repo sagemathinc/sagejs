@@ -353,6 +353,288 @@ class SeriesElement(sage.Element):
     toString = __repr__
 
 
+@runtime.sequence_class
+@runtime.lightweight_math_class
+class GenericSeriesElement(SeriesElement):
+    """An exact ordinary-Python series over a non-FLINT coefficient ring."""
+
+    def __init__(
+        self,
+        parent: GenericSeriesRingParent,
+        coefficients: list[Any],
+        shift: int,
+        precision: Any,
+    ) -> None:
+        self._parent = parent
+        self._precision = precision
+        base = parent.base_ring()
+        zero = base(0)
+        values = [base(value) for value in coefficients]
+        if precision is not None:
+            values = values[: max(0, int(precision) - int(shift))]
+        while len(values) and values[-1] == zero:
+            values.pop()
+        valuation = 0
+        while valuation < len(values) and values[valuation] == zero:
+            valuation += 1
+        if valuation == len(values):
+            self._shift = 0
+            self._coefficients = runtime.math_tuple([])
+        else:
+            self._shift = int(shift) + valuation
+            self._coefficients = runtime.math_tuple(values[valuation:])
+        if self._shift < 0 and not parent._is_laurent:
+            raise ValueError("power-series exponents must be nonnegative")
+        runtime.object.freeze(self)
+
+    def _is_zero(self) -> bool:
+        return len(self._coefficients) == 0
+
+    def _valuation_for_product(self) -> int:
+        if not self._is_zero():
+            return self._shift
+        if self._precision is not None:
+            return self._precision
+        return 0
+
+    def valuation(self) -> int:
+        if self._is_zero():
+            if self._precision is not None:
+                return self._precision
+            raise ValueError("the valuation of zero is infinity")
+        return self._shift
+
+    def precision_absolute(self) -> Any:
+        return self._precision
+
+    prec = precision_absolute
+
+    def __getitem__(self, exponent: Any) -> Any:
+        exponent = int(exponent)
+        index = exponent - self._shift
+        if index < 0 or index >= len(self._coefficients):
+            return self._parent.base_ring()(0)
+        return self._coefficients[index]
+
+    def padded_list(self, length: Any = None) -> list[Any]:
+        if length is None:
+            if self._precision is not None:
+                length = max(0, self._precision)
+            else:
+                length = max(0, self._shift + len(self._coefficients))
+        length = int(length)
+        if length < 0:
+            raise ValueError("series coefficient length must be nonnegative")
+        answer = [self._parent.base_ring()(0) for _index in range(length)]
+        for index, coefficient in enumerate(self._coefficients):
+            exponent = self._shift + index
+            if exponent >= 0 and exponent < length:
+                answer[exponent] = coefficient
+        return answer
+
+    def add_bigoh(self, precision: Any) -> GenericSeriesElement:
+        return self._parent._from_coefficients(
+            list(self._coefficients),
+            self._shift,
+            _minimum_precision(self._precision, int(precision)),
+        )
+
+    def _inflate(
+        self,
+        factor: Any,
+        precision: Any = None,
+    ) -> GenericSeriesElement:
+        factor = int(factor)
+        if factor <= 0:
+            raise ValueError("series inflation factor must be positive")
+        target_precision = precision
+        if target_precision is None and self._precision is not None:
+            target_precision = self._precision * factor
+        if self._is_zero():
+            if target_precision is None:
+                return self._parent(0)
+            return self._parent._bigoh(target_precision)
+        length = (len(self._coefficients) - 1) * factor + 1
+        values = [self._parent.base_ring()(0) for _index in range(length)]
+        for index, coefficient in enumerate(self._coefficients):
+            values[index * factor] = coefficient
+        return self._parent._from_coefficients(
+            values,
+            self._shift * factor,
+            target_precision,
+        )
+
+    def _aligned_coefficients(
+        self,
+        other: GenericSeriesElement,
+    ) -> tuple[int, list[Any], list[Any]]:
+        shift = min(self._shift, other._shift)
+        stop = max(
+            self._shift + len(self._coefficients),
+            other._shift + len(other._coefficients),
+        )
+        length = max(0, stop - shift)
+        zero = self._parent.base_ring()(0)
+        left = [zero for _index in range(length)]
+        right = [zero for _index in range(length)]
+        for index, coefficient in enumerate(self._coefficients):
+            left[self._shift - shift + index] = coefficient
+        for index, coefficient in enumerate(other._coefficients):
+            right[other._shift - shift + index] = coefficient
+        return shift, left, right
+
+    def _add_(self, other: Any) -> GenericSeriesElement:
+        shift, left, right = self._aligned_coefficients(other)
+        return self._parent._from_coefficients(
+            [left[index] + right[index] for index in range(len(left))],
+            shift,
+            _minimum_precision(self._precision, other._precision),
+        )
+
+    def _sub_(self, other: Any) -> GenericSeriesElement:
+        shift, left, right = self._aligned_coefficients(other)
+        return self._parent._from_coefficients(
+            [left[index] - right[index] for index in range(len(left))],
+            shift,
+            _minimum_precision(self._precision, other._precision),
+        )
+
+    def _mul_(self, other: Any) -> GenericSeriesElement:
+        if (self._is_zero() and self._precision is None) or (
+            other._is_zero() and other._precision is None
+        ):
+            return self._parent(0)
+        left_valuation = self._valuation_for_product()
+        right_valuation = other._valuation_for_product()
+        precision = None
+        if self._precision is not None:
+            precision = self._precision + right_valuation
+        if other._precision is not None:
+            precision = _minimum_precision(precision, other._precision + left_valuation)
+        shift = self._shift + other._shift
+        length = len(self._coefficients) + len(other._coefficients) - 1
+        if precision is not None:
+            length = min(length, max(0, precision - shift))
+        zero = self._parent.base_ring()(0)
+        values = [zero for _index in range(max(0, length))]
+        for left_index, left in enumerate(self._coefficients):
+            for right_index, right in enumerate(other._coefficients):
+                target = left_index + right_index
+                if target >= len(values):
+                    break
+                values[target] += left * right
+        return self._parent._from_coefficients(values, shift, precision)
+
+    def _truediv_(self, other: Any) -> GenericSeriesElement:
+        return self._mul_(other.inverse())
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp("add", self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp("sub", self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp("mul", self, other)
+
+    def __truediv__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp("truediv", self, other)
+
+    def __neg__(self) -> GenericSeriesElement:
+        return self._parent._from_coefficients(
+            [-value for value in self._coefficients],
+            self._shift,
+            self._precision,
+        )
+
+    def __pow__(self, exponent: int) -> GenericSeriesElement:
+        exponent = int(exponent)
+        if exponent < 0:
+            return self.inverse() ** (-exponent)
+        answer = self._parent(1)
+        base = self
+        while exponent:
+            if exponent % 2:
+                answer *= base
+            exponent //= 2
+            if exponent:
+                base *= base
+        return answer
+
+    def inverse(self) -> GenericSeriesElement:
+        if self._is_zero():
+            raise sage.ZeroDivisionError("inverse of zero series")
+        relative_precision = (
+            self._precision - self._shift
+            if self._precision is not None
+            else self._parent.default_prec()
+        )
+        leading_inverse = self._coefficients[0] ** -1
+        values = [leading_inverse]
+        for exponent in range(1, relative_precision):
+            total = self._parent.base_ring()(0)
+            stop = min(exponent, len(self._coefficients) - 1)
+            for index in range(1, stop + 1):
+                total += self._coefficients[index] * values[exponent - index]
+            values.append(-leading_inverse * total)
+        precision = (
+            relative_precision - self._shift
+            if self._precision is not None or len(self._coefficients) != 1
+            else None
+        )
+        target = self._parent._laurent_ring()
+        return target._from_coefficients(values, -self._shift, precision)
+
+    __invert__ = inverse
+
+    def _eq_(self, other: Any) -> bool:
+        return self._sub_(other)._is_zero()
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def _bigoh(self) -> GenericSeriesElement:
+        return self._parent._bigoh(self.valuation())
+
+    def __repr__(self) -> str:
+        variable = self._parent.variable_name()
+        base = self._parent.base_ring()
+        zero = base(0)
+        one = base(1)
+        pieces = []
+        for index, coefficient in enumerate(self._coefficients):
+            if coefficient == zero:
+                continue
+            exponent = self._shift + index
+            if exponent == 0:
+                term = str(coefficient)
+            else:
+                monomial = variable if exponent == 1 else variable + "^" + str(exponent)
+                if coefficient == one:
+                    term = monomial
+                elif coefficient == -one:
+                    term = "-" + monomial
+                else:
+                    text = str(coefficient)
+                    if " + " in text or " - " in text[1:]:
+                        text = "(" + text + ")"
+                    term = text + "*" + monomial
+            if len(pieces) == 0:
+                pieces.append(term)
+            elif term.startswith("-"):
+                pieces.append(" - " + term[1:])
+            else:
+                pieces.append(" + " + term)
+        text = "".join(pieces)
+        if self._precision is not None:
+            bigoh = "O(" + variable + "^" + str(self._precision) + ")"
+            text += (" + " if text else "") + bigoh
+        return text if text else "0"
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 @runtime.callable_instance_class
 class SeriesRingParent(sage.Parent):
     def __init__(
@@ -386,7 +668,7 @@ class SeriesRingParent(sage.Parent):
     def variable_name(self) -> str:
         return self._variable
 
-    def _unitriangular_basis(self, values: Any) -> list[SeriesElement]:
+    def _unitriangular_basis(self, values: Any) -> list[Any]:
         """Reduce an integral series basis without publishing coefficients."""
         if self._base is not sage.ZZ:
             raise TypeError("unitriangular series reduction requires ZZ")
@@ -476,7 +758,7 @@ class SeriesRingParent(sage.Parent):
 
     def _serialization_coefficients(
         self,
-        value: SeriesElement,
+        value: Any,
     ) -> list[Any]:
         """Return the finite coefficient polynomial used by SagePack."""
         return self._polynomial_ring._from_native(value._native).coefficients()
@@ -486,13 +768,13 @@ class SeriesRingParent(sage.Parent):
         coefficients: list[Any],
         shift: Any,
         precision: Any,
-    ) -> SeriesElement:
+    ) -> Any:
         polynomial = self._polynomial_ring._from_coefficients(coefficients)
         return self._from_native(
             _legacy_series_polynomial(polynomial), int(shift), precision
         )
 
-    def _bigoh(self, precision: int) -> SeriesElement:
+    def _bigoh(self, precision: int) -> Any:
         return SeriesElement(
             self,
             _legacy_series_polynomial(self._polynomial_ring(0)),
@@ -500,7 +782,7 @@ class SeriesRingParent(sage.Parent):
             int(precision),
         )
 
-    def _laurent_ring(self) -> SeriesRingParent:
+    def _laurent_ring(self) -> Any:
         if self._is_laurent:
             return self
         return LaurentSeriesRing(
@@ -512,6 +794,8 @@ class SeriesRingParent(sage.Parent):
         )
 
     def __call__(self, value: Any = 0) -> SeriesElement:
+        if isinstance(value, GenericSeriesElement):
+            raise TypeError("incompatible series rings")
         if isinstance(value, SeriesElement):
             if value._parent is self:
                 return value
@@ -551,6 +835,103 @@ class SeriesRingParent(sage.Parent):
         return [self.gen()]
 
 
+@runtime.callable_instance_class
+class GenericSeriesRingParent(SeriesRingParent):
+    """Exact coefficient-list series for rings without a FLINT polynomial ABI."""
+
+    def __init__(
+        self,
+        base: sage.Parent,
+        variable: str,
+        default_precision: int,
+        laurent: bool,
+        sparse: bool = False,
+    ) -> None:
+        kind = "Laurent" if laurent else "Power"
+        self._name = kind + " Series Ring in " + variable + " over " + str(base)
+        self._base = base
+        self._variable = variable
+        self._default_precision = default_precision
+        self._is_laurent = laurent
+        self._is_sparse = sparse
+        self._kind = "LaurentSeriesRing" if laurent else "PowerSeriesRing"
+        self._construction = {
+            "kind": "laurent_series" if laurent else "power_series",
+            "base": base,
+            "variable": variable,
+            "default_precision": default_precision,
+            "sparse": sparse,
+        }
+
+    def _from_coefficients(
+        self,
+        coefficients: list[Any],
+        shift: int = 0,
+        precision: Any = None,
+    ) -> GenericSeriesElement:
+        return GenericSeriesElement(self, coefficients, shift, precision)
+
+    def _serialization_coefficients(self, value: Any) -> list[Any]:
+        return list(value._coefficients)
+
+    def _from_serialized_series(
+        self,
+        coefficients: list[Any],
+        shift: Any,
+        precision: Any,
+    ) -> GenericSeriesElement:
+        return self._from_coefficients(coefficients, int(shift), precision)
+
+    def _bigoh(self, precision: int) -> GenericSeriesElement:
+        return self._from_coefficients([], 0, int(precision))
+
+    def _laurent_ring(self) -> Any:
+        if self._is_laurent:
+            return self
+        return LaurentSeriesRing(
+            self._base,
+            self._variable,
+            self._default_precision,
+            None,
+            self._is_sparse,
+        )
+
+    def __call__(self, value: Any = 0) -> GenericSeriesElement:
+        if isinstance(value, GenericSeriesElement):
+            if value._parent is self:
+                return value
+            source = value._parent
+            if (
+                source.base_ring() is self._base
+                and source.variable_name() == self._variable
+            ):
+                if not self._is_laurent and value._shift < 0:
+                    raise TypeError(
+                        "a Laurent series does not coerce to a power series"
+                    )
+                return self._from_coefficients(
+                    list(value._coefficients), value._shift, value._precision
+                )
+            raise TypeError("incompatible series rings")
+        if isinstance(value, SeriesElement):
+            return self._from_coefficients(value.padded_list(), 0, value.prec())
+        if isinstance(value, (list, tuple)):
+            return self._from_coefficients(list(value))
+        if hasattr(value, "coefficients"):
+            return self._from_coefficients(value.coefficients())
+        return self._from_coefficients([self._base(value)])
+
+    def gen(self) -> GenericSeriesElement:
+        return self._from_coefficients(
+            [self._base(0), self._base(1)],
+        )
+
+    def _unitriangular_basis(self, values: Any) -> list[Any]:
+        raise NotImplementedError(
+            "generic exact series do not provide FLINT unitriangular reduction"
+        )
+
+
 ρσ_series_ring_cache = runtime.map()
 
 
@@ -561,10 +942,6 @@ def _series_ring(
     laurent: bool,
     sparse: bool = False,
 ) -> SeriesRingParent:
-    if base is not sage.ZZ and base is not sage.QQ and base._kind not in ["GF", "ZMOD"]:
-        raise TypeError(
-            "FLINT series currently support ZZ, QQ, and modular coefficient rings"
-        )
     if not isinstance(variable, str) or not runtime.regexp(
         r"^[A-Za-z_][A-Za-z0-9_]*$"
     ).test(variable):
@@ -584,7 +961,9 @@ def _series_ring(
     )
     parent = by_variable.get(key)
     if parent is runtime.undefined:
-        parent = SeriesRingParent(base, variable, default_prec, laurent, sparse)
+        native = base is sage.ZZ or base is sage.QQ or base._kind in ["GF", "ZMOD"]
+        parent_class = SeriesRingParent if native else GenericSeriesRingParent
+        parent = parent_class(base, variable, default_prec, laurent, sparse)
         by_variable.set(key, parent)
     return parent
 
@@ -691,7 +1070,9 @@ def PuiseuxSeriesRing(
 
 def big_oh(value: Any) -> Any:
     parent_kind = getattr(getattr(value, "_parent", None), "_kind", None)
-    if isinstance(value, SeriesElement) or parent_kind == "PuiseuxSeriesRing":
+    if isinstance(value, (SeriesElement, GenericSeriesElement)) or parent_kind == (
+        "PuiseuxSeriesRing"
+    ):
         return value._bigoh()
     raise TypeError("O(...) currently requires a power, Laurent, or Puiseux series")
 
@@ -701,5 +1082,9 @@ runtime.reflect.set(runtime.global_object, "O", big_oh)
 
 runtime.set_class_repr(
     SeriesElement,
+    "<class 'sage.rings.power_series_poly.PowerSeries_poly'>",
+)
+runtime.set_class_repr(
+    GenericSeriesElement,
     "<class 'sage.rings.power_series_poly.PowerSeries_poly'>",
 )

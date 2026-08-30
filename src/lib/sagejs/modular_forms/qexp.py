@@ -1002,6 +1002,109 @@ def formula_q_expansion_module(
     return _saturated_integer_row_basis(rational_basis).row_space()
 
 
+def character_eisenstein_series_qexp(
+    chi: Any,
+    psi: Any,
+    weight: Any,
+    prec: Any = 10,
+    t: Any = 1,
+    variable: str = "q",
+    coefficient_ring: Any = None,
+    normalization: str = "linear",
+) -> Any:
+    r"""Return the exact primitive-pair series $E_k(\chi,\psi)(q^t)$.
+
+    The normalization is
+
+    $$
+    a_n=\sum_{d\mid n}\psi(d)\chi(n/d)d^{k-1}.
+    $$
+
+    This first general-character slice requires primitive characters and the
+    parity condition $\chi(-1)\psi(-1)=(-1)^k$.  Coefficients default to the
+    exact algebraic field `QQbar`, so characters from different cyclotomic
+    parents can be combined without numerical embeddings.
+    """
+    weight = _nonnegative(weight, "weight")
+    precision = _nonnegative(prec, "precision")
+    inflation = _nonnegative(t, "inflation factor")
+    if weight < 1:
+        raise ValueError("weight must be positive")
+    if inflation < 1:
+        raise ValueError("inflation factor must be positive")
+    for character in [chi, psi]:
+        if not all(
+            hasattr(character, method)
+            for method in ["modulus", "is_primitive", "bernoulli"]
+        ):
+            raise TypeError("chi and psi must be Dirichlet characters")
+        if not character.is_primitive():
+            raise NotImplementedError(
+                "character Eisenstein series currently require primitive characters"
+            )
+    left_order = runtime.number(chi._parent.zeta_order())
+    right_order = runtime.number(psi._parent.zeta_order())
+    gcd = runtime.number(_global("gcd")(left_order, right_order))
+    value_order = left_order * right_order // gcd
+    target = (
+        _global("CyclotomicField")(value_order)
+        if coefficient_ring is None
+        else coefficient_ring
+    )
+
+    def character_value(character: Any, value: int) -> Any:
+        evaluated = character(value)
+        if evaluated.is_zero():
+            return target(0)
+        if coefficient_ring is not None:
+            return target(evaluated)
+        source_order = runtime.number(character._parent.zeta_order())
+        exponent = runtime.number(evaluated._exponent)
+        return target.gen() ** (exponent * value_order // source_order)
+
+    parity = character_value(chi, -1) * character_value(psi, -1)
+    if parity != target(-1 if weight % 2 else 1):
+        raise ValueError("chi(-1)*psi(-1) must equal (-1)^weight")
+    if normalization != "linear":
+        raise NotImplementedError(
+            "character Eisenstein series currently use linear normalization"
+        )
+    short_precision = 0 if precision == 0 else (precision - 1) // inflation + 1
+    coefficients = [target(0) for _index in range(short_precision)]
+    if short_precision and runtime.number(chi.modulus()) == 1:
+        modulus = runtime.number(psi.modulus())
+        generalized = target(0)
+        binomial = _global("binomial")
+        bernoulli = _global("bernoulli")
+        for residue in range(1, modulus + 1):
+            polynomial_value = target(0)
+            rational = sage.QQ(residue) / modulus
+            for index in range(weight + 1):
+                polynomial_value += target(
+                    binomial(weight, index) * bernoulli(index)
+                ) * target(rational) ** (weight - index)
+            generalized += character_value(psi, residue) * polynomial_value
+        generalized *= target(modulus) ** (weight - 1)
+        coefficients[0] = -generalized / (2 * weight)
+    for index in range(1, short_precision):
+        value = target(0)
+        for divisor in sage.divisors(index):
+            divisor = runtime.number(divisor)
+            value += (
+                character_value(psi, divisor)
+                * character_value(chi, index // divisor)
+                * divisor ** (weight - 1)
+            )
+        coefficients[index] = value
+    ring = _global("PowerSeriesRing")(
+        target,
+        variable,
+        default_prec=max(1, short_precision),
+    )
+    series = ring(coefficients).add_bigoh(short_precision)
+    return series._inflate(inflation, precision)
+
+
 class ModularSymbolsQExpansionCertificate:
     r"""A replayable Hecke-dual and Sturm certificate for a cusp basis."""
 
@@ -1165,6 +1268,27 @@ def modular_symbols_q_expansion_certificate(
     return certificate
 
 
+def modular_forms_new_subspace(space: Any, prime: Any = None) -> Any:
+    """Load and construct the exact new modular-form subspace."""
+    from .newforms import modular_forms_new_subspace as construct
+
+    return construct(space, prime)
+
+
+def modular_forms_old_subspace(space: Any) -> Any:
+    """Load and construct the exact old modular-form subspace."""
+    from .newforms import modular_forms_old_subspace as construct
+
+    return construct(space)
+
+
+def modular_forms_newforms(space: Any, names: str = "a") -> list[Any]:
+    """Load and reconstruct normalized newform Galois packets."""
+    from .newforms import modular_forms_newforms as construct
+
+    return construct(space, names)
+
+
 def from_serialized_element(
     parent: Any,
     terms: Any,
@@ -1178,6 +1302,7 @@ __all__ = [
     "ExactModularForm",
     "LevelOneBasisCertificate",
     "ModularSymbolsQExpansionCertificate",
+    "character_eisenstein_series_qexp",
     "coerce_level_one_form",
     "delta_form",
     "delta_qexp",
@@ -1187,5 +1312,8 @@ __all__ = [
     "modular_symbols_q_expansion_basis",
     "modular_symbols_q_expansion_certificate",
     "modular_symbols_q_expansion_module",
+    "modular_forms_new_subspace",
+    "modular_forms_newforms",
+    "modular_forms_old_subspace",
     "victor_miller_basis",
 ]

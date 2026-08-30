@@ -1,0 +1,33 @@
+{
+  "schema": "sagejs.modular-newform-oracles.v1",
+  "recorded_at": "2026-08-30",
+  "sources": {
+    "11.2.a.a": "https://www.lmfdb.org/ModularForm/GL2/Q/holomorphic/11/2/a/a/",
+    "23.2.a.a": "https://www.lmfdb.org/ModularForm/GL2/Q/holomorphic/23/2/a/a/"
+  },
+  "oracles": [
+    {
+      "label": "11.2.a.a",
+      "level": 11,
+      "weight": 2,
+      "field_polynomial": null,
+      "coefficients_through_q7": [0, 1, -2, -1, 2, 1, 2, -2]
+    },
+    {
+      "label": "23.2.a.a",
+      "level": 23,
+      "weight": 2,
+      "field_polynomial": "x^2 + x - 1",
+      "power_basis_coefficients_through_q7": [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+        [-1, -2],
+        [-1, -1],
+        [0, 2],
+        [-2, 1],
+        [2, 2]
+      ]
+    }
+  ]
+}
