@@ -29,7 +29,7 @@ This release extends four substantial mathematical systems:
 The sparse modular-form kernels use the same source-transparent native and Wasm
 compiler path with ordinary-Python fallbacks. Their outputs were checked against
 Sage semantics, Magma transcripts, modular-symbol Sturm certificates, historical
-psage data, and pinned LMFDB records. Browser release gates compile all 279
+psage data, and pinned LMFDB records. Browser release gates compile all 284
 production Wasm kernels and exercise exact public computations in Chromium.
 
 Packaging and runtime improvements include a lazy boundary for specialized
