@@ -84,6 +84,39 @@ only a narrow compatibility surface: `get_ipython()`, `display()`,
 `clear_output()`, shell event hooks, parent-message lookup, traceback display,
 and display-object formatting.
 
+### JupyterLite JavaScript-kernel reference
+
+The JupyterLite JavaScript kernel is a useful independent reference
+implementation. Its current BSD-3-Clause TypeScript sources implement the
+standard Jupyter comm transport and a substantial ipywidgets-compatible
+kernel-side model layer, including numeric, boolean, string, selection,
+container, layout, style, link, output, and button classes. The project
+explicitly marks some selection, output-capture, and callback behavior as
+partial. By contrast, the older IJavaScript kernel provides rich
+`display_data` and `update_display_data` output but no widget comm or model
+framework.
+
+This evidence confirms that a Python-free kernel can interoperate with the
+standard browser widget managers, but it does not change the Sage.js
+implementation choice. Sage's interact classes subclass the Python ipywidgets
+API, compatible third-party Python widgets depend on traitlets semantics, and
+Sage.js already compiles serious Python source to JavaScript. A nominally thin
+Python facade over a second JavaScript widget object system would instead have
+to proxy descriptors, validation, observation, inheritance, callbacks,
+serialization, links, and binary buffers.
+
+Use the JupyterLite implementation as:
+
+- a second protocol and lifecycle oracle alongside CPython ipykernel;
+- a reference for comm routing, model state, serialization, and browser-manager
+  integration;
+- a source of differential tests and, after an explicit audit, potentially
+  reusable low-level BSD-licensed transport ideas.
+
+Do not make it the semantic authority, wrap its widget classes as Sage.js's
+Python API, or add it as a runtime dependency merely to obtain widgets. Freeze
+an exact inspected revision in P0 before relying on any behavior or code.
+
 CoCalc has already solved the browser-manager problem in a reusable form.
 `@cocalc/widgets` is an Apache-2.0 package derived from Google Colab’s custom
 widget manager. Version 1.3.0 exposes a small `WidgetEnvironment` interface:
@@ -293,15 +326,18 @@ Before changing runtime code:
    corresponding `@jupyter-widgets` packages, and `@cocalc/widgets`.
 2. Record source URLs, commit hashes, package integrity hashes, licenses, and
    protocol versions in a machine-readable dependency manifest.
-3. Keep upstream source ordinary CPython-parseable Python. Do not transliterate
+3. Record an exact JupyterLite JavaScript-kernel revision as a secondary
+   implementation reference, classify its partial widget behaviors, and keep
+   CPython ipywidgets as the semantic oracle.
+4. Keep upstream source ordinary CPython-parseable Python. Do not transliterate
    it into JavaScript or inject host code into mathematical/library modules.
-4. Inventory upstream tests and classify them as:
+5. Inventory upstream tests and classify them as:
    - pure Python semantics;
    - comm/protocol behavior;
    - IPython compatibility;
    - frontend/browser behavior;
    - packaging or documentation only.
-5. Capture differential wire transcripts from a CPython ipykernel for a small
+6. Capture differential wire transcripts from a CPython ipykernel for a small
    canonical corpus:
    - `IntSlider`, `FloatRangeSlider`, `Text`, and `Dropdown`;
    - nested `HBox`/`VBox`, `Layout`, and style objects;
@@ -310,10 +346,10 @@ Before changing runtime code:
    - `Image` and `FileUpload` binary buffers;
    - frontend-initiated state requests and comm closure;
    - a tiny custom widget with a custom message and a binary buffer.
-6. Normalize only nondeterministic fields such as UUIDs, timestamps, and
+7. Normalize only nondeterministic fields such as UUIDs, timestamps, and
    parent message ids. State keys, metadata, ordering requirements, buffer
    paths, message types, and values remain exact oracle data.
-7. Add a protocol-version policy: support the selected ipywidgets 8 protocol,
+8. Add a protocol-version policy: support the selected ipywidgets 8 protocol,
    reject incompatible major versions clearly, and test allowed minor-version
    variation.
 
@@ -1134,6 +1170,9 @@ The primary ipywidgets/interact project is complete when:
   <https://github.com/jupyter-widgets/ipywidgets/blob/main/docs/source/embedding.md>
 - reusable CoCalc/Colab-derived manager:
   <https://github.com/sagemathinc/cocalc-widgets>
+- JupyterLite JavaScript kernel and its kernel-side ipywidgets-compatible
+  reference implementation:
+  <https://github.com/jupyterlite/javascript-kernel>
 - CoCalc integration:
   `/home/user/cocalc-ai/src/packages/frontend/jupyter/widgets/manager.ts`
 - Sage Cell embedding API and use cases:
