@@ -1,4 +1,20 @@
-# Native source cache
+# Vendored sources
+
+## Python widget runtime
+
+Sage.js ships the ordinary, unmodified Python runtime sources from
+`traitlets` 5.15.1 under `src/lib/traitlets`. The exact tag, Git revision,
+wheel digest, license, and protocol role are recorded in
+`upstream-tests/ipywidgets/manifest.json`; the shared BSD 3-Clause notice is
+in `licenses/JUPYTER-WIDGETS-BSD-3-CLAUSE.txt`. Tests and documentation from
+the upstream distribution remain in the conformance corpus rather than the
+production module tree.
+
+These sources are compiled by the normal Sage.js Python compiler. They are
+not translated forks and must stay byte-identical to the selected upstream
+release unless a divergence is explicitly documented.
+
+## Native source cache
 
 Sage.js source builds must be reproducible even when a small academic project
 moves, disappears, or temporarily serves an invalid TLS certificate. Native

@@ -1023,12 +1023,42 @@ def print_class(output):
         output.indent()
         output.print("if (typeof ")
         self.name.print(output)
-        output.print(".prototype." + classvar_name)
+        output.print(".prototype[")
+        output.print(JSON.stringify(classvar_name))
+        output.print("]")
         output.print(' !== "function") ')
-        self.name.print(output)
-        output.assign("." + classvar_name)
-        self.name.print(output)
-        output.print(".prototype." + classvar_name)
+        if classvar_name in ("length", "name", "caller", "arguments"):
+            # JavaScript functions reserve these properties.  Python class
+            # variables with the same names must still replace the host
+            # reflection value on the class object.  ``name`` and ``length``
+            # are non-writable but configurable; ``caller`` and ``arguments``
+            # are inherited poison-pill accessors in strict mode.
+            output.print("Object.defineProperty(")
+            self.name.print(output)
+            output.comma()
+            output.print(JSON.stringify(classvar_name))
+            output.comma()
+            output.print("{value: ")
+            self.name.print(output)
+            output.print(".prototype[")
+            output.print(JSON.stringify(classvar_name))
+            output.print("]")
+            output.print(", configurable: true, writable: true})")
+        elif classvar_name != "prototype":
+            self.name.print(output)
+            output.print("[")
+            output.print(JSON.stringify(classvar_name))
+            output.assign("]")
+            self.name.print(output)
+            output.print(".prototype[")
+            output.print(JSON.stringify(classvar_name))
+            output.print("]")
+        else:
+            # The JavaScript constructor's own non-configurable ``prototype``
+            # slot is needed for instance construction.  Descriptor lookup on
+            # Python classes still reaches the class namespace through the
+            # prototype object, so do not overwrite the host slot here.
+            output.print("void 0")
         output.end_statement()
     if classvar_names.length:
         output.indent()

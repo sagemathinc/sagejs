@@ -1049,6 +1049,53 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
   }
 });
 
+test("hygienic star imports stay inside the Python module", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import *\n",
+      { ...parserOptions, module_id: "star_consumer" },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\u03c1\u03c3_modules\["star_consumer"\]\[\u03c1\u03c3_star_name\] =/,
+    );
+    assert.doesNotMatch(javascript, /globalThis\[\u03c1\u03c3_star_name\]/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("reserved JavaScript function names remain Python class variables", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Descriptor:\n" +
+        "    name: str | None = None\n" +
+        "    length = 7\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Object\.defineProperty\([^,]+, "name", \{value:/,
+    );
+    assert.match(
+      javascript,
+      /Object\.defineProperty\([^,]+, "length", \{value:/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
 test("chained comparisons preserve Python dispatch and shared operands", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

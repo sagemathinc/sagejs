@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 781000,
+      "max_source_bytes": 785000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -664,6 +664,16 @@
       "prefixes": [
         "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
       ]
+    },
+    {
+      "id": "widget-runtime",
+      "layer": 2,
+      "startup": "lazy",
+      "max_source_bytes": 1200000,
+      "depends_on": ["core-runtime", "python-stdlib"],
+      "modules": ["traitlets"],
+      "files": [],
+      "prefixes": ["src/lib/traitlets/"]
     },
     {
       "id": "numeric-compat",
