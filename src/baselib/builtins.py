@@ -3440,21 +3440,14 @@ def _builtins_doc_search_match(
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), "function"):
         return False
-    # Class statements and ``type(name, bases, namespace)`` both install the
-    # marker on the constructor itself.  Looking on ``prototype`` is weaker:
-    # a dynamic subclass may inherit a non-writable ``__bases__`` descriptor,
-    # preventing Reflect.set from creating an own prototype property.
+    # Class statements and dynamic type calls mark the constructor itself.
     if runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         value,
         ["__bases__"],
     ):
         return True
-    # Native builtin constructors such as `list`, `set`, and `dict` do not
-    # all expose an own `__bases__` slot.  They do carry the authoritative
-    # Python metaclass marker, which distinguishes them from ordinary Python
-    # functions and prevents descriptor lookup from binding a class stored as
-    # another class's attribute.
+    # Native builtin constructors instead carry the Python metaclass marker.
     return _builtins_get_member(value, "__python_type__") is ρσ_type
 
 
@@ -3545,10 +3538,6 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
     if _builtins_is_python_class(item):
         text = _builtins_class_help(item, False)
     elif runtime.strict_equal(runtime.jstype(item), "function"):
-        # Host functions all have JavaScript's ``Function`` constructor.  It
-        # is also exposed as Python's ``function`` type, so inspecting the
-        # constructor before the callable itself misclassifies an ordinary
-        # function or bound method as a ``Function`` instance.
         name = _builtins_callable_name(item)
         bound = _builtins_has_member(item, "__self__")
         kind = "method" if bound else "function"
