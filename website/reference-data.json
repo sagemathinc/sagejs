@@ -16149,16 +16149,16 @@
         "name": "EllipticCurve",
         "qualified": "EllipticCurve",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 2574,
+        "line": 2584,
         "excerpt": {
-          "start_line": 2562,
+          "start_line": 2572,
           "text": "    model: Any = None,\n    check: bool = True,\n    algorithm: Any = None,\n) -> Any:\n    \"\"\"Construct a normalized explicit-kernel Vélu isogeny lazily.\"\"\"\n    advanced = _elliptic_advanced()\n    return runtime.reflect.construct(\n        runtime.reflect.get(advanced, \"EllipticCurveIsogeny\"),\n        [domain, kernel, codomain, degree, model, check, algorithm],\n    )\n\n\ndef EllipticCurve(\n    data: Any,\n    coefficients: Any = None,\n) -> EllipticCurveParent:\n    \"\"\"\n    Construct an elliptic curve in general Weierstrass form.\n\n    ```sage\n    sage: E = EllipticCurve([0,0,1,-1,0])\n    sage: E\n    Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n    sage: 10 * E([0,0])\n    (161/16 : -2065/64 : 1)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/elliptic_curves.py#d74ccc1fa7a76510-e3b0c44298fc1c14~2",
-          "line": 2582,
+          "line": 2592,
           "source": "E = EllipticCurve([0,0,1,-1,0])",
           "want": "",
           "tags": [],
@@ -16174,7 +16174,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#a9f51566bd6705f7-2a7afe0198baf94e",
-          "line": 2583,
+          "line": 2593,
           "source": "E",
           "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
           "tags": [],
@@ -16190,7 +16190,7 @@
         },
         {
           "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
-          "line": 2585,
+          "line": 2595,
           "source": "10 * E([0,0])",
           "want": "(161/16 : -2065/64 : 1)\n",
           "tags": [],
@@ -28694,16 +28694,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9132,
+        "line": 9362,
         "excerpt": {
-          "start_line": 9120,
+          "start_line": 9350,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 9143,
+          "line": 9373,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -28719,7 +28719,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 9144,
+          "line": 9374,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -28735,7 +28735,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 9146,
+          "line": 9376,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -33018,9 +33018,9 @@
         "name": "plot",
         "qualified": "Lseries_ell.plot",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 1188,
+        "line": 1198,
         "excerpt": {
-          "start_line": 1176,
+          "start_line": 1186,
           "text": "        finish = _lseries_complex_argument(complex_field, s1)\n        step = (finish - start) / count\n        points = [start + index * step for index in range(count)]\n        values = self.values(points, prec=precision, algorithm=algorithm)\n        return list(zip(points, values, strict=True))\n\n    def last_diagnostics(self) -> Any:\n        \"\"\"Return diagnostics for the most recent uncached numerical request.\"\"\"\n        if self._last_diagnostics is runtime.undefined:\n            return None\n        return self._last_diagnostics\n\n    def plot(self, *range_args: Any, **options: Any) -> Any:\n        \"\"\"Plot `L(E,s)` on the real axis using one packed numerical batch.\n\n        Unlike the general adaptive curve sampler, this specialization samples\n        an equally spaced grid and evaluates it through the same prepared\n        Mellin grid used by `complex_plot`.  The global `plot` frontend owns\n        the graphics semantics; calling `L.plot(...)` and `plot(L, ...)` is\n        therefore equivalent.\n        \"\"\"\n        plot_function = runtime.reflect.get(runtime.global_object, \"plot\")\n        return plot_function(self, *range_args, **options)\n\n    def _plot_real_batch("
         }
       },
@@ -33771,9 +33771,9 @@
         "name": "points",
         "qualified": "EllipticCurveParent.points",
         "path": "src/baselib/elliptic_curves.py",
-        "line": 1490,
+        "line": 1500,
         "excerpt": {
-          "start_line": 1478,
+          "start_line": 1488,
           "text": "        return self._ainvs[3]\n\n    def a6(self) -> Any:\n        return self._ainvs[4]\n\n    def lift_x(\n        self,\n        x_value: Any,\n        all: bool = False,\n    ) -> Any:\n        return _elliptic_advanced()._ec_lift_x(self, x_value, all)\n\n    def points(self) -> list[EllipticCurvePoint]:\n        if getattr(self._base, \"_kind\", None) not in [\"GF\", \"ZMOD\"]:\n            raise NotImplementedError(\"point enumeration requires a prime finite field\")\n        base = _untyped(self._base)\n        if not base.is_field():\n            raise ValueError(\"the base ring must be a field\")\n        order = runtime.integer_bigint(base.order())\n        if order > runtime.bigint(10000):\n            raise ValueError(\"the field is too large to enumerate points\")\n        answer = [self(0)]\n        for x_value in base:\n            for y_value in base:\n                if self._contains_coordinates(x_value, y_value):"
         }
       },
@@ -34673,16 +34673,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 10136,
+        "line": 10366,
         "excerpt": {
-          "start_line": 10124,
+          "start_line": 10354,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 10160,
+          "line": 10390,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -34698,7 +34698,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 10161,
+          "line": 10391,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -34714,7 +34714,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 10163,
+          "line": 10393,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -35621,16 +35621,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 9370,
+        "line": 9600,
         "excerpt": {
-          "start_line": 9358,
+          "start_line": 9588,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 9381,
+          "line": 9611,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -35646,7 +35646,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 9387,
+          "line": 9617,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],

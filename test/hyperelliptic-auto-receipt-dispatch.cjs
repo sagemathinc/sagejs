@@ -401,10 +401,10 @@ test("absent policy preserves development auto while stale release entries fail 
 
   const release = parseSageJson(runSage(selectorWitness));
   assert.equal(release.decision.allowed, false);
-  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.decision.reason, "policy-disabled");
   assert.equal(release.matched_decision.allowed, false);
-  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
-  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
+  assert.equal(release.matched_decision.reason, "policy-disabled");
+  assert.deepEqual(release.prepared, ["reference", "policy-disabled"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
   assert.equal(release.group_auto, "squarefree-order");
@@ -467,7 +467,7 @@ test("the release policy retains but disables the three stale Cantor envelopes",
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
-  assert.equal(candidate.enabled, true);
+  assert.equal(candidate.enabled, false);
   assert.equal(
     candidate.source_bundle.sha256,
     "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",

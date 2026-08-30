@@ -98,6 +98,7 @@
           "runtime/node-worker.mjs",
           "runtime/number-field-zeta.mjs",
           "runtime/numeric-backend.mjs",
+          "runtime/portable-exact.mjs",
           "runtime/portable-matrix.mjs",
           "runtime/portable-polynomial.mjs",
           "serialization.mjs",

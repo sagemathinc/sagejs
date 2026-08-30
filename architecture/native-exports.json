@@ -132,6 +132,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py"
       ],
@@ -2590,6 +2591,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py",
@@ -8872,6 +8874,7 @@
         "PARI/GP"
       ],
       "consumers": [
+        "packages/flint-wasm/test/factor.test.mjs",
         "src/baselib/modular.py"
       ],
       "declared_ffi": null
@@ -10339,6 +10342,8 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/portable-exact.mjs",
+        "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
         "src/baselib/builtins.py"
       ],

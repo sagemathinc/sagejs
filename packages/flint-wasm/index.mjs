@@ -4,6 +4,7 @@ import {
   generatedWasmManifest,
 } from "./dist/ffi-resource-backend.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
+import { createPortableExactBackend } from "./portable-exact.mjs";
 import { createPortableMatrixBackend } from "./portable-matrix.mjs";
 import {
   composeNumericRepresentationBackends,
@@ -69,6 +70,28 @@ export async function instantiateFlintFactor(
     recordCapability,
   });
   const polynomialBackend = createPortablePolynomialBackend();
+  const exactBackend = createPortableExactBackend({
+    recordCapability,
+    primePi(value) {
+      let input;
+      try {
+        input = BigInt(value);
+      } catch {
+        throw new TypeError("primePi input must be an integer");
+      }
+      if (input < 0n || input >= (1n << 63n)) {
+        throw new RangeError("primePi input must be between 0 and 2^63 - 1");
+      }
+      const result = BigInt.asUintN(
+        64,
+        instance.exports.sagejs_wasm_prime_pi(input),
+      );
+      if (result === (1n << 64n) - 1n) {
+        throw new Error("primePi failed to allocate its exact work tables");
+      }
+      return result;
+    },
+  });
   const multivariateBackend = createMultivariateBackend(instance, {
     recordCapability,
     enabled: multivariateResultant,
@@ -519,6 +542,7 @@ export async function instantiateFlintFactor(
     presentation:
       "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
     hecke: "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+    degeneracy: "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
     boundary: "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
     cuspidal: "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
   });
@@ -529,6 +553,14 @@ export async function instantiateFlintFactor(
       "receipt-backed-wasm-artifact",
       { executionTarget: "wasm-artifact", ingressBytes, egressBytes },
     );
+  }
+
+  function tracePortableFallback(capabilityId) {
+    recordCapability(capabilityId, "portable-fallback", {
+      executionTarget: "portable-python",
+      ingressBytes: 0,
+      egressBytes: 0,
+    });
   }
 
   function p1ListManinPresentationInfo(value) {
@@ -590,6 +622,35 @@ export async function instantiateFlintFactor(
     traceWasmP1(
       p1WasmCapabilities.hecke,
       8,
+      8 + result.rows * result.cols * 4,
+    );
+    return result;
+  }
+
+  function p1ListDegeneracyMatrix(sourceValue, targetValue, index) {
+    const source = p1Object(sourceValue);
+    const target = p1Object(targetValue);
+    index = wasmInt64(index, "weight-2 degeneracy index");
+    if (
+      index <= 0n || index > 0x7fffffffn ||
+      source.level % target.level !== 0 ||
+      BigInt(source.level / target.level) % index !== 0n
+    ) {
+      throw new RangeError(
+        "degeneracy index must divide the quotient of source and target levels",
+      );
+    }
+    if (instance.exports.sagejs_p1_degeneracy_matrix(
+      source.handle,
+      target.handle,
+      Number(index),
+    ) !== 1) {
+      throw new Error("unable to construct exact weight-2 degeneracy matrix");
+    }
+    const result = readIntegerMatrix("exact weight-2 degeneracy");
+    traceWasmP1(
+      p1WasmCapabilities.degeneracy,
+      12,
       8 + result.rows * result.cols * 4,
     );
     return result;
@@ -662,6 +723,7 @@ export async function instantiateFlintFactor(
     factor,
     isPrime,
     nextPrime,
+    ...exactBackend,
     modularSymbolsWeight2Info,
     p1List,
     p1ListLevel,
@@ -675,9 +737,19 @@ export async function instantiateFlintFactor(
     p1ListApplyT: (value, index) => p1Action(value, index, 3),
     p1ListManinPresentationInfo,
     p1ListHeckeMatrix,
+    p1ListDegeneracyMatrix,
     p1ListBoundaryData,
     p1ListCuspidalBasis,
     p1ListStarMatrix,
+    tracePortableAcbMatrix() {
+      tracePortableFallback("napi:@sagemath/sagejs-flint:acbMatrix");
+    },
+    tracePortableEcScalarMulPrime() {
+      tracePortableFallback("napi:@sagemath/sagejs-flint:ecScalarMulPrime");
+    },
+    tracePortableFqMatrix() {
+      tracePortableFallback("napi:@sagemath/sagejs-flint:fqMatrix");
+    },
     p1ListStarEigenspaceBasis,
     p1ListReducePath,
     ...polynomialBackend,
