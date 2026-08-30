@@ -1,0 +1,24 @@
+{
+  "schema": "sagejs.vendored-source/v1",
+  "name": "msolve",
+  "upstream": "https://github.com/algebraic-solving/msolve",
+  "version": "0.10.1-14-g1e3af01",
+  "commit": "1e3af01f3864f6c848814b02a450f384c108adea",
+  "retrieved": "2026-08-30",
+  "license": "GPL-2.0-or-later",
+  "licenseFile": "COPYING",
+  "sourceDirectories": [
+    "src/crt",
+    "src/fglm",
+    "src/msolve",
+    "src/neogb",
+    "src/upolmat",
+    "src/usolve"
+  ],
+  "upstreamCAndHeaderAggregateSha256": "04620da216c298ec9594db65c7e0050e3a63a9736bfccec5ddf23430098e3227",
+  "localPortabilityPatches": [
+    "Do not include POSIX getopt.h from the library-only Windows build.",
+    "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK."
+  ],
+  "scope": "Packed F4 over prime fields and modular Groebner bases over QQ; no CLI, root solver, or public msolve ABI is exposed."
+}
