@@ -17,12 +17,13 @@
   ],
   "upstreamCAndHeaderAggregateSha256": "04620da216c298ec9594db65c7e0050e3a63a9736bfccec5ddf23430098e3227",
   "vendoredAggregateAlgorithm": "sha256(path\\0length\\0bytes\\0) over sorted relative .c/.h paths",
-  "vendoredCAndHeaderAggregateSha256": "07650bb514d4a23887d829dc0533c57a8c5a8c2bad564128b87ccc2b6f16bee3",
+  "vendoredCAndHeaderAggregateSha256": "b6e083ff4838345d80e9e78753baaa3e7aa4b1579f7e4e36fff2fd1fccf96cb6",
   "localPortabilityPatches": [
     "Do not include POSIX getopt.h from the library-only Windows build.",
     "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK.",
     "Redirect upstream process exits through the Sage.js native/Wasm containment boundary.",
     "Namespace msolve's private prime helpers to avoid whole-addon symbol collisions.",
+    "Hash the committed LF-normalized forms of upstream headers so clean checkouts verify identically on every host.",
     "Make the scalar row-conversion degree-fall check defined for empty matrices and independent of OpenMP loop scheduling.",
     "Release modular Groebner metadata through its complete upstream destructor instead of leaking pair, hash, and conversion workspaces."
   ],
