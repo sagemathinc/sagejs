@@ -209,6 +209,7 @@ async function stagedFixture(root) {
     ["index.html", "<!doctype html><title>Sage.js</title>"],
     ["app.mjs", "export const answer = 42;\n"],
     ["codemirror-license.txt", "CodeMirror license\n"],
+    ["vendor/katex/fonts/KaTeX_AMS-Regular.woff2", Buffer.from([119, 79, 70, 50])],
     [`${assetDirectory}/runtime.wasm`, Buffer.from([0, 97, 115, 109, 1, 0, 0, 0])],
   ]);
   for (const [relative, value] of contents) {
@@ -263,6 +264,10 @@ test("Cloudflare release preparation produces authenticated Brotli and identity 
       (record) => record.logicalPath === "codemirror-license.txt",
     );
     assert.equal(license.contentType, "text/plain; charset=utf-8");
+    const font = deployment.records.find(
+      (record) => record.logicalPath === "vendor/katex/fonts/KaTeX_AMS-Regular.woff2",
+    );
+    assert.equal(font.contentType, "font/woff2");
     assert.deepEqual(
       await decompressBrotli(await readFile(path.join(output, index.br.file))),
       await readFile(path.join(output, index.identity.file)),
