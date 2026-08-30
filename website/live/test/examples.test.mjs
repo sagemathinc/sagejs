@@ -41,6 +41,16 @@ test("live graph examples cover plotting and automorphisms", () => {
   assert.match(automorphisms?.source ?? "", /g\.automorphism_group\(\)/);
 });
 
+test("Cape Man example composes and transforms 3D surfaces", () => {
+  const example = EXAMPLES.find((entry) => entry.id === "cape-man");
+  assert.ok(example, "missing Cape Man example");
+  assert.match(example.source, /S = sphere/);
+  assert.match(example.source, /P = plot3d/);
+  assert.match(example.source, /P\.scale\(\.2\)/);
+  assert.match(example.source, /S\.translate\(1, 0, 0\)/);
+  assert.match(example.source, /aspect_ratio=\[1, 1, 1\]/);
+});
+
 test("live NumPy example combines vectorization, FFT, and linear algebra", () => {
   const example = EXAMPLES.find(
     (entry) => entry.id === "numpy-signal-recovery",
