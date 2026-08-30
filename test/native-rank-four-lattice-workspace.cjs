@@ -272,12 +272,12 @@ test("Magma HNFs classify identically across JavaScript and native tiers", async
       assert.ok(unrepresentable.incidence.every((value) => value === 93n));
     }
   } finally {
-    rmSync(cacheRoot, {
-      recursive: true,
-      force: true,
-      maxRetries: process.platform === "win32" ? 10 : 0,
-      retryDelay: 100,
-    });
+    // Windows keeps a loaded native DLL locked until this test process exits.
+    // The CI runner owns and removes its temporary root after process teardown;
+    // attempting to unlink the loaded module here can only fail with EPERM.
+    if (process.platform !== "win32") {
+      rmSync(cacheRoot, { recursive: true, force: true });
+    }
   }
 });
 
