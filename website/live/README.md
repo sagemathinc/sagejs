@@ -81,7 +81,12 @@ loss deterministic.
 - CodeMirror 6 provides Sage/Python highlighting, four-space indentation,
   bracket completion, search, line numbers and undo without a remote CDN.
 - Selection, cell and all-source buttons are explicit and keyboard accessible.
-- Text streams while a run is active. Plotly displays stay outside the worker.
+- Text streams while a run is active. KaTeX mathematics and Plotly 2D/3D
+  displays render outside the worker; the typesetting control can expose the
+  plain representation instead.
+- Recorded cell input is the same CodeMirror Sage/Python view in read-only
+  mode, so copied results retain useful syntax highlighting without becoming
+  a second editable document.
 - Interrupt, reset, timeout and output overflow replace the worker and clear
   its resources.
 - Worksheets save source locally; results and kernel objects do not persist.

@@ -40,6 +40,24 @@ _MATRIX_RESOURCE_CACHE_LIMIT = 64
 _matrix_resource_cache = []
 
 
+def _latex_display(value: Any) -> Any:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "mime", "text/latex")
+    runtime.reflect.set(record, "data", "$\\displaystyle " + str(value) + "$")
+    return record
+
+
+def _latex_rational_text(value: str) -> str:
+    if "/" not in value:
+        return value
+    parts = value.split("/")
+    numerator = parts[0]
+    denominator = parts[1]
+    if numerator.startswith("-"):
+        return "-\\frac{" + numerator[1:] + "}{" + denominator + "}"
+    return "\\frac{" + numerator + "}{" + denominator + "}"
+
+
 def _touch_matrix_resource(storage: Any) -> None:
     """Retain one exact matrix handle in the bounded synchronous-job cache."""
     if _matrix_resource_cache and _matrix_resource_cache[-1] is storage:
@@ -8812,6 +8830,85 @@ class Matrix(sage.Element):
                 + " (use the '.str()' method to see the entries)"
             )
         return self.str()
+
+    def _latex_(self) -> str:
+        """Return Sage-compatible array LaTeX for this matrix."""
+        alignment = "r" * self.ncols()
+        rows = []
+        if (
+            self._has_fmpq_matrix_resource()
+            and len(self._row_subdivisions) == 0
+            and len(self._col_subdivisions) == 0
+        ):
+            # FLINT can serialize a whole exact matrix roughly as cheaply as
+            # one ordinary entry lookup.  Reuse that row-major text and only
+            # rewrite rational tokens into TeX instead of decoding 2n packed
+            # big integers in the presentation layer.
+            for line in self.str().split("\n"):
+                rows.append(
+                    " & ".join(
+                        [
+                            _latex_rational_text(value)
+                            for value in line[1:-1].split(" ")
+                            if value != ""
+                        ]
+                    )
+                )
+        elif self._has_packed_rational_storage():
+            # Decode the two canonical packed buffers once.  Calling `_entry`
+            # here would cross the exact-matrix boundary and allocate a
+            # Rational object for every displayed entry; that is particularly
+            # costly for the large matrices for which LaTeX output is already
+            # mostly string construction.
+            numerators = _integer_buffer_values(self._rational_numerators())
+            denominators = _integer_buffer_values(self._rational_denominators())
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    index = row * self.ncols() + column
+                    numerator = numerators[index]
+                    denominator = denominators[index]
+                    if denominator == 1:
+                        text = str(numerator)
+                    elif numerator < 0:
+                        text = (
+                            "-\\frac{" + str(-numerator) + "}{" + str(denominator) + "}"
+                        )
+                    else:
+                        text = (
+                            "\\frac{" + str(numerator) + "}{" + str(denominator) + "}"
+                        )
+                    entries.append(text)
+                rows.append(" & ".join(entries))
+        elif self._has_integer_storage():
+            # Integer matrices use the same one-shot packed decode.
+            values = _integer_buffer_values(self._integer_entries())
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    entries.append(str(values[row * self.ncols() + column]))
+                rows.append(" & ".join(entries))
+        else:
+            for row in range(self.nrows()):
+                entries = []
+                for column in range(self.ncols()):
+                    entry = self._entry(row, column)
+                    if hasattr(entry, "_latex_"):
+                        entries.append(str(entry._latex_()))
+                    else:
+                        entries.append(str(entry))
+                rows.append(" & ".join(entries))
+        body = " \\\\\n".join(rows)
+        return (
+            "\\left(\\begin{array}{"
+            + alignment
+            + "}\n"
+            + body
+            + "\n\\end{array}\\right)"
+        )
+
+    def _rich_repr_(self) -> Any:
+        return _latex_display(self._latex_())
 
     __str__ = __repr__
     toString = __repr__

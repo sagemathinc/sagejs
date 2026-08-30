@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   browserGraphicsExportCapabilities,
+  renderSageDisplay,
   sageDisplayToImageBytes,
+  stabilizePlotlyFigure,
 } from "../plotly-renderer.mjs";
 
 const display = {
@@ -14,6 +16,59 @@ const display = {
     config: { displaylogo: false },
   },
 };
+
+test("symmetric zero-centered meshes avoid Plotly GL3D normalization failure", () => {
+  const trace = {
+    type: "mesh3d",
+    x: [-1, 0, 1],
+    y: [-2, 0, 2],
+    z: [-3, 0, 3],
+    i: [0],
+    j: [1],
+    k: [2],
+  };
+  const figure = { data: [trace], layout: {} };
+  const stabilized = stabilizePlotlyFigure(figure);
+  assert.notEqual(stabilized, figure);
+  assert.notEqual(stabilized.data[0], trace);
+  for (const axis of ["x", "y", "z"]) {
+    assert.equal(stabilized.data[0][axis].includes(0), false);
+    const offset = stabilized.data[0][axis][1];
+    assert.ok(offset > 0 && offset < 1e-10);
+    assert.deepEqual(
+      stabilized.data[0][axis].map((value) => value - offset),
+      trace[axis],
+    );
+  }
+  assert.equal(figure.data[0], trace, "the mathematical display payload stays immutable");
+  const nonsymmetric = { data: [{ type: "mesh3d", x: [-1, 0, 2] }] };
+  assert.equal(stabilizePlotlyFigure(nonsymmetric), nonsymmetric);
+});
+
+test("LaTeX displays render locally through KaTeX", async () => {
+  const calls = [];
+  const classes = [];
+  const element = {
+    classList: { add: (name) => classes.push(name) },
+  };
+  const katex = {
+    render(source, target, options) {
+      calls.push({ source, target, options });
+    },
+  };
+  await renderSageDisplay(
+    element,
+    { mime: "text/latex", data: "$\\displaystyle \\frac{2}{3}$" },
+    null,
+    katex,
+  );
+  assert.deepEqual(calls, [{
+    source: "\\displaystyle \\frac{2}{3}",
+    target: element,
+    options: { displayMode: true, throwOnError: false, strict: "warn" },
+  }]);
+  assert.deepEqual(classes, ["sagejs-latex-display"]);
+});
 
 async function withFakeDocument(callback) {
   const previous = globalThis.document;

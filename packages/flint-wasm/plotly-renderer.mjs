@@ -1,6 +1,53 @@
 export const PLOTLY_MIME = "application/vnd.plotly.v1+json";
+export const LATEX_MIME = "text/latex";
 
 const BROWSER_IMAGE_FORMATS = ["png", "jpeg", "webp", "svg"];
+
+function stabilizeSymmetricMeshAxis(values) {
+  if (!Array.isArray(values) || values.length === 0 || !values.includes(0)) {
+    return values;
+  }
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  for (const value of values) {
+    if (!Number.isFinite(value)) return values;
+    minimum = Math.min(minimum, value);
+    maximum = Math.max(maximum, value);
+  }
+  const span = maximum - minimum;
+  if (
+    !(minimum < 0 && maximum > 0 && span > 0) ||
+    Math.abs(minimum + maximum) > span * 2 ** -48
+  ) {
+    return values;
+  }
+  // Plotly GL3D silently drops a mesh when an axis is exactly symmetric about
+  // zero and also contains zero-valued vertices. A translation this small is
+  // invisible at Plotly's displayed precision, but avoids its degenerate
+  // internal normalization without changing the shape of the mesh.
+  const offset = span * 2 ** -40;
+  return values.map((value) => value + offset);
+}
+
+export function stabilizePlotlyFigure(figure) {
+  if (!Array.isArray(figure?.data)) return figure;
+  let figureChanged = false;
+  const data = figure.data.map((trace) => {
+    if (trace?.type !== "mesh3d") return trace;
+    let traceChanged = false;
+    const answer = { ...trace };
+    for (const axis of ["x", "y", "z"]) {
+      const stabilized = stabilizeSymmetricMeshAxis(trace[axis]);
+      if (stabilized !== trace[axis]) {
+        answer[axis] = stabilized;
+        traceChanged = true;
+      }
+    }
+    if (traceChanged) figureChanged = true;
+    return traceChanged ? answer : trace;
+  });
+  return figureChanged ? { ...figure, data } : figure;
+}
 
 /**
  * Render a Sage.js rich display with an existing Plotly.js implementation.
@@ -12,7 +59,29 @@ export async function renderSageDisplay(
   element,
   display,
   plotly = globalThis.Plotly,
+  katex = globalThis.katex,
 ) {
+  if (display?.mime === LATEX_MIME) {
+    if (!katex || typeof katex.render !== "function") {
+      throw new Error("KaTeX is required to render this Sage.js display");
+    }
+    let source = String(display.data ?? "");
+    let displayMode = false;
+    if (source.startsWith("$$") && source.endsWith("$$")) {
+      source = source.slice(2, -2);
+      displayMode = true;
+    } else if (source.startsWith("$") && source.endsWith("$")) {
+      source = source.slice(1, -1);
+      displayMode = true;
+    }
+    katex.render(source, element, {
+      displayMode,
+      throwOnError: false,
+      strict: "warn",
+    });
+    element?.classList?.add("sagejs-latex-display");
+    return element;
+  }
   if (display?.mime !== PLOTLY_MIME) {
     throw new TypeError(
       `unsupported Sage.js display type ${JSON.stringify(display?.mime)}`,
@@ -21,7 +90,7 @@ export async function renderSageDisplay(
   if (!plotly || typeof plotly.react !== "function") {
     throw new Error("Plotly.js is required to render this Sage.js display");
   }
-  const figure = display.data;
+  const figure = stabilizePlotlyFigure(display.data);
   const style = element?.style;
   if (style) {
     const width = Number(figure?.layout?.width);

@@ -45,6 +45,11 @@ function deserializeError(serialized = {}) {
   return error;
 }
 
+function userErrorText(error) {
+  const name = error.name === "ReferenceError" ? "NameError" : error.name;
+  return `${name || "Error"}: ${error.message}`;
+}
+
 class SageSession extends EventEmitter {
   constructor({ mode = "sage", executable, kernelArguments = [] } = {}) {
     super();
@@ -143,7 +148,7 @@ class SageSession extends EventEmitter {
     } else {
       const error = deserializeError(message.error);
       pending.reject(error);
-      this.emit("stderr", `${error.stack || error.message}\n`, {
+      this.emit("stderr", `${userErrorText(error)}\n`, {
         evaluationId: message.id,
       });
     }

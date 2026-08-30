@@ -109,7 +109,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 425000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -347,9 +347,9 @@
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 115000,
       "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/symbolic.py"],
+      "files": ["src/baselib/symbolic.py", "src/baselib/piecewise.py"],
       "prefixes": []
     },
     {

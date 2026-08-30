@@ -24,6 +24,7 @@
     "src/baselib/modular.py",
     "src/baselib/number_fields.py",
     "src/baselib/padics.py",
+    "src/baselib/piecewise.py",
     "src/baselib/polynomial.py",
     "src/baselib/real_complex.py",
     "src/baselib/runtime_primitives.py",

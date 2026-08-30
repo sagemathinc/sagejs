@@ -36,6 +36,13 @@ _CONSTANT_NAMES = {
 _RELATION_HEADS = ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]
 
 
+def _latex_display(value: Any) -> Any:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "mime", "text/latex")
+    runtime.reflect.set(record, "data", "$\\displaystyle " + str(value) + "$")
+    return record
+
+
 def _backend() -> Any:
     backend = _backend_state["value"]
     if backend is None:
@@ -555,6 +562,12 @@ class Expression(sage.Element):
     __str__ = __repr__
     toString = __repr__
 
+    def _latex_(self) -> str:
+        return str(_call_backend("latex", [self._tree]))
+
+    def _rich_repr_(self) -> Any:
+        return _latex_display(self._latex_())
+
     def __call__(self, *values: Any, **substitutions: Any) -> Expression:
         """Substitute variables using Sage's expression-call shorthand."""
         variables = self.variables()
@@ -610,6 +623,14 @@ class Expression(sage.Element):
 
     diff = derivative
 
+    def expand(self) -> Expression:
+        """Expand products and integer powers in this expression."""
+        return Expression(_call_backend("expand", [self._tree]))
+
+    def factor(self) -> Expression:
+        """Factor this expression over its exact coefficient domain."""
+        return Expression(_call_backend("factor", [self._tree]))
+
     def integrate(
         self,
         variable: Any,
@@ -642,6 +663,17 @@ class Expression(sage.Element):
         )
 
     integral = integrate
+
+    def solve(self, *variables: Any, **options: Any) -> Any:
+        return solve(self, *variables, **options)
+
+    def taylor(
+        self,
+        variable: Any,
+        point: Any,
+        degree: int,
+    ) -> Expression:
+        return taylor(self, variable, point, degree)
 
     def limit(
         self,
@@ -1575,6 +1607,47 @@ def integral(
     upper: Any = runtime.undefined,
 ) -> Expression:
     return SR(expression).integrate(variable, lower, upper)
+
+
+# Sage exposes both spellings as the same function object.
+integrate = integral
+
+
+def expand(expression: Any) -> Expression:
+    """Expand products and integer powers in a symbolic expression."""
+    return SR(expression).expand()
+
+
+def taylor(
+    expression: Any,
+    variable: Any,
+    point: Any,
+    degree: int,
+) -> Expression:
+    """Return the Taylor polynomial through `degree` at `point`."""
+    degree = int(degree)
+    if degree < 0:
+        raise ValueError("Taylor degree must be nonnegative")
+    variable_expression = SR(variable)
+    point_expression = SR(point)
+    offset = variable_expression - point_expression
+    derivative_value = SR(expression)
+    power = SR(1)
+    factorial_value = 1
+    result = SR(0)
+    name = _symbol_name(variable)
+    substitution = runtime.object.create(None)
+    runtime.reflect.set(substitution, name, point_expression._tree)
+    for order in range(degree + 1):
+        coefficient = Expression(
+            _call_backend("substitute", [derivative_value._tree, substitution])
+        ).simplify()
+        result += coefficient * power / factorial_value
+        if order != degree:
+            derivative_value = derivative_value.derivative(variable)
+            power *= offset
+            factorial_value *= order + 1
+    return result.expand().simplify()
 
 
 _GAUSS_KRONROD_21_ABSCISSAE = [
@@ -2522,6 +2595,93 @@ def _solve_two_point_moment_system(
     return answers
 
 
+def _equation_residual(tree: Any) -> Any:
+    if runtime.array.isArray(tree) and len(tree) == 3 and tree[0] == "Equal":
+        return ["Subtract", tree[1], tree[2]]
+    return tree
+
+
+def _solve_two_equation_elimination(
+    trees: list[Any],
+    variables: Any,
+    solution_dict: bool,
+) -> Any:
+    """Solve a two-variable system when subtracting eliminates to a line."""
+    if len(trees) != 2 or len(variables) != 2:
+        return runtime.undefined
+    residuals = [_equation_residual(tree) for tree in trees]
+    difference = (
+        Expression(["Subtract", residuals[0], residuals[1]]).expand().simplify()
+    )
+    for eliminated_index in range(2):
+        remaining_index = 1 - eliminated_index
+        eliminated = variables[eliminated_index]
+        remaining = variables[remaining_index]
+        eliminated_name = _symbol_name(eliminated)
+        remaining_name = _symbol_name(remaining)
+        line_result = _call_backend(
+            "solve",
+            [["Equal", difference._tree, 0], [eliminated_name]],
+        )
+        if runtime.reflect.get(line_result, "kind") != "roots":
+            continue
+        line_values = runtime.reflect.get(line_result, "values")
+        if len(line_values) != 1:
+            continue
+        line_value = Expression(line_values[0]).simplify()
+        if eliminated_name in [_symbol_name(value) for value in line_value.variables()]:
+            continue
+        line_substitution = runtime.object.create(None)
+        runtime.reflect.set(line_substitution, eliminated_name, line_value._tree)
+        remaining_equation = _call_backend(
+            "substitute", [residuals[0], line_substitution]
+        )
+        remaining_result = _call_backend(
+            "solve",
+            [["Equal", remaining_equation, 0], [remaining_name]],
+        )
+        if runtime.reflect.get(remaining_result, "kind") != "roots":
+            continue
+        remaining_values = runtime.reflect.get(remaining_result, "values")
+        if len(remaining_values) == 0:
+            continue
+        answers = []
+        for remaining_tree in remaining_values:
+            remaining_value = Expression(remaining_tree).simplify()
+            remaining_substitution = runtime.object.create(None)
+            runtime.reflect.set(
+                remaining_substitution, remaining_name, remaining_value._tree
+            )
+            eliminated_value = Expression(
+                _call_backend("substitute", [line_value._tree, remaining_substitution])
+            ).simplify()
+            values = [runtime.undefined, runtime.undefined]
+            values[eliminated_index] = eliminated_value
+            values[remaining_index] = remaining_value
+            if solution_dict:
+                answers.append(
+                    {
+                        variables[0]: values[0],
+                        variables[1]: values[1],
+                    }
+                )
+            else:
+                answers.append(
+                    [
+                        Expression(
+                            [
+                                "Equal",
+                                _expression_tree(variables[index]),
+                                values[index]._tree,
+                            ]
+                        )
+                        for index in range(2)
+                    ]
+                )
+        return answers
+    return runtime.undefined
+
+
 def solve(
     equations: Any,
     *variables: Any,
@@ -2578,6 +2738,11 @@ def solve(
     moment_solutions = _solve_two_point_moment_system(trees, variables, solution_dict)
     if moment_solutions is not runtime.undefined:
         return moment_solutions
+    elimination_solutions = _solve_two_equation_elimination(
+        trees, variables, solution_dict
+    )
+    if elimination_solutions is not runtime.undefined:
+        return elimination_solutions
     result = _call_backend("solve", [expression_tree, names])
     kind = runtime.reflect.get(result, "kind")
     values = runtime.reflect.get(result, "values")
@@ -2619,7 +2784,7 @@ def solve(
         if solution_dict:
             return [mapping]
         return [relations]
-    return [SR(equation_values[0])]
+    return [SR(equation) for equation in equation_values]
 
 
 def find_root(

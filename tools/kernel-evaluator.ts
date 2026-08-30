@@ -130,7 +130,14 @@ function richDisplay(value: unknown): SageDisplayData | undefined {
     return undefined;
   }
   const method = Reflect.get(value, "_rich_repr_");
-  if (typeof method !== "function") return undefined;
+  if (typeof method !== "function") {
+    const latex = Reflect.get(value, "_latex_");
+    if (typeof latex !== "function") return undefined;
+    return {
+      mime: "text/latex",
+      data: `$\\displaystyle ${String(Reflect.apply(latex, value, []))}$`,
+    };
+  }
   const display = Reflect.apply(method, value, []);
   if (
     display === null ||

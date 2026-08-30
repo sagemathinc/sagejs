@@ -14,6 +14,13 @@ import sagejs.runtime as runtime
 # bootstrapped. The converged compiler lowers both names directly.
 
 
+def _latex_display(value: Any) -> Any:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "mime", "text/latex")
+    runtime.reflect.set(record, "data", "$\\displaystyle " + str(value) + "$")
+    return record
+
+
 def _exact_bigint_square_root(value: Any) -> Any:
     value = runtime.integer_bigint(value)
     if value < 0:
@@ -257,6 +264,19 @@ class Rational(runtime.element):
         if self._denominator == runtime.bigint(1):
             return str(self._numerator)
         return str(self._numerator) + "/" + str(self._denominator)
+
+    def _latex_(self) -> str:
+        if self._denominator == runtime.bigint(1):
+            return str(self._numerator)
+        numerator = self._numerator
+        sign = ""
+        if numerator < 0:
+            sign = "-"
+            numerator = -numerator
+        return sign + "\\frac{" + str(numerator) + "}{" + str(self._denominator) + "}"
+
+    def _rich_repr_(self) -> Any:
+        return _latex_display(self._latex_())
 
     __str__ = __repr__
     toString = __repr__

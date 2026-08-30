@@ -379,6 +379,12 @@ const pythonRuntimeFailure = runFailure(
 assert.match(pythonRuntimeFailure.stderr, /piped Python failure/);
 const sageRuntimeFailure = runFailure([], "1/0\n");
 assert.match(sageRuntimeFailure.stderr, /rational division by zero/);
+const teachingNameError = runFailure([], "not_a_function()\n");
+assert.equal(
+  teachingNameError.stderr.trim(),
+  "NameError: name 'not_a_function' is not defined",
+);
+assert.doesNotMatch(teachingNameError.stderr, /runtime-bootstrap|evalmachine|repl\.ts/);
 const pythonCompileFailure = runFailure(
   ["--python"],
   "if True print('invalid')\n",
@@ -594,7 +600,7 @@ assert.equal(
     [],
     [
       "sage: print(2^3)",
-      "sage: for n in [1..3]:",
+      "sagejs: for n in [1..3]:",
       "....:     print(n)",
       "....:",
       "",
