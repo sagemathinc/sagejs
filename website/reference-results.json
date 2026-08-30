@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 208,
+    "pass": 210,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -1190,6 +1190,16 @@
       "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
       "status": "pass",
       "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/modular.py#4020e2b4dad36803-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#b9196c3191913916-7483ab4724cc4388",
+      "status": "pass",
+      "actual": "q - q^3 + O(q^4)\n"
     },
     {
       "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
