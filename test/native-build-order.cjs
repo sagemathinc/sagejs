@@ -24,6 +24,8 @@ const {
   repositoryRoot,
 } = require("../packages/flint/scripts/build.cjs");
 const {
+  addonSourceHash,
+  defaultInputPaths,
   installedAddonStatus,
   manifestRelativePath,
   reconcileInstalledAddon,
@@ -208,6 +210,18 @@ test("tracked FLINT C changes reconcile only the direct addon", (t) => {
   );
   assert.notEqual(secondManifest.source_hash, firstManifest.source_hash);
   assert.equal(installedAddonStatus(options).status, "current");
+});
+
+test("vendored msolve changes invalidate the direct addon identity", (t) => {
+  assert.ok(defaultInputPaths.includes("vendor/msolve"));
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-msolve-addon-identity-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, "vendor", "msolve", "src", "msolve.c");
+  mkdirSync(dirname(source), { recursive: true });
+  writeFileSync(source, "/* msolve v1 */\n");
+  const first = addonSourceHash(directory, ["vendor/msolve"]);
+  writeFileSync(source, "/* msolve v2 */\n");
+  assert.notEqual(addonSourceHash(directory, ["vendor/msolve"]), first);
 });
 
 test("the FLINT composite executes its inspectable plan unchanged", () => {
