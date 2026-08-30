@@ -5,8 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 ExactModularForm: Any
+CertifiedFormulaSubspace: Any
+CertifiedModularForm: Any
+ExactNebentypus: Any
 LevelOneBasisCertificate: Any
 ModularSymbolsQExpansionCertificate: Any
+OldformMetadata: Any
+QExpansionAlgebraCertificate: Any
+QExpansionAlgorithmReceipt: Any
 NewOldDecompositionCertificate: Any
 NewformCertificate: Any
 NormalizedNewform: Any
@@ -31,7 +37,11 @@ theta_qexp: Any
 theta_qexp_certificate: Any
 delta_form: Any
 delta_qexp: Any
+certified_modular_form: Any
+character_eisenstein_series: Any
+formula_generated_subspace: Any
 level_one_basis_certificate: Any
+q_expansion_algorithm_receipt: Any
 victor_miller_basis: Any
 SparseHeckeOperator: Any
 SparseCharacteristicPolynomialCertificate: Any
@@ -111,6 +121,19 @@ _QEXP_EXPORTS = [
     "victor_miller_basis",
 ]
 
+_QEXP_ALGEBRA_EXPORTS = [
+    "CertifiedFormulaSubspace",
+    "CertifiedModularForm",
+    "ExactNebentypus",
+    "OldformMetadata",
+    "QExpansionAlgebraCertificate",
+    "QExpansionAlgorithmReceipt",
+    "certified_modular_form",
+    "character_eisenstein_series",
+    "formula_generated_subspace",
+    "q_expansion_algorithm_receipt",
+]
+
 _HALF_INTEGRAL_EXPORTS = [
     "UnaryThetaSeriesCertificate",
     "CohenEisensteinSeriesCertificate",
@@ -133,6 +156,9 @@ _HALF_INTEGRAL_EXPORTS = [
 ]
 
 __all__ = [
+    "CertifiedFormulaSubspace",
+    "CertifiedModularForm",
+    "ExactNebentypus",
     "ExactModularForm",
     "LevelOneBasisCertificate",
     "ModularSymbolsQExpansionCertificate",
@@ -140,9 +166,16 @@ __all__ = [
     "NewformCertificate",
     "NormalizedNewform",
     "OldModularFormsSubspace",
+    "OldformMetadata",
+    "QExpansionAlgebraCertificate",
+    "QExpansionAlgorithmReceipt",
+    "certified_modular_form",
+    "character_eisenstein_series",
     "delta_form",
     "delta_qexp",
     "level_one_basis_certificate",
+    "formula_generated_subspace",
+    "q_expansion_algorithm_receipt",
     "victor_miller_basis",
     "UnaryThetaSeriesCertificate",
     "CohenEisensteinSeriesCertificate",
@@ -246,6 +279,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import qexp
 
         return getattr(qexp, name)
+    if name in _QEXP_ALGEBRA_EXPORTS:
+        from . import qexp_algebra
+
+        return getattr(qexp_algebra, name)
     if name in _HALF_INTEGRAL_EXPORTS:
         from . import half_integral
 

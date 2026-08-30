@@ -153,6 +153,28 @@ $E_4,E_6,\Delta$ construction; its proof does not call modular symbols. The
 modular-symbol engine reconstructs coefficient functionals from Hecke
 operators; its proof does not call the formula basis.
 
+`algorithm="auto"` is an inspectable policy, not a hidden heuristic. At
+level $1$ it selects the complete Victor Miller construction. At higher level
+it first builds the deterministic bounded formula span through Sturm
+precision. It selects formulas exactly when that certificate proves the full
+ambient dimension; otherwise it retains the honest proper subspace in the
+receipt and selects modular symbols:
+
+```sage
+sage: S = CuspForms(1, 24)
+sage: R = S.q_expansion_algorithm_receipt("auto")
+sage: R.selected_algorithm(), R.receipt_id(), R.verify()
+('formulas', 'qexp-auto-level-one-victor-miller-v1', True)
+sage: CuspForms(37, 2).q_expansion_algorithm_receipt("auto").selected_algorithm()
+'modular_symbols'
+sage: A = CuspForms(2, 12).q_expansion_algorithm_receipt("auto", prec=8)
+sage: A.selected_algorithm(), A.formula_subspace().is_full_ambient()
+('formulas', True)
+sage: B = CuspForms(2, 24).q_expansion_algorithm_receipt("auto", prec=8)
+sage: B.selected_algorithm(), B.formula_subspace().is_proper_subspace()
+('modular_symbols', True)
+```
+
 If $T_n$ is the matrix of the $n$-th Hecke operator on a signed cuspidal
 modular-symbol space and $\lambda$ is a coordinate functional, then the
 associated coefficient row is
@@ -261,6 +283,89 @@ Imprimitive-character reduction and complete character-valued modular-form
 spaces remain later work; this API fails closed rather than assigning an
 incorrect conductor or level.
 
+## Certified exact $q$-expansion algebra
+
+`certified_modular_form(form, prec)` turns a recognized exact modular-form
+element into a finite expansion with replayable provenance. This is distinct
+from asserting metadata about an arbitrary power series. Products compute the
+common level and product nebentypus, add the weights, and retain the exact
+valuation-aware precision of power-series multiplication:
+
+```sage
+sage: D = certified_modular_form(ModularForms(1, 12).delta(), 10)
+sage: E4 = certified_modular_form(EisensteinForms(1, 4).gen(), 10)
+sage: F = D * E4
+sage: F.weight(), F.level(), F.character().is_trivial()
+(16, 1, True)
+sage: F.certificate().verify()
+True
+```
+
+The degeneracy map $V_d$ is first class:
+
+$$
+V_d f(q)=f(q^d).
+$$
+
+It certifies level $dN$, precision $dP$ from input precision $P$, and an
+`OldformMetadata` record:
+
+```sage
+sage: G = D.V(3)
+sage: G.level(), G.precision(), G.oldform_metadata().factor()
+(3, 30, 3)
+sage: G.q_expansion(10)
+q^3 - 24*q^6 + 252*q^9 + O(q^10)
+```
+
+The initial twist domain consists of primitive real Dirichlet characters of
+conductor at most $4096$. Coefficients are multiplied by exact values in
+$\{0,\pm1\}$, so no numerical embedding or coefficient-ring extension is
+needed. If $\psi$ has conductor $r$, the certified target uses the safe
+standard level bound
+
+$$
+\operatorname{lcm}\bigl(N,\operatorname{cond}(\chi)r,r^2\bigr)
+$$
+
+and nebentypus $\chi\psi^2$:
+
+```sage
+sage: psi = DirichletGroup(5).gen()^2
+sage: T = D.twist(psi)
+sage: T.level(), T.character().is_trivial(), T.certificate().verify()
+(25, True, True)
+```
+
+`character_eisenstein_series(chi, psi, k, prec, t=1)` supplies the same
+certified algebra interface for the general exact Eisenstein formula.
+
+### Honest formula-generated subspaces
+
+For a cusp space, `formula_subspace()` constructs level-one formula forms and
+all $V_d$ images with $d\mid N$, then proves their rank beyond the Sturm bound.
+The result is an explicit contained subspace. It claims to be the ambient
+space only when its certified rank equals the independently computed ambient
+dimension:
+
+```sage
+sage: F = CuspForms(2, 24).formula_subspace(prec=8)
+sage: F.dimension(), F.ambient_dimension(), F.is_proper_subspace(), F.verify()
+(4, 5, True, True)
+```
+
+Consequently, forcing `algorithm="formulas"` on this example raises an
+explicit proper-subspace error. The same call at level $2$, weight $12$
+returns the full two-dimensional formula basis. Callers may also pass their
+own certified candidate list to `formula_subspace(candidates, prec)`.
+
+The reproducible resident benchmark is
+`pnpm bench:modular:qexp-algebra`. It times product, $V_2$, and bounded
+quadratic-twist construction followed by the same eight-coefficient tail
+checksum in Sage.js and SageMath; the committed receipt records the exact
+machine, versions, medians, and ratios rather than treating startup as
+arithmetic time.
+
 ### Integral lattices
 
 `q_expansion_module(prec, R)` returns the coefficient module over $R=\QQ$ or
@@ -308,11 +413,12 @@ sage: C.sturm_bound(), C.is_sturm_certified(), C.verify()
 
 The implemented general modular-symbol route currently covers cuspidal
 $\Gamma_0(N)$ spaces with trivial character over $\QQ$ in weights at least
-$2$, including old/new spaces and normalized Galois packets. Complete
-character-valued cusp bases, imprimitive Eisenstein reduction, and general
-formula-generated higher-level bases remain future slices. They must retain
-the same distinction between an exact modular form and a finite-precision
-series view.
+$2$, including old/new spaces and normalized Galois packets. Formula spans at
+higher level are certified honestly but currently draw their automatic
+candidates only from level $1$ and degeneracy maps. Complete
+character-valued cusp bases, arbitrary-character twists, and richer formula
+registries remain future slices. They must retain the same distinction between
+an exact modular form and a finite-precision series view.
 
 ## References
 
