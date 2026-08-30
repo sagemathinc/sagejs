@@ -405,8 +405,25 @@ the pack reports 278 compiled source functions and no unsupported production
 functions.  A real Chromium Web Worker imported the ordinary Python module,
 proved `is_compiled(...)`, and reproduced every Magma HNF, class identifier,
 and incidence entry before the complete browser mathematics and plotting
-smoke passed.  Linux arm64, macOS arm64, and Windows x64 validation remains a
-required cross-platform CI receipt before C8 is called fully closed.
+smoke passed.
+
+The exact native-host closure is recorded by GitHub Actions run
+`33289518199` at commit `ee2e22120a748d039b7cd2fe7b535426d3c0d5a1`.
+The complete focused witness passed on Linux x64 in job `99199007674`, Linux
+arm64 in job `99199007616`, and macOS arm64 in job `99199007619`.  The arm64
+Linux job reached and passed that witness before a separate startup-budget
+gate failed.  Windows job `99199007627` reproduced every exact mathematical
+result, then correctly exposed that a loaded native DLL cannot be unlinked
+before its process exits.  Commit
+`ef2493bc2c4a2650cd859b61a725522585b3fb54` assigns that ephemeral cache to
+runner teardown on Windows instead of pretending retries can violate the OS
+module-lifetime rule.  The targeted final Windows receipt is GitHub Actions
+run `33291079618`, job `99203126634`, at commit
+`111caf6b5968cbd5212d9dadd8f51fb228aa16d5`.  The compiler and native-stack
+build passed from `03:55:36Z` to `04:20:28Z`, and the complete focused Windows
+x64 witness passed from `04:20:28Z` to `04:20:32Z`.  Together with the
+authenticated browser, Linux x64/arm64, and macOS arm64 receipts above, this
+fully closes C8.
 
 ## Acceptance
 
