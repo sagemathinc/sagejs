@@ -72,6 +72,58 @@ _COMBINAT_RANDOM_WORD = 1073741824
 _PARTITION_TABLE_MAX_CELLS = 1000000
 
 
+def _fibonacci_pair(index: int) -> tuple[Any, Any]:
+    """Return `(F_index, F_(index+1))` by exact fast doubling."""
+    if index == 0:
+        return runtime.bigint(0), runtime.bigint(1)
+    first, second = _fibonacci_pair(index // 2)
+    doubled = runtime.native_mul(
+        first,
+        runtime.native_sub(runtime.native_mul(runtime.bigint(2), second), first),
+    )
+    adjacent = runtime.native_add(
+        runtime.native_mul(first, first),
+        runtime.native_mul(second, second),
+    )
+    if index % 2 == 0:
+        return doubled, adjacent
+    return adjacent, runtime.native_add(doubled, adjacent)
+
+
+def fibonacci(index: Any, algorithm: Any = None) -> Any:
+    """Return the Fibonacci number `F_index` exactly."""
+    if algorithm not in (None, "pari"):
+        raise ValueError("unknown Fibonacci algorithm")
+    index = _partition_exact_integer(index, "index")
+    if index >= 0:
+        return runtime.normalize_integer(_fibonacci_pair(index)[0])
+    value = _fibonacci_pair(-index)[0]
+    if (-index) % 2 == 0:
+        value = -value
+    return runtime.normalize_integer(value)
+
+
+def fibonacci_sequence(
+    start: Any,
+    stop: Any = None,
+    algorithm: Any = None,
+) -> Iterator[Any]:
+    """Iterate over `F_start, ..., F_(stop-1)` in Sage's order."""
+    if stop is None:
+        stop = start
+        start = 0
+    start = _partition_exact_integer(start, "start")
+    stop = _partition_exact_integer(stop, "stop")
+    if start < 0 or stop < 0:
+        raise ValueError("Fibonacci sequence bounds must be nonnegative")
+    if algorithm not in (None, "pari"):
+        raise ValueError("unknown Fibonacci algorithm")
+    first, second = _fibonacci_pair(start)
+    for _index in range(start, stop):
+        yield runtime.normalize_integer(first)
+        first, second = second, runtime.native_add(first, second)
+
+
 class _CombinatPositiveInfinity:
     def __repr__(self) -> str:
         return "+Infinity"

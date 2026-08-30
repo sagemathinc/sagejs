@@ -300,7 +300,7 @@ async function main() {
             "desolve(diff(u,t)+u-1,[u,t])",
         )
       ).repr,
-      "(_C + e^t)*e^(-t)",
+      "_C/e^t + 1",
     );
     assert.equal(
       (
@@ -310,7 +310,7 @@ async function main() {
             "desolve(diff(y,x)+y-1,y,ics=[10,2])",
         )
       ).repr,
-      "(e^10 + e^x)*e^(-x)",
+      "e^10/e^x + 1",
     );
     assert.equal(
       (

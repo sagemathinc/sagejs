@@ -244,7 +244,12 @@ class Rational(runtime.element):
             return Rational(-self._numerator, self._denominator)
         return self
 
-    def __pow__(self, exponent: int) -> Rational:
+    def __pow__(self, exponent: Any) -> Any:
+        if not runtime.is_exact_integer(exponent):
+            symbolic_ring = runtime.reflect.get(runtime.global_object, "SR")
+            if runtime.jstype(symbolic_ring) not in ("object", "function"):
+                raise TypeError("rational exponent must be an exact integer")
+            return symbolic_ring(self) ** exponent
         exponent = runtime.integer_bigint(exponent)
         if exponent == runtime.bigint(0):
             return Rational(1, 1)

@@ -1019,6 +1019,10 @@ def _is_complex_base(value: object) -> bool:
     ]
 
 
+def _is_symbolic_base(value: object) -> bool:
+    return getattr(value, "_kind", None) == "SR"
+
+
 def _is_base_ring(value: object) -> bool:
     return (
         value is sage.ZZ
@@ -1029,6 +1033,7 @@ def _is_base_ring(value: object) -> bool:
         or _is_extension_field_base(value)
         or _is_algebraic_base(value)
         or _is_approximate_base(value)
+        or _is_symbolic_base(value)
     )
 
 
@@ -1049,6 +1054,8 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, "_parent", None)
+        if _is_symbolic_base(parent):
+            return runtime.reflect.get(value, "_parent")
         if _is_algebraic_base(parent):
             return runtime.reflect.get(value, "_parent")
         if _is_approximate_base(parent):
@@ -1266,6 +1273,10 @@ def _common_base(
 ) -> sage.Parent:
     if left is right:
         return left
+    if _is_symbolic_base(left):
+        return left
+    if _is_symbolic_base(right):
+        return right
     if _is_algebraic_base(left) or _is_algebraic_base(right):
         if left is sage.ZZ or left is sage.QQ:
             return right
@@ -2343,6 +2354,8 @@ class Vector(sage.Element):
             return self
         if base is coordinate_ring:
             return VectorSpace(base, len(self))(self.list())
+        if _is_symbolic_base(base):
+            return VectorSpace(base, len(self))(_coerce_values(base, self.list()))
         if coordinate_ring is sage.ZZ and (
             base is sage.QQ
             or _is_modular_base(base)
@@ -2424,6 +2437,12 @@ class Vector(sage.Element):
             return total
         if isinstance(other, Matrix):
             return other._vector_product(self, "left")
+        if _is_symbolic_base(self._coordinate_ring()):
+            scalar = self._coordinate_ring()(other)
+            return self._from_coordinate_values(
+                [value * scalar for value in self],
+                self._preserve_parent(),
+            )
         if _is_extension_field_base(self.base_ring()) and not self._preserve_parent():
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
@@ -2477,6 +2496,23 @@ class Vector(sage.Element):
 
     def dot_product(self, other: Vector) -> Any:
         return self * other
+
+    def cross_product(self, other: Vector) -> Vector:
+        """Return the three-dimensional cross product."""
+        if not isinstance(other, Vector):
+            raise TypeError("cross product requires another vector")
+        if len(self) != 3 or len(other) != 3:
+            raise TypeError(
+                "cross product is currently defined for vectors of length three"
+            )
+        left, right = self._pair(other)
+        return VectorSpace(left._coordinate_ring(), 3)(
+            [
+                left[1] * right[2] - left[2] * right[1],
+                left[2] * right[0] - left[0] * right[2],
+                left[0] * right[1] - left[1] * right[0],
+            ]
+        )
 
     def column(self) -> Matrix:
         return matrix(self._coordinate_ring(), len(self), 1, self.list())
@@ -9056,9 +9092,10 @@ def VectorSpace(
         and not _is_extension_field_base(base)
         and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
+        and not _is_symbolic_base(base)
     ):
         raise TypeError(
-            "vectors currently require ZZ, QQ, AA, QQbar, GF, Zmod, "
+            "vectors currently require ZZ, QQ, SR, AA, QQbar, GF, Zmod, "
             "or a real/complex field"
         )
     degree = int(degree)
@@ -9143,6 +9180,12 @@ def matrix(*args: Any) -> Matrix:
             entries = source if type(source) is list else list(source)
             if rows == 0:
                 cols = 0
+            elif (
+                len(entries) == rows
+                and len(entries) > 0
+                and isinstance(entries[0], (list, tuple, Vector))
+            ):
+                cols = len(entries[0])
             elif len(entries) % rows != 0:
                 raise ValueError("matrix entry count is not divisible by row count")
             else:
@@ -9167,11 +9210,137 @@ def matrix(*args: Any) -> Matrix:
         raise TypeError("unsupported matrix() constructor signature")
     if rows < 0 or cols < 0:
         raise ValueError("matrix dimensions must be nonnegative")
+    if (
+        len(entries) == rows
+        and len(entries) > 0
+        and isinstance(entries[0], (list, tuple, Vector))
+    ):
+        nested_entries = []
+        for row in entries:
+            if not isinstance(row, (list, tuple, Vector)):
+                raise TypeError("matrix rows must be lists, tuples, or vectors")
+            row_entries = list(row)
+            if len(row_entries) != cols:
+                raise ValueError("matrix row length does not match its dimensions")
+            nested_entries.extend(row_entries)
+        entries = nested_entries
     if len(entries) != rows * cols:
         raise ValueError("matrix entry count does not match its dimensions")
     if base is None:
         base = _base_for_values(entries)
     return MatrixSpace(base, rows, cols)(entries)
+
+
+def column_matrix(*args: Any) -> Matrix:
+    """Construct a matrix using the supplied rows as columns."""
+    return matrix(*args).transpose()
+
+
+def block_matrix(*args: Any, **options: Any) -> Matrix:
+    """Construct a dense matrix by concatenating a rectangular block array."""
+    subdivide_value = runtime.reflect.get(options, "subdivide")
+    subdivide = True if subdivide_value is runtime.undefined else bool(subdivide_value)
+    runtime.reflect.deleteProperty(options, "subdivide")
+    sparse_value = runtime.reflect.get(options, "sparse")
+    sparse = False if sparse_value is runtime.undefined else bool(sparse_value)
+    runtime.reflect.deleteProperty(options, "sparse")
+    if len(runtime.object.keys(options)):
+        raise TypeError("unsupported block_matrix() option")
+    if sparse:
+        raise NotImplementedError("sparse block matrices are not available")
+    values = list(args)
+    base = None
+    if values and _is_base_ring(values[0]):
+        base = _canonical_base(values.pop(0))
+    if len(values) == 1:
+        rows_of_blocks = [list(row) for row in values[0]]
+    elif len(values) == 3:
+        block_rows = int(values[0])
+        block_columns = int(values[1])
+        flat = list(values[2])
+        if len(flat) != block_rows * block_columns:
+            raise ValueError("block count does not match the block dimensions")
+        rows_of_blocks = []
+        for row in range(block_rows):
+            start = row * block_columns
+            rows_of_blocks.append(flat[start : start + block_columns])
+    else:
+        raise TypeError("unsupported block_matrix() constructor signature")
+    if len(rows_of_blocks) == 0:
+        return matrix(base, []) if base is not None else matrix([])
+    block_columns = len(rows_of_blocks[0])
+    if block_columns == 0:
+        return matrix(base, 0, 0) if base is not None else matrix(0, 0)
+    for row in rows_of_blocks:
+        if len(row) != block_columns:
+            raise ValueError("block rows must have the same length")
+
+    row_heights = [0 for _row in rows_of_blocks]
+    column_widths = [0 for _column in range(block_columns)]
+    for row_index in range(len(rows_of_blocks)):
+        for column_index in range(block_columns):
+            block = rows_of_blocks[row_index][column_index]
+            if isinstance(block, Matrix):
+                height = block.nrows()
+                width = block.ncols()
+                if row_heights[row_index] not in (0, height):
+                    raise ValueError("incompatible block-row heights")
+                if column_widths[column_index] not in (0, width):
+                    raise ValueError("incompatible block-column widths")
+                row_heights[row_index] = height
+                column_widths[column_index] = width
+                if base is None:
+                    base = block.base_ring()
+                else:
+                    base = _common_base(base, block.base_ring())
+    for index in range(len(row_heights)):
+        if row_heights[index] == 0:
+            raise ValueError("cannot infer the height of an all-scalar block row")
+    for index in range(len(column_widths)):
+        if column_widths[index] == 0:
+            raise ValueError("cannot infer the width of an all-scalar block column")
+    if base is None:
+        base = sage.ZZ
+
+    entries = []
+    for block_row in range(len(rows_of_blocks)):
+        for local_row in range(row_heights[block_row]):
+            for block_column in range(block_columns):
+                block = rows_of_blocks[block_row][block_column]
+                width = column_widths[block_column]
+                height = row_heights[block_row]
+                if isinstance(block, Matrix):
+                    changed = block.change_ring(base)
+                    for local_column in range(width):
+                        entries.append(changed[local_row, local_column])
+                else:
+                    scalar = base(block)
+                    if scalar != 0 and height != width:
+                        raise ValueError("a nonzero scalar block must be square")
+                    for local_column in range(width):
+                        entries.append(scalar if local_row == local_column else base(0))
+    answer = matrix(base, sum(row_heights), sum(column_widths), entries)
+    if subdivide:
+        row_cuts = []
+        column_cuts = []
+        total = 0
+        for height in row_heights[:-1]:
+            total += height
+            row_cuts.append(total)
+        total = 0
+        for width in column_widths[:-1]:
+            total += width
+            column_cuts.append(total)
+        answer.subdivide(row_cuts, column_cuts)
+    return answer
+
+
+def det(value: Any) -> Any:
+    """Return the determinant of a matrix-like value."""
+    determinant = getattr(value, "det", None)
+    if not callable(determinant):
+        raise TypeError("det() requires an object with a determinant")
+    return determinant()
 
 
 def vector(*args: Any) -> Vector:
