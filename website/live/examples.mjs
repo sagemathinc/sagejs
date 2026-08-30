@@ -1,5 +1,26 @@
 export const EXAMPLES = Object.freeze([
   {
+    id: "interactive-symbolic-plot",
+    title: "Interactive symbolic plot",
+    description: "Move a standard ipywidgets slider to update symbolic mathematics and a plot, entirely in your browser.",
+    source: `import ipywidgets as widgets
+from IPython.display import display, clear_output
+
+power = widgets.IntSlider(value=2, min=1, max=8, description='power')
+output = widgets.Output()
+
+def update(change=None):
+    with output:
+        clear_output(wait=True)
+        f = x^power.value
+        display(f.derivative(x))
+        display(plot(f, (x, -2, 2), ymin=-4, ymax=4))
+
+power.observe(update, names='value')
+display(widgets.VBox([power, output]))
+update()`,
+  },
+  {
     id: "number-field",
     title: "Number field arithmetic",
     description: "A maximal order, prime decomposition, and the first Dedekind zeta coefficients.",

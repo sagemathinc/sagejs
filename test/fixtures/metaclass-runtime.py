@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from inspect import getfullargspec, signature
+from inspect import getcallargs, getfullargspec, signature
 
 
 class AllocatingMeta(type):
@@ -43,6 +43,23 @@ builtin_class_attributes = BuiltinClassAttributes()
 assert builtin_class_attributes.list_class is list
 assert builtin_class_attributes.set_class is set
 assert builtin_class_attributes.dict_class is dict
+
+
+for builtin_value, builtin_type, builtin_name in (
+    (None, type(None), "NoneType"),
+    (False, bool, "bool"),
+    (1, int, "int"),
+    (1.5, float, "float"),
+    ("text", str, "str"),
+    ([], list, "list"),
+    ((), tuple, "tuple"),
+    ({}, dict, "dict"),
+    (set(), set, "set"),
+):
+    assert builtin_value.__class__ is builtin_type
+    assert builtin_type.__name__ == builtin_name
+    assert builtin_type.__qualname__ == builtin_name
+    assert builtin_type.__module__ == "builtins"
 
 
 class SetupBaseMeta(type):
@@ -190,6 +207,26 @@ class IntrospectionMethod:
 introspection_method = IntrospectionMethod()
 assert list(signature(introspection_method.callback).parameters) == ["change"]
 assert getfullargspec(introspection_method.callback).args == ["self", "change"]
+
+
+def call_shape(a, b=2, *items, flag=3, **options):
+    return a, b, items, flag, options
+
+
+assert getcallargs(call_shape, 1, 4, 5, flag=7, extra=9) == {
+    "a": 1,
+    "b": 4,
+    "items": (5,),
+    "flag": 7,
+    "options": {"extra": 9},
+}
+
+try:
+    getcallargs(call_shape)
+except TypeError as error:
+    assert "missing 1 required positional argument: 'a'" in str(error)
+else:
+    raise AssertionError("getcallargs accepted a missing required argument")
 
 
 class CustomAllocatorOnly:

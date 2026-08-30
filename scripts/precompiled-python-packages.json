@@ -1,11 +1,15 @@
 {
   "imports": [
     "conway_polynomials",
+    "ipywidgets",
+    "glob",
+    "linecache",
     "mpmath",
     "sage.databases.conway",
     "sagejs_elliptic_advanced",
     "sagejs_elliptic_descent",
     "sagejs.compiler",
+    "sagejs.widgets.comm_backend",
     "sagejs.elliptic_curves.analytic_rank",
     "sagejs.elliptic_curves.lseries",
     "sagejs.hyperelliptic_curves",
@@ -62,7 +66,8 @@
     "sagejs.number_fields.units",
     "sagejs.number_fields.zeta_coefficient_kernel",
     "sagejs.number_fields.zeta_coefficients",
-    "traceback"
+    "traceback",
+    "unicodedata"
   ],
   "dynamicWarmups": [
     "from mpmath import mp\nmp.dps = 30\nmp.hyp2f1(1, 2, 3, mp.mpf('0.25'))"

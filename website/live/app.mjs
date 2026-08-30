@@ -1,4 +1,8 @@
-import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
+import {
+  loadSageRuntime,
+  loadWidgetRuntime,
+  requestCredentials,
+} from "./runtime-api.mjs";
 import {
   createReadOnlySource,
   createSourceEditor,
@@ -19,6 +23,7 @@ import {
   newWorkspace,
   WorkspaceStore,
 } from "./session-store.mjs";
+import { createWidgetHost } from "./widget-manager.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const fetchCredentials = requestCredentials(location.search);
@@ -86,6 +91,7 @@ let sessionPromise;
 let createSage;
 let downloadSageDisplay;
 let renderSageDisplay;
+let widgetHost;
 let SageSessionInterruptedError;
 let SageSessionTimeoutError;
 let running = false;
@@ -133,7 +139,13 @@ function createSession() {
   promise.then(
     (value) => {
       session = value;
+      widgetHost = createWidgetHost({
+        session: value,
+        loadManager: loadWidgetRuntime,
+        renderOutput: renderWidgetOutput,
+      });
       value.on("error", (error) => {
+        widgetHost?.reset();
         setStatus("loading", "Recovering kernel");
         setLive(`The kernel worker failed and is being replaced: ${error.message}`);
         void value.reset().then(
@@ -262,6 +274,117 @@ function memoryDiagnostic() {
   return `JS heap: ${(memory.usedJSHeapSize / 2 ** 20).toFixed(1)} MiB`;
 }
 
+async function renderMimeBundle(destination, data, metadata = {}) {
+  if (!data || typeof data !== "object") return;
+  if (widgetHost?.isWidgetDisplay(data)) {
+    destination.classList.add("widget-output");
+    await widgetHost.render(data, destination);
+    return;
+  }
+  for (const mime of ["application/vnd.plotly.v1+json", "text/latex"]) {
+    if (!(mime in data)) continue;
+    if (mime === "text/latex" && !elements.typesetMath.checked) break;
+    assertDisplayWithinLimit({ mime, data: data[mime] });
+    await renderSageDisplay(destination, { mime, data: data[mime], metadata });
+    return;
+  }
+  for (const mime of ["image/png", "image/jpeg", "image/webp"]) {
+    if (!(mime in data)) continue;
+    const image = document.createElement("img");
+    image.alt = String(metadata?.[mime]?.alt ?? "Generated output");
+    image.src = "data:" + mime + ";base64," + String(data[mime]);
+    destination.append(image);
+    return;
+  }
+  const text = "text/plain" in data
+    ? data["text/plain"]
+    : "text/latex" in data
+      ? data["text/latex"]
+      : "text/html" in data
+        ? data["text/html"]
+        : JSON.stringify(data);
+  const pre = document.createElement("pre");
+  pre.className = "result-output";
+  pre.textContent = String(text ?? "");
+  destination.append(pre);
+}
+
+async function renderWidgetOutput(outputItem, destination) {
+  if (!outputItem || typeof outputItem !== "object") return;
+  const outputType = outputItem.output_type;
+  if (outputType === "stream") {
+    const pre = document.createElement("pre");
+    pre.className = "result-output";
+    pre.textContent = String(outputItem.text ?? "");
+    destination.append(pre);
+    return;
+  }
+  if (outputType === "error") {
+    const pre = document.createElement("pre");
+    pre.className = "result-output widget-error";
+    pre.textContent = Array.isArray(outputItem.traceback)
+      ? outputItem.traceback.join("\n")
+      : (outputItem.ename ?? "Error") + ": " + (outputItem.evalue ?? "");
+    destination.append(pre);
+    return;
+  }
+  if (outputType === "display_data" || outputType === "execute_result") {
+    await renderMimeBundle(destination, outputItem.data, outputItem.metadata);
+  }
+}
+
+function createEventRenderer(article, pre) {
+  const displays = new Map();
+  const pending = [];
+  let clearOnNext = false;
+  let count = 0;
+  const clear = () => {
+    for (const element of article.querySelectorAll(".event-output")) element.remove();
+    displays.clear();
+  };
+  return {
+    get count() { return count; },
+    event(event) {
+      if (event?.schema !== "sagejs.output-event/v1") return;
+      if (widgetHost?.captureOutput(event)) return;
+      if (event.type === "stream") return;
+      if (event.type === "clear_output") {
+        if (event.wait) clearOnNext = true;
+        else clear();
+        return;
+      }
+      if (clearOnNext) {
+        clear();
+        clearOnNext = false;
+      }
+      if (event.type === "error") {
+        const text = Array.isArray(event.traceback)
+          ? event.traceback.join("\n")
+          : (event.name ?? "Error") + ": " + (event.message ?? "");
+        pre.textContent =
+          (pre.textContent === "Starting…" ? "" : pre.textContent) + text;
+        count += 1;
+        return;
+      }
+      if (event.type !== "display_data" && event.type !== "update_display_data") return;
+      let destination = event.displayId ? displays.get(event.displayId) : undefined;
+      if (!destination) {
+        destination = document.createElement("div");
+        destination.className = "event-output";
+        article.append(destination);
+        if (event.displayId) displays.set(event.displayId, destination);
+      } else {
+        destination.replaceChildren();
+      }
+      count += 1;
+      pending.push(renderMimeBundle(destination, event.data, event.metadata));
+    },
+    async settled() {
+      await Promise.all(pending);
+    },
+  };
+}
+
 async function run(mode) {
   if (running) return;
   const source = executionSource(elements.source.value, {
@@ -285,6 +408,7 @@ async function run(mode) {
   const plot = document.createElement("div");
   plot.className = "plot";
   article.append(plot);
+  const eventRenderer = createEventRenderer(article, pre);
   const start = performance.now();
   let outputLimitRestarted = false;
   running = true;
@@ -305,12 +429,19 @@ async function run(mode) {
         }
         return appended;
       },
+      onEvent(event) {
+        eventRenderer.event(event);
+      },
     });
+    await eventRenderer.settled();
     const typesetLatex = result.display?.mime === "text/latex" && elements.typesetMath.checked;
     if (result.repr && !typesetLatex) {
       collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
     }
-    pre.textContent = collector.text || "Completed without textual output.";
+    pre.textContent = collector.text || (eventRenderer.count
+      ? ""
+      : "Completed without textual output.");
+    if (!pre.textContent) pre.remove();
     if (result.display && (result.display.mime !== "text/latex" || typesetLatex)) {
       const plotBytes = assertDisplayWithinLimit(result.display);
       await renderSageDisplay(plot, result.display);
@@ -500,10 +631,12 @@ $("#interrupt").addEventListener("click", async () => {
   if (!running) return;
   runCounter += 1;
   setStatus("loading", "Restarting after interrupt");
+  widgetHost?.reset();
   await session.interrupt();
 });
 $("#reset").addEventListener("click", async () => {
   setStatus("loading", "Resetting kernel");
+  widgetHost?.reset();
   await session.reset();
   setStatus("ready", "Ready — clean session");
   setLive("Kernel reset. All variables were cleared.");

@@ -233,13 +233,17 @@ function commJsonValue(value: unknown): Record<string, unknown> {
 function commBuffer(value: unknown): Uint8Array {
   let candidate = value;
   if (candidate && typeof candidate === "object") {
-    const values = Reflect.get(candidate, "_values");
-    if (values !== undefined) candidate = values;
-    else {
-      const bytesValues = Reflect.get(candidate, "_bytes_values");
-      if (typeof bytesValues === "function") {
-        candidate = Reflect.apply(bytesValues, candidate, []);
-      }
+    const bytesValues = Reflect.get(candidate, "_bytes_values");
+    if (typeof bytesValues === "function") {
+      candidate = Reflect.apply(bytesValues, candidate, []);
+    } else {
+      const values = Reflect.get(candidate, "_values");
+      candidate =
+        typeof values === "function"
+          ? Reflect.apply(values, candidate, [])
+          : values === undefined
+            ? candidate
+            : values;
     }
   }
   let result: Uint8Array;

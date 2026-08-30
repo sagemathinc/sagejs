@@ -4820,18 +4820,10 @@ def ρσ_getattr_internal(
 
         return native_next
     if runtime.strict_equal(name, "__class__"):
-        if _builtins_is_python_class(value):
-            return ρσ_type
-        if _builtins_get_member(
-            value, "__sagejs_callable_instance__"
-        ) is True and runtime.strict_equal(
-            runtime.jstype(_builtins_get_member(value, "__python_type__")),
-            "function",
-        ):
-            return _builtins_get_member(value, "__python_type__")
-        if runtime.strict_equal(runtime.jstype(value), "function"):
-            return ρσ_function_type
-        return _builtins_get_member(value, "constructor")
+        # `obj.__class__` and `type(obj)` are the same observable Python
+        # operation.  In particular, JavaScript primitives and our native
+        # list/tuple representations must not leak their host constructors.
+        return ρσ_type(value)
     if runtime.strict_equal(name, "__get__") and runtime.strict_equal(
         runtime.jstype(value), "function"
     ):
@@ -8722,6 +8714,18 @@ runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
 runtime.set_class_repr(runtime.function_class, "<class 'function'>")
+
+
+def _builtins_set_type_metadata(cls: Any, name: _Str) -> None:
+    runtime.reflect.set(cls, "__name__", name)
+    runtime.reflect.set(cls, "__qualname__", name)
+    runtime.reflect.set(cls, "__module__", "builtins")
+
+
+_builtins_set_type_metadata(ρσ_int, "int")
+_builtins_set_type_metadata(ρσ_bool, "bool")
+_builtins_set_type_metadata(ρσ_float, "float")
+_builtins_set_type_metadata(runtime.function_class, "function")
 for builtin_numeric_type in (ρσ_int, ρσ_bool, ρσ_float, ρσ_type):
     runtime.object.defineProperty(
         builtin_numeric_type,
@@ -8732,6 +8736,8 @@ runtime.reflect.set(runtime.function_class, "__python_type__", ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(ρσ_property, "<class 'property'>")
 runtime.set_class_repr(SageProperty, "<class 'property'>")
+_builtins_set_type_metadata(ρσ_tuple, "tuple")
+_builtins_set_type_metadata(ρσ_property, "property")
 for builtin_factory_type in (ρσ_tuple, ρσ_property):
     # These Python-callable factories implement builtin classes.  Compiled
     # baselib functions receive lazy function metadata, so replace that marker

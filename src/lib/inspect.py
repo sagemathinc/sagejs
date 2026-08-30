@@ -394,6 +394,134 @@ def getfullargspec(callable):
     )
 
 
+def _missing_arguments(function_name, argument_names, positional, values):
+    names = [repr(name) for name in argument_names if name not in values]
+    missing = len(names)
+    if missing == 1:
+        rendered = names[0]
+    elif missing == 2:
+        rendered = "{} and {}".format(*names)
+    else:
+        tail = ", {} and {}".format(*names[-2:])
+        del names[-2:]
+        rendered = ", ".join(names) + tail
+    raise TypeError(
+        "%s() missing %i required %s argument%s: %s"
+        % (
+            function_name,
+            missing,
+            "positional" if positional else "keyword-only",
+            "" if missing == 1 else "s",
+            rendered,
+        )
+    )
+
+
+def _too_many(
+    function_name,
+    args,
+    keyword_only,
+    varargs,
+    default_count,
+    given,
+    values,
+):
+    at_least = len(args) - default_count
+    keyword_only_given = len([arg for arg in keyword_only if arg in values])
+    if varargs:
+        plural = at_least != 1
+        signature_text = "at least %d" % at_least
+    elif default_count:
+        plural = True
+        signature_text = "from %d to %d" % (at_least, len(args))
+    else:
+        plural = len(args) != 1
+        signature_text = str(len(args))
+    keyword_only_text = ""
+    if keyword_only_given:
+        message = " positional argument%s (and %d keyword-only argument%s)"
+        keyword_only_text = message % (
+            "s" if given != 1 else "",
+            keyword_only_given,
+            "s" if keyword_only_given != 1 else "",
+        )
+    raise TypeError(
+        "%s() takes %s positional argument%s but %d%s %s given"
+        % (
+            function_name,
+            signature_text,
+            "s" if plural else "",
+            given,
+            keyword_only_text,
+            "was" if given == 1 and not keyword_only_given else "were",
+        )
+    )
+
+
+def getcallargs(function, /, *positional, **named):
+    """Return CPython-compatible bindings of arguments to parameter names."""
+    spec = getfullargspec(function)
+    args, varargs, varkw, defaults, keyword_only, keyword_defaults, _ = spec
+    function_name = function.__name__
+    values = {}
+
+    if ismethod(function) and function.__self__ is not None:
+        positional = (function.__self__,) + positional
+    positional_count = len(positional)
+    argument_count = len(args)
+    default_count = len(defaults) if defaults else 0
+
+    assigned_count = min(positional_count, argument_count)
+    for index in range(assigned_count):
+        values[args[index]] = positional[index]
+    if varargs:
+        values[varargs] = tuple(positional[assigned_count:])
+    possible_keywords = set(args + keyword_only)
+    if varkw:
+        values[varkw] = {}
+    for name, value in named.items():
+        if name not in possible_keywords:
+            if not varkw:
+                raise TypeError(
+                    "%s() got an unexpected keyword argument %r" % (function_name, name)
+                )
+            values[varkw][name] = value
+            continue
+        if name in values:
+            raise TypeError(
+                "%s() got multiple values for argument %r" % (function_name, name)
+            )
+        values[name] = value
+    if positional_count > argument_count and not varargs:
+        _too_many(
+            function_name,
+            args,
+            keyword_only,
+            varargs,
+            default_count,
+            positional_count,
+            values,
+        )
+    if positional_count < argument_count:
+        required = args[: argument_count - default_count]
+        for name in required:
+            if name not in values:
+                _missing_arguments(function_name, required, True, values)
+        for index, name in enumerate(args[argument_count - default_count :]):
+            if name not in values:
+                values[name] = defaults[index]
+    missing = 0
+    for name in keyword_only:
+        if name not in values:
+            if keyword_defaults and name in keyword_defaults:
+                values[name] = keyword_defaults[name]
+            else:
+                missing += 1
+    if missing:
+        _missing_arguments(function_name, keyword_only, False, values)
+    return values
+
+
 def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
     del globals, locals, eval_str
     return dict(getattr(obj, "__annotations__", {}))

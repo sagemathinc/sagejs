@@ -14,6 +14,10 @@ export class NodeWebWorker {
     }
     this.onmessage = null;
     this.onerror = null;
+    this.listeners = {
+      message: new Set(),
+      error: new Set(),
+    };
     this.thread = new ThreadWorker(bootstrap, {
       type: "module",
       workerData: { target: String(url) },
@@ -21,10 +25,25 @@ export class NodeWebWorker {
       // `--input-type` and test-runner flags that Node rejects for workers.
       execArgv: [],
     });
-    this.thread.on("message", (data) => this.onmessage?.({ data }));
-    this.thread.on("error", (error) => {
-      this.onerror?.({ error, message: error.message });
+    this.thread.on("message", (data) => {
+      const event = { data };
+      this.onmessage?.(event);
+      for (const listener of this.listeners.message) listener(event);
     });
+    this.thread.on("error", (error) => {
+      const event = { error, message: error.message };
+      this.onerror?.(event);
+      for (const listener of this.listeners.error) listener(event);
+    });
+  }
+
+  addEventListener(type, listener) {
+    const listeners = this.listeners[type];
+    if (listeners && typeof listener === "function") listeners.add(listener);
+  }
+
+  removeEventListener(type, listener) {
+    this.listeners[type]?.delete(listener);
   }
 
   postMessage(data, transfer = []) {

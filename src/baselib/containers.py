@@ -1782,6 +1782,18 @@ runtime.set_class_repr(list_constructor, "<class 'list'>")
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
+
+
+def _containers_set_type_metadata(cls: Any, name: _Str) -> None:
+    runtime.reflect.set(cls, "__name__", name)
+    runtime.reflect.set(cls, "__qualname__", name)
+    runtime.reflect.set(cls, "__module__", "builtins")
+
+
+_containers_set_type_metadata(list_constructor, "list")
+_containers_set_type_metadata(ρσ_dict, "dict")
+_containers_set_type_metadata(ρσ_set, "set")
+_containers_set_type_metadata(ρσ_frozenset, "frozenset")
 for builtin_container_type in (
     list_constructor,
     ρσ_dict,

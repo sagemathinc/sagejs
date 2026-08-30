@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { EXAMPLES } from "../examples.mjs";
 import { stageRelease } from "../scripts/stage.mjs";
 import { startStaticServer } from "../scripts/static-server.mjs";
 
@@ -37,6 +38,7 @@ try {
   let id = 0;
   const pending = new Map();
   const errors = [];
+  const browserConsole = [];
   socket.addEventListener("message", ({ data }) => {
     const message = JSON.parse(data);
     if (message.id !== undefined) {
@@ -45,6 +47,9 @@ try {
       else handlers?.resolve(message.result);
     }
     if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
+    if (message.method === "Runtime.consoleAPICalled") {
+      browserConsole.push(message.params.args.map((arg) => arg.value ?? arg.description).join(" "));
+    }
   });
   const command = (method, params = {}) => new Promise((resolve, reject) => {
     id += 1; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params }));
@@ -72,7 +77,7 @@ try {
       runDisabled: document.querySelector('[data-run="all"]')?.disabled,
       diagnostics: document.querySelector('#diagnostics')?.textContent,
     })`);
-    throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\n${errors.join("\n")}\n${chromeErrors}`);
+    throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\nbrowser console:\n${browserConsole.join("\n")}\n${errors.join("\n")}\n${chromeErrors}`);
   }
   async function runFactor({ setSource = true } = {}) {
     await evaluate(`${setSource ? "document.querySelector('#source').value='factor(2026)';" : ""} document.querySelector('[data-run="all"]').click()`);
@@ -261,6 +266,36 @@ try {
   assert.ok(
     (await renderedPlotPixelStats()).chromatic > 100,
     "mesh plots should draw visible WebGL pixels",
+  );
+  const widgetExample = EXAMPLES.find(
+    (example) => example.id === "interactive-symbolic-plot",
+  );
+  assert.ok(widgetExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    widgetExample.source,
+    "document.querySelector('#output')?.textContent.includes('power') && " +
+      "document.querySelector('#output')?.textContent.includes('2x') && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
+  assert.ok(
+    await evaluate("Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0"),
+    "the initial widget plot should display x squared",
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await waitFor(
+    "Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === 3 && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
+    30_000,
   );
   await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();

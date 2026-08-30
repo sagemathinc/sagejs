@@ -1,4 +1,5 @@
 let runtimePromise;
+let widgetRuntimePromise;
 
 export function requestCredentials() {
   // Managed CoCalc apps authenticate same-origin asset requests with their
@@ -56,4 +57,13 @@ export function loadSageRuntime() {
     return Object.freeze({ ...kernel, ...renderer, version });
   })();
   return runtimePromise;
+}
+
+/** Load the standard widget manager and controls only when first needed. */
+export function loadWidgetRuntime() {
+  widgetRuntimePromise ??= Promise.all([
+    loadStylesheet("./vendor/widgets/widgets.built.css"),
+    import("./vendor/widgets/index.mjs"),
+  ]).then(([, manager]) => manager);
+  return widgetRuntimePromise;
 }
