@@ -1,5 +1,4 @@
 import { Session } from "node:inspector";
-import { resolve } from "node:path";
 
 import {
   authenticateOptimizerProfileMap,
@@ -7,6 +6,13 @@ import {
   ProfileSpan,
 } from "./python/optimizer/profile-map";
 import { profileSha256 } from "./python/optimizer/profile-identity";
+
+const evidenceCommon = require(
+  "./optimizer-development/common.cjs",
+) as {
+  canonicalJson(value: unknown): string;
+  sha256(value: string | Uint8Array): string;
+};
 
 export const OPTIMIZER_NODE_PROFILE_SCHEMA =
   "sagejs.optimizer-node-profile-observation/v1" as const;
@@ -130,50 +136,6 @@ export type OptimizerProfileObservation = Readonly<{
     error: Readonly<{ name: string; message: string }> | null;
   }>;
 }>;
-
-const evidenceSchemas = require(resolve(
-  __dirname,
-  "../..",
-  "tools",
-  "optimizer-development",
-  "schemas.cjs",
-)) as {
-  SCHEMAS: { profile: string };
-  validateProfileReceipt(value: unknown, context?: Record<string, unknown>): unknown;
-};
-const evidenceCommon = require(resolve(
-  __dirname,
-  "../..",
-  "tools",
-  "optimizer-development",
-  "common.cjs",
-)) as {
-  canonicalJson(value: unknown): string;
-  documentIdentity(value: unknown): string;
-  sha256(value: string | Uint8Array): string;
-};
-
-/**
- * Attach one authenticated Node observation to a complete workload envelope,
- * then run the campaign's exact fail-closed profile validator. The envelope
- * owns workload/oracle/cold-warm/overhead evidence; this sampler owns only its
- * source sampling and private evaluator evidence.
- */
-export function assembleValidatedOptimizerProfileReceipt(
-  envelope: Record<string, unknown>,
-  observation: OptimizerProfileObservation,
-  context: Record<string, unknown> = {},
-): unknown {
-  const candidate = {
-    schema: evidenceSchemas.SCHEMAS.profile,
-    id: `sha256:${"0".repeat(64)}`,
-    ...envelope,
-    sampling: observation.evidence.sampling,
-    runtime: observation.evidence.runtime,
-  };
-  candidate.id = evidenceCommon.documentIdentity(candidate);
-  return evidenceSchemas.validateProfileReceipt(candidate, context);
-}
 
 export class OptimizerProfileExecutionError extends Error {
   readonly observation: OptimizerProfileObservation;

@@ -12,13 +12,15 @@ const { ROOT, hotColdFixture, makeMap } = require(
   "./fixtures/optimizer-development/profile/helpers.cjs"
 );
 const {
-  assembleValidatedOptimizerProfileReceipt,
   createPrivateProfileEventCollector,
   nodeProfileCapabilities,
   OptimizerProfileAuthenticationError,
   OptimizerProfileExecutionError,
   runAuthenticatedNodeProfile,
 } = require("../dist/tools/optimizer-profiler.js");
+const {
+  assembleValidatedOptimizerProfileReceipt,
+} = require("../dist/tools/optimizer-profile-evidence.js");
 const evidenceCommon = require("../tools/optimizer-development/common.cjs");
 const evidenceIdentity = require("../tools/optimizer-development/identity.cjs");
 

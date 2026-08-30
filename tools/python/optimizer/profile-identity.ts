@@ -46,9 +46,11 @@ type IdentityFoundation = {
 
 // This Node-only adapter intentionally consumes the campaign foundation's
 // canonical identity implementation rather than growing a profiler-specific
-// identity dialect. TypeScript output lives in dist/tools/python/optimizer.
+// identity dialect. The build copies that two-file CommonJS foundation beside
+// the emitted tools tree, so the dependency remains statically visible to SEA
+// bundling and works from a relocated `dist` directory.
 const identityFoundation = require(
-  resolve(__dirname, "../../../..", "tools", "optimizer-development", "identity.cjs"),
+  "../../optimizer-development/identity.cjs",
 ) as IdentityFoundation;
 
 export const profileSemanticFingerprint = identityFoundation.semanticFingerprint;

@@ -146,7 +146,7 @@ function assembleReceipt(envelopeFilename, result, options) {
   const phase = JSON.parse(readFileSync(resolve(envelopeFilename), "utf8"));
   const {
     assembleValidatedOptimizerProfileReceipt,
-  } = require("../dist/tools/optimizer-profiler.js");
+  } = require("../dist/tools/optimizer-profile-evidence.js");
   const {
     sourceBundleFromRecords,
   } = require("../tools/optimizer-development/identity.cjs");

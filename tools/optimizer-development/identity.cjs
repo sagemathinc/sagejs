@@ -48,6 +48,8 @@ const FRONTEND_ARTIFACT_PATHS = Object.freeze([
   "dist/tools/python/compiler-frontend.js",
   "dist/tools/python/frontend.js",
   "dist/tools/python/lowerer.js",
+  "dist/tools/optimizer-development/common.cjs",
+  "dist/tools/optimizer-development/identity.cjs",
   "dist/tools/python/optimizer/profile-identity.js",
   "dist/tools/python/optimizer/profile-map.js",
   "dist/vendor/tree-sitter-python.wasm",

@@ -197,6 +197,18 @@ async function main() {
       join(root, "tools", "kernel.d.ts"),
       join(dist, "tools", "kernel.d.ts"),
     );
+    const optimizerDevelopmentOutput = join(
+      dist,
+      "tools",
+      "optimizer-development",
+    );
+    mkdirSync(optimizerDevelopmentOutput, { recursive: true });
+    for (const filename of ["common.cjs", "identity.cjs"]) {
+      cpSync(
+        join(root, "tools", "optimizer-development", filename),
+        join(optimizerDevelopmentOutput, filename),
+      );
+    }
     return "TypeScript runtime compiled.";
   });
 
