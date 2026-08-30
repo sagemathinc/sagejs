@@ -11,15 +11,15 @@ JavaScript target.
 from __future__ import annotations
 
 from sagejs.ffi.flint import (
+    fmpz_mat_det,
+    fmpz_mat_hnf,
+    fmpz_mat_hnf_transform,
+    fmpz_mat_mul,
     fmpz_matrix,
     fmpz_matrix_det,
     fmpz_matrix_entry,
     fmpz_matrix_hnf_transform,
     fmpz_matrix_set_entry,
-    fmpz_mat_det,
-    fmpz_mat_hnf,
-    fmpz_mat_hnf_transform,
-    fmpz_mat_mul,
 )
 from sagejs.native import IntegerBuffer, NativeExactArena, native, uint64
 

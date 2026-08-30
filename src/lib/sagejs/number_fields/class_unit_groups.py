@@ -2897,7 +2897,7 @@ class ClassUnitGroupEngine:
             selected, _selected_rank = selected_result
             if selected is None or len(selected) > remaining:
                 return collector
-            dependency_candidates, dependency_bound = bounded_dependencies(
+            dependency_result: Any = bounded_dependencies(
                 self.order,
                 factor_base,
                 selected,
@@ -2907,6 +2907,9 @@ class ClassUnitGroupEngine:
                 cancelled=self.cancelled,
                 power_factor_base=packed_factor_base,
             )
+            if not isinstance(dependency_result, tuple) or len(dependency_result) != 2:
+                return collector
+            dependency_candidates, dependency_bound = dependency_result
             if len(dependency_candidates) > remaining - len(selected):
                 dependency_candidates = ()
             proposals = tuple(
@@ -4040,7 +4043,8 @@ class ClassUnitGroupEngine:
             if callable(factors):
                 exponent_l1 = 0
                 try:
-                    for _factor, exponent in factors():
+                    raw_factors: Any = factors()
+                    for _factor, exponent in raw_factors:
                         exponent_l1 += abs(int(exponent))
                         if exponent_l1 > MAX_RELATION_STEERING_EXACT_EXPONENT_L1:
                             exact_expansion_allowed = False
