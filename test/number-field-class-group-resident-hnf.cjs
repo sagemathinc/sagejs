@@ -352,9 +352,36 @@ try:
             wide_initial, wide_candidates, 2, backend='native'
         )
     except RuntimeError as error:
-        assert 'qualified shape envelope' in str(error)
+        assert 'qualified shape/bit envelope' in str(error)
     else:
         raise AssertionError('an unqualified explicit native shape was accepted')
+finally:
+    matrix._resident_hnf_kernel_override = saved_override
+
+saved_override = matrix._resident_hnf_kernel_override
+bit_calls = [0]
+def unqualified_bit_native(*_arguments):
+    bit_calls[0] += 1
+    raise AssertionError('an unqualified resident HNF bit width entered native code')
+matrix._resident_hnf_kernel_override = unqualified_bit_native
+try:
+    bit_rows = ((1 << matrix.MAX_RESIDENT_HNF_NATIVE_ENTRY_BITS,),)
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='python'
+    )
+    assert bit_calls[0] == 0
+    assert fallback == oracle
+    try:
+        matrix.resident_exact_relation_hnf_selection(
+            (), bit_rows, 1, backend='native'
+        )
+    except RuntimeError as error:
+        assert 'qualified shape/bit envelope' in str(error)
+    else:
+        raise AssertionError('an unqualified explicit native bit width was accepted')
 finally:
     matrix._resident_hnf_kernel_override = saved_override
 
