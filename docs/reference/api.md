@@ -348,6 +348,60 @@ Return a circle centered at `center` with the given radius.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `cohen_eisenstein_series_certificate`
+
+```sage
+cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable Cohen coefficient-formula certificate.
+
+```sage
+sage: cohen_eisenstein_series_certificate(2, 12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `cohen_eisenstein_series_qexp`
+
+```sage
+cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any
+```
+
+Return Cohen's exact Eisenstein series of weight $r+\tfrac12$.
+
+```sage
+sage: cohen_eisenstein_series_qexp(2, 6)
+1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
 ## `Color`
 
 ```sage
@@ -4721,6 +4775,116 @@ This entry is implemented and exercised by the Sage.js graph semantic corpus. Th
 
 - `sage-derived` — [SageMath `src/sage/graphs/generators/families.py`:3651](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/families.py#L3651); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
 
+## `half_integral_formula_registry`
+
+```sage
+half_integral_formula_registry() -> Any
+```
+
+Return the bounded, certificate-bearing half-integral formula registry.
+
+```sage
+sage: len(half_integral_formula_registry())
+4
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `half_integral_weight_hecke_qexp`
+
+```sage
+half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any
+```
+
+Apply $T_{p^2}$ using Shimura's exact coefficient formula.
+
+```sage
+sage: f = cohen_eisenstein_series_qexp(2, 82)
+sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)
+7/30 - 7/3*q - 49/3*q^4 + O(q^5)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `half_integral_weight_modform_basis`
+
+```sage
+half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]
+```
+
+Return Sage-compatible Basmaji half-integral cusp expansions.
+
+```sage
+sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)
+[]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `HalfIntegralWeightModularForms`
+
+```sage
+HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any
+```
+
+Construct the certified cusp space $S_{k/2}(\Gamma_0(N),\chi)$.
+
+```sage
+sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)
+sage: (H.weight(), H.dimension())
+(3/2, 0)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
 ## `help`
 
 ```sage
@@ -8369,6 +8533,114 @@ Display text at a point in three-dimensional space.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `theta_qexp`
+
+```sage
+theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the exact unary theta series $\sum_{n\in\ZZ}q^{n^2}$.
+
+```sage
+sage: theta_qexp(6)
+1 + 2*q + 2*q^4 + O(q^6)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `theta_qexp_certificate`
+
+```sage
+theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable standard-theta coefficient certificate.
+
+```sage
+sage: theta_qexp_certificate(12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `theta2_qexp`
+
+```sage
+theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return $\sum_{n>0,\ n\text{ odd}}q^{n^2}$ exactly.
+
+```sage
+sage: theta2_qexp(12)
+q + q^9 + O(q^12)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+
+## `theta2_qexp_certificate`
+
+```sage
+theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any
+```
+
+Return the replayable odd-square theta coefficient certificate.
+
+```sage
+sage: theta2_qexp_certificate(12).verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
 
 ## `var`
 
