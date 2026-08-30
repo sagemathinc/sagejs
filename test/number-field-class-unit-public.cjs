@@ -701,7 +701,7 @@ print("cubic-relation-seed-ok")
   assert.equal(output, "cubic-relation-seed-ok");
 });
 
-test("cubic fallback retains a packed duplicate pair before unit saturation", () => {
+test("cubic fallback retains stable packed dependencies before unit saturation", () => {
   const output = runPublic(String.raw`
 import sagejs.number_fields.class_unit_analytic as analytic_module
 import sagejs.number_fields.class_group_factor_base as factor_base_module
@@ -712,12 +712,12 @@ x = R.gen()
 K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 
 # LMFDB 3.1.2856.1 needed a targeted saturation batch when the packed cubic
-# relation sieve retained only the minimal class-presentation support.  Once
-# the bounded class proof fails, the producer may retain both generators of a
-# duplicate valuation row from its packed candidates (and widen the box only
-# if the primary candidates have none).  The resulting unit quotient is
-# fundamental here, so neither LLL relation saturation nor the much more
-# expensive bounded p-th-root search should run.
+# relation sieve retained only transform-dependent class-presentation support.
+# Stable lattice deletion instead retains two exact dependency relations from
+# the source-ordered packed candidates (and widens the box only if the primary
+# candidates have none).  Their unit quotient is already fundamental here, so
+# neither LLL relation saturation nor the much more expensive bounded p-th-root
+# search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
 original_descriptor_scan = factor_base_module._eligible_descriptors
 unit_root_searches = 0
@@ -773,13 +773,13 @@ assert detached_context["matrix_state"] == (
     result.conditional_presentation_evidence.to_dict()
 )
 assert "_live_artifacts" not in detached_context
-assert artifact_search["integral_sieve_dependency_candidates"] == 1
-assert artifact_search["integral_sieve_dependency_relations"] == 1
+assert artifact_search["integral_sieve_dependency_candidates"] == 2
+assert artifact_search["integral_sieve_dependency_relations"] == 2
 assert artifact_search["integral_sieve_dependency_validated_batch"] == 1
 assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
 assert artifact.relation_records[-1].provenance["coefficient_bound"] == 2
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 7
+assert resources["cubic_relation_seed_relations"] == 8
 assert resources["saturation_rounds"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
@@ -964,23 +964,24 @@ assert proof_result.saturation_record.complete
 assert proof_result.saturation_record.verify()
 
 # LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
-# box.  The one bounded coefficient-4 fallback finds an exact pair whose unit
-# quotient is fundamental, so the coupled engine again needs no LLL search.
+# box.  The bounded coefficient-4 fallback finds two stable exact dependency
+# relations whose unit quotient is fundamental, so the coupled engine again
+# needs no LLL search.
 W = NumberField(x**3 - x**2 - 14*x + 30, "c")
 assert W.class_number(proof=False) == 8
 widened_artifact = W._bounded_cubic_class_number_artifact
 widened_search = widened_artifact.diagnostics["relation_search"]
-assert widened_search["integral_sieve_dependency_candidates"] == 1
-assert widened_search["integral_sieve_dependency_relations"] == 1
+assert widened_search["integral_sieve_dependency_candidates"] == 2
+assert widened_search["integral_sieve_dependency_relations"] == 2
 assert widened_search["integral_sieve_dependency_validated_batch"] == 1
 assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
-assert len(widened_artifact.relation_records) == 8
+assert len(widened_artifact.relation_records) == 9
 widened_projection = list(W._class_number_projection_cache.values())[-1]
 widened_result = W.class_unit_group(proof=False)
 assert widened_projection._completed is widened_result
 widened_resources = widened_result.diagnostics["resources"]
 assert widened_result.proof_status == "exact-unconditional"
-assert widened_resources["cubic_relation_seed_relations"] == 8
+assert widened_resources["cubic_relation_seed_relations"] == 9
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
 assert widened_resources["unit_principal_authority_hits"] == 1

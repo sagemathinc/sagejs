@@ -1,111 +1,111 @@
 {
   "schema": "sagejs.optimizer-opportunity-artifact-manifest/v1",
-  "id": "sha256:fc99577860e7ebad601fe5e49c94e9fa8ee470e164697efa3e28b7b5ffd51558",
+  "id": "sha256:e0ec4deb583d1ae640021612f680dc9cd3eed0665995a57f122d5af6d035cb51",
   "dashboard": {
     "compilerId": "sha256:f03e87104e17b68818e5a21634f26a5b7531b3ff0a8cfa0999a4af1b29cd6eea",
-    "digest": "e637646ced50f73aacf8101298bf36b2bcc4cf106f31517286cc72f6e8cee0d3",
-    "id": "sha256:9799022f16bcdbdf6286ef3f0ffb0079ef84b2e995e8e7e0f42820d309f6a336",
+    "digest": "8a9fd934a2d782e158e139ade6d89820ccfc25723cff0d9d846bd190b7fdf5cb",
+    "id": "sha256:9c64d5859b44b0101ded06e39b6b8921140562777b8997fc4e9a5751e62e5b02",
     "inputs": {
-      "bytes": 10670677,
-      "digest": "b113b8b68a9c41f064c6a07be9e76cdbbd6b1b85a5d2bc4af0f788b82731d859",
+      "bytes": 10676765,
+      "digest": "0cf421dc73e5d243b9ef5db120c783b104d4654cbcee0d4256e8ffde8c731c02",
       "files": 512
     },
     "schema": "sagejs.optimizer-opportunity-dashboard/v2",
-    "sourceBundleId": "sha256:642be5696c19689bde62d6072db172d0c86df888bfd39ca05a666da5589cc29d",
+    "sourceBundleId": "sha256:c1cf391d52159cefe47306d2b8b16abc7328a95f1b81a406d0b5e795347467c8",
     "summary": {
       "controlSourceFilesCompiled": 13,
       "controlSourceFilesDiscovered": 13,
       "controlSourceFilesFailed": 0,
-      "functionsCompiled": 11642,
+      "functionsCompiled": 11643,
       "librarySourceFilesCompiled": 416,
       "librarySourceFilesDiscovered": 416,
       "librarySourceFilesFailed": 0,
-      "loopsInFunctions": 10471,
+      "loopsInFunctions": 10475,
       "moduleScopeLoops": 28,
       "oneReasonNearMisses": 234,
-      "optimizerDecisions": 2869,
+      "optimizerDecisions": 2872,
       "orphanOptimizerDecisions": 0,
-      "rejectedLoops": 2798,
+      "rejectedLoops": 2801,
       "selectedLoops": 49,
       "sourceFilesCompiled": 429,
       "sourceFilesDiscovered": 429,
       "sourceFilesFailed": 0,
-      "suitableFunctions": 3694,
-      "unrecognizedLoops": 7624
+      "suitableFunctions": 3695,
+      "unrecognizedLoops": 7625
     }
   },
   "markdown": {
     "bytes": 25356,
     "path": "docs/optimizer-opportunities.md",
-    "sha256": "9d5cf4a0fcece089221d5abc32b6d07410ca6e53d4ffc2332b53a408d74cb2e2"
+    "sha256": "4538e5189c151840a098e5a905daab7340cc6e0014a788aa399ce524837bc781"
   },
   "release": {
-    "artifactSetDigest": "a99c6ea1d84e69bf5f5eed1d66763886538863c90731a71573b18edac9f06370",
+    "artifactSetDigest": "57fe93d27f71db66d5786dcaf8cf1185e2788ff153ed6237540798632eb99bb0",
     "artifacts": [
       {
-        "bytes": 6481428,
+        "bytes": 6484329,
         "compression": "gzip",
         "kind": "canonical-ndjson",
         "mediaType": "application/x-ndjson",
-        "name": "optimizer-opportunities-1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e.canonical.ndjson.gz",
-        "sha256": "1f8fd8bbf434677e30ebbdab28757615c2d42e5b2fd3fa115a885f6682c974bd",
-        "uncompressedBytes": 32418561,
-        "uncompressedSha256": "1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e"
+        "name": "optimizer-opportunities-b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1.canonical.ndjson.gz",
+        "sha256": "2d98101afdda4f68da6569bef500c20d412bb8c642e0a1ad0aaafadbdddc00d2",
+        "uncompressedBytes": 32431328,
+        "uncompressedSha256": "b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1"
       },
       {
-        "bytes": 4816119,
+        "bytes": 4817220,
         "compression": "gzip",
         "kind": "legacy-dashboard-json",
         "mediaType": "application/json",
-        "name": "optimizer-opportunities-1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e.legacy.json.gz",
-        "sha256": "002f5eb2f89896922edb6322000d7c788db882b5bdc44312732d6d3850ce67ba",
-        "uncompressedBytes": 39724128,
-        "uncompressedSha256": "2cb45d13a9d65717d893119d2e3a9e608f9d6b1d0636cbb260a5997685c59cba"
+        "name": "optimizer-opportunities-b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1.legacy.json.gz",
+        "sha256": "a40ca0f9fcdf31956b4884e55ae2a33496ad6f583c55a6e5a047ab0dcfe1981b",
+        "uncompressedBytes": 39740974,
+        "uncompressedSha256": "5b937d35da9853b87ed82e7c62570097772e213b68295cbd4aa646d43585f335"
       },
       {
-        "bytes": 14707862,
+        "bytes": 14703164,
         "compression": "gzip",
         "kind": "sqlite-query-database",
         "mediaType": "application/vnd.sqlite3",
-        "name": "optimizer-opportunities-1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e.sqlite.gz",
-        "sha256": "d2501605ee73af456ce57c41ba8aec14769d0952e83cfee41d4ee5b7e3434f1f",
-        "uncompressedBytes": 99106816,
-        "uncompressedSha256": "3d6329e4700c833204d4423d16d503006b3a02c0d0064ae2e3d83829f1e5d231"
+        "name": "optimizer-opportunities-b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1.sqlite.gz",
+        "sha256": "954ac21301a053e50c15af3ab408c40c4df3d90c263f0d83b3ac295aaccd8c1f",
+        "uncompressedBytes": 99123200,
+        "uncompressedSha256": "8f09afcf4ae990a17b9e5f53d3d6253c92dc7e0c1b21cc66aab760b8a4164dd0"
       }
     ],
     "immutable": true,
-    "manifestAsset": "optimizer-opportunities-1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e.manifest.json",
+    "manifestAsset": "optimizer-opportunities-b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1.manifest.json",
     "repository": "sagemathinc/sagejs",
-    "tag": "optimizer-evidence-campaign-1-1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e-a99c6ea1d84e69bf"
+    "tag": "optimizer-evidence-campaign-1-b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1-57fe93d27f71db66"
   },
   "snapshot": {
-    "bytes": 32418561,
-    "logicalId": "sha256:1166448b3e6631d84cfafd502e27f238834066fd2ef2ad6631d530946fc5f17e",
-    "records": 22883,
+    "bytes": 32431328,
+    "logicalId": "sha256:b2994fb4c928a2067f333b9140bf611fbac645c1f8ec9dc73b04f9c4293caee1",
+    "records": 22888,
     "schema": "sagejs.optimizer-opportunity-canonical-ndjson/v1",
     "tables": [
       {
-        "digest": "9ee3b5ec3b5f0575107fef644edc9d463f28a7680b332a9c281641e4b3c7fc4d",
+        "digest": "6617bac0bde401800f9be9072440c169c58ad2b80fa028ba546d4803abf44df8",
         "name": "metadata",
         "records": 1
       },
       {
-        "digest": "6c7b71c3d1f95c2c4189cfc7ab7722f45a2df6977683215d34f5a6044ba49c8f",
+        "digest": "2122eebc286d109b387c5b9fd8a0a65ea053b8fc8e966e7f8e0b01e7bd4ae663",
         "name": "files",
         "records": 429
       },
       {
-        "digest": "53dbd8f7f3d36c618fa8fe0dfa6be66eb347658c6c7657c87dbb18764bb17516",
+        "digest": "16321009b0cabf5af8f77e05eb4924ced7658a76c0cad624cb14fd3cd3c52205",
         "name": "functions",
-        "records": 11642
+        "records": 11643
       },
       {
-        "digest": "8131d9fd116e9cd21e3837af45a6085e67fd92b855f09973a29fdf60fbba3cde",
+        "digest": "9f72248ba63232b857259f6e3bf5b8c46d2698ad8b00733cb87d219a159c1522",
         "name": "loops",
-        "records": 10499
+        "records": 10503
       },
       {
-        "digest": "7a67cec42cc27ff5d69898a055ac010befe007848c52638ee121f49034782681",
+        "digest": "05f5e838abe0044974fb21f7c79430b279b89974a8a57a80b50bc63c4e52bdd5",
         "name": "nearMisses",
         "records": 234
       },
@@ -115,12 +115,12 @@
         "records": 0
       },
       {
-        "digest": "6011f5703509936c66b72e0f3f0c09abd7f489ab2c85cb13a8b67a864adf08c2",
+        "digest": "8f7135688feb8c62e96d1f0ddc91871b0cc3e7bb177af405a26797690979555f",
         "name": "passDecisionCounts",
         "records": 10
       },
       {
-        "digest": "781247141761770077e5ae1ce47694b3f1bf2b6afa26fe241ea57dc923794b60",
+        "digest": "44d0b03016a9b6e5e14cfc56510ba99a2a260d1e3243db79473540bde8135b18",
         "name": "reasonCounts",
         "records": 68
       }

@@ -50,6 +50,17 @@ MAX_RESIDENT_HNF_VALUES = 1_024
 MAX_RESIDENT_HNF_ENTRY_BITS = 4_096
 MAX_RESIDENT_HNF_DELETION_TRIALS = 64
 MAX_RESIDENT_HNF_WORK = 1_000_000
+# Stable source-order deletion uses the mature exact matrix boundary rather
+# than the separately qualified resident kernel.  Its larger envelope covers
+# the reviewed cubic tuning corpus, whose widest authenticated selector has
+# 115 rows and 16 columns.  Keep these limits independent: widening this
+# source-level route must never widen native dispatch after the 37-by-8 crash.
+MAX_STABLE_HNF_ROWS = 128
+MAX_STABLE_HNF_COLUMNS = 16
+MAX_STABLE_HNF_VALUES = 2_048
+MAX_STABLE_HNF_ENTRY_BITS = 4_096
+MAX_STABLE_HNF_DELETION_TRIALS = 128
+MAX_STABLE_HNF_WORK = 1_000_000
 # Native release evidence covers only the authenticated cubic relation
 # prefixes in `test/number-field-class-group-resident-hnf.cjs`.  Keep both
 # automatic and explicit native dispatch inside that demonstrated envelope;
@@ -2403,6 +2414,142 @@ def _python_resident_relation_hnf_selection(
     )
 
 
+def stable_exact_relation_hnf_selection(
+    initial_rows: Iterable[Any],
+    candidate_rows: Iterable[Any],
+    column_count: int,
+    *,
+    maximum_deletion_trials: int = MAX_STABLE_HNF_DELETION_TRIALS,
+    work_limit: int = MAX_STABLE_HNF_WORK,
+    cancelled: Any = None,
+) -> ResidentRelationHNFSelection:
+    """Select a deterministic relation basis without transform support.
+
+    A left HNF transformation is not unique: two exact backends can return
+    the same canonical lattice basis through different source-row supports.
+    Basing public relation discovery on that incidental support made a slow
+    Python transformation part of the mathematical policy.  This selector
+    instead starts with every source-ordered candidate and deletes candidates
+    from left to right exactly when the canonical HNF basis is unchanged.
+    The retained subset therefore depends only on the ordered rows and their
+    lattice, not on a backend's choice of transformation matrix.
+
+    Every HNF query uses the existing mature FLINT matrix operation when it is
+    available and the ordinary exact Python implementation otherwise.  The
+    separately qualified resident native kernel is never entered.  Initial
+    rows are mandatory and are not deletion candidates.
+    """
+    if cancelled is not None and not callable(cancelled):
+        raise TypeError("cancelled must be callable")
+    columns = _nonnegative_integer(column_count, "column_count")
+    maximum_trials = _nonnegative_integer(
+        maximum_deletion_trials, "maximum_deletion_trials"
+    )
+    maximum_work = _nonnegative_integer(work_limit, "work_limit")
+    if columns < 1 or columns > MAX_STABLE_HNF_COLUMNS:
+        raise RelationMatrixError("stable HNF column count exceeds its bound")
+    if maximum_trials > MAX_STABLE_HNF_DELETION_TRIALS:
+        raise RelationMatrixError("stable HNF deletion-trial bound is too large")
+    if maximum_work > MAX_STABLE_HNF_WORK:
+        raise RelationMatrixError("stable HNF work bound is too large")
+
+    _resident_hnf_cancelled(cancelled)
+    initial = _resident_hnf_rows(
+        initial_rows, columns, "initial_rows", MAX_STABLE_HNF_ROWS
+    )
+    candidates = _resident_hnf_rows(
+        candidate_rows,
+        columns,
+        "candidate_rows",
+        MAX_STABLE_HNF_ROWS - len(initial),
+    )
+    source = initial + candidates
+    row_count = len(source)
+    row_entries = row_count * columns
+    if row_count > MAX_STABLE_HNF_ROWS or row_entries > MAX_STABLE_HNF_VALUES:
+        raise RelationMatrixError("stable HNF matrix exceeds its shape bound")
+    maximum_bits = max(
+        (abs(value).bit_length() for row in source for value in row), default=1
+    )
+    if maximum_bits > MAX_STABLE_HNF_ENTRY_BITS:
+        raise RelationMatrixError("stable HNF entry exceeds its bit bound")
+    bounded_trials = min(maximum_trials, len(candidates))
+    required_work = (
+        3 * row_entries
+        + row_count * row_count
+        + bounded_trials * (row_entries + 2 * columns)
+    )
+    if required_work > maximum_work:
+        raise RelationMatrixError("stable HNF work limit is insufficient")
+    if not source:
+        return ResidentRelationHNFSelection(
+            (),
+            (),
+            (),
+            rank=0,
+            deletion_trials=0,
+            hnf_calls=0,
+            deletion_complete=True,
+            backend="stable-empty",
+            boundary_calls=0,
+            library_boundary_calls=0,
+            packed_input_bytes=0,
+            published_output_values=0,
+            work_units=0,
+        )
+
+    basis, primary_backend = _exact_relation_hnf_basis_from_source(source, columns)
+    all_library = primary_backend == "flint"
+    library_calls = int(all_library)
+    selected = list(range(len(candidates)))
+    cursor = 0
+    trials = 0
+    while cursor < len(selected) and trials < bounded_trials:
+        _resident_hnf_cancelled(cancelled)
+        trial_indices = selected[:cursor] + selected[cursor + 1 :]
+        trial_rows = initial + tuple(candidates[index] for index in trial_indices)
+        if len(trial_rows) < len(basis):
+            cursor += 1
+            continue
+        trial_basis, trial_backend = _exact_relation_hnf_basis_from_source(
+            trial_rows, columns
+        )
+        trials += 1
+        if trial_backend == "flint":
+            library_calls += 1
+        else:
+            all_library = False
+        if trial_basis == basis:
+            selected = trial_indices
+        else:
+            cursor += 1
+    _resident_hnf_cancelled(cancelled)
+    source_support = tuple(range(len(initial))) + tuple(
+        len(initial) + index for index in selected
+    )
+    return ResidentRelationHNFSelection(
+        basis,
+        source_support,
+        selected,
+        rank=len(basis),
+        deletion_trials=trials,
+        hnf_calls=1 + trials,
+        deletion_complete=cursor >= len(selected),
+        backend=(
+            "stable-flint-basis-deletions"
+            if all_library
+            else "stable-python-basis-deletions"
+        ),
+        boundary_calls=0,
+        library_boundary_calls=library_calls,
+        packed_input_bytes=0,
+        published_output_values=(
+            len(basis) * columns + len(source_support) + len(selected) + 7
+        ),
+        work_units=required_work,
+    )
+
+
 def resident_exact_relation_hnf_selection(
     initial_rows: Iterable[Any],
     candidate_rows: Iterable[Any],
@@ -2675,6 +2822,12 @@ __all__ = [
     "MAX_RESIDENT_HNF_NATIVE_ROWS",
     "MAX_RESIDENT_HNF_ROWS",
     "MAX_RESIDENT_HNF_VALUES",
+    "MAX_STABLE_HNF_COLUMNS",
+    "MAX_STABLE_HNF_DELETION_TRIALS",
+    "MAX_STABLE_HNF_ENTRY_BITS",
+    "MAX_STABLE_HNF_ROWS",
+    "MAX_STABLE_HNF_VALUES",
+    "MAX_STABLE_HNF_WORK",
     "MAX_RESIDENT_HNF_WORK",
     "PRESENTATION_DECISION_SCHEMA",
     "PRESENTATION_POLICY_SCHEMA",
@@ -2693,4 +2846,5 @@ __all__ = [
     "extract_relation_presentation",
     "modular_rank_and_pivots",
     "resident_exact_relation_hnf_selection",
+    "stable_exact_relation_hnf_selection",
 ]

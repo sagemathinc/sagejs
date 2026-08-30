@@ -212,17 +212,40 @@ for fixture in fixtures:
     triples = tuple(
         (row, (index,), 1) for index, row in enumerate(candidates)
     )
-    legacy, legacy_rank = cubic._select_cubic_relation_candidates(
-        matrix, initial, triples, columns
-    )
-    assert legacy is not None
-    legacy_indices = tuple(entry[1][0] for entry in legacy)
     basis, support = matrix.exact_relation_hnf_support(
         initial + candidates, columns
     )
-    assert legacy_rank == fixture['rank']
     assert support == tuple(fixture['support'])
-    assert legacy_indices == tuple(fixture['selected'])
+
+    stable = matrix.stable_exact_relation_hnf_selection(
+        initial, candidates, columns
+    )
+    stable_rows = initial + tuple(
+        candidates[index] for index in stable.selected_candidate_indices
+    )
+    assert stable.basis == basis
+    assert stable.rank == fixture['rank']
+    assert stable.deletion_complete
+    assert stable.hnf_calls == stable.deletion_trials + 1
+    assert stable.boundary_calls == 0
+    assert stable.library_boundary_calls == stable.hnf_calls
+    assert stable.backend == 'stable-flint-basis-deletions'
+    assert matrix.exact_relation_hnf_basis(stable_rows, columns) == basis
+    for selected_index in stable.selected_candidate_indices:
+        without = initial + tuple(
+            candidates[index]
+            for index in stable.selected_candidate_indices
+            if index != selected_index
+        )
+        assert matrix.exact_relation_hnf_basis(without, columns) != basis
+
+    selected, selected_rank = cubic._select_cubic_relation_candidates(
+        matrix, initial, triples, columns
+    )
+    assert selected is not None
+    selected_indices = tuple(entry[1][0] for entry in selected)
+    assert selected_rank == stable.rank
+    assert selected_indices == stable.selected_candidate_indices
 
     for backend in ('native', 'javascript'):
         answer = matrix.resident_exact_relation_hnf_selection(
@@ -230,8 +253,8 @@ for fixture in fixtures:
         )
         assert answer.basis == basis
         assert answer.source_support == support
-        assert answer.selected_candidate_indices == legacy_indices
-        assert answer.rank == legacy_rank
+        assert answer.selected_candidate_indices == tuple(fixture['selected'])
+        assert answer.rank == fixture['rank']
         assert answer.deletion_trials == fixture['trials']
         assert answer.hnf_calls == answer.deletion_trials + 1
         assert answer.deletion_complete
@@ -243,15 +266,15 @@ for fixture in fixtures:
     oracle = matrix.resident_exact_relation_hnf_selection(
         initial, candidates, columns, backend='python'
     )
-    assert oracle.basis == basis and oracle.rank == legacy_rank
+    assert oracle.basis == basis and oracle.rank == fixture['rank']
     oracle_rows = initial + tuple(
         candidates[index] for index in oracle.selected_candidate_indices
     )
     assert matrix.exact_relation_hnf_basis(oracle_rows, columns) == basis
     reports.append({
         'name': fixture['name'],
-        'rank': legacy_rank,
-        'selected': len(legacy_indices),
+        'rank': fixture['rank'],
+        'selected': len(stable.selected_candidate_indices),
         'trials': fixture['trials'],
     })
 
@@ -282,6 +305,19 @@ except RuntimeError as error:
     assert str(error) == 'class/unit computation cancelled'
 else:
     raise AssertionError('resident HNF cancellation was ignored')
+
+stable_checks = [0]
+def stable_cancelled():
+    stable_checks[0] += 1
+    return stable_checks[0] >= 2
+try:
+    matrix.stable_exact_relation_hnf_selection(
+        initial, candidates, hard['columns'], cancelled=stable_cancelled
+    )
+except RuntimeError as error:
+    assert str(error) == 'class/unit computation cancelled'
+else:
+    raise AssertionError('stable HNF cancellation was ignored')
 
 for arguments, fragment in (
     (((0,) * (matrix.MAX_RESIDENT_HNF_COLUMNS + 1),), 'column count'),
@@ -385,6 +421,45 @@ try:
 finally:
     matrix._exact_relation_hnf_basis_from_source = saved_basis_route
 
+stable_library = matrix.stable_exact_relation_hnf_selection(
+    wide_initial, wide_candidates, 2
+)
+matrix._exact_relation_hnf_basis_from_source = forced_python_basis
+try:
+    stable_python = matrix.stable_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2
+    )
+    assert stable_python == stable_library
+    assert stable_python.backend == 'stable-python-basis-deletions'
+    assert stable_python.library_boundary_calls == 0
+finally:
+    matrix._exact_relation_hnf_basis_from_source = saved_basis_route
+
+for arguments, columns, fragment in (
+    (
+        tuple((0,) for _index in range(matrix.MAX_STABLE_HNF_ROWS + 1)),
+        1,
+        'shape bound',
+    ),
+    (((0,) * (matrix.MAX_STABLE_HNF_COLUMNS + 1),),
+        matrix.MAX_STABLE_HNF_COLUMNS + 1, 'column count'),
+    (((1 << matrix.MAX_STABLE_HNF_ENTRY_BITS,),), 1, 'entry'),
+):
+    try:
+        matrix.stable_exact_relation_hnf_selection((), arguments, columns)
+    except matrix.RelationMatrixError as error:
+        assert fragment in str(error)
+    else:
+        raise AssertionError('stable HNF resource bound was ignored')
+try:
+    matrix.stable_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, work_limit=1
+    )
+except matrix.RelationMatrixError as error:
+    assert 'work limit' in str(error)
+else:
+    raise AssertionError('stable HNF work bound was ignored')
+
 saved_override = matrix._resident_hnf_kernel_override
 bit_calls = [0]
 def unqualified_bit_native(*_arguments):
@@ -450,6 +525,13 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
         "    retained = initial + tuple(candidates[index] for index in answer.selected_candidate_indices)",
         "    assert answer.rank == fixture['rank']",
         "    assert matrix.exact_relation_hnf_basis(retained, fixture['columns']) == answer.basis",
+        "    stable = matrix.stable_exact_relation_hnf_selection(initial, candidates, fixture['columns'])",
+        "    stable_retained = initial + tuple(candidates[index] for index in stable.selected_candidate_indices)",
+        "    assert stable.rank == fixture['rank'] and stable.deletion_complete",
+        "    assert matrix.exact_relation_hnf_basis(stable_retained, fixture['columns']) == stable.basis",
+        "    for selected_index in stable.selected_candidate_indices:",
+        "        without = initial + tuple(candidates[index] for index in stable.selected_candidate_indices if index != selected_index)",
+        "        assert matrix.exact_relation_hnf_basis(without, fixture['columns']) != stable.basis",
         "print(json.dumps({'status': 'cpython-resident-hnf-ok'}))",
       ].join("\n"),
     ],

@@ -2063,7 +2063,7 @@ def _select_cubic_relation_candidates(
     if not candidates:
         return (), 0
     try:
-        selection = matrix_module.resident_exact_relation_hnf_selection(
+        selection = matrix_module.stable_exact_relation_hnf_selection(
             initial_rows,
             (entry[0] for entry in candidates),
             width,
