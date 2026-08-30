@@ -1,26 +1,29 @@
-# Sage.js 0.5.0
+# Sage.js 0.6.0
 
-Sage.js 0.5.0 is an **early alpha release** for developers and researchers who
+Sage.js 0.6.0 is an **early alpha release** for developers and researchers who
 want to experiment with portable research mathematics in native executables,
 Node.js, Jupyter, and the browser. Missing functionality, incompatible API
 changes, and rough edges remain expected; installation reports and mathematical
 bug reports are especially valuable.
 
-This release adds three substantial mathematical systems:
+This release extends four substantial mathematical systems:
 
-- A typed, provider-independent LMFDB catalog for genus-2 curves and number
-  fields. It includes a small immutable offline catalog, exact Sage.js object
-  construction, explicitly bounded live HTTP queries, and validated read-only
-  SQLite snapshots. Automatic and bundled modes never access the network.
-- Exact class groups for broader cubic and quartic number-field workloads,
-  including authenticated relation/projection machinery, cached projection
-  reuse, and conservative exact fallbacks when a fast path cannot certify its
-  result.
-- Mestre's method of graphs as a sparse exact modular-forms subsystem. Public
-  APIs cover supersingular Brandt modules, sparse Hecke operators, weighted
-  isogeny graphs, cuspidal and spectral computations, Krylov certificates,
-  rational and algebraic eigenpackets, and q-expansions. The release also adds
-  Hilbert modular-form computations over `Q(sqrt(3))` and `Q(sqrt(5))`.
+- Brandt modules now include integral ideal-class and component-group
+  arithmetic, exact rank-four lattices, batched Hecke operators, sparse Mestre
+  graphs, and replayable certificates checked against independent data.
+- Modular-symbol spaces reconstruct exact cusp-form q-expansions over rational
+  and cyclotomic coefficient fields. Composite levels, bad-prime operators,
+  all signs, saturated integral modules, old/new decompositions, character
+  Eisenstein series, and replayable Sturm certificates are supported.
+- Cubic class-group computations gain a resident exact relation/HNF engine,
+  authenticated presentation replay, reusable relation workspaces, and
+  conservative dynamic fallbacks. Automatic native HNF selection is restricted
+  to the exact shape envelope covered by release evidence; larger matrices
+  fail closed to the ordinary exact backend.
+- Undergraduate mathematics and browser worksheets add broader calculus and
+  symbolic compatibility, piecewise functions, discrete mathematics, linear
+  codes, improved matrix operations, numeric-data 3D plots, and richer live
+  examples.
 
 The sparse modular-form kernels use the same source-transparent native and Wasm
 compiler path with ordinary-Python fallbacks. Their outputs were checked against
@@ -45,7 +48,7 @@ SmartScreen may show an unrecognized-app warning for unsigned artifacts.
 Install the command line globally:
 
 ```sh
-npm install -g @sagemath/sagejs@0.5.0
+npm install -g @sagemath/sagejs@0.6.0
 ```
 
 Or embed Sage.js in a Node application:
