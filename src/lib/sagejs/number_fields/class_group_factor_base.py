@@ -25,10 +25,12 @@ _embeddings = __import__("sagejs.number_fields.embeddings", fromlist=["embedding
 _prime_ideals = __import__(
     "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
 )
+_maximal = __import__("sagejs.number_fields.maximal_order", fromlist=["maximal_order"])
 
 BOUND_SCHEMA = "sagejs.number-fields/factor-base-bound-v1"
 PLAN_SCHEMA = "sagejs.number-fields/factor-base-plan-v1"
 PRIME_RECORD_SCHEMA = "sagejs.number-fields/factor-base-prime-v1"
+_SECOND_GENERATOR_UNSET = object()
 
 DEFAULT_MAX_BOUND = 1_000_000
 DEFAULT_MAX_RATIONAL_PRIMES = 1_000_000
@@ -612,6 +614,12 @@ def _as_maximal_order(value: Any) -> Any:
     return order
 
 
+def _has_equation_index_primes(value: Any) -> bool:
+    """Return whether the integral equation order misses the maximal order."""
+    order = _as_maximal_order(value)
+    return int(_maximal.equation_order_index(order)) != 1
+
+
 def _field_metadata(value: Any) -> tuple[Any, Any, int, int, int, int]:
     order = _as_maximal_order(value)
     field = order.number_field()
@@ -906,12 +914,51 @@ def _packed_bdf_interval(
         return None
 
 
+def _compact_index_prime_splitting_record(
+    order: Any, prime: int
+) -> dict[str, Any] | None:
+    """Propose exact `(e,f)` data from the retained finite algebra."""
+    try:
+        compact = _prime_ideals.packed_finite_algebra_candidates(
+            order,
+            prime,
+            _prime_ideals.DEFAULT_MAX_PRIMITIVE_CANDIDATES,
+        )
+    except (
+        AttributeError,
+        ArithmeticError,
+        ImportError,
+        OverflowError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+    ):
+        return None
+    if compact is None:
+        return None
+    factors = tuple(
+        {"e": int(record["e"]), "f": int(record["f"])} for record in compact
+    )
+    if not factors or sum(factor["e"] * factor["f"] for factor in factors) != int(
+        order.degree()
+    ):
+        return None
+    return {"version": 1, "prime": int(prime), "factors": list(factors)}
+
+
 class _BDFEvaluator:
     """Cached compact local data for the exact BDF inequality."""
 
-    def __init__(self, order: Any, max_bound: int) -> None:
+    def __init__(
+        self,
+        order: Any,
+        max_bound: int,
+        *,
+        compact_index_primes: bool = False,
+    ) -> None:
         self.order = order
         self.max_bound = max_bound
+        self.compact_index_primes = bool(compact_index_primes)
         self.records: dict[int, tuple[tuple[int, int], ...]] = {}
         self.scanned_stop = 2
 
@@ -923,7 +970,14 @@ class _BDFEvaluator:
         lower = self.scanned_stop
         while lower < stop:
             upper = min(stop, lower + 1_000_000)
-            for record in _prime_ideals.splitting_records(self.order, lower, upper):
+            options = (
+                {"_index_prime_record": _compact_index_prime_splitting_record}
+                if self.compact_index_primes
+                else {}
+            )
+            for record in _prime_ideals.splitting_records(
+                self.order, lower, upper, **options
+            ):
                 factors = tuple(
                     (int(factor["e"]), int(factor["f"])) for factor in record["factors"]
                 )
@@ -1077,7 +1131,12 @@ def _bdf_search_hint(
     return upper
 
 
-def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
+def bdf_bound(
+    value: Any,
+    *,
+    max_bound: int = DEFAULT_MAX_BOUND,
+    _compact_index_primes: bool = False,
+) -> FactorBaseBound:
     """Return a rigorously rounded BDF GRH factor-base bound.
 
     The smallest integer `x >= 2` for which the published strict BDF
@@ -1093,7 +1152,11 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
             raise ValueError("BDF search exceeded max_bound=" + str(max_bound))
         return cached
     order, _field, degree, r1, r2, discriminant = _field_metadata(order)
-    evaluator = _BDFEvaluator(order, max_bound)
+    evaluator = _BDFEvaluator(
+        order,
+        max_bound,
+        compact_index_primes=_compact_index_primes,
+    )
     evidence: dict[int, tuple[int, _Interval, _Interval, int]] = {}
 
     def decision(candidate: int) -> bool:
@@ -1170,7 +1233,12 @@ def bdf_bound(value: Any, *, max_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBo
     return result
 
 
-def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBaseBound:
+def grh_bound(
+    value: Any,
+    *,
+    max_bdf_bound: int = DEFAULT_MAX_BOUND,
+    _compact_index_primes: bool = False,
+) -> FactorBaseBound:
     """Return the smallest selected unconditional or GRH-certified bound."""
     minkowski = minkowski_bound(value)
     if minkowski.bound <= AUTO_MINKOWSKI_BOUND_LIMIT:
@@ -1190,7 +1258,11 @@ def grh_bound(value: Any, *, max_bdf_bound: int = DEFAULT_MAX_BOUND) -> FactorBa
             details,
         )
     bach = bach_bound(value)
-    bdf = bdf_bound(value, max_bound=max_bdf_bound)
+    bdf = bdf_bound(
+        value,
+        max_bound=max_bdf_bound,
+        _compact_index_primes=_compact_index_primes,
+    )
     selected = bdf if bdf.bound < bach.bound else bach
     details = dict(selected.details)
     details["candidates"] = {
@@ -1360,7 +1432,7 @@ class FactorBasePrimeRecord:
         index: int,
         prime_ideal: Any,
         *,
-        second_generator: Any = None,
+        second_generator: Any = _SECOND_GENERATOR_UNSET,
     ) -> None:
         if index < 0:
             raise ValueError("a factor-base index must be nonnegative")
@@ -1373,8 +1445,14 @@ class FactorBasePrimeRecord:
         if prime_ideal.norm() != runtime.bigint(self.norm):
             raise ArithmeticError("a factor-base prime has inconsistent exact norm")
         self.hnf_fingerprint = _encode_rows(prime_ideal._basis_rows)
-        if second_generator is None:
+        if second_generator is _SECOND_GENERATOR_UNSET:
             self.two_generator = _two_generator_data(prime_ideal)
+        elif second_generator is None:
+            # Serialized packed evidence may deliberately record that the
+            # canonical basis search found no single `(p, alpha)` witness.
+            # Preserve that authenticated absence instead of silently choosing
+            # a different valid generator during materialization.
+            self.two_generator = None
         else:
             # The selective Dedekind--Kummer producer just constructed this
             # exact ideal as `(p, second_generator)`.  Reconstructing its HNF
@@ -1611,9 +1689,15 @@ def factor_base_plan(
     max_rational_primes: int = DEFAULT_MAX_RATIONAL_PRIMES,
     max_prime_ideals: int = DEFAULT_MAX_PRIME_IDEALS,
     max_memory_bytes: int = DEFAULT_MAX_MEMORY_BYTES,
+    _compact_cubic_index_primes: bool = False,
 ) -> FactorBasePlan:
     """Plan an unconditional or GRH-conditional class-group factor base."""
     order = _as_maximal_order(value)
+    compact_index_primes = bool(
+        _compact_cubic_index_primes
+        and order.degree() == 3
+        and _maximal.equation_order_index(order) != 1
+    )
     selected = theorem.lower()
     if selected == "auto":
         selected = "minkowski" if proof else "grh"
@@ -1624,7 +1708,11 @@ def factor_base_plan(
     elif selected in ("bdf", "belabas-diaz-friedman"):
         bound_result = bdf_bound(order, max_bound=max_bound)
     elif selected == "grh":
-        bound_result = grh_bound(order, max_bdf_bound=max_bound)
+        bound_result = grh_bound(
+            order,
+            max_bdf_bound=max_bound,
+            _compact_index_primes=compact_index_primes,
+        )
     else:
         raise ValueError("unknown factor-base theorem: " + theorem)
     if proof and bound_result.assumptions:
@@ -1756,11 +1844,14 @@ def prime_ideal_norm_stream(plan: FactorBasePlan) -> Iterator[FactorBasePrimeRec
         if occurrence >= len(candidates):
             raise ArithmeticError("compact splitting data disagrees with exact ideals")
         prime_ideal, second_generator = candidates[occurrence]
-        record = FactorBasePrimeRecord(
-            index,
-            prime_ideal,
-            second_generator=second_generator,
-        )
+        if second_generator is None:
+            record = FactorBasePrimeRecord(index, prime_ideal)
+        else:
+            record = FactorBasePrimeRecord(
+                index,
+                prime_ideal,
+                second_generator=second_generator,
+            )
         if record.norm != descriptor[0]:
             raise ArithmeticError("factor-base norm descriptor failed replay")
         record_bytes = _factor_base_record_memory_bytes(record)
@@ -1797,6 +1888,7 @@ __all__ = [
     "FactorBaseBound",
     "FactorBasePlan",
     "FactorBasePrimeRecord",
+    "_has_equation_index_primes",
     "bach_bound",
     "bdf_bound",
     "build_factor_base",

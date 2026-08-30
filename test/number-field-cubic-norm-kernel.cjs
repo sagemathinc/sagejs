@@ -394,6 +394,7 @@ assert resources["cubic_reduced_ideal_sieve_candidates"] == 46
 assert resources["cubic_reduced_ideal_sieve_relations"] == 4
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
+assert resources["cubic_packed_factor_base_uses"] == 1
 assert resources["cubic_relation_selector_calls"] == 1
 assert resources["cubic_relation_selector_initial_rows"] == 6
 assert resources["cubic_relation_selector_candidate_rows"] == 48

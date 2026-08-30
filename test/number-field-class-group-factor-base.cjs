@@ -1002,12 +1002,53 @@ for index, (label, polynomial, expected_hash) in enumerate(cases):
     # Both ordinary materialization and the independently produced generic
     # factor base must reproduce the exact historical payload.
     ordinary, _ideals = cubic._materialize_packed_cubic_factor_records(packed)
+    verified = cubic.materialize_verified_packed_cubic_factor_records(packed)
+    assert verified is not None
+    verified_records, _verified_ideals = verified
     generic_plan = factor_bases.factor_base_plan(
         order, proof=True, theorem="minkowski"
     )
     generic = factor_bases.build_factor_base(generic_plan)
     assert [record.to_dict() for record in ordinary] == payload
+    assert [record.to_dict() for record in verified_records] == payload
     assert [record.to_dict() for record in generic] == payload
+
+    equation = prime_ideals._maximal.integral_equation_polynomial(field)
+    index_squared = abs(int(equation.discriminant())) // abs(int(order.discriminant()))
+    for prime in prime_ideals._nf_global("prime_range")(2, int(plan.bound) + 1):
+        if index_squared % int(prime):
+            continue
+        compact_record = tuple(
+            prime_ideals.splitting_records(
+                order,
+                prime,
+                prime + 1,
+                _index_prime_record=factor_bases._compact_index_prime_splitting_record,
+            )
+        )
+        assert len(compact_record) == 1
+        complete_record = prime_ideals.factor_rational_prime(
+            order, prime
+        ).splitting_record(False)
+        assert sorted(
+            (factor["e"], factor["f"])
+            for factor in compact_record[0]["factors"]
+        ) == sorted(
+            (factor["e"], factor["f"])
+            for factor in complete_record["factors"]
+        )
+
+    if index == 0:
+        index_record = next(record for record in packed if not record.dedekind_kummer)
+        retained_ramification = index_record.ramification
+        index_record.ramification = retained_ramification + 1
+        try:
+            cubic.materialize_verified_packed_cubic_factor_records(packed)
+            raise AssertionError("a corrupt finite-algebra ramification was accepted")
+        except ArithmeticError as error:
+            assert "ramification index changed" in str(error)
+        finally:
+            index_record.ramification = retained_ramification
 
     # The finite-algebra producer itself supplies the canonical payload.  Once
     # supplied, constructing a packed record must not redo the modular ideal
@@ -1055,6 +1096,29 @@ for index, (label, polynomial, expected_hash) in enumerate(cases):
     finally:
         prime_ideals._subspace_ideal_generated_by = original_generated
     results.append([label, int(plan.bound), len(payload), expected_hash])
+
+# A larger equation-index field has one canonical prime record for which the
+# ordinary basis search intentionally records no single (p, alpha) witness.
+# The packed verifier must authenticate the whole modular ideal and preserve
+# that absent payload, rather than inventing a different valid serialization.
+hard = NumberField(x**3 - x**2 - 576*x - 1665, "hard_missing_generator")
+hard_order = hard.maximal_order()
+hard_generic_plan = factor_bases.factor_base_plan(hard_order, proof=False)
+hard_generic = factor_bases.build_factor_base(hard_generic_plan)
+hard_compact_plan = factor_bases.factor_base_plan(
+    hard_order,
+    proof=False,
+    _compact_cubic_index_primes=True,
+)
+hard_packed = cubic.packed_cubic_factor_records(hard_compact_plan)
+assert hard_packed is not None
+assert any(record._second_generator_payload is None for record in hard_packed)
+hard_verified = cubic.materialize_verified_packed_cubic_factor_records(hard_packed)
+assert hard_verified is not None
+hard_verified_records, _hard_verified_ideals = hard_verified
+assert [record.to_dict() for record in hard_verified_records] == [
+    record.to_dict() for record in hard_generic
+]
 print(json.dumps(results, separators=(",", ":")))
 `);
   assert.deepEqual(JSON.parse(output), [

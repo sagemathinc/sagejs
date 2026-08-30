@@ -37,6 +37,12 @@ INCOMPLETE_RESOURCE_LIMIT = "incomplete-resource-limit"
 MAX_DIRECT_CUBIC_RELATION_SEED_BOUND = 20
 MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
+MAX_DIRECT_CUBIC_PACKED_DEDEKIND_KUMMER_BOUND = 12
+# The compact cubic factor producer retains exact local-algebra, HNF, and
+# quotient-field evidence.  The tune frontier currently justifies keeping it
+# live through BDF discovery and materialization at equation-index primes up to
+# this conservative bound; larger bases retain the mature public route.
+MAX_DIRECT_CUBIC_PACKED_FACTOR_BOUND = 32
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
 # Exact expansion is useful for cheaply distinguishing +/-1 from a genuine
@@ -2428,14 +2434,33 @@ class ClassUnitGroupEngine:
     ) -> tuple[Any, tuple[Any, ...]]:
         started = self._phase_start()
         module = self.components.factor_base
-        plan = module.factor_base_plan(
-            self.order,
-            proof=proof,
-            theorem=("minkowski" if proof else "auto"),
-            max_bound=self.limits.max_factor_base_bound,
-            max_prime_ideals=self.limits.max_factor_base_size,
-            max_memory_bytes=self.limits.max_memory_bytes,
+        standard_module = _optional_module(
+            "sagejs.number_fields.class_group_factor_base"
         )
+        compact_cubic_candidate = bool(
+            not proof
+            and int(self.field.degree()) == 3
+            and self.algorithm == "auto"
+            and self.seed == 0
+            and self.checkpoint_controller is None
+            and module is standard_module
+        )
+        compact_eligible = getattr(module, "_has_equation_index_primes", None)
+        compact_cubic = bool(
+            compact_cubic_candidate
+            and callable(compact_eligible)
+            and compact_eligible(self.order)
+        )
+        plan_options = {
+            "proof": proof,
+            "theorem": ("minkowski" if proof else "auto"),
+            "max_bound": self.limits.max_factor_base_bound,
+            "max_prime_ideals": self.limits.max_factor_base_size,
+            "max_memory_bytes": self.limits.max_memory_bytes,
+        }
+        if compact_cubic:
+            plan_options["_compact_cubic_index_primes"] = True
+        plan = module.factor_base_plan(self.order, **plan_options)
         plan.require_feasible()
         records: Any = None
         primes: tuple[Any, ...] = ()
@@ -2445,9 +2470,13 @@ class ClassUnitGroupEngine:
             not proof
             and int(self.field.degree()) == 3
             and self.algorithm == "auto"
-            and int(plan.bound) <= 12
-            and module
-            is _optional_module("sagejs.number_fields.class_group_factor_base")
+            and int(plan.bound)
+            <= (
+                MAX_DIRECT_CUBIC_PACKED_FACTOR_BOUND
+                if compact_cubic
+                else MAX_DIRECT_CUBIC_PACKED_DEDEKIND_KUMMER_BOUND
+            )
+            and module is standard_module
         ):
             try:
                 cubic = __import__(

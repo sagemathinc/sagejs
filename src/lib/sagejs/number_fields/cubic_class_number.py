@@ -795,21 +795,18 @@ def _materialize_packed_cubic_factor_records(
 def materialize_verified_packed_cubic_factor_records(
     factor_records: tuple[Any, ...],
 ) -> tuple[tuple[Any, ...], tuple[Any, ...]] | None:
-    """Materialize a live packed Dedekind--Kummer base with exact checks.
+    """Materialize a live packed cubic factor base with exact checks.
 
     The generic class/unit engine needs ordinary prime-ideal objects before
-    relation collection.  For a cubic `p`-maximal equation order, the packed
-    producer already retains the exact modular factor, HNF lattice, quotient
-    presentation, and second generator.  Replay the same independent checks
-    as `_dedekind_kummer_prime_candidate(..., verify_candidate=True)` after
-    materialization.  Index-prime finite-algebra factors deliberately return
-    `None`; their complete product/comaximality replay remains authoritative.
+    relation collection.  The packed producer retains the exact modular
+    ideal, HNF lattice, quotient presentation, and second generator.  Replay
+    the lattice preimage, quotient field, and local-algebra ramification after
+    materialization.  This proves both Dedekind--Kummer and equation-index
+    factors without constructing and multiplying a second set of public ideal
+    objects.
     """
     if not factor_records or any(
-        not isinstance(record, PackedCubicFactorRecord)
-        or not record.dedekind_kummer
-        or record.second_generator is None
-        for record in factor_records
+        not isinstance(record, PackedCubicFactorRecord) for record in factor_records
     ):
         return None
     prime_module = __import__(
@@ -831,7 +828,7 @@ def materialize_verified_packed_cubic_factor_records(
                 value += row[source] * inverse_rows[source][target]
             if value._denominator != 1:
                 raise ArithmeticError(
-                    "a packed Dedekind--Kummer lattice left the maximal order"
+                    "a packed cubic factor lattice left the maximal order"
                 )
             coordinates.append(int(value._numerator))
         return tuple(coordinates)
@@ -893,34 +890,55 @@ def materialize_verified_packed_cubic_factor_records(
         target_subspace = [list(row) for row in packed.subspace]
         if reduced_rows != target_subspace:
             raise ArithmeticError(
-                "a packed Dedekind--Kummer lattice has the wrong modular image"
+                "a packed cubic factor lattice has the wrong modular image"
             )
         expected_norm = rational_prime**packed.residue_degree
         if abs(determinant(lattice_rows)) != expected_norm:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal has the wrong exact norm"
-            )
+            raise ArithmeticError("a packed cubic factor has the wrong exact norm")
 
         witness_payload = packed._second_generator_payload
         if witness_payload is None:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal lacks a two-generator witness"
+            generated_subspace = prime_module._subspace_ideal_generated_by(
+                target_subspace,
+                3,
+                table,
+                rational_prime,
             )
-        witness_row = tuple(
-            sage.QQ(numerator) / sage.QQ(denominator)
-            for numerator, denominator in witness_payload
-        )
-        witness_coordinates = order_coordinates(witness_row)
-        generated_subspace = prime_module._subspace_ideal_generated_by(
-            [[value % rational_prime for value in witness_coordinates]],
-            3,
-            table,
-            rational_prime,
-        )
+        else:
+            witness_row = tuple(
+                sage.QQ(numerator) / sage.QQ(denominator)
+                for numerator, denominator in witness_payload
+            )
+            witness_coordinates = order_coordinates(witness_row)
+            generated_subspace = prime_module._subspace_ideal_generated_by(
+                [[value % rational_prime for value in witness_coordinates]],
+                3,
+                table,
+                rational_prime,
+            )
         if generated_subspace != target_subspace:
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer witness generates the wrong ideal"
+            raise ArithmeticError("a packed cubic factor is not an algebra ideal")
+        power = target_subspace
+        for _exponent in range(4):
+            next_power = prime_module._subspace_product(
+                power,
+                target_subspace,
+                3,
+                table,
+                rational_prime,
             )
+            if next_power == power:
+                break
+            power = next_power
+        else:
+            raise ArithmeticError("a packed cubic local ideal did not stabilize")
+        local_dimension = 3 - len(power)
+        if (
+            packed.residue_degree < 1
+            or packed.ramification < 1
+            or local_dimension != packed.ramification * packed.residue_degree
+        ):
+            raise ArithmeticError("a packed cubic ramification index changed")
         presentation = packed.presentation
         residue_degree = packed.residue_degree
         primitive = [int(value) % rational_prime for value in presentation["primitive"]]
@@ -947,7 +965,7 @@ def materialize_verified_packed_cubic_factor_records(
                 for row in target_subspace
             )
         ):
-            raise ArithmeticError("a packed Dedekind--Kummer quotient map changed")
+            raise ArithmeticError("a packed cubic quotient map changed")
         powers: list[list[int]] = []
         power = list(one)
         for _exponent in range(residue_degree):
@@ -958,7 +976,7 @@ def materialize_verified_packed_cubic_factor_records(
                 power, primitive, table, rational_prime
             )
         if prime_module._matrix_inverse(powers, rational_prime) != power_inverse:
-            raise ArithmeticError("a packed Dedekind--Kummer power basis changed")
+            raise ArithmeticError("a packed cubic residue power basis changed")
         next_image = prime_module._row_times_matrix(
             power, quotient_matrix, rational_prime
         )
@@ -972,13 +990,11 @@ def materialize_verified_packed_cubic_factor_records(
             tuple(int(value) % rational_prime for value in presentation["modulus"])
             != expected_modulus
         ):
-            raise ArithmeticError("a packed Dedekind--Kummer residue modulus changed")
+            raise ArithmeticError("a packed cubic residue modulus changed")
         if not prime_module._presentation_modulus_is_irreducible(
             presentation, rational_prime, residue_degree
         ):
-            raise ArithmeticError(
-                "a packed Dedekind--Kummer ideal quotient is not a field"
-            )
+            raise ArithmeticError("a packed cubic factor quotient is not a field")
         prime_ideal._packed_candidate_pending_replay = False
         prime_ideal._verified_modular_algebra = (
             rational_prime,
