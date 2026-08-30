@@ -4556,8 +4556,9 @@ class ClassUnitGroupEngine:
         """
         if (
             self._relation_initial_basis_selected
+            or int(self.field.degree()) != 3
+            or unit_rank not in (1, 2)
             or tuple(records) != self._relation_log_record_prefix
-            or unit_rank <= 0
             or len(self._relation_independent_dependency_keys) < unit_rank
         ):
             return None
@@ -4734,8 +4735,10 @@ class ClassUnitGroupEngine:
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
-        steering_basis = self._live_steering_unit_basis(
-            records, source_dependencies, unit_rank
+        steering_basis = (
+            self._live_steering_unit_basis(records, source_dependencies, unit_rank)
+            if unit_rank == 2
+            else None
         )
         if steering_basis is None:
             dependencies = self._reduce_dependency_lattice(records, source_dependencies)
@@ -4743,7 +4746,9 @@ class ClassUnitGroupEngine:
                 records,
                 dependencies,
                 unit_rank,
-                allow_steering_basis=False,
+                allow_steering_basis=bool(
+                    unit_rank == 1 and dependencies == source_dependencies
+                ),
             )
         else:
             units, selected_dependencies = steering_basis

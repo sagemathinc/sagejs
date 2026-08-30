@@ -965,9 +965,8 @@ assert proof_result.saturation_record.verify()
 
 # LMFDB 3.1.5448.1 has no duplicate valuation row in the primary coefficient
 # box.  The bounded coefficient-4 fallback finds two stable exact dependency
-# relations.  Steering first reuses one authenticated unit, the rigorous hR
-# test exposes its nontrivial index, and the complete LLL/minimum-volume route
-# then selects the fundamental quotient.
+# relations.  Rank-one cubics retain the previous exact rule: steering state
+# is reused only when LLL leaves the complete dependency basis unchanged.
 W = NumberField(x**3 - x**2 - 14*x + 30, "c")
 assert W.class_number(proof=False) == 8
 widened_artifact = W._bounded_cubic_class_number_artifact
@@ -985,14 +984,14 @@ assert widened_result.proof_status == "exact-unconditional"
 assert widened_resources["cubic_relation_seed_relations"] == 9
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
-assert widened_resources["unit_principal_authority_requests"] == 2
-assert widened_resources["unit_principal_authority_hits"] == 2
+assert widened_resources["unit_principal_authority_requests"] == 1
+assert widened_resources["unit_principal_authority_hits"] == 1
 assert widened_resources["unit_principal_authority_fallbacks"] == 0
-assert widened_resources["dependency_unit_steering_basis_hits"] == 1
-assert widened_resources["dependency_unit_steering_basis_fallbacks"] == 1
+assert widened_resources["dependency_unit_steering_basis_hits"] == 0
+assert widened_resources["dependency_unit_steering_basis_fallbacks"] == 0
 assert widened_resources["dependency_lattice_lll_requests"] == 1
 assert widened_resources["dependency_lattice_lll_reductions"] == 1
-assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 2
+assert widened_result.context.live_diagnostics()["authenticated_dependency_units"] == 1
 
 # Filtering the widened box by repeated absolute norm changes only the amount
 # of packed valuation work: it retains exactly every candidate that could

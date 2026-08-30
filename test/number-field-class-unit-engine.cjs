@@ -1079,16 +1079,47 @@ assert retry_resources["dependency_unit_steering_basis_hits"] == 1
 assert retry_resources["dependency_unit_steering_basis_fallbacks"] == 1
 assert retry_resources["dependency_lattice_lll_requests"] == 1
 assert retry_resources["dependency_lattice_lll_reductions"] == 1
+
+# The same retry contract covers a bounded analytic-resource rejection without
+# catching unrelated RuntimeError values or cancellation.
+original_analytic_index = ClassUnitGroupEngine._analytic_index
+forced_resource_error = [False]
+def force_first_steering_resource_error(self, presentation, units, unit_rank):
+    if (
+        not forced_resource_error[0]
+        and self._resource_usage["dependency_unit_steering_basis_hits"] > 0
+    ):
+        forced_resource_error[0] = True
+        raise self.components.analytic.AnalyticResourceError(
+            "forced steering-basis resource rejection"
+        )
+    return original_analytic_index(self, presentation, units, unit_rank)
+
+ClassUnitGroupEngine._analytic_index = force_first_steering_resource_error
+try:
+    resource_field = NumberField(x**3 - x**2 - 36*x - 18, "resource")
+    resource_retry = compute_class_unit_group(
+        resource_field, proof=False, algorithm="auto"
+    )
+finally:
+    ClassUnitGroupEngine._analytic_index = original_analytic_index
+assert resource_retry.complete and resource_retry.class_number() == 1
+resource_retry_resources = resource_retry.diagnostics["resources"]
+assert resource_retry_resources["dependency_unit_steering_basis_hits"] == 1
+assert resource_retry_resources["dependency_unit_steering_basis_fallbacks"] == 1
+assert resource_retry_resources["dependency_lattice_lll_requests"] == 1
+assert resource_retry_resources["dependency_lattice_lll_reductions"] == 1
 print((
     result.class_number(),
     resources["dependency_unit_steering_basis_hits"],
     resources["dependency_lattice_lll_reductions"],
     fallback_resources["dependency_lattice_lll_reductions"],
     retry_resources["dependency_unit_steering_basis_fallbacks"],
+    resource_retry_resources["dependency_unit_steering_basis_fallbacks"],
     regulator.precision_bits,
 ))
 `);
-  assert.equal(output, "(1, 1, 0, 1, 1, 128)");
+  assert.equal(output, "(1, 1, 0, 1, 1, 1, 128)");
 });
 
 test("cubic class saturation searches nonzero p-torsion cosets", () => {
@@ -1234,8 +1265,6 @@ assert group.verify_proof_payload(payload)
 resources = result.diagnostics["resources"]
 assert resources["relation_exact_rank_one_expansion_skips"] >= 1
 assert resources["relation_factored_log_rank_units"] >= 1
-assert resources["dependency_unit_steering_basis_hits"] == 1
-assert resources["dependency_unit_steering_basis_fallbacks"] == 1
 print((
     group.order(),
     group.invariants(),
