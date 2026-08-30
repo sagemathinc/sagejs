@@ -9,6 +9,7 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
     "number-field",
     "elliptic-lseries",
     "complex-plot",
+    "cape-man",
     "exact-matrices",
     "numpy-signal-recovery",
     "modular-symbols",
@@ -29,8 +30,23 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
       try {
         const result = await sage.evaluate(example.source, { timeout: 150_000 });
         assert.equal(typeof result.repr, "string");
-        if (example.id === "complex-plot" || example.id === "random-graph-plot") {
+        if (
+          example.id === "complex-plot" ||
+          example.id === "cape-man" ||
+          example.id === "random-graph-plot"
+        ) {
           assert.equal(result.display?.mime, "application/vnd.plotly.v1+json");
+        }
+        if (example.id === "cape-man") {
+          const traces = result.display?.data?.data ?? [];
+          assert.ok(
+            traces.length >= 7,
+            `expected Cape Man surfaces, got ${traces.length}`,
+          );
+          assert.ok(traces.some((trace) => trace.type === "scatter3d"));
+          assert.ok(
+            traces.filter((trace) => trace.type === "surface").length >= 6,
+          );
         }
         if (example.id === "numpy-signal-recovery") {
           assert.equal(

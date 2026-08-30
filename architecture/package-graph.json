@@ -109,7 +109,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 430000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -366,9 +366,9 @@
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 130000,
       "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/symbolic.py"],
+      "files": ["src/baselib/symbolic.py", "src/baselib/piecewise.py"],
       "prefixes": []
     },
     {
@@ -401,11 +401,25 @@
       "id": "combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 60000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
       "files": [
         "src/baselib/combinat.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "coding-theory",
+      "layer": 5,
+      "startup": "bootstrap",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "groups-combinatorics"
+      ],
+      "files": ["src/baselib/coding.py"],
       "prefixes": []
     },
     {

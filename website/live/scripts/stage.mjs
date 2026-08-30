@@ -4,10 +4,12 @@ import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promi
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { validateCapabilityReport } from "../capability-report.mjs";
 
 const scriptRoot = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 const defaultAppRoot = path.resolve(scriptRoot, "..");
 const defaultRepository = path.resolve(defaultAppRoot, "../..");
 const REQUIRED_RUNTIME_HOSTS = [
@@ -69,6 +71,34 @@ async function copyTree(source, destination, excluded = new Set()) {
     const to = path.join(destination, entry.name);
     if (entry.isDirectory()) await copyTree(from, to, excluded);
     else if (entry.isFile()) await copyFileWithParents(from, to);
+  }
+}
+
+async function stageKatex(target) {
+  const distribution = path.dirname(require.resolve("katex/dist/katex.min.js", {
+    paths: [path.join(defaultRepository, "packages", "flint-wasm")],
+  }));
+  const destination = path.join(target, "vendor", "katex");
+  await mkdir(path.join(destination, "fonts"), { recursive: true });
+  await copyFileWithParents(
+    path.join(distribution, "katex.min.js"),
+    path.join(destination, "katex.min.js"),
+  );
+  const css = (await readFile(path.join(distribution, "katex.min.css"), "utf8"))
+    .replace(
+      /,url\(fonts\/[^)]*\.woff\) format\("woff"\),url\(fonts\/[^)]*\.ttf\) format\("truetype"\)/g,
+      "",
+    );
+  if (css.includes('format("woff")') || css.includes('format("truetype")')) {
+    throw new Error("KaTeX CSS contains an unexpected non-WOFF2 font source");
+  }
+  await writeFile(path.join(destination, "katex.min.css"), css);
+  for (const name of await readdir(path.join(distribution, "fonts"))) {
+    if (!name.endsWith(".woff2")) continue;
+    await copyFileWithParents(
+      path.join(distribution, "fonts", name),
+      path.join(destination, "fonts", name),
+    );
   }
 }
 
@@ -158,6 +188,7 @@ export async function stageRelease({
   await rm(target, { recursive: true, force: true });
   await mkdir(target, { recursive: true });
   await copyTree(appRoot, target, SHELL_EXCLUDED);
+  await stageKatex(target);
   await build({
     entryPoints: [path.join(appRoot, "codemirror-editor.mjs")],
     outfile: path.join(target, "codemirror-editor.mjs"),

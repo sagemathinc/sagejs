@@ -2152,9 +2152,18 @@ def Zmod(order: Any) -> IntegerModRing:
 Integers = Zmod
 
 
-def Mod(value: Any, modulus: Any) -> IntegerModElement:
+def Mod(value: Any, modulus: Any) -> Any:
     """Construct `value` in the ring of integers modulo `modulus`."""
+    modulus = runtime.integer_bigint(modulus)
+    if modulus == 0:
+        return sage.ZZ(value)
+    if modulus < 0:
+        modulus = -modulus
     return Zmod(modulus)(value)
+
+
+# Sage publishes both spellings.
+mod = Mod
 
 
 runtime.set_class_repr(FiniteFieldElement, "<class 'FiniteFieldElement'>")

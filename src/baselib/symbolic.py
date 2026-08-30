@@ -17,12 +17,18 @@ _backend_state = {"value": None}
 _FUNCTION_NAMES = {
     "Abs": "abs",
     "Cos": "cos",
+    "Cosh": "cosh",
+    "Cot": "cot",
+    "Csc": "csc",
     "Exp": "exp",
     "Ln": "log",
     "Log": "log",
+    "Sec": "sec",
     "Sin": "sin",
+    "Sinh": "sinh",
     "Sqrt": "sqrt",
     "Tan": "tan",
+    "Tanh": "tanh",
 }
 _CONSTANT_NAMES = {
     "ExponentialE": "e",
@@ -34,6 +40,13 @@ _CONSTANT_NAMES = {
 
 
 _RELATION_HEADS = ["Equal", "Less", "LessEqual", "Greater", "GreaterEqual"]
+
+
+def _latex_display(value: Any) -> Any:
+    record = runtime.object.create(None)
+    runtime.reflect.set(record, "mime", "text/latex")
+    runtime.reflect.set(record, "data", "$\\displaystyle " + str(value) + "$")
+    return record
 
 
 def _backend() -> Any:
@@ -555,6 +568,12 @@ class Expression(sage.Element):
     __str__ = __repr__
     toString = __repr__
 
+    def _latex_(self) -> str:
+        return str(_call_backend("latex", [self._tree]))
+
+    def _rich_repr_(self) -> Any:
+        return _latex_display(self._latex_())
+
     def __call__(self, *values: Any, **substitutions: Any) -> Expression:
         """Substitute variables using Sage's expression-call shorthand."""
         variables = self.variables()
@@ -595,20 +614,46 @@ class Expression(sage.Element):
     def derivative(
         self,
         variable: Any = None,
-        degree: int = 1,
+        degree: Any = 1,
+        *additional_variables: Any,
     ) -> Expression:
         if variable is None:
             variables = self.variables()
             if len(variables) != 1:
                 raise ValueError("you must specify a variable for differentiation")
             variable = variables[0]
-        name = _symbol_name(variable)
+        if runtime.is_exact_integer(degree) and len(additional_variables) == 0:
+            differentiation_steps = [(variable, int(degree))]
+        else:
+            tokens = [variable, degree]
+            for additional_variable in additional_variables:
+                tokens.append(additional_variable)
+            differentiation_steps = []
+            index = 0
+            while index < len(tokens):
+                current_variable = tokens[index]
+                index += 1
+                repetitions = 1
+                if index < len(tokens) and runtime.is_exact_integer(tokens[index]):
+                    repetitions = int(tokens[index])
+                    index += 1
+                differentiation_steps.append((current_variable, repetitions))
         result = self
-        for _index in range(int(degree)):
-            result = Expression(_call_backend("derivative", [result._tree, name]))
+        for current_variable, repetitions in differentiation_steps:
+            name = _symbol_name(current_variable)
+            for _index in range(repetitions):
+                result = Expression(_call_backend("derivative", [result._tree, name]))
         return result
 
     diff = derivative
+
+    def expand(self) -> Expression:
+        """Expand products and integer powers in this expression."""
+        return Expression(_call_backend("expand", [self._tree]))
+
+    def factor(self) -> Expression:
+        """Factor this expression over its exact coefficient domain."""
+        return Expression(_call_backend("factor", [self._tree]))
 
     def integrate(
         self,
@@ -642,6 +687,42 @@ class Expression(sage.Element):
         )
 
     integral = integrate
+
+    def sum(
+        self,
+        variable: Any,
+        lower: Any,
+        upper: Any,
+    ) -> Expression:
+        return symbolic_sum(self, variable, lower, upper)
+
+    def gradient(self, variables: Any = None) -> Any:
+        variable_values = self.variables() if variables is None else list(variables)
+        vector_function = runtime.reflect.get(runtime.global_object, "vector")
+        return vector_function(
+            SR,
+            [self.derivative(variable) for variable in variable_values],
+        )
+
+    def hessian(self) -> Any:
+        variables = self.variables()
+        entries = []
+        for row_variable in variables:
+            first = self.derivative(row_variable)
+            for column_variable in variables:
+                entries.append(first.derivative(column_variable))
+        return SymbolicMatrix(len(variables), len(variables), entries, variables)
+
+    def solve(self, *variables: Any, **options: Any) -> Any:
+        return solve(self, *variables, **options)
+
+    def taylor(
+        self,
+        variable: Any,
+        point: Any,
+        degree: int,
+    ) -> Expression:
+        return taylor(self, variable, point, degree)
 
     def limit(
         self,
@@ -967,7 +1048,7 @@ class CallableExpression(Expression):
     """A symbolic expression with an explicit ordered argument tuple."""
 
     def __init__(self, argument_values: Any, value: Any) -> None:
-        self._arguments = runtime.math_tuple(
+        self._arguments: Any = runtime.math_tuple(
             [SR(argument) for argument in argument_values]
         )
         Expression.__init__(self, _expression_tree(value))
@@ -1000,16 +1081,80 @@ class CallableExpression(Expression):
     def derivative(
         self,
         variable: Any = None,
-        degree: int = 1,
-    ) -> CallableExpression:
+        degree: Any = 1,
+        *additional_variables: Any,
+    ) -> Any:
         if variable is None:
+            if len(self._arguments) > 1:
+                order = int(degree)
+                if order == 1:
+                    return self.gradient()
+                if order == 2:
+                    return self.hessian()
+                raise NotImplementedError(
+                    "total derivatives above order two are not implemented"
+                )
             if len(self._arguments) == 0:
                 raise ValueError("you must specify a variable for differentiation")
             variable = self._arguments[0]
-        result = Expression.derivative(self, variable, degree)
+        elif runtime.is_exact_integer(variable) and degree == 1:
+            order = int(variable)
+            if len(self._arguments) > 1:
+                if order == 1:
+                    return self.gradient()
+                if order == 2:
+                    return self.hessian()
+            variable = self._arguments[0]
+            degree = order
+        tokens = [variable, degree]
+        for additional_variable in additional_variables:
+            tokens.append(additional_variable)
+        result = self
+        index = 0
+        while index < len(tokens):
+            current_variable = tokens[index]
+            index += 1
+            repetitions = 1
+            if index < len(tokens) and runtime.is_exact_integer(tokens[index]):
+                repetitions = int(tokens[index])
+                index += 1
+            result = Expression.derivative(
+                result,
+                current_variable,
+                repetitions,
+            )
         return CallableExpression(self._arguments, result)
 
     diff = derivative
+
+    def gradient(self, variables: Any = None) -> Any:
+        variable_values = self._arguments if variables is None else list(variables)
+        vector_function = runtime.reflect.get(runtime.global_object, "vector")
+        return vector_function(
+            SR,
+            [
+                CallableExpression(self._arguments, Expression.derivative(self, value))
+                for value in variable_values
+            ],
+        )
+
+    def hessian(self) -> Any:
+        entries = []
+        for row_variable in self._arguments:
+            first = Expression.derivative(self, row_variable)
+            for column_variable in self._arguments:
+                entries.append(
+                    CallableExpression(
+                        self._arguments,
+                        first.derivative(column_variable),
+                    )
+                )
+        return SymbolicMatrix(
+            len(self._arguments),
+            len(self._arguments),
+            entries,
+            self._arguments,
+        )
 
     def __repr__(self) -> str:
         names = [_symbol_name(argument) for argument in self._arguments]
@@ -1033,6 +1178,153 @@ class UndefinedSymbolicFunction:
 
     def __repr__(self) -> str:
         return self._name
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+@runtime.sequence_class
+class SymbolicMatrix:
+    """A compact dense matrix for symbolic calculus results."""
+
+    def __init__(
+        self,
+        rows: int,
+        columns: int,
+        entries: Any,
+        argument_values: Any = None,
+    ) -> None:
+        self._rows = int(rows)
+        self._columns = int(columns)
+        self._entries = [SR(value) for value in entries]
+        if len(self._entries) != self._rows * self._columns:
+            raise ValueError("symbolic matrix entry count does not match")
+        self._arguments = [] if argument_values is None else list(argument_values)
+
+    def base_ring(self) -> Any:
+        return SR
+
+    def nrows(self) -> int:
+        return self._rows
+
+    def ncols(self) -> int:
+        return self._columns
+
+    def dimensions(self) -> tuple[int, int]:
+        return runtime.math_tuple([self._rows, self._columns])
+
+    def list(self) -> list[Any]:
+        return list(self._entries)
+
+    def __getitem__(self, index: Any) -> Any:
+        if isinstance(index, tuple) or runtime.array.isArray(index):
+            if len(index) != 2:
+                raise IndexError("matrix index must have two components")
+            row = int(index[0])
+            column = int(index[1])
+            if row < 0:
+                row += self._rows
+            if column < 0:
+                column += self._columns
+            if row < 0 or row >= self._rows or column < 0 or column >= self._columns:
+                raise IndexError("matrix index out of range")
+            return self._entries[row * self._columns + column]
+        row = int(index)
+        if row < 0:
+            row += self._rows
+        if row < 0 or row >= self._rows:
+            raise IndexError("matrix index out of range")
+        vector_function = runtime.reflect.get(runtime.global_object, "vector")
+        start = row * self._columns
+        return vector_function(SR, self._entries[start : start + self._columns])
+
+    def __call__(self, *values: Any, **substitutions: Any) -> SymbolicMatrix:
+        entries = []
+        for entry in self._entries:
+            if isinstance(entry, CallableExpression):
+                entries.append(entry(*values, **substitutions))
+            else:
+                if len(values) > len(self._arguments):
+                    raise TypeError("too many positional substitutions")
+                replacements = runtime.object.create(None)
+                for index in range(len(values)):
+                    runtime.reflect.set(
+                        replacements,
+                        _symbol_name(self._arguments[index]),
+                        _expression_tree(values[index]),
+                    )
+                for key in runtime.object.keys(substitutions):
+                    runtime.reflect.set(
+                        replacements,
+                        key,
+                        _expression_tree(runtime.reflect.get(substitutions, key)),
+                    )
+                entries.append(
+                    Expression(_call_backend("substitute", [entry._tree, replacements]))
+                )
+        return SymbolicMatrix(self._rows, self._columns, entries)
+
+    def determinant(self) -> Any:
+        if self._rows != self._columns:
+            raise ValueError("determinant is only defined for square matrices")
+        if self._rows == 0:
+            return SR(1)
+
+        def recursive(values: list[Any], size: int) -> Expression:
+            if size == 1:
+                return SR(values[0])
+            answer = SR(0)
+            for column in range(size):
+                minor = []
+                for row in range(1, size):
+                    for current_column in range(size):
+                        if current_column != column:
+                            minor.append(values[row * size + current_column])
+                term = SR(values[column]) * recursive(minor, size - 1)
+                answer = answer + term if column % 2 == 0 else answer - term
+            return answer
+
+        result = recursive(self._entries, self._rows).simplify()
+        if self._arguments:
+            return CallableExpression(self._arguments, result)
+        return result
+
+    det = determinant
+
+    def _latex_(self) -> str:
+        rows = []
+        for row in range(self._rows):
+            entries = []
+            for column in range(self._columns):
+                entry = self._entries[row * self._columns + column]
+                entries.append(str(entry._latex_()))
+            rows.append(" & ".join(entries))
+        return (
+            "\\left(\\begin{array}{"
+            + "r" * self._columns
+            + "}\n"
+            + " \\\\\n".join(rows)
+            + "\n\\end{array}\\right)"
+        )
+
+    def __repr__(self) -> str:
+        if self._rows == 0:
+            return "[]"
+        text_rows = []
+        width = 0
+        for row in range(self._rows):
+            values = [
+                str(self._entries[row * self._columns + column])
+                for column in range(self._columns)
+            ]
+            for value in values:
+                width = max(width, len(value))
+            text_rows.append(values)
+        lines = []
+        for values in text_rows:
+            lines.append("[" + " ".join([value.rjust(width) for value in values]) + "]")
+        return "\n".join(lines)
 
     __str__ = __repr__
     toString = __repr__
@@ -1212,8 +1504,34 @@ def tan(value: Any) -> Any:
     return _symbolic_function("Tan", value, runtime.math.tan)
 
 
+def sinh(value: Any) -> Any:
+    return _symbolic_function("Sinh", value, runtime.math.sinh)
+
+
+def cosh(value: Any) -> Any:
+    return _symbolic_function("Cosh", value, runtime.math.cosh)
+
+
 def tanh(value: Any) -> Any:
     return _symbolic_function("Tanh", value, runtime.math.tanh)
+
+
+def sec(value: Any) -> Any:
+    if isinstance(value, complex):
+        return 1 / cos(value)
+    return _symbolic_function("Sec", value, lambda number: 1 / runtime.math.cos(number))
+
+
+def csc(value: Any) -> Any:
+    if isinstance(value, complex):
+        return 1 / sin(value)
+    return _symbolic_function("Csc", value, lambda number: 1 / runtime.math.sin(number))
+
+
+def cot(value: Any) -> Any:
+    if isinstance(value, complex):
+        return 1 / tan(value)
+    return _symbolic_function("Cot", value, lambda number: 1 / runtime.math.tan(number))
 
 
 def exp(value: Any) -> Any:
@@ -1559,10 +1877,11 @@ def _laplace_transform_tree(
 
 def diff(
     expression: Any,
-    variable: Any = None,
-    degree: int = 1,
+    *variables: Any,
 ) -> Expression:
-    return SR(expression).derivative(variable, degree)
+    if len(variables) == 0:
+        return SR(expression).derivative()
+    return SR(expression).derivative(*variables)
 
 
 derivative = diff
@@ -1575,6 +1894,191 @@ def integral(
     upper: Any = runtime.undefined,
 ) -> Expression:
     return SR(expression).integrate(variable, lower, upper)
+
+
+# Sage exposes both spellings as the same function object.
+integrate = integral
+
+
+def _symbolic_binomial_integer(upper: int, lower: int) -> Any:
+    if lower < 0:
+        return 0
+    if upper < 0:
+        sign = -1 if lower % 2 else 1
+        return sign * _symbolic_binomial_integer(lower - upper - 1, lower)
+    if lower > upper:
+        return 0
+    lower = min(lower, upper - lower)
+    answer = runtime.bigint(1)
+    for index in range(1, lower + 1):
+        answer = runtime.native_div(
+            runtime.native_mul(answer, runtime.bigint(upper - lower + index)),
+            runtime.bigint(index),
+        )
+    return runtime.normalize_integer(answer)
+
+
+def symbolic_binomial(upper: Any, lower: Any) -> Any:
+    """Return an exact or symbolic binomial coefficient."""
+    if runtime.is_exact_integer(upper) and runtime.is_exact_integer(lower):
+        return _symbolic_binomial_integer(int(upper), int(lower))
+    return Expression(
+        _call_backend(
+            "evaluate",
+            [["Binomial", _expression_tree(upper), _expression_tree(lower)]],
+        )
+    )
+
+
+def _bernoulli_numbers(count: int) -> list[Any]:
+    """Return Bernoulli numbers with the `B_1=+1/2` power-sum convention."""
+    workspace = [sage.QQ(0) for _index in range(count + 1)]
+    values = []
+    for row in range(count + 1):
+        workspace[row] = sage.QQ(1) / (row + 1)
+        for column in range(row, 0, -1):
+            workspace[column - 1] = column * (workspace[column - 1] - workspace[column])
+        values.append(workspace[0])
+    return values
+
+
+def _polynomial_prefix_sum(
+    coefficients: list[Any],
+    endpoint: Any,
+) -> Expression:
+    endpoint_expression = SR(endpoint)
+    bernoulli = _bernoulli_numbers(len(coefficients))
+    answer = SR(0)
+    for power in range(len(coefficients)):
+        coefficient = coefficients[power]
+        if coefficient == 0:
+            continue
+        power_sum = SR(0)
+        for index in range(power + 1):
+            power_sum += (
+                symbolic_binomial(power + 1, index)
+                * bernoulli[index]
+                * endpoint_expression ** (power + 1 - index)
+            )
+        answer += coefficient * power_sum / (power + 1)
+    return answer.expand().simplify()
+
+
+def symbolic_sum(
+    expression: Any,
+    variable: Any = runtime.undefined,
+    lower: Any = runtime.undefined,
+    upper: Any = runtime.undefined,
+) -> Any:
+    """Sum an iterable or evaluate a symbolic finite/infinite series."""
+    if variable is runtime.undefined:
+        answer = 0
+        for value in expression:
+            answer += value
+        return answer
+    if lower is runtime.undefined or upper is runtime.undefined:
+        raise TypeError("symbolic sum requires a variable and both bounds")
+    variable_name = _symbol_name(variable)
+    expression_tree = _expression_tree(expression)
+    lower_tree = _expression_tree(lower)
+    upper_tree = _expression_tree(upper)
+    evaluated = Expression(
+        _call_backend(
+            "evaluate",
+            [
+                [
+                    "Sum",
+                    expression_tree,
+                    ["Tuple", variable_name, lower_tree, upper_tree],
+                ]
+            ],
+        )
+    )
+    if not (
+        runtime.array.isArray(evaluated._tree)
+        and len(evaluated._tree) > 0
+        and evaluated._tree[0] == "Sum"
+    ):
+        return evaluated
+    if (
+        runtime.array.isArray(expression_tree)
+        and len(expression_tree) == 3
+        and expression_tree[0] == "Binomial"
+        and expression_tree[1] != variable_name
+        and expression_tree[2] == variable_name
+        and lower_tree == 0
+        and upper_tree == expression_tree[1]
+    ):
+        return SR(2) ** SR(expression_tree[1])
+    rational = _rational_polynomial_tree(expression_tree, variable_name)
+    if (
+        rational is not runtime.undefined
+        and len(rational[1]) == 1
+        and rational[1][0] != 0
+    ):
+        coefficients = [value / rational[1][0] for value in rational[0]]
+        upper_prefix = _polynomial_prefix_sum(coefficients, upper)
+        lower_prefix = _polynomial_prefix_sum(coefficients, SR(lower) - 1)
+        return (upper_prefix - lower_prefix).expand().simplify()
+    return evaluated
+
+
+def jacobian(functions: Any, variables: Any) -> SymbolicMatrix:
+    """Return the matrix of first partial derivatives."""
+    function_values = (
+        list(functions) if isinstance(functions, (list, tuple)) else [functions]
+    )
+    variable_values = (
+        list(variables) if isinstance(variables, (list, tuple)) else [variables]
+    )
+    entries = []
+    for function_value in function_values:
+        expression = SR(function_value)
+        for variable_value in variable_values:
+            entries.append(expression.derivative(variable_value))
+    return SymbolicMatrix(
+        len(function_values),
+        len(variable_values),
+        entries,
+        variable_values,
+    )
+
+
+def expand(expression: Any) -> Expression:
+    """Expand products and integer powers in a symbolic expression."""
+    return SR(expression).expand()
+
+
+def taylor(
+    expression: Any,
+    variable: Any,
+    point: Any,
+    degree: int,
+) -> Expression:
+    """Return the Taylor polynomial through `degree` at `point`."""
+    degree = int(degree)
+    if degree < 0:
+        raise ValueError("Taylor degree must be nonnegative")
+    variable_expression = SR(variable)
+    point_expression = SR(point)
+    offset = variable_expression - point_expression
+    derivative_value = SR(expression)
+    power = SR(1)
+    factorial_value = 1
+    result = SR(0)
+    name = _symbol_name(variable)
+    substitution = runtime.object.create(None)
+    runtime.reflect.set(substitution, name, point_expression._tree)
+    for order in range(degree + 1):
+        coefficient = Expression(
+            _call_backend("substitute", [derivative_value._tree, substitution])
+        ).simplify()
+        result += coefficient * power / factorial_value
+        if order != degree:
+            derivative_value = derivative_value.derivative(variable)
+            power *= offset
+            factorial_value *= order + 1
+    return result.expand().simplify()
 
 
 _GAUSS_KRONROD_21_ABSCISSAE = [
@@ -1982,6 +2486,117 @@ def limit(
     )
 
 
+# Sage exposes `lim` as the identical function object.
+lim = limit
+
+
+def _tree_contains_ode_target(
+    tree: Any,
+    dependent_tree: Any,
+    derivative_tree: Any,
+) -> bool:
+    if _call_backend("same", [tree, dependent_tree]) or _call_backend(
+        "same", [tree, derivative_tree]
+    ):
+        return True
+    if runtime.array.isArray(tree):
+        for value in tree[1:]:
+            if _tree_contains_ode_target(value, dependent_tree, derivative_tree):
+                return True
+    return False
+
+
+def _linear_first_order_parts(
+    tree: Any,
+    dependent_tree: Any,
+    derivative_tree: Any,
+) -> Any:
+    """Return coefficients `(a,b,c)` for `a*y' + b*y + c`."""
+    if _call_backend("same", [tree, derivative_tree]):
+        return SR(1), SR(0), SR(0)
+    if _call_backend("same", [tree, dependent_tree]):
+        return SR(0), SR(1), SR(0)
+    if not _tree_contains_ode_target(tree, dependent_tree, derivative_tree):
+        return SR(0), SR(0), Expression(tree)
+    if not runtime.array.isArray(tree) or len(tree) == 0:
+        return runtime.undefined
+    head = tree[0]
+    if head == "Add":
+        derivative_coefficient = SR(0)
+        dependent_coefficient = SR(0)
+        constant = SR(0)
+        for operand in tree[1:]:
+            parts = _linear_first_order_parts(
+                operand,
+                dependent_tree,
+                derivative_tree,
+            )
+            if parts is runtime.undefined:
+                return parts
+            derivative_coefficient += parts[0]
+            dependent_coefficient += parts[1]
+            constant += parts[2]
+        return derivative_coefficient, dependent_coefficient, constant
+    if head == "Negate" and len(tree) == 2:
+        parts = _linear_first_order_parts(
+            tree[1],
+            dependent_tree,
+            derivative_tree,
+        )
+        if parts is runtime.undefined:
+            return parts
+        return -parts[0], -parts[1], -parts[2]
+    if head == "Multiply":
+        target_operand = runtime.undefined
+        coefficient = SR(1)
+        for operand in tree[1:]:
+            if _tree_contains_ode_target(
+                operand,
+                dependent_tree,
+                derivative_tree,
+            ):
+                if target_operand is not runtime.undefined:
+                    return runtime.undefined
+                target_operand = operand
+            else:
+                coefficient *= Expression(operand)
+        if target_operand is runtime.undefined:
+            return SR(0), SR(0), Expression(tree)
+        parts = _linear_first_order_parts(
+            target_operand,
+            dependent_tree,
+            derivative_tree,
+        )
+        if parts is runtime.undefined:
+            return parts
+        return (
+            coefficient * parts[0],
+            coefficient * parts[1],
+            coefficient * parts[2],
+        )
+    if head in ("Divide", "Rational") and len(tree) == 3:
+        if _tree_contains_ode_target(
+            tree[2],
+            dependent_tree,
+            derivative_tree,
+        ):
+            return runtime.undefined
+        parts = _linear_first_order_parts(
+            tree[1],
+            dependent_tree,
+            derivative_tree,
+        )
+        if parts is runtime.undefined:
+            return parts
+        denominator = Expression(tree[2])
+        return (
+            parts[0] / denominator,
+            parts[1] / denominator,
+            parts[2] / denominator,
+        )
+    return runtime.undefined
+
+
 def desolve(
     equation: Any,
     dependent_and_variable: Any,
@@ -2011,43 +2626,55 @@ def desolve(
             "desolve() currently requires a scalar function of one variable"
         )
     function_name = str(dependent_tree[0])
-    first_order = [
-        "Add",
-        [function_name, variable],
-        ["Apply", ["Derivative", function_name, 1], variable],
-        -1,
+    original_equation_tree = _expression_tree(equation)
+    equation_tree = original_equation_tree
+    if (
+        runtime.array.isArray(equation_tree)
+        and len(equation_tree) == 3
+        and equation_tree[0] == "Equal"
+    ):
+        equation_tree = _expression_tree(
+            Expression(equation_tree[1]) - Expression(equation_tree[2])
+        )
+    derivative_tree = [
+        "Apply",
+        ["Derivative", function_name, 1],
+        variable,
     ]
-    equation_tree = _expression_tree(equation)
-    if _call_backend("same", [equation_tree, first_order]):
+    linear_parts = _linear_first_order_parts(
+        equation_tree,
+        dependent_tree,
+        derivative_tree,
+    )
+    if linear_parts is not runtime.undefined and not _call_backend(
+        "same", [linear_parts[0]._tree, 0]
+    ):
+        derivative_coefficient, dependent_coefficient, constant = linear_parts
+        coefficient = (dependent_coefficient / derivative_coefficient).simplify()
+        forcing = (-constant / derivative_coefficient).simplify()
+        integrating_factor = exp(integral(coefficient, Expression(variable))).simplify()
+        antiderivative = integral(
+            (integrating_factor * forcing).simplify(),
+            Expression(variable),
+        )
         if ics is None:
-            return Expression(
-                [
-                    "Multiply",
-                    ["Add", "_C", ["Power", "ExponentialE", variable]],
-                    ["Power", "ExponentialE", ["Negate", variable]],
-                ]
-            )
+            return ((antiderivative + Expression("_C")) / integrating_factor).simplify()
         initial = list(ics)
         if len(initial) != 2:
             raise ValueError("first-order initial conditions must be [x0, y0]")
         x0, y0 = initial
-        coefficient = y0 - 1
-        exponential = ["Power", "ExponentialE", _expression_tree(x0)]
-        if coefficient == 1:
-            constant = exponential
-        else:
-            constant = ["Multiply", _expression_tree(coefficient), exponential]
-        return Expression(
-            [
-                "Multiply",
-                [
-                    "Add",
-                    constant,
-                    ["Power", "ExponentialE", variable],
-                ],
-                ["Power", "ExponentialE", ["Negate", variable]],
-            ]
-        )
+        substitutions = runtime.object.create(None)
+        runtime.reflect.set(substitutions, variable, _expression_tree(x0))
+        factor_at_initial = Expression(
+            _call_backend("substitute", [integrating_factor._tree, substitutions])
+        ).simplify()
+        integral_at_initial = Expression(
+            _call_backend("substitute", [antiderivative._tree, substitutions])
+        ).simplify()
+        integration_constant = (
+            SR(y0) * factor_at_initial - integral_at_initial
+        ).simplify()
+        return ((antiderivative + integration_constant) / integrating_factor).simplify()
     second_order = [
         "Equal",
         [
@@ -2057,7 +2684,7 @@ def desolve(
         ],
         variable,
     ]
-    if _call_backend("same", [equation_tree, second_order]):
+    if _call_backend("same", [original_equation_tree, second_order]):
         if ics is None:
             return Expression(
                 [
@@ -2109,7 +2736,11 @@ def desolve(
                 ],
             ]
         )
-    raise NotImplementedError("desolve() currently supports y' + y = 1 and y'' - y = x")
+    raise NotImplementedError(
+        "desolve() supports scalar linear first-order equations and the "
+        "tutorial second-order equation y'' - y = x; this equation is not "
+        "in either supported family"
+    )
 
 
 def _cosine_component_tree(
@@ -2522,6 +3153,93 @@ def _solve_two_point_moment_system(
     return answers
 
 
+def _equation_residual(tree: Any) -> Any:
+    if runtime.array.isArray(tree) and len(tree) == 3 and tree[0] == "Equal":
+        return ["Subtract", tree[1], tree[2]]
+    return tree
+
+
+def _solve_two_equation_elimination(
+    trees: list[Any],
+    variables: Any,
+    solution_dict: bool,
+) -> Any:
+    """Solve a two-variable system when subtracting eliminates to a line."""
+    if len(trees) != 2 or len(variables) != 2:
+        return runtime.undefined
+    residuals = [_equation_residual(tree) for tree in trees]
+    difference = (
+        Expression(["Subtract", residuals[0], residuals[1]]).expand().simplify()
+    )
+    for eliminated_index in range(2):
+        remaining_index = 1 - eliminated_index
+        eliminated = variables[eliminated_index]
+        remaining = variables[remaining_index]
+        eliminated_name = _symbol_name(eliminated)
+        remaining_name = _symbol_name(remaining)
+        line_result = _call_backend(
+            "solve",
+            [["Equal", difference._tree, 0], [eliminated_name]],
+        )
+        if runtime.reflect.get(line_result, "kind") != "roots":
+            continue
+        line_values = runtime.reflect.get(line_result, "values")
+        if len(line_values) != 1:
+            continue
+        line_value = Expression(line_values[0]).simplify()
+        if eliminated_name in [_symbol_name(value) for value in line_value.variables()]:
+            continue
+        line_substitution = runtime.object.create(None)
+        runtime.reflect.set(line_substitution, eliminated_name, line_value._tree)
+        remaining_equation = _call_backend(
+            "substitute", [residuals[0], line_substitution]
+        )
+        remaining_result = _call_backend(
+            "solve",
+            [["Equal", remaining_equation, 0], [remaining_name]],
+        )
+        if runtime.reflect.get(remaining_result, "kind") != "roots":
+            continue
+        remaining_values = runtime.reflect.get(remaining_result, "values")
+        if len(remaining_values) == 0:
+            continue
+        answers = []
+        for remaining_tree in remaining_values:
+            remaining_value = Expression(remaining_tree).simplify()
+            remaining_substitution = runtime.object.create(None)
+            runtime.reflect.set(
+                remaining_substitution, remaining_name, remaining_value._tree
+            )
+            eliminated_value = Expression(
+                _call_backend("substitute", [line_value._tree, remaining_substitution])
+            ).simplify()
+            values = [runtime.undefined, runtime.undefined]
+            values[eliminated_index] = eliminated_value
+            values[remaining_index] = remaining_value
+            if solution_dict:
+                answers.append(
+                    {
+                        variables[0]: values[0],
+                        variables[1]: values[1],
+                    }
+                )
+            else:
+                answers.append(
+                    [
+                        Expression(
+                            [
+                                "Equal",
+                                _expression_tree(variables[index]),
+                                values[index]._tree,
+                            ]
+                        )
+                        for index in range(2)
+                    ]
+                )
+        return answers
+    return runtime.undefined
+
+
 def solve(
     equations: Any,
     *variables: Any,
@@ -2563,6 +3281,16 @@ def solve(
     trees = []
     for equation in equation_values:
         tree = _expression_tree(equation)
+        if runtime.array.isArray(tree) and len(tree) > 1 and tree[0] == "And":
+            for conjunct in tree[1:]:
+                if (
+                    not runtime.array.isArray(conjunct)
+                    or len(conjunct) == 0
+                    or conjunct[0] != "Equal"
+                ):
+                    conjunct = ["Equal", conjunct, 0]
+                trees.append(conjunct)
+            continue
         if not runtime.array.isArray(tree) or len(tree) == 0 or tree[0] != "Equal":
             tree = ["Equal", tree, 0]
         trees.append(tree)
@@ -2575,9 +3303,42 @@ def solve(
     if len(variables) == 0:
         variables = Expression(expression_tree).variables()
     names = [_symbol_name(variable) for variable in variables]
+    if len(trees) > 1 and len(variables) == 1:
+        common_values = runtime.undefined
+        all_solved = True
+        for tree in trees:
+            individual = _call_backend("solve", [tree, names])
+            if runtime.reflect.get(individual, "kind") != "roots":
+                all_solved = False
+                break
+            values = list(runtime.reflect.get(individual, "values"))
+            if common_values is runtime.undefined:
+                common_values = values
+                continue
+            intersection = []
+            for candidate in common_values:
+                for value in values:
+                    if _call_backend("same", [candidate, value]):
+                        intersection.append(candidate)
+                        break
+            common_values = intersection
+        if all_solved:
+            answers = []
+            for value in common_values:
+                relation = Expression(["Equal", _expression_tree(variables[0]), value])
+                if solution_dict:
+                    answers.append({variables[0]: Expression(value)})
+                else:
+                    answers.append([relation])
+            return answers
     moment_solutions = _solve_two_point_moment_system(trees, variables, solution_dict)
     if moment_solutions is not runtime.undefined:
         return moment_solutions
+    elimination_solutions = _solve_two_equation_elimination(
+        trees, variables, solution_dict
+    )
+    if elimination_solutions is not runtime.undefined:
+        return elimination_solutions
     result = _call_backend("solve", [expression_tree, names])
     kind = runtime.reflect.get(result, "kind")
     values = runtime.reflect.get(result, "values")
@@ -2619,7 +3380,7 @@ def solve(
         if solution_dict:
             return [mapping]
         return [relations]
-    return [SR(equation_values[0])]
+    return [SR(equation) for equation in equation_values]
 
 
 def find_root(
@@ -2660,6 +3421,8 @@ def fast_callable(
 
 pi = Expression("Pi")
 e = Expression("ExponentialE")
+oo = Expression("PositiveInfinity")
+minus_infinity = Expression("NegativeInfinity")
 _imaginary_unit = Expression("ImaginaryUnit")
 i = _imaginary_unit
 runtime.reflect.set(runtime.global_object, "I", _imaginary_unit)

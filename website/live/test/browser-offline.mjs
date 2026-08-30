@@ -13,7 +13,7 @@ assert.ok(chromium, "Chromium not found; set SAGEJS_CHROMIUM");
 const staged = await stageRelease({ appRoot: root });
 const server = await startStaticServer({ directory: staged.target });
 const { port } = server.address();
-const chrome = spawn(chromium, ["--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--remote-debugging-port=0", "about:blank"]);
+const chrome = spawn(chromium, ["--headless=new", "--no-sandbox", "--disable-dev-shm-usage", "--remote-debugging-port=0", "about:blank"]);
 let chromeErrors = "";
 
 try {
@@ -78,10 +78,53 @@ try {
     await evaluate(`${setSource ? "document.querySelector('#source').value='factor(2026)';" : ""} document.querySelector('[data-run="all"]').click()`);
     await waitFor(`document.querySelector('#output')?.textContent.includes('2 * 1013')`);
   }
+  async function runSource(source, ready, timeout = 90_000) {
+    await evaluate(`document.querySelector('#source').value=${JSON.stringify(source)}; document.querySelector('[data-run="all"]').click()`);
+    await waitFor(ready, timeout);
+  }
+  async function renderedPlotPixelStats() {
+    return evaluate(`(async () => {
+      const plot = document.querySelector('#output .plot');
+      const source = await Plotly.toImage(plot, {
+        format: 'png', width: 480, height: 360,
+      });
+      const image = new Image();
+      image.src = source;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let chromatic = 0;
+      for (let offset = 0; offset < pixels.length; offset += 4) {
+        const red = pixels[offset];
+        const green = pixels[offset + 1];
+        const blue = pixels[offset + 2];
+        if (pixels[offset + 3] !== 0 && Math.max(red, green, blue) - Math.min(red, green, blue) > 20) {
+          chromatic += 1;
+        }
+      }
+      return { width: canvas.width, height: canvas.height, chromatic };
+    })()`);
+  }
 
+  await command("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-color-scheme", value: "dark" }],
+  });
   await command("Page.navigate", { url: `http://127.0.0.1:${port}/` });
   await waitFor(`document.querySelector('#kernel-status')?.dataset.state === 'ready'`);
+  await waitFor("navigator.serviceWorker.controller !== null");
+  await waitFor(
+    "document.querySelector('#kernel-status')?.dataset.state === 'ready' && " +
+      "document.querySelector('#source')?.dataset.editor === 'codemirror6'",
+  );
   assert.equal(await evaluate("crossOriginIsolated"), true);
+  assert.deepEqual(
+    await evaluate("[document.documentElement.dataset.themePreference, document.documentElement.dataset.theme, document.querySelector('#theme').value]"),
+    ["system", "dark", "system"],
+  );
   assert.equal(
     await evaluate("document.querySelector('#source')?.dataset.editor"),
     "codemirror6",
@@ -124,6 +167,102 @@ try {
     await evaluate("document.querySelector('#source').value"),
     "def square(x):\n    ()",
   );
+  await runSource(
+    "show(matrix(QQ,2,[0,0,-1,1]))",
+    "document.querySelector('#output .katex .mord') !== null",
+  );
+  assert.equal(
+    await evaluate("document.querySelector('#output .result-input')?.dataset.editor"),
+    "codemirror6-readonly",
+  );
+  assert.equal(
+    await evaluate("getComputedStyle(document.querySelector('#source .cm-editor')).backgroundColor === getComputedStyle(document.querySelector('#output .result-input .cm-editor')).backgroundColor"),
+    true,
+    "editable and recorded CodeMirror views should share the dark theme",
+  );
+  const darkEditorBackground = await evaluate("getComputedStyle(document.querySelector('#source .cm-editor')).backgroundColor");
+  await evaluate(`(() => {
+    const theme = document.querySelector('#theme');
+    theme.value = 'light';
+    theme.dispatchEvent(new Event('change'));
+  })()`);
+  assert.deepEqual(
+    await evaluate("[document.documentElement.dataset.themePreference, document.documentElement.dataset.theme]"),
+    ["light", "light"],
+  );
+  assert.notEqual(
+    await evaluate("getComputedStyle(document.querySelector('#source .cm-editor')).backgroundColor"),
+    darkEditorBackground,
+  );
+  assert.equal(
+    await evaluate("getComputedStyle(document.querySelector('#source .cm-editor')).backgroundColor === getComputedStyle(document.querySelector('#output .result-input .cm-editor')).backgroundColor"),
+    true,
+    "editable and recorded CodeMirror views should share the light theme",
+  );
+  await evaluate(`(() => {
+    const theme = document.querySelector('#theme');
+    theme.value = 'system';
+    theme.dispatchEvent(new Event('change'));
+  })()`);
+  assert.equal(await evaluate("document.documentElement.dataset.theme"), "dark");
+  assert.ok(
+    await evaluate("document.querySelectorAll('#output .result-input .cm-line span').length > 0"),
+    "recorded input should retain Sage syntax highlighting",
+  );
+  assert.equal(
+    await evaluate("document.querySelector('#output .result-output')"),
+    null,
+    "pure typeset results should not duplicate the plain representation",
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await evaluate("document.querySelector('#typeset-math').checked = false");
+  await runSource(
+    "2/3",
+    "document.querySelector('#output .result-output')?.textContent === '2/3'",
+  );
+  assert.equal(
+    await evaluate("document.querySelector('#output .katex')"),
+    null,
+  );
+  await evaluate("document.querySelector('#typeset-math').checked = true; document.querySelector('#clear-output').click()");
+  await runSource(
+    "u, v = var('u v')\n" +
+      "plot3d(u^2-v^2, (u,-1,1), (v,-1,1), " +
+      "plot_points=(3,3), color='purple', frame=False)",
+    "document.querySelector('#output .plot.js-plotly-plot') !== null",
+  );
+  assert.deepEqual(
+    await evaluate("Array.from(document.querySelector('#output .plot')?.data ?? [], trace => trace.type)"),
+    ["surface"],
+  );
+  assert.ok(
+    (await renderedPlotPixelStats()).chromatic > 100,
+    "surface plots should draw visible WebGL pixels",
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    "icosahedron()",
+    "document.querySelector('#output .plot.js-plotly-plot') !== null",
+  );
+  assert.deepEqual(
+    await evaluate("Array.from(document.querySelector('#output .plot')?.data ?? [], trace => trace.type)"),
+    ["mesh3d"],
+  );
+  assert.equal(
+    await evaluate("['x','y','z','i','j','k'].every(axis => document.querySelector('#output .plot').data[0][axis].every(value => typeof value === 'number'))"),
+    true,
+    "Plotly numeric arrays should contain primitive JavaScript numbers",
+  );
+  assert.equal(
+    await evaluate("Boolean(document.querySelector('#output .plot')?._fullLayout?.scene?._scene?.glplot)"),
+    true,
+    "the browser test should exercise a real WebGL 3D scene",
+  );
+  assert.ok(
+    (await renderedPlotPixelStats()).chromatic > 100,
+    "mesh plots should draw visible WebGL pixels",
+  );
+  await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();
   await evaluate("navigator.serviceWorker.ready.then(() => true)");
   await command("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
