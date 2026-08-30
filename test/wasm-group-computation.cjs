@@ -413,6 +413,10 @@ test("the same public source selects the group pack in Chromium", {
     context.skip("Chromium is unavailable");
     return;
   }
+  if (!existsSync(join(root, "packages", "flint-wasm", "dist", "baselib.js"))) {
+    context.skip("build packages/flint-wasm to run the Chromium workflow");
+    return;
+  }
   const { manifest, outputRoot } = await builtPack();
   const upstream = await browserSupport.createBrowserWasmServer();
   const proxy = await createProxyServer(upstream.origin, manifest, outputRoot);
