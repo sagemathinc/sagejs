@@ -3,12 +3,29 @@
   "packedAbi": "sagejs.groebner.sparse/v1",
   "normalization": "monic reduced basis, descending terms and descending leading monomials",
   "sources": {
-    "sage": "SageMath/Singular canonical reduced basis",
+    "sage": "SageMath-compatible Singular 4.4.1 canonical reduced basis",
     "msolve": "msolve 0.10.1-14-g1e3af01 packed F4 or modular QQ result",
     "groebner-jl": "Groebner.jl 0.10.6 deterministic result checked by isgroebner",
+    "mathicgb": "MathicGB aa38a7fb F4New result",
     "flint": "FLINT 3.6 bounded exact Buchberger result",
     "contract": "independent ordinary-Python change-matrix Buchberger oracle"
   },
+  "externalEvidence": [
+    {
+      "source": "sage",
+      "case": "inhomogeneous-gf5",
+      "revision": "Singular 4.4.1 (44105), arm64-Darwin",
+      "command": "ring r=5,(x,y),dp; ideal I=x2-y,xy-1; option(redSB); ideal G=std(I); G;",
+      "rawBasis": ["y2-x", "xy-1", "x2-y"]
+    },
+    {
+      "source": "mathicgb",
+      "case": "inhomogeneous-gf5",
+      "revision": "aa38a7fb7b53ab6dd74de983c60517668054755f",
+      "command": "mgb gb inhomogeneous-gf5 -outputResult on -reducer 26",
+      "rawBasis": ["a2-b", "ab-1", "b2-a"]
+    }
+  ],
   "cases": [
     {
       "id": "zero-ideal-gf5",
@@ -40,7 +57,7 @@
       "ring": { "domain": "GF(p)", "characteristic": 5, "variables": 2, "order": "degrevlex" },
       "generators": [[[1, [2, 0]], [4, [0, 1]]], [[1, [1, 1]], [4, [0, 0]]]],
       "basis": [[[1, [2, 0]], [4, [0, 1]]], [[1, [1, 1]], [4, [0, 0]]], [[1, [0, 2]], [4, [1, 0]]]],
-      "sources": ["contract", "msolve", "groebner-jl"]
+      "sources": ["contract", "msolve", "groebner-jl", "mathicgb", "sage"]
     },
     {
       "id": "nonradical-gf65537",
@@ -75,6 +92,15 @@
       "sources": ["contract", "msolve", "groebner-jl"]
     },
     {
+      "id": "unlucky-prime-rational-qq",
+      "kind": "basis",
+      "ring": { "domain": "QQ", "characteristic": 0, "variables": 2, "order": "degrevlex" },
+      "generators": [[[[1, 1], [2, 0]], [[2, 1], [0, 1]]], [[[1, 1], [1, 1]], [[1, 1], [0, 0]]]],
+      "basis": [[[[1, 1], [2, 0]], [[2, 1], [0, 1]]], [[[1, 1], [1, 1]], [[1, 1], [0, 0]]], [[[1, 1], [0, 2]], [[-1, 2], [1, 0]]]],
+      "note": "specialization at p=2 changes the leading ideal",
+      "sources": ["contract", "msolve"]
+    },
+    {
       "id": "prime-ceiling",
       "kind": "rejection",
       "ring": { "domain": "GF(p)", "characteristic": 2147483659, "variables": 2, "order": "degrevlex" },
@@ -101,6 +127,22 @@
       "kind": "rejection",
       "ring": { "domain": "GF(p)", "characteristic": 101, "variables": 65536, "order": "degrevlex" },
       "reason": "packed adapter variable/resource envelope",
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "term-count-envelope",
+      "kind": "rejection",
+      "ring": { "domain": "GF(p)", "characteristic": 101, "variables": 2, "order": "degrevlex" },
+      "inputShape": { "generators": 1, "terms": 1048577, "exponentEntries": 2097154 },
+      "reason": "packed adapter input-term resource envelope",
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "exponent-count-envelope",
+      "kind": "rejection",
+      "ring": { "domain": "GF(p)", "characteristic": 101, "variables": 4096, "order": "degrevlex" },
+      "inputShape": { "generators": 1, "terms": 4097, "exponentEntries": 16781312 },
+      "reason": "packed adapter exponent-entry resource envelope",
       "sources": ["contract", "msolve"]
     }
   ]

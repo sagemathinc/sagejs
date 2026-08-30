@@ -108,12 +108,56 @@ test("the versioned Groebner oracle corpus is structurally complete", () => {
     "utf8",
   ));
   assert.equal(corpus.schema, "sagejs.groebner-oracles/v1");
-  assert.ok(corpus.cases.length >= 10);
+  assert.ok(corpus.cases.length >= 15);
+  const requiredSources = new Set([
+    "contract",
+    "flint",
+    "groebner-jl",
+    "mathicgb",
+    "msolve",
+    "sage",
+  ]);
+  const observedSources = new Set(corpus.cases.flatMap((entry) => entry.sources));
+  assert.deepEqual(observedSources, requiredSources);
+  assert.deepEqual(
+    new Set(corpus.externalEvidence.map((entry) => entry.source)),
+    new Set(["mathicgb", "sage"]),
+  );
+  const requiredCases = new Set([
+    "zero-ideal-gf5",
+    "unit-ideal-gf5",
+    "duplicate-zero-generators-gf5",
+    "inhomogeneous-gf5",
+    "nonradical-gf65537",
+    "positive-dimensional-gf31",
+    "unlucky-prime-rational-qq",
+    "prime-ceiling",
+    "unsupported-lex-msolve",
+    "malformed-exponent",
+    "resource-envelope",
+    "term-count-envelope",
+    "exponent-count-envelope",
+  ]);
+  const observedCases = new Set(corpus.cases.map((entry) => entry.id));
+  for (const id of requiredCases) assert.ok(observedCases.has(id), id);
+  for (const evidence of corpus.externalEvidence) {
+    assert.ok(observedCases.has(evidence.case));
+    assert.ok(requiredSources.has(evidence.source));
+    const oracleCase = corpus.cases.find((entry) => entry.id === evidence.case);
+    assert.ok(oracleCase.sources.includes(evidence.source));
+    assert.ok(evidence.revision && evidence.command);
+    assert.ok(Array.isArray(evidence.rawBasis) && evidence.rawBasis.length > 0);
+  }
   for (const entry of corpus.cases) {
     assert.ok(entry.id);
     assert.ok(entry.ring);
     assert.ok(entry.kind === "basis" || entry.kind === "rejection");
     assert.ok(Array.isArray(entry.sources) && entry.sources.length >= 2);
     if (entry.kind === "basis") assert.ok(Array.isArray(entry.basis));
+    if (entry.inputShape) {
+      assert.ok(entry.inputShape.generators > 0);
+      assert.ok(entry.inputShape.terms > 0);
+      assert.ok(entry.inputShape.exponentEntries > 0);
+    }
   }
 });

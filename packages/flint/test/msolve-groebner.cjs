@@ -100,39 +100,47 @@ if (!isMainThread) {
     assertBasisContainsGenerators(rational, rationalBasis);
   });
 
-  test("modular QQ reconstruction handles coefficient swell", () => {
+  test("modular QQ reconstruction crosses coefficient-height thresholds", () => {
     const context = flint.mpolyContext("qq", 2, "degrevlex", 0n);
     const x = flint.mpolyGen(context, 0);
     const y = flint.mpolyGen(context, 1);
-    const a = flint.mpolyConstant(
-      context,
-      (1n << 181n) + 0x123456789abcdefn,
-      (1n << 127n) - 1n,
-    );
-    const b = flint.mpolyConstant(
-      context,
-      (1n << 173n) + 0xfedcba987654321n,
-      (1n << 113n) - 9n,
-    );
-    const system = {
-      context,
-      variables: [x, y],
-      generators: [
-        flint.mpolySub(flint.mpolyMul(x, y), a),
-        flint.mpolyAdd(
-          flint.mpolyPow(x, 3),
-          flint.mpolyMul(b, flint.mpolyPow(y, 2)),
-        ),
-      ],
-    };
-    const first = flint.mpolyGroebnerMsolve(system.generators);
-    const second = flint.mpolyGroebnerMsolve(system.generators);
-    assertBasisContainsGenerators(system, first);
-    assertBasisContainsGenerators(system, second);
-    assert.deepEqual(
-      first.map((value) => flint.mpolyToString(value, ["x1", "x2"])),
-      second.map((value) => flint.mpolyToString(value, ["x1", "x2"])),
-    );
+    for (const [numeratorBits, denominatorBits] of [
+      [31n, 17n],
+      [63n, 47n],
+      [95n, 71n],
+      [127n, 89n],
+      [181n, 127n],
+    ]) {
+      const a = flint.mpolyConstant(
+        context,
+        (1n << numeratorBits) + 0x123456789abcdefn,
+        (1n << denominatorBits) - 1n,
+      );
+      const b = flint.mpolyConstant(
+        context,
+        (1n << (numeratorBits - 8n)) + 0xfedcba987654321n,
+        (1n << (denominatorBits - 7n)) - 9n,
+      );
+      const system = {
+        context,
+        variables: [x, y],
+        generators: [
+          flint.mpolySub(flint.mpolyMul(x, y), a),
+          flint.mpolyAdd(
+            flint.mpolyPow(x, 3),
+            flint.mpolyMul(b, flint.mpolyPow(y, 2)),
+          ),
+        ],
+      };
+      const first = flint.mpolyGroebnerMsolve(system.generators);
+      const second = flint.mpolyGroebnerMsolve(system.generators);
+      assertBasisContainsGenerators(system, first);
+      assertBasisContainsGenerators(system, second);
+      assert.deepEqual(
+        first.map((value) => flint.mpolyToString(value, ["x1", "x2"])),
+        second.map((value) => flint.mpolyToString(value, ["x1", "x2"])),
+      );
+    }
   });
 
   test("repeated modular QQ calls release their per-call state", () => {

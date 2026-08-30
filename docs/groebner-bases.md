@@ -86,7 +86,13 @@ The versioned oracle corpus is
 [`test/fixtures/groebner-basis-oracles-v1.json`](../test/fixtures/groebner-basis-oracles-v1.json).
 Its ordinary-Python verifier checks both ideal containments through a change
 matrix, Buchberger's criterion, reducedness, monicity, leading ideals, and
-normal forms. Run the focused checks and benchmark with:
+normal forms. The corpus records results from the pinned msolve port,
+Groebner.jl, FLINT, Singular, and a separately built MathicGB F4New oracle;
+the latter two raw commands, revisions, and outputs are retained in the
+fixture. It also names every required edge class, including unlucky-prime
+rational reconstruction and the separate term/exponent resource envelopes,
+so deleting one silently fails the structural test. Run the focused checks
+and benchmark with:
 
 ```sh
 node --test test/groebner-contract.cjs packages/flint/test/msolve-groebner.cjs
