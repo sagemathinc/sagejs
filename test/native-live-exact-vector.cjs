@@ -168,7 +168,7 @@ test("live exact vector owners cannot escape or alias", async () => {
         "        return 0\n",
       "live-vector-alias.py",
     ),
-    /owners cannot be copied, passed, or returned/,
+    /live exact owners cannot be copied, passed, or returned/,
   );
   await assert.rejects(
     () => lowerSource(
@@ -180,17 +180,6 @@ test("live exact vector owners cannot escape or alias", async () => {
       "live-vector-after-scope.py",
     ),
     /outside its lexical scope/,
-  );
-  await assert.rejects(
-    () => lowerSource(
-      header +
-        "def f(n: uint64) -> int:\n" +
-        "    with NativeIntegerVector(1, n) as outer:\n" +
-        "        with NativeIntegerVector(1, n) as inner:\n" +
-        "            return inner[0]\n",
-      "live-vector-nested.py",
-    ),
-    /nested NativeIntegerVector scopes are not supported/,
   );
   await assert.rejects(
     () => lowerSource(

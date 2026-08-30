@@ -493,12 +493,26 @@
     {
       "id": "class-group-resident-hnf-production",
       "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
-      "functions": ["resident_exact_relation_hnf_select"],
-      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through declared FLINT FFI",
+      "functions": [
+        "resident_exact_relation_hnf_select",
+        "resident_exact_relation_hnf_select_v2"
+      ],
+      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through one arena-owned declared FLINT resource graph",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],
       "benchmark": "bench:number-field-resident-hnf",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "rank-four-lattice-workspace-production",
+      "source": "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
+      "functions": ["rank_four_lattice_workspace"],
+      "semantic_domain": "generic resident rank-four integral-lattice HNF authentication, deterministic canonical-class mapping, fixed metadata, and sparse class incidence publication",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "magma"],
+      "benchmark": "bench:rank-four-lattice-workspace",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

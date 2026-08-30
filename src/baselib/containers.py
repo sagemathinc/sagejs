@@ -633,7 +633,7 @@ def ρσ_list_decorate(answer: Any) -> Any:
     if prototype is runtime.undefined:
         prototype = _list_prototype()
     runtime.object.setPrototypeOf(answer, prototype)
-    return answer
+    return ρσ_brand_optimizer_list(answer)  # noqa: F821  # pyright: ignore[reportUndefinedVariable]
 
 
 def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
@@ -1777,3 +1777,7 @@ list_wrap = ρσ_list_decorate
 set = ρσ_set
 frozenset = ρσ_frozenset
 dict = ρσ_dict
+
+# Capture the runtime-owned list and float capabilities only after both
+# builtins.py and this module have initialized their final representations.
+ρσ_bind_rectangular_binary64_dataflow_runtime()  # noqa: F821  # pyright: ignore[reportUndefinedVariable]

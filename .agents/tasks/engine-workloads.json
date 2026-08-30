@@ -1,0 +1,80 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-workloads",
+  "title": "Optimizer workload catalog and authentic controls",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the strict initial workload catalog, immutable positive and negative controls, authentic cubic and polynomial adapters, exact oracles, and deterministic workload-run receipts",
+  "base_commit": "d6aa59b56b1214fb1974fed20d8d26c28e7a0cbd",
+  "claims": [
+    "tools/optimizer-development/workloads.cjs",
+    "architecture/optimizer-workloads.json",
+    "bench/optimizer-workloads/",
+    "bench/class-unit-groups/cubic-compiler-boundaries.py",
+    "scripts/optimizer-workload.cjs",
+    "test/optimizer-workloads.cjs",
+    "test/fixtures/optimizer-development/workloads/"
+  ],
+  "dependencies": [
+    "engine-foundation"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent CPython and JavaScript exact controls, pinned LMFDB class numbers, and public polynomial checksums"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimizer-workloads.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.64,
+      "started_at": "2026-08-28T08:19:47.970Z",
+      "commit": "d6aa59b56b1214fb1974fed20d8d26c28e7a0cbd",
+      "workspace_fingerprint": "62f6dc707c2d6604eb8010c8b3449810c4b03a4106de8d33a1b31318f47c90a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.856,
+      "started_at": "2026-08-28T08:20:00.343Z",
+      "commit": "d6aa59b56b1214fb1974fed20d8d26c28e7a0cbd",
+      "workspace_fingerprint": "62f6dc707c2d6604eb8010c8b3449810c4b03a4106de8d33a1b31318f47c90a9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 354.575,
+      "started_at": "2026-08-28T08:20:51.502Z",
+      "commit": "d6aa59b56b1214fb1974fed20d8d26c28e7a0cbd",
+      "workspace_fingerprint": "62f6dc707c2d6604eb8010c8b3449810c4b03a4106de8d33a1b31318f47c90a9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

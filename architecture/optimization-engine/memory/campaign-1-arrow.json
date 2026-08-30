@@ -1,0 +1,74 @@
+{
+  "schema": "sagejs.optimization-memory-record/v2",
+  "id": "sha256:89e65cd8a3bbe81189beb6b48166fb1dd9f2969f118b3d8b6586f00b11ddd211",
+  "authority": {
+    "kind": "historical-v1-anchor",
+    "producer": "sagejs.optimization-memory.campaign1-anchor",
+    "validatedInputIds": [
+      "sha256:b8ebaefb14f85ff96d2b61990f13540d9ea42ee443a820c7f4fb741935e06188"
+    ]
+  },
+  "subject": {
+    "id": "sha256:1b888e5cc426630fb14cf3ad835f7db052bfcf2e566fdbf8844661f6032f39c9",
+    "scope": "source-region",
+    "publicOperation": "sage.plot.plot_field.field_layers._arrow_segments",
+    "sourcePath": "src/lib/sagejs/plotting/field_layers.py",
+    "regionId": "sha256:1b888e5cc426630fb14cf3ad835f7db052bfcf2e566fdbf8844661f6032f39c9",
+    "parentIds": [
+      "sha256:9f0ec88748d6a5e76f04d0e02e83e39e1a3f6fca14007a21261af094757cc838"
+    ],
+    "predecessorIds": []
+  },
+  "category": "compiler",
+  "mechanism": "math.closed-transactional-rectangular-binary64-dataflow.v1|v8.closed-transactional-rectangular-binary64-dataflow.v1",
+  "interventionId": null,
+  "result": {
+    "outcomeId": null,
+    "opportunityId": "sha256:0edc45e028eec7c75d139767895347090c6958809f9f9b5d81b3ca08eefb5eab",
+    "campaignId": "sha256:c0da02bb6f6e898f9974b6e0620600cce5f6f55d7d1f4cb54be285d74fdfffd6",
+    "promotionId": "sha256:b8ebaefb14f85ff96d2b61990f13540d9ea42ee443a820c7f4fb741935e06188",
+    "disposition": "accepted",
+    "regressionState": "passing",
+    "reasons": [
+      "Both representative and held-out complete public consumers cleared the 11-pair 10% worst-pair gate.",
+      "Exact outputs, guard misses, fallback behavior, and traces agreed between same-source arms."
+    ]
+  },
+  "binding": {
+    "epochId": "sha256:6853805f245450978a3aaf8ae322a9f74baceac21791ecf6a638e9988c6609a8",
+    "sourceClosureId": "sha256:b79f6d3f97d104d207e520ddcb2449c2648457931bb9d4870b1cac7f1e21c84a",
+    "workloadIds": [
+      "sha256:6c2a315a80f8567c1b25a8451b9fef3e3f487df411281f8b8fe1dd538cdf8c49",
+      "sha256:89aa8d18509cb79592ecbb89bc82866580899a03287f9add0c6ad62ae6176150"
+    ],
+    "compatibleSourceClosureIds": [],
+    "revision": {
+      "commit": "08d1ef2bd2a9f3d9cc9473e78afc74b3cdcc7396",
+      "tree": "90ca24230d31f73a5c1d79c060f5f28fe459695b"
+    }
+  },
+  "evidence": [
+    {
+      "id": "sha256:b8ebaefb14f85ff96d2b61990f13540d9ea42ee443a820c7f4fb741935e06188",
+      "kind": "legacy-receipt",
+      "logicalId": "sha256:b8ebaefb14f85ff96d2b61990f13540d9ea42ee443a820c7f4fb741935e06188",
+      "path": "architecture/optimizer-development/evidence/campaign-1-arrow.json",
+      "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimizer-evidence-campaign-1-6438210e33f94beb4d2104d714a3cfc23010474353144f4ec156d3676815abda-1be47fb0afcd533f",
+      "sha256": "588d2df47bce1e9cbaf96f720237a8fc41fecb1844ee3f6a8eca446b252809ea",
+      "producerCommand": [
+        "pnpm build && node bench/optimizer-workloads/arrow-field-compiler-promotion.cjs --output=/scratch/sagejs-campaign1/arrow-compiler-promotion.json"
+      ],
+      "roles": [
+        "fallback",
+        "oracle",
+        "performance",
+        "promotion"
+      ],
+      "validationStatus": "accepted"
+    }
+  ],
+  "fallbackEvidenceIds": [
+    "sha256:b8ebaefb14f85ff96d2b61990f13540d9ea42ee443a820c7f4fb741935e06188"
+  ],
+  "supersedesIds": []
+}

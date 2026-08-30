@@ -44,6 +44,9 @@ const {
   generateExactNodeHelpers,
 } = require("./exact-runtime.cjs");
 const {
+  GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
+} = require("./gmp-checkpoint-allocator.cjs");
+const {
   emitExactForeignCall,
   exceptionShimInclude,
   foreignDependencies,
@@ -96,6 +99,10 @@ function cString(value) {
 
 function cName(name) {
   return `sagejs_${name}`;
+}
+
+function recordCType(record) {
+  return `sagejs_native_record_${record}`;
 }
 
 function nativeValue(local) {
@@ -219,6 +226,7 @@ function emitOperation(operation, locals, indent) {
 function exactValue(name, context) {
   const slot = context.storage.slots[name];
   if (slot !== undefined) return `sagejs_scratch_${slot}`;
+  if ((context.storage.borrowedLocals || []).includes(name)) return cName(name);
   if (context.storage.borrowedParameters.includes(name)) {
     return `sagejs_arg_${name}`;
   }
@@ -274,6 +282,230 @@ function internalSignature(fn, prototype = false) {
   return `static int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
 }
 
+function emitBoundedCollectionOperation(operation, context, indent) {
+  const table = exactValue(operation.owner, context);
+  const target = exactValue(operation.target, context);
+  if (operation.kind === "bounded.map.length" ||
+      operation.kind === "bounded.set.length") {
+    return `${indent}${target} = (uint64_t) ${table}.size;`;
+  }
+  const key = exactValue(operation.key, context);
+  const recordType = recordCType(operation.record);
+  const equality = operation.fields.map((field) =>
+    `sagejs_bounded_entries[sagejs_bounded_position].` +
+      `sagejs_field_${field.name} == sagejs_bounded_key.sagejs_field_${field.name}`
+  ).join(" && ");
+  const hash = operation.fields.flatMap((field) => [
+    `${indent}    sagejs_bounded_hash ^= ` +
+      `sagejs_bounded_key.sagejs_field_${field.name};`,
+    `${indent}    sagejs_bounded_hash *= UINT64_C(1099511628211);`,
+  ]);
+  const common = [
+    `${indent}{`,
+    `${indent}    sagejs_native_bounded_table *sagejs_bounded_table = &${table};`,
+    `${indent}    ${recordType} *sagejs_bounded_entries = ` +
+      `(${recordType} *) sagejs_bounded_table->keys;`,
+    `${indent}    ${recordType} sagejs_bounded_key = ${key};`,
+    `${indent}    uint64_t sagejs_bounded_hash = ` +
+      `UINT64_C(1469598103934665603);`,
+    ...hash,
+  ];
+  if (operation.kind === "bounded.map.contains" ||
+      operation.kind === "bounded.set.contains" ||
+      operation.kind === "bounded.map.get") {
+    const initial = operation.kind === "bounded.map.get"
+      ? exactValue(operation.value, context)
+      : "0";
+    const found = operation.kind === "bounded.map.get"
+      ? "sagejs_bounded_table->values[sagejs_bounded_position]"
+      : "1";
+    return [
+      ...common,
+      `${indent}    ${target} = ${initial};`,
+      `${indent}    if (sagejs_bounded_table->capacity != 0)`,
+      `${indent}    {`,
+      `${indent}        size_t sagejs_bounded_position = (size_t) ` +
+        `(sagejs_bounded_hash % sagejs_bounded_table->capacity);`,
+      `${indent}        size_t sagejs_bounded_probe;`,
+      `${indent}        for (sagejs_bounded_probe = 0; ` +
+        `sagejs_bounded_probe < sagejs_bounded_table->capacity; ` +
+        `sagejs_bounded_probe++)`,
+      `${indent}        {`,
+      `${indent}            if (!sagejs_bounded_table->occupied[` +
+        `sagejs_bounded_position])`,
+      `${indent}                break;`,
+      `${indent}            if (${equality})`,
+      `${indent}            {`,
+      `${indent}                ${target} = ${found};`,
+      `${indent}                break;`,
+      `${indent}            }`,
+      `${indent}            sagejs_bounded_position++;`,
+      `${indent}            if (sagejs_bounded_position == ` +
+        `sagejs_bounded_table->capacity)`,
+      `${indent}                sagejs_bounded_position = 0;`,
+      `${indent}        }`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  const isMap = operation.kind === "bounded.map.insert";
+  const kindName = isMap ? "Map" : "Set";
+  const update = isMap
+    ? `${indent}                sagejs_bounded_table->values[` +
+      `sagejs_bounded_position] = ${exactValue(operation.value, context)};`
+    : "";
+  const insertValue = isMap
+    ? `${indent}                sagejs_bounded_table->values[` +
+      `sagejs_bounded_position] = ${exactValue(operation.value, context)};`
+    : "";
+  return [
+    ...common,
+    `${indent}    int sagejs_bounded_done = 0;`,
+    `${indent}    ${target} = 0;`,
+    `${indent}    if (sagejs_bounded_table->capacity != 0)`,
+    `${indent}    {`,
+    `${indent}        size_t sagejs_bounded_position = (size_t) ` +
+      `(sagejs_bounded_hash % sagejs_bounded_table->capacity);`,
+    `${indent}        size_t sagejs_bounded_probe;`,
+    `${indent}        for (sagejs_bounded_probe = 0; ` +
+      `sagejs_bounded_probe < sagejs_bounded_table->capacity; ` +
+      `sagejs_bounded_probe++)`,
+    `${indent}        {`,
+    `${indent}            if (!sagejs_bounded_table->occupied[` +
+      `sagejs_bounded_position])`,
+    `${indent}            {`,
+    `${indent}                sagejs_bounded_entries[sagejs_bounded_position] = ` +
+      `sagejs_bounded_key;`,
+    insertValue,
+    `${indent}                sagejs_bounded_table->occupied[` +
+      `sagejs_bounded_position] = 1;`,
+    `${indent}                sagejs_bounded_table->size++;`,
+    `${indent}                ${target} = 1;`,
+    `${indent}                sagejs_bounded_done = 1;`,
+    `${indent}                break;`,
+    `${indent}            }`,
+    `${indent}            if (${equality})`,
+    `${indent}            {`,
+    update,
+    `${indent}                sagejs_bounded_done = 1;`,
+    `${indent}                break;`,
+    `${indent}            }`,
+    `${indent}            sagejs_bounded_position++;`,
+    `${indent}            if (sagejs_bounded_position == ` +
+      `sagejs_bounded_table->capacity)`,
+    `${indent}                sagejs_bounded_position = 0;`,
+    `${indent}        }`,
+    `${indent}    }`,
+    `${indent}    if (!sagejs_bounded_done)`,
+    `${indent}    {`,
+    statusFailure(
+      "range",
+      `NativeBounded${kindName} capacity exceeded`,
+      `${indent}        `,
+    ),
+    `${indent}        goto fail;`,
+    `${indent}    }`,
+    `${indent}}`,
+  ].filter(Boolean).join("\n");
+}
+
+function emitSparseRowsOperation(operation, context, indent) {
+  const owner = exactValue(operation.owner, context);
+  const target = operation.target === undefined
+    ? undefined
+    : exactValue(operation.target, context);
+  if (operation.kind === "sparse.rows.length") {
+    return `${indent}${target} = (uint64_t) ${owner}.length;`;
+  }
+  const row = exactValue(operation.row, context);
+  if (operation.kind === "sparse.rows.row_length") {
+    return [
+      `${indent}if (${row} >= (uint64_t) ${owner}.rows)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "NativeSparseIntegerRows row out of range", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}${target} = ${owner}.row_lengths[(size_t) ${row}];`,
+    ].join("\n");
+  }
+  const column = exactValue(operation.column, context);
+  const indexCheck = [
+    `${indent}if (${row} >= (uint64_t) ${owner}.rows || ` +
+      `${column} >= (uint64_t) ${owner}.column_count)`,
+    `${indent}{`,
+    statusFailure(
+      "range", "NativeSparseIntegerRows index out of range", `${indent}    `,
+    ),
+    `${indent}    goto fail;`,
+    `${indent}}`,
+  ];
+  if (operation.kind === "sparse.rows.append") {
+    return [
+      ...indexCheck,
+      `${indent}if (${owner}.has_last && ` +
+        `(${row} < ${owner}.last_row || ` +
+        `(${row} == ${owner}.last_row && ${column} <= ${owner}.last_column)))`,
+      `${indent}{`,
+      statusFailure(
+        "range",
+        "NativeSparseIntegerRows entries must be strictly row-major",
+        `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}if (${owner}.length == ${owner}.entry_capacity)`,
+      `${indent}{`,
+      statusFailure(
+        "range", "NativeSparseIntegerRows capacity exceeded", `${indent}    `,
+      ),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}if (!sagejs_native_integer_vector_set(status, ` +
+        `&${owner}.values, ${owner}.length, ` +
+        `${exactValue(operation.value, context)}))`,
+      `${indent}    goto fail;`,
+      `${indent}${owner}.entry_rows[${owner}.length] = ${row};`,
+      `${indent}${owner}.columns[${owner}.length] = ${column};`,
+      `${indent}${owner}.row_lengths[(size_t) ${row}]++;`,
+      `${indent}${owner}.length++;`,
+      `${indent}${owner}.last_row = ${row};`,
+      `${indent}${owner}.last_column = ${column};`,
+      `${indent}${owner}.has_last = 1;`,
+    ].join("\n");
+  }
+  return [
+    ...indexCheck,
+    `${indent}{`,
+    `${indent}    size_t sagejs_sparse_position;`,
+    `${indent}    int sagejs_sparse_found = 0;`,
+    `${indent}    for (sagejs_sparse_position = 0; ` +
+      `sagejs_sparse_position < ${owner}.length; sagejs_sparse_position++)`,
+    `${indent}    {`,
+    `${indent}        uint64_t sagejs_sparse_row = ` +
+      `${owner}.entry_rows[sagejs_sparse_position];`,
+    `${indent}        uint64_t sagejs_sparse_column = ` +
+      `${owner}.columns[sagejs_sparse_position];`,
+    `${indent}        if (sagejs_sparse_row == ${row} && ` +
+      `sagejs_sparse_column == ${column})`,
+    `${indent}        {`,
+    `${indent}            mpz_set(${target}, ` +
+      `${owner}.values.entries[sagejs_sparse_position]);`,
+    `${indent}            sagejs_sparse_found = 1;`,
+    `${indent}            break;`,
+    `${indent}        }`,
+    `${indent}        if (sagejs_sparse_row > ${row} || ` +
+      `(sagejs_sparse_row == ${row} && sagejs_sparse_column > ${column}))`,
+    `${indent}            break;`,
+    `${indent}    }`,
+    `${indent}    if (!sagejs_sparse_found)`,
+    `${indent}        mpz_set(${target}, ` +
+      `${exactValue(operation.defaultValue, context)});`,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function emitExactOperation(operation, context, indent) {
   const target = exactValue(operation.target, context);
   if (operation.kind === "integer.constant") {
@@ -297,6 +529,64 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "value.discard") {
+    return `${indent}(void) ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.construct") {
+    return operation.fields.map((field) =>
+      `${indent}${target}.sagejs_field_${field.name} = ` +
+        `${exactValue(field.value, context)};`
+    ).join("\n");
+  }
+  if (operation.kind === "record.copy") {
+    return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "record.get") {
+    return `${indent}${target} = ${exactValue(operation.source, context)}.` +
+      `sagejs_field_${operation.field};`;
+  }
+  if (operation.kind === "record.vector.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.vector, context)}.length;`;
+  }
+  if (operation.kind === "record.vector.get" ||
+      operation.kind === "record.vector.set") {
+    const vector = exactValue(operation.vector, context);
+    const index = exactValue(operation.index, context);
+    const position = "sagejs_record_position";
+    const check = operation.indexType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${index}, ${vector}.length, ` +
+        "&sagejs_record_position)"
+      : `${index} >= (uint64_t) ${vector}.length`;
+    const entries = `((${recordCType(operation.record)} *) ${vector}.entries)`;
+    const action = operation.kind === "record.vector.get"
+      ? `${target} = ${entries}[${position}];`
+      : `${entries}[${position}] = ${exactValue(operation.value, context)};`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_record_position = ` +
+        `${operation.indexType === "Integer" ? "0" : `(size_t) ${index}`};`,
+      `${indent}    if (${check})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeRecordVector index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind.startsWith("bounded.") &&
+      !operation.kind.endsWith(".arena.allocate")) {
+    return emitBoundedCollectionOperation(operation, context, indent);
+  }
+  if (operation.kind.startsWith("sparse.rows.") &&
+      operation.kind !== "sparse.rows.arena.allocate") {
+    return emitSparseRowsOperation(operation, context, indent);
   }
   if (operation.kind === "integer.mod_uint64") {
     const divisor = exactValue(operation.right, context);
@@ -482,6 +772,7 @@ function emitExactOperation(operation, context, indent) {
   }
   if (
     operation.kind === "integer.vector.get" ||
+    operation.kind === "integer.vector.borrow" ||
     operation.kind === "integer.vector.set" ||
     operation.kind === "integer.vector.addmul" ||
     operation.kind === "integer.vector.submul"
@@ -495,6 +786,8 @@ function emitExactOperation(operation, context, indent) {
     let action;
     if (operation.kind === "integer.vector.get") {
       action = `mpz_set(${target}, ${vector}.entries[sagejs_vector_position]);`;
+    } else if (operation.kind === "integer.vector.borrow") {
+      action = `${target} = ${vector}.entries[sagejs_vector_position];`;
     } else if (operation.kind === "integer.vector.set") {
       action = `if (!sagejs_native_integer_vector_set(status, &${vector}, ` +
         `sagejs_vector_position, ${exactValue(operation.value, context)}))\n` +
@@ -561,6 +854,185 @@ function emitExactOperation(operation, context, indent) {
         `sagejs_vector_charge;`,
       `${indent}    }`,
       `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.matrix.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.matrix, context)}.rows;`;
+  }
+  if (
+    operation.kind === "integer.matrix.get" ||
+    operation.kind === "integer.matrix.borrow" ||
+    operation.kind === "integer.matrix.set" ||
+    operation.kind === "integer.matrix.addmul" ||
+    operation.kind === "integer.matrix.submul"
+  ) {
+    const matrix = exactValue(operation.matrix, context);
+    const row = exactValue(operation.row, context);
+    const column = exactValue(operation.column, context);
+    const rowCheck = operation.rowType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${row}, ${matrix}.rows, ` +
+        "&sagejs_matrix_row)"
+      : `${row} >= (uint64_t) ${matrix}.rows`;
+    const columnCheck = operation.columnType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${column}, ${matrix}.columns, ` +
+        "&sagejs_matrix_column)"
+      : `${column} >= (uint64_t) ${matrix}.columns`;
+    let action;
+    if (operation.kind === "integer.matrix.get") {
+      action = `mpz_set(${target}, ` +
+        `${matrix}.storage.entries[sagejs_matrix_position]);`;
+    } else if (operation.kind === "integer.matrix.borrow") {
+      action = `${target} = ` +
+        `${matrix}.storage.entries[sagejs_matrix_position];`;
+    } else if (operation.kind === "integer.matrix.set") {
+      action = `if (!sagejs_native_integer_matrix_set(status, &${matrix}, ` +
+        `sagejs_matrix_position, ${exactValue(operation.value, context)}))\n` +
+        `${indent}        goto fail;`;
+    } else {
+      action = `if (!sagejs_native_integer_matrix_addmul(status, &${matrix}, ` +
+        `sagejs_matrix_position, ${exactValue(operation.left, context)}, ` +
+        `${exactValue(operation.right, context)}, ` +
+        `${operation.kind === "integer.matrix.submul" ? 1 : 0}))\n` +
+        `${indent}        goto fail;`;
+    }
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_matrix_row = ` +
+        `${operation.rowType === "Integer" ? "0" : `(size_t) ${row}`};`,
+      `${indent}    size_t sagejs_matrix_column = ` +
+        `${operation.columnType === "Integer" ? "0" : `(size_t) ${column}`};`,
+      `${indent}    size_t sagejs_matrix_position;`,
+      `${indent}    if (${rowCheck} || ${columnCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerMatrix index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    sagejs_matrix_position = ` +
+        `sagejs_matrix_row * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}    ${action}`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.matrix.swap_rows") {
+    const matrix = exactValue(operation.matrix, context);
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    const leftCheck = operation.leftType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${left}, ${matrix}.rows, ` +
+        "&sagejs_matrix_left)"
+      : `${left} >= (uint64_t) ${matrix}.rows`;
+    const rightCheck = operation.rightType === "Integer"
+      ? `!sagejs_native_mpz_bounded_index(${right}, ${matrix}.rows, ` +
+        "&sagejs_matrix_right)"
+      : `${right} >= (uint64_t) ${matrix}.rows`;
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_matrix_left = ` +
+        `${operation.leftType === "Integer" ? "0" : `(size_t) ${left}`};`,
+      `${indent}    size_t sagejs_matrix_right = ` +
+        `${operation.rightType === "Integer" ? "0" : `(size_t) ${right}`};`,
+      `${indent}    size_t sagejs_matrix_column;`,
+      `${indent}    if (${leftCheck} || ${rightCheck})`,
+      `${indent}    {`,
+      statusFailure(
+        "range",
+        "NativeIntegerMatrix row index out of range",
+        `${indent}        `,
+      ),
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    for (sagejs_matrix_column = 0; ` +
+        `sagejs_matrix_column < ${matrix}.columns; sagejs_matrix_column += 1)`,
+      `${indent}    {`,
+      `${indent}        const size_t sagejs_matrix_left_position = ` +
+        `sagejs_matrix_left * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}        const size_t sagejs_matrix_right_position = ` +
+        `sagejs_matrix_right * ${matrix}.columns + sagejs_matrix_column;`,
+      `${indent}        uint64_t sagejs_matrix_charge;`,
+      `${indent}        mpz_swap(` +
+        `${matrix}.storage.entries[sagejs_matrix_left_position], ` +
+        `${matrix}.storage.entries[sagejs_matrix_right_position]);`,
+      `${indent}        sagejs_matrix_charge = ` +
+        `${matrix}.storage.payload_charges[sagejs_matrix_left_position];`,
+      `${indent}        ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_left_position] = ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_right_position];`,
+      `${indent}        ${matrix}.storage.payload_charges[` +
+        `sagejs_matrix_right_position] = sagejs_matrix_charge;`,
+      `${indent}    }`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.arena.vector.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_integer_vector_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.capacity, context)}, ` +
+        `${exactValue(operation.maximumBits, context)}, ` +
+        `&${arena}.budget, "NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.arena.matrix.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_integer_matrix_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.rows, context)}, ` +
+        `${exactValue(operation.columns, context)}, ` +
+        `${exactValue(operation.maximumBits, context)}, &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
+  if (operation.kind === "record.arena.vector.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_record_vector_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.capacity, context)}, ` +
+        `sizeof(${recordCType(operation.record)}), ` +
+        `UINT64_C(${operation.entryCharge}), &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
+  if (operation.kind === "bounded.map.arena.allocate" ||
+      operation.kind === "bounded.set.arena.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    const withValues = operation.kind === "bounded.map.arena.allocate" ? 1 : 0;
+    return [
+      `${indent}if (!sagejs_native_bounded_table_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.capacity, context)}, ` +
+        `sizeof(${recordCType(operation.record)}), ${withValues}, ` +
+        `UINT64_C(${operation.entryCharge}), &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
+    ].join("\n");
+  }
+  if (operation.kind === "sparse.rows.arena.allocate") {
+    const arena = exactValue(operation.arena, context);
+    const owner = exactValue(operation.owner, context);
+    return [
+      `${indent}if (!sagejs_native_sparse_integer_rows_init_in_budget(status, ` +
+        `&${owner}, ${exactValue(operation.rows, context)}, ` +
+        `${exactValue(operation.columns, context)}, ` +
+        `${exactValue(operation.entryCapacity, context)}, ` +
+        `${exactValue(operation.maximumBits, context)}, &${arena}.budget, ` +
+        `"NativeExactArena memory limit exceeded"))`,
+      `${indent}    goto fail;`,
+      `${indent}${cName(operation.owner)}_initialized = 1;`,
     ].join("\n");
   }
   if (operation.kind === "integer.from_uint64") {
@@ -785,7 +1257,8 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    goto fail;`,
     ].join("\n");
   }
-  if (operation.kind === "ffi.call") {
+  if (operation.kind === "ffi.call" ||
+      operation.kind === "ffi.arena.resource.allocate") {
     return emitExactForeignCall(operation, {
       value: (name) => exactValue(name, context),
       result: (name) => exactValue(name, context),
@@ -883,8 +1356,116 @@ function emitExactStatements(statements, context, indent) {
       );
       continue;
     }
+    if (statement.kind === "integer.matrix.scope") {
+      const owner = exactValue(statement.owner, context);
+      lines.push(
+        emitExactStatements(statement.setup, context, indent),
+        `${indent}if (!sagejs_native_integer_matrix_init(status, &${owner}, ` +
+          `${exactValue(statement.rows, context)}, ` +
+          `${exactValue(statement.columns, context)}, ` +
+          `${exactValue(statement.memoryLimit, context)}))`,
+        `${indent}    goto fail;`,
+        `${indent}${cName(statement.owner)}_initialized = 1;`,
+        emitExactStatements(statement.body, context, indent),
+        `${indent}sagejs_native_integer_matrix_clear(&${owner});`,
+        `${indent}${cName(statement.owner)}_initialized = 0;`,
+      );
+      continue;
+    }
+    if (statement.kind === "integer.arena.scope") {
+      const owner = exactValue(statement.owner, context);
+      const lastAllocation = statement.body.findLastIndex((operation) =>
+        operation.kind === "integer.arena.vector.allocate" ||
+        operation.kind === "integer.arena.matrix.allocate" ||
+        operation.kind === "record.arena.vector.allocate" ||
+        operation.kind === "bounded.map.arena.allocate" ||
+        operation.kind === "bounded.set.arena.allocate" ||
+        operation.kind === "sparse.rows.arena.allocate" ||
+        operation.kind === "ffi.arena.resource.allocate"
+      );
+      const residentSetup = statement.body.slice(0, lastAllocation + 1);
+      const checkpointBody = statement.body.slice(lastAllocation + 1);
+      const checkpointContext = {
+        ...context,
+        checkpointActive: true,
+        checkpointOwner: owner,
+      };
+      const cleanupChildren = [...statement.children].reverse().flatMap(
+        (child) => {
+          if (child.childKind === "foreign-resource") {
+            return [
+              `${indent}if (${cName(child.owner)}_initialized)`,
+              `${indent}{`,
+              `${indent}    ${child.clearSymbol}(` +
+                `${exactValue(child.owner, context)});`,
+              `${indent}    ${cName(child.owner)}_initialized = 0;`,
+              `${indent}}`,
+            ];
+          }
+          const clear = child.type === "NativeIntegerMatrix"
+            ? "sagejs_native_integer_matrix_clear"
+            : child.type === "NativeIntegerVector"
+              ? "sagejs_native_integer_vector_clear"
+              : child.type.startsWith("NativeBoundedMap:") ||
+                  child.type.startsWith("NativeBoundedSet:")
+                ? "sagejs_native_bounded_table_clear"
+                : child.type === "NativeSparseIntegerRows"
+                  ? "sagejs_native_sparse_integer_rows_clear"
+                  : "sagejs_native_record_vector_clear";
+          return [
+            `${indent}if (${cName(child.owner)}_initialized)`,
+            `${indent}{`,
+            `${indent}    ${clear}(&${exactValue(child.owner, context)});`,
+            `${indent}    ${cName(child.owner)}_initialized = 0;`,
+            `${indent}}`,
+          ];
+        },
+      );
+      lines.push(
+        emitExactStatements(statement.setup, context, indent),
+        `${indent}if (!sagejs_native_exact_arena_init(status, &${owner}, ` +
+          `${exactValue(statement.memoryLimit, context)}, ` +
+          `${exactValue(statement.temporaryLimit, context)}))`,
+        `${indent}    goto fail;`,
+        `${indent}${cName(statement.owner)}_initialized = 1;`,
+        emitExactStatements(residentSetup, context, indent),
+        `${indent}if (${owner}.temporary_limit > (uint64_t) SIZE_MAX ||`,
+        `${indent}    !sagejs_native_gmp_checkpoint_begin(` +
+          `&${owner}.checkpoint, (size_t) ${owner}.temporary_limit))`,
+        `${indent}{`,
+        statusFailure(
+          "error",
+          "NativeExactArena checkpoint allocation failed",
+          `${indent}    `,
+        ),
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        emitExactStatements(checkpointBody, checkpointContext, indent),
+        ...cleanupChildren,
+        `${indent}sagejs_native_exact_arena_clear(&${owner});`,
+        `${indent}${cName(statement.owner)}_initialized = 0;`,
+      );
+      continue;
+    }
     if (statement.kind === "return") {
       const tuple = tupleElementTypes(statement.type);
+      const publishesExact = tuple !== undefined
+        ? tuple.includes("Integer")
+        : statement.type === "Integer";
+      if (context.checkpointActive) {
+        lines.push(
+          `${indent}if (${context.checkpointOwner}.checkpoint.soft_limit_exhaustions != 0 ||`,
+          `${indent}    ${context.checkpointOwner}.checkpoint.upstream_allocations != 0)`,
+          `${indent}{`,
+          `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RETRY,`,
+          `${indent}        "NativeExactArena temporary capacity exhausted");`,
+          `${indent}    goto fail;`,
+          `${indent}}`,
+        );
+      }
+      if (context.checkpointActive && publishesExact) {
+        lines.push(`${indent}sagejs_native_gmp_checkpoint_suspend();`);
+      }
       if (tuple !== undefined) {
         tuple.forEach((type, index) => {
           if (type === "Integer") {
@@ -909,6 +1490,19 @@ function emitExactStatements(statements, context, indent) {
         lines.push(`${indent}*sagejs_native_output = ` +
           `${exactValue(statement.value, context)};`);
       }
+      if (context.checkpointActive && publishesExact) {
+        lines.push(
+          `${indent}if (!sagejs_native_gmp_checkpoint_resume())`,
+          `${indent}{`,
+          statusFailure(
+            "error",
+            "NativeExactArena checkpoint publication failed",
+            `${indent}    `,
+          ),
+          `${indent}    goto fail;`,
+          `${indent}}`,
+        );
+      }
       lines.push(`${indent}goto success;`);
       continue;
     }
@@ -929,10 +1523,14 @@ function exactDeclarations(fn) {
   const declarations = [];
   const initialization = [];
   const cleanup = [];
+  const arenaCleanup = [];
   for (let slot = 0; slot < storage.scratchSlots; slot += 1) {
     declarations.push(`    mpz_t sagejs_scratch_${slot};`);
     initialization.push(`    mpz_init(sagejs_scratch_${slot});`);
     cleanup.unshift(`    mpz_clear(sagejs_scratch_${slot});`);
+  }
+  for (const name of storage.borrowedLocals || []) {
+    declarations.push(`    mpz_srcptr ${cName(name)} = NULL;`);
   }
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
@@ -971,7 +1569,70 @@ function exactDeclarations(fn) {
       );
       continue;
     }
+    if (local.type === "NativeIntegerMatrix") {
+      declarations.push(
+        `    sagejs_native_integer_matrix ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_integer_matrix_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type.startsWith("NativeRecordVector:")) {
+      declarations.push(
+        `    sagejs_native_record_vector ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_record_vector_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type.startsWith("NativeBoundedMap:") ||
+        local.type.startsWith("NativeBoundedSet:")) {
+      declarations.push(
+        `    sagejs_native_bounded_table ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_bounded_table_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type === "NativeSparseIntegerRows") {
+      declarations.push(
+        `    sagejs_native_sparse_integer_rows ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_sparse_integer_rows_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
+    if (local.type === "NativeExactArena") {
+      declarations.push(
+        `    sagejs_native_exact_arena ${cName(local.name)} = {0};`,
+        `    int ${cName(local.name)}_initialized = 0;`,
+      );
+      arenaCleanup.unshift(
+        `    if (${cName(local.name)}_initialized)`,
+        `        sagejs_native_exact_arena_clear(&${cName(local.name)});`,
+      );
+      continue;
+    }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
+      continue;
+    }
+    if (local.type.startsWith("Record:")) {
+      declarations.push(
+        `    ${recordCType(local.type.slice("Record:".length))} ` +
+          `${cName(local.name)} = {0};`,
+      );
       continue;
     }
     const type = local.type === "uint64"
@@ -1002,6 +1663,11 @@ function exactDeclarations(fn) {
       `    mpz_set(${exactValue(name, context)}, sagejs_arg_${name});`,
     );
   }
+  /* Any GMP value whose limbs were obtained while an exact checkpoint was
+     active must be cleared while that checkpoint still owns its slab.  Arena
+     owners therefore always come after exact scratch, resident children, and
+     foreign resources in both success and failure cleanup. */
+  cleanup.push(...arenaCleanup);
   return { context, declarations, initialization, cleanup };
 }
 
@@ -1058,6 +1724,89 @@ function wrapperIdentifierContext(fn) {
       return parameters.get(param.name);
     },
   };
+}
+
+function exactArenaRetryable(fn) {
+  return fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+    scope.storage === "shared-budget-lexical-exact-arena"
+  ) && fn.analysis?.effects?.replaySafe === true &&
+    (fn.analysis.effects.externalWrites || []).length === 0;
+}
+
+function exactWrapperExecution(
+  fn,
+  call,
+  wrapperStatus,
+  failureRefresh,
+  identifiers,
+  declarations,
+) {
+  if (!exactArenaRetryable(fn)) {
+    return `    if (!${call})\n` +
+      "    {\n" +
+      `${failureRefresh.join("\n")}` +
+      `${failureRefresh.length ? "\n" : ""}` +
+      `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
+      "        goto fail;\n" +
+      "    }";
+  }
+  if (failureRefresh.length !== 0) {
+    throw new Error(
+      `${fn.name} cannot retry an exact arena with external refresh effects`,
+    );
+  }
+  const attempt = identifiers.fresh("sagejs_checkpoint_attempt");
+  const shift = identifiers.fresh("sagejs_checkpoint_shift");
+  const nextShift = identifiers.fresh("sagejs_checkpoint_next_shift");
+  const completed = identifiers.fresh("sagejs_checkpoint_completed");
+  declarations.push(
+    `    unsigned ${attempt} = 0;`,
+    `    unsigned ${shift} = 0;`,
+    `    unsigned ${nextShift} = 0;`,
+    `    int ${completed} = 0;`,
+  );
+  return [
+    `    for (${attempt} = 0;`,
+    `        ${attempt} <= SAGEJS_NATIVE_GMP_MAX_RETRY_SHIFT &&`,
+    `        ${shift} <= SAGEJS_NATIVE_GMP_MAX_RETRY_SHIFT;`,
+    `        ${attempt} += 1)`,
+    "    {",
+    `        sagejs_native_status_reset(&${wrapperStatus});`,
+    `        if (!sagejs_native_gmp_set_retry_shift(${shift}))`,
+    "        {",
+    `            sagejs_native_status_set(&${wrapperStatus},`,
+    "                SAGEJS_NATIVE_ERROR,",
+    '                "unable to configure exact checkpoint retry");',
+    "            break;",
+    "        }",
+    `        if (${call})`,
+    "        {",
+    `            ${completed} = 1;`,
+    "            break;",
+    "        }",
+    `        if (${wrapperStatus}.code != SAGEJS_NATIVE_RETRY)`,
+    "            break;",
+    `        ${nextShift} = ${shift} + 1;`,
+    "        (void) sagejs_native_gmp_recommended_retry_shift(",
+    `            ${shift}, SAGEJS_NATIVE_GMP_MAX_RETRY_SHIFT, &${nextShift});`,
+    `        if (${nextShift} <= ${shift})`,
+    "            break;",
+    `        ${shift} = ${nextShift};`,
+    "    }",
+    "    (void) sagejs_native_gmp_set_retry_shift(0);",
+    `    if (!${completed})`,
+    "    {",
+    `        if (${wrapperStatus}.code == SAGEJS_NATIVE_RETRY)`,
+    "        {",
+    `            sagejs_native_status_reset(&${wrapperStatus});`,
+    `            sagejs_native_status_set(&${wrapperStatus},`,
+    "                SAGEJS_NATIVE_RANGE_ERROR,",
+    '                "NativeExactArena temporary capacity exhausted after retry");',
+    "        }",
+    `        sagejs_native_throw_status(env, &${wrapperStatus});`,
+    "        goto fail;",
+    "    }",
+  ].join("\n");
 }
 
 function resourceCName(resource) {
@@ -1303,15 +2052,16 @@ function emitTaggedWrapper(fn) {
       : parameterValue(param)
   );
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
-  const execution = `    if (!tagged_${fn.name}(&${wrapperStatus}, ` +
-    `${resultArguments.join(", ")}` +
-    `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "    {\n" +
-    `${failureRefresh.join("\n")}` +
-    `${failureRefresh.length ? "\n" : ""}` +
-    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
-    "        goto fail;\n" +
-    "    }";
+  const execution = exactWrapperExecution(
+    fn,
+    `tagged_${fn.name}(&${wrapperStatus}, ` +
+      `${resultArguments.join(", ")}` +
+      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
+    wrapperStatus,
+    failureRefresh,
+    identifiers,
+    declarations,
+  );
   return `
 static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
 {
@@ -1504,14 +2254,15 @@ function emitExactWrapper(fn) {
       : parameterValue(param)
   );
   const failureRefresh = resourceFailureRefreshStatements(fn, parameterValue);
-  const execution = `    if (!native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
-    `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "    {\n" +
-    `${failureRefresh.join("\n")}` +
-    `${failureRefresh.length ? "\n" : ""}` +
-    `        sagejs_native_throw_status(env, &${wrapperStatus});\n` +
-    "        goto fail;\n" +
-    "    }";
+  const execution = exactWrapperExecution(
+    fn,
+    `native_${fn.name}(&${wrapperStatus}, ${resultArguments.join(", ")}` +
+      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""})`,
+    wrapperStatus,
+    failureRefresh,
+    identifiers,
+    declarations,
+  );
   return `
 static napi_value compiled_${fn.name}_gmp(napi_env env, napi_callback_info info)
 {
@@ -2890,7 +3641,7 @@ function coreHeader(ir, options = {}) {
     }).join("\n");
     return `typedef struct\n{\n${fields}\n} sagejs_native_record_${record.name};`;
   }).join("\n\n");
-  return `/* Generated by Sage.js Native Kernel v23. */
+  return `/* Generated by Sage.js Native Kernel v34. */
 #ifndef SAGEJS_GENERATED_KERNEL_CORE_H
 #define SAGEJS_GENERATED_KERNEL_CORE_H
 
@@ -3034,6 +3785,7 @@ function generateHostCore(ir, options = {}) {
   );
   const pieces = [
     generateStatusRuntime(),
+    exact.length > 0 ? GMP_CHECKPOINT_ALLOCATOR_C_SOURCE : "",
     exact.length > 0 ? generateExactCoreRuntime() : "",
     usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
     usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
@@ -3054,7 +3806,7 @@ function generateHostCore(ir, options = {}) {
     primeFields.length > 0 ? generatePrimeFieldSupport() : "",
     ...primeFields.map(emitPrimeFieldCoreFunction),
   ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v23.
+  const source = `/* Generated by Sage.js Native Kernel v34.
  * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
  */
 #include <math.h>
@@ -3109,6 +3861,11 @@ ${pieces.join("\n\n")}
 function generateNodeAdapter(ir) {
   const functions = ir.functions;
   const exact = exactFunctions(ir);
+  const usesExactArena = exact.some((fn) =>
+    fn.analysis?.liveExactWorkspace?.scopes?.some((scope) =>
+      scope.storage === "shared-budget-lexical-exact-arena"
+    )
+  );
   const floats = functions.filter((fn) => fn.kernelKind === "float64");
   const fields = functions.filter((fn) =>
     ["real-field", "complex-field"].includes(fn.kernelKind)
@@ -3254,7 +4011,7 @@ static int get_precision(
         "napi_default, NULL}",
     ]),
   ].join(",\n");
-  return `/* Generated by Sage.js Native Kernel v23.
+  return `/* Generated by Sage.js Native Kernel v34.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
@@ -3329,6 +4086,9 @@ SAGEJS_NATIVE_INITIALIZER_LINKAGE napi_value SAGEJS_NATIVE_INITIALIZER(
     napi_property_descriptor properties[] = {
 ${properties}
     };
+${usesExactArena
+    ? "    if (!sagejs_native_gmp_allocator_install()) return NULL;"
+    : ""}
     if (!sagejs_native_check_napi(env,
         napi_define_properties(env, exports,
             sizeof(properties) / sizeof(properties[0]), properties)))

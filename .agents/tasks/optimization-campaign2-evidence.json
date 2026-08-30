@@ -1,0 +1,218 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimization-campaign2-evidence",
+  "title": "Campaign 2 mature-library evidence",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement v2 representative and held-out Campaign 2 workload contracts plus deterministic discovery/adjudication harnesses for dense integral, cubic factorization, and hyperelliptic normalization without modifying production routes",
+  "base_commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+  "claims": [
+    "architecture/optimization-engine/workloads/README.md",
+    "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+    "architecture/optimization-engine/workloads/campaign2-specifications.json",
+    "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+    "bench/optimization-engine/campaign2-discovery.cjs",
+    "bench/optimization-engine/campaign2-workloads.cjs",
+    "bench/optimization-engine/integral-library-candidate.py",
+    "test/optimization-campaign2-evidence.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "Exact derivative replay and independent modular coefficient oracle",
+      "Complete class-number and point-count differential evidence"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.378,
+      "started_at": "2026-08-29T01:38:41.180Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.494,
+      "started_at": "2026-08-29T01:38:50.185Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off SAGEJS_OPT_LEVEL=O2 node /home/user/sagejs/bin/sagejs-source.cjs --python /home/user/sagejs-worktrees/optimization-campaign2-evidence/bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.142,
+      "started_at": "2026-08-29T01:38:51.310Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-discovery.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-08-29T01:38:53.082Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-workloads.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.03,
+      "started_at": "2026-08-29T01:38:53.748Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.403,
+      "started_at": "2026-08-29T01:39:57.479Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.494,
+      "started_at": "2026-08-29T01:39:58.536Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "env SAGEJS_HYPERELLIPTIC_AUTO_RECEIPT_POLICY=off SAGEJS_OPT_LEVEL=O2 node /home/user/sagejs/bin/sagejs-source.cjs --python /home/user/sagejs-worktrees/optimization-campaign2-evidence/bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.171,
+      "started_at": "2026-08-29T01:39:59.687Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "bb6c94c5858f04bc2cfdc5f5f3b1a75d3840f8c3ec1268b9d7800f7cd3f391bd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.368,
+      "started_at": "2026-08-29T01:41:00.068Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "b85159d9c4093e93d6fd0bb395186214e4fd77329e5b83802ed4b9357a976c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-discovery.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.028,
+      "started_at": "2026-08-29T01:41:01.073Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "b85159d9c4093e93d6fd0bb395186214e4fd77329e5b83802ed4b9357a976c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-workloads.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.031,
+      "started_at": "2026-08-29T01:41:01.748Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "b85159d9c4093e93d6fd0bb395186214e4fd77329e5b83802ed4b9357a976c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.523,
+      "started_at": "2026-08-29T01:41:02.422Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "b85159d9c4093e93d6fd0bb395186214e4fd77329e5b83802ed4b9357a976c54",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimization-campaign2-evidence.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.381,
+      "started_at": "2026-08-29T01:41:32.752Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "8b182d30876d648b2db963e865a16fd602d4ab79f8ce187ca500769b20ce8acd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-discovery.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.027,
+      "started_at": "2026-08-29T01:41:33.769Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "8b182d30876d648b2db963e865a16fd602d4ab79f8ce187ca500769b20ce8acd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --check bench/optimization-engine/campaign2-workloads.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.028,
+      "started_at": "2026-08-29T01:41:34.425Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "8b182d30876d648b2db963e865a16fd602d4ab79f8ce187ca500769b20ce8acd",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check bench/optimization-engine/integral-library-candidate.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.483,
+      "started_at": "2026-08-29T01:41:35.081Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "8b182d30876d648b2db963e865a16fd602d4ab79f8ce187ca500769b20ce8acd",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Defined six source-closed optimization workload v2 contracts for representative and held-out dense-integral, cubic-factorization, and hyperelliptic-normalization public boundaries. Added strict current-epoch discovery evidence validation with exact alternating 11-pair protocols, complete conversion/crossing/copy/allocation/result/resource accounting, exact semantic and fallback obligations, mature-capability identities, negative alternatives, and deterministic generalized-auditor adjudication. Added a bench-only lawful FLINT block decomposition whose executable GF(257) length-10000 witness proves exact output/derivative equality, 39 calls over 38 characteristic holes, and the untouched singular ZeroDivisionError without modifying production routes.",
+    "risks": [
+      "This lane deliberately contains no checked timing result: representative and held-out timings must be ingested under the integration lane's frozen current epoch before they become selection authority.",
+      "The hyperelliptic candidate remains investigate unless a bounded-call or worker-isolation interruption authority is supplied in its current evidence bundle.",
+      "Windows and browser fallback coverage is a hard evidence-bundle gate here, but the integration lane must attach the actual platform validation artifacts."
+    ],
+    "next_steps": [
+      "Bind the independently measured representative and GF(257) held-out dense-integral ABBA pairs and inclusive counters to the frozen Campaign 2 epoch.",
+      "Run the cubic complete-public and hyperelliptic interruption/platform bundles through campaign2-discovery.cjs adjudicate; do not promote phase-only timing.",
+      "If the current adjudication selects dense-integral, open the separate production adapter, oracle, resource, held-out, platform, and integration lanes required by the plan."
+    ]
+  }
+}

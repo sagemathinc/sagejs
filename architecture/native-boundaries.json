@@ -13,9 +13,9 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 131,
-    "declared-ffi": 441,
-    "declared-ffi-resource": 32,
+    "classified-native-file": 134,
+    "declared-ffi": 456,
+    "declared-ffi-resource": 34,
     "napi-export": 328,
     "runtime-intrinsic": 147,
     "wasm-export": 72
@@ -352,6 +352,30 @@
       "close_export": "ffiFqPolynomialClose",
       "clear_symbol": "sagejs_fq_polynomial_clear",
       "size_symbol": "sagejs_fq_polynomial_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:native_exact_workspace",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "NativeExactWorkspace",
+      "abi_type": "sagejs_native_exact_workspace_t",
+      "close_export": "ffiNativeExactWorkspaceClose",
+      "clear_symbol": "sagejs_native_exact_workspace_clear",
+      "size_symbol": "sagejs_native_exact_workspace_allocated_bytes",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi-resource:flint:native_exact_workspace_borrow",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "NativeExactWorkspaceBorrow",
+      "abi_type": "sagejs_native_exact_workspace_borrow_t",
+      "close_export": "ffiNativeExactWorkspaceBorrowClose",
+      "clear_symbol": "sagejs_native_exact_workspace_borrow_clear",
+      "size_symbol": "sagejs_native_exact_workspace_borrow_allocated_bytes",
       "disposition": "declared-owned-ffi-resource"
     },
     {
@@ -4069,6 +4093,171 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "wordIsPrime",
       "symbol": "n_is_prime",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceCreate",
+      "symbol": "sagejs_native_exact_workspace_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrow",
+      "symbol": "sagejs_native_exact_workspace_borrow_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_addmul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_addmul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowAddmul",
+      "symbol": "sagejs_native_exact_workspace_borrow_addmul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_entry",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_entry",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowEntry",
+      "symbol": "sagejs_native_exact_workspace_borrow_entry",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_generation",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_generation",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowGeneration",
+      "symbol": "sagejs_native_exact_workspace_borrow_generation",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_length",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_length",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowLength",
+      "symbol": "sagejs_native_exact_workspace_borrow_length",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_set",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_set",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowSet",
+      "symbol": "sagejs_native_exact_workspace_borrow_set",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_submul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_submul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowSubmul",
+      "symbol": "sagejs_native_exact_workspace_borrow_submul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_borrow_swap",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_borrow_swap",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceBorrowSwap",
+      "symbol": "sagejs_native_exact_workspace_borrow_swap",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_capacity",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_capacity",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceCapacity",
+      "symbol": "sagejs_native_exact_workspace_capacity",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_generation",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_generation",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceGeneration",
+      "symbol": "sagejs_native_exact_workspace_generation",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_maximum_bits",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_maximum_bits",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceMaximumBits",
+      "symbol": "sagejs_native_exact_workspace_maximum_bits",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_reset",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_reset",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceReset",
+      "symbol": "sagejs_native_exact_workspace_reset",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_specification_high",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_specification_high",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceSpecificationHigh",
+      "symbol": "sagejs_native_exact_workspace_specification_high",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:native_exact_workspace_specification_low",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "native_exact_workspace_specification_low",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNativeExactWorkspaceSpecificationLow",
+      "symbol": "sagejs_native_exact_workspace_specification_low",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -8730,6 +8919,14 @@
       "lane": "integration"
     },
     {
+      "id": "native-file:bench/optimizer-workloads/modular-scan-target.c",
+      "kind": "classified-native-file",
+      "path": "bench/optimizer-workloads/modular-scan-target.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration"
+    },
+    {
       "id": "native-file:bench/rforest/portable_trace_harness.c",
       "kind": "classified-native-file",
       "path": "bench/rforest/portable_trace_harness.c",
@@ -8952,6 +9149,14 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "hyperelliptic-curves"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/native_exact_workspace_ffi.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/native_exact_workspace_ffi.h",
+      "disposition": "representation-primitive",
+      "review_status": "accepted",
+      "lane": "integration"
     },
     {
       "id": "native-file:packages/flint/include/sagejs/native.h",
@@ -9536,6 +9741,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
+    },
+    {
+      "id": "native-file:test/fixtures/native-exact-workspace-direct-reference.c",
+      "kind": "classified-native-file",
+      "path": "test/fixtures/native-exact-workspace-direct-reference.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
     },
     {
       "id": "native-file:tools/maple/src/parser.c",

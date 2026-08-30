@@ -4,6 +4,7 @@ import { verifyBoundedIntegerPlan } from "./bounded-integer";
 import { verifyStrictFloatArrayPlan } from "./strict-float-array";
 import { verifyFixedExtensionInternalRegionPlan } from "./fixed-extension";
 import { verifyModularBatchInternalRegionPlan } from "./modular-batch";
+import { verifyArrowSegmentGeometryPlan } from "./arrow-segment-geometry";
 
 export interface InternalPlanVerifierPlugin {
   readonly id: string;
@@ -12,6 +13,13 @@ export interface InternalPlanVerifierPlugin {
 }
 
 const plugins: readonly InternalPlanVerifierPlugin[] = Object.freeze([
+  Object.freeze({
+    id: "verify.closed-transactional-rectangular-binary64-dataflow-plan.v1",
+    internalKinds: Object.freeze([
+      "closed-transactional-rectangular-binary64-dataflow",
+    ]),
+    verify: verifyArrowSegmentGeometryPlan,
+  }),
   Object.freeze({
     id: "verify.bounded-integer-plan.v1",
     internalKinds: Object.freeze(["bounded-integer-region"]),

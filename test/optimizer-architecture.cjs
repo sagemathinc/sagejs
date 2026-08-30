@@ -77,6 +77,10 @@ test("the immutable catalog is the only pass composition point", () => {
       ["strict-binary64-array", 250, "exclusive"],
       ["strict-binary64", 200, "exclusive"],
       ["prime-residue-modular-batch", 150, "exclusive"],
+      ["closed-transactional-rectangular-binary64-dataflow", 148, "exclusive"],
+      ["closed-transactional-rectangular-binary64-dataflow-reconnaissance", 147, "exclusive"],
+      ["binary64-nested-all-reconnaissance", 145, "exclusive"],
+      ["modular-sequence-reconnaissance", 140, "exclusive"],
       ["fixed-extension", 125, "exclusive"],
       ["closed-ring", 100, "exclusive"],
     ],
@@ -177,6 +181,7 @@ test("every registered lowering has one verifier and one Python emitter", () => 
   assert.deepEqual(registered, [
     "v8.bounded-integer-loop.v1",
     "v8.closed-ring-loop.v1",
+    "v8.closed-transactional-rectangular-binary64-dataflow.v1",
     "v8.fixed-extension-loop.v1",
     "v8.modular-batch-loop.v1",
     "v8.strict-float-array-loop.v1",

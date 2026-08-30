@@ -119,11 +119,212 @@ static int sagejs_signed_buffer_index(
 
 typedef struct
 {
+    uint64_t limit;
+    uint64_t charged;
+    int open;
+} sagejs_native_exact_budget;
+
+static void sagejs_native_exact_budget_init(
+    sagejs_native_exact_budget *budget, uint64_t limit)
+{
+    budget->limit = limit;
+    budget->charged = 0;
+    budget->open = 1;
+}
+
+static int sagejs_native_exact_budget_replace(
+    sagejs_native_status *status,
+    sagejs_native_exact_budget *budget,
+    uint64_t old_charge,
+    uint64_t new_charge,
+    const char *message)
+{
+    uint64_t retained;
+    if (budget == NULL || !budget->open || old_charge > budget->charged)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeExactArena semantic charge invariant failed");
+        return 0;
+    }
+    retained = budget->charged - old_charge;
+    if (new_charge > UINT64_MAX - retained ||
+        retained + new_charge > budget->limit)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, message);
+        return 0;
+    }
+    budget->charged = retained + new_charge;
+    return 1;
+}
+
+static void sagejs_native_exact_budget_release(
+    sagejs_native_exact_budget *budget, uint64_t charge)
+{
+    if (budget == NULL || charge > budget->charged)
+        return;
+    budget->charged -= charge;
+}
+
+typedef struct
+{
+    void *entries;
+    size_t length;
+    size_t entry_size;
+    sagejs_native_exact_budget *budget;
+    uint64_t charged_bytes;
+} sagejs_native_record_vector;
+
+static void sagejs_native_record_vector_clear(
+    sagejs_native_record_vector *vector)
+{
+    if (vector == NULL)
+        return;
+    if (vector->entries != NULL && vector->entry_size != 0 && vector->length != 0)
+        memset(vector->entries, 0, vector->entry_size * vector->length);
+    free(vector->entries);
+    sagejs_native_exact_budget_release(vector->budget, vector->charged_bytes);
+    vector->entries = NULL;
+    vector->length = 0;
+    vector->entry_size = 0;
+    vector->budget = NULL;
+    vector->charged_bytes = 0;
+}
+
+static int sagejs_native_record_vector_init_in_budget(
+    sagejs_native_status *status,
+    sagejs_native_record_vector *vector,
+    uint64_t capacity,
+    size_t entry_size,
+    uint64_t semantic_entry_charge,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
+{
+    uint64_t charge;
+    if (capacity > (uint64_t) SIZE_MAX || entry_size == 0 ||
+        (capacity != 0 && entry_size > SIZE_MAX / (size_t) capacity) ||
+        (semantic_entry_charge != 0 &&
+            capacity > UINT64_MAX / semantic_entry_charge))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeRecordVector capacity is too large");
+        return 0;
+    }
+    charge = capacity * semantic_entry_charge;
+    if (!sagejs_native_exact_budget_replace(
+            status, budget, 0, charge, memory_error_message))
+        return 0;
+    vector->length = (size_t) capacity;
+    vector->entry_size = entry_size;
+    vector->budget = budget;
+    vector->charged_bytes = charge;
+    if (capacity == 0)
+        return 1;
+    vector->entries = calloc((size_t) capacity, entry_size);
+    if (vector->entries == NULL)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeRecordVector allocation failed");
+        sagejs_native_record_vector_clear(vector);
+        return 0;
+    }
+    return 1;
+}
+
+typedef struct
+{
+    void *keys;
+    uint64_t *values;
+    unsigned char *occupied;
+    size_t capacity;
+    size_t size;
+    size_t key_size;
+    sagejs_native_exact_budget *budget;
+    uint64_t charged_bytes;
+} sagejs_native_bounded_table;
+
+static void sagejs_native_bounded_table_clear(
+    sagejs_native_bounded_table *table)
+{
+    if (table == NULL)
+        return;
+    if (table->keys != NULL && table->key_size != 0 && table->capacity != 0)
+        memset(table->keys, 0, table->key_size * table->capacity);
+    if (table->values != NULL && table->capacity != 0)
+        memset(table->values, 0, sizeof(uint64_t) * table->capacity);
+    if (table->occupied != NULL && table->capacity != 0)
+        memset(table->occupied, 0, table->capacity);
+    free(table->keys);
+    free(table->values);
+    free(table->occupied);
+    sagejs_native_exact_budget_release(table->budget, table->charged_bytes);
+    table->keys = NULL;
+    table->values = NULL;
+    table->occupied = NULL;
+    table->capacity = 0;
+    table->size = 0;
+    table->key_size = 0;
+    table->budget = NULL;
+    table->charged_bytes = 0;
+}
+
+static int sagejs_native_bounded_table_init_in_budget(
+    sagejs_native_status *status,
+    sagejs_native_bounded_table *table,
+    uint64_t capacity,
+    size_t key_size,
+    int with_values,
+    uint64_t semantic_entry_charge,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
+{
+    uint64_t charge;
+    if (capacity > (uint64_t) SIZE_MAX || key_size == 0 ||
+        (capacity != 0 && key_size > SIZE_MAX / (size_t) capacity) ||
+        (capacity != 0 && sizeof(uint64_t) > SIZE_MAX / (size_t) capacity) ||
+        (semantic_entry_charge != 0 &&
+            capacity > UINT64_MAX / semantic_entry_charge))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeBoundedMap/Set capacity is too large");
+        return 0;
+    }
+    charge = capacity * semantic_entry_charge;
+    if (!sagejs_native_exact_budget_replace(
+            status, budget, 0, charge, memory_error_message))
+        return 0;
+    table->capacity = (size_t) capacity;
+    table->key_size = key_size;
+    table->budget = budget;
+    table->charged_bytes = charge;
+    if (capacity == 0)
+        return 1;
+    table->keys = calloc((size_t) capacity, key_size);
+    table->occupied = calloc((size_t) capacity, 1);
+    if (with_values)
+        table->values = calloc((size_t) capacity, sizeof(uint64_t));
+    if (table->keys == NULL || table->occupied == NULL ||
+        (with_values && table->values == NULL))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeBoundedMap/Set allocation failed");
+        sagejs_native_bounded_table_clear(table);
+        return 0;
+    }
+    return 1;
+}
+
+typedef struct
+{
     mpz_t *entries;
+    mpz_t arithmetic_scratch;
     uint64_t *payload_charges;
     size_t length;
     size_t initialized;
-    uint64_t memory_limit;
+    int arithmetic_scratch_initialized;
+    sagejs_native_exact_budget *budget;
+    sagejs_native_exact_budget owned_budget;
+    const char *memory_error_message;
+    uint64_t maximum_payload;
     uint64_t charged_bytes;
 } sagejs_native_integer_vector;
 
@@ -145,41 +346,78 @@ static void sagejs_native_integer_vector_clear(
         vector->initialized -= 1;
         mpz_clear(vector->entries[vector->initialized]);
     }
+    if (vector->arithmetic_scratch_initialized)
+        mpz_clear(vector->arithmetic_scratch);
     free(vector->entries);
     free(vector->payload_charges);
+    sagejs_native_exact_budget_release(vector->budget, vector->charged_bytes);
     vector->entries = NULL;
     vector->payload_charges = NULL;
     vector->length = 0;
-    vector->memory_limit = 0;
+    vector->arithmetic_scratch_initialized = 0;
+    vector->budget = NULL;
+    vector->memory_error_message = NULL;
+    vector->maximum_payload = 0;
     vector->charged_bytes = 0;
 }
 
-static int sagejs_native_integer_vector_init(
+static int sagejs_native_integer_vector_init_in_budget(
     sagejs_native_status *status,
     sagejs_native_integer_vector *vector,
     uint64_t capacity,
-    uint64_t memory_limit)
+    uint64_t maximum_bits,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
 {
     uint64_t base_charge;
+    uint64_t charged_entries;
+    uint64_t entry_charge;
+    uint64_t maximum_payload;
     size_t index;
-    memset(vector, 0, sizeof(*vector));
     if (capacity > (uint64_t) SIZE_MAX ||
         capacity > (uint64_t) (SIZE_MAX / sizeof(mpz_t)) ||
-        capacity > UINT64_MAX / SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE)
+        maximum_bits > (uint64_t) ULONG_MAX ||
+        maximum_bits > UINT64_MAX - 7)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
             "NativeIntegerVector capacity is too large");
         return 0;
     }
-    base_charge = capacity * SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE;
-    if (base_charge > memory_limit)
+    maximum_payload = (maximum_bits + 7) / 8;
+    if (maximum_payload >
+        UINT64_MAX - SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
-            "NativeIntegerVector memory limit exceeded");
+            "NativeIntegerVector capacity is too large");
         return 0;
     }
+    entry_charge =
+        SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE + maximum_payload;
+    charged_entries = capacity;
+    if (maximum_bits != 0 && capacity != 0)
+    {
+        if (charged_entries == UINT64_MAX)
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                "NativeIntegerVector capacity is too large");
+            return 0;
+        }
+        charged_entries += 1;
+    }
+    if (entry_charge != 0 && charged_entries > UINT64_MAX / entry_charge)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerVector capacity is too large");
+        return 0;
+    }
+    base_charge = charged_entries * entry_charge;
+    if (!sagejs_native_exact_budget_replace(
+            status, budget, 0, base_charge, memory_error_message))
+        return 0;
     vector->length = (size_t) capacity;
-    vector->memory_limit = memory_limit;
+    vector->budget = budget;
+    vector->memory_error_message = memory_error_message;
+    vector->maximum_payload = maximum_payload;
     vector->charged_bytes = base_charge;
     if (capacity == 0)
         return 1;
@@ -195,10 +433,31 @@ static int sagejs_native_integer_vector_init(
     }
     for (index = 0; index < (size_t) capacity; index += 1)
     {
-        mpz_init(vector->entries[index]);
+        if (maximum_bits == 0)
+            mpz_init(vector->entries[index]);
+        else
+            mpz_init2(vector->entries[index], (mp_bitcnt_t) maximum_bits);
         vector->initialized += 1;
     }
+    if (maximum_bits != 0)
+    {
+        mpz_init2(vector->arithmetic_scratch, (mp_bitcnt_t) maximum_bits);
+        vector->arithmetic_scratch_initialized = 1;
+    }
     return 1;
+}
+
+static int sagejs_native_integer_vector_init(
+    sagejs_native_status *status,
+    sagejs_native_integer_vector *vector,
+    uint64_t capacity,
+    uint64_t memory_limit)
+{
+    memset(vector, 0, sizeof(*vector));
+    sagejs_native_exact_budget_init(&vector->owned_budget, memory_limit);
+    return sagejs_native_integer_vector_init_in_budget(
+        status, vector, capacity, 0, &vector->owned_budget,
+        "NativeIntegerVector memory limit exceeded");
 }
 
 static int sagejs_native_integer_vector_mpz_index(
@@ -225,13 +484,20 @@ static int sagejs_native_integer_vector_reserve_payload(
 {
     const uint64_t old_payload = vector->payload_charges[position];
     const uint64_t retained = vector->charged_bytes - old_payload;
-    if (payload > UINT64_MAX - retained ||
-        retained + payload > vector->memory_limit)
+    if (vector->maximum_payload != 0)
     {
-        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
-            "NativeIntegerVector memory limit exceeded");
-        return 0;
+        if (payload > vector->maximum_payload)
+        {
+            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+                vector->memory_error_message);
+            return 0;
+        }
+        return 1;
     }
+    if (!sagejs_native_exact_budget_replace(
+            status, vector->budget, old_payload, payload,
+            vector->memory_error_message))
+        return 0;
     vector->charged_bytes = retained + payload;
     vector->payload_charges[position] = payload;
     return 1;
@@ -270,7 +536,7 @@ static int sagejs_native_integer_vector_addmul(
         if (left_bits > SIZE_MAX - right_bits)
         {
             sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
-                "NativeIntegerVector memory limit exceeded");
+                vector->memory_error_message);
             return 0;
         }
         product_bits = left_bits + right_bits;
@@ -279,25 +545,286 @@ static int sagejs_native_integer_vector_addmul(
     if (result_bits == SIZE_MAX)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
-            "NativeIntegerVector memory limit exceeded");
+            vector->memory_error_message);
         return 0;
     }
     result_bits += 1;
     if (result_bits > (size_t) UINT64_MAX - 7)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
-            "NativeIntegerVector memory limit exceeded");
+            vector->memory_error_message);
         return 0;
     }
     conservative_payload = (uint64_t) ((result_bits + 7) / 8);
     if (!sagejs_native_integer_vector_reserve_payload(
             status, vector, position, conservative_payload))
         return 0;
-    if (subtract)
+    if (vector->arithmetic_scratch_initialized)
+    {
+        mpz_mul(vector->arithmetic_scratch, left, right);
+        if (subtract)
+            mpz_sub(
+                vector->entries[position], vector->entries[position],
+                vector->arithmetic_scratch);
+        else
+            mpz_add(
+                vector->entries[position], vector->entries[position],
+                vector->arithmetic_scratch);
+    }
+    else if (subtract)
         mpz_submul(vector->entries[position], left, right);
     else
         mpz_addmul(vector->entries[position], left, right);
     return 1;
+}
+
+typedef struct
+{
+    sagejs_native_integer_vector storage;
+    size_t rows;
+    size_t columns;
+} sagejs_native_integer_matrix;
+
+static void sagejs_native_integer_matrix_clear(
+    sagejs_native_integer_matrix *matrix)
+{
+    if (matrix == NULL)
+        return;
+    sagejs_native_integer_vector_clear(&matrix->storage);
+    matrix->rows = 0;
+    matrix->columns = 0;
+}
+
+static int sagejs_native_integer_matrix_init_in_budget(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    uint64_t rows,
+    uint64_t columns,
+    uint64_t maximum_bits,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
+{
+    uint64_t capacity;
+    if (rows > (uint64_t) SIZE_MAX || columns > (uint64_t) SIZE_MAX ||
+        (rows != 0 && columns > UINT64_MAX / rows))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerMatrix dimensions are too large");
+        return 0;
+    }
+    capacity = rows * columns;
+    if (capacity > (uint64_t) SIZE_MAX ||
+        capacity > (uint64_t) (SIZE_MAX / sizeof(mpz_t)) ||
+        capacity > UINT64_MAX / SAGEJS_NATIVE_INTEGER_VECTOR_ENTRY_CHARGE)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeIntegerMatrix dimensions are too large");
+        return 0;
+    }
+    if (!sagejs_native_integer_vector_init_in_budget(
+            status, &matrix->storage, capacity, maximum_bits, budget,
+            memory_error_message))
+        return 0;
+    matrix->rows = (size_t) rows;
+    matrix->columns = (size_t) columns;
+    return 1;
+}
+
+static int sagejs_native_integer_matrix_init(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    uint64_t rows,
+    uint64_t columns,
+    uint64_t memory_limit)
+{
+    memset(matrix, 0, sizeof(*matrix));
+    sagejs_native_exact_budget_init(
+        &matrix->storage.owned_budget, memory_limit);
+    return sagejs_native_integer_matrix_init_in_budget(
+        status, matrix, rows, columns, 0, &matrix->storage.owned_budget,
+        "NativeIntegerMatrix memory limit exceeded");
+}
+
+typedef struct
+{
+    sagejs_native_integer_vector values;
+    uint64_t *entry_rows;
+    uint64_t *columns;
+    uint64_t *row_lengths;
+    size_t rows;
+    size_t column_count;
+    size_t entry_capacity;
+    size_t length;
+    uint64_t last_row;
+    uint64_t last_column;
+    int has_last;
+    sagejs_native_exact_budget *budget;
+    uint64_t metadata_charge;
+} sagejs_native_sparse_integer_rows;
+
+static void sagejs_native_sparse_integer_rows_clear(
+    sagejs_native_sparse_integer_rows *rows)
+{
+    if (rows == NULL)
+        return;
+    sagejs_native_integer_vector_clear(&rows->values);
+    if (rows->entry_rows != NULL && rows->entry_capacity != 0)
+        memset(rows->entry_rows, 0, rows->entry_capacity * sizeof(uint64_t));
+    if (rows->columns != NULL && rows->entry_capacity != 0)
+        memset(rows->columns, 0, rows->entry_capacity * sizeof(uint64_t));
+    if (rows->row_lengths != NULL && rows->rows != 0)
+        memset(rows->row_lengths, 0, rows->rows * sizeof(uint64_t));
+    free(rows->entry_rows);
+    free(rows->columns);
+    free(rows->row_lengths);
+    sagejs_native_exact_budget_release(rows->budget, rows->metadata_charge);
+    rows->entry_rows = NULL;
+    rows->columns = NULL;
+    rows->row_lengths = NULL;
+    rows->rows = 0;
+    rows->column_count = 0;
+    rows->entry_capacity = 0;
+    rows->length = 0;
+    rows->last_row = 0;
+    rows->last_column = 0;
+    rows->has_last = 0;
+    rows->budget = NULL;
+    rows->metadata_charge = 0;
+}
+
+static int sagejs_native_sparse_integer_rows_init_in_budget(
+    sagejs_native_status *status,
+    sagejs_native_sparse_integer_rows *sparse,
+    uint64_t rows,
+    uint64_t columns,
+    uint64_t entry_capacity,
+    uint64_t maximum_bits,
+    sagejs_native_exact_budget *budget,
+    const char *memory_error_message)
+{
+    uint64_t metadata_charge;
+    if (rows > (uint64_t) SIZE_MAX || columns > (uint64_t) SIZE_MAX ||
+        entry_capacity > (uint64_t) SIZE_MAX ||
+        rows > UINT64_MAX / UINT64_C(8) ||
+        entry_capacity > (UINT64_MAX - UINT64_C(32) - rows * UINT64_C(8)) /
+            UINT64_C(16) ||
+        (rows != 0 && sizeof(uint64_t) > SIZE_MAX / (size_t) rows) ||
+        (entry_capacity != 0 &&
+            sizeof(uint64_t) > SIZE_MAX / (size_t) entry_capacity))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+            "NativeSparseIntegerRows shape is too large");
+        return 0;
+    }
+    metadata_charge = UINT64_C(32) + rows * UINT64_C(8) +
+        entry_capacity * UINT64_C(16);
+    if (!sagejs_native_exact_budget_replace(
+            status, budget, 0, metadata_charge, memory_error_message))
+        return 0;
+    sparse->rows = (size_t) rows;
+    sparse->column_count = (size_t) columns;
+    sparse->entry_capacity = (size_t) entry_capacity;
+    sparse->budget = budget;
+    sparse->metadata_charge = metadata_charge;
+    if (rows != 0)
+        sparse->row_lengths = calloc((size_t) rows, sizeof(uint64_t));
+    if (entry_capacity != 0)
+    {
+        sparse->entry_rows = calloc(
+            (size_t) entry_capacity, sizeof(uint64_t));
+        sparse->columns = calloc((size_t) entry_capacity, sizeof(uint64_t));
+    }
+    if ((rows != 0 && sparse->row_lengths == NULL) ||
+        (entry_capacity != 0 &&
+            (sparse->entry_rows == NULL || sparse->columns == NULL)))
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeSparseIntegerRows allocation failed");
+        sagejs_native_sparse_integer_rows_clear(sparse);
+        return 0;
+    }
+    if (!sagejs_native_integer_vector_init_in_budget(
+            status, &sparse->values, entry_capacity, maximum_bits, budget,
+            memory_error_message))
+    {
+        sagejs_native_sparse_integer_rows_clear(sparse);
+        return 0;
+    }
+    return 1;
+}
+
+typedef struct
+{
+    sagejs_native_exact_budget budget;
+    sagejs_native_gmp_checkpoint checkpoint;
+    uint64_t temporary_limit;
+} sagejs_native_exact_arena;
+
+static int sagejs_native_exact_arena_init(
+    sagejs_native_status *status,
+    sagejs_native_exact_arena *arena,
+    uint64_t memory_limit,
+    uint64_t temporary_limit)
+{
+    memset(arena, 0, sizeof(*arena));
+    if (!sagejs_native_gmp_allocator_install())
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "NativeExactArena GMP allocator installation failed");
+        return 0;
+    }
+    sagejs_native_exact_budget_init(&arena->budget, memory_limit);
+    arena->temporary_limit = temporary_limit;
+    return 1;
+}
+
+static void sagejs_native_exact_arena_clear(
+    sagejs_native_exact_arena *arena)
+{
+    if (arena == NULL)
+        return;
+    if (arena->checkpoint.open)
+        (void) sagejs_native_gmp_checkpoint_end(&arena->checkpoint);
+    arena->budget.limit = 0;
+    arena->budget.charged = 0;
+    arena->budget.open = 0;
+    arena->temporary_limit = 0;
+}
+
+static int sagejs_native_mpz_bounded_index(
+    const mpz_t index, size_t bound, size_t *position)
+{
+    uint64_t exact = 0;
+    size_t count = 0;
+    if (mpz_sgn(index) < 0 || mpz_sizeinbase(index, 2) > 64)
+        return 0;
+    mpz_export(&exact, &count, -1, sizeof(exact), 0, 0, index);
+    if (count > 1 || exact >= (uint64_t) bound)
+        return 0;
+    *position = (size_t) exact;
+    return 1;
+}
+
+static int sagejs_native_integer_matrix_set(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    size_t position,
+    const mpz_t value)
+{
+    return sagejs_native_integer_vector_set(
+        status, &matrix->storage, position, value);
+}
+
+static int sagejs_native_integer_matrix_addmul(
+    sagejs_native_status *status,
+    sagejs_native_integer_matrix *matrix,
+    size_t position,
+    const mpz_t left,
+    const mpz_t right,
+    int subtract)
+{
+    return sagejs_native_integer_vector_addmul(
+        status, &matrix->storage, position, left, right, subtract);
 }
 
 #define SAGEJS_WORD_PROMOTE 0

@@ -1,0 +1,36 @@
+{
+  "sourcePath": "src/lib/factor_base.py",
+  "sourceDigest": "12833330411ef57a0e3bedb76247bb473c56173968b9bbe25d12fa71bece5086",
+  "function": {
+    "qualifiedName": "FactorBase._split_primes",
+    "kind": "method",
+    "ordinal": 0,
+    "range": {
+      "startLine": 117,
+      "startColumn": 4,
+      "endLine": 146,
+      "endColumn": 29
+    },
+    "semanticStructure": {
+      "kind": "AST_Defun",
+      "arguments": ["self", "bound"],
+      "loops": 1
+    }
+  },
+  "region": {
+    "kind": "AST_ForIn",
+    "ordinal": 0,
+    "range": {
+      "startLine": 124,
+      "startColumn": 8,
+      "endLine": 143,
+      "endColumn": 34
+    },
+    "semanticStructure": {
+      "kind": "AST_ForIn",
+      "iterator": "range",
+      "operations": ["*", "+", "%"]
+    }
+  },
+  "passId": "math.bounded-integer-region.v1"
+}

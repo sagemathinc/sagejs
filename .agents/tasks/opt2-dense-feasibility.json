@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "opt2-dense-feasibility",
+  "title": "Campaign 2 dense integral platform feasibility",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Create a checked-in bench-only, implementation-faithful dense-integral library-route feasibility target and exact guard/failure/interrupt/browser/Windows receipt protocol without changing production sources",
+  "base_commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+  "claims": [
+    "bench/optimization-engine/integral-library-feasibility.py",
+    "bench/optimization-engine/integral-library-feasibility.cjs",
+    "test/optimization-integral-library-feasibility.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "/scratch/campaign2-integral-isolated-measurement.json#sha256=b9078e53edde483f6e4dfeb039a2037e13ffa47df71dd154c0155138b0ac1f4b",
+    "/scratch/campaign2-integral-isolated-provenance.json#sha256=43853a10cf96d2c149b697fb723f7c3de5666d38be89c126a97b83537c71f902",
+    "/scratch/campaign2-integral-isolated-validation.json#sha256=14861d16e2b0253cfff1072e125a71c4c8c0e0813dfd53d5cbd74f22c4c2f74e",
+    "/scratch/campaign2-integral-browser-fallback.json#sha256=26102b0e45dab4aa331a918fd082e984a34787dd1e83a156645ba4df725c9309"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "independent prime-field coefficient and derivative replay",
+      "exact public exception and transactional failure schedule"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimization-integral-library-feasibility.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.75,
+      "started_at": "2026-08-29T03:07:27.036Z",
+      "commit": "01011e30ef8ebd14f21ad48c42c1a90c91c2919c",
+      "workspace_fingerprint": "f53a6bcd8b0ae0401f3084b5518828378003c578b1c3bfb81691505fd1d390ff",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Added a bench-only ordinary-Python dispatcher model plus a content-addressed Node/browser/Windows receipt runner. Linux x64 executed both reviewed workloads through the real FLINT kernel and exhausted every checked-false, ordinary-exception, native-KeyboardInterrupt, and cooperative-checkpoint schedule (2/39 native calls and 8/119 checkpoints), with no partial publication and exact retry. Real Chromium executed the explicit generic browser policy on both long workloads with no candidate effects. The runner digest-binds six frozen artifacts and distinguishes actual execution, exact-current source, frozen evidence, and promotion authority.",
+    "risks": [
+      "This lane intentionally does not modify the production Polynomial.integral dispatcher; its candidateImplementedInProduction and promotionAuthority claims remain false.",
+      "The real Chromium run used authenticated Wasm release commit e46a92d588122d63b88078073242c33ac6678297; the receipt marks that artifact stale relative to this lane. Building a new release reached 276 kernels but sealing was blocked by the pre-existing stale hyperelliptic auto-receipt source bundle.",
+      "No Windows x64, Linux arm64, macOS arm64, Firefox, or WebKit execution occurred here. The Windows output is explicitly a portable command contract, not a receipt.",
+      "The input caps bound source size, block size, and call count, but do not establish a hard real-time latency bound for a direct synchronous embedding.",
+      "Checked native false restarts the untouched generic operation. Unexpected ordinary native exceptions propagate unchanged; KeyboardInterrupt is explicitly rethrown. Production review must preserve that distinction."
+    ],
+    "next_steps": [
+      "Cherry-pick this lane commit into the integration lane and rerun the Node receipt with --require-exact-current --require-frozen-evidence.",
+      "At the production candidate epoch, adapt the reviewed dispatcher into public_structural.py without weakening the strict p <= 65537, length <= 100000, and length < 256*p guards or the complete singular preflight.",
+      "Build an exact-current browser-Wasm release after repairing the unrelated hyperelliptic receipt bundle, then execute Chromium, Firefox, and WebKit receipts.",
+      "Run the emitted Windows command on Windows x64 with the six digest-pinned frozen artifacts, and obtain Linux arm64/macOS arm64 receipts required by campaign policy.",
+      "Bind final platform receipts, worker-isolation or per-block latency authority, and the public production diff into the promotion dossier; do not treat this feasibility receipt itself as promotion authority."
+    ]
+  }
+}

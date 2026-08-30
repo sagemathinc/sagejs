@@ -1,0 +1,73 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimization-memory",
+  "title": "Optimization outcome memory",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the durable v2 outcome ledger, canonical NDJSON/SQLite query CLI, Campaign 1 anchor, current-memory report, and focused regression tests",
+  "base_commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+  "claims": [
+    "tools/optimization-engine/ledger.cjs",
+    "scripts/optimization-memory.cjs",
+    "architecture/optimization-engine/memory/",
+    "test/optimization-memory.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Canonical ledger round trip and exact current Campaign 1 anchor"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimization-evidence-store.cjs test/optimization-memory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.209,
+      "started_at": "2026-08-29T01:33:31.603Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "2272d2821bba8efebe4241c5c9d9cd5994d250e6fe9ed73511a94972ec5f5cf7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node scripts/optimization-memory.cjs check --input=architecture/optimization-engine/memory --context=architecture/optimization-engine/memory/current-context.json --repository-root=.",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.054,
+      "started_at": "2026-08-29T01:34:21.079Z",
+      "commit": "cc9f830c29dfe2335e06ba8a9ef79419c690fdc1",
+      "workspace_fingerprint": "2272d2821bba8efebe4241c5c9d9cd5994d250e6fe9ed73511a94972ec5f5cf7",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented an exact, content-addressed v2 optimization-memory record and context model, canonical sorted NDJSON authority with a derived indexed SQLite query view, build/query/report/check CLI commands, explicit current/predecessor-compatible/historical/invalid actionability, source-subject lineage, prior-negative mechanism linkage, accepted-outcome disappearance/regression alerts, and focused regression tests. Git commit and tree identities are diagnostic only: actionability requires reviewed source-closure, workload, opportunity, and subject-lineage identities plus complete evidence provenance. The checked Campaign 1 anchor binds its exact v1 receipt, producer command, immutable release, source region, compiler pass/lowering mechanism, fallback, revision, epoch, and regression state; it remains visible but deliberately historical and nonactionable instead of being misrepresented as v2 authority.",
+    "risks": [
+      "The checked current-memory report contains only the frozen Campaign 1 historical anchor; Campaign 2 must add its actual v2 outcome record and new epoch context during integration.",
+      "Repository-wide build, compiler, and architecture gates are intentionally left to the integration lane so this evidence-only lane does not duplicate the shared epoch build. The focused memory and evidence-store suites pass.",
+      "The SQLite file is derived and intentionally has a physical digest distinct from the canonical NDJSON logical identity; consumers must verify the round trip rather than treating SQLite bytes as authority."
+    ],
+    "next_steps": [
+      "Add the selected Campaign 2 v2 outcome and durable rejection records with exact intervention mechanisms, evidence digests, fallback identities, and subject predecessor links.",
+      "Generate the integrated current epoch context and current-memory report, then run the CLI check in shared CI or the package-level integration script.",
+      "Publish the canonical NDJSON and derived SQLite gzip assets under the logical ledger identity when the integrated campaign evidence is frozen."
+    ]
+  }
+}

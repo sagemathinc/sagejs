@@ -1,0 +1,73 @@
+{
+  "schema": "sagejs.optimization-memory-record/v2",
+  "id": "sha256:dd924d0c341eda50ed2b177a27853ce90f1d1175cb228d71c6a20279808f2a5c",
+  "authority": {
+    "kind": "optimization-outcome-v2",
+    "producer": "optimization.campaign2-memory.v2",
+    "validatedInputIds": [
+      "sha256:2a3ae85b8c5fe6303acc889a2f9a4a477660994cdfed6f05076c479863fdec49",
+      "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043"
+    ]
+  },
+  "subject": {
+    "id": "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6",
+    "scope": "public-call",
+    "publicOperation": "NumberField.class_number",
+    "sourcePath": "src/baselib/number_fields.py",
+    "regionId": "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6",
+    "parentIds": [],
+    "predecessorIds": []
+  },
+  "category": "library-route",
+  "mechanism": "Batch complete cubic factor records across moduli through a reviewed mature FLINT capability",
+  "interventionId": "sha256:3a0362cbc49036061626c6487667f18cf302427fa6162126295f8c0509831f16",
+  "result": {
+    "outcomeId": "sha256:2a3ae85b8c5fe6303acc889a2f9a4a477660994cdfed6f05076c479863fdec49",
+    "opportunityId": "sha256:cf19c1c54eaea269dd6073d6b5e539c44cb2182f9cc52afc9e0dd85000d0d9ab",
+    "campaignId": null,
+    "promotionId": null,
+    "disposition": "rejected",
+    "regressionState": "not-applicable",
+    "reasons": [
+      "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+      "Failed deterministic gate: complete-cost-boundary.",
+      "Failed deterministic gate: mature-capability-audit.",
+      "Failed deterministic gate: positive-eleven-pair-separation.",
+      "Failed deterministic gate: worst-pair-ten-percent.",
+      "the exact proposed batched full-factor mature capability is unavailable"
+    ]
+  },
+  "binding": {
+    "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+    "sourceClosureId": "sha256:bfae0f95838bb367607852a9d139b17f420231b0cb7a0782c7aa38495261b817",
+    "workloadIds": [
+      "sha256:9080b39e88580db7372d4122279f8ec615c94350b55eaea4e7cc70ff6c5b9081",
+      "sha256:bb1c203d1bd95d1314dc0794c0f6606ed59505af3345f90b4e10ae79ed3dc3bb"
+    ],
+    "compatibleSourceClosureIds": [],
+    "revision": {
+      "commit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+      "tree": "6b1bc0ce4b3472c2f506f09c9ac9d9020aacf2eb"
+    }
+  },
+  "evidence": [
+    {
+      "id": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "kind": "outcome",
+      "logicalId": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "path": "architecture/optimization-engine/memory/manifests/campaign-2-adjudication.json",
+      "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimization-engine-campaign2-2026-08-29",
+      "sha256": "952be18a85bf6c9425bd823ec1df42aeca504c08b14aa02b68b13fc401280356",
+      "producerCommand": [
+        "node bench/optimization-engine/campaign2-discovery.cjs adjudicate /scratch/campaign2-adjudication-epoch.json campaign2-authoritative-input.json"
+      ],
+      "roles": [
+        "negative",
+        "outcome"
+      ],
+      "validationStatus": "accepted"
+    }
+  ],
+  "fallbackEvidenceIds": [],
+  "supersedesIds": []
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/campaign-v2.schema.json",
+  "title": "Sage.js optimization campaign v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "dossierId", "interventionId", "category", "state", "lanes", "requiredEvidenceIds", "representativeWorkloadIds", "heldOutWorkloadIds"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-campaign/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "dossierId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "interventionId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "category": { "type": "string" },
+    "state": { "enum": ["proposed", "active", "review", "complete"] },
+    "lanes": { "type": "array", "minItems": 1 },
+    "requiredEvidenceIds": { "type": "array", "minItems": 1 },
+    "representativeWorkloadIds": { "type": "array", "minItems": 1 },
+    "heldOutWorkloadIds": { "type": "array", "minItems": 1 }
+  }
+}

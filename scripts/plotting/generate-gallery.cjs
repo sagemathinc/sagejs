@@ -247,7 +247,7 @@ for base, dimension, name, title in (
 print(json.dumps(records, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
 `;
   const executable = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+    (process.platform === "win32" ? "python" : "python3");
   const result = spawnSync(executable, ["-I", "-c", source], {
     cwd: root,
     encoding: "utf8",

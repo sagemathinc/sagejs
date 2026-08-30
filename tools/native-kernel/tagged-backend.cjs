@@ -541,6 +541,9 @@ function emitTaggedOperation(operation, context, indent) {
       resourceInitialized: context.resourceInitialized,
     }, indent);
   }
+  if (operation.kind === "value.discard") {
+    return `${indent}(void) ${taggedValue(operation.source, context)};`;
+  }
   throw new Error(`unsupported tagged C IR operation ${operation.kind}`);
 }
 

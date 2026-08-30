@@ -34,6 +34,8 @@ from sagejs.ffi.flint import (
     FqContext,
     FqElement,
     FqPolynomial,
+    NativeExactWorkspace,
+    NativeExactWorkspaceBorrow,
     NmodMatrix,
     NumberFieldAnalysisResource,
     NumberFieldOrderResource,
@@ -166,6 +168,21 @@ from sagejs.ffi.flint import (
     fmpq_vector_scalar_mul as _ffi_fmpq_vector_scalar_mul,
     fmpz_vector_dot as _ffi_fmpz_vector_dot,
     fmpq_vector_dot as _ffi_fmpq_vector_dot,
+    native_exact_workspace as _ffi_native_exact_workspace,
+    native_exact_workspace_capacity as _ffi_native_exact_workspace_capacity,
+    native_exact_workspace_maximum_bits as _ffi_native_exact_workspace_maximum_bits,
+    native_exact_workspace_generation as _ffi_native_exact_workspace_generation,
+    native_exact_workspace_specification_high as _ffi_native_exact_workspace_specification_high,
+    native_exact_workspace_specification_low as _ffi_native_exact_workspace_specification_low,
+    native_exact_workspace_reset as _ffi_native_exact_workspace_reset,
+    native_exact_workspace_borrow as _ffi_native_exact_workspace_borrow,
+    native_exact_workspace_borrow_length as _ffi_native_exact_workspace_borrow_length,
+    native_exact_workspace_borrow_generation as _ffi_native_exact_workspace_borrow_generation,
+    native_exact_workspace_borrow_set as _ffi_native_exact_workspace_borrow_set,
+    native_exact_workspace_borrow_entry as _ffi_native_exact_workspace_borrow_entry,
+    native_exact_workspace_borrow_addmul as _ffi_native_exact_workspace_borrow_addmul,
+    native_exact_workspace_borrow_submul as _ffi_native_exact_workspace_borrow_submul,
+    native_exact_workspace_borrow_swap as _ffi_native_exact_workspace_borrow_swap,
     fmpz_matrix as _ffi_fmpz_matrix,
     fmpz_matrix_nrows as _ffi_fmpz_matrix_nrows,
     fmpz_matrix_ncols as _ffi_fmpz_matrix_ncols,
@@ -1849,6 +1866,183 @@ def ffiFmpqVectorDot(
     right: FmpqVector,
 ) -> FmpqValue:
     return _ffi_fmpq_vector_dot(
+        left,
+        right,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceCreate(
+    capacity: uint64,
+    maximum_bits: uint64,
+    memory_limit: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> NativeExactWorkspace:
+    return _ffi_native_exact_workspace(
+        capacity,
+        maximum_bits,
+        memory_limit,
+        specification_high,
+        specification_low,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceCapacity(
+    workspace: NativeExactWorkspace,
+) -> uint64:
+    return _ffi_native_exact_workspace_capacity(
+        workspace,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceMaximumBits(
+    workspace: NativeExactWorkspace,
+) -> uint64:
+    return _ffi_native_exact_workspace_maximum_bits(
+        workspace,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceGeneration(
+    workspace: NativeExactWorkspace,
+) -> uint64:
+    return _ffi_native_exact_workspace_generation(
+        workspace,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceSpecificationHigh(
+    workspace: NativeExactWorkspace,
+) -> uint64:
+    return _ffi_native_exact_workspace_specification_high(
+        workspace,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceSpecificationLow(
+    workspace: NativeExactWorkspace,
+) -> uint64:
+    return _ffi_native_exact_workspace_specification_low(
+        workspace,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceReset(
+    workspace: NativeExactWorkspace,
+    expected_generation: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> bool:
+    return _ffi_native_exact_workspace_reset(
+        workspace,
+        expected_generation,
+        specification_high,
+        specification_low,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrow(
+    workspace: NativeExactWorkspace,
+    expected_generation: uint64,
+    specification_high: uint64,
+    specification_low: uint64,
+) -> NativeExactWorkspaceBorrow:
+    return _ffi_native_exact_workspace_borrow(
+        workspace,
+        expected_generation,
+        specification_high,
+        specification_low,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowLength(
+    borrow: NativeExactWorkspaceBorrow,
+) -> uint64:
+    return _ffi_native_exact_workspace_borrow_length(
+        borrow,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowGeneration(
+    borrow: NativeExactWorkspaceBorrow,
+) -> uint64:
+    return _ffi_native_exact_workspace_borrow_generation(
+        borrow,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowSet(
+    borrow: NativeExactWorkspaceBorrow,
+    index: uint64,
+    value: Integer,
+) -> bool:
+    return _ffi_native_exact_workspace_borrow_set(
+        borrow,
+        index,
+        value,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowEntry(
+    borrow: NativeExactWorkspaceBorrow,
+    index: uint64,
+) -> Integer:
+    return _ffi_native_exact_workspace_borrow_entry(
+        borrow,
+        index,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowAddmul(
+    borrow: NativeExactWorkspaceBorrow,
+    index: uint64,
+    left: Integer,
+    right: Integer,
+) -> bool:
+    return _ffi_native_exact_workspace_borrow_addmul(
+        borrow,
+        index,
+        left,
+        right,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowSubmul(
+    borrow: NativeExactWorkspaceBorrow,
+    index: uint64,
+    left: Integer,
+    right: Integer,
+) -> bool:
+    return _ffi_native_exact_workspace_borrow_submul(
+        borrow,
+        index,
+        left,
+        right,
+    )
+
+
+@native
+def ffiNativeExactWorkspaceBorrowSwap(
+    borrow: NativeExactWorkspaceBorrow,
+    left: uint64,
+    right: uint64,
+) -> bool:
+    return _ffi_native_exact_workspace_borrow_swap(
+        borrow,
         left,
         right,
     )

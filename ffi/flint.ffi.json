@@ -23,6 +23,7 @@
         "sagejs/fq_polynomial_ffi.h",
         "sagejs/hyperelliptic/rational_jacobian_ffi.h",
         "sagejs/nmod_matrix_ffi.h",
+        "sagejs/native_exact_workspace_ffi.h",
         "sagejs/number_field_analysis_resource_ffi.h",
         "sagejs/number_field_order_ffi.h",
         "sagejs/number_field_order_resource_ffi.h"
@@ -281,6 +282,44 @@
         "dynamic": true,
         "native": true,
         "wasm": false
+      }
+    },
+    {
+      "id": "native_exact_workspace",
+      "python_name": "NativeExactWorkspace",
+      "abi_type": "sagejs_native_exact_workspace_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiNativeExactWorkspaceClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_native_exact_workspace_clear",
+        "size_symbol": "sagejs_native_exact_workspace_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow",
+      "python_name": "NativeExactWorkspaceBorrow",
+      "abi_type": "sagejs_native_exact_workspace_borrow_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {
+        "close_export": "ffiNativeExactWorkspaceBorrowClose"
+      },
+      "native": {
+        "clear_symbol": "sagejs_native_exact_workspace_borrow_clear",
+        "size_symbol": "sagejs_native_exact_workspace_borrow_allocated_bytes"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
       }
     },
     {
@@ -818,7 +857,7 @@
         "pure": false,
         "deterministic": true,
         "thread_safe": true,
-        "may_allocate": true,
+        "may_allocate": false,
         "may_raise": [
           "ValueError"
         ],
@@ -11064,6 +11103,1230 @@
       "errors": {
         "exception": "ValueError",
         "message": "rational vector lengths are incompatible"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace",
+      "python_name": "native_exact_workspace",
+      "signature": {
+        "parameters": [
+          {
+            "name": "capacity",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "maximum_bits",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "memory_limit",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_high",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_low",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NativeExactWorkspace",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceCreate"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "capacity",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "maximum_bits",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "memory_limit",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_high",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_low",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "NativeExactWorkspace allocation or capacity proof failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_capacity",
+      "python_name": "native_exact_workspace_capacity",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceCapacity"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_capacity",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_maximum_bits",
+      "python_name": "native_exact_workspace_maximum_bits",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceMaximumBits"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_maximum_bits",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_generation",
+      "python_name": "native_exact_workspace_generation",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceGeneration"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_generation",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_specification_high",
+      "python_name": "native_exact_workspace_specification_high",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceSpecificationHigh"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_specification_high",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_specification_low",
+      "python_name": "native_exact_workspace_specification_low",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceSpecificationLow"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_specification_low",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_reset",
+      "python_name": "native_exact_workspace_reset",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "expected_generation",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_high",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_low",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceReset"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_reset",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "expected_generation",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_high",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_low",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "workspace"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "NativeExactWorkspace reset authentication failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow",
+      "python_name": "native_exact_workspace_borrow",
+      "signature": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "type": "NativeExactWorkspace",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "expected_generation",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_high",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "specification_low",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "NativeExactWorkspaceBorrow",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrow"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_init",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "workspace",
+            "abi_type": "sagejs_native_exact_workspace_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "expected_generation",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_high",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "specification_low",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "workspace"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "NativeExactWorkspace borrow authentication failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_length",
+      "python_name": "native_exact_workspace_borrow_length",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowLength"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_length",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_generation",
+      "python_name": "native_exact_workspace_borrow_generation",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowGeneration"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_generation",
+        "return_type": "uint64_t",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [],
+        "writes": []
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_set",
+      "python_name": "native_exact_workspace_borrow_set",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "value",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowSet"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_set",
+        "exact_symbol": "sagejs_native_exact_workspace_borrow_set_mpz",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "value",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": [
+          "borrow"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "NativeExactWorkspace index, lifetime, or bit bound failed"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_entry",
+      "python_name": "native_exact_workspace_borrow_entry",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowEntry"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_entry",
+        "exact_symbol": "sagejs_native_exact_workspace_borrow_entry_mpz",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": []
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "NativeExactWorkspace index or lifetime is invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_addmul",
+      "python_name": "native_exact_workspace_borrow_addmul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "left",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowAddmul"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_addmul",
+        "exact_symbol": "sagejs_native_exact_workspace_borrow_addmul_mpz",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": [
+          "borrow"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "NativeExactWorkspace addmul exceeds a checked bound"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_submul",
+      "python_name": "native_exact_workspace_borrow_submul",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "index",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "left",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowSubmul"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_submul",
+        "exact_symbol": "sagejs_native_exact_workspace_borrow_submul_mpz",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "index",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "OverflowError"
+        ],
+        "writes": [
+          "borrow"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "OverflowError",
+        "message": "NativeExactWorkspace submul exceeds a checked bound"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "native_exact_workspace_borrow_swap",
+      "python_name": "native_exact_workspace_borrow_swap",
+      "signature": {
+        "parameters": [
+          {
+            "name": "borrow",
+            "type": "NativeExactWorkspaceBorrow",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "right",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNativeExactWorkspaceBorrowSwap"
+      },
+      "native": {
+        "symbol": "sagejs_native_exact_workspace_borrow_swap",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "borrow",
+            "abi_type": "sagejs_native_exact_workspace_borrow_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": [
+          "IndexError"
+        ],
+        "writes": [
+          "borrow"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "IndexError",
+        "message": "NativeExactWorkspace swap index or lifetime is invalid"
       },
       "exceptions": {
         "policy": "none",

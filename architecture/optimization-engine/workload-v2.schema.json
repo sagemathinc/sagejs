@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/workload-v2.schema.json",
+  "title": "Sage.js optimization workload v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "sourceClosureId", "title", "owner", "role", "publicEntry", "runner", "corpus", "oracles", "phases", "protocol", "platforms", "browsers", "instrumentation", "materiality"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-workload/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "sourceClosureId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "title": { "type": "string", "minLength": 1 },
+    "owner": { "$ref": "wire-definitions-v2.schema.json#/$defs/identifier" },
+    "role": { "enum": ["representative", "held-out", "control", "adversarial"] },
+    "publicEntry": { "type": "object" },
+    "runner": { "type": "object" },
+    "corpus": { "type": "object" },
+    "oracles": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "phases": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "protocol": { "type": "object" },
+    "platforms": { "type": "array", "minItems": 1 },
+    "browsers": { "type": "array" },
+    "instrumentation": { "type": "array" },
+    "materiality": { "type": "object" }
+  }
+}

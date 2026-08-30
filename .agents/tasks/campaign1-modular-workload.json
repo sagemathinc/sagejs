@@ -1,0 +1,114 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-modular-workload",
+  "title": "Public modular fold evidence workload",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement an authenticated phase runner and independent oracles for the measured public bounded modular Horner workload, including complete generic, V8 lower-bound, and unavailable target dispositions, without changing the shared workload catalog.",
+  "base_commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+  "claims": [
+    "bench/optimizer-workloads/public-modular-fold.cjs",
+    "test/optimizer-public-modular-fold-workload.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Independent CPython and JavaScript exact residue",
+      "O0 and O2 public-function differential"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 332.099,
+      "started_at": "2026-08-28T11:38:08.019Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-public-modular-fold-workload.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.407,
+      "started_at": "2026-08-28T11:43:55.378Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 19.539,
+      "started_at": "2026-08-28T11:44:03.865Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 43.93,
+      "started_at": "2026-08-28T11:48:25.153Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 13.16,
+      "started_at": "2026-08-28T11:49:14.037Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:changed -- --base 0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 6.318,
+      "started_at": "2026-08-28T11:50:47.019Z",
+      "commit": "0ed3e7d99902c3ab7f0fc924a9162f3e2b42ee87",
+      "workspace_fingerprint": "1950587fb5d03edcc30e99cd3fb097ea1418082e7251c69fdec1c43d00376a01",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the public modular-fold evidence runner and focused tests. The runner measures complete public polynomial_evaluate_mod calls in fresh Sage.js O0 and O2 processes, records an independent non-overlapping validation/normalization and Horner-fold partition, checks exact CPython and independent BigInt JavaScript oracles, and retains explicit unavailable library/native/Wasm outcomes. Its complete handwritten safe-Number implementation is mechanically labeled a non-production lower bound. The workload is explicitly a compiler-control and target-mismatch negative-evidence microbenchmark: the dense-list source contract requires mature fmpz_mod_poly algorithms for production large inputs. Exact profiler-envelope source paths are emitted in receipts. No shared catalog was edited.",
+    "risks": [
+      "This workload is ineligible for dense-list production promotion; large-input production operations must use mature fmpz_mod_poly algorithms.",
+      "The normalization and fold samples are disjoint timers from one equivalent partitioned execution, not values subtracted from the complete public-call timer; timer observation overhead can therefore make their sum exceed the independently measured complete call.",
+      "The runner disables the unrelated stale hyperelliptic auto-receipt policy only inside its non-hyperelliptic child processes; cross-platform promotion must validate that receipt independently.",
+      "The standard changed-file unit sweep is presently blocked by the unrelated stale hyperelliptic receipt, and with that policy disabled test/cache-automatic.cjs did not settle while another campaign was using the shared cache. Focused tests, the full compiler suite, build, merge checks, and architecture checks passed."
+    ],
+    "next_steps": [
+      "Insert the supplied sha256:95c54d3ec3da97334bc810a684ac85edf8f0da6cd6df1d54236d97fb48a546d5 workload entry into architecture/optimizer-workloads.json and recompute the catalog identity in the integration lane.",
+      "Add public-modular-fold to shared workload-selector and catalog-count expectations owned by the integration lane.",
+      "Configure profile-envelope discovery with bench/optimizer-workloads/public-modular-fold.py and src/lib/sagejs/polynomial_algorithms/arbitrary_prime_contract.py exactly as emitted by SOURCE_PATHS.",
+      "Treat the generic O2 result as compiler-control evidence and the Number result as a non-production lower bound; do not infer production eligibility until a complete mature-library route exists."
+    ]
+  }
+}

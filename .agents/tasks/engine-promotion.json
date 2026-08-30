@@ -1,0 +1,120 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-promotion",
+  "title": "Optimizer promotion validator and browser receipts",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement fail-closed promotion comparison/receipt validation and authenticated JSON receipts for machine optimizer domains in Chromium, Firefox, and WebKit",
+  "base_commit": "cf0150f671dbed3356f9d5a9098cbba070c5472a",
+  "claims": [
+    "tools/optimizer-development/promotion.cjs",
+    "scripts/optimizer-promotion.cjs",
+    "scripts/optimizer-platform-validate.cjs",
+    "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
+    "test/optimizer-promotion.cjs",
+    "test/optimizer-browser-receipt.cjs",
+    "test/fixtures/optimizer-development/promotion/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Recomputed promotion decisions, exact O0/O2/browser routes, malformed and stale artifact receipts, and paired-sample fixtures"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/optimizer-promotion.cjs test/optimizer-browser-receipt.cjs test/optimizer-development-schemas.cjs",
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/optimizer-promotion.cjs test/optimizer-browser-receipt.cjs test/optimizer-development-schemas.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.513,
+      "started_at": "2026-08-28T08:10:21.215Z",
+      "commit": "97843ea2f91c286855be6518092b51cea0a46c1f",
+      "workspace_fingerprint": "5dddb5b2dd13f7ff453050d1eb62de337a72afc493caf4cde8a18de7e9165a32",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.038,
+      "started_at": "2026-08-28T08:10:28.527Z",
+      "commit": "97843ea2f91c286855be6518092b51cea0a46c1f",
+      "workspace_fingerprint": "5dddb5b2dd13f7ff453050d1eb62de337a72afc493caf4cde8a18de7e9165a32",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.797,
+      "started_at": "2026-08-28T08:14:16.745Z",
+      "commit": "cf0150f671dbed3356f9d5a9098cbba070c5472a",
+      "workspace_fingerprint": "76ffb2022144b60aa8117bb0d46db895957c9efc584ef76d107352627c1df53d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 357.873,
+      "started_at": "2026-08-28T08:14:37.997Z",
+      "commit": "cf0150f671dbed3356f9d5a9098cbba070c5472a",
+      "workspace_fingerprint": "76ffb2022144b60aa8117bb0d46db895957c9efc584ef76d107352627c1df53d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-promotion.cjs test/optimizer-browser-receipt.cjs test/optimizer-development-schemas.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.506,
+      "started_at": "2026-08-28T08:21:16.583Z",
+      "commit": "cf0150f671dbed3356f9d5a9098cbba070c5472a",
+      "workspace_fingerprint": "76ffb2022144b60aa8117bb0d46db895957c9efc584ef76d107352627c1df53d",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.312,
+      "started_at": "2026-08-28T08:21:24.668Z",
+      "commit": "cf0150f671dbed3356f9d5a9098cbba070c5472a",
+      "workspace_fingerprint": "76ffb2022144b60aa8117bb0d46db895957c9efc584ef76d107352627c1df53d",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented shared-schema promotion construction and validation with recomputed ABBA paired bootstrap evidence, accepted/rejected/inconclusive decisions, exact checkout/build/artifact/browser/cited-input authority, narrow baseline exceptions, resource/platform/neighbor/losing-target gates, schema-validated CLI inputs, and deterministic browser machine-domain receipts. Focused schema/promotion/browser tests and the compiler suite pass on linux-x64; a clean full build also passed.",
+    "risks": [
+      "A receipt-authenticated Chromium/Firefox/WebKit run must be repeated from the final clean integrated commit after rebuilding the production Wasm artifact; the lane's earlier all-engine direct run passed but is not a current-commit promotion receipt.",
+      "linux-arm64, windows-x64, and macos-arm64 VM receipts remain integration work; their absence is represented as unavailable/inconclusive and cannot promote.",
+      "The browser runner adds exact flint identity/version consumer paths to the generated native-export inventory. That coordinated refresh is root commit dc4a1c60 and must land with the implementation; architecture:check passes with it.",
+      "There is no standalone receipt schema for every ancillary status class. The CLI validates campaign/workload/profile/dossier/browser documents and permits an exact validated document ID to support correctness, adversarial, route, resource, platform, or losing-candidate roles; a missing validated document stays inconclusive.",
+      "No broad higher-genus baseline waiver is present. Any future exception must name one active Sage.js issue, test, platform, and exact failure fingerprint, and an unused or mismatched exception rejects promotion."
+    ],
+    "next_steps": [
+      "On the clean integration commit run: pnpm build && pnpm --dir packages/flint-wasm build; then node packages/flint-wasm/test/optimizer-machine-domains-browser.mjs --engines chromium,firefox,webkit --required-engines chromium,firefox,webkit --receipt /tmp/optimizer-browser-receipt.json; finally node scripts/optimizer-platform-validate.cjs browser /tmp/optimizer-browser-receipt.json.",
+      "On bench-1 and bench-arm, use a fresh exact integration checkout and run: pnpm install --frozen-lockfile; pnpm parallel:cache -- prepare; pnpm build; node --test test/optimizer-promotion.cjs test/optimizer-browser-receipt.cjs test/optimizer-development-schemas.cjs; pnpm test:compiler; pnpm architecture:check; node scripts/optimizer-platform-validate.cjs host --json.",
+      "On m1 run the same POSIX sequence; on windows run the corresponding commands in native PowerShell with Node >=22.22.2 and no WSL/MSYS2/MinGW. Preserve each exact commit, workspace fingerprint, host JSON, command exit status, and test failure fingerprint in platform evidence.",
+      "Only construct an accepted receipt after all required current bindings and validated-input IDs are supplied. Missing build, artifact, browser, profile, workload, campaign, dashboard, compiler-decision, or ancillary evidence must remain inconclusive; a mismatch must remain rejected."
+    ]
+  }
+}

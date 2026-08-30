@@ -1,0 +1,66 @@
+{
+  "schema": "sagejs.optimization-memory-report/v2",
+  "id": "sha256:e23459277d21d29ec5ccd65f5c15ead68e0359fbaee28db4f9910a3dbdeca82b",
+  "alerts": [],
+  "contextId": "sha256:0057c610eadced96002d566f3c3972fd6704e5d3927bfcd0de3bcc8c48bbc8e4",
+  "entries": [
+    {
+      "actionable": true,
+      "authorityKind": "optimization-outcome-v2",
+      "bindingState": "current",
+      "category": "library-route",
+      "disposition": "investigate",
+      "mechanismKey": "Split at characteristic holes and run FLINT nmod_poly_integral on every legal block",
+      "provenanceProblems": [],
+      "recordId": "sha256:17c6faaeb7b172fd7db8a50b7f4874f16c8394e3352bd4acc46d5eb3bdbdc6fa",
+      "regressionState": "not-applicable",
+      "sourceDescendantIds": [
+        "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe"
+      ],
+      "subjectId": "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe"
+    },
+    {
+      "actionable": false,
+      "authorityKind": "historical-v1-anchor",
+      "bindingState": "historical",
+      "category": "compiler",
+      "disposition": "accepted",
+      "mechanismKey": "math.closed-transactional-rectangular-binary64-dataflow.v1|v8.closed-transactional-rectangular-binary64-dataflow.v1",
+      "provenanceProblems": [],
+      "recordId": "sha256:89e65cd8a3bbe81189beb6b48166fb1dd9f2969f118b3d8b6586f00b11ddd211",
+      "regressionState": "passing",
+      "sourceDescendantIds": [],
+      "subjectId": "sha256:1b888e5cc426630fb14cf3ad835f7db052bfcf2e566fdbf8844661f6032f39c9"
+    },
+    {
+      "actionable": true,
+      "authorityKind": "optimization-outcome-v2",
+      "bindingState": "current",
+      "category": "library-route",
+      "disposition": "rejected",
+      "mechanismKey": "Batch complete cubic factor records across moduli through a reviewed mature FLINT capability",
+      "provenanceProblems": [],
+      "recordId": "sha256:dd924d0c341eda50ed2b177a27853ce90f1d1175cb228d71c6a20279808f2a5c",
+      "regressionState": "not-applicable",
+      "sourceDescendantIds": [
+        "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6"
+      ],
+      "subjectId": "sha256:39dbfafd0664c413946484165a500289170a6ef499826a45b7a9ff53861ac0c6"
+    },
+    {
+      "actionable": true,
+      "authorityKind": "optimization-outcome-v2",
+      "bindingState": "current",
+      "category": "library-route",
+      "disposition": "investigate",
+      "mechanismKey": "Map the genus-one normalization to an elliptic cubic and use the mature smalljac point-count capability",
+      "provenanceProblems": [],
+      "recordId": "sha256:fde5bbc3725bb87a4519c641591fb6a29fae99d9088e1f045dd9fd3cf46998e7",
+      "regressionState": "not-applicable",
+      "sourceDescendantIds": [
+        "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203"
+      ],
+      "subjectId": "sha256:11dd8c86c78eb395d5134dd0dab9788e03038a62c5462558026a65fa5f085203"
+    }
+  ]
+}

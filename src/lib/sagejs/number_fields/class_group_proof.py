@@ -10,7 +10,7 @@ Minkowski replay context supplies `field_order_fingerprint`, `discriminant`,
 `minkowski_bound` (an exact `(numerator, denominator)` pair),
 `iter_minkowski_prime_ideals()`, and `ideal_fingerprint(ideal)`.  A context may
 also implement `verify_saturation_record(record)` and
-`verify_conditional_grh_record(record)`.  No context implementation is
+`verify_conditional_grh_record(record, presentation)`.  No context implementation is
 imported here, so relation, matrix, and orchestration lanes can compose these
 records without a dependency cycle.
 """
@@ -306,7 +306,7 @@ class ConditionalGRHProofRecord:
             ):
                 return False
         checker = getattr(context, "verify_conditional_grh_record", None)
-        return callable(checker) and checker(self) is True
+        return callable(checker) and checker(self, presentation) is True
 
 
 class MinkowskiPrimeClassRecord:

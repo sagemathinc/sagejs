@@ -1,0 +1,133 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-dossiers",
+  "title": "Optimizer overlays, dossiers, and campaign generator",
+  "lane": "optimizer-development",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement sparse authenticated hotness overlays, exact-region dossiers, transparent eligibility/ranking, and deterministic campaign task plans using existing parallel contracts",
+  "base_commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+  "claims": [
+    "tools/optimizer-development/overlay.cjs",
+    "tools/optimizer-development/dossier.cjs",
+    "tools/optimizer-development/campaign.cjs",
+    "scripts/optimizer-hotness-overlay.cjs",
+    "scripts/optimizer-dossier.cjs",
+    "scripts/optimizer-campaign.cjs",
+    "test/optimizer-hotness-overlay.cjs",
+    "test/optimizer-dossier.cjs",
+    "test/optimizer-campaign.cjs",
+    "test/fixtures/optimizer-development/dossiers/"
+  ],
+  "dependencies": [
+    "engine-foundation",
+    "engine-dashboard-identity",
+    "engine-profiler"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Sparse static/runtime mismatch fixtures, deterministic dossier obligations, and synthetic parallel campaign projections"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 348.186,
+      "started_at": "2026-08-28T07:21:49.007Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "fc1d26308e3a7bd3eb8a267d11dc39733b41ec6516fe2d69534a60de46a4e0f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 21.048,
+      "started_at": "2026-08-28T07:27:42.761Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "fc1d26308e3a7bd3eb8a267d11dc39733b41ec6516fe2d69534a60de46a4e0f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.975,
+      "started_at": "2026-08-28T07:32:05.330Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "fc1d26308e3a7bd3eb8a267d11dc39733b41ec6516fe2d69534a60de46a4e0f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 12.053,
+      "started_at": "2026-08-28T07:33:03.618Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "fc1d26308e3a7bd3eb8a267d11dc39733b41ec6516fe2d69534a60de46a4e0f7",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm build",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 754.131,
+      "started_at": "2026-08-28T07:36:48.529Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "cc67e80780211df821b1c9e6348ba2181bfd09346b30d7e31527e1c5778e6432",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:compiler",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 44.518,
+      "started_at": "2026-08-28T07:49:28.472Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "cc67e80780211df821b1c9e6348ba2181bfd09346b30d7e31527e1c5778e6432",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.476,
+      "started_at": "2026-08-28T07:50:23.374Z",
+      "commit": "7ac7a7f48b6e805dc9ac74b5de24896c634dd827",
+      "workspace_fingerprint": "cc67e80780211df821b1c9e6348ba2181bfd09346b30d7e31527e1c5778e6432",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented sparse exact-region hotness overlays with sample conservation and fail-closed stale or ambiguous joins; exact-region dossiers with complete detached optimizer IR, obligations, negative evidence, and held-out hypotheses; and deterministic dry-run campaign projections with path-aware claim, dependency-DAG, and shared-integration ownership validation. Producer and schema boundaries are injected so this lane does not duplicate the shared identity or schema foundation.",
+    "risks": [
+      "Integration must supply one narrow adapter from the final dashboard and profiler receipt shapes to the foundation validators; this lane deliberately contains no duplicate identity or schema implementation.",
+      "Eligibility-specific stable reason codes must be mapped through that adapter to the final reason registry; the fixture adapter is synthetic test evidence only.",
+      "Campaign task contracts are dry-run projections; integration must validate them with the repository task schema and parallel:new before exposing an execution path."
+    ],
+    "next_steps": [
+      "Merge engine-foundation, engine-dashboard-identity, and engine-profiler before this lane, then implement the integration-owned adapter and package-script wiring.",
+      "Run the overlay and dossier pipeline on authenticated current-source profiles and preserve target-mismatch controls such as the losing generic generated-JavaScript paths.",
+      "Approve a compiler campaign only after the dossier's public-call crossover evidence, exact oracle, fallback, and held-out generality obligations are complete."
+    ]
+  }
+}

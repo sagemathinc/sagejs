@@ -29,7 +29,8 @@ function shieldedFunctions(ir) {
   function visit(value) {
     if (value === null || typeof value !== "object" || seen.has(value)) return;
     seen.add(value);
-    if (value.kind === "ffi.call" &&
+    if ((value.kind === "ffi.call" ||
+        value.kind === "ffi.arena.resource.allocate") &&
         value.foreign?.function?.exceptions?.policy === "cxx_to_status") {
       const fn = value.foreign.function;
       functions.set(fn.call_plan.declaration_id, fn);
@@ -155,6 +156,14 @@ function nativeSymbol(fn) {
   return fn.call_plan.symbol;
 }
 
+function exactNativeSymbol(fn) {
+  return fn.native.exact_symbol || nativeSymbol(fn);
+}
+
+function usesExactMpzAbi(fn) {
+  return typeof fn.native.exact_symbol === "string";
+}
+
 function nativeReturnType(fn) {
   return fn.call_plan.native_return_c_type;
 }
@@ -196,6 +205,7 @@ function assignRawResult(fn, raw, target, indent) {
 
 function emitResourceCall(operation, context, indent, tagged) {
   const fn = operation.foreign.function;
+  const exactMpzAbi = usesExactMpzAbi(fn);
   const callArguments = nativeArguments(fn);
   const returned = resourceForType(operation, fn.signature.return_type);
   const prefix = `sagejs_ffi_${cName(operation.target)}`;
@@ -209,6 +219,25 @@ function emitResourceCall(operation, context, indent, tagged) {
       return context.result(operation.target);
     }
     if (argument.abi_type === "fmpz_t") {
+      if (exactMpzAbi) {
+        if (argument.source === "result") {
+          const output = context.result(operation.target);
+          if (tagged) {
+            setup.push(`${indent}    sagejs_tagged_make_big(${output});`);
+            exactResult = `(${output})->big`;
+          } else {
+            exactResult = output;
+          }
+          return exactResult;
+        }
+        const source = argumentBySource(operation, argument.source);
+        const sourceValue = context.value(source.name);
+        if (tagged) {
+          setup.push(`${indent}    sagejs_tagged_make_big(${sourceValue});`);
+          return `(${sourceValue})->big`;
+        }
+        return sourceValue;
+      }
       const variable = `${prefix}_${cName(argument.source)}_${index}`;
       declarations.push(`${indent}    fmpz_t ${variable};`);
       setup.push(`${indent}    fmpz_init(${variable});`);
@@ -290,7 +319,8 @@ function emitResourceCall(operation, context, indent, tagged) {
   if (needsRaw) {
     declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
   }
-  const call = `${nativeSymbol(fn)}(${args.join(", ")})`;
+  const call = `${exactMpzAbi ? exactNativeSymbol(fn) : nativeSymbol(fn)}` +
+    `(${args.join(", ")})`;
   const invoke = needsRaw
     ? `${indent}    ${raw} = ${call};`
     : `${indent}    ${call};`;
@@ -309,7 +339,9 @@ function emitResourceCall(operation, context, indent, tagged) {
       throw new Error(`${operation.foreign.declarationId} lacks its result adapter`);
     }
     const output = context.result(operation.target);
-    if (tagged) {
+    if (exactMpzAbi) {
+      // The exact-native ABI wrote directly to the compiler-owned GMP result.
+    } else if (tagged) {
       result.push(
         `${indent}    sagejs_tagged_make_big(${output});`,
         `${indent}    fmpz_get_mpz((${output})->big, ${exactResult});`,
@@ -1284,6 +1316,17 @@ function sagejsFfiCloseResources(resources) {
     resource.closed = true;
     resource.handle = null;
   }
+}
+
+function sagejsFfiCloseResource(value, resources) {
+  if (value === null || value === undefined || resources === null) return;
+  const root = value.root || value;
+  const index = resources.lastIndexOf(root);
+  if (index >= 0) resources.splice(index, 1);
+  if (root.ownership !== "owned" || root.closed) return;
+  Reflect.apply(root.close, root.backend, [root.handle]);
+  root.closed = true;
+  root.handle = null;
 }
 
 function sagejsFfiTransferResource(value, resources) {

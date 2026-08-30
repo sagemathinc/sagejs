@@ -24,6 +24,9 @@ const {
   buildJobs,
   runBufferedCommand,
 } = require("../../scripts/build-parallelism.cjs");
+const {
+  GMP_CHECKPOINT_ALLOCATOR_C_SOURCE,
+} = require("./gmp-checkpoint-allocator.cjs");
 
 const PACK_IDENTITY_SCHEMA = "sagejs.native-pack-identity/v2";
 const PACK_MANIFEST_SCHEMA = "sagejs.native-pack/v2";
@@ -154,6 +157,9 @@ function aggregatorSource(items, packKey) {
   return `/* Generated Sage.js production native-kernel pack. */
 #include <node_api.h>
 
+#define SAGEJS_NATIVE_GMP_ALLOCATOR_API
+${GMP_CHECKPOINT_ALLOCATOR_C_SOURCE}
+
 ${declarations}
 
 NAPI_MODULE_INIT()
@@ -210,6 +216,7 @@ function packBinding(items, packDirectory) {
     writeFileSync(
       join(sourceDirectory, "kernel_pack.c"),
       `${definitions.join("\n")}${definitions.length ? "\n" : ""}` +
+        `#define SAGEJS_NATIVE_GMP_ALLOCATOR_EXTERNAL 1\n` +
         `#define SAGEJS_NATIVE_PACK_INITIALIZER ` +
         `sagejs_native_pack_init_m_${item.moduleIdentity}\n` +
         '#include "kernel.c"\n',

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/dossier-v1.schema.json",
+  "title": "Sage.js optimizer dossier v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "status", "classification", "intervention", "recommendedAction", "source", "evidence", "excerpt", "currentIr", "facts", "rejections", "costs", "candidates", "unresolvedProofs", "suggestedContract", "witness", "oracles", "adversarialObligations", "benchmarkObligations", "generality", "negativeEvidence", "claims", "integration", "promotionCriteria"],
+  "properties": {
+    "schema": { "const": "sagejs.optimizer-dossier/v1" },
+    "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+    "status": { "enum": ["draft", "measured", "approved", "rejected", "stale"] },
+    "classification": { "enum": ["algorithmic", "repeated-proof-state", "representation", "dynamic-dispatch-coercion", "boundary-dominated", "allocation-materialization", "compiler-rejection", "target-mismatch", "cold-startup-dominated", "unknown"] },
+    "intervention": { "anyOf": [{ "type": "null" }, { "$ref": "opportunity-evidence-v1.schema.json#/properties/intervention" }] },
+    "recommendedAction": { "enum": ["already-optimized", "reject", "investigate", "algorithm-campaign", "library-route-campaign", "representation-campaign", "runtime-campaign", "boundary-campaign", "cache-campaign", "source-campaign", "compiler-campaign"] },
+    "source": { "$ref": "wire-definitions-v1.schema.json#/$defs/source" },
+    "evidence": {
+      "type": "object",
+      "required": ["dashboardId", "overlayId", "profileIds", "opportunityEvidenceIds"]
+    },
+    "excerpt": { "type": "object" },
+    "currentIr": { "type": ["object", "null"] },
+    "facts": { "type": "object" },
+    "rejections": { "type": "array", "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/reason" } },
+    "costs": { "type": "object" },
+    "candidates": { "type": "array", "items": { "type": "object" } },
+    "unresolvedProofs": { "type": "array", "items": { "type": "string" } },
+    "suggestedContract": { "type": ["object", "null"] },
+    "witness": { "type": "object" },
+    "oracles": { "type": "array", "items": { "type": "object" } },
+    "adversarialObligations": { "type": "array", "items": { "type": "string" } },
+    "benchmarkObligations": { "type": "array", "items": { "type": "string" } },
+    "generality": { "type": "array", "items": { "type": "string" } },
+    "negativeEvidence": { "type": "array", "items": { "type": "object" } },
+    "claims": { "type": "array", "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/repositoryPath" } },
+    "integration": { "type": "object" },
+    "promotionCriteria": { "type": "object" }
+  }
+}

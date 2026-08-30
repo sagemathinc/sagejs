@@ -1,0 +1,68 @@
+{
+  "schema": "sagejs.brandt/rank-four-lattice-magma-v1",
+  "generated_with": "Magma V2.18-5",
+  "generator": "test/fixtures/magma-brandt-rank-four.m",
+  "generator_sha256": "3ac6ec467ca5fd43ec1345a8781a15fc95a31f07130f2000717eccde68b843ab",
+  "generator_output": "test/fixtures/brandt-rank-four-magma-2.18-5.out",
+  "generator_output_sha256": "220bd1f40cc3878d3efe17b1833deee974c32deb0eb994e4c9e69a956e1dd197",
+  "parameters": {
+    "quaternion_discriminant": 37,
+    "eichler_level": 2,
+    "ideal_orientation": "left",
+    "ideal_class_count": 9,
+    "selected_class_indices": [1, 2, 3],
+    "basis_coordinates": "Eltseq in the ambient quaternion algebra basis",
+    "denominator_policy": "multiply each ideal basis by the LCM of all coordinate denominators",
+    "canonical_form": "Magma row HermiteForm over Integers()"
+  },
+  "ideals": [
+    {
+      "class_index": 1,
+      "scale": 4,
+      "basis": [
+        [108, 0, 0, 0],
+        [0, 216, 0, 0],
+        [94, 99, 0, 1],
+        [90, 14, 2, 0]
+      ],
+      "row_hnf": [
+        [2, 0, 18, 158],
+        [0, 1, 58, 9],
+        [0, 0, 108, 108],
+        [0, 0, 0, 216]
+      ]
+    },
+    {
+      "class_index": 2,
+      "scale": 4,
+      "basis": [
+        [36, 0, 0, 0],
+        [0, 72, 0, 0],
+        [22, 27, 0, 1],
+        [18, 14, 2, 0]
+      ],
+      "row_hnf": [
+        [2, 0, 18, 14],
+        [0, 1, 22, 45],
+        [0, 0, 36, 36],
+        [0, 0, 0, 72]
+      ]
+    },
+    {
+      "class_index": 3,
+      "scale": 4,
+      "basis": [
+        [108, 0, 0, 0],
+        [72, 72, 0, 0],
+        [94, 1, 0, 3],
+        [68, 41, 2, 1]
+      ],
+      "row_hnf": [
+        [2, 2, 26, 148],
+        [0, 3, 22, 179],
+        [0, 0, 36, 180],
+        [0, 0, 0, 216]
+      ]
+    }
+  ]
+}

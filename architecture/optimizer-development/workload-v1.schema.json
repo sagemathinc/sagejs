@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/workload-v1.schema.json",
+  "title": "Sage.js optimizer workload v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "title", "class", "owner", "runner", "input", "corpus", "oracles", "phases", "protocol", "capabilities", "targets", "modes", "platforms"],
+  "properties": {
+    "schema": { "const": "sagejs.optimizer-workload/v1" },
+    "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+    "title": { "type": "string", "minLength": 1 },
+    "class": { "enum": ["positive-control", "negative-control", "microbenchmark", "representative", "held-out"] },
+    "owner": { "type": "string", "minLength": 1 },
+    "runner": { "type": "object" },
+    "input": { "type": "object" },
+    "corpus": { "type": "object" },
+    "oracles": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "phases": { "type": "array", "minItems": 1, "items": { "type": "object" } },
+    "protocol": { "type": "object" },
+    "capabilities": { "type": "array", "items": { "$ref": "wire-definitions-v1.schema.json#/$defs/identifier" } },
+    "targets": { "type": "array", "minItems": 1, "items": { "enum": ["v8", "wasm", "native", "library", "generic"] } },
+    "modes": { "type": "array", "minItems": 1, "items": { "enum": ["sage", "python", "browser"] } },
+    "platforms": { "type": "array", "minItems": 1, "items": { "enum": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"] } }
+  }
+}

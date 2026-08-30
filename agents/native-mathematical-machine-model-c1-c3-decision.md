@@ -1,5 +1,12 @@
 # Native mathematical machine model: C1--C3 decision
 
+> **2026-08-29 update:** The C1--C3 acceptance remains valid, but its C4/C5
+> deferral is superseded by
+> [`architecture/decisions/0004-resident-exact-native-machine.md`](../architecture/decisions/0004-resident-exact-native-machine.md).
+> New cubic class-group and Brandt-module profiles independently establish that
+> repeated exact-object construction and proof-state transitions are material
+> production boundaries.
+
 ## Decision
 
 Keep the C1--C3 vertical slice and use it in class-group work.  Do not yet add

@@ -100,6 +100,7 @@ Tool overrides:
   --gp PATH              direct GP/PARI launcher
   --magma PATH           Magma launcher
   --julia PATH           Julia launcher shared by Hecke and Oscar
+  --julia-threads N      Julia threads, exactly 1 or 4 (default: 1)
   --hecke-project PATH   pinned Hecke Julia project
   --oscar-project PATH   pinned Oscar Julia project
   --julia-depot PATH     pinned Julia depot
@@ -155,6 +156,7 @@ function parseArguments(argv) {
       (fs.existsSync("/home/user/upstream/julia-1.10.10/bin/julia")
         ? "/home/user/upstream/julia-1.10.10/bin/julia"
         : "julia"),
+    juliaThreads: 1,
     heckeProject:
       process.env.HECKE_ORACLE_PROJECT ||
       process.env.HECKE_PROJECT ||
@@ -182,6 +184,7 @@ function parseArguments(argv) {
     ["--gp", "gp"],
     ["--magma", "magma"],
     ["--julia", "julia"],
+    ["--julia-threads", "juliaThreads"],
     ["--hecke-project", "heckeProject"],
     ["--oscar-project", "oscarProject"],
     ["--julia-depot", "juliaDepot"],
@@ -221,6 +224,13 @@ function parseArguments(argv) {
     throw new Error(`--systems must be selected from ${SYSTEMS.join(",")}`);
   }
   options.samples = parsePositiveInteger(options.samples, "--samples");
+  options.juliaThreads = parsePositiveInteger(
+    options.juliaThreads,
+    "--julia-threads",
+  );
+  if (![1, 4].includes(options.juliaThreads)) {
+    throw new Error("--julia-threads must be exactly 1 or 4");
+  }
   options.timeoutSeconds = parsePositiveInteger(
     options.timeoutSeconds,
     "--timeout-seconds",
@@ -567,7 +577,22 @@ function magmaRuntimeIdentity(executable) {
   };
 }
 
-function heckeRuntimeIdentity(executable, project, juliaDepot) {
+function juliaArgvPrefix(executable, projectPath, juliaThreads) {
+  if (![1, 4].includes(juliaThreads)) {
+    throw new Error("Julia threads must be exactly 1 or 4");
+  }
+  return [
+    executable,
+    "--startup-file=no",
+    "--history-file=no",
+    `--threads=${juliaThreads}`,
+    "--compiled-modules=yes",
+    "--pkgimages=yes",
+    `--project=${projectPath}`,
+  ];
+}
+
+function heckeRuntimeIdentity(executable, project, juliaDepot, juliaThreads) {
   if (!fs.statSync(juliaDepot, { throwIfNoEntry: false })?.isDirectory()) {
     throw new Error(`pinned Hecke identity requires Julia depot ${juliaDepot}`);
   }
@@ -576,6 +601,7 @@ function heckeRuntimeIdentity(executable, project, juliaDepot) {
 import Nemo, AbstractAlgebra, FLINT_jll, GMP_jll, MPFR_jll, Libdl
 items = [
     "julia-version" => string(VERSION),
+    "julia-threads" => string(Threads.nthreads()),
     "hecke-version" => string(pkgversion(Hecke)),
     "nemo-version" => string(pkgversion(Nemo)),
     "abstractalgebra-version" => string(pkgversion(AbstractAlgebra)),
@@ -607,15 +633,7 @@ end
 `;
   const result = probe(
     executable,
-    [
-      "--startup-file=no",
-      "--history-file=no",
-      "--threads=1",
-      "--compiled-modules=yes",
-      "--pkgimages=yes",
-      `--project=${project.path}`,
-      "-",
-    ],
+    [...juliaArgvPrefix(executable, project.path, juliaThreads).slice(1), "-"],
     {
       input: source,
       env: {
@@ -644,6 +662,7 @@ end
   }
   const required = [
     "julia-version",
+    "julia-threads",
     "hecke-version",
     "nemo-version",
     "abstractalgebra-version",
@@ -663,6 +682,12 @@ end
   }
   if (!/^0\.40\./.test(fields["hecke-version"])) {
     throw new Error(`Hecke comparator requires pinned Hecke 0.40, got ${fields["hecke-version"]}`);
+  }
+  if (fields["julia-threads"] !== String(juliaThreads)) {
+    throw new Error(
+      `Hecke comparator requested ${juliaThreads} Julia threads, ` +
+      `but the runtime reported ${fields["julia-threads"]}`,
+    );
   }
   if (process.platform === "linux" && compiledCaches.length === 0) {
     throw new Error("Hecke runtime identity did not resolve a loaded compiled package image");
@@ -717,7 +742,8 @@ end
   return {
     version:
       `Julia ${fields["julia-version"]}; Hecke ${fields["hecke-version"]}; ` +
-      `Nemo ${fields["nemo-version"]}; AbstractAlgebra ${fields["abstractalgebra-version"]}`,
+      `Nemo ${fields["nemo-version"]}; AbstractAlgebra ${fields["abstractalgebra-version"]}; ` +
+      `Julia threads ${fields["julia-threads"]}`,
     artifacts: [
       fileArtifact("julia-executable", executable),
       fileArtifact("julia-system-image", fields["system-image"]),
@@ -935,15 +961,7 @@ function detectTools(options) {
       requested_executable: options.julia,
       executable: julia.executable,
       argv_prefix: available
-        ? [
-            julia.executable,
-            "--startup-file=no",
-            "--history-file=no",
-            "--threads=1",
-            "--compiled-modules=yes",
-            "--pkgimages=yes",
-            `--project=${project.path}`,
-          ]
+        ? juliaArgvPrefix(julia.executable, project.path, options.juliaThreads)
         : null,
       version: available
         ? `${julia.version}; ${project.package} ${project.package_version || "unknown"}`
@@ -951,6 +969,7 @@ function detectTools(options) {
       project,
       julia_depot: juliaDepot,
       julia_depot_available: juliaDepotAvailable,
+      julia_threads: options.juliaThreads,
       reason: available
         ? null
         : julia.reason || project.reason ||
@@ -959,13 +978,18 @@ function detectTools(options) {
     if (available) {
       if (name === "hecke") {
         try {
-          const runtime = heckeRuntimeIdentity(julia.executable, project, juliaDepot);
+          const runtime = heckeRuntimeIdentity(
+            julia.executable,
+            project,
+            juliaDepot,
+            options.juliaThreads,
+          );
           answer.version =
             `${runtime.version}; git ${runtime.source_identity.commit}; ` +
             `tree ${runtime.source_identity.tree}`;
           answer.artifacts = runtime.artifacts;
           answer.libraries = runtime.libraries;
-          answer.execution_mode = "authenticated-pinned-hecke";
+          answer.execution_mode = `authenticated-pinned-hecke-julia-t${options.juliaThreads}`;
         } catch (error) {
           answer.status = "unavailable";
           answer.reason = error.message;
@@ -1098,6 +1122,7 @@ function createPlan(options, fixture, records, detectedTools, source) {
             requested_proof: proof,
             boundary,
             samples: options.samples,
+            julia_threads: options.juliaThreads,
             status,
             invocation: invocationFor(system, boundary, detectedTools) || [],
           });
@@ -1127,6 +1152,7 @@ function createPlan(options, fixture, records, detectedTools, source) {
       systems: options.systems,
       samples: options.samples,
       timeout_seconds: options.timeoutSeconds,
+      julia_threads: options.juliaThreads,
     },
     tools,
     tool_inventory: detectedTools,
@@ -1458,13 +1484,41 @@ ${procedureName}();`);
   return `${statements.join("\n")}\n`;
 }
 
-function heckeAdapterSource(records, proof, boundary, samples, sampleBase = 0) {
+function assertHeckeRootTimerContract(source) {
+  if (/root_seconds\s*=.*(?:field_seconds|computation_seconds|verification_seconds)/.test(source) ||
+      /batch_seconds\s*=\s*(?:field_seconds|computation_seconds|verification_seconds)/.test(source)) {
+    throw new Error("Hecke phase attribution must not be promoted to a root timer");
+  }
+  const contiguousRootAssignments = source.match(
+    /root_seconds = \(time_ns\(\) - root_started\) \/ 1\.0e9/g,
+  ) || [];
+  if (contiguousRootAssignments.length !== 1) {
+    throw new Error("Hecke adapter must define exactly one contiguous root timer");
+  }
+  if (!/calibration\.root_seconds < SAGEJS_TARGET_BATCH_SECONDS/.test(source) ||
+      !/retained = sagejs_run_batch/.test(source)) {
+    throw new Error("Hecke persistent timing requires a discarded root-timed calibration");
+  }
+  return source;
+}
+
+function heckeAdapterSource(
+  records,
+  proof,
+  boundary,
+  samples,
+  sampleBase = 0,
+  juliaThreads = 1,
+) {
+  if (![1, 4].includes(juliaThreads)) {
+    throw new Error("Hecke adapter Julia threads must be exactly 1 or 4");
+  }
   const recordsLiteral = records.map((record) => {
     if (!/^[0-9.]+$/.test(record.label)) throw new Error(`unsafe Hecke label ${record.label}`);
     const coefficients = integralVector(record.coefficients, "Hecke");
     return `(${JSON.stringify(record.label)}, BigInt${coefficients})`;
   }).join(",\n    ");
-  return `using Hecke
+  const source = `using Hecke
 using Printf
 using Random
 import Nemo
@@ -1477,8 +1531,12 @@ const SAGEJS_PERSISTENT = ${["kernel-warm", "field-cold"].includes(boundary) ? "
 const SAGEJS_INCLUDE_FIELD = ${boundary === "kernel-warm" ? "false" : "true"}
 const SAGEJS_CERTIFIED = ${proof ? 1 : 0}
 const SAGEJS_SAMPLES = ${samples}
+const SAGEJS_EXPECTED_THREADS = ${juliaThreads}
 const SAGEJS_TARGET_BATCH_SECONDS = SAGEJS_PERSISTENT ? 1.2 : 0.0
 const SAGEJS_QQX, SAGEJS_X = polynomial_ring(QQ, "x"; cached=false)
+
+Threads.nthreads() == SAGEJS_EXPECTED_THREADS ||
+    error("Hecke adapter Julia thread-count mismatch")
 
 function sagejs_fresh_order(coefficients, name)
     polynomial = SAGEJS_QQX(0)
@@ -1550,6 +1608,44 @@ function sagejs_compute(field, order)
     return answer, computation_seconds, verification_seconds
 end
 
+function sagejs_run_batch(coefficients, name_prefix, iterations)
+    1 <= iterations <= 100000 || error("Hecke microbatch iteration count is unsafe")
+    prepared = SAGEJS_INCLUDE_FIELD ? nothing : [
+        sagejs_fresh_order(coefficients, "$(name_prefix)_$(iteration)")
+        for iteration in 1:iterations
+    ]
+    field_seconds = 0.0
+    computation_seconds = 0.0
+    verification_seconds = 0.0
+    answer = nothing
+    root_started = time_ns()
+    for iteration in 1:iterations
+        if SAGEJS_INCLUDE_FIELD
+            field_started = time_ns()
+            field, order = sagejs_fresh_order(
+                coefficients,
+                "$(name_prefix)_$(iteration)",
+            )
+            field_seconds += (time_ns() - field_started) / 1.0e9
+        else
+            field, order = prepared[iteration]
+        end
+        answer, current_computation_seconds, current_verification_seconds =
+            sagejs_compute(field, order)
+        computation_seconds += current_computation_seconds
+        verification_seconds += something(current_verification_seconds, 0.0)
+    end
+    root_seconds = (time_ns() - root_started) / 1.0e9
+    root_seconds > 0 || error("Hecke wall timer resolution was insufficient")
+    return (
+        answer=answer,
+        root_seconds=root_seconds,
+        field_seconds=field_seconds,
+        computation_seconds=computation_seconds,
+        verification_seconds=verification_seconds,
+    )
+end
+
 for (job_index, (label, coefficients)) in enumerate(SAGEJS_RECORDS)
     for sample in 0:(SAGEJS_SAMPLES - 1)
         try
@@ -1568,34 +1664,56 @@ for (job_index, (label, coefficients)) in enumerate(SAGEJS_RECORDS)
                     sagejs_compute(warm_field, warm_order)
                 end
             end
-            field_seconds = 0.0
-            computation_seconds = 0.0
-            verification_seconds = 0.0
-            answer = nothing
-            iterations = 0
-            batch_seconds = 0.0
-            while iterations == 0 || (SAGEJS_PERSISTENT && batch_seconds < SAGEJS_TARGET_BATCH_SECONDS)
-                iterations >= 100000 && error("Hecke microbatch exceeded its iteration safety limit")
-                iterations += 1
-                field_started = time_ns()
-                field, order = sagejs_fresh_order(
-                    coefficients,
-                    "sagejs_$(job_index)_$(sample)_$(iterations)",
-                )
-                current_field_seconds = (time_ns() - field_started) / 1.0e9
-                if SAGEJS_INCLUDE_FIELD
-                    field_seconds += current_field_seconds
+            iterations = 1
+            retained = nothing
+            if SAGEJS_PERSISTENT
+                calibration_round = 0
+                while retained === nothing
+                    calibration_round += 1
+                    calibration_round <= 64 ||
+                        error("Hecke microbatch calibration exceeded its safety limit")
+                    calibration = sagejs_run_batch(
+                        coefficients,
+                        "sagejs_calibration_$(job_index)_$(sample)_$(calibration_round)",
+                        iterations,
+                    )
+                    if calibration.root_seconds < SAGEJS_TARGET_BATCH_SECONDS
+                        scaled_iterations = ceil(
+                            Int,
+                            iterations * SAGEJS_TARGET_BATCH_SECONDS /
+                                max(calibration.root_seconds, 1.0e-9),
+                        )
+                        iterations = max(iterations + 1, scaled_iterations)
+                        iterations <= 100000 ||
+                            error("Hecke microbatch exceeded its iteration safety limit")
+                        continue
+                    end
+                    retained_candidate = sagejs_run_batch(
+                        coefficients,
+                        "sagejs_retained_$(job_index)_$(sample)_$(calibration_round)",
+                        iterations,
+                    )
+                    if retained_candidate.root_seconds >= SAGEJS_TARGET_BATCH_SECONDS
+                        retained = retained_candidate
+                    else
+                        iterations *= 2
+                        iterations <= 100000 ||
+                            error("Hecke microbatch exceeded its iteration safety limit")
+                    end
                 end
-                answer, current_computation_seconds, current_verification_seconds =
-                    sagejs_compute(field, order)
-                computation_seconds += current_computation_seconds
-                verification_seconds += something(current_verification_seconds, 0.0)
-                batch_seconds = field_seconds + computation_seconds + verification_seconds
+            else
+                retained = sagejs_run_batch(
+                    coefficients,
+                    "sagejs_retained_$(job_index)_$(sample)",
+                    iterations,
+                )
             end
-            SAGEJS_PERSISTENT && batch_seconds < 1.0 &&
-                error("Hecke microbatch did not reach one second")
+            answer = retained.answer
+            batch_seconds = retained.root_seconds
+            field_seconds = retained.field_seconds
+            computation_seconds = retained.computation_seconds
+            verification_seconds = retained.verification_seconds
             elapsed = batch_seconds / iterations
-            elapsed > 0 || error("Hecke wall timer resolution was insufficient")
             fields = [
                 label,
                 string(sample),
@@ -1617,6 +1735,7 @@ for (job_index, (label, coefficients)) in enumerate(SAGEJS_RECORDS)
 end
 println(${JSON.stringify(HECKE_DONE_PREFIX + records.length * samples)})
 `;
+  return assertHeckeRootTimerContract(source);
 }
 
 function spawn(executable, args, source, timeoutSeconds, env = {}) {
@@ -2215,6 +2334,7 @@ function aggregateJob(
       request_satisfied: true,
       comparison_key: semanticComparisonKey({
         achievedProofSemantics: achieved,
+        juliaThreads: job.julia_threads,
         requestedOutput: "class-invariants-unit-summary-regulator",
         regulatorContract: REGULATOR_CONTRACT,
       }),
@@ -2225,7 +2345,7 @@ function aggregateJob(
     process_total_seconds: processTotalSeconds,
     samples: samples.map((sample, index) => ({
       sample_index: sample.sample,
-      // v3 stores one semantically representative answer. Every retained
+      // v4 stores one semantically representative answer. Every retained
       // sample was checked above for exact discrete agreement and overlapping
       // regulator evidence before it is bound to that aggregate digest.
       answer_sha256: answerFingerprint,
@@ -2269,11 +2389,26 @@ function aggregateJob(
   };
 }
 
-function adapterSource(system, records, proof, boundary, samples, sampleBase = 0) {
+function adapterSource(
+  system,
+  records,
+  proof,
+  boundary,
+  samples,
+  sampleBase = 0,
+  juliaThreads = 1,
+) {
   if (system === "direct-gp") return gpAdapterSource(records, proof, boundary, samples);
   if (system === "magma") return magmaAdapterSource(records, proof, boundary, samples);
   if (system === "hecke") {
-    return heckeAdapterSource(records, proof, boundary, samples, sampleBase);
+    return heckeAdapterSource(
+      records,
+      proof,
+      boundary,
+      samples,
+      sampleBase,
+      juliaThreads,
+    );
   }
   return pythonAdapterSource(records, proof, boundary, samples, system);
 }
@@ -2313,7 +2448,15 @@ function parseAdapterPayload(system, run) {
 function runPersistentGroup(system, proof, boundary, jobs, recordsByLabel, tool, timeoutSeconds) {
   const records = jobs.map((job) => recordsByLabel.get(job.label));
   const uniqueRecords = [...new Map(records.map((record) => [record.label, record])).values()];
-  const source = adapterSource(system, uniqueRecords, proof, boundary, jobs[0].samples);
+  const source = adapterSource(
+    system,
+    uniqueRecords,
+    proof,
+    boundary,
+    jobs[0].samples,
+    0,
+    jobs[0].julia_threads,
+  );
   const execution = adapterExecution(system, tool);
   const executed = spawn(
     tool.executable,
@@ -2344,6 +2487,7 @@ function runFreshJob(job, expected, tool, timeoutSeconds) {
       job.boundary,
       1,
       sample,
+      job.julia_threads,
     );
     const execution = adapterExecution(job.system, tool);
     const executed = spawn(
@@ -2532,11 +2676,13 @@ if (require.main === module) {
 module.exports = {
   SYSTEMS,
   aggregateJob,
+  assertHeckeRootTimerContract,
   correctnessMismatches,
   createPlan,
   detectTools,
   gpAdapterSource,
   heckeAdapterSource,
+  juliaArgvPrefix,
   loadFixture,
   magmaAdapterSource,
   parseArguments,

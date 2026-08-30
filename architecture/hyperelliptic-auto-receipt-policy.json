@@ -59,13 +59,13 @@
       "tools/runtime-bootstrap.ts",
       "tools/task-evaluator.ts"
     ],
-    "sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
-    "source_commit": "c562298260be498bfb2b0c61872b0d3ac9c06062"
+    "sha256": "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
+    "source_commit": "ed7704037fbfd92c1bebf76b0697c7a5b27c0461"
   },
   "entries": [
     {
       "id": "prime-cantor-domain-add-c5622982-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "add",
       "platforms": [
@@ -74,7 +74,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "source_bundle_sha256": "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
@@ -211,7 +211,7 @@
     },
     {
       "id": "prime-cantor-domain-scalar-c5622982-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "scalar",
       "platforms": [
@@ -220,7 +220,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "source_bundle_sha256": "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",
@@ -357,7 +357,7 @@
     },
     {
       "id": "prime-cantor-domain-progression-c5622982-v1",
-      "enabled": true,
+      "enabled": false,
       "backend": "prime-cantor",
       "operation": "progression",
       "platforms": [
@@ -366,7 +366,7 @@
         "darwin-arm64",
         "win32-x64"
       ],
-      "source_bundle_sha256": "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+      "source_bundle_sha256": "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
       "corpus": {
         "id": "prime-cantor-domain-v1",
         "path": "bench/hyperelliptic/cross-platform/domain-corpus-v1.json",

@@ -198,7 +198,7 @@ print("ok")
 
 test("ordinary FLINT primitive policy is CPython-parseable", () => {
   const python = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+    (process.platform === "win32" ? "python" : "python3");
   const bootstrap = String.raw`
 import importlib.util
 spec = importlib.util.spec_from_file_location("flint_policy", ${JSON.stringify(modulePath)})

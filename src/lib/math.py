@@ -9,6 +9,8 @@
 
 # basic implementation of Python's 'math' library
 
+# globals: ρσ_register_optimizer_intrinsic
+
 # NOTE: this is only meant to aid those porting lots of Python code into pylang.
 # If you're writing a new pylang application, in most cases you probably want to
 # use JavaScript's Math module directly instead
@@ -255,6 +257,9 @@ def hypot(x, y):
     x = float(x)
     y = float(y)
     return float(Math.sqrt(x * x + y * y))
+
+
+ρσ_register_optimizer_intrinsic(hypot, "python.math.hypot.strict-binary64.v1")
 
 
 def tan(x):

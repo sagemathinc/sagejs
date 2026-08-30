@@ -14,6 +14,16 @@ const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
+const rankFourFixture = JSON.parse(
+  fs.readFileSync(
+    path.resolve(
+      packageRoot,
+      "../..",
+      "test/fixtures/brandt-rank-four-magma-2.18-5.json",
+    ),
+    "utf8",
+  ),
+);
 const chromiumCandidates = [
   process.env.SAGEJS_CHROMIUM,
   "/usr/bin/chromium",
@@ -252,6 +262,63 @@ try {
       );
     }
 
+    async function runPublicRankFourWorkspace() {
+      const bases = [];
+      const expectedHnfs = [];
+      for (const ideal of rankFourFixture.ideals) {
+        const original = ideal.basis.map((row) => [...row]);
+        const equivalent = original.map((row) => [...row]);
+        for (let column = 0; column < 4; column += 1) {
+          equivalent[1][column] += equivalent[0][column];
+        }
+        bases.push(...original.flat(), ...equivalent.flat());
+        expectedHnfs.push(...ideal.row_hnf.flat(), ...ideal.row_hnf.flat());
+      }
+      const source = `
+from sagejs.kernels.matrix.rank_four_lattice import rank_four_lattice_workspace
+from sagejs.native import (
+    integer_buffer_values,
+    is_compiled,
+    kernel_integer_buffer,
+    kernel_uint64_buffer,
+    kernel_uint64_zeros,
+)
+
+def values(buffer):
+    return [int(buffer[index]) for index in range(len(buffer))]
+
+bases = ${JSON.stringify(bases)}
+expected = ${JSON.stringify(expectedHnfs)}
+published = kernel_uint64_zeros(rank_four_lattice_workspace, len(expected))
+classes = kernel_uint64_zeros(rank_four_lattice_workspace, 6)
+incidence = kernel_uint64_zeros(rank_four_lattice_workspace, 18)
+answer = rank_four_lattice_workspace(
+    kernel_integer_buffer(rank_four_lattice_workspace, bases),
+    kernel_uint64_buffer(rank_four_lattice_workspace, expected),
+    published,
+    classes,
+    incidence,
+    6,
+    3,
+    16,
+    1048576,
+    1048576,
+)
+print(
+    is_compiled(rank_four_lattice_workspace),
+    answer,
+    values(published) == expected,
+    values(classes),
+    values(incidence),
+)
+`;
+      await runSource(
+        source,
+        "True 3 True [0, 0, 1, 1, 2, 2] " +
+          "[1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1]\n",
+      );
+    }
+
     await waitForOutput("2 * 1013");
     const publicExactSubspacesOnly = process.argv.includes(
       "--public-exact-subspaces",
@@ -317,6 +384,7 @@ try {
         "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
     );
     await runPublicExactSubspaces();
+    await runPublicRankFourWorkspace();
     await runSource(matrixFallbackPublicSource, matrixFallbackExpectedStdout);
     await runSource(
       "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +

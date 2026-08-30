@@ -267,6 +267,16 @@ Explicitly scoped temporary resources close deterministically; long-lived
 matrix resources have idempotent close plus a tracing-GC finalizer fallback.
 Native allocation accounting remains required before this representation is
 considered production-mature under sustained memory pressure.
+
+Multi-stage exact algorithms may retain several compiler-owned aggregates and
+declared foreign resources in one bounded source-transparent lifecycle. The
+accepted ownership, proof-authority, target, and publication contract is
+[`architecture/decisions/0004-resident-exact-native-machine.md`](architecture/decisions/0004-resident-exact-native-machine.md).
+Ordinary Python remains the source and dynamic fallback; resident state is
+private acceleration state, while canonical detached data remains the durable
+proof authority. Arena children and reusable workspace borrows cannot escape,
+and all successful public results cross one transactional publication boundary.
+
 On Node, univariate polynomials over `ZZ` and `QQ` canonically own sealed,
 generated `FmpzPolynomial` and `FmpqPolynomial` resources. The checked wrapper
 owns the FLINT object without exposing its pointer; construction, coefficient

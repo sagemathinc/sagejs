@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 23;
+const IR_VERSION = 34;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -913,6 +913,7 @@ async function lowerSource(source, filename, options = {}) {
             signatures,
             foreignFunctions,
             foreignResources,
+            records,
             filename,
             decoratedMode,
           );

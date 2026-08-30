@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimizer-development/workload-catalog-v1.schema.json",
+  "title": "Sage.js optimizer workload catalog v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "workloads"],
+  "properties": {
+    "schema": { "const": "sagejs.optimizer-workload-catalog/v1" },
+    "id": { "$ref": "wire-definitions-v1.schema.json#/$defs/contentId" },
+    "workloads": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "workload-v1.schema.json" }
+    }
+  }
+}

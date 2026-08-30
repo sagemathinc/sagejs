@@ -1,0 +1,29 @@
+{
+  "schema": "sagejs.optimization-memory-manifest/v2",
+  "id": "sha256:17dcb9426c9ae33cdab9e5aff4f5f6f717b2a2469de4458380292bf6d62a88b7",
+  "assets": [
+    {
+      "bytes": 3452,
+      "kind": "canonical-ndjson",
+      "name": "71b4c1b77ae5fa9565f6bdf88e4463ad414a57e64c1332999e55d07a88e4464a.canonical.ndjson.gz",
+      "sha256": "854ba3fba2272832614970445aef9430ce605ce164d1d60121e8f43703647156",
+      "uncompressedBytes": 12276,
+      "uncompressedSha256": "71b4c1b77ae5fa9565f6bdf88e4463ad414a57e64c1332999e55d07a88e4464a"
+    },
+    {
+      "bytes": 4754,
+      "kind": "sqlite-query-database",
+      "name": "71b4c1b77ae5fa9565f6bdf88e4463ad414a57e64c1332999e55d07a88e4464a.sqlite.gz",
+      "sha256": "9f937d34c6bde41b56551dcf3dff230e500591670d2a049cacf15f1bb3708f9e",
+      "uncompressedBytes": 53248,
+      "uncompressedSha256": "fcdfc02a75f6c1e10773119f052834bfbebcb8ee5d5f1a773f058472c375c8b7"
+    }
+  ],
+  "logicalId": "sha256:71b4c1b77ae5fa9565f6bdf88e4463ad414a57e64c1332999e55d07a88e4464a",
+  "recordCount": 4,
+  "release": {
+    "tag": "optimization-engine-memory-campaign2-2026-08-29",
+    "targetCommit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+    "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimization-engine-memory-campaign2-2026-08-29"
+  }
+}

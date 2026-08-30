@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 52,
-    "production_kernels": 45,
-    "compiled_functions": 282,
+    "registered_kernels": 53,
+    "production_kernels": 46,
+    "compiled_functions": 284,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -20,6 +20,15 @@
       "fallback_reasons": []
     },
     {
+      "id": "brandt-rank4-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "production": true,
       "status": "available",
@@ -32,9 +41,9 @@
       "id": "class-group-resident-hnf-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 1,
+      "compiled_functions": 2,
       "fallback_functions": 0,
-      "total_functions": 1,
+      "total_functions": 2,
       "fallback_reasons": []
     },
     {
@@ -58,15 +67,6 @@
       "fallback_reasons": [
         "separate-m4ri-ownership-domain"
       ]
-    },
-    {
-      "id": "brandt-rank4-production",
-      "production": true,
-      "status": "available",
-      "compiled_functions": 2,
-      "fallback_functions": 0,
-      "total_functions": 2,
-      "fallback_reasons": []
     },
     {
       "id": "dense-integer-flint-production",
@@ -452,6 +452,15 @@
       "compiled_functions": 2,
       "fallback_functions": 0,
       "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
+      "id": "rank-four-lattice-workspace-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 1,
+      "fallback_functions": 0,
+      "total_functions": 1,
       "fallback_reasons": []
     },
     {

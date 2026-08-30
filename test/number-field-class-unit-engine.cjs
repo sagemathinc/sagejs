@@ -25,7 +25,7 @@ const fixture = JSON.parse(
   ),
 );
 
-function run(source) {
+function run(source, timeout = 120_000) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-class-unit-engine-"));
   try {
     const moduleSource = readFileSync(
@@ -45,7 +45,7 @@ function run(source) {
     const result = spawnSync(executable, arguments_, {
       cwd: root,
       encoding: "utf8",
-      timeout: 120_000,
+      timeout,
     });
     assert.equal(result.status, 0, result.stderr || result.stdout);
     return result.stdout.trim();
@@ -971,9 +971,228 @@ assert nontorsion_probe._unit_logarithmic_rank(
 ) == 1
 assert nontorsion_probe.logs == 0
 assert nontorsion_probe._resource_usage["relation_exact_rank_one_units"] == 1
+
+class LargeFactoredUnit:
+    def stable_hash(self):
+        return "large-factored-unit"
+    def factors(self):
+        return ((C.gen(), MAX_RELATION_STEERING_EXACT_EXPONENT_L1 + 1),)
+    def evaluate(self):
+        raise AssertionError("large producer-only units must stay factored")
+
+class LargeFactoredRankOneProbe(ClassUnitGroupEngine):
+    def __init__(self, field):
+        super().__init__(field, algorithm="buchmann-hecke")
+        self.logs = 0
+    def _combine(self, records, coefficients):
+        return LargeFactoredUnit()
+    def _unit_logarithms(self, unit, precision):
+        self.logs += 1
+        return (1.0, 0.0)
+
+large_probe = LargeFactoredRankOneProbe(C)
+assert large_probe._unit_logarithmic_rank(
+    (cubic_record,), FakePresentation(((1,),)), 1
+) == 1
+assert large_probe.logs == 1
+assert large_probe._resource_usage[
+    "relation_exact_rank_one_expansion_attempts"
+] == 0
+assert large_probe._resource_usage["relation_exact_rank_one_expansion_skips"] == 1
+assert large_probe._resource_usage["relation_factored_log_rank_units"] == 1
+assert large_probe._resource_usage["relation_exact_rank_one_units"] == 0
 print("monotone-log-steering")
 `);
   assert.equal(output, "monotone-log-steering");
+});
+
+test("cubic unit kernels are reduced before rigorous regulator evaluation", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 36*x - 18, "a")
+result = compute_class_unit_group(K, proof=False, algorithm="auto")
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 1
+assert result.class_group().invariants() == ()
+assert result.saturation_record.verify(K, K.maximal_order())
+resources = result.diagnostics["resources"]
+assert resources["dependency_lattice_lll_requests"] == 1
+assert resources["dependency_lattice_lll_reductions"] == 1
+assert resources["dependency_lattice_lll_fallbacks"] == 0
+maximum_exponent = max(
+    abs(int(exponent))
+    for unit in result.units()
+    for _factor, exponent in unit.factors()
+)
+assert maximum_exponent <= 8
+regulator = result.regulator()
+assert regulator.rigorous
+assert regulator.precision_bits == 128
+print((
+    result.class_number(),
+    resources["dependency_lattice_lll_reductions"],
+    regulator.precision_bits,
+))
+`);
+  assert.equal(output, "(1, 1, 128)");
+});
+
+test("cubic class saturation searches nonzero p-torsion cosets", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 21*x + 388, "a")
+result = compute_class_unit_group(K, proof=False, algorithm="auto")
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 9
+assert result.class_group().invariants() == (9,)
+assert result.saturation_record.verify(K, K.maximal_order())
+assert result.saturation_record.remaining_index_bound == 1
+resources = result.diagnostics["resources"]
+assert resources["class_p_torsion_source_searches"] == 1
+assert resources["class_p_torsion_source_work"] == 924
+assert resources["class_p_torsion_source_candidates"] == 12
+assert resources["class_p_torsion_source_uses"] >= 1
+assert resources["class_p_torsion_source_fallbacks"] == 0
+maps = __import__(
+    "sagejs.number_fields.class_group_maps",
+    fromlist=["class_group_from_engine_result"],
+)
+adapted = maps.class_group_from_engine_result(result)
+payload = adapted.proof_payload()
+receipts = payload["conditional_evidence"]["generator_relations"]
+assert len(receipts) == 1
+receipt = receipts[0]
+assert receipt["coordinates"] == [0]
+assert sum(abs(value) for value in receipt["relation_coefficients"]) == 336499
+seal_verify_calls = [0]
+original_group_verify = maps.IdealClassGroup.verify
+def counted_seal_verify(group):
+    seal_verify_calls[0] += 1
+    return original_group_verify(group)
+maps.IdealClassGroup.verify = counted_seal_verify
+try:
+    projection = maps.seal_public_class_group_projection(adapted)
+finally:
+    maps.IdealClassGroup.verify = original_group_verify
+assert seal_verify_calls[0] == 1
+view = maps.public_class_group_projection_view(projection)
+assert view.order() == 9
+assert view.invariants() == (9,)
+assert view.verify()
+assert view.verify_proof_payload(payload)
+
+copy = __import__("copy")
+def rehash(document):
+    body = dict(document)
+    del body["content_sha256"]
+    document["content_sha256"] = maps._payload_hash(body)
+
+bad_coefficient = copy.deepcopy(payload)
+bad_receipt = bad_coefficient["conditional_evidence"]["generator_relations"][0]
+bad_receipt["relation_coefficients"][0] += 1
+rehash(bad_receipt)
+rehash(bad_coefficient["conditional_evidence"])
+assert not view.verify_proof_payload(bad_coefficient)
+
+bad_generator = copy.deepcopy(payload)
+bad_receipt = bad_generator["conditional_evidence"]["generator_relations"][0]
+bad_receipt["generator"]["factors"][0]["exponent"] += 1
+rehash(bad_receipt)
+rehash(bad_generator["conditional_evidence"])
+assert not view.verify_proof_payload(bad_generator)
+print((
+    result.class_number(),
+    result.class_group().invariants(),
+    resources["class_p_torsion_source_candidates"],
+    result.saturation_record.remaining_index_bound,
+))
+`, 300_000);
+  assert.equal(output, "(9, (9,), 12, 1)");
+});
+
+test("cubic unit saturation closes an index beyond coordinate search", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 576*x - 1665, "a")
+result = class_unit_context(K, proof=False)
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 9
+assert result.class_group().invariants() == (3, 3)
+assert result.saturation_record.remaining_index_bound == 1
+assert result.saturation_record.verify(K, K.maximal_order())
+print("cubic-large-unit-saturated")
+`, 180_000);
+  assert.equal(output, "cubic-large-unit-saturated");
+});
+
+test("conditional cubic groups detach a canonical seeded factor base", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 9*x - 16, "a")
+group = K.class_group(proof=False)
+assert group.order() == 4
+assert group.invariants() == (2, 2)
+assert group._proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert group.verify()
+payload = group.proof_payload()
+assert payload["schema"] == "sagejs.number-fields.class-group.grh-proof.v1"
+assert group.verify_proof_payload(payload)
+print((group.order(), group.invariants(), payload["proof_status"]))
+`);
+  assert.equal(output, "(4, (2, 2), 'exact-relations-conditional-grh')");
+});
+
+test("large cubic relation units remain factored during log-rank steering", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - 137*x - 630, "a")
+result = class_unit_context(K, proof=False)
+maps = __import__(
+    "sagejs.number_fields.class_group_maps",
+    fromlist=["class_group_from_engine_result"],
+)
+public_verify_calls = [0]
+original_group_verify = maps.IdealClassGroup.verify
+def counted_public_verify(group):
+    public_verify_calls[0] += 1
+    return original_group_verify(group)
+maps.IdealClassGroup.verify = counted_public_verify
+try:
+    group = class_group(K, proof=False)
+finally:
+    maps.IdealClassGroup.verify = original_group_verify
+assert public_verify_calls[0] == 1
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 3
+assert result.class_group().invariants() == (3,)
+assert result.saturation_record.verify(K, K.maximal_order())
+assert group.order() == 3
+assert group.invariants() == (3,)
+assert group.verify()
+payload = group.proof_payload()
+assert group.verify_proof_payload(payload)
+resources = result.diagnostics["resources"]
+assert resources["relation_exact_rank_one_expansion_skips"] >= 1
+assert resources["relation_factored_log_rank_units"] >= 1
+print((
+    group.order(),
+    group.invariants(),
+    result.proof_status,
+    resources["relation_exact_rank_one_expansion_skips"] >= 1,
+))
+`, 600_000);
+  assert.equal(
+    output,
+    "(3, (3,), 'exact-relations-conditional-grh', True)",
+  );
 });
 
 test("exact presentations are deferred across safe relation batches", () => {

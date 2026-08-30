@@ -108,7 +108,7 @@ import collections.abc, json, math, sys, typing
 sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
 `;
   const executable = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+    (process.platform === "win32" ? "python" : "python3");
   return run(executable, ["-I", "-c", prefix + witness]);
 }
 
