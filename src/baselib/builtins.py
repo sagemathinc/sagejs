@@ -268,6 +268,9 @@ _builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, "WeakMap"), []
 )
+_builtins_class_namespace_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, "WeakMap"), []
+)
 _builtins_data_descriptor_names = runtime.reflect.construct(runtime.set_class, [])
 _builtins_descriptor_epoch = 0
 
@@ -2980,51 +2983,61 @@ def ρσ_id(value: Any) -> _Int:
     return answer
 
 
-_BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
-    "__argnames__",
-    "__bind_methods__",
-    "__handles_kwarg_interpolation__",
-    "__sagejs_baselib_private_names__",
-    "__varargs__",
-    "__varkw__",
-    "apply",
-    "arguments",
-    "bind",
-    "call",
-    "caller",
-    "constructor",
-    "prototype",
-    "pysort",
-    "toLocaleString",
-    "toString",
-    "valueOf",
-]
+_BUILTINS_HIDDEN_INTROSPECTION_NAMES = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "__argnames__",
+            "__bind_methods__",
+            "__handles_kwarg_interpolation__",
+            "__sagejs_baselib_private_names__",
+            "__varargs__",
+            "__varkw__",
+            "apply",
+            "arguments",
+            "bind",
+            "call",
+            "caller",
+            "constructor",
+            "prototype",
+            "pysort",
+            "toLocaleString",
+            "toString",
+            "valueOf",
+        ]
+    ],
+)
 
 
 # These attributes are stored as JavaScript own properties so calls and
 # introspection stay fast, but CPython exposes them as slots on ``function``;
 # they are not entries in a function object's writable ``__dict__``.
-_BUILTINS_FUNCTION_SLOT_NAMES = [
-    "__annotations__",
-    "__annotations_text__",
-    "__code__",
-    "__defaults__",
-    "__doc__",
-    "__globals__",
-    "__kwdefaults__",
-    "__module__",
-    "__name__",
-    "__python_descriptor__",
-    "__python_type__",
-    "__qualname__",
-]
+_BUILTINS_FUNCTION_SLOT_NAMES = runtime.reflect.construct(
+    runtime.set_class,
+    [
+        [
+            "__annotations__",
+            "__annotations_text__",
+            "__code__",
+            "__defaults__",
+            "__doc__",
+            "__globals__",
+            "__kwdefaults__",
+            "__module__",
+            "__name__",
+            "__python_descriptor__",
+            "__python_type__",
+            "__qualname__",
+        ]
+    ],
+)
 
 
 def _builtins_visible_introspection_name(name: Any) -> _Bool:
     return (
         runtime.strict_equal(runtime.jstype(name), "string")
         and runtime.string_find(name, "ρσ") != 0
-        and name not in _BUILTINS_HIDDEN_INTROSPECTION_NAMES
+        and not _BUILTINS_HIDDEN_INTROSPECTION_NAMES.has(name)
     )
 
 
@@ -3040,6 +3053,7 @@ def _builtins_introspection_target(value: Any) -> Any:
 def _builtins_append_dir_names(
     value: Any,
     answer: list[_Str],
+    seen: Any,
 ) -> None:
     current = value
     while (
@@ -3048,7 +3062,8 @@ def _builtins_append_dir_names(
         and current is not runtime.object.prototype
     ):
         for name in runtime.object.getOwnPropertyNames(current):
-            if _builtins_visible_introspection_name(name) and name not in answer:
+            if _builtins_visible_introspection_name(name) and not seen.has(name):
+                seen.add(name)
                 answer.append(name)
         current = runtime.object.getPrototypeOf(current)
 
@@ -3056,9 +3071,11 @@ def _builtins_append_dir_names(
 def _builtins_append_own_dir_names(
     value: Any,
     answer: list[_Str],
+    seen: Any,
 ) -> None:
     for name in runtime.object.getOwnPropertyNames(value):
-        if _builtins_visible_introspection_name(name) and name not in answer:
+        if _builtins_visible_introspection_name(name) and not seen.has(name):
+            seen.add(name)
             answer.append(name)
 
 
@@ -3073,27 +3090,8 @@ def _builtins_is_module_namespace(value: Any) -> _Bool:
     return runtime.reflect.apply(has_module, module_namespaces, [value])
 
 
-def _builtins_namespace_dict(value: Any) -> Any:
-    """Return the Python-visible own namespace of an object or class."""
-    if _builtins_is_module_namespace(value):
-        # Unlike class ``__dict__``, a module dictionary is a mutable live
-        # namespace.  Wrapping the actual object is both the CPython behavior
-        # and dramatically cheaper for documentation-heavy modules such as
-        # ``mpmath.function_docs``.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
-
-    if runtime.strict_equal(runtime.jstype(value), "object"):
-        # Instance ``__dict__`` is a writable live namespace.  A detached
-        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
-        # Python object-model operations.
-        live_scope_dict = runtime.reflect.get(
-            runtime.global_object, "ρσ_live_scope_dict"
-        )
-        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
-
+def _builtins_callable_namespace_snapshot(value: Any) -> Any:
+    """Build one Python-visible snapshot of a class or function namespace."""
     namespace = runtime.object.create(None)
     plain_function = runtime.strict_equal(
         runtime.jstype(value), "function"
@@ -3134,7 +3132,7 @@ def _builtins_namespace_dict(value: Any) -> Any:
                 and not (
                     source is value
                     and plain_function
-                    and member_name in _BUILTINS_FUNCTION_SLOT_NAMES
+                    and _BUILTINS_FUNCTION_SLOT_NAMES.has(member_name)
                 )
                 and _builtins_get_member(
                     member,
@@ -3172,6 +3170,92 @@ def _builtins_namespace_dict(value: Any) -> Any:
     return runtime.scope_dict(namespace)
 
 
+@runtime.lightweight_math_class
+class _BuiltinsClassNamespaceProxy:
+    """Read-only live view of a compiled class namespace."""
+
+    def __init__(self, owner: Any) -> None:
+        self._owner = owner
+        self._epoch = -1
+        self._mapping = None
+
+    def _refresh(self) -> Any:
+        if self._epoch != _builtins_descriptor_epoch:
+            self._mapping = _builtins_callable_namespace_snapshot(self._owner)
+            self._epoch = _builtins_descriptor_epoch
+        return self._mapping
+
+    def __getitem__(self, key: Any) -> Any:
+        # Use the mapping protocol explicitly.  A literal subscript in this
+        # low-level baselib module is otherwise eligible for native host
+        # property lowering, while the wrapped namespace uses SageDict maps.
+        return self._refresh().__getitem__(key)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        raise TypeError("'mappingproxy' object does not support item assignment")
+
+    def __delitem__(self, key: Any) -> None:
+        raise TypeError("'mappingproxy' object does not support item deletion")
+
+    def __iter__(self) -> Any:
+        return iter(self._refresh())
+
+    def __len__(self) -> _Int:
+        return len(self._refresh())
+
+    def __contains__(self, key: Any) -> _Bool:
+        return key in self._refresh()
+
+    def get(self, key: Any, default_value: Any = None) -> Any:
+        return self._refresh().get(key, default_value)
+
+    def keys(self) -> Any:
+        return self._refresh().keys()
+
+    def values(self) -> Any:
+        return self._refresh().values()
+
+    def items(self) -> Any:
+        return self._refresh().items()
+
+    def copy(self) -> Any:
+        return self._refresh().copy()
+
+    def __repr__(self) -> _Str:
+        return "mappingproxy(" + repr(self._refresh()) + ")"
+
+
+def _builtins_namespace_dict(value: Any) -> Any:
+    """Return the Python-visible own namespace of an object or class."""
+    if _builtins_is_module_namespace(value):
+        # Unlike class ``__dict__``, a module dictionary is a mutable live
+        # namespace.  Wrapping the actual object is both the CPython behavior
+        # and dramatically cheaper for documentation-heavy modules such as
+        # ``mpmath.function_docs``.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, "ρσ_live_scope_dict"
+        )
+        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
+
+    if runtime.strict_equal(runtime.jstype(value), "object"):
+        # Instance ``__dict__`` is a writable live namespace.  A detached
+        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
+        # Python object-model operations.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, "ρσ_live_scope_dict"
+        )
+        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
+
+    if _builtins_is_python_class(value):
+        cached = _builtins_class_namespace_cache.get(value)
+        if cached is runtime.undefined:
+            cached = _BuiltinsClassNamespaceProxy(value)
+            _builtins_class_namespace_cache.set(value, cached)
+        return cached
+
+    return _builtins_callable_namespace_snapshot(value)
+
+
 def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the default sorted Python-facing attributes for `item`."""
     if item is runtime.undefined:
@@ -3179,23 +3263,24 @@ def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
 
     target = _builtins_introspection_target(item)
     answer = []
+    seen = runtime.reflect.construct(runtime.set_class, [])
     target_is_function = runtime.strict_equal(runtime.jstype(target), "function")
     constructor = _builtins_get_member(target, "constructor")
     target_is_python_instance = _builtins_is_python_class(constructor)
     if target_is_function and not target_is_python_instance:
-        _builtins_append_own_dir_names(target, answer)
+        _builtins_append_own_dir_names(target, answer, seen)
         for native_function_name in ["length", "name"]:
             if native_function_name in answer:
                 answer.remove(native_function_name)
     else:
-        _builtins_append_dir_names(target, answer)
+        _builtins_append_dir_names(target, answer, seen)
 
     # Python classes expose their instance methods through the class object.
     # Sage.js stores those methods on the JavaScript constructor prototype.
     if target_is_function:
         prototype = _builtins_get_member(target, "prototype")
         if prototype is not runtime.undefined and prototype is not None:
-            _builtins_append_dir_names(prototype, answer)
+            _builtins_append_dir_names(prototype, answer, seen)
     if target_is_python_instance and target_is_function:
         for class_only_name in [
             "__bases__",
@@ -3217,12 +3302,12 @@ def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
                 if private_name in answer:
                     answer.remove(private_name)
 
-    for left_index in range(len(answer)):
-        for right_index in range(left_index + 1, len(answer)):
-            if answer[right_index] < answer[left_index]:
-                temporary = answer[left_index]
-                answer[left_index] = answer[right_index]
-                answer[right_index] = temporary
+    # Attribute names are primitive strings, so the host's stable lexical sort
+    # has exactly the ordering required by Python without routing every
+    # comparison through the generic rich-comparison machinery.  Traitlets
+    # calls ``dir(cls)`` for every descriptor-bearing class, making the former
+    # quadratic Python loop dominate imports of class-heavy packages.
+    runtime.reflect.apply(runtime.array.prototype.sort, answer, [])
     return answer
 
 
@@ -6313,7 +6398,11 @@ def ρσ_apply_metaclass(
     compiled_class: Any,
 ) -> Any:
     """Create a class through `metaclass` from a compiled class body."""
-    namespace = _builtins_namespace_dict(compiled_class)
+    # A class exposes a read-only live mappingproxy, while a metaclass receives
+    # the mutable namespace produced by executing the class body.  Detach a
+    # copy so custom metaclasses can normalize entries before ``type.__new__``
+    # without mutating the temporary compiler-generated class.
+    namespace = _builtins_namespace_dict(compiled_class).copy()
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
     # instances of the eventual class (RegexLexerMeta is a prominent real

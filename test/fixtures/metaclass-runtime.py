@@ -107,6 +107,36 @@ assert "custom_entry" in dir(CustomDirectory())
 assert issubclass(ModuleNotFoundError, ImportError)
 
 
+class IdentityContains:
+    def __eq__(self, other):
+        raise AssertionError("list containment compared an identical object")
+
+
+identity_contains = IdentityContains()
+assert identity_contains in [identity_contains]
+
+
+class DynamicNamespace:
+    answer = 42
+
+
+# A class dictionary is a cached, read-only, live mapping just as CPython's
+# mappingproxy is. Retaining the view must not make class updates stale.
+dynamic_namespace = DynamicNamespace.__dict__
+assert dynamic_namespace["answer"] == 42
+setattr(DynamicNamespace, "answer", 44)
+assert dynamic_namespace["answer"] == 44
+try:
+    dynamic_namespace["answer"] = 45
+except TypeError:
+    pass
+else:
+    raise AssertionError("a class namespace allowed item assignment")
+assert DynamicNamespace.answer == 44
+delattr(DynamicNamespace, "answer")
+assert "answer" not in dynamic_namespace
+
+
 class DecoratedProperty:
     def __init__(self):
         self.entered = False

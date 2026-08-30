@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 810000,
+      "max_source_bytes": 815000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
