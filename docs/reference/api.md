@@ -293,9 +293,9 @@ BrandtModule(D: Any, N: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bo
 
 Construct the weight-two Brandt module over $\mathbf Q$.
 
-The quaternion discriminant $D$ is squarefree with an odd number of
-prime factors, and the Eichler conductor $N$ is positive and coprime to
-$D$. The canonical sparse supersingular realization is selected when it
+The quaternion discriminant `D` is squarefree with an odd number of
+prime factors, and the Eichler conductor `N` is positive and coprime to
+`D`. The canonical sparse supersingular realization is selected when it
 applies; all other valid pairs use the exact Jacquet--Langlands Hecke
 realization. Pass `realization="ideal-classes"` to construct genuine
 Eichler right ideal classes, their unit weights, and their integral
@@ -5525,7 +5525,7 @@ conjugacy classes using the conjugation action of the generators.
 ## `Mod`
 
 ```sage
-Mod(value: Any, modulus: Any) -> IntegerModElement
+Mod(value: Any, modulus: Any) -> Any
 ```
 
 Construct `value` in the ring of integers modulo `modulus`.
@@ -6406,7 +6406,7 @@ Return the exact triple-Manin-symbol presentation over `QQ`.
 parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics
 ```
 
-Plot a two-component parametric plane curve.
+Plot a parametric plane curve, space curve, or surface.
 
 ### Metadata
 
