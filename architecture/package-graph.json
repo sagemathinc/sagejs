@@ -652,6 +652,22 @@
       "prefixes": []
     },
     {
+      "id": "modular-form-qexp-algebra",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 50000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "modular-forms",
+        "modular-form-expansions"
+      ],
+      "modules": ["sagejs.modular_forms.qexp_algebra"],
+      "files": ["src/lib/sagejs/modular_forms/qexp_algebra.py"],
+      "prefixes": []
+    },
+    {
       "id": "rational-quaternion-algebras",
       "layer": 4,
       "startup": "lazy",

@@ -12,6 +12,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 _qexp_module_cache = runtime.undefined
+_qexp_algebra_module_cache = runtime.undefined
 _half_integral_module_cache = runtime.undefined
 _supersingular_module_cache = runtime.undefined
 _brandt_module_cache = runtime.undefined
@@ -26,6 +27,17 @@ def _qexp_module() -> Any:
             fromlist=["ExactModularForm"],
         )
     return _qexp_module_cache
+
+
+def _qexp_algebra_module() -> Any:
+    """Load certified exact q-expansion algebra lazily."""
+    global _qexp_algebra_module_cache
+    if _qexp_algebra_module_cache is runtime.undefined:
+        _qexp_algebra_module_cache = __import__(
+            "sagejs.modular_forms.qexp_algebra",
+            fromlist=["CertifiedModularForm"],
+        )
+    return _qexp_algebra_module_cache
 
 
 def _half_integral_module() -> Any:
@@ -998,6 +1010,56 @@ def victor_miller_basis(
     )
 
 
+def certified_modular_form(form: Any, prec: Any = None) -> Any:
+    r"""Return a replayably certified finite $q$-expansion of `form`.
+
+    The source must be an exact Sage.js modular-form element.  The resulting
+    object supports certified products, level lifts, degeneracy maps, and
+    bounded exact quadratic twists.
+
+    ```sage
+    sage: D = certified_modular_form(ModularForms(1, 12).delta(), 8)
+    sage: (D.V(2).level(), D.V(2).oldform_metadata().factor())
+    (2, 2)
+    ```
+    """
+    return _qexp_algebra_module().certified_modular_form(form, prec)
+
+
+def character_eisenstein_series(
+    chi: Any,
+    psi: Any,
+    weight: Any,
+    prec: Any = 10,
+    t: Any = 1,
+    coefficient_ring: Any = None,
+    normalization: str = "linear",
+) -> Any:
+    r"""Return the certified exact form $E_k(\chi,\psi)(q^t)$."""
+    return _qexp_algebra_module().character_eisenstein_series(
+        chi,
+        psi,
+        weight,
+        prec,
+        t,
+        coefficient_ring,
+        normalization,
+    )
+
+
+def formula_generated_subspace(
+    space: Any,
+    candidates: Any = None,
+    prec: Any = None,
+) -> Any:
+    """Return the honest certified span of formula candidates in `space`."""
+    return _qexp_algebra_module().formula_generated_subspace(
+        space,
+        candidates,
+        prec,
+    )
+
+
 def _inflate_series(
     series: Any,
     factor: int,
@@ -1293,6 +1355,40 @@ class ModularFormsSubspace(sage.Parent):
 
     gens = basis
 
+    def q_expansion_algorithm_receipt(
+        self,
+        algorithm: str = "auto",
+        prec: Any = None,
+    ) -> Any:
+        """Return the exact-domain receipt used to select a q-expansion engine."""
+        return _qexp_algebra_module().q_expansion_algorithm_receipt(
+            self,
+            algorithm,
+            prec,
+        )
+
+    def formula_subspace(
+        self,
+        candidates: Any = None,
+        prec: Any = None,
+    ) -> Any:
+        r"""Return the certified subspace spanned by exact formula candidates.
+
+        When `candidates` is omitted, level-one cusp forms and all available
+        $V_d$ degeneracy images are used.  The returned object states whether
+        this span is the full ambient cusp space; it never promotes a proper
+        span to an ambient basis.
+        """
+        if self._subspace_kind != "Cuspidal":
+            raise NotImplementedError(
+                "formula-generated subspaces currently require a cusp space"
+            )
+        return _qexp_algebra_module().formula_generated_subspace(
+            self,
+            candidates,
+            prec,
+        )
+
     def q_expansion_basis(
         self,
         prec: Any = None,
@@ -1305,21 +1401,30 @@ class ModularFormsSubspace(sage.Parent):
             variable = opts["var"]
         if "ρσ_py_var" in opts:
             variable = opts["ρσ_py_var"]
-        if algorithm == "default":
-            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
         effective_precision = self.precision() if prec is None else prec
+        receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
+        algorithm = receipt.selected_algorithm()
         if algorithm == "formulas":
-            self._require_level_one_cuspidal_basis()
-            return _qexp_module().victor_miller_basis(
-                self.weight(),
-                effective_precision,
-                True,
-                variable,
-            )
-        if algorithm != "modular_symbols":
-            raise ValueError(
-                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
-            )
+            if self.level() == 1:
+                self._require_level_one_cuspidal_basis()
+                return _qexp_module().victor_miller_basis(
+                    self.weight(),
+                    effective_precision,
+                    True,
+                    variable,
+                )
+            formula_span = receipt.formula_subspace()
+            if formula_span is None:
+                formula_span = self.formula_subspace(prec=effective_precision)
+            if not formula_span.is_full_ambient():
+                raise ArithmeticError(
+                    "formula candidates certify only a proper subspace of dimension "
+                    + str(formula_span.dimension())
+                    + " in ambient dimension "
+                    + str(formula_span.ambient_dimension())
+                    + "; use formula_subspace() to inspect it"
+                )
+            return formula_span.q_expansion_basis(effective_precision, variable)
         return self._modular_symbols_cusp_space().q_expansion_basis(
             effective_precision,
             "modular_symbols",
@@ -1335,19 +1440,25 @@ class ModularFormsSubspace(sage.Parent):
     ) -> Any:
         r"""Return the $QQ$-space or saturated $ZZ$-module of expansions."""
         effective_precision = self.precision() if prec is None else prec
-        if algorithm == "default":
-            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
+        receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
+        algorithm = receipt.selected_algorithm()
         if algorithm == "formulas":
-            self._require_level_one_cuspidal_basis()
-            return _qexp_module().formula_q_expansion_module(
-                self.weight(),
-                effective_precision,
-                R,
-            )
-        if algorithm != "modular_symbols":
-            raise ValueError(
-                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
-            )
+            if self.level() == 1:
+                self._require_level_one_cuspidal_basis()
+                return _qexp_module().formula_q_expansion_module(
+                    self.weight(),
+                    effective_precision,
+                    R,
+                )
+            formula_span = receipt.formula_subspace()
+            if formula_span is None:
+                formula_span = self.formula_subspace(prec=effective_precision)
+            if not formula_span.is_full_ambient():
+                raise ArithmeticError(
+                    "formula candidates certify only a proper subspace; "
+                    "use formula_subspace() to inspect it"
+                )
+            return formula_span.q_expansion_module(R)
         return self._modular_symbols_cusp_space().q_expansion_module(
             effective_precision,
             R,
@@ -1360,14 +1471,16 @@ class ModularFormsSubspace(sage.Parent):
         algorithm: str = "default",
     ) -> Any:
         r"""Return a replayable formula or Hecke-dual basis certificate."""
-        if algorithm == "default":
-            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
+        effective_precision = self.precision() if prec is None else prec
+        receipt = self.q_expansion_algorithm_receipt(algorithm, effective_precision)
+        algorithm = receipt.selected_algorithm()
         if algorithm == "formulas":
-            return self.basis_certificate(prec)
-        if algorithm != "modular_symbols":
-            raise ValueError(
-                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
-            )
+            if self.level() == 1:
+                return self.basis_certificate(prec)
+            formula_span = receipt.formula_subspace()
+            if formula_span is not None:
+                return formula_span
+            return self.formula_subspace(prec=effective_precision)
         return self._modular_symbols_cusp_space().q_expansion_basis_certificate(prec)
 
     def gen(self, index: Any = 0) -> Any:

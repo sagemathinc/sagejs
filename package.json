@@ -347,6 +347,7 @@
     "bench:modular:mestre:hilbert-sqrt5:competitive": "node bench/modular/mestre/hilbert-sqrt5-competitive.cjs",
     "bench:modular:brandt-ideal-classes:competitive": "node bench/modular/brandt-ideal-classes/competitive.cjs",
     "bench:modular:brandt-ideal-classes:profile": "node bench/modular/brandt-ideal-classes/profile.cjs",
+    "bench:modular:qexp-algebra": "node bench/modular/qexp-algebra/benchmark.cjs",
     "bench:graphs": "node bench/compare-graphs.cjs",
     "bench:wasm-graph-components": "node bench/wasm-graph-components.cjs --json",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
