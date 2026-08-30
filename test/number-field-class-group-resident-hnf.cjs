@@ -325,6 +325,66 @@ try:
 finally:
     matrix._resident_hnf_kernel_override = saved_override
 
+# Automatic native dispatch is deliberately limited to the largest authentic
+# shape and entry bit width in this release's differential corpus.  Larger
+# exact workspaces must fail closed without entering native code.
+wide_initial = ((1, 0),)
+wide_candidates = tuple(
+    (index + 2, 1) for index in range(matrix.MAX_RESIDENT_HNF_NATIVE_ROWS)
+)
+native_calls = [0]
+def unqualified_native(*_arguments):
+    native_calls[0] += 1
+    raise AssertionError('an unqualified resident HNF shape entered native code')
+matrix._resident_hnf_kernel_override = unqualified_native
+try:
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='python'
+    )
+    assert fallback.basis == oracle.basis
+    assert fallback.selected_candidate_indices == oracle.selected_candidate_indices
+    assert native_calls[0] == 0
+    try:
+        matrix.resident_exact_relation_hnf_selection(
+            wide_initial, wide_candidates, 2, backend='native'
+        )
+    except RuntimeError as error:
+        assert 'qualified shape/bit envelope' in str(error)
+    else:
+        raise AssertionError('an unqualified explicit native shape was accepted')
+finally:
+    matrix._resident_hnf_kernel_override = saved_override
+
+saved_override = matrix._resident_hnf_kernel_override
+bit_calls = [0]
+def unqualified_bit_native(*_arguments):
+    bit_calls[0] += 1
+    raise AssertionError('an unqualified resident HNF bit width entered native code')
+matrix._resident_hnf_kernel_override = unqualified_bit_native
+try:
+    bit_rows = ((1 << matrix.MAX_RESIDENT_HNF_NATIVE_ENTRY_BITS,),)
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='python'
+    )
+    assert bit_calls[0] == 0
+    assert fallback == oracle
+    try:
+        matrix.resident_exact_relation_hnf_selection(
+            (), bit_rows, 1, backend='native'
+        )
+    except RuntimeError as error:
+        assert 'qualified shape/bit envelope' in str(error)
+    else:
+        raise AssertionError('an unqualified explicit native bit width was accepted')
+finally:
+    matrix._resident_hnf_kernel_override = saved_override
+
 from sagejs.kernels.matrix.class_group_hnf import (
     resident_exact_relation_hnf_select,
     resident_exact_relation_hnf_select_v2,
