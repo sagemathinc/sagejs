@@ -3,6 +3,35 @@ export const LATEX_MIME = "text/latex";
 
 const BROWSER_IMAGE_FORMATS = ["png", "jpeg", "webp", "svg"];
 
+function normalizePlotlyValue(value, seen = new WeakMap()) {
+  if (typeof value === "bigint") return Number(value);
+  if (value === null || typeof value !== "object") return value;
+  if (Object.prototype.toString.call(value) === "[object Number]") {
+    return Number(value);
+  }
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value;
+  const isArray = Array.isArray(value);
+  const prototype = Object.getPrototypeOf(value);
+  if (!isArray && prototype !== Object.prototype && prototype !== null) {
+    return value;
+  }
+  const previous = seen.get(value);
+  if (previous !== undefined) return previous;
+  const answer = isArray ? [] : {};
+  seen.set(value, answer);
+  let changed = false;
+  for (const key of Object.keys(value)) {
+    const normalized = normalizePlotlyValue(value[key], seen);
+    answer[key] = normalized;
+    if (normalized !== value[key]) changed = true;
+  }
+  if (!changed) {
+    seen.set(value, value);
+    return value;
+  }
+  return answer;
+}
+
 function stabilizeSymmetricMeshAxis(values) {
   if (!Array.isArray(values) || values.length === 0 || !values.includes(0)) {
     return values;
@@ -30,9 +59,10 @@ function stabilizeSymmetricMeshAxis(values) {
 }
 
 export function stabilizePlotlyFigure(figure) {
-  if (!Array.isArray(figure?.data)) return figure;
+  const normalizedFigure = normalizePlotlyValue(figure);
+  if (!Array.isArray(normalizedFigure?.data)) return normalizedFigure;
   let figureChanged = false;
-  const data = figure.data.map((trace) => {
+  const data = normalizedFigure.data.map((trace) => {
     if (trace?.type !== "mesh3d") return trace;
     let traceChanged = false;
     const answer = { ...trace };
@@ -46,7 +76,7 @@ export function stabilizePlotlyFigure(figure) {
     if (traceChanged) figureChanged = true;
     return traceChanged ? answer : trace;
   });
-  return figureChanged ? { ...figure, data } : figure;
+  return figureChanged ? { ...normalizedFigure, data } : normalizedFigure;
 }
 
 /**

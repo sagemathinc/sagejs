@@ -45,6 +45,32 @@ test("symmetric zero-centered meshes avoid Plotly GL3D normalization failure", (
   assert.equal(stabilizePlotlyFigure(nonsymmetric), nonsymmetric);
 });
 
+test("boxed and arbitrary-size numeric display values become Plotly primitives", () => {
+  const boxedZero = new Number(0);
+  const figure = {
+    data: [{
+      type: "surface",
+      x: [[boxedZero, new Number(1)]],
+      y: [[0n, 1n]],
+      z: [[new Number(-1), boxedZero]],
+    }],
+    layout: { width: new Number(320) },
+  };
+  const normalized = stabilizePlotlyFigure(figure);
+  assert.deepEqual(normalized, {
+    data: [{
+      type: "surface",
+      x: [[0, 1]],
+      y: [[0, 1]],
+      z: [[-1, 0]],
+    }],
+    layout: { width: 320 },
+  });
+  assert.equal(typeof normalized.data[0].x[0][0], "number");
+  assert.equal(figure.data[0].x[0][0], boxedZero);
+  assert.equal(typeof figure.data[0].y[0][0], "bigint");
+});
+
 test("LaTeX displays render locally through KaTeX", async () => {
   const calls = [];
   const classes = [];

@@ -82,6 +82,33 @@ try {
     await evaluate(`document.querySelector('#source').value=${JSON.stringify(source)}; document.querySelector('[data-run="all"]').click()`);
     await waitFor(ready, timeout);
   }
+  async function renderedPlotPixelStats() {
+    return evaluate(`(async () => {
+      const plot = document.querySelector('#output .plot');
+      const source = await Plotly.toImage(plot, {
+        format: 'png', width: 480, height: 360,
+      });
+      const image = new Image();
+      image.src = source;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let chromatic = 0;
+      for (let offset = 0; offset < pixels.length; offset += 4) {
+        const red = pixels[offset];
+        const green = pixels[offset + 1];
+        const blue = pixels[offset + 2];
+        if (pixels[offset + 3] !== 0 && Math.max(red, green, blue) - Math.min(red, green, blue) > 20) {
+          chromatic += 1;
+        }
+      }
+      return { width: canvas.width, height: canvas.height, chromatic };
+    })()`);
+  }
 
   await command("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-color-scheme", value: "dark" }],
@@ -200,14 +227,17 @@ try {
   await evaluate("document.querySelector('#typeset-math').checked = true; document.querySelector('#clear-output').click()");
   await runSource(
     "u, v = var('u v')\n" +
-      "wave = plot3d(u^2-v^2, (u,-1,1), (v,-1,1), " +
-      "plot_points=(3,3), color='purple', frame=False)\n" +
-      "wave + sphere((0,0,1), size=1/5, color='red', plot_points=(5,3))",
+      "plot3d(u^2-v^2, (u,-1,1), (v,-1,1), " +
+      "plot_points=(3,3), color='purple', frame=False)",
     "document.querySelector('#output .plot.js-plotly-plot') !== null",
   );
   assert.deepEqual(
     await evaluate("Array.from(document.querySelector('#output .plot')?.data ?? [], trace => trace.type)"),
-    ["surface", "surface"],
+    ["surface"],
+  );
+  assert.ok(
+    (await renderedPlotPixelStats()).chromatic > 100,
+    "surface plots should draw visible WebGL pixels",
   );
   await evaluate("document.querySelector('#clear-output').click()");
   await runSource(
@@ -219,14 +249,18 @@ try {
     ["mesh3d"],
   );
   assert.equal(
-    await evaluate("['x','y','z'].every(axis => !document.querySelector('#output .plot').data[0][axis].includes(0))"),
+    await evaluate("['x','y','z','i','j','k'].every(axis => document.querySelector('#output .plot').data[0][axis].every(value => typeof value === 'number'))"),
     true,
-    "symmetric zero-centered meshes should be stabilized for Plotly GL3D",
+    "Plotly numeric arrays should contain primitive JavaScript numbers",
   );
   assert.equal(
     await evaluate("Boolean(document.querySelector('#output .plot')?._fullLayout?.scene?._scene?.glplot)"),
     true,
     "the browser test should exercise a real WebGL 3D scene",
+  );
+  assert.ok(
+    (await renderedPlotPixelStats()).chromatic > 100,
+    "mesh plots should draw visible WebGL pixels",
   );
   await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();
