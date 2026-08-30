@@ -351,6 +351,7 @@ assert resources["cubic_relation_selector_maximum_entry_bits"] == 3
 assert resources["cubic_relation_selector_deletion_trials"] == 22
 assert resources["cubic_relation_selector_hnf_calls"] == 23
 assert resources["cubic_relation_selector_native_boundary_calls"] == 0
+assert resources["cubic_relation_selector_library_boundary_calls"] == 22
 assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 1
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0

@@ -346,7 +346,10 @@ try:
     )
     assert fallback.basis == oracle.basis
     assert fallback.selected_candidate_indices == oracle.selected_candidate_indices
-    assert fallback.backend in ('python+flint-basis-deletions', 'python')
+    assert fallback.backend in (
+        'python+flint-basis-deletions',
+        'python',
+    )
     assert oracle.backend == 'python'
     assert native_calls[0] == 0
     try:

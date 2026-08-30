@@ -1833,6 +1833,7 @@ class ClassUnitGroupEngine:
             "cubic_relation_selector_deletion_trials": 0,
             "cubic_relation_selector_hnf_calls": 0,
             "cubic_relation_selector_native_boundary_calls": 0,
+            "cubic_relation_selector_library_boundary_calls": 0,
             "cubic_relation_selector_flint_basis_deletion_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
@@ -3023,6 +3024,10 @@ class ClassUnitGroupEngine:
                 (
                     "cubic_relation_selector_native_boundary_calls",
                     "native_boundary_calls",
+                ),
+                (
+                    "cubic_relation_selector_library_boundary_calls",
+                    "library_boundary_calls",
                 ),
                 (
                     "cubic_relation_selector_flint_basis_deletion_uses",

@@ -2056,6 +2056,7 @@ def _select_cubic_relation_candidates(
                 "deletion_trials": 0,
                 "hnf_calls": 0,
                 "native_boundary_calls": 0,
+                "library_boundary_calls": 0,
                 "flint_basis_deletions": 0,
             }
         )
@@ -2075,8 +2076,9 @@ def _select_cubic_relation_candidates(
                     "deletion_trials": int(selection.deletion_trials),
                     "hnf_calls": int(selection.hnf_calls),
                     "native_boundary_calls": int(selection.boundary_calls),
+                    "library_boundary_calls": int(selection.library_boundary_calls),
                     "flint_basis_deletions": int(
-                        selection.backend == "python+flint-basis-deletions"
+                        selection.backend.endswith("flint-basis-deletions")
                     ),
                 }
             )

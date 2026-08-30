@@ -2010,6 +2010,7 @@ class ResidentRelationHNFSelection:
         deletion_complete: bool,
         backend: str,
         boundary_calls: int,
+        library_boundary_calls: int,
         packed_input_bytes: int,
         published_output_values: int,
         work_units: int,
@@ -2025,6 +2026,7 @@ class ResidentRelationHNFSelection:
         self.deletion_complete = bool(deletion_complete)
         self.backend = str(backend)
         self.boundary_calls = int(boundary_calls)
+        self.library_boundary_calls = int(library_boundary_calls)
         self.packed_input_bytes = int(packed_input_bytes)
         self.published_output_values = int(published_output_values)
         self.work_units = int(work_units)
@@ -2041,6 +2043,7 @@ class ResidentRelationHNFSelection:
             "deletion_complete": self.deletion_complete,
             "backend": self.backend,
             "boundary_calls": self.boundary_calls,
+            "library_boundary_calls": self.library_boundary_calls,
             "packed_input_bytes": self.packed_input_bytes,
             "published_output_values": self.published_output_values,
             "work_units": self.work_units,
@@ -2309,6 +2312,7 @@ def _python_resident_relation_hnf_selection(
             deletion_complete=True,
             backend="python",
             boundary_calls=0,
+            library_boundary_calls=0,
             packed_input_bytes=0,
             published_output_values=0,
             work_units=0,
@@ -2337,6 +2341,7 @@ def _python_resident_relation_hnf_selection(
     cursor = 0
     trials = 0
     deletion_backend = "flint"
+    flint_deletion_calls = 0
     while cursor < len(selected) and trials < maximum_trials:
         _resident_hnf_cancelled(cancelled)
         trial_indices = selected[:cursor] + selected[cursor + 1 :]
@@ -2358,6 +2363,8 @@ def _python_resident_relation_hnf_selection(
             )
             if trial_backend != "flint":
                 deletion_backend = "python"
+            else:
+                flint_deletion_calls += 1
         else:
             trial_hnf, _trial_left = _python_hnf_transform(trial_rows, columns)
             trial_basis = tuple(tuple(row) for row in trial_hnf if any(row))
@@ -2387,6 +2394,7 @@ def _python_resident_relation_hnf_selection(
             else "python"
         ),
         boundary_calls=0,
+        library_boundary_calls=flint_deletion_calls,
         packed_input_bytes=0,
         published_output_values=(
             len(basis) * columns + len(support) + len(selected) + 7
@@ -2627,6 +2635,7 @@ def resident_exact_relation_hnf_selection(
         deletion_complete=metadata[6] == 1,
         backend=reported_backend,
         boundary_calls=1,
+        library_boundary_calls=0,
         packed_input_bytes=row_entries * (4 + 8 * input_word_capacity),
         published_output_values=published_values,
         work_units=metadata[5],
