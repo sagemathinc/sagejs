@@ -845,12 +845,66 @@ assert ExactRelationCollector(O, split_base[:1]).admit_automorphism_orbit(
 cubic_orbit_plan = plan_automorphism_orbits(C, ())
 assert not cubic_orbit_plan.available
 assert cubic_orbit_plan.strategy == "independent-minkowski-relation-search"
-assert "generic field self-map API" in cubic_orbit_plan.reason
+assert "cyclic-cubic generator map" in cubic_orbit_plan.reason
 try:
     cubic_orbit_plan.derive(initial[0].record)
     raise AssertionError("unsupported automorphism orbits produced a relation")
 except NotImplementedError:
     pass
+
+# The hard cyclic cubic has square polynomial discriminant 25935^2.  The
+# exact root formula gives an order-three maximal-order automorphism and the
+# complete factor base is permuted in three-cycles.  One smooth parent and its
+# two derived images are independently admitted and detached-replayed.
+H = NumberField(x**3 - x**2 - 576*x - 1665, "h")
+HO = H.maximal_order()
+hard_factor_base = []
+for rational_prime in (3, 5, 7, 2, 13, 19):
+    hard_factor_base.extend(
+        HO.factor_rational_prime(rational_prime).prime_ideals()
+    )
+hard_factor_base = tuple(hard_factor_base)
+hard_plan = plan_automorphism_orbits(H, hard_factor_base)
+assert hard_plan.available and hard_plan.useful and hard_plan.verify()
+assert hard_plan.orbit_order == 3
+assert hard_plan.strategy == "cyclic-cubic-root-map-factor-base-permutation"
+assert hard_plan.permutation == (2, 0, 1, 5, 3, 4, 6, 7, 8, 9)
+assert AutomorphismOrbitPlan.from_dict(
+    H, hard_factor_base, hard_plan.to_dict()
+).to_dict() == hard_plan.to_dict()
+hard_generator = H.gen()
+first_generator_image = hard_plan.map_element(hard_generator)
+second_generator_image = hard_plan.map_element(first_generator_image)
+assert first_generator_image != hard_generator
+assert second_generator_image != hard_generator
+assert hard_plan.map_element(second_generator_image) == hard_generator
+for index, prime in enumerate(hard_factor_base):
+    assert hard_plan.map_ideal(prime) == hard_factor_base[
+        hard_plan.permutation[index]
+    ]
+
+hard_collector = ExactRelationCollector(HO, hard_factor_base)
+hard_parent = hard_collector.admit_witness(
+    hard_generator - 78,
+    provenance={"algorithm": "cyclic-cubic-orbit-parent-oracle"},
+)
+hard_first = hard_collector.admit_automorphism_orbit(
+    hard_parent, plan=hard_plan
+)
+hard_second = hard_collector.admit_automorphism_orbit(
+    hard_first, plan=hard_plan
+)
+assert hard_first is not None and hard_second is not None
+assert hard_parent.record.row == (0, 1, 2, 5, 1, 0, 0, 0, 0, 0)
+assert hard_first.record.row == (1, 2, 0, 1, 0, 5, 0, 0, 0, 0)
+assert hard_second.record.row == (2, 0, 1, 0, 5, 1, 0, 0, 0, 0)
+assert hard_plan.permute_row(hard_second.record.row) == hard_parent.record.row
+assert all(
+    RelationRecord.from_dict(record.to_dict()).verify(
+        HO, hard_factor_base
+    )["certified"]
+    for record in hard_collector.records
+)
 
 search_one = LLLRelationSearch(
     collector, seed=case["search_seed"], max_candidates_per_ideal=10
