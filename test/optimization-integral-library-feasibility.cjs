@@ -16,6 +16,10 @@ const runnerPath = join(
   root,
   "bench/optimization-engine/integral-library-feasibility.cjs",
 );
+const frozenEvidencePath = join(
+  root,
+  "test/fixtures/optimization-integral-library-evidence",
+);
 
 function currentPlatformId() {
   const operatingSystem = { win32: "windows", darwin: "macos" }[process.platform]
@@ -85,7 +89,13 @@ test("Windows output is a portable command contract, never an execution claim", 
 });
 
 test("exact Node execution exhausts guard, native, and interrupt schedules", () => {
-  const result = run(["node", "--require-execution", "--require-frozen-evidence"]);
+  const result = run([
+    "node",
+    "--require-execution",
+    "--require-frozen-evidence",
+    "--frozen-evidence-dir",
+    frozenEvidencePath,
+  ]);
   assert.equal(result.status, 0, result.stderr);
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.status, "passed");
