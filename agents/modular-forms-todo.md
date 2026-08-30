@@ -1,5 +1,7 @@
 # Modular forms roadmap and completion checklist
 
+![Abstract landscape of modular-form algorithms and spaces](assets/modular-forms-landscape.png)
+
 ## Purpose
 
 This file is the durable capability checklist for modular forms in Sage.js.
