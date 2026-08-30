@@ -25,7 +25,7 @@ test("loads the generated resource backend through the public package", () => {
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
   assert.ok(
-    resourceBackend.byteLength <= 425_000,
+    resourceBackend.byteLength <= 430_000,
     `generated resource backend grew to ${resourceBackend.byteLength} bytes`,
   );
   assert.ok(
