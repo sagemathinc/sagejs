@@ -72,7 +72,7 @@ jobs:
           node packages/flint-wasm/test/browser-wasm-node-parity.cjs \
             --tier release --receipt build/wasm-node-oracle.json
           node bench/browser-wasm-performance.mjs \
-            --runtime node-native --samples 3 \
+            --runtime node-native --samples 7 \
             --budget bench/browser-wasm-budget.json \
             --require-baseline \
             --output build/wasm-performance-node-native.json
