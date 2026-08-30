@@ -163,6 +163,7 @@
     "src/lib/sagejs/hyperelliptic_curves/torsion.py",
     "src/lib/sagejs/hyperelliptic_curves/twists.py",
     "src/lib/sagejs/modular_forms/__init__.py",
+    "src/lib/sagejs/modular_forms/half_integral.py",
     "src/lib/sagejs/modular_forms/newforms.py",
     "src/lib/sagejs/modular_forms/qexp.py",
     "src/lib/sagejs/modular_forms/algebraic.py",

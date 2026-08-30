@@ -11,6 +11,20 @@ NewOldDecompositionCertificate: Any
 NewformCertificate: Any
 NormalizedNewform: Any
 OldModularFormsSubspace: Any
+UnaryThetaSeriesCertificate: Any
+CohenEisensteinSeriesCertificate: Any
+HalfIntegralWeightBasisCertificate: Any
+HalfIntegralWeightModularFormsSpace: Any
+HalfIntegralWeightModularForms: Any
+cohen_eisenstein_series_certificate: Any
+cohen_eisenstein_series_qexp: Any
+half_integral_formula_registry: Any
+half_integral_weight_hecke_qexp: Any
+half_integral_weight_modform_basis: Any
+theta2_qexp: Any
+theta2_qexp_certificate: Any
+theta_qexp: Any
+theta_qexp_certificate: Any
 delta_form: Any
 delta_qexp: Any
 level_one_basis_certificate: Any
@@ -77,6 +91,23 @@ _QEXP_EXPORTS = [
     "victor_miller_basis",
 ]
 
+_HALF_INTEGRAL_EXPORTS = [
+    "UnaryThetaSeriesCertificate",
+    "CohenEisensteinSeriesCertificate",
+    "HalfIntegralWeightBasisCertificate",
+    "HalfIntegralWeightModularFormsSpace",
+    "HalfIntegralWeightModularForms",
+    "cohen_eisenstein_series_certificate",
+    "cohen_eisenstein_series_qexp",
+    "half_integral_formula_registry",
+    "half_integral_weight_hecke_qexp",
+    "half_integral_weight_modform_basis",
+    "theta2_qexp",
+    "theta2_qexp_certificate",
+    "theta_qexp",
+    "theta_qexp_certificate",
+]
+
 __all__ = [
     "ExactModularForm",
     "LevelOneBasisCertificate",
@@ -89,6 +120,20 @@ __all__ = [
     "delta_qexp",
     "level_one_basis_certificate",
     "victor_miller_basis",
+    "UnaryThetaSeriesCertificate",
+    "CohenEisensteinSeriesCertificate",
+    "HalfIntegralWeightBasisCertificate",
+    "HalfIntegralWeightModularFormsSpace",
+    "HalfIntegralWeightModularForms",
+    "cohen_eisenstein_series_certificate",
+    "cohen_eisenstein_series_qexp",
+    "half_integral_formula_registry",
+    "half_integral_weight_hecke_qexp",
+    "half_integral_weight_modform_basis",
+    "theta2_qexp",
+    "theta2_qexp_certificate",
+    "theta_qexp",
+    "theta_qexp_certificate",
     "SparseHeckeOperator",
     "SparseCharacteristicPolynomialCertificate",
     "SparseWiedemannCertificate",
@@ -157,6 +202,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import qexp
 
         return getattr(qexp, name)
+    if name in _HALF_INTEGRAL_EXPORTS:
+        from . import half_integral
+
+        return getattr(half_integral, name)
     if name in ["FiniteHeckeSet", "SupersingularFiniteHeckeSet", "finite_hecke_set"]:
         from . import finite_hecke
 

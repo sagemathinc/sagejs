@@ -12,6 +12,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 _qexp_module_cache = runtime.undefined
+_half_integral_module_cache = runtime.undefined
 _supersingular_module_cache = runtime.undefined
 
 
@@ -24,6 +25,17 @@ def _qexp_module() -> Any:
             fromlist=["ExactModularForm"],
         )
     return _qexp_module_cache
+
+
+def _half_integral_module() -> Any:
+    """Load certified half-integral-weight arithmetic lazily."""
+    global _half_integral_module_cache
+    if _half_integral_module_cache is runtime.undefined:
+        _half_integral_module_cache = __import__(
+            "sagejs.modular_forms.half_integral",
+            fromlist=["HalfIntegralWeightModularForms"],
+        )
+    return _half_integral_module_cache
 
 
 def _supersingular_module() -> Any:
@@ -678,6 +690,130 @@ def eisenstein_series_qexp(
     for coefficient in reversed(coefficients):
         result = result * generator + coefficient_ring(coefficient)
     return result.add_bigoh(precision)
+
+
+def theta_qexp(
+    prec: Any = 20,
+    K: Any = None,
+    variable: str = "q",
+    **opts: Any,
+) -> Any:
+    r"""Return the exact unary theta series $\sum_{n\in\ZZ}q^{n^2}$."""
+    return _half_integral_module().theta_qexp(prec, K, variable, **opts)
+
+
+def theta2_qexp(
+    prec: Any = 20,
+    K: Any = None,
+    variable: str = "q",
+    **opts: Any,
+) -> Any:
+    r"""Return $\sum_{n>0,\ n\text{ odd}}q^{n^2}$ exactly."""
+    return _half_integral_module().theta2_qexp(prec, K, variable, **opts)
+
+
+def theta_qexp_certificate(
+    prec: Any = 20,
+    K: Any = None,
+    variable: str = "q",
+    **opts: Any,
+) -> Any:
+    """Return the replayable standard-theta coefficient certificate."""
+    return _half_integral_module().theta_qexp_certificate(
+        prec,
+        K,
+        variable,
+        **opts,
+    )
+
+
+def theta2_qexp_certificate(
+    prec: Any = 20,
+    K: Any = None,
+    variable: str = "q",
+    **opts: Any,
+) -> Any:
+    """Return the replayable odd-square theta coefficient certificate."""
+    return _half_integral_module().theta2_qexp_certificate(
+        prec,
+        K,
+        variable,
+        **opts,
+    )
+
+
+def cohen_eisenstein_series_qexp(
+    r: Any,
+    prec: Any = 20,
+    variable: str = "q",
+    normalization: str = "cohen",
+    **opts: Any,
+) -> Any:
+    r"""Return Cohen's exact Eisenstein series of weight $r+\tfrac12$."""
+    return _half_integral_module().cohen_eisenstein_series_qexp(
+        r,
+        prec,
+        variable,
+        normalization,
+        **opts,
+    )
+
+
+def cohen_eisenstein_series_certificate(
+    r: Any,
+    prec: Any = 20,
+    variable: str = "q",
+    **opts: Any,
+) -> Any:
+    """Return the replayable Cohen coefficient-formula certificate."""
+    return _half_integral_module().cohen_eisenstein_series_certificate(
+        r,
+        prec,
+        variable,
+        **opts,
+    )
+
+
+def HalfIntegralWeightModularForms(
+    chi: Any,
+    k: Any,
+    prec: Any = 10,
+) -> Any:
+    r"""Construct the certified cusp space $S_{k/2}(\Gamma_0(N),\chi)$."""
+    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)
+
+
+def half_integral_weight_modform_basis(
+    chi: Any,
+    k: Any,
+    prec: Any,
+) -> list[Any]:
+    """Return Sage-compatible Basmaji half-integral cusp expansions."""
+    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)
+
+
+def half_integral_weight_hecke_qexp(
+    series: Any,
+    k: Any,
+    p: Any,
+    chi: Any = None,
+    prec: Any = None,
+    variable: str = "q",
+) -> Any:
+    r"""Apply $T_{p^2}$ using Shimura's exact coefficient formula."""
+    return _half_integral_module().half_integral_weight_hecke_qexp(
+        series,
+        k,
+        p,
+        chi,
+        prec,
+        variable,
+    )
+
+
+def half_integral_formula_registry() -> Any:
+    """Return the bounded, certificate-bearing half-integral formula registry."""
+    return _half_integral_module().half_integral_formula_registry()
 
 
 def delta_qexp(
@@ -4332,7 +4468,21 @@ class ModularSymbolsSpace(sage.Parent):
             else:
                 previous = prime_matrix**0
                 current = prime_matrix
-                recurrence_coefficient = ambient._character(p) * (
+                character_value = ambient._character(p)
+                if ambient.base_ring() is sage.QQ:
+                    if character_value.is_zero():
+                        character_value = sage.QQ(0)
+                    elif character_value.is_one():
+                        character_value = sage.QQ(1)
+                    elif (-character_value).is_one():
+                        character_value = sage.QQ(-1)
+                    else:
+                        raise ArithmeticError(
+                            "a rational character produced a nonrational value"
+                        )
+                else:
+                    character_value = ambient.base_ring()(character_value)
+                recurrence_coefficient = character_value * (
                     sage.ZZ(p) ** (ambient.weight() - 1)
                 )
                 for _power in range(2, e + 1):
@@ -5659,6 +5809,86 @@ runtime.register_doc(
     victor_miller_basis,
     _level_one_qexp_doc(["Victor Miller basis", "cusp forms"]),
 )
+
+_half_integral_doc = {
+    "kind": "function",
+    "module": "sage.modular.modform.half_integral",
+    "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds",
+    ],
+    "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas",
+    ],
+    "sage_compatibility": {
+        "status": "compatible",
+        "notes": (
+            "The Basmaji constructor accepts odd k at least three and a "
+            "Dirichlet character whose modulus is divisible by 16. Unlike "
+            "SageMath's historical function, it automatically raises the "
+            "working precision past a proof bound and returns a replayable "
+            "certificate."
+        ),
+    },
+    "provenance": [
+        {
+            "kind": "literature-derived",
+            "source": "Basmaji, Essen thesis, page 55",
+            "url": (
+                "https://web.archive.org/web/20160905111513/"
+                "http://wstein.org/scans/papers/basmaji/thesis_of_basmaji.dvi"
+            ),
+        },
+        {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": (
+                "https://github.com/sagemath/sage/blob/develop/"
+                "src/sage/modular/modform/half_integral.py"
+            ),
+            "license": "GPL-2.0-or-later",
+        },
+        {
+            "kind": "literature-derived",
+            "source": "Cohen's half-integral-weight Eisenstein coefficient formula",
+        },
+        {
+            "kind": "sagejs-original",
+            "source": (
+                "Half-integral Sturm certification, replayable formula "
+                "certificates, and exact T_(p^2) matrix recovery"
+            ),
+        },
+    ],
+    "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work.",
+    ],
+}
+for _half_integral_name, _half_integral_function in [
+    ("theta_qexp", theta_qexp),
+    ("theta2_qexp", theta2_qexp),
+    ("theta_qexp_certificate", theta_qexp_certificate),
+    ("theta2_qexp_certificate", theta2_qexp_certificate),
+    ("cohen_eisenstein_series_qexp", cohen_eisenstein_series_qexp),
+    ("cohen_eisenstein_series_certificate", cohen_eisenstein_series_certificate),
+    ("HalfIntegralWeightModularForms", HalfIntegralWeightModularForms),
+    ("half_integral_weight_modform_basis", half_integral_weight_modform_basis),
+    ("half_integral_weight_hecke_qexp", half_integral_weight_hecke_qexp),
+    ("half_integral_formula_registry", half_integral_formula_registry),
+]:
+    runtime.register_doc(
+        _half_integral_name,
+        _half_integral_function,
+        _half_integral_doc,
+    )
 runtime.register_doc(
     "ModularSymbols",
     ModularSymbols,
