@@ -50,6 +50,12 @@ MAX_RESIDENT_HNF_VALUES = 1_024
 MAX_RESIDENT_HNF_ENTRY_BITS = 4_096
 MAX_RESIDENT_HNF_DELETION_TRIALS = 64
 MAX_RESIDENT_HNF_WORK = 1_000_000
+# Native release evidence covers the three authentic cubic selection prefixes
+# in `test/number-field-class-group-resident-hnf.cjs`. Keep automatic dispatch
+# inside that demonstrated shape envelope; the ordinary exact implementation
+# remains the fail-closed path for larger relation workspaces.
+MAX_RESIDENT_HNF_NATIVE_ROWS = 29
+MAX_RESIDENT_HNF_NATIVE_COLUMNS = 10
 
 _presentation_replay_kernel_override: Any = None
 _presentation_forms_kernel_override: Any = None
@@ -2407,6 +2413,18 @@ def resident_exact_relation_hnf_selection(
     if maximum_bits > MAX_RESIDENT_HNF_ENTRY_BITS:
         raise RelationMatrixError("resident HNF entry exceeds its bit bound")
     bounded_trials = min(maximum_trials, len(candidates))
+    native_shape_qualified = (
+        row_count <= MAX_RESIDENT_HNF_NATIVE_ROWS
+        and columns <= MAX_RESIDENT_HNF_NATIVE_COLUMNS
+    )
+    if backend in ("auto", "native") and not native_shape_qualified:
+        if backend == "native":
+            raise RuntimeError(
+                "resident HNF native kernel is outside its qualified shape envelope"
+            )
+        return _python_resident_relation_hnf_selection(
+            initial, candidates, columns, bounded_trials, cancelled
+        )
     required_work = (
         row_count * row_entries
         + 2 * row_entries
@@ -2593,6 +2611,8 @@ __all__ = [
     "MAX_RESIDENT_HNF_COLUMNS",
     "MAX_RESIDENT_HNF_DELETION_TRIALS",
     "MAX_RESIDENT_HNF_ENTRY_BITS",
+    "MAX_RESIDENT_HNF_NATIVE_COLUMNS",
+    "MAX_RESIDENT_HNF_NATIVE_ROWS",
     "MAX_RESIDENT_HNF_ROWS",
     "MAX_RESIDENT_HNF_VALUES",
     "MAX_RESIDENT_HNF_WORK",

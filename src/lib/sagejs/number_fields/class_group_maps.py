@@ -2846,7 +2846,7 @@ class _EngineProofReplayContext:
             and (
                 accepted
                 or self._verify_conditional_evidence(
-                    self._conditional_evidence_payload, record, self.engine_group
+                    self._conditional_evidence_payload, record, presentation
                 )
             )
         )

@@ -47,7 +47,18 @@ function run(source, timeout = 120_000) {
       encoding: "utf8",
       timeout,
     });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(
+      result.status,
+      0,
+      [
+        result.stderr,
+        result.stdout,
+        result.error?.stack,
+        result.signal ? `terminated by ${result.signal}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
     return result.stdout.trim();
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -1159,17 +1170,19 @@ maps = __import__(
     "sagejs.number_fields.class_group_maps",
     fromlist=["class_group_from_engine_result"],
 )
-public_verify_calls = [0]
+interposed_verify_calls = [0]
 original_group_verify = maps.IdealClassGroup.verify
-def counted_public_verify(group):
-    public_verify_calls[0] += 1
+def interposed_public_verify(group):
+    interposed_verify_calls[0] += 1
     return original_group_verify(group)
-maps.IdealClassGroup.verify = counted_public_verify
+maps.IdealClassGroup.verify = interposed_public_verify
 try:
     group = class_group(K, proof=False)
 finally:
     maps.IdealClassGroup.verify = original_group_verify
-assert public_verify_calls[0] == 1
+# The standard adapter captures its exact verifier at module load.  An
+# interposed public method must stay cold while that one final replay runs.
+assert interposed_verify_calls[0] == 0
 assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
 assert result.class_number() == 3
 assert result.class_group().invariants() == (3,)
