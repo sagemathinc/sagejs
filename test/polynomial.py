@@ -90,3 +90,20 @@ assert repr(V.irreducible_components()) == (
     "  2*y^2 + 4*y + 3,\n"
     "  x + y + 2]"
 )
+
+# The generated-resource representation of extension-field polynomials uses
+# this same exact factorization path in native and WebAssembly runtimes.
+for extension_field in [GF(2**3, "b"), GF(3**2, "c")]:
+    generator = extension_field.gen()
+    extension_ring = PolynomialRing(extension_field, "z")
+    z = extension_ring.gen()
+    extension_polynomial = (z + generator) ** 3 * (z**2 + generator * z + generator + 1)
+    extension_factorization = extension_polynomial.factor()
+    assert extension_factorization.value() == extension_polynomial
+    assert all(
+        factor.is_irreducible() for factor, _multiplicity in extension_factorization
+    )
+    quotient, remainder = extension_polynomial.quo_rem((z + generator) ** 2)
+    assert quotient * (z + generator) ** 2 + remainder == extension_polynomial
+    assert remainder == 0
+    assert ((z + generator) ** 3).roots() == [(-generator, 3)]

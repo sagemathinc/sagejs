@@ -496,8 +496,8 @@ const numericSource = path.join(packageRoot, "src", "numeric.c");
 const numericExports = [...fs.readFileSync(numericSource, "utf8")
   .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (numericExports.length !== 34 || new Set(numericExports).size !== 34) {
-  throw new Error("the reviewed 34-function numeric Wasm export closure drifted");
+if (numericExports.length !== 35 || new Set(numericExports).size !== 35) {
+  throw new Error("the reviewed 35-function numeric Wasm export closure drifted");
 }
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(

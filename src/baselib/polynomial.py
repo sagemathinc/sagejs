@@ -249,6 +249,13 @@ def _flint_backend_has_function(name: str) -> bool:
     return runtime.jstype(candidate) == "function"
 
 
+def _flint_backend_call(name: str, values: list[Any]) -> Any:
+    """Call one optional FLINT capability after checking its presence."""
+    backend = runtime.flint_backend()
+    method = runtime.reflect.get(backend, name)
+    return runtime.reflect.apply(method, backend, values)
+
+
 def _arbitrary_prime_public_module() -> Any:
     """Load stable byte codecs for arbitrary-prime polynomial resources."""
     global _arbitrary_prime_public_module_cache
@@ -458,6 +465,17 @@ def _generated_extension_field_polynomial_roots(
         fromlist=["generated_extension_field_polynomial_roots"],
     )
     return module.generated_extension_field_polynomial_roots(polynomial)
+
+
+def _generated_extension_field_polynomial_factor(
+    polynomial: PolynomialElement,
+) -> tuple[list[list[Any]], Any]:
+    """Load portable extension-field factorization only when requested."""
+    module = __import__(
+        "sagejs.polynomial_algorithms.extension_field_factor",
+        fromlist=["generated_extension_field_polynomial_factor"],
+    )
+    return module.generated_extension_field_polynomial_factor(polynomial)
 
 
 def _integer_polynomial_quo_rem(
@@ -1945,7 +1963,7 @@ class PolynomialElement(sage.Element):
             raise ZeroDivisionError("division by zero polynomial")
         base = operands.parent.base_ring()
         kind = _packed_polynomial_kind(base)
-        if scalar_divisor and kind in ["ZZ", "QQ", "GF", "GF_ARB"]:
+        if scalar_divisor and kind in ["ZZ", "QQ", "GF", "GF_ARB", "GF_EXT"]:
             divisor = base(other)
             if kind == "ZZ" and left._has_fmpz_polynomial_resource():
                 return left._new(
@@ -2058,7 +2076,7 @@ class PolynomialElement(sage.Element):
                         return left._quo_rem_same_parent(right)[0]
                     else:
                         raise
-        if kind in ["GF", "GF_ARB"]:
+        if kind in ["GF", "GF_ARB", "GF_EXT"]:
             return left._quo_rem_same_parent(right)[0]
         if base._kind == "GF_EXTENSION":
             native_value = runtime.flint_backend().fqPolyDivExact(
@@ -2151,6 +2169,10 @@ class PolynomialElement(sage.Element):
             quotient, remainder = _field_polynomial_quo_rem(
                 self.coefficients(), other.coefficients(), base(0)
             )
+        elif kind == "GF_EXT" or base._kind == "GF_EXTENSION":
+            quotient, remainder = _field_polynomial_quo_rem(
+                self.coefficients(), other.coefficients(), base(0)
+            )
         elif kind == "GF":
             quotient_length = max(
                 0, self._coefficient_length() - other._coefficient_length() + 1
@@ -2203,7 +2225,7 @@ class PolynomialElement(sage.Element):
             )
         else:
             raise NotImplementedError(
-                "quotient and remainder are implemented for ZZ, QQ, and GF(p)"
+                "quotient and remainder are implemented over exact fields and ZZ"
             )
         return runtime.math_tuple(
             [
@@ -2776,7 +2798,12 @@ class PolynomialElement(sage.Element):
 
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == "GF_EXTENSION":
-            return runtime.flint_backend().fqPolyIsIrreducible(self._native)
+            if self.degree() <= 0:
+                return False
+            if _flint_backend_has_function("fqPolyIsIrreducible"):
+                return bool(_flint_backend_call("fqPolyIsIrreducible", [self._native]))
+            records, _unit = _generated_extension_field_polynomial_factor(self)
+            return len(records) == 1 and records[0][1] == 1
         if _packed_polynomial_kind(self._parent.base_ring()) == "GF_ARB":
             if self.degree() <= 0:
                 return False
@@ -2801,12 +2828,18 @@ class PolynomialElement(sage.Element):
         parent = self._parent
         base = parent.base_ring()
         if base._kind == "GF_EXTENSION":
-            result = runtime.flint_backend().fqPolyFactor(self._native)
-            factors = [
-                [parent._from_legacy_native(pair[0]), pair[1]]
-                for pair in result.factors
-            ]
-            unit = base._from_native(result.unit)
+            if _flint_backend_has_function("fqPolyFactor"):
+                native_result = _flint_backend_call("fqPolyFactor", [self._native])
+                native_factors = [
+                    [parent._from_legacy_native(pair[0]), pair[1]]
+                    for pair in native_result.factors
+                ]
+                native_unit = base._from_native(native_result.unit)
+                return sage.Factorization(
+                    native_factors, native_unit, False, True, False
+                )
+            result, unit = _generated_extension_field_polynomial_factor(self)
+            factors = [[parent._from_coefficients(pair[0]), pair[1]] for pair in result]
             return sage.Factorization(factors, unit, False, True, False)
 
         if base is sage.ZZ and self._has_fmpz_polynomial_resource():

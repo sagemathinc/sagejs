@@ -51,6 +51,25 @@ or use a generated FFI resource under the same public operation.
 - Explicit runtime observations for the portable routes, plus routine Chromium
   parity cases for all of the workflows above.
 
+The follow-up closure also adds:
+
+- Exact extension-field polynomial factorization, roots, irreducibility, and
+  quotient/remainder through ordinary CPython-parseable finite-field code,
+  while retaining the native resource fast path when it is installed.
+- Host-neutral exact polynomial truncation, shifts, inflation, low products,
+  truncated powers, valuations, inverse series, and exact division for the
+  integer, rational, and modular polynomial stores used by power series.
+- Approximate real/complex eigensystems through an Arb/Acb Wasm adapter, with
+  the same ordering and left/right eigenvector contract as native Sage.js.
+- Exact tracked cyclotomic expressions and Dirichlet Gauss sums, Jacobi sums,
+  generalized Bernoulli numbers, and root numbers without a Node-only QQbar
+  coordinate adapter.
+- Exact higher-weight and character Manin presentations. Real characters stay
+  rational end-to-end; non-real characters use the algebraic Wasm backend.
+- Public storage-independent implementations of matrix zero tests, stacking,
+  augmentation, and modular packing/unpacking.
+- A shared public corpus that runs unchanged under Node-Wasm and real Chromium.
+
 Changing the Wasm build recipe invalidated the frozen hyperelliptic automatic
 selection receipts. The policy is deliberately disabled until those receipts
 are regenerated; unmatched hyperelliptic work continues to use the exact
@@ -58,21 +77,18 @@ fallback.
 
 ## Remaining reviewed work
 
-The inventory deliberately remains nonempty. The main unresolved groups are:
+The inventory deliberately remains nonempty because it is a conservative
+same-name scan. Many listed names are guarded native fast paths whose public
+operation is now covered by the corpus above; for example, the `fqPoly*`,
+`fqMatrix`, `acbMatrix`, and `matrixApproxEigensystem` names remain visible in
+source without being required by the Wasm route.
 
-- advanced extension-field polynomial factorization, roots, irreducibility,
-  and exact division;
-- truncated/inverse power-series operations;
-- advanced approximate-matrix operations such as eigensystems;
-- exact cyclotomic and Dirichlet-character sums;
-- character and higher-weight modular-symbol presentations;
-- several matrix packing/augmentation helpers whose public callers need to be
-  checked for existing guarded resource paths.
-
-These must not be described as browser-supported merely because their native
-differential tests pass. Each group needs either a source-level exact fallback,
-a host-neutral shared core compiled into Wasm, or an explicit unavailable
-capability with a useful public error.
+The remaining distinct feature groups include cyclotomic matrix polynomial and
+kernel helpers, cyclotomic polynomial factorization, character Hecke matrices,
+higher-weight Hecke and degeneracy matrices, the older `ManinRelations`
+presentation API, Eisenstein-series construction, and the primitive-root fast
+path. Each needs its own public-workflow review before being claimed as browser
+portable.
 
 ## Release implication
 

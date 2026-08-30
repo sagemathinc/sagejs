@@ -124,6 +124,232 @@ function lcm(left, right) {
   return (left / gcd(left, right)) * right;
 }
 
+function rational(numerator, denominator = 1n) {
+  numerator = BigInt(numerator);
+  denominator = BigInt(denominator);
+  if (denominator === 0n) throw new RangeError("division by zero");
+  if (denominator < 0n) {
+    numerator = -numerator;
+    denominator = -denominator;
+  }
+  const divisor = gcd(numerator, denominator);
+  return Object.freeze({
+    numerator: numerator / divisor,
+    denominator: denominator / divisor,
+  });
+}
+
+const rationalZero = rational(0n);
+const rationalOne = rational(1n);
+
+function rationalAdd(left, right) {
+  return rational(
+    left.numerator * right.denominator + right.numerator * left.denominator,
+    left.denominator * right.denominator,
+  );
+}
+
+function rationalSub(left, right) {
+  return rational(
+    left.numerator * right.denominator - right.numerator * left.denominator,
+    left.denominator * right.denominator,
+  );
+}
+
+function rationalMul(left, right) {
+  return rational(
+    left.numerator * right.numerator,
+    left.denominator * right.denominator,
+  );
+}
+
+function rationalDiv(left, right) {
+  return rational(
+    left.numerator * right.denominator,
+    left.denominator * right.numerator,
+  );
+}
+
+function trimPolynomial(coefficients) {
+  while (coefficients.length > 0 && coefficients.at(-1).numerator === 0n) {
+    coefficients.pop();
+  }
+  return coefficients;
+}
+
+function polynomialAdd(left, right) {
+  const result = Array.from(
+    { length: Math.max(left.length, right.length) },
+    (_, index) => rationalAdd(
+      left[index] ?? rationalZero,
+      right[index] ?? rationalZero,
+    ),
+  );
+  return trimPolynomial(result);
+}
+
+function polynomialSub(left, right) {
+  const result = Array.from(
+    { length: Math.max(left.length, right.length) },
+    (_, index) => rationalSub(
+      left[index] ?? rationalZero,
+      right[index] ?? rationalZero,
+    ),
+  );
+  return trimPolynomial(result);
+}
+
+function polynomialMul(left, right) {
+  if (left.length === 0 || right.length === 0) return [];
+  const result = Array.from(
+    { length: left.length + right.length - 1 },
+    () => rationalZero,
+  );
+  for (let i = 0; i < left.length; i += 1) {
+    for (let j = 0; j < right.length; j += 1) {
+      result[i + j] = rationalAdd(
+        result[i + j], rationalMul(left[i], right[j]),
+      );
+    }
+  }
+  return trimPolynomial(result);
+}
+
+function polynomialDivmod(dividend, divisor) {
+  divisor = trimPolynomial([...divisor]);
+  if (divisor.length === 0) throw new RangeError("polynomial division by zero");
+  const remainder = trimPolynomial([...dividend]);
+  const quotient = Array.from(
+    { length: Math.max(0, remainder.length - divisor.length + 1) },
+    () => rationalZero,
+  );
+  while (remainder.length >= divisor.length) {
+    const shift = remainder.length - divisor.length;
+    const coefficient = rationalDiv(remainder.at(-1), divisor.at(-1));
+    quotient[shift] = coefficient;
+    for (let index = 0; index < divisor.length; index += 1) {
+      remainder[index + shift] = rationalSub(
+        remainder[index + shift], rationalMul(coefficient, divisor[index]),
+      );
+    }
+    trimPolynomial(remainder);
+  }
+  return [trimPolynomial(quotient), remainder];
+}
+
+const cyclotomicPolynomialCache = new Map();
+
+function cyclotomicPolynomial(order) {
+  order = Number(order);
+  if (!Number.isSafeInteger(order) || order < 1 || order > 4096) {
+    throw new RangeError(
+      "exact browser cyclotomic coordinates require order at most 4096",
+    );
+  }
+  const cached = cyclotomicPolynomialCache.get(order);
+  if (cached !== undefined) return cached;
+  let result = Array.from({ length: order + 1 }, () => rationalZero);
+  result[0] = rational(-1n);
+  result[order] = rationalOne;
+  for (let divisor = 1; divisor < order; divisor += 1) {
+    if (order % divisor !== 0) continue;
+    const [quotient, remainder] = polynomialDivmod(
+      result, cyclotomicPolynomial(divisor),
+    );
+    if (remainder.length !== 0) {
+      throw new Error("internal non-exact cyclotomic polynomial division");
+    }
+    result = quotient;
+  }
+  const frozen = Object.freeze(result);
+  cyclotomicPolynomialCache.set(order, frozen);
+  return frozen;
+}
+
+function reduceCyclotomic(coefficients, order) {
+  return polynomialDivmod(coefficients, cyclotomicPolynomial(order))[1];
+}
+
+function convertCyclotomic(expression, order) {
+  order = BigInt(order);
+  if (order % expression.order !== 0n) {
+    throw new TypeError("cyclotomic value does not lie in the requested field");
+  }
+  const stride = order / expression.order;
+  if (stride > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new RangeError("cyclotomic embedding exponent exceeds browser limits");
+  }
+  const expanded = [];
+  for (let index = 0; index < expression.coefficients.length; index += 1) {
+    expanded[index * Number(stride)] = expression.coefficients[index];
+  }
+  for (let index = 0; index < expanded.length; index += 1) {
+    expanded[index] ??= rationalZero;
+  }
+  return Object.freeze({
+    order,
+    coefficients: Object.freeze(reduceCyclotomic(expanded, order)),
+  });
+}
+
+function cyclotomicBinary(name, left, right) {
+  if (left === undefined || right === undefined) return undefined;
+  const order = lcm(left.order, right.order);
+  const leftCoefficients = convertCyclotomic(left, order).coefficients;
+  const rightCoefficients = convertCyclotomic(right, order).coefficients;
+  let coefficients;
+  if (name === "add") coefficients = polynomialAdd(leftCoefficients, rightCoefficients);
+  else if (name === "sub") coefficients = polynomialSub(leftCoefficients, rightCoefficients);
+  else if (name === "mul") coefficients = polynomialMul(leftCoefficients, rightCoefficients);
+  else if (name === "div") {
+    let oldRemainder = cyclotomicPolynomial(order);
+    let remainder = [...rightCoefficients];
+    let oldCoefficient = [];
+    let coefficient = [rationalOne];
+    while (remainder.length !== 0) {
+      const [quotient, nextRemainder] = polynomialDivmod(oldRemainder, remainder);
+      [oldRemainder, remainder] = [remainder, nextRemainder];
+      [oldCoefficient, coefficient] = [
+        coefficient,
+        polynomialSub(oldCoefficient, polynomialMul(quotient, coefficient)),
+      ];
+    }
+    if (oldRemainder.length !== 1 || oldRemainder[0].numerator === 0n) {
+      throw new RangeError("cyclotomic division by zero");
+    }
+    const scale = rationalDiv(rationalOne, oldRemainder[0]);
+    const inverse = oldCoefficient.map((value) => rationalMul(value, scale));
+    coefficients = polynomialMul(leftCoefficients, inverse);
+  } else {
+    throw new Error(`unknown cyclotomic operation ${name}`);
+  }
+  return Object.freeze({
+    order,
+    coefficients: Object.freeze(reduceCyclotomic(coefficients, order)),
+  });
+}
+
+function cyclotomicPower(expression, exponent) {
+  if (expression === undefined) return undefined;
+  exponent = BigInt(exponent);
+  let base = expression;
+  if (exponent < 0n) {
+    base = cyclotomicBinary(
+      "div",
+      { order: 1n, coefficients: [rationalOne] },
+      base,
+    );
+    exponent = -exponent;
+  }
+  let result = Object.freeze({ order: 1n, coefficients: [rationalOne] });
+  while (exponent !== 0n) {
+    if ((exponent & 1n) !== 0n) result = cyclotomicBinary("mul", result, base);
+    exponent >>= 1n;
+    if (exponent !== 0n) base = cyclotomicBinary("mul", base, base);
+  }
+  return result;
+}
+
 function integralPolynomialCoefficients(polynomial) {
   const coefficients = Array.isArray(polynomial)
     ? polynomial
@@ -258,6 +484,7 @@ export function createAlgebraicBackend(instance, {
   const maximumCachedValues = 256;
   const maximumCachedMatrices = 32;
   const liveObjects = new WeakMap();
+  const cyclotomicExpressions = new WeakMap();
   const liveMatrices = new WeakMap();
   const activeValues = new Set();
   const activeMatrices = new Set();
@@ -357,10 +584,13 @@ export function createAlgebraicBackend(instance, {
     pruneValues(protectedStates);
   }
 
-  function native(handle) {
+  function native(handle, cyclotomicExpression = undefined) {
     const object = Object.create(null);
     const state = { handle: handle >>> 0, snapshot: undefined };
     liveObjects.set(object, state);
+    if (cyclotomicExpression !== undefined) {
+      cyclotomicExpressions.set(object, cyclotomicExpression);
+    }
     activeValues.add(state);
     finalizer?.register(object, state, object);
     pruneValues(new Set([state]));
@@ -586,9 +816,12 @@ export function createAlgebraicBackend(instance, {
     );
   }
 
-  function resultNative(status, operation) {
+  function resultNative(status, operation, cyclotomicExpression = undefined) {
     check(status, operation);
-    return native(wasm.sagejs_wasm_algebraic_result_handle() >>> 0);
+    return native(
+      wasm.sagejs_wasm_algebraic_result_handle() >>> 0,
+      cyclotomicExpression,
+    );
   }
 
   function packedCall(name, values, ...arguments_) {
@@ -600,10 +833,11 @@ export function createAlgebraicBackend(instance, {
     );
   }
 
-  function unary(name, value) {
+  function unary(name, value, cyclotomicExpression = undefined) {
     return resultNative(
       wasm.sagejs_wasm_algebraic_unary(UNARY[name], handleOf(value)),
       `qqbar ${name}`,
+      cyclotomicExpression,
     );
   }
 
@@ -613,6 +847,11 @@ export function createAlgebraicBackend(instance, {
         BINARY[name], handleOf(left), handleOf(right),
       ),
       `qqbar ${name}`,
+      cyclotomicBinary(
+        name,
+        cyclotomicExpressions.get(left),
+        cyclotomicExpressions.get(right),
+      ),
     );
   }
 
@@ -652,10 +891,22 @@ export function createAlgebraicBackend(instance, {
 
   const backend = {
     qqbarFromRational(numerator, denominator) {
-      return packedCall("from_rational", [numerator, denominator]);
+      const value = packedCall("from_rational", [numerator, denominator]);
+      cyclotomicExpressions.set(value, Object.freeze({
+        order: 1n,
+        coefficients: Object.freeze([rational(numerator, denominator)]),
+      }));
+      return value;
     },
     qqbarI() {
-      return resultNative(wasm.sagejs_wasm_algebraic_i(), "qqbar I");
+      return resultNative(
+        wasm.sagejs_wasm_algebraic_i(),
+        "qqbar I",
+        Object.freeze({
+          order: 4n,
+          coefficients: Object.freeze([rationalZero, rationalOne]),
+        }),
+      );
     },
     qqbarRootOfUnity(exponent, order) {
       exponent = BigInt(exponent);
@@ -667,25 +918,79 @@ export function createAlgebraicBackend(instance, {
       }
       exponent %= order;
       if (exponent < 0n) exponent += order;
+      const expression = order <= 4096n
+        ? Object.freeze({
+            order,
+            coefficients: Object.freeze(reduceCyclotomic(
+              Array.from(
+                { length: Number(exponent) + 1 },
+                (_, index) => index === Number(exponent)
+                  ? rationalOne
+                  : rationalZero,
+              ),
+              order,
+            )),
+          })
+        : undefined;
       return resultNative(
         wasm.sagejs_wasm_algebraic_root_of_unity(
           Number(exponent), Number(order),
         ),
         "qqbar root of unity",
+        expression,
       );
     },
     qqbarAdd(left, right) { return binary("add", left, right); },
     qqbarSub(left, right) { return binary("sub", left, right); },
     qqbarMul(left, right) { return binary("mul", left, right); },
     qqbarDiv(left, right) { return binary("div", left, right); },
-    qqbarNeg(value) { return unary("neg", value); },
+    qqbarNeg(value) {
+      const expression = cyclotomicExpressions.get(value);
+      return unary(
+        "neg",
+        value,
+        expression === undefined ? undefined : Object.freeze({
+          order: expression.order,
+          coefficients: Object.freeze(
+            expression.coefficients.map((coefficient) =>
+              rational(-coefficient.numerator, coefficient.denominator)),
+          ),
+        }),
+      );
+    },
     qqbarSqrt(value) { return unary("sqrt", value); },
     qqbarReal(value) { return unary("real", value); },
     qqbarImag(value) { return unary("imag", value); },
-    qqbarConjugate(value) { return unary("conjugate", value); },
+    qqbarConjugate(value) {
+      const expression = cyclotomicExpressions.get(value);
+      let conjugate;
+      if (expression !== undefined) {
+        conjugate = Object.freeze({ order: 1n, coefficients: Object.freeze([]) });
+        for (let index = 0; index < expression.coefficients.length; index += 1) {
+          const coefficient = expression.coefficients[index];
+          if (coefficient.numerator === 0n) continue;
+          const exponent = index === 0 ? 0 : Number(expression.order) - index;
+          const monomial = Array.from(
+            { length: exponent + 1 },
+            (_, position) => position === exponent ? coefficient : rationalZero,
+          );
+          conjugate = cyclotomicBinary(
+            "add",
+            conjugate,
+            { order: expression.order, coefficients: monomial },
+          );
+        }
+      }
+      return unary("conjugate", value, conjugate);
+    },
     qqbarAbs(value) { return unary("abs", value); },
     qqbarPow(value, exponent) {
-      return packedCall("pow", [exponent], handleOf(value));
+      const result = packedCall("pow", [exponent], handleOf(value));
+      const expression = cyclotomicPower(
+        cyclotomicExpressions.get(value), exponent,
+      );
+      if (expression !== undefined) cyclotomicExpressions.set(result, expression);
+      return result;
     },
     qqbarPowRational(value, numerator, denominator) {
       return packedCall(
@@ -713,6 +1018,28 @@ export function createAlgebraicBackend(instance, {
     qqbarDegree(value) { return property("degree", value); },
     qqbarMinpolyCoefficients(value) {
       return unpackExactIntegers(encodedOutput("minpoly", value));
+    },
+    cyclotomicElementCoefficients(value, order) {
+      order = BigInt(order);
+      if (order < 1n || order > 0xffff_ffffn) {
+        throw new RangeError("cyclotomic order must be between 1 and 2^32-1");
+      }
+      const expression = cyclotomicExpressions.get(value);
+      if (expression === undefined) {
+        throw new TypeError(
+          "exact browser cyclotomic coordinates require an expression built " +
+          "from rationals and roots of unity",
+        );
+      }
+      const result = convertCyclotomic(expression, order).coefficients.map(
+        (coefficient) => [coefficient.numerator, coefficient.denominator],
+      );
+      recordCapability(
+        "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
+        "shared-runtime-js",
+        { executionTarget: "host-js", ingressBytes: 8 },
+      );
+      return result;
     },
     qqbarToString(value, digits = 16) {
       return decoder.decode(encodedOutput("format", value, digits));
