@@ -66,9 +66,9 @@ classical API.
 
 - [x] Slice 1: exact modular-form expansion metadata and arithmetic, followed
   by $E_4$, $E_6$, $\Delta$, and certified level-$1$ bases.
-- [ ] Slice 2: general $\Gamma_0$ trivial-character cusp bases from modular
+- [x] Slice 2: general $\Gamma_0$ trivial-character cusp bases from modular
   symbols, beginning with weight $2$ and then arbitrary $k\geq2$.
-- [ ] Slice 3: one shared public `q_expansion_basis(..., algorithm=...)` API and
+- [x] Slice 3: one shared public `q_expansion_basis(..., algorithm=...)` API and
   exact P0A/P0B span comparison on their overlap.
 - [ ] Slice 4: coefficient fields, normalized newforms, and composite-level
   old/new spaces.
@@ -79,29 +79,29 @@ classical API.
 
 ### Outcome
 
-- [ ] For every modular-symbol space in the declared P0A domain, construct an
+- [x] For every modular-symbol space in the declared P0A domain, construct an
   exact basis of cusp-form $q$-expansions to caller-selected precision.
-- [ ] For every formula-generated space in the declared P0B domain, construct
+- [x] For every formula-generated space in the declared P0B domain, construct
   an exact basis or certified subspace using known forms and $q$-expansion
   arithmetic.
 - [ ] Reconstruct normalized newforms and their coefficient fields from exact
   simple Hecke constituents.
-- [ ] Expose the result through the ordinary Sage-compatible `ModularForms`
+- [x] Expose the result through the ordinary Sage-compatible `ModularForms`
   and `ModularSymbols` APIs rather than only through Brandt-specific packet
   objects.
 - [ ] Expose explicit `modular_symbols`, `formulas`, and receipt-backed `auto`
   algorithm choices where both routes make sense.
-- [ ] Prove each returned basis, subspace, or normalized eigenform correct
+- [x] Prove each returned basis or subspace correct
   through an appropriate dimension theorem, Sturm bound, or equally explicit
-  certificate.
+  certificate. Normalized eigenform reconstruction remains Slice 4.
 
 ### Initial mathematical domain
 
-- [ ] $\Gamma_0(N)$ with trivial character, $k\geq2$, over $\QQ$.
-- [ ] All signs of the corresponding modular-symbol spaces, with documented
+- [x] $\Gamma_0(N)$ with trivial character, $k\geq2$, over $\QQ$.
+- [x] All signs of the corresponding modular-symbol spaces, with documented
   handling of the common modular-form image of the sign spaces.
 - [ ] Ambient cuspidal, new, old, and simple Hecke subspaces.
-- [ ] Composite levels, including repeated prime factors and bad-prime
+- [x] Composite levels, including repeated prime factors and bad-prime
   operators.
 - [ ] Dirichlet-character spaces over their exact cyclotomic value fields.
 - [ ] $\Gamma_1(N)$ via its exact character decomposition or an equally
@@ -111,15 +111,15 @@ classical API.
 
 ### P0A: reconstruction from modular symbols
 
-- [ ] Specify the exact modular-symbol/form duality and row/column conventions
+- [x] Specify the exact modular-symbol/form duality and row/column conventions
   used to turn Hecke actions into coefficient functionals.
-- [ ] Construct $a_n$ as exact linear functionals for every
+- [x] Construct $a_n$ as exact linear functionals for every
   $1\leq n\leq B$, where $B$ is the relevant Sturm bound.
-- [ ] Produce a canonical row-reduced cusp basis with deterministic ordering
+- [x] Produce a canonical row-reduced cusp basis with deterministic ordering
   and normalization.
-- [ ] Extend coefficients beyond the Sturm bound using exact Hecke actions,
+- [x] Extend coefficients beyond the Sturm bound using exact Hecke actions,
   multiplicativity, and prime-power recurrences where valid.
-- [ ] Handle $U_p$ coefficients at primes dividing the level without applying
+- [x] Handle $U_p$ coefficients at primes dividing the level without applying
   a good-prime recurrence incorrectly.
 - [ ] Construct coefficient fields from irreducible Hecke factors using exact
   defining polynomials and deterministic embeddings of Hecke eigenvalues.
@@ -129,12 +129,15 @@ classical API.
   be certified.
 - [ ] Detect and represent Galois-conjugate forms without choosing numerical
   roots prematurely.
-- [ ] Preserve integral coefficients or a coefficient order when the exact
+- [x] Preserve integral coefficients or a coefficient order when the exact
   Hecke data proves one, rather than needlessly publishing only a fraction
   field.
-- [ ] Cache Hecke matrices, coefficient functionals, decompositions, and
+- [x] Cache Hecke matrices and use their authenticated parent identity;
+  coefficient-functional, decomposition, and newform caches remain part of
+  later slices.
+- [ ] Cache coefficient functionals, decompositions, and
   reconstructed coefficients with authenticated parent/space identity.
-- [ ] Keep construction transactional: cancellation or failure must not
+- [x] Keep construction transactional: cancellation or failure must not
   publish a partial basis or poison a cache.
 
 ### P0B: construction from formulas and $q$-expansion arithmetic
@@ -215,9 +218,9 @@ many coefficients and an independently known dimension.
 
 ### P0A/P0B interaction
 
-- [ ] Treat the two engines as independent implementations: neither may use
+- [x] Treat the two engines as independent implementations: neither may use
   the other's returned basis as its internal proof of correctness.
-- [ ] On overlapping integral-weight spaces, compare their exact spans through
+- [x] On overlapping integral-weight spaces, compare their exact spans through
   the Sturm bound after canonical coefficient-field coercion.
 - [ ] Use modular symbols to identify missing cusp directions when a formula
   candidate family spans only a proper subspace, while retaining that honest

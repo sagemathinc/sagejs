@@ -663,12 +663,14 @@ def _eisenstein_basis_qexp(
     base_ring: Any,
     index: int,
     precision: int,
+    variable: str = "q",
 ) -> Any:
     if level == 1:
         return eisenstein_series_qexp(
             weight,
             precision,
             base_ring,
+            variable,
             normalization="constant",
         )
     if weight == 2:
@@ -676,6 +678,7 @@ def _eisenstein_basis_qexp(
             2,
             precision,
             base_ring,
+            variable,
             normalization="constant",
         )
         short_precision = 0 if precision == 0 else (precision - 1) // level + 1
@@ -684,6 +687,7 @@ def _eisenstein_basis_qexp(
                 2,
                 short_precision,
                 base_ring,
+                variable,
                 normalization="constant",
             ),
             level,
@@ -697,6 +701,7 @@ def _eisenstein_basis_qexp(
             weight,
             short_precision,
             base_ring,
+            variable,
             normalization="constant",
         ),
         level,
@@ -708,6 +713,7 @@ def _eisenstein_basis_qexp(
         weight,
         precision,
         base_ring,
+        variable,
         normalization="linear",
     )
     bernoulli_number = runtime.reflect.get(runtime.global_object, "bernoulli")
@@ -852,6 +858,7 @@ class ModularFormsSubspace(sage.Parent):
         self._ambient = ambient
         self._subspace_kind = kind
         self._dimension = dimension
+        self._modular_symbols_cusp_space_cache = None
 
     def ambient_space(self) -> ModularFormsSpace:
         return self._ambient
@@ -873,6 +880,14 @@ class ModularFormsSubspace(sage.Parent):
     def base_ring(self) -> Any:
         return self._ambient.base_ring()
 
+    def precision(self) -> int:
+        return self._ambient.precision()
+
+    prec = precision
+
+    def sturm_bound(self) -> int:
+        return self._ambient.sturm_bound()
+
     def _require_level_one_cuspidal_basis(self) -> None:
         if self._subspace_kind != "Cuspidal":
             raise NotImplementedError(
@@ -883,6 +898,24 @@ class ModularFormsSubspace(sage.Parent):
             raise NotImplementedError(
                 "Victor Miller cusp bases currently require level one over QQ"
             )
+
+    def _modular_symbols_cusp_space(self) -> Any:
+        if self._subspace_kind != "Cuspidal":
+            raise NotImplementedError(
+                "modular-symbol q-expansions require a cuspidal subspace"
+            )
+        if self.group()._family != "Gamma0" or self.base_ring() is not sage.QQ:
+            raise NotImplementedError(
+                "modular-symbol q-expansions currently require Gamma0 over QQ"
+            )
+        if self._modular_symbols_cusp_space_cache is None:
+            self._modular_symbols_cusp_space_cache = ModularSymbols(
+                self.level(),
+                self.weight(),
+                1,
+                self.base_ring(),
+            ).cuspidal_submodule()
+        return self._modular_symbols_cusp_space_cache
 
     def basis_certificate(self, prec: Any = None) -> Any:
         """Return the verified Victor Miller certificate for this cusp space."""
@@ -895,9 +928,82 @@ class ModularFormsSubspace(sage.Parent):
 
     gens = basis
 
-    def q_expansion_basis(self, prec: Any = None) -> list[Any]:
-        """Return the cuspidal Victor Miller basis as integral power series."""
-        return self.basis_certificate(prec).q_expansion_basis(prec)
+    def q_expansion_basis(
+        self,
+        prec: Any = None,
+        algorithm: str = "default",
+        variable: str = "q",
+        **opts: Any,
+    ) -> list[Any]:
+        r"""Return an exact echelon basis of cusp-form $q$-expansions."""
+        if "var" in opts:
+            variable = opts["var"]
+        if "ρσ_py_var" in opts:
+            variable = opts["ρσ_py_var"]
+        if algorithm == "default":
+            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
+        effective_precision = self.precision() if prec is None else prec
+        if algorithm == "formulas":
+            self._require_level_one_cuspidal_basis()
+            return _qexp_module().victor_miller_basis(
+                self.weight(),
+                effective_precision,
+                True,
+                variable,
+            )
+        if algorithm != "modular_symbols":
+            raise ValueError(
+                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
+            )
+        return self._modular_symbols_cusp_space().q_expansion_basis(
+            effective_precision,
+            "modular_symbols",
+            variable,
+            **opts,
+        )
+
+    def q_expansion_module(
+        self,
+        prec: Any = None,
+        R: Any = None,
+        algorithm: str = "default",
+    ) -> Any:
+        r"""Return the $QQ$-space or saturated $ZZ$-module of expansions."""
+        effective_precision = self.precision() if prec is None else prec
+        if algorithm == "default":
+            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
+        if algorithm == "formulas":
+            self._require_level_one_cuspidal_basis()
+            return _qexp_module().formula_q_expansion_module(
+                self.weight(),
+                effective_precision,
+                R,
+            )
+        if algorithm != "modular_symbols":
+            raise ValueError(
+                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
+            )
+        return self._modular_symbols_cusp_space().q_expansion_module(
+            effective_precision,
+            R,
+            "modular_symbols",
+        )
+
+    def q_expansion_basis_certificate(
+        self,
+        prec: Any = None,
+        algorithm: str = "default",
+    ) -> Any:
+        r"""Return a replayable formula or Hecke-dual basis certificate."""
+        if algorithm == "default":
+            algorithm = "formulas" if self.level() == 1 else "modular_symbols"
+        if algorithm == "formulas":
+            return self.basis_certificate(prec)
+        if algorithm != "modular_symbols":
+            raise ValueError(
+                "q-expansion algorithm must be 'formulas' or 'modular_symbols'"
+            )
+        return self._modular_symbols_cusp_space().q_expansion_basis_certificate(prec)
 
     def gen(self, index: Any = 0) -> Any:
         """Return the indexed exact cuspidal basis element."""
@@ -1015,8 +1121,20 @@ class EisensteinSubspace(ModularFormsSubspace):
 
     gens = basis
 
-    def q_expansion_basis(self, prec: Any = None) -> list[Any]:
+    def q_expansion_basis(
+        self,
+        prec: Any = None,
+        algorithm: str = "default",
+        variable: str = "q",
+        **opts: Any,
+    ) -> list[Any]:
         """Return the basis as power series to absolute precision `prec`."""
+        if "var" in opts:
+            variable = opts["var"]
+        if "ρσ_py_var" in opts:
+            variable = opts["ρσ_py_var"]
+        if algorithm not in ["default", "formulas"]:
+            raise ValueError("only the exact Eisenstein formula is available")
         if prec is None:
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, "precision")
@@ -1028,6 +1146,7 @@ class EisensteinSubspace(ModularFormsSubspace):
                 self.base_ring(),
                 index,
                 precision,
+                variable,
             )
             for index in range(self._dimension)
         ]
@@ -1069,6 +1188,21 @@ class ModularFormsSpace(sage.Parent):
 
     def base_ring(self) -> Any:
         return self._base
+
+    def sturm_bound(self) -> int:
+        r"""Return the q-expansion precision required by the Sturm bound.
+
+        For $\Gamma_0(N)$ this is one more than the usual coefficient
+        bound, since a series with precision $r$ contains coefficients only
+        through $q^{r-1}$:
+
+        $$
+        1+\left\lfloor \frac{k}{12}
+        [\mathrm{SL}_2(\ZZ):\Gamma_0(N)]\right\rfloor.
+        $$
+        """
+        numerator = self.weight() * self._group.index()
+        return numerator // 12 + 1
 
     def precision(self) -> int:
         """Return the default displayed q-expansion precision."""
@@ -1246,6 +1380,18 @@ def EisensteinForms(
     """
     ambient = ModularForms(group, weight, base_ring, use_cache, prec)
     return ambient.eisenstein_subspace()
+
+
+def CuspForms(
+    group: Any = 1,
+    weight: Any = 2,
+    base_ring: Any = None,
+    use_cache: bool = True,
+    prec: Any = 6,
+) -> ModularFormsSubspace:
+    r"""Construct the cuspidal subspace of `ModularForms(group, weight)`."""
+    ambient = ModularForms(group, weight, base_ring, use_cache, prec)
+    return ambient.cuspidal_subspace()
 
 
 class FormattedFactorization:
@@ -2959,6 +3105,9 @@ class ModularSymbolsSpace(sage.Parent):
         self._minus_cache = None
         self._new_submodule_cache = runtime.map()
         self._decomposition_cache = runtime.map()
+        self._q_expansion_signed_cusp_space_cache = None
+        self._q_expansion_data_cache = runtime.map()
+        self._q_expansion_basis_cache = runtime.map()
         if serialized_dimension is not None:
             self._dimension = _exact_nonnegative_integer(
                 serialized_dimension, "serialized dimension"
@@ -3098,6 +3247,10 @@ class ModularSymbolsSpace(sage.Parent):
 
     degree = dimension
 
+    def is_cuspidal(self) -> bool:
+        """Return whether this space is a cuspidal modular-symbol subspace."""
+        return self._is_cuspidal
+
     def level(self) -> int:
         if self._character is not None:
             return self._character.modulus()
@@ -3119,6 +3272,19 @@ class ModularSymbolsSpace(sage.Parent):
 
     def base_ring(self) -> Any:
         return self._base
+
+    def sturm_bound(self) -> int:
+        r"""Return the Sturm bound for the associated cusp forms.
+
+        For $\Gamma_0(N)$ this is
+
+        $$
+        \left\lfloor \frac{k}{12}
+        [\mathrm{SL}_2(\ZZ):\Gamma_0(N)]\right\rfloor.
+        $$
+        """
+        numerator = self.weight() * self._group.index()
+        return numerator // 12
 
     def diamond_bracket_matrix(self, value: Any) -> Any:
         """Return the scalar matrix of the diamond operator `<value>`."""
@@ -4165,8 +4331,36 @@ class ModularSymbolsSpace(sage.Parent):
 
     cuspidal_subspace = cuspidal_submodule
 
-    def q_expansion_basis(self, prec: Any = 6) -> list[Any]:
-        precision = _exact_nonnegative_integer(prec, "precision")
+    def q_expansion_basis(
+        self,
+        prec: Any = None,
+        algorithm: str = "default",
+        variable: str = "q",
+        **opts: Any,
+    ) -> list[Any]:
+        r"""Return an echelon basis of associated cusp-form expansions.
+
+        Trivial-character $\Gamma_0(N)$ spaces over $\QQ$ use exact Hecke-dual
+        reconstruction. The returned power series retain opaque FLINT
+        polynomial storage; only their public coefficient views are
+        materialized on demand.
+        """
+        if "var" in opts:
+            variable = opts["var"]
+        if "ρσ_py_var" in opts:
+            variable = opts["ρσ_py_var"]
+        if (
+            self._character is None
+            and self._group._family == "Gamma0"
+            and self.base_ring() is sage.QQ
+        ):
+            return _qexp_module().modular_symbols_q_expansion_basis(
+                self,
+                prec,
+                algorithm,
+                variable,
+            )
+        precision = 8 if prec is None else _exact_nonnegative_integer(prec, "precision")
         key = self._model_key()
         if key == "gamma1-11-2-cusp":
             elliptic_curve = runtime.reflect.get(runtime.global_object, "EllipticCurve")
@@ -4191,6 +4385,40 @@ class ModularSymbolsSpace(sage.Parent):
             ]
         raise NotImplementedError(
             "q-expansion bases are not available for this modular-symbol model"
+        )
+
+    def q_expansion_module(
+        self,
+        prec: Any = None,
+        R: Any = None,
+        algorithm: str = "default",
+    ) -> Any:
+        r"""Return the $\QQ$-space or saturated $\ZZ$-module of expansions."""
+        if (
+            self._character is None
+            and self._group._family == "Gamma0"
+            and self.base_ring() is sage.QQ
+        ):
+            return _qexp_module().modular_symbols_q_expansion_module(
+                self,
+                prec,
+                R,
+                algorithm,
+            )
+        raise NotImplementedError(
+            "q-expansion modules currently require trivial-character Gamma0 over QQ"
+        )
+
+    def q_expansion_basis_certificate(self, prec: Any = None) -> Any:
+        r"""Return a replayable Sturm certificate for a cusp-form basis."""
+        if (
+            self._character is None
+            and self._group._family == "Gamma0"
+            and self.base_ring() is sage.QQ
+        ):
+            return _qexp_module().modular_symbols_q_expansion_certificate(self, prec)
+        raise NotImplementedError(
+            "q-expansion certificates currently require trivial-character Gamma0 over QQ"
         )
 
     def __repr__(self) -> str:
@@ -4876,6 +5104,43 @@ runtime.register_doc(
     ),
 )
 
+_modular_symbols_qexp_doc = _modular_symbols_method_doc(
+    ["cusp forms", "q-expansions", "Hecke operators", "Sturm bound"],
+    (
+        "Exact Hecke-dual coefficient reconstruction, deterministic row "
+        "reduction, and Sturm certification"
+    ),
+)
+_modular_symbols_qexp_doc["sage_compatibility"] = {
+    "status": "compatible",
+    "notes": (
+        "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 "
+        "and arbitrary weights at least two, all signs, and caller-selected "
+        "precision. Sign-zero spaces use the common signed Hecke module."
+    ),
+}
+_modular_symbols_qexp_doc["limitations"] = [
+    "Character-valued and arbitrary proper sign-zero subspaces are not yet supported.",
+]
+runtime.register_doc(
+    "ModularSymbolsSpace.q_expansion_basis",
+    runtime.reflect.get(_modular_symbols_space_prototype, "q_expansion_basis"),
+    _modular_symbols_qexp_doc,
+)
+runtime.register_doc(
+    "ModularSymbolsSpace.q_expansion_module",
+    runtime.reflect.get(_modular_symbols_space_prototype, "q_expansion_module"),
+    _modular_symbols_qexp_doc,
+)
+runtime.register_doc(
+    "ModularSymbolsSpace.q_expansion_basis_certificate",
+    runtime.reflect.get(
+        _modular_symbols_space_prototype,
+        "q_expansion_basis_certificate",
+    ),
+    _modular_symbols_qexp_doc,
+)
+
 _modular_symbols_degeneracy_doc = _modular_symbols_method_doc(
     ["degeneracy maps", "oldforms", "Hecke modules", "exact linear algebra"],
     "Native Merel-Heilbronn lowering followed by exact basis restriction",
@@ -5227,6 +5492,14 @@ runtime.register_doc(
     EisensteinForms,
     _modular_space_doc(
         ["Eisenstein series", "q-expansions"],
+        True,
+    ),
+)
+runtime.register_doc(
+    "CuspForms",
+    CuspForms,
+    _modular_space_doc(
+        ["cusp forms", "q-expansions", "modular symbols"],
         True,
     ),
 )

@@ -848,6 +848,323 @@ def victor_miller_basis(
     return _victor_miller_series_basis(weight, precision, variable, cusp_only)
 
 
+def _modular_symbols_signed_cusp_space(space: Any) -> Any:
+    if not space.is_cuspidal():
+        raise ArithmeticError("space must be cuspidal")
+    if space.sign() != 0:
+        return space
+    cached = space._q_expansion_signed_cusp_space_cache
+    if cached is not None:
+        return cached
+    if space.weight() == 2:
+        signed_space = space.plus_submodule()
+    else:
+        constructor = _global("ModularSymbols")
+        signed_space = constructor(
+            space.level(), space.weight(), 1, sage.QQ
+        ).cuspidal_submodule()
+        if space.dimension() != 2 * signed_space.dimension():
+            raise NotImplementedError(
+                "higher-weight sign-zero q-expansions currently require the full "
+                "cuspidal submodule"
+            )
+    space._q_expansion_signed_cusp_space_cache = signed_space
+    return signed_space
+
+
+def _modular_symbols_precision(space: Any, prec: Any) -> int:
+    if prec is None:
+        return 8
+    precision = _nonnegative(prec, "precision")
+    if precision < 1:
+        raise ValueError("precision must be at least 1")
+    return precision
+
+
+def _modular_symbols_q_expansion_data(
+    source_space: Any,
+    precision: int,
+    use_cache: bool = True,
+) -> tuple[Any, Any, Any]:
+    """Return `(signed_space, coefficient_matrix, functional_indices)`."""
+    if use_cache:
+        cached = source_space._q_expansion_data_cache.get(precision)
+        if cached is not runtime.undefined:
+            return cached
+    signed_space = _modular_symbols_signed_cusp_space(source_space)
+    dimension = signed_space.dimension()
+    target_dimension = min(precision - 1, dimension)
+    matrix_constructor = _global("matrix")
+    if target_dimension == 0:
+        result = (
+            signed_space,
+            matrix_constructor(sage.QQ, 0, precision),
+            runtime.math_tuple([]),
+        )
+        if use_cache:
+            source_space._q_expansion_data_cache.set(precision, result)
+        return result
+
+    hecke_matrices = [signed_space.hecke_matrix(index) for index in range(1, precision)]
+    accumulated_rows: list[Any] = []
+    functional_indices: list[int] = []
+    basis = matrix_constructor(sage.QQ, 0, precision - 1)
+    order = [0]
+    order.extend(range(dimension - 1, 0, -1))
+    for functional_index in order:
+        rows = [[] for _row in range(dimension)]
+        for operator in hecke_matrices:
+            values = operator.row(functional_index).list()
+            for row_index in range(dimension):
+                rows[row_index].append(values[row_index])
+        accumulated_rows.extend(rows)
+        functional_indices.append(functional_index)
+        basis = matrix_constructor(sage.QQ, accumulated_rows).row_space().basis_matrix()
+        if basis.nrows() >= target_dimension:
+            break
+    if basis.nrows() < target_dimension:
+        raise ArithmeticError(
+            "Hecke matrix coefficients did not span the expected cusp-form space"
+        )
+    basis = basis.matrix_from_prefix_rows(target_dimension)
+    coefficient_rows = []
+    for row in basis.rows():
+        coefficient_rows.append([sage.QQ(0)] + row.list())
+    coefficient_matrix = matrix_constructor(sage.QQ, coefficient_rows)
+    coefficient_matrix.set_immutable()
+    result = (
+        signed_space,
+        coefficient_matrix,
+        runtime.math_tuple(functional_indices),
+    )
+    if use_cache:
+        source_space._q_expansion_data_cache.set(precision, result)
+    return result
+
+
+def _series_from_coefficient_matrix(
+    coefficient_matrix: Any,
+    variable: str,
+) -> list[Any]:
+    precision = coefficient_matrix.ncols()
+    ring = _global("PowerSeriesRing")(
+        coefficient_matrix.base_ring(),
+        variable,
+        default_prec=max(1, precision),
+    )
+    return [ring(row.list()).add_bigoh(precision) for row in coefficient_matrix.rows()]
+
+
+def _saturated_integer_row_basis(rational_basis: Any) -> Any:
+    r"""Return $\operatorname{rowspan}_{\QQ}(B)\cap\ZZ^n$ in HNF."""
+    matrix_constructor = _global("matrix")
+    if rational_basis.nrows() == 0:
+        return matrix_constructor(sage.ZZ, 0, rational_basis.ncols())
+    common_denominator = sage.ZZ(1)
+    gcd_function = _global("gcd")
+    for row in rational_basis.rows():
+        for value in row:
+            denominator = value.denominator()
+            common_denominator = (
+                common_denominator
+                * denominator
+                // gcd_function(common_denominator, denominator)
+            )
+    integral = (rational_basis * common_denominator).change_ring(sage.ZZ)
+    _smith, _left, right = integral.smith_form()
+    rank = integral.rank()
+    inverse = right.inverse().change_ring(sage.ZZ)
+    coordinate_rows = _global("identity_matrix")(
+        sage.ZZ, rational_basis.ncols()
+    ).matrix_from_prefix_rows(rank)
+    saturated = coordinate_rows * inverse
+    return saturated.hermite_form(include_zero_rows=False)
+
+
+def formula_q_expansion_module(
+    weight: Any,
+    prec: Any = 10,
+    R: Any = None,
+) -> Any:
+    r"""Return the $\QQ$-space or saturated $\ZZ$-module of a formula basis."""
+    precision = _nonnegative(prec, "precision")
+    if precision < 1:
+        raise ValueError("precision must be at least 1")
+    coefficient_ring = sage.QQ if R is None else R
+    if coefficient_ring not in [sage.QQ, sage.ZZ]:
+        raise NotImplementedError("q-expansion modules support only QQ and ZZ")
+    basis = victor_miller_basis(weight, precision, True)
+    rows = [[series[index] for index in range(precision)] for series in basis]
+    matrix_constructor = _global("matrix")
+    rational_basis = matrix_constructor(sage.QQ, rows)
+    if coefficient_ring is sage.QQ:
+        return rational_basis.row_space()
+    return _saturated_integer_row_basis(rational_basis).row_space()
+
+
+class ModularSymbolsQExpansionCertificate:
+    r"""A replayable Hecke-dual and Sturm certificate for a cusp basis."""
+
+    def __init__(
+        self,
+        source_space: Any,
+        signed_space: Any,
+        coefficient_matrix: Any,
+        functional_indices: Any,
+    ) -> None:
+        self._source_space = source_space
+        self._signed_space = signed_space
+        self._coefficient_matrix = coefficient_matrix
+        self._functional_indices = functional_indices
+        self._precision = coefficient_matrix.ncols()
+        self._sturm_bound = source_space.sturm_bound()
+        expected = min(self._precision - 1, signed_space.dimension())
+        if coefficient_matrix.nrows() != expected:
+            raise ArithmeticError("q-expansion certificate has the wrong dimension")
+        if coefficient_matrix.rank() != expected:
+            raise ArithmeticError("q-expansion certificate basis is dependent")
+        for row in range(coefficient_matrix.nrows()):
+            if coefficient_matrix[row, 0] != 0:
+                raise ArithmeticError("a certified cusp form has nonzero constant term")
+        self._verified = True
+        runtime.object.freeze(self)
+
+    def source_space(self) -> Any:
+        return self._source_space
+
+    def signed_space(self) -> Any:
+        return self._signed_space
+
+    def precision(self) -> int:
+        return self._precision
+
+    def sturm_bound(self) -> int:
+        return self._sturm_bound
+
+    def dimension(self) -> int:
+        return self._coefficient_matrix.nrows()
+
+    def coefficient_matrix(self) -> Any:
+        return self._coefficient_matrix
+
+    def functional_indices(self) -> Any:
+        return self._functional_indices
+
+    def basis(self, variable: str = "q") -> list[Any]:
+        return _series_from_coefficient_matrix(self._coefficient_matrix, variable)
+
+    def is_sturm_certified(self) -> bool:
+        return (
+            self._precision > self._sturm_bound
+            and self.dimension() == self._signed_space.dimension()
+        )
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def verify(self) -> bool:
+        replay_signed, replay, replay_indices = _modular_symbols_q_expansion_data(
+            self._source_space,
+            self._precision,
+            False,
+        )
+        return (
+            replay_signed is self._signed_space
+            and replay == self._coefficient_matrix
+            and replay_indices == self._functional_indices
+            and self.is_sturm_certified()
+        )
+
+    def __repr__(self) -> str:
+        status = "Sturm-certified" if self.is_sturm_certified() else "truncated"
+        return (
+            status
+            + " Hecke-dual q-expansion basis of dimension "
+            + str(self.dimension())
+            + " for Gamma0("
+            + str(self._source_space.level())
+            + ") in weight "
+            + str(self._source_space.weight())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def modular_symbols_q_expansion_basis(
+    space: Any,
+    prec: Any = None,
+    algorithm: str = "default",
+    variable: str = "q",
+) -> list[Any]:
+    """Return the exact Hecke-dual cusp basis attached to `space`."""
+    if algorithm == "default":
+        algorithm = "modular_symbols"
+    if algorithm != "modular_symbols":
+        raise ValueError("only the exact Hecke-dual q-expansion algorithm is available")
+    precision = _modular_symbols_precision(space, prec)
+    cache_key = variable + "|" + str(precision)
+    cached = space._q_expansion_basis_cache.get(cache_key)
+    if cached is not runtime.undefined:
+        return list(cached)
+    _signed, coefficients, _indices = _modular_symbols_q_expansion_data(
+        space, precision
+    )
+    basis = _series_from_coefficient_matrix(coefficients, variable)
+    space._q_expansion_basis_cache.set(cache_key, runtime.math_tuple(basis))
+    return list(basis)
+
+
+def modular_symbols_q_expansion_module(
+    space: Any,
+    prec: Any = None,
+    R: Any = None,
+    algorithm: str = "default",
+) -> Any:
+    """Return the rational or saturated integral coefficient module."""
+    if algorithm == "default":
+        algorithm = "modular_symbols"
+    if algorithm != "modular_symbols":
+        raise ValueError("only the exact Hecke-dual q-expansion algorithm is available")
+    precision = _modular_symbols_precision(space, prec)
+    _signed, coefficients, _indices = _modular_symbols_q_expansion_data(
+        space, precision
+    )
+    coefficient_ring = sage.QQ if R is None else R
+    if coefficient_ring is sage.QQ:
+        return coefficients.row_space()
+    if coefficient_ring is sage.ZZ:
+        return _saturated_integer_row_basis(coefficients).row_space()
+    raise NotImplementedError("q-expansion modules support only QQ and ZZ")
+
+
+def modular_symbols_q_expansion_certificate(
+    space: Any,
+    prec: Any = None,
+) -> ModularSymbolsQExpansionCertificate:
+    """Return a replayable Sturm certificate at sufficient precision."""
+    precision = (
+        max(2, space.sturm_bound() + 1)
+        if prec is None
+        else _modular_symbols_precision(space, prec)
+    )
+    signed, coefficients, functional_indices = _modular_symbols_q_expansion_data(
+        space, precision
+    )
+    certificate = ModularSymbolsQExpansionCertificate(
+        space,
+        signed,
+        coefficients,
+        functional_indices,
+    )
+    if not certificate.is_sturm_certified():
+        raise ValueError(
+            "certificate precision must exceed the Sturm bound and expose "
+            "the full cusp-form dimension"
+        )
+    return certificate
+
+
 def from_serialized_element(
     parent: Any,
     terms: Any,
@@ -860,10 +1177,15 @@ def from_serialized_element(
 __all__ = [
     "ExactModularForm",
     "LevelOneBasisCertificate",
+    "ModularSymbolsQExpansionCertificate",
     "coerce_level_one_form",
     "delta_form",
     "delta_qexp",
     "from_serialized_element",
+    "formula_q_expansion_module",
     "level_one_basis_certificate",
+    "modular_symbols_q_expansion_basis",
+    "modular_symbols_q_expansion_certificate",
+    "modular_symbols_q_expansion_module",
     "victor_miller_basis",
 ]

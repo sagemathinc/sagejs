@@ -6,6 +6,7 @@ from typing import Any
 
 ExactModularForm: Any
 LevelOneBasisCertificate: Any
+ModularSymbolsQExpansionCertificate: Any
 delta_form: Any
 delta_qexp: Any
 level_one_basis_certificate: Any
@@ -14,6 +15,7 @@ victor_miller_basis: Any
 __all__ = [
     "ExactModularForm",
     "LevelOneBasisCertificate",
+    "ModularSymbolsQExpansionCertificate",
     "delta_form",
     "delta_qexp",
     "level_one_basis_certificate",

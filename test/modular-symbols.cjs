@@ -102,6 +102,189 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
   }
 });
 
+test("Gamma0 cusp q-expansion bases match Sage in weights 2 and 4", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A = ModularSymbols(37,2).cuspidal_submodule()",
+            "B = ModularSymbols(11,4).cuspidal_submodule()",
+            "C = ModularSymbols(13,4).cuspidal_submodule()",
+            "[A.q_expansion_basis(8), B.q_expansion_basis(8), " +
+              "C.q_expansion_basis(8), A.sturm_bound(), " +
+              "B.sturm_bound(), C.sturm_bound()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[q + q^3 - 2*q^4 - q^7 + O(q^8), " +
+        "q^2 + 2*q^3 - 2*q^4 + q^5 - 3*q^6 + O(q^8)], " +
+        "[q + 3*q^3 - 6*q^4 - 7*q^5 - 8*q^6 + 14*q^7 + O(q^8), " +
+        "q^2 - 4*q^3 + 2*q^4 + 8*q^5 - 5*q^6 - 4*q^7 + O(q^8)], " +
+        "[q - 2*q^5 - 4*q^6 - 2*q^7 + O(q^8), " +
+        "q^2 - 2*q^4 + q^5 - 5*q^6 + 5*q^7 + O(q^8), " +
+        "q^3 - q^4 - 2*q^6 - 2*q^7 + O(q^8)], 6, 4, 4]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "S = ModularSymbols(1,12).cuspidal_submodule()",
+            "[S.q_expansion_basis(8), " +
+              "CuspForms(1,12,prec=8).q_expansion_basis(), " +
+              "CuspForms(37,2).q_expansion_basis(8)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 " +
+        "- 16744*q^7 + O(q^8)], " +
+        "[q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 " +
+        "- 16744*q^7 + O(q^8)], " +
+        "[q + q^3 - 2*q^4 - q^7 + O(q^8), " +
+        "q^2 + 2*q^3 - 2*q^4 + q^5 - 3*q^6 + O(q^8)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("formula and modular-symbol cusp bases have the same exact level-one span", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "out = []",
+            "for k in [12,24,36,48]:",
+            "    S = CuspForms(1,k)",
+            "    r = S.sturm_bound()",
+            "    F = S.q_expansion_basis(r,algorithm='formulas')",
+            "    H = S.q_expansion_basis(r,algorithm='modular_symbols')",
+            "    FM = matrix(QQ,[[f[n] for n in range(r)] for f in F]).row_space()",
+            "    HM = matrix(QQ,[[f[n] for n in range(r)] for f in H]).row_space()",
+            "    FC = S.q_expansion_basis_certificate(algorithm='formulas')",
+            "    HC = S.q_expansion_basis_certificate(algorithm='modular_symbols')",
+            "    Q = S.q_expansion_module(r,QQ,'formulas') == S.q_expansion_module(r,QQ,'modular_symbols')",
+            "    Z = S.q_expansion_module(r,ZZ,'formulas') == S.q_expansion_module(r,ZZ,'modular_symbols')",
+            "    out.append((k,FM == HM,Q,Z,FC.verify(),HC.verify(),len(F)))",
+            "out",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(12, True, True, True, True, True, 1), " +
+        "(24, True, True, True, True, True, 2), " +
+        "(36, True, True, True, True, True, 3), " +
+        "(48, True, True, True, True, True, 4)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("composite-level q-expansions match Sage including bad-prime operators", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A = ModularSymbols(12,4).cuspidal_submodule()",
+            "B = ModularSymbols(36,2).cuspidal_submodule()",
+            "[A.q_expansion_basis(10), B.q_expansion_basis(10), " +
+              "A.sturm_bound(), B.sturm_bound(), " +
+              "CuspForms(12,4).q_expansion_basis()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[q - 6*q^5 - 4*q^7 + 9*q^9 + O(q^10), " +
+        "q^2 - 2*q^4 - 3*q^6 + 4*q^8 + O(q^10), " +
+        "q^3 - 4*q^5 + 4*q^7 + O(q^10)], " +
+        "[q - 4*q^7 + O(q^10)], 8, 12, " +
+        "[q - 6*q^5 + O(q^6), q^2 - 2*q^4 + O(q^6), " +
+        "q^3 - 4*q^5 + O(q^6)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Gamma0 q-expansion modules saturate over ZZ", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "S = ModularSymbols(43,2).cuspidal_submodule()",
+            "[S.q_expansion_basis(9), " +
+              "S.q_expansion_module(9,ZZ).basis_matrix()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[q + 2*q^5 - 2*q^6 - 2*q^7 + O(q^9), " +
+        "q^2 - 1/2*q^4 + q^5 - 3/2*q^6 - q^8 + O(q^9), " +
+        "q^3 - 1/2*q^4 + 2*q^5 - 3/2*q^6 - q^7 + q^8 + O(q^9)], " +
+        "[ 0  1  0  0  0  2 -2 -2  0]\n" +
+        "[ 0  0  1  1 -1  3 -3 -1  0]\n" +
+        "[ 0  0  0  2 -1  4 -3 -2  2]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Gamma0 q-expansion certificates fail closed below the Sturm bound", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "S = ModularSymbols(37,2).cuspidal_submodule()",
+            "C = S.q_expansion_basis_certificate()",
+            "P = ModularSymbols(37,2,sign=1).cuspidal_submodule()",
+            "N = ModularSymbols(37,2,sign=-1).cuspidal_submodule()",
+            "cached = S.q_expansion_basis(8)",
+            "cached.pop()",
+            "[C.dimension(), C.precision(), C.sturm_bound(), " +
+              "C.is_sturm_certified(), C.verify(), " +
+              "P.q_expansion_basis(8) == N.q_expansion_basis(8), " +
+              "S.q_expansion_basis(1), S.q_expansion_basis(2), " +
+              "len(S.q_expansion_basis(8))]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[2, 7, 6, True, True, True, [], [q + O(q^2)], 2]",
+    );
+
+    await assert.rejects(
+      session.evaluate(
+        "ModularSymbols(37,2).cuspidal_submodule()" +
+          ".q_expansion_basis_certificate(6)",
+      ),
+      /precision must exceed the Sturm bound/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "ModularSymbols(37,2).cuspidal_submodule()" +
+          ".q_expansion_basis(8,algorithm='unproved')",
+      ),
+      /only the exact Hecke-dual/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "CuspForms(1,12).q_expansion_module(0,QQ,algorithm='formulas')",
+      ),
+      /precision must be at least 1/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("modular-symbol ambient and subspace reprs match Sage", async () => {
   const session = await createSage();
   try {

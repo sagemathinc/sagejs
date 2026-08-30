@@ -544,6 +544,34 @@ Gröbner bases. General primary decomposition is not yet implemented.
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
 
+## `CuspForms`
+
+```sage
+CuspForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> ModularFormsSubspace
+```
+
+Construct the cuspidal subspace of `ModularForms(group, weight)`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.constructor`
+- Tags: modular forms, spaces, cusp forms, q-expansions, modular symbols
+- Backends: FLINT, Sage.js exact arithmetic
+- Sage compatibility: extension — The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface.
+- Algorithm: Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases
+- Limitations: Only QQ is currently accepted as the ambient base ring. Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular forms API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
+- `library-backed` — [FLINT exact arithmetic](https://flintlib.org/)
+- `sagejs-original` — Lightweight parent-aware modular-form implementation
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `cylindrical_plot3d`
 
 ```sage
@@ -5879,6 +5907,98 @@ Return the `+1` eigenspace of the star involution.
 - Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
 - Algorithm: Exact left kernel of star minus the identity
 - Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.q_expansion_basis`
+
+```sage
+q_expansion_basis(prec: Any=None, algorithm: str='default', variable: str='q', **opts: Any) -> list[Any]
+```
+
+Return an echelon basis of associated cusp-form expansions.
+
+Trivial-character $\Gamma_0(N)$ spaces over $\QQ$ use exact Hecke-dual
+reconstruction. The returned power series retain opaque FLINT
+polynomial storage; only their public coefficient views are
+materialized on demand.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.q_expansion_basis_certificate`
+
+```sage
+q_expansion_basis_certificate(prec: Any=None) -> Any
+```
+
+Return a replayable Sturm certificate for a cusp-form basis.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.q_expansion_module`
+
+```sage
+q_expansion_module(prec: Any=None, R: Any=None, algorithm: str='default') -> Any
+```
+
+Return the $\QQ$-space or saturated $\ZZ$-module of expansions.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
+- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
 
 ### Provenance
 
