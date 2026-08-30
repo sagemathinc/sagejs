@@ -669,6 +669,39 @@ def ρσ_desugar_kwargs_legacy(sources: Any) -> Any:
     return answer
 
 
+def ρσ_forward_kwargs(
+    receiver: Any,
+    target_function: Any,
+    supplied_args: Any,
+) -> Any:
+    """Forward an existing argument vector through Python keyword binding.
+
+    Compiler-generated forwarding methods receive either ordinary positional
+    arguments or a final marked keyword packet.  `ρσ_interpolate_kwargs`
+    deliberately expects that packet to exist, so synthesize an empty one for
+    the positional-only case before delegating.
+    """
+    keyword_object = (
+        supplied_args[supplied_args.length - 1]
+        if supplied_args.length
+        else runtime.undefined
+    )
+    if (
+        keyword_object is None
+        or keyword_object is runtime.undefined
+        or not _internal_type_is(runtime.jstype(keyword_object), "object")
+        or runtime.reflect.get(keyword_object, runtime.kwargs_symbol) is not True
+    ):
+        keyword_object = runtime.object.create(None)
+        runtime.reflect.set(keyword_object, runtime.kwargs_symbol, True)
+        runtime.reflect.apply(
+            runtime.array.prototype.push,
+            supplied_args,
+            [keyword_object],
+        )
+    return ρσ_interpolate_kwargs(receiver, target_function, supplied_args)
+
+
 def _internal_has_own(value: Any, name: Any) -> bool:
     return runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
@@ -677,11 +710,36 @@ def _internal_has_own(value: Any, name: Any) -> bool:
     )
 
 
+def _internal_owns_function_value(receiver: Any, target_function: Any) -> bool:
+    """Return whether an unbound function is stored in `receiver` itself.
+
+    Python only applies the function descriptor protocol to attributes found
+    on a class.  A function stored in an instance dictionary remains a plain
+    callable and must not receive that instance as an implicit first argument.
+    """
+    if (
+        receiver is None
+        or receiver is runtime.undefined
+        or _internal_get_member(target_function, "__self__") is not runtime.undefined
+    ):
+        return False
+    for property_name in runtime.object.getOwnPropertyNames(receiver):
+        descriptor = runtime.object.getOwnPropertyDescriptor(receiver, property_name)
+        if (
+            descriptor is not runtime.undefined
+            and runtime.reflect.get(descriptor, "value") is target_function
+        ):
+            return True
+    return False
+
+
 def ρσ_interpolate_kwargs(
     receiver: Any,
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
+    if _internal_owns_function_value(receiver, target_function):
+        receiver = runtime.undefined
     if (
         not _internal_type_is(runtime.jstype(target_function), "function")
         or _internal_get_member(target_function, "__sagejs_callable_instance__") is True
@@ -715,17 +773,21 @@ def ρσ_interpolate_kwargs(
             receiver = target_function
             target_function = callable_method
     keyword_object = supplied_args[-1]
-    if (
-        _internal_get_member(target_function, "__positional_only__")
-        and runtime.object.keys(keyword_object).length
-    ):
-        raise TypeError("function takes no keyword arguments")
     argnames = _internal_get_member(target_function, "__argnames__")
     keyword_only = _internal_get_member(target_function, "__kwonly__")
-    if not argnames and not keyword_only:
+    # An empty argument-name array is meaningful metadata: it describes a
+    # callable that accepts no named arguments.  Only the complete absence of
+    # signature metadata means this is an opaque host callable that should be
+    # invoked without Python keyword validation.
+    if argnames is runtime.undefined and keyword_only is runtime.undefined:
         return runtime.reflect.apply(target_function, receiver, supplied_args)
-    if not argnames:
+    if argnames is runtime.undefined:
         argnames = runtime.reflect.construct(runtime.array, [0])
+    positional_only = _internal_get_member(target_function, "__positional_only__")
+    if positional_only is True:
+        positional_only = argnames.length
+    elif positional_only is runtime.undefined:
+        positional_only = 0
 
     keyword_object = supplied_args.pop()
     if _internal_get_member(target_function, "__handles_kwarg_interpolation__"):
@@ -735,7 +797,9 @@ def ρσ_interpolate_kwargs(
         for index in range(argument_count):
             if index < argnames.length:
                 property_name = argnames[index]
-                if _internal_has_own(keyword_object, property_name):
+                if index >= positional_only and _internal_has_own(
+                    keyword_object, property_name
+                ):
                     if index < supplied_args.length:
                         raise TypeError(
                             "multiple values for argument '" + property_name + "'"
@@ -754,7 +818,9 @@ def ρσ_interpolate_kwargs(
 
     for index in range(argnames.length):
         property_name = argnames[index]
-        if _internal_has_own(keyword_object, property_name):
+        if index >= positional_only and _internal_has_own(
+            keyword_object, property_name
+        ):
             if index < supplied_args.length:
                 raise TypeError("multiple values for argument '" + property_name + "'")
             supplied_args[index] = keyword_object[property_name]
@@ -1000,8 +1066,25 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
     def alias_ror(other: Any) -> Any:
         return ρσ_type_union(other, alias)
 
+    def alias_call(*args: Any, **keywords: Any) -> Any:
+        """Instantiate a callable origin through its parameterized alias."""
+        runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
+        call_args = list(args)
+        runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
+        interpolate = runtime.reflect.get(
+            runtime.global_object,
+            "ρσ_interpolate_kwargs",
+        )
+        return runtime.reflect.apply(
+            interpolate,
+            runtime.undefined,
+            [runtime.undefined, origin, call_args],
+        )
+
     runtime.reflect.set(alias, "__or__", alias_or)
     runtime.reflect.set(alias, "__ror__", alias_ror)
+    if _internal_type_is(runtime.jstype(origin), "function"):
+        runtime.reflect.set(alias, "__call__", alias_call)
     return alias
 
 
@@ -1277,6 +1360,10 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
         and _internal_get_member(candidate, "__sagejs_none_type__") is True
     ):
         return True
+    if _internal_get_member(candidate, "__sagejs_method_type__") is True:
+        return _internal_type_is(value_type, "function") and (
+            _internal_get_member(value, "__self__") is not runtime.undefined
+        )
     if (
         _internal_type_is(value_type, "object")
         and _internal_get_member(value, "__sagejs_float__") is True

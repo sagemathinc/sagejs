@@ -8,7 +8,7 @@
   },
   "startup_budgets": {
     "development-cli": {
-      "normalized_median_ms": 390,
+      "normalized_median_ms": 400,
       "normalized_median_ms_by_platform_arch": {
         "linux-arm64": 450
       },
@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 805000,
+      "max_source_bytes": 832000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -775,7 +775,7 @@
         "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
         "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
         "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/logging.py", "src/lib/marshal.py", "src/lib/math.py",
+        "src/lib/inspect.py", "src/lib/io.py", "src/lib/itertools.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/linecache.py", "src/lib/locale.py", "src/lib/marshal.py", "src/lib/math.py",
         "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/numbers.py", "src/lib/operator.py",
         "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/pickle.py", "src/lib/platform.py", "src/lib/posixpath.py", "src/lib/pprint.py",
         "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
@@ -786,8 +786,18 @@
         "src/lib/uuid.py", "src/lib/warnings.py", "src/lib/weakref.py", "src/lib/zlib.py"
       ],
       "prefixes": [
-        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
+        "src/lib/collections/", "src/lib/html/", "src/lib/http/", "src/lib/importlib/", "src/lib/logging/", "src/lib/os/", "src/lib/sage/", "src/lib/unittest/", "src/lib/urllib/", "src/lib/xml/"
       ]
+    },
+    {
+      "id": "widget-runtime",
+      "layer": 2,
+      "startup": "lazy",
+      "max_source_bytes": 1200000,
+      "depends_on": ["core-runtime", "python-stdlib"],
+      "modules": ["IPython", "comm", "traitlets"],
+      "files": [],
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
       "id": "numeric-compat",

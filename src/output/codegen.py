@@ -817,7 +817,8 @@ def generate_code():
     DEFPRINT(AST_Symbol, f_print_symbol)
 
     def f_print_symbol(self, output):
-        def_ = self.definition()
+        force_class_prebinding_fallback = self.python_class_prebinding_fallback is True
+        def_ = None if force_class_prebinding_fallback else self.definition()
         name = self.name
         if def_:
             name = def_.mangled_name or def_.name
@@ -825,6 +826,8 @@ def generate_code():
         def python_lexically_bound():
             if not self.python_identifier:
                 return False
+            if force_class_prebinding_fallback:
+                return True
             stack = output.stack()
             if self.python_lexical_binding:
                 return True
