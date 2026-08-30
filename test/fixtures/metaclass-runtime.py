@@ -211,6 +211,21 @@ assert annotated_initializer_signature.return_annotation is None
 assert getattr(AnnotatedInitializer, "__annotations__", {}) == {}
 
 
+class ModuleAnnotationTarget:
+    pass
+
+
+class ModuleAnnotatedInitializer:
+    def __init__(self, value: ModuleAnnotationTarget) -> None:
+        self.value = value
+
+
+module_annotated_signature = signature(ModuleAnnotatedInitializer)
+assert (
+    module_annotated_signature.parameters["value"].annotation is ModuleAnnotationTarget
+)
+
+
 class CustomAllocatorOnly:
     def __new__(cls, *args, **kwargs):
         instance = object.__new__(cls)

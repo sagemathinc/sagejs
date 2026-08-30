@@ -9,6 +9,76 @@ pure-Python frameworks.
 _empty = object()
 
 
+def _signature_annotations(
+    callable,
+    globals_mapping=None,
+    locals_mapping=None,
+    eval_str=False,
+):
+    """Return annotations for a signature, evaluating deferred source safely."""
+    annotations = dict(
+        getattr(
+            callable,
+            "__signature_annotations__",
+            getattr(callable, "__annotations__", {}),
+        )
+    )
+    deferred = False
+    if not annotations:
+        annotations = dict(
+            getattr(
+                callable,
+                "__signature_annotations_text__",
+                getattr(callable, "__annotations_text__", {}),
+            )
+        )
+        deferred = bool(annotations)
+    if not deferred and not eval_str:
+        return annotations
+
+    if globals_mapping is None:
+        globals_mapping = getattr(callable, "__globals__", None)
+    if globals_mapping is None:
+        import sys
+
+        module = sys.modules.get(getattr(callable, "__module__", ""))
+        if module is not None:
+            globals_mapping = vars(module)
+    if globals_mapping is None:
+        globals_mapping = {}
+    if locals_mapping is None:
+        locals_mapping = globals_mapping
+
+    resolved = {}
+    for name, annotation in annotations.items():
+        if isinstance(annotation, str):
+            if annotation == "None":
+                annotation = None
+            elif annotation in locals_mapping:
+                annotation = locals_mapping[annotation]
+            elif annotation in globals_mapping:
+                annotation = globals_mapping[annotation]
+            else:
+                try:
+                    # Attribute access avoids the compiler's special lowering
+                    # for a direct ``eval(...)`` call while invoking the same
+                    # Python builtin with explicit namespaces.
+                    annotation = __builtins__.eval(
+                        annotation,
+                        globals_mapping,
+                        locals_mapping,
+                    )
+                except (NameError, SyntaxError):
+                    # Preserve unresolved forward references just as the
+                    # compiler preserves their exact spelling for
+                    # documentation.  This is more useful than discarding the
+                    # annotation entirely and remains available for a later
+                    # call with richer namespaces.
+                    pass
+        resolved[name] = annotation
+    return resolved
+
+
 class FullArgSpec:
     """The argument description returned by :func:`getfullargspec`."""
 
@@ -217,7 +287,7 @@ def signature(
     eval_str=False,
     annotation_format=None,
 ):
-    del globals, locals, eval_str, annotation_format
+    del annotation_format
     explicit = getattr(callable, "__signature__", None)
     if explicit is not None:
         return explicit
@@ -245,12 +315,11 @@ def signature(
     # records.  Normalize it to Python mappings before using the public dict
     # API; third-party decorators should never have to know the distinction.
     defaults = dict(getattr(callable, "__defaults__", {}))
-    annotations = dict(
-        getattr(
-            callable,
-            "__signature_annotations__",
-            getattr(callable, "__annotations__", {}),
-        )
+    annotations = _signature_annotations(
+        callable,
+        globals_mapping=globals,
+        locals_mapping=locals,
+        eval_str=eval_str,
     )
     parameters = []
     positional_only = getattr(callable, "__positional_only__", 0)
