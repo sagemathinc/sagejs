@@ -7,8 +7,8 @@ const os = require("node:os");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v3";
-const SCHEMA_VERSION = 3;
+const SCHEMA = "sagejs.number-fields/class-unit-performance-evidence-v4";
+const SCHEMA_VERSION = 4;
 const SHA256 = /^[0-9a-f]{64}$/;
 const GIT_OBJECT = /^[0-9a-f]{40}$/;
 const NAME = /^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/;
@@ -555,8 +555,8 @@ function validateTools(filename, tools, systems) {
 
 function validateConfiguration(filename, configuration) {
   exactKeys(filename, configuration, [
-    "boundaries", "regulator_contract", "requested_output", "requested_proofs", "samples",
-    "systems", "tier", "timeout_seconds",
+    "boundaries", "julia_threads", "regulator_contract", "requested_output",
+    "requested_proofs", "samples", "systems", "tier", "timeout_seconds",
   ], "configuration");
   identifier(filename, configuration.tier, "configuration.tier");
   if (configuration.requested_output !== REQUESTED_OUTPUT) {
@@ -583,6 +583,10 @@ function validateConfiguration(filename, configuration) {
     );
   }
   safeInteger(filename, configuration.samples, "configuration.samples", 1);
+  safeInteger(filename, configuration.julia_threads, "configuration.julia_threads", 1);
+  if (![1, 4].includes(configuration.julia_threads)) {
+    evidenceError(filename, "configuration.julia_threads must be exactly 1 or 4");
+  }
   positiveNumber(filename, configuration.timeout_seconds, "configuration.timeout_seconds");
   exactKeys(filename, configuration.regulator_contract, [
     "minimum_decimal_digits", "require_rigorous",
@@ -620,8 +624,8 @@ function validatePlan(filename, plan, configuration, dimensions, tools) {
   for (const [index, job] of plan.jobs.entries()) {
     const label = `plan.jobs[${index}]`;
     exactKeys(filename, job, [
-      "boundary", "case_id", "invocation", "label", "requested_proof", "role", "samples",
-      "status", "system", "tool_id",
+      "boundary", "case_id", "invocation", "julia_threads", "label", "requested_proof",
+      "role", "samples", "status", "system", "tool_id",
     ], label);
     identifier(filename, job.system, `${label}.system`);
     nonemptyString(filename, job.case_id, `${label}.case_id`);
@@ -647,6 +651,9 @@ function validatePlan(filename, plan, configuration, dimensions, tools) {
     }
     if (job.samples !== configuration.samples) {
       evidenceError(filename, `${label}.samples must equal configuration.samples`);
+    }
+    if (job.julia_threads !== configuration.julia_threads) {
+      evidenceError(filename, `${label}.julia_threads must equal configuration.julia_threads`);
     }
     const metadata = `${job.label}\t${job.role}`;
     if (caseMetadata.has(job.case_id) && caseMetadata.get(job.case_id) !== metadata) {
@@ -852,12 +859,17 @@ function regulatorSemantics(regulatorContract) {
 
 function semanticComparisonKey({
   achievedProofSemantics,
+  juliaThreads,
   requestedOutput,
   regulatorContract,
 }) {
+  if (![1, 4].includes(juliaThreads)) {
+    throw new Error("semantic comparison Julia threads must be exactly 1 or 4");
+  }
   return fingerprint({
-    schema: "sagejs.number-fields/class-unit-semantic-comparison-v2",
+    schema: "sagejs.number-fields/class-unit-semantic-comparison-v3",
     achieved_proof_semantics: achievedProofSemantics,
+    julia_threads: juliaThreads,
     requested_output: requestedOutput,
     regulator_contract: regulatorSemantics(regulatorContract),
   });
@@ -879,12 +891,14 @@ function validateSemanticParity(
   sha256(filename, parity.comparison_key, `${label}.comparison_key`);
   if (parity.comparison_key !== semanticComparisonKey({
     achievedProofSemantics: achieved,
+    juliaThreads: configuration.julia_threads,
     requestedOutput: configuration.requested_output,
     regulatorContract: configuration.regulator_contract,
   })) {
     evidenceError(
       filename,
-      `${label}.comparison_key does not bind proof, requested output, and regulator semantics`,
+      `${label}.comparison_key does not bind proof, requested output, regulator semantics, ` +
+        "and the Julia thread profile",
     );
   }
 }
@@ -1090,6 +1104,7 @@ function performanceEvidenceAccepted(report, options = {}) {
       result.semantic_parity?.request_satisfied === true &&
       result.semantic_parity?.comparison_key === semanticComparisonKey({
         achievedProofSemantics: result.achieved_proof_semantics,
+        juliaThreads: report.configuration.julia_threads,
         requestedOutput: report.configuration.requested_output,
         regulatorContract: report.configuration.regulator_contract,
       }) &&

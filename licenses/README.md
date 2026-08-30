@@ -25,6 +25,11 @@ MPL-2.0 `libzmq` binary; see `ZEROMQ-JS-MIT.txt` and
 `LIBZMQ-MPL-2.0-NOTICE.txt`. The libzmq source corresponding to the shipped
 binary is available from the upstream link recorded in that notice.
 
+The interactive-widget runtime distributes BSD-3-Clause source and browser
+modules from traitlets, comm, ipywidgets, and Jupyter Widgets; see
+`JUPYTER-WIDGETS-BSD-3-CLAUSE.txt`. Its browser manager is the Apache-2.0
+`@cocalc/widgets` package; see `COCALC-WIDGETS-APACHE-2.0.txt`.
+
 The mathematical library embeds a generated 15,000-row prefix of SageMath's
 Odlyzko zeta-zero database; see `ODLYZKO-ZETA-NOTICE.md`.
 

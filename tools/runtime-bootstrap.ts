@@ -10,7 +10,7 @@ import { mkdirSync, statSync } from "fs";
 import { homedir } from "os";
 import { dirname, join, resolve } from "path";
 import { createRequire } from "module";
-import { Script } from "vm";
+import { compileFunction, Script } from "vm";
 
 import { markModuleCacheInUse } from "./cache-lease";
 import { atomicWriteCacheFileSync } from "./cache-file";
@@ -22,6 +22,10 @@ import {
   resolveJavaScriptModule,
 } from "./javascript-modules";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
+import {
+  CompilerProfileMapCollector,
+  OptimizerProfileMap,
+} from "./python/optimizer/profile-map";
 import {
   loadPrecompiledNativeKernel,
   isSingleExecutable,
@@ -42,6 +46,46 @@ import {
 } from "./timing";
 
 export type RuntimeBootstrapMode = "sage" | "python";
+
+export interface RuntimeOptimizerProfileSessionOptions {
+  observerIdentifier: string;
+  observer(
+    regionId: string,
+    kind: string,
+    outcome: string,
+    rawGuardReason?: string | null,
+  ): void;
+  runNonce: string;
+  declare(map: OptimizerProfileMap, javascript: string): void;
+}
+
+export interface RuntimeBootstrapController {
+  beginOptimizerProfile(
+    options: RuntimeOptimizerProfileSessionOptions,
+  ): RuntimeOptimizerProfileSession;
+  loadedLazyModules(): readonly string[];
+  profileContaminated(): boolean;
+}
+
+export interface RuntimeOptimizerProfileSession {
+  seal(): void;
+  assertNoLateImports(): void;
+  end(): void;
+}
+
+export class OptimizerProfileLateImportError extends Error {
+  readonly reasonCode = "evidence.late-import" as const;
+  readonly moduleName: string;
+
+  constructor(moduleName: string) {
+    super(
+      `sealed optimizer profile rejected late lazy import ${JSON.stringify(moduleName)}; ` +
+        "load the complete dynamic module closure during preparation or warmup",
+    );
+    this.name = "OptimizerProfileLateImportError";
+    this.moduleName = moduleName;
+  }
+}
 
 export const PRECOMPILED_MODULE_FILENAME =
   "/__sagejs_lazy_modules__/__SAGEJS_MODULE_FILENAME__";
@@ -114,6 +158,31 @@ function precompiledLazyModuleMatchesSource(
 ): boolean {
   return cached.version === version && cached.signature === sourceHash &&
     cached.mode === mode && cached.package === isPackage;
+}
+
+function rejectOptimizerProfileRawJavaScript(root: unknown): void {
+  const active = new WeakSet<object>();
+  const visit = (value: unknown): void => {
+    if (value === null || typeof value !== "object" || active.has(value)) return;
+    active.add(value);
+    const node = value as Record<string, unknown>;
+    if (String((node as any).constructor?.name ?? "") === "AST_Verbatim") {
+      throw new TypeError(
+        "optimizer profiling rejects raw `%js` regions because they cannot share " +
+          "the private route-observer capability",
+      );
+    }
+    for (const [key, child] of Object.entries(node)) {
+      if (["scope", "thedef", "parent_scope", "classes", "globals"].includes(key)) continue;
+      if (Array.isArray(child)) {
+        for (const item of child) visit(item);
+      } else {
+        visit(child);
+      }
+    }
+    active.delete(value);
+  };
+  visit(root);
 }
 
 // This is the runtime half of `NATIVE_ABI_VERSION` in
@@ -240,7 +309,7 @@ export function runRuntimeBootstrap(
   pythonFrontend: PythonCompilerFrontend = frontend,
   additionalImportDirs: string[] = [],
   requestedModuleCacheDirectory?: string | false,
-): void {
+): RuntimeBootstrapController {
   installHyperellipticAutoReceiptPolicy();
   installImmutableUInt64CapsuleRuntime();
   if (Reflect.get(globalThis, "__sagejs_capability_api__") === undefined) {
@@ -349,6 +418,14 @@ export function runRuntimeBootstrap(
   }
 
   const loading = new Set<string>();
+  const loadedLazyModules = new Set<string>();
+  let activeOptimizerProfile: (RuntimeOptimizerProfileSessionOptions & {
+    profiledModules: Set<string>;
+    unavailableModules: Set<string>;
+    sealed: boolean;
+    lateImportAttempt: string | null;
+  }) | undefined;
+  let optimizerProfileContaminated = false;
   // Module ``__dict__`` is a live writable mapping in CPython.  Keep an
   // identity set so the Python compatibility layer can distinguish module
   // namespaces from ordinary objects without scanning/copying their members.
@@ -721,6 +798,85 @@ export function runRuntimeBootstrap(
     "__sagejs_native_resolve__",
     resolveNativeFunction,
   );
+  const compileProfiledLazyModule = (
+    name: string,
+    source: string,
+    filename: string,
+    profile: RuntimeOptimizerProfileSessionOptions & { profiledModules: Set<string> },
+  ): (() => void) => {
+    if (/^[ \t]*%js(?:[ \t]|$)/m.test(source)) {
+      throw new TypeError(
+        "optimizer profiling rejects raw `%js` regions because they cannot share " +
+          "the private route-observer capability",
+      );
+    }
+    const collector = new CompilerProfileMapCollector(
+      source,
+      filename,
+      basePath,
+      "sagejs-python-frontend/v1",
+      "python",
+    );
+    const ast = pythonFrontend.parse(source, {
+      filename,
+      basedir: dirname(filename),
+      libdir: importPath,
+      import_dirs: getImportDirs(),
+      module_id: name,
+      runtime_imports: true,
+      jsage: false,
+      exact_integer_literals: true,
+      strict_python_scopes: true,
+      scoped_flags: {
+        dict_literals: true,
+        overload_getitem: true,
+        bound_methods: true,
+        sequential_definitions: true,
+      },
+      precompiled_module_cache_dir: standardLibraryCacheDirectory(
+        join(__dirname, "..", "module-cache"),
+      ),
+    });
+    rejectOptimizerProfileRawJavaScript(ast);
+    const output = new compiler.OutputStream({
+      omit_baselib: true,
+      write_name: false,
+      private_scope: false,
+      beautify: true,
+      keep_docstrings: true,
+      exact_integers: true,
+      rational_division: false,
+      python_tuples: true,
+      python_truthiness: true,
+      python_attributes: true,
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix:
+        `rho_profile_module_${name.replaceAll(".", "_")}_`,
+      module_registry: "ρσ_modules",
+      source_map: collector,
+      optimizer_profile_observer: profile.observerIdentifier,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    const sourceUnitId = collector.sourceIdentity.id;
+    const url = `sagejs-profile:///lazy/${encodeURIComponent(name)}` +
+      `?source=${encodeURIComponent(sourceUnitId)}&run=${profile.runNonce}`;
+    const map = collector.finish(javascript, url);
+    // Registration precedes parsing, so Inspector can authenticate the exact
+    // scriptId emitted by compileFunction rather than trusting a URL later.
+    profile.declare(map, javascript);
+    const program = compileFunction(
+      javascript,
+      [profile.observerIdentifier],
+      { filename: url },
+    );
+    return () => {
+      optimizerProfileContaminated = true;
+      profile.profiledModules.add(name);
+      program(profile.observer);
+    };
+  };
+
   const loadModule = (name: string): any => {
     if (!validLazyModuleName(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
@@ -728,6 +884,24 @@ export function runRuntimeBootstrap(
     const registry = Reflect.get(globalThis, "ρσ_modules");
     if (Object.prototype.hasOwnProperty.call(registry, name)) {
       return Reflect.get(registry, name);
+    }
+    if (activeOptimizerProfile?.sealed) {
+      // ``from package.module import attribute`` probes
+      // ``package.module.attribute`` when the attribute is absent.  Preserve
+      // a missing-child result already established while preparing the
+      // authenticated closure; it is not a request to execute new code.
+      if (activeOptimizerProfile.unavailableModules.has(name)) {
+        const message = `No module named '${name}'`;
+        const ImportErrorClass = Reflect.get(globalThis, "ImportError");
+        if (typeof ImportErrorClass === "function") {
+          throw Reflect.construct(ImportErrorClass, [message]);
+        }
+        const error = new Error(message);
+        error.name = "ImportError";
+        throw error;
+      }
+      activeOptimizerProfile.lateImportAttempt ??= name;
+      throw new OptimizerProfileLateImportError(name);
     }
 
     const separator = name.lastIndexOf(".");
@@ -784,6 +958,7 @@ export function runRuntimeBootstrap(
       filename = join(namespaceDirectory, "__init__.py");
     }
     if (source === undefined) {
+      activeOptimizerProfile?.unavailableModules.add(name);
       const message = `No module named '${name}'`;
       const ImportErrorClass = Reflect.get(globalThis, "ImportError");
       if (typeof ImportErrorClass === "function") {
@@ -807,6 +982,32 @@ export function runRuntimeBootstrap(
       // dependencies with Sage's exact-division semantics.
       const moduleMode: RuntimeBootstrapMode = "python";
       const sourceHash = sha1sum(source);
+      if (activeOptimizerProfile) {
+        const runProfiledModule = compileProfiledLazyModule(
+          name,
+          source,
+          filename,
+          activeOptimizerProfile,
+        );
+        const previousModule = Reflect.get(
+          globalThis,
+          "__sagejs_current_module_namespace__",
+        );
+        Reflect.set(globalThis, "__sagejs_current_module_namespace__", namespace);
+        try {
+          runProfiledModule();
+        } finally {
+          if (previousModule === undefined) {
+            Reflect.deleteProperty(globalThis, "__sagejs_current_module_namespace__");
+          } else {
+            Reflect.set(
+              globalThis,
+              "__sagejs_current_module_namespace__",
+              previousModule,
+            );
+          }
+        }
+      } else {
       const cacheFilename = moduleCacheDirectory
         ? join(
           moduleCacheDirectory,
@@ -970,6 +1171,8 @@ export function runRuntimeBootstrap(
           );
         }
       }
+      }
+      loadedLazyModules.add(name);
     } catch (error) {
       Reflect.deleteProperty(registry, name);
       if (parent && childName) Reflect.deleteProperty(parent, childName);
@@ -1008,4 +1211,73 @@ export function runRuntimeBootstrap(
     (source: string, options: Record<string, any>) =>
       pythonFrontend.parse(source, options),
   );
+  const controller: RuntimeBootstrapController = Object.freeze({
+    beginOptimizerProfile(
+      options: RuntimeOptimizerProfileSessionOptions,
+    ): RuntimeOptimizerProfileSession {
+      if (activeOptimizerProfile) {
+        throw new Error("an optimizer profile is already active in this evaluator");
+      }
+      if (optimizerProfileContaminated) {
+        throw new Error(
+          "this evaluator contains profile-instrumented lazy modules and must be closed",
+        );
+      }
+      if (loadedLazyModules.size !== 0) {
+        throw new Error(
+          "optimizer profiling requires a fresh evaluator before any lazy module is loaded: " +
+            [...loadedLazyModules].sort().join(", "),
+        );
+      }
+      if (!/^\$ρσ\$optimizer_profile_[a-f0-9]{32}$/.test(
+        options?.observerIdentifier ?? "",
+      ) ||
+          typeof options?.observer !== "function" ||
+          typeof options?.declare !== "function" ||
+          !/^[a-f0-9]{32}$/.test(options?.runNonce ?? "")) {
+        throw new TypeError("invalid optimizer profile runtime session");
+      }
+      const session = {
+        ...options,
+        profiledModules: new Set<string>(),
+        unavailableModules: new Set<string>(),
+        sealed: false,
+        lateImportAttempt: null as string | null,
+      };
+      activeOptimizerProfile = session;
+      let ended = false;
+      const assertActive = (): void => {
+        if (ended || activeOptimizerProfile !== session) {
+          throw new Error("optimizer profile runtime session is not active");
+        }
+      };
+      return Object.freeze({
+        seal(): void {
+          assertActive();
+          if (session.sealed) {
+            throw new Error("optimizer profile runtime session is already sealed");
+          }
+          session.sealed = true;
+        },
+        assertNoLateImports(): void {
+          assertActive();
+          if (session.lateImportAttempt !== null) {
+            throw new OptimizerProfileLateImportError(session.lateImportAttempt);
+          }
+        },
+        end(): void {
+          assertActive();
+          ended = true;
+          activeOptimizerProfile = undefined;
+        },
+      });
+    },
+    loadedLazyModules(): readonly string[] {
+      return Object.freeze([...loadedLazyModules].sort());
+    },
+    profileContaminated(): boolean {
+      return optimizerProfileContaminated;
+    },
+  });
+  return controller;
 }

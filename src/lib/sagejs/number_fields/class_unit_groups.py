@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence, cast
 
 import sagejs.runtime as runtime
 
@@ -37,10 +37,21 @@ MAX_DIRECT_CUBIC_RELATION_SEED_SIZE = 7
 MAX_UNCONDITIONAL_CUBIC_RELATION_SEED_SIZE = 10
 DEFAULT_CUBIC_SATURATION_RELATION_BATCH = 12
 MAX_RELATION_LOG_STEERING_RECORDS = 4_096
+# Exact expansion is useful for cheaply distinguishing +/-1 from a genuine
+# rank-one unit, but relation dependencies can encode enormous powers.  The
+# expanded coordinate height grows roughly with the exponent L1 norm even
+# though the factored representation stays small.  Above this producer-only
+# cap, retain the factors and use their archimedean logarithms instead.  Final
+# unit recovery, regulator evaluation, saturation, and proof replay remain
+# exact and do not rely on this steering decision.
+MAX_RELATION_STEERING_EXACT_EXPONENT_L1 = 1_024
 
 _CUBIC_RELATION_SEED_UNREAD = object()
 _TERMINAL_SATURATION_CLONE_TOKEN = object()
 _CLASS_UNIT_ENGINE_CACHE_ENTRY_TOKEN = object()
+_CLASS_GROUP_GENERATOR_RELATION_SCHEMA = (
+    "sagejs.number-fields/class-group-generator-relation-v1"
+)
 
 
 def _context_matches_engine_limits(
@@ -983,7 +994,9 @@ class _EngineClassGroup:
         )
         return self._discrete_log_from_factor_base_row(row)
 
-    def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+    def _discrete_log_material(
+        self, ideal: Any
+    ) -> tuple[tuple[int, ...], Any, dict[str, Any] | None]:
         reduction_witness = None
         try:
             row = tuple(
@@ -994,7 +1007,45 @@ class _EngineClassGroup:
                 ideal, self._factor_base
             )
             row = tuple(-int(value) for value in quotient_row)
-        return self._discrete_log_from_factor_base_row(row, reduction_witness)
+        coordinates = tuple(self._presentation.class_coordinates(row))
+        reduced = tuple(self._presentation.lift_class_coordinates(coordinates))
+        delta_values = []
+        for index in range(len(row)):
+            delta_values.append(row[index] - reduced[index])
+        delta = tuple(delta_values)
+        coefficients = self._relation_coefficients(delta)
+        witness = self._combine_relations(coefficients)
+        if reduction_witness is not None:
+            witness = self._combine_reduction_witness(witness, reduction_witness)
+        receipt = None
+        encoder = getattr(witness, "to_dict", None)
+        if reduction_witness is None and callable(encoder):
+            body = {
+                "schema": _CLASS_GROUP_GENERATOR_RELATION_SCHEMA,
+                "target_row": list(row),
+                "coordinates": list(coordinates),
+                "reduced_row": list(reduced),
+                "relation_coefficients": list(coefficients),
+                "generator": encoder(),
+            }
+            receipt = {**body, "content_sha256": _canonical_payload_hash(body)}
+        return coordinates, witness, receipt
+
+    def discrete_log(self, ideal: Any) -> tuple[tuple[int, ...], Any]:
+        coordinates, witness, _receipt = self._discrete_log_material(ideal)
+        return coordinates, witness
+
+    def discrete_log_with_receipt(
+        self, ideal: Any
+    ) -> tuple[tuple[int, ...], Any, dict[str, Any] | None]:
+        """Return exact coordinates, witness, and a compact relation receipt.
+
+        A receipt is available only when the ideal already factors over the
+        authenticated factor base.  Reduction witnesses retain the untouched
+        materialized verification path because they add independent factors
+        not represented by the relation-lattice coefficient vector.
+        """
+        return self._discrete_log_material(ideal)
 
     def __call__(self, ideal: Any) -> _EngineClassElement:
         if isinstance(ideal, _EngineClassElement):
@@ -1972,6 +2023,9 @@ class ClassUnitGroupEngine:
             "unit_logarithm_cache_hits": 0,
             "relation_log_rank_calls": 0,
             "relation_exact_rank_one_units": 0,
+            "relation_exact_rank_one_expansion_attempts": 0,
+            "relation_exact_rank_one_expansion_skips": 0,
+            "relation_factored_log_rank_units": 0,
             "relation_dependency_unit_requests": 0,
             "relation_dependency_unit_cache_hits": 0,
             "relation_dependency_unit_object_cache_hits": 0,
@@ -1988,12 +2042,21 @@ class ClassUnitGroupEngine:
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
             "dependency_unit_steering_basis_hits": 0,
+            "dependency_lattice_lll_requests": 0,
+            "dependency_lattice_lll_reductions": 0,
+            "dependency_lattice_lll_fallbacks": 0,
             "unit_live_relation_authority_hits": 0,
             "unit_principal_authority_requests": 0,
             "unit_principal_authority_hits": 0,
             "unit_principal_authority_fallbacks": 0,
             "presentation_extractions": 0,
             "saturation_rounds": 0,
+            "class_p_torsion_source_searches": 0,
+            "class_p_torsion_source_cache_hits": 0,
+            "class_p_torsion_source_work": 0,
+            "class_p_torsion_source_candidates": 0,
+            "class_p_torsion_source_uses": 0,
+            "class_p_torsion_source_fallbacks": 0,
             "proof_primes_completed": 0,
             "generation_verification_calls": 0,
             "generation_verification_cache_hits": 0,
@@ -2025,6 +2088,7 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_candidates": 0,
             "cubic_integral_sieve_relations": 0,
             "cubic_integral_sieve_dependency_relations": 0,
+            "cubic_integral_sieve_dependency_bound": 0,
             "cubic_integral_sieve_validated_batch_uses": 0,
             "cubic_specialized_empty_factor_base_skips": 0,
             "cubic_specialized_seed_skips": 0,
@@ -2066,6 +2130,9 @@ class ClassUnitGroupEngine:
         self._relation_presentation_policy: Any = None
         self._relation_presentation_record_count = 0
         self._relation_steering_context: Any = None
+        self._class_p_torsion_source_cache: dict[
+            tuple[int, int], tuple[Any, tuple[tuple[int, ...], ...]]
+        ] = {}
         self._automorphism_orbit_plans: list[tuple[tuple[Any, ...], Any]] = []
         self._proof_progress: Any = None
         self._proof_dependency_hashes: dict[str, str] = {}
@@ -2995,6 +3062,7 @@ class ClassUnitGroupEngine:
         coefficient_bound: int,
         *,
         saturation_prime: int | None = None,
+        saturation_presentation: Any = None,
         target_missing_pivots: bool = False,
         steering: Any = None,
     ) -> tuple[Any, tuple[int, ...], str]:
@@ -3010,6 +3078,15 @@ class ClassUnitGroupEngine:
         row = [0] * width
         if saturation_prime is not None:
             prime = _positive(saturation_prime, "saturation_prime")
+            candidates = self._small_p_torsion_source_rows(
+                saturation_presentation, prime
+            )
+            if candidates:
+                source_row = candidates[attempt % len(candidates)]
+                self._resource_usage["class_p_torsion_source_uses"] += 1
+                ideal = search.collector.reconstruct_factor_base_ideal(source_row)
+                return ideal, source_row, "targeted-class-p-torsion-coset"
+            self._resource_usage["class_p_torsion_source_fallbacks"] += 1
             target = (attempt + prime + self.seed) % width
             row[target] = prime
             if width > 1 and attempt % 2:
@@ -3043,6 +3120,47 @@ class ClassUnitGroupEngine:
         # instead of rebuilding the prime powers and ideal product.
         ideal = search.collector.reconstruct_factor_base_ideal(source_row)
         return ideal, source_row, strategy
+
+    def _small_p_torsion_source_rows(
+        self, presentation: Any, prime: int
+    ) -> tuple[tuple[int, ...], ...]:
+        """Cache bounded sparse source rows in nonzero exact `p`-torsion classes."""
+        if (
+            presentation is None
+            or int(getattr(presentation, "free_rank", -1)) != 0
+            or getattr(presentation, "order", None) is None
+        ):
+            return ()
+        checked_prime = _positive(prime, "saturation_prime")
+        cache_key = (id(presentation), checked_prime)
+        cached = self._class_p_torsion_source_cache.get(cache_key)
+        if cached is not None and cached[0] is presentation:
+            self._resource_usage["class_p_torsion_source_cache_hits"] += 1
+            return cached[1]
+        self._resource_usage["class_p_torsion_source_searches"] += 1
+        raw_producer: Any = getattr(
+            self.components.matrix, "small_p_torsion_source_rows", None
+        )
+        if not callable(raw_producer):
+            answer: tuple[tuple[int, ...], ...] = ()
+            self._class_p_torsion_source_cache[cache_key] = (presentation, answer)
+            return answer
+        producer = cast(Callable[..., Any], raw_producer)
+        raw_answer, raw_work = producer(
+            presentation,
+            checked_prime,
+            maximum_target_classes=self.limits.max_saturation_target_classes,
+            maximum_work=self.limits.max_saturation_work,
+            maximum_candidates=min(64, self.limits.max_candidates_per_ideal),
+        )
+        answer = tuple(tuple(int(value) for value in row) for row in raw_answer)
+        work = _integer(raw_work, "p-torsion source search work")
+        if work < 0:
+            raise ValueError("p-torsion source search work must be nonnegative")
+        self._resource_usage["class_p_torsion_source_work"] += work
+        self._resource_usage["class_p_torsion_source_candidates"] += len(answer)
+        self._class_p_torsion_source_cache[cache_key] = (presentation, answer)
+        return answer
 
     def _search_relation_ideal(
         self,
@@ -3200,6 +3318,9 @@ class ClassUnitGroupEngine:
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
             )
+            bounded_dependencies = getattr(
+                cubic, "_bounded_cubic_dependency_candidates", None
+            )
             validate_batch = getattr(
                 cubic, "_validated_cubic_integral_relation_batch", None
             )
@@ -3207,6 +3328,7 @@ class ClassUnitGroupEngine:
                 not callable(propose)
                 or not callable(select)
                 or not callable(select_dependencies)
+                or not callable(bounded_dependencies)
             ):
                 return collector
             coefficient_bound = int(getattr(cubic, "_CUBIC_RELATION_SIEVE_BOUND", 2))
@@ -3254,11 +3376,19 @@ class ClassUnitGroupEngine:
             selected, _selected_rank = selected_result
             if selected is None or len(selected) > remaining:
                 return collector
-            dependency_candidates: Any = select_dependencies(
+            dependency_result: Any = bounded_dependencies(
+                self.order,
+                factor_base,
                 selected,
                 candidates,
                 unit_rank,
+                remaining,
+                cancelled=self.cancelled,
+                power_factor_base=packed_factor_base,
             )
+            if not isinstance(dependency_result, tuple) or len(dependency_result) != 2:
+                return collector
+            dependency_candidates, dependency_bound = dependency_result
             if len(dependency_candidates) > remaining - len(selected):
                 dependency_candidates = ()
             proposals = tuple(
@@ -3326,6 +3456,10 @@ class ClassUnitGroupEngine:
             self._resource_usage["cubic_integral_sieve_relations"] += len(selected)
             self._resource_usage["cubic_integral_sieve_dependency_relations"] += len(
                 dependency_candidates
+            )
+            self._resource_usage["cubic_integral_sieve_dependency_bound"] = max(
+                int(self._resource_usage["cubic_integral_sieve_dependency_bound"]),
+                int(dependency_bound),
             )
             return trial
         except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
@@ -4102,6 +4236,7 @@ class ClassUnitGroupEngine:
                     attempts,
                     coefficient_bound,
                     saturation_prime=saturation_prime,
+                    saturation_presentation=presentation,
                     steering=steering if steering_active else None,
                 )
             before = len(collector.records)
@@ -4382,7 +4517,26 @@ class ClassUnitGroupEngine:
             # to steer relation collection. The retained factored unit still
             # enters the rigorous regulator and hR computation normally.
             evaluator = getattr(unit, "evaluate", None)
-            if unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator):
+            factors = getattr(unit, "factors", None)
+            exact_expansion_allowed = True
+            if callable(factors):
+                exponent_l1 = 0
+                try:
+                    raw_factors: Any = factors()
+                    for _factor, exponent in raw_factors:
+                        exponent_l1 += abs(int(exponent))
+                        if exponent_l1 > MAX_RELATION_STEERING_EXACT_EXPONENT_L1:
+                            exact_expansion_allowed = False
+                            break
+                except (TypeError, ValueError):
+                    exact_expansion_allowed = False
+            if (
+                unit_rank == 1
+                and int(self.field.degree()) == 3
+                and callable(evaluator)
+                and exact_expansion_allowed
+            ):
+                self._resource_usage["relation_exact_rank_one_expansion_attempts"] += 1
                 value = evaluator()
                 one = self.field.one()
                 if value != one and value != -one:
@@ -4392,6 +4546,11 @@ class ClassUnitGroupEngine:
                     self._resource_usage["relation_exact_rank_one_units"] += 1
                     current_rank = 1
                     break
+            elif (
+                unit_rank == 1 and int(self.field.degree()) == 3 and callable(evaluator)
+            ):
+                self._resource_usage["relation_exact_rank_one_expansion_skips"] += 1
+                self._resource_usage["relation_factored_log_rank_units"] += 1
             row = tuple(self._unit_logarithms(unit, 80)[:-1])
             candidate = [*logarithms, row]
             candidate_rank = _floating_matrix_rank(candidate)
@@ -4529,6 +4688,8 @@ class ClassUnitGroupEngine:
         records: Sequence[Any],
         dependencies: Sequence[Sequence[int]],
         unit_rank: int,
+        *,
+        allow_steering_basis: bool = True,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
         # Cubic relation prefixes contain only a handful of dependencies.
@@ -4552,7 +4713,8 @@ class ClassUnitGroupEngine:
         # calls this method again and deliberately takes the complete
         # minimum-volume path below.
         if (
-            not self._relation_initial_basis_selected
+            allow_steering_basis
+            and not self._relation_initial_basis_selected
             and retained_prefix
             and unit_rank > 0
             and len(self._relation_independent_dependency_keys) >= unit_rank
@@ -4653,6 +4815,95 @@ class ClassUnitGroupEngine:
             self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
 
+    def _reduce_dependency_lattice(
+        self,
+        records: Sequence[Any],
+        dependencies: Sequence[Sequence[int]],
+    ) -> tuple[tuple[int, ...], ...]:
+        """Return an exactly authenticated short basis of a cubic unit kernel.
+
+        Smith transforms expose the complete integral left kernel, but their
+        coefficients can be enormous even when the corresponding fundamental
+        units are small.  Evaluating such a basis as factored units causes
+        catastrophic interval cancellation.  Exact LLL applies a unimodular
+        row transform, so it preserves the complete dependency lattice while
+        producing substantially shorter unit products.
+
+        This optimization is deliberately bounded to the small cubic kernel
+        regime.  Every transform and every resulting kernel row is replayed
+        exactly; an unavailable accelerator or any failed check returns the
+        untouched Smith basis.
+        """
+        source = tuple(
+            tuple(int(value) for value in dependency) for dependency in dependencies
+        )
+        if (
+            int(self.field.degree()) != 3
+            or len(source) < 2
+            or len(source) > 32
+            or len(records) > 64
+        ):
+            return source
+        self._resource_usage["dependency_lattice_lll_requests"] += 1
+        reducer: Any = getattr(
+            self.components.relations, "_exact_lll_reduce_with_transform", None
+        )
+        determinant: Any = getattr(self.components.matrix, "_determinant_exact", None)
+        if not callable(reducer) or not callable(determinant):
+            self._resource_usage["dependency_lattice_lll_fallbacks"] += 1
+            return source
+        reduce_exact = cast(Callable[..., Any], reducer)
+        determinant_exact = cast(Callable[..., Any], determinant)
+        try:
+            raw_reduced, raw_transform = reduce_exact(source)
+            reduced = tuple(tuple(int(value) for value in row) for row in raw_reduced)
+            transform = tuple(
+                tuple(int(value) for value in row) for row in raw_transform
+            )
+            row_count = len(source)
+            relation_count = len(records)
+            if (
+                len(reduced) != row_count
+                or any(len(row) != relation_count for row in reduced)
+                or len(transform) != row_count
+                or any(len(row) != row_count for row in transform)
+                or abs(int(determinant_exact(transform))) != 1
+            ):
+                raise ArithmeticError("LLL returned a malformed dependency basis")
+            for row_index, row in enumerate(reduced):
+                rebuilt = tuple(
+                    sum(
+                        transform[row_index][basis_index] * source[basis_index][column]
+                        for basis_index in range(row_count)
+                    )
+                    for column in range(relation_count)
+                )
+                if rebuilt != row:
+                    raise ArithmeticError(
+                        "LLL dependency transform failed exact replay"
+                    )
+                for column in range(len(records[0].row) if records else 0):
+                    if sum(
+                        row[index] * int(records[index].row[column])
+                        for index in range(relation_count)
+                    ):
+                        raise ArithmeticError(
+                            "an LLL-reduced dependency left the exact kernel"
+                        )
+            self._resource_usage["dependency_lattice_lll_reductions"] += 1
+            return reduced
+        except (
+            AttributeError,
+            ImportError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            self._resource_usage["dependency_lattice_lll_fallbacks"] += 1
+            return source
+
     def _decode_relation_witness(self, record: Any) -> Any:
         """Decode one live witness with a bounded mutation-safe memo."""
         self._resource_usage["relation_witness_decode_requests"] += 1
@@ -4705,12 +4956,20 @@ class ClassUnitGroupEngine:
         else:
             if not self._relation_stage_exactly_authenticated(collector, presentation):
                 raise ArithmeticError("the relation presentation failed exact replay")
-        dependencies = tuple(presentation.dependency_transforms)
+            live_relations_authenticated = callable(admission_verifier) and all(
+                admission_verifier(self.order, collector.factor_base, record)
+                for record in records
+            )
+        source_dependencies = tuple(presentation.dependency_transforms)
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
+        dependencies = self._reduce_dependency_lattice(records, source_dependencies)
         units, selected_dependencies = self._select_dependency_unit_basis(
-            records, dependencies, unit_rank
+            records,
+            dependencies,
+            unit_rank,
+            allow_steering_basis=dependencies == source_dependencies,
         )
         selected_unit_hashes: list[str] = []
         for dependency, unit in zip(selected_dependencies, units, strict=True):
@@ -7298,6 +7557,9 @@ _STANDARD_PUBLIC_CLASS_GROUP_MAPS = __import__(
 _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_from_engine_result
 )
+_STANDARD_PUBLIC_CLASS_GROUP_PROJECTOR = (
+    _STANDARD_PUBLIC_CLASS_GROUP_MAPS.class_group_projection_from_engine_result
+)
 _STANDARD_PUBLIC_CLASS_GROUP_SEALER = (
     _STANDARD_PUBLIC_CLASS_GROUP_MAPS.seal_public_class_group_projection
 )
@@ -7432,6 +7694,7 @@ def class_group(
     else:
         maps = _STANDARD_PUBLIC_CLASS_GROUP_MAPS
         adapter = maps.class_group_from_engine_result
+        projector = maps.class_group_projection_from_engine_result
         public_context = getattr(result, "context", None)
         construction_consumer = getattr(
             public_context,
@@ -7440,6 +7703,7 @@ def class_group(
         )
         helpers_are_standard = bool(
             adapter is _STANDARD_PUBLIC_CLASS_GROUP_ADAPTER
+            and projector is _STANDARD_PUBLIC_CLASS_GROUP_PROJECTOR
             and maps.seal_public_class_group_projection
             is _STANDARD_PUBLIC_CLASS_GROUP_SEALER
             and maps.public_class_group_projection_view

@@ -81,6 +81,13 @@
       "rationale": "Standalone packed genus-2 smalljac timing and exact-stream checksum baseline; it is not linked into Sage.js."
     },
     {
+      "path": "bench/optimizer-workloads/modular-scan-target.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone C-to-Wasm feasibility target for the reviewed bounded modular character scan; compiled only by the optimizer evidence harness, not linked into Sage.js or selected as a production mathematical implementation."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
@@ -282,6 +289,13 @@
       "review_status": "accepted",
       "lane": "integration",
       "rationale": "Host-neutral generated owned-resource ABI over FLINT dense integer matrices, with physical retained-size accounting, structural arithmetic, exact algorithms, formatting, and stable serialization."
+    },
+    {
+      "path": "packages/flint/include/sagejs/native_exact_workspace_ffi.h",
+      "category": "representation-primitive",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Generic context-owned exact workspace primitive for Native Kernel C5b. It preallocates bounded GMP residents and arithmetic scratch once, authenticates shape/specification/generation before each synchronous mutable borrow, reference-counts owner and lexical lease lifetimes, rejects overlapping or stale borrows, and publishes no mathematical proof state. Ordinary typed Python remains the algorithm and dynamic fallback."
     },
     {
       "path": "packages/flint/include/sagejs/number_field_order_ffi.h",
@@ -835,6 +849,13 @@
       "review_status": "audited",
       "lane": "combinatorics-groups",
       "rationale": "Node adapter around nauty/Traces with some graph data conversion and orchestration."
+    },
+    {
+      "path": "test/fixtures/native-exact-workspace-direct-reference.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Standalone direct-GMP code-size and result oracle for the generated reusable exact workspace kernel; compiled only by focused tests and never linked into Sage.js."
     },
     {
       "path": "tools/maple/src/parser.c",

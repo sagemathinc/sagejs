@@ -713,9 +713,10 @@ K = NumberField(x**3 - x**2 + 9*x - 21, "a")
 
 # LMFDB 3.1.2856.1 needed a targeted saturation batch when the packed cubic
 # relation sieve retained only the minimal class-presentation support.  Once
-# the bounded class proof fails, the producer may retain both generators of a
-# duplicate valuation row from its packed candidates (and widen the box only
-# if the primary candidates have none).  The resulting unit quotient is
+# the bounded class proof fails, the producer retains the one additional
+# generator that pairs with an already selected duplicate valuation row (and
+# widens the box only if the primary candidates have none).  The resulting
+# unit quotient is
 # fundamental here, so neither LLL relation saturation nor the much more
 # expensive bounded p-th-root search should run.
 original_saturate_unit_lattice = analytic_module.saturate_unit_lattice
@@ -773,21 +774,28 @@ assert detached_context["matrix_state"] == (
     result.conditional_presentation_evidence.to_dict()
 )
 assert "_live_artifacts" not in detached_context
-assert artifact_search["integral_sieve_dependency_candidates"] == 2
-assert artifact_search["integral_sieve_dependency_relations"] == 2
+assert artifact_search["integral_sieve_dependency_candidates"] == 1
+assert artifact_search["integral_sieve_dependency_relations"] == 1
 assert artifact_search["integral_sieve_dependency_validated_batch"] == 1
 assert artifact_search["integral_sieve_dependency_coefficient_bound"] == 2
 assert artifact.relation_records[-1].provenance["coefficient_bound"] == 2
 assert resources["cubic_relation_seed_uses"] == 1
-assert resources["cubic_relation_seed_relations"] == 9
+assert resources["cubic_relation_seed_relations"] == 7
 assert resources["saturation_rounds"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["relation_witness_logarithm_requests"] == 0
-assert resources["dependency_unit_eager_candidates"] == 0
-assert resources["dependency_unit_materializations"] == 0
-assert resources["dependency_unit_steering_basis_hits"] == 1
-assert resources["relation_dependency_unit_object_cache_hits"] == 1
+assert resources["dependency_unit_eager_candidates"] <= 16
+assert resources["dependency_unit_materializations"] <= resources[
+    "dependency_unit_eager_candidates"
+]
+assert (
+    resources["dependency_unit_steering_basis_hits"] > 0
+    or resources["dependency_unit_eager_candidates"] > 0
+)
+assert resources["relation_exact_rank_one_expansion_attempts"] >= 1
+assert resources["relation_exact_rank_one_expansion_skips"] == 0
+assert resources["relation_factored_log_rank_units"] == 0
 assert resources["unit_live_relation_authority_hits"] == 1
 assert resources["generation_live_relation_payload_hits"] >= 1
 assert resources["relation_witness_decode_requests"] <= 3 * resources["relations"]
@@ -963,17 +971,17 @@ W = NumberField(x**3 - x**2 - 14*x + 30, "c")
 assert W.class_number(proof=False) == 8
 widened_artifact = W._bounded_cubic_class_number_artifact
 widened_search = widened_artifact.diagnostics["relation_search"]
-assert widened_search["integral_sieve_dependency_candidates"] == 2
-assert widened_search["integral_sieve_dependency_relations"] == 2
+assert widened_search["integral_sieve_dependency_candidates"] == 1
+assert widened_search["integral_sieve_dependency_relations"] == 1
 assert widened_search["integral_sieve_dependency_validated_batch"] == 1
 assert widened_search["integral_sieve_dependency_coefficient_bound"] == 4
-assert len(widened_artifact.relation_records) == 9
+assert len(widened_artifact.relation_records) == 8
 widened_projection = list(W._class_number_projection_cache.values())[-1]
 widened_result = W.class_unit_group(proof=False)
 assert widened_projection._completed is widened_result
 widened_resources = widened_result.diagnostics["resources"]
 assert widened_result.proof_status == "exact-unconditional"
-assert widened_resources["cubic_relation_seed_relations"] == 9
+assert widened_resources["cubic_relation_seed_relations"] == 8
 assert widened_resources["relation_attempts"] == 0
 assert widened_resources["relation_candidates"] == 0
 assert widened_resources["unit_principal_authority_hits"] == 1

@@ -1,6 +1,6 @@
 "use strict";
 
-const HOST_ABI_VERSION = 2;
+const HOST_ABI_VERSION = 3;
 
 function generateStatusDeclarations() {
   return `typedef enum
@@ -8,7 +8,8 @@ function generateStatusDeclarations() {
     SAGEJS_NATIVE_OK = 0,
     SAGEJS_NATIVE_ERROR = 1,
     SAGEJS_NATIVE_TYPE_ERROR = 2,
-    SAGEJS_NATIVE_RANGE_ERROR = 3
+    SAGEJS_NATIVE_RANGE_ERROR = 3,
+    SAGEJS_NATIVE_RETRY = 4
 } sagejs_native_status_code;
 
 typedef struct

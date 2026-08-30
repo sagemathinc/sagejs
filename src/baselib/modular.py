@@ -14,6 +14,7 @@ import sagejs.runtime as runtime
 _qexp_module_cache = runtime.undefined
 _half_integral_module_cache = runtime.undefined
 _supersingular_module_cache = runtime.undefined
+_brandt_module_cache = runtime.undefined
 
 
 def _qexp_module() -> Any:
@@ -47,6 +48,54 @@ def _supersingular_module() -> Any:
             fromlist=["SupersingularModule"],
         )
     return _supersingular_module_cache
+
+
+def _brandt_module() -> Any:
+    """Load the rational Brandt-module implementation lazily."""
+    global _brandt_module_cache
+    if _brandt_module_cache is runtime.undefined:
+        _brandt_module_cache = __import__(
+            "sagejs.modular_forms.brandt",
+            fromlist=["BrandtModule"],
+        )
+    return _brandt_module_cache
+
+
+def BrandtModule(
+    D: Any,
+    N: Any = 1,
+    weight: Any = 2,
+    base_ring: Any = None,
+    use_cache: bool = True,
+    realization: str = "auto",
+    dense_entry_limit: Any = 1000000,
+) -> Any:
+    r"""Construct the weight-two Brandt module over $\mathbf Q$.
+
+    The quaternion discriminant `D` is squarefree with an odd number of
+    prime factors, and the Eichler conductor `N` is positive and coprime to
+    `D`. The canonical sparse supersingular realization is selected when it
+    applies; all other valid pairs use the exact Jacquet--Langlands Hecke
+    realization. Pass `realization="ideal-classes"` to construct genuine
+    Eichler right ideal classes, their unit weights, and their integral
+    pairing.
+
+    ```sage
+    sage: B = BrandtModule(11, 1)
+    sage: (B.dimension(), B.T(2).charpoly())
+    (2, x^2 - x - 6)
+    ```
+    """
+    module = _brandt_module()
+    return module.BrandtModule(
+        D,
+        N,
+        weight,
+        base_ring,
+        use_cache,
+        realization=realization,
+        dense_entry_limit=dense_entry_limit,
+    )
 
 
 def SupersingularModule(
@@ -698,7 +747,13 @@ def theta_qexp(
     variable: str = "q",
     **opts: Any,
 ) -> Any:
-    r"""Return the exact unary theta series $\sum_{n\in\ZZ}q^{n^2}$."""
+    r"""Return the exact unary theta series $\sum_{n\in\ZZ}q^{n^2}$.
+
+    ```sage
+    sage: theta_qexp(6)
+    1 + 2*q + 2*q^4 + O(q^6)
+    ```
+    """
     return _half_integral_module().theta_qexp(prec, K, variable, **opts)
 
 
@@ -708,7 +763,13 @@ def theta2_qexp(
     variable: str = "q",
     **opts: Any,
 ) -> Any:
-    r"""Return $\sum_{n>0,\ n\text{ odd}}q^{n^2}$ exactly."""
+    r"""Return $\sum_{n>0,\ n\text{ odd}}q^{n^2}$ exactly.
+
+    ```sage
+    sage: theta2_qexp(12)
+    q + q^9 + O(q^12)
+    ```
+    """
     return _half_integral_module().theta2_qexp(prec, K, variable, **opts)
 
 
@@ -718,7 +779,13 @@ def theta_qexp_certificate(
     variable: str = "q",
     **opts: Any,
 ) -> Any:
-    """Return the replayable standard-theta coefficient certificate."""
+    """Return the replayable standard-theta coefficient certificate.
+
+    ```sage
+    sage: theta_qexp_certificate(12).verify()
+    True
+    ```
+    """
     return _half_integral_module().theta_qexp_certificate(
         prec,
         K,
@@ -733,7 +800,13 @@ def theta2_qexp_certificate(
     variable: str = "q",
     **opts: Any,
 ) -> Any:
-    """Return the replayable odd-square theta coefficient certificate."""
+    """Return the replayable odd-square theta coefficient certificate.
+
+    ```sage
+    sage: theta2_qexp_certificate(12).verify()
+    True
+    ```
+    """
     return _half_integral_module().theta2_qexp_certificate(
         prec,
         K,
@@ -749,7 +822,13 @@ def cohen_eisenstein_series_qexp(
     normalization: str = "cohen",
     **opts: Any,
 ) -> Any:
-    r"""Return Cohen's exact Eisenstein series of weight $r+\tfrac12$."""
+    r"""Return Cohen's exact Eisenstein series of weight $r+\tfrac12$.
+
+    ```sage
+    sage: cohen_eisenstein_series_qexp(2, 6)
+    1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)
+    ```
+    """
     return _half_integral_module().cohen_eisenstein_series_qexp(
         r,
         prec,
@@ -765,7 +844,13 @@ def cohen_eisenstein_series_certificate(
     variable: str = "q",
     **opts: Any,
 ) -> Any:
-    """Return the replayable Cohen coefficient-formula certificate."""
+    """Return the replayable Cohen coefficient-formula certificate.
+
+    ```sage
+    sage: cohen_eisenstein_series_certificate(2, 12).verify()
+    True
+    ```
+    """
     return _half_integral_module().cohen_eisenstein_series_certificate(
         r,
         prec,
@@ -779,7 +864,14 @@ def HalfIntegralWeightModularForms(
     k: Any,
     prec: Any = 10,
 ) -> Any:
-    r"""Construct the certified cusp space $S_{k/2}(\Gamma_0(N),\chi)$."""
+    r"""Construct the certified cusp space $S_{k/2}(\Gamma_0(N),\chi)$.
+
+    ```sage
+    sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)
+    sage: (H.weight(), H.dimension())
+    (3/2, 0)
+    ```
+    """
     return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)
 
 
@@ -788,7 +880,13 @@ def half_integral_weight_modform_basis(
     k: Any,
     prec: Any,
 ) -> list[Any]:
-    """Return Sage-compatible Basmaji half-integral cusp expansions."""
+    """Return Sage-compatible Basmaji half-integral cusp expansions.
+
+    ```sage
+    sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)
+    []
+    ```
+    """
     return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)
 
 
@@ -800,7 +898,14 @@ def half_integral_weight_hecke_qexp(
     prec: Any = None,
     variable: str = "q",
 ) -> Any:
-    r"""Apply $T_{p^2}$ using Shimura's exact coefficient formula."""
+    r"""Apply $T_{p^2}$ using Shimura's exact coefficient formula.
+
+    ```sage
+    sage: f = cohen_eisenstein_series_qexp(2, 82)
+    sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)
+    7/30 - 7/3*q - 49/3*q^4 + O(q^5)
+    ```
+    """
     return _half_integral_module().half_integral_weight_hecke_qexp(
         series,
         k,
@@ -812,7 +917,13 @@ def half_integral_weight_hecke_qexp(
 
 
 def half_integral_formula_registry() -> Any:
-    """Return the bounded, certificate-bearing half-integral formula registry."""
+    """Return the bounded, certificate-bearing half-integral formula registry.
+
+    ```sage
+    sage: len(half_integral_formula_registry())
+    4
+    ```
+    """
     return _half_integral_module().half_integral_formula_registry()
 
 
@@ -6020,6 +6131,69 @@ runtime.register_doc(
             "Characteristics 2 and 3 are not implemented.",
             "Auxiliary levels greater than one are not implemented.",
             "Composite-index and bad-prime Hecke operators are not implemented.",
+        ],
+    },
+)
+
+runtime.register_doc(
+    "BrandtModule",
+    BrandtModule,
+    {
+        "kind": "function",
+        "module": "sage.modular.quatalg.brandt",
+        "tags": [
+            "modular forms",
+            "Brandt modules",
+            "quaternion algebras",
+            "Eichler orders",
+            "Hecke operators",
+            "Jacquet-Langlands",
+        ],
+        "backends": [
+            "Sage.js sparse supersingular graphs",
+            "Sage.js exact modular symbols",
+            "Sage.js exact rational quaternion ideals",
+        ],
+        "sage_compatibility": {
+            "status": "extension",
+            "notes": (
+                "Supports every definite squarefree rational quaternion "
+                "discriminant and coprime Eichler conductor in weight two. "
+                "The default general basis is an exact Jacquet--Langlands "
+                "Hecke realization; the explicit ideal-class realization "
+                "constructs genuine quaternion ideals and their integral lattice."
+            ),
+        },
+        "provenance": [
+            {
+                "kind": "literature-implemented",
+                "source": "Jacquet--Langlands correspondence for definite quaternion algebras",
+            },
+            {
+                "kind": "sage-derived",
+                "source": "SageMath Brandt-module API",
+                "url": (
+                    "https://doc.sagemath.org/html/en/reference/modfrm/"
+                    "sage/modular/quatalg/brandt.html"
+                ),
+                "license": "GPL-2.0-or-later",
+            },
+            {
+                "kind": "literature-implemented",
+                "source": (
+                    "Kirschmer--Voight ideal-class enumeration and "
+                    "Kohel--Stein monodromy/component-group formulas"
+                ),
+            },
+        ],
+        "limitations": [
+            "Bad-prime operators at primes dividing the Eichler conductor are not yet exposed.",
+            "Only weight two and base rings QQ/ZZ are implemented.",
+            "Atkin--Lehner operators are currently exposed for divisors of D.",
+            (
+                "Full-Jacobian component groups are implemented; newform-quotient "
+                "groups await audited integral modular-degree maps."
+            ),
         ],
     },
 )

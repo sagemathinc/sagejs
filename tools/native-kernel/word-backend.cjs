@@ -547,6 +547,9 @@ function emitWordOperation(operation, context, indent) {
       failure: context.failure,
     }, indent);
   }
+  if (operation.kind === "value.discard") {
+    return `${indent}(void) ${value(operation.source)};`;
+  }
   throw new Error(`unsupported word C IR operation ${operation.kind}`);
 }
 

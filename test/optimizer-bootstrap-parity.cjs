@@ -27,6 +27,10 @@ test("optimizer runtime guards are identical in both bootstrap closures", () => 
   for (const name of [
     "ρσ_bind_machine_extension_context",
     "ρσ_machine_extension_context_matches",
+    "ρσ_bind_rectangular_binary64_dataflow_runtime",
+    "ρσ_brand_optimizer_list",
+    "ρσ_register_optimizer_intrinsic",
+    "ρσ_fast_arrow_segment_geometry_region",
     "ρσ_prepare_strict_float_region",
     "ρσ_prepare_machine_field_region",
     "ρσ_materialize_machine_field_value",

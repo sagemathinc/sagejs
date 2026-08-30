@@ -1,0 +1,530 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/cubic-class-group-frontier.schema.json",
+  "title": "Cubic class-group cross-system frontier evidence",
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "contentId": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "gitObject": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "nonemptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "countCounter": {
+      "$ref": "#/$defs/counter",
+      "properties": { "unit": { "const": "count" } }
+    },
+    "bytesCounter": {
+      "$ref": "#/$defs/counter",
+      "properties": { "unit": { "const": "bytes" } }
+    },
+    "microsecondsCounter": {
+      "$ref": "#/$defs/counter",
+      "properties": { "unit": { "const": "microseconds" } }
+    },
+    "counter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "unit", "value"],
+      "properties": {
+        "status": { "enum": ["available", "not-applicable", "unavailable"] },
+        "unit": { "enum": ["bytes", "count", "microseconds"] },
+        "value": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "candidateFreeze": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "candidateCommit",
+        "candidateTree",
+        "sourceClosureId",
+        "implementationId",
+        "mechanismId",
+        "parametersDigest",
+        "buildArtifactId",
+        "artifactIds",
+        "fallbackId",
+        "representativeObservationIds",
+        "frozenAt"
+      ],
+      "properties": {
+        "schema": { "const": "sagejs.cubic-class-group-candidate-freeze/v1" },
+        "id": { "$ref": "#/$defs/contentId" },
+        "candidateCommit": { "$ref": "#/$defs/gitObject" },
+        "candidateTree": { "$ref": "#/$defs/gitObject" },
+        "sourceClosureId": { "$ref": "#/$defs/contentId" },
+        "implementationId": { "$ref": "#/$defs/contentId" },
+        "mechanismId": { "$ref": "#/$defs/contentId" },
+        "parametersDigest": { "$ref": "#/$defs/digest" },
+        "buildArtifactId": { "$ref": "#/$defs/contentId" },
+        "artifactIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/contentId" }
+        },
+        "fallbackId": { "$ref": "#/$defs/contentId" },
+        "representativeObservationIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/contentId" }
+        },
+        "frozenAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit",
+        "rootSamples",
+        "batchSamples",
+        "iterationCounts",
+        "rootSource",
+        "phaseSumUsed",
+        "digestInsideRoot",
+        "minimumRetainedBatchMicroseconds",
+        "pairOrders",
+        "phases",
+        "phaseToleranceMicroseconds"
+      ],
+      "properties": {
+        "unit": { "const": "microseconds" },
+        "rootSamples": {
+          "type": "array",
+          "minItems": 22,
+          "maxItems": 22,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "batchSamples": {
+          "type": "array",
+          "minItems": 22,
+          "maxItems": 22,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        },
+        "iterationCounts": {
+          "type": "array",
+          "minItems": 22,
+          "maxItems": 22,
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "rootSource": {
+          "enum": ["one-contiguous-monotonic-timer", "single-operation-outer-wall"]
+        },
+        "phaseSumUsed": { "const": false },
+        "digestInsideRoot": { "const": false },
+        "minimumRetainedBatchMicroseconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pairOrders": {
+          "type": "array",
+          "minItems": 11,
+          "maxItems": 11,
+          "prefixItems": [
+            { "const": "ABBA" },
+            { "const": "BAAB" },
+            { "const": "ABBA" },
+            { "const": "BAAB" },
+            { "const": "ABBA" },
+            { "const": "BAAB" },
+            { "const": "ABBA" },
+            { "const": "BAAB" },
+            { "const": "ABBA" },
+            { "const": "BAAB" },
+            { "const": "ABBA" }
+          ],
+          "items": false
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "samples"],
+            "properties": {
+              "id": { "$ref": "#/$defs/nonemptyString" },
+              "samples": {
+                "type": "array",
+                "minItems": 22,
+                "maxItems": 22,
+                "items": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        },
+        "phaseToleranceMicroseconds": { "type": "number", "minimum": 0 }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "authority",
+        "promotionEligible",
+        "workloadId",
+        "role",
+        "cell",
+        "system",
+        "freezeId",
+        "availability",
+        "origin",
+        "proof",
+        "boundary",
+        "output",
+        "comparability",
+        "measurement",
+        "accounting",
+        "oracle",
+        "provenance"
+      ],
+      "properties": {
+        "schema": { "const": "sagejs.cubic-class-group-frontier-observation/v1" },
+        "id": { "$ref": "#/$defs/contentId" },
+        "authority": { "const": "observation-only" },
+        "promotionEligible": { "const": false },
+        "workloadId": { "$ref": "#/$defs/contentId" },
+        "role": { "enum": ["control", "held-out", "representative"] },
+        "cell": {
+          "enum": [
+            "certificate-replay",
+            "class-unit-prepared",
+            "fresh-complete",
+            "group-prepared",
+            "scalar-prepared"
+          ]
+        },
+        "system": { "enum": ["hecke", "magma", "pari", "sagejs"] },
+        "freezeId": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/contentId" }]
+        },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "reason"],
+          "properties": {
+            "status": {
+              "enum": ["available", "unavailable", "unsupported", "timeout", "error"]
+            },
+            "reason": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/nonemptyString" }]
+            }
+          }
+        },
+        "origin": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "adapterDigest", "resourceClass", "tool"],
+          "properties": {
+            "kind": { "enum": ["external-reference", "sagejs-current"] },
+            "adapterDigest": { "$ref": "#/$defs/digest" },
+            "resourceClass": { "enum": ["four-core", "one-core"] },
+            "tool": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["status", "fingerprint", "version", "artifactDigests"],
+              "properties": {
+                "status": { "enum": ["available", "unavailable"] },
+                "fingerprint": { "$ref": "#/$defs/digest" },
+                "version": {
+                  "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/nonemptyString" }]
+                },
+                "artifactDigests": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": { "$ref": "#/$defs/digest" }
+                }
+              }
+            }
+          }
+        },
+        "proof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["request", "setting", "achieved", "components", "carrier"],
+          "properties": {
+            "request": { "enum": ["conditional-grh", "unconditional"] },
+            "setting": { "$ref": "#/$defs/nonemptyString" },
+            "achieved": {
+              "oneOf": [
+                { "type": "null" },
+                { "enum": ["exact-relations-conditional-grh", "exact-unconditional"] }
+              ]
+            },
+            "components": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["classGroup", "unitGroup", "regulator"],
+                  "properties": {
+                    "classGroup": {
+                      "enum": ["exact-relations-conditional-grh", "exact-unconditional"]
+                    },
+                    "unitGroup": {
+                      "enum": [
+                        "exact-relations-conditional-grh",
+                        "exact-unconditional",
+                        "not-requested"
+                      ]
+                    },
+                    "regulator": {
+                      "enum": [
+                        "rigorous-conditional-grh",
+                        "rigorous-unconditional",
+                        "not-requested"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "carrier": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "digest", "replay"],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "absent",
+                    "detached-replayable",
+                    "internal-audited",
+                    "live-authenticated"
+                  ]
+                },
+                "digest": {
+                  "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+                },
+                "replay": { "enum": ["not-applicable", "pass", "unavailable"] }
+              }
+            }
+          }
+        },
+        "boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "rootTiming",
+            "phaseTotalsMayReplaceRoot",
+            "digestInsideRoot",
+            "preparation",
+            "included",
+            "excluded"
+          ],
+          "properties": {
+            "rootTiming": { "const": "one-contiguous-root" },
+            "phaseTotalsMayReplaceRoot": { "const": false },
+            "digestInsideRoot": { "const": false },
+            "preparation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["process", "field", "maximalOrder", "resultCache", "certificate"],
+              "properties": {
+                "process": { "$ref": "#/$defs/nonemptyString" },
+                "field": { "$ref": "#/$defs/nonemptyString" },
+                "maximalOrder": { "$ref": "#/$defs/nonemptyString" },
+                "resultCache": { "$ref": "#/$defs/nonemptyString" },
+                "certificate": { "$ref": "#/$defs/nonemptyString" }
+              }
+            },
+            "included": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/nonemptyString" }
+            },
+            "excluded": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/nonemptyString" }
+            }
+          }
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contract", "relationshipToWorkload", "semanticDigest", "certificateDigest"],
+          "properties": {
+            "contract": { "$ref": "#/$defs/nonemptyString" },
+            "relationshipToWorkload": { "enum": ["equal", "incomparable", "subset", "superset"] },
+            "semanticDigest": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+            },
+            "certificateDigest": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+            }
+          }
+        },
+        "comparability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "boundaryRelationship",
+            "outputRelationship",
+            "proofRelationship",
+            "resourceRelationship",
+            "use"
+          ],
+          "properties": {
+            "boundaryRelationship": { "enum": ["equal", "incomparable", "subset", "superset"] },
+            "outputRelationship": { "enum": ["equal", "incomparable", "subset", "superset"] },
+            "proofRelationship": { "enum": ["equal", "incomparable", "stronger", "weaker"] },
+            "resourceRelationship": { "enum": ["different", "equal", "unknown"] },
+            "use": { "enum": ["diagnostic-only", "exact-frontier", "one-sided-lower-bound"] }
+          }
+        },
+        "measurement": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/measurement" }]
+        },
+        "accounting": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "counters"],
+          "properties": {
+            "status": { "enum": ["complete", "partial", "unavailable"] },
+            "counters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "affinityLogicalCpus",
+                "cancellationPolls",
+                "majorFaults",
+                "nativeBytes",
+                "nativeCrossings",
+                "ownedResourceLifetimes",
+                "peakRssBytes",
+                "processCpuMicroseconds"
+              ],
+              "properties": {
+                "affinityLogicalCpus": { "$ref": "#/$defs/countCounter" },
+                "cancellationPolls": { "$ref": "#/$defs/countCounter" },
+                "majorFaults": { "$ref": "#/$defs/countCounter" },
+                "nativeBytes": { "$ref": "#/$defs/bytesCounter" },
+                "nativeCrossings": { "$ref": "#/$defs/countCounter" },
+                "ownedResourceLifetimes": { "$ref": "#/$defs/countCounter" },
+                "peakRssBytes": { "$ref": "#/$defs/bytesCounter" },
+                "processCpuMicroseconds": { "$ref": "#/$defs/microsecondsCounter" }
+              }
+            }
+          }
+        },
+        "oracle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "semanticDigest",
+            "discriminantMatched",
+            "classNumberMatched",
+            "invariantsMatched",
+            "coupledMatched"
+          ],
+          "properties": {
+            "status": { "enum": ["not-applicable", "pass"] },
+            "semanticDigest": {
+              "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+            },
+            "discriminantMatched": { "type": ["boolean", "null"] },
+            "classNumberMatched": { "type": ["boolean", "null"] },
+            "invariantsMatched": { "type": ["boolean", "null"] },
+            "coupledMatched": { "type": ["boolean", "null"] }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["producerCommand", "artifactDigest", "recordedAt"],
+          "properties": {
+            "producerCommand": { "$ref": "#/$defs/nonemptyString" },
+            "artifactDigest": { "$ref": "#/$defs/digest" },
+            "recordedAt": { "type": "string", "format": "date-time" }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "availability": { "properties": { "status": { "const": "available" } } } } },
+          "then": {
+            "properties": {
+              "availability": { "properties": { "reason": { "type": "null" } } },
+              "measurement": { "$ref": "#/$defs/measurement" }
+            }
+          },
+          "else": {
+            "properties": {
+              "availability": { "properties": { "reason": { "$ref": "#/$defs/nonemptyString" } } },
+              "measurement": { "type": "null" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "role": { "const": "held-out" } } },
+          "then": { "properties": { "freezeId": { "$ref": "#/$defs/contentId" } } },
+          "else": { "properties": { "freezeId": { "type": "null" } } }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "specificationDigest",
+    "workloadIds",
+    "candidateFreeze",
+    "observations",
+    "claim"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.cubic-class-group-frontier/v1" },
+    "id": { "$ref": "#/$defs/contentId" },
+    "specificationDigest": { "$ref": "#/$defs/digest" },
+    "workloadIds": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/contentId" }
+    },
+    "candidateFreeze": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/candidateFreeze" }]
+    },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/observation" }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "status", "promotionAuthority", "evidenceObservationIds", "reasons"],
+      "properties": {
+        "kind": { "const": "none" },
+        "status": { "const": "not-evaluated" },
+        "promotionAuthority": { "const": false },
+        "evidenceObservationIds": { "const": [] },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonemptyString" }
+        }
+      }
+    }
+  }
+}

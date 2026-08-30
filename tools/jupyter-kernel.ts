@@ -285,11 +285,12 @@ function traceback(error: unknown): {
   const evalue = interrupted
     ? "Interrupted"
     : value?.message ?? String(error);
-  const lines = (value?.stack ?? `${ename}: ${evalue}`)
-    .split("\n")
-    .filter(Boolean);
-  if (interrupted) return { ename, evalue, traceback: [`${ename}: ${evalue}`] };
-  return { ename, evalue, traceback: lines };
+  const publicName = ename === "ReferenceError" ? "NameError" : ename;
+  return {
+    ename: publicName,
+    evalue,
+    traceback: [`${publicName}: ${evalue}`],
+  };
 }
 
 /**

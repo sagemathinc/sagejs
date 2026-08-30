@@ -68,6 +68,17 @@ single = _RelationSteeringContext(
 assert not single.supports_unit_search
 assert left.source_row(2) == right.source_row(2)
 assert left_state.to_dict() == right_state.to_dict()
+rows = [left.source_row(2)[0] for _index in range(32)]
+for row in rows:
+    selected = [index for index, value in enumerate(row) if value]
+    assert 1 <= len(selected) <= 2
+    assert len({factor_base[index].rational_prime() for index in selected}) == len(
+        selected
+    )
+assert any(row[3] or row[2] for row in rows)
+diagnostics = left.diagnostics()
+assert diagnostics["rotating_subfactor_requests"] == 33
+assert diagnostics["rotating_subfactor_representative_changes"] > 0
 assert left.screen_norm(QQ(66)) == QQ(66)
 assert left.screen_norm(QQ(1) / QQ(6)) == QQ(1) / QQ(6)
 assert left.screen_norm(QQ(7)) is None
@@ -80,6 +91,35 @@ except ValueError:
 print("partition-prng-ok")
 `);
   assert.equal(output, "partition-prng-ok");
+});
+
+test("split-prime rotation escapes a proper cubic unit subspace", () => {
+  const output = run(String.raw`
+from sagejs.number_fields.class_unit_groups import (
+    EXACT_RELATIONS_CONDITIONAL_GRH,
+    compute_class_unit_group,
+)
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 92*x - 236, "a")
+result = compute_class_unit_group(K, proof=False, algorithm="auto")
+assert result.complete
+assert result.proof_status == EXACT_RELATIONS_CONDITIONAL_GRH
+assert result.class_number() == 4
+assert result.class_group().invariants() == (2, 2)
+assert result.saturation_record.verify(K, K.maximal_order())
+resources = result.diagnostics["resources"]
+assert resources["relation_attempts"] <= 12
+assert resources["relations"] <= 20
+assert resources["unit_log_rank"] == 2
+steering = resources["relation_steering"]
+assert steering["rotating_subfactor_requests"] <= 8
+assert steering["rotating_subfactor_representative_changes"] > 0
+assert steering["provisional_unit_rank"] == 2
+print((result.class_number(), resources["relation_attempts"], resources["relations"]))
+`);
+  assert.equal(output, "(4, 9, 13)");
 });
 
 test("candidate and dependency cursors commit or abort transactionally", () => {

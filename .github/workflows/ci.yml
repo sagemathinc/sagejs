@@ -8,6 +8,17 @@ on:
       - "v*"
   pull_request:
   workflow_dispatch:
+    inputs:
+      platform_smoke:
+        description: Run the Linux arm64, macOS arm64, and Windows x64 smoke matrix
+        required: false
+        default: false
+        type: boolean
+      native_targets:
+        description: Comma-separated full native targets, or all
+        required: false
+        default: all
+        type: string
   schedule:
     - cron: "17 4 * * 1"
 
@@ -60,7 +71,7 @@ jobs:
   platform-smoke:
     name: Platform smoke (${{ matrix.target }})
     needs: routine
-    if: ${{ !startsWith(github.ref, 'refs/tags/v') && github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') && github.event_name != 'schedule' && (github.event_name != 'workflow_dispatch' || inputs.platform_smoke) }}
     strategy:
       fail-fast: true
       matrix:
@@ -105,6 +116,9 @@ jobs:
       - name: Build the compiler and runtime
         run: pnpm build
 
+      - name: Execute the resident exact cross-platform witness
+        run: node --test --test-name-pattern "Magma authenticates|generic resident exact ownership graph" test/native-rank-four-lattice-workspace.cjs
+
       - name: Enforce the startup budget
         run: pnpm test:startup:run
 
@@ -114,7 +128,7 @@ jobs:
   linux-x64:
     name: Linux x64 native, tests, and SEA
     needs: routine
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 90
     env:
@@ -175,6 +189,9 @@ jobs:
         env:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap
+
+      - name: Execute the resident exact native witness
+        run: node --test test/native-rank-four-lattice-workspace.cjs
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
@@ -293,7 +310,7 @@ jobs:
   linux-arm64:
     name: Linux arm64 native, tests, and SEA
     needs: routine
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'linux-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 90
     env:
@@ -355,6 +372,9 @@ jobs:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap
 
+      - name: Execute the resident exact native witness
+        run: node --test test/native-rank-four-lattice-workspace.cjs
+
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
 
@@ -402,7 +422,7 @@ jobs:
   windows-x64:
     name: Windows x64 native, tests, and SEA
     needs: routine
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'windows-x64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 180
     env:
@@ -499,6 +519,9 @@ jobs:
         env:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap --without-sea
+
+      - name: Execute the resident exact native witness
+        run: node --test test/native-rank-four-lattice-workspace.cjs
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
@@ -598,7 +621,7 @@ jobs:
   macos-arm64:
     name: macOS arm64 native, tests, and SEA
     needs: routine
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && !inputs.platform_smoke && (inputs.native_targets == 'all' || contains(inputs.native_targets, 'macos-arm64'))) || github.event_name == 'schedule' }}
     runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
     env:
@@ -676,6 +699,9 @@ jobs:
         env:
           SAGEJS_BUILD_JOBS: "6"
         run: pnpm bootstrap --without-sea
+
+      - name: Execute the resident exact native witness
+        run: node --test test/native-rank-four-lattice-workspace.cjs
 
       - name: Enforce the development startup budget
         run: pnpm test:startup:run

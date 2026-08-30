@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/epoch-v2.schema.json",
+  "title": "Sage.js optimization epoch v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "revision", "build", "catalogId", "workloadIds", "runtime", "components", "profiler", "reasonRegistryId", "schemaRegistryId", "producer"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-epoch/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "revision": { "type": "object" },
+    "build": { "type": "object" },
+    "catalogId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "workloadIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" } },
+    "runtime": { "type": "object" },
+    "components": { "type": "array", "items": { "type": "object" } },
+    "profiler": { "type": "object" },
+    "reasonRegistryId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "schemaRegistryId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "producer": { "type": "object" }
+  }
+}

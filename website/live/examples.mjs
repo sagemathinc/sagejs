@@ -29,6 +29,23 @@ complex_plot(L, (0, 2), (-4, 4), plot_points=50,
              interpolation='nearest')`,
   },
   {
+    id: "cape-man",
+    title: "Cape Man in 3D",
+    description:
+      "Build Sage's classic Cape Man by composing and transforming 3D surfaces.",
+    source: `S = sphere(size=.5, color='yellow')
+S += sphere((.45, -.1, .15), size=.1, color='white')
+S += sphere((.51,-.1,.17), size=.05, color='black')
+S += sphere((.45, .1, .15), size=.1, color='white')
+S += sphere((.51, .1,.17), size=.05, color='black')
+S += sphere((.5, 0, -.2), size=.1, color='yellow')
+f(x,y) = exp(x/5)*cos(y)
+P = plot3d(f, (-5, 4), (-5, 5),
+           color=['red','yellow'], max_depth=10, mesh=True)
+cape_man = P.scale(.2) + S.translate(1, 0, 0)
+cape_man.show(aspect_ratio=[1, 1, 1], figsize=6)`,
+  },
+  {
     id: "exact-matrices",
     title: "Exact matrices",
     description: "Exact integer and rational linear algebra backed by WebAssembly.",

@@ -6678,7 +6678,13 @@ def factorial(value: Any) -> Any:
 
 def binomial(n: Any, k: Any) -> Any:
     if not runtime.is_exact_integer(n) or not runtime.is_exact_integer(k):
-        raise TypeError("binomial() arguments must be integers")
+        symbolic_function = runtime.reflect.get(
+            runtime.global_object,
+            "symbolic_binomial",
+        )
+        if runtime.jstype(symbolic_function) != "function":
+            raise TypeError("binomial() arguments must be integers")
+        return symbolic_function(n, k)
     n_integer = runtime.integer_bigint(n)
     k_integer = runtime.integer_bigint(k)
     if k_integer < 0:
@@ -8315,6 +8321,22 @@ dir = ρσ_dir
 vars = ρσ_vars
 help = ρσ_help
 search_doc = ρσ_search_doc
+
+
+def copy(value: Any) -> Any:
+    """Return a shallow copy, matching Python's `copy.copy` convenience API."""
+    copier = getattr(value, "__copy__", None)
+    if callable(copier):
+        return copier()
+    copier = getattr(value, "copy", None)
+    if callable(copier):
+        return copier()
+    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):
+        return value
+    try:
+        return type(value)(value)
+    except Exception:
+        raise TypeError("object does not support shallow copying")  # noqa: B904
 
 
 def quit(code: Any = None) -> None:

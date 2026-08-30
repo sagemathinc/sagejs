@@ -70,6 +70,34 @@ async function main() {
       "1/3",
     );
     assert.equal(
+      (await session.evaluate("integrate == integral")).repr,
+      "True",
+    );
+    assert.equal(
+      (await session.evaluate("expand((x+1)^3)")).repr,
+      "x^3 + 3*x^2 + 3*x + 1",
+    );
+    assert.equal(
+      (await session.evaluate("z=(x+1)^3\nz.expand()")).repr,
+      "x^3 + 3*x^2 + 3*x + 1",
+    );
+    assert.equal(
+      (await session.evaluate("factor(x^2-1)")).repr,
+      "(x - 1)*(x + 1)",
+    );
+    assert.equal(
+      (await session.evaluate("(x^2-1).factor()")).repr,
+      "(x - 1)*(x + 1)",
+    );
+    assert.equal(
+      (await session.evaluate("taylor(sqrt(x+1),x,0,5)")).repr,
+      "7/256*x^5 - 5/128*x^4 + 1/16*x^3 - 1/8*x^2 + 1/2*x + 1",
+    );
+    assert.equal(
+      (await session.evaluate("sqrt(x+1).taylor(x,0,5)")).repr,
+      "7/256*x^5 - 5/128*x^4 + 1/16*x^3 - 1/8*x^2 + 1/2*x + 1",
+    );
+    assert.equal(
       (
         await session.evaluate(
           "integral(log(x)*x, (x, 2, 10))",
@@ -205,6 +233,39 @@ async function main() {
     assert.equal(
       (
         await session.evaluate(
+          "x,y=var('x,y')\n" +
+            "solve([x^2+y^2==1,(x-1)^2+y^2==1],x,y)",
+        )
+      ).repr,
+      "[[x == 1/2, y == -(sqrt(3)/2)], " +
+        "[x == 1/2, y == sqrt(3)/2]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "f=piecewise([((0,1),x),((1,2),x^2)])\n" +
+            "(f(1/2),f(3/2))",
+        )
+      ).repr,
+      "(1/2, 9/4)",
+    );
+    assert.equal((await session.evaluate("latex(2/3)")).repr, "\\frac{2}{3}");
+    assert.equal(
+      (await session.evaluate("latex(matrix(QQ,2,[0,0,-1,1]))")).repr,
+      "\\left(\\begin{array}{rr}\n" +
+        "0 & 0 \\\\\n" +
+        "-1 & 1\n" +
+        "\\end{array}\\right)",
+    );
+    const shownRational = await session.evaluate("show(2/3)");
+    assert.equal(shownRational.repr, "2/3");
+    assert.deepEqual(shownRational.display, {
+      mime: "text/latex",
+      data: "$\\displaystyle \\frac{2}{3}$",
+    });
+    assert.equal(
+      (
+        await session.evaluate(
           "x,y=var('x,y')\nsolve([x+y==6,x-y==4],x,y)",
         )
       ).repr,
@@ -239,7 +300,7 @@ async function main() {
             "desolve(diff(u,t)+u-1,[u,t])",
         )
       ).repr,
-      "(_C + e^t)*e^(-t)",
+      "_C/e^t + 1",
     );
     assert.equal(
       (
@@ -249,7 +310,7 @@ async function main() {
             "desolve(diff(y,x)+y-1,y,ics=[10,2])",
         )
       ).repr,
-      "(e^10 + e^x)*e^(-x)",
+      "e^10/e^x + 1",
     );
     assert.equal(
       (

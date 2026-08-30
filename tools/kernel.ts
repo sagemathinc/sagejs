@@ -100,6 +100,11 @@ function deserializeError(serialized): Error {
   return error;
 }
 
+function userErrorText(error: Error): string {
+  const name = error.name === "ReferenceError" ? "NameError" : error.name;
+  return `${name || "Error"}: ${error.message}`;
+}
+
 /**
  * An interruptible, persistent Sage.js execution session.
  *
@@ -201,7 +206,7 @@ export class SageSession extends EventEmitter {
       } else {
         const error = deserializeError(message.error);
         pending.reject(error);
-        this.emit("stderr", `${error.stack ?? error.message}\n`, {
+        this.emit("stderr", `${userErrorText(error)}\n`, {
           evaluationId: message.id,
         });
       }

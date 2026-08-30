@@ -1,0 +1,76 @@
+{
+  "schema": "sagejs.optimization-memory-record/v2",
+  "id": "sha256:17c6faaeb7b172fd7db8a50b7f4874f16c8394e3352bd4acc46d5eb3bdbdc6fa",
+  "authority": {
+    "kind": "optimization-outcome-v2",
+    "producer": "optimization.campaign2-memory.v2",
+    "validatedInputIds": [
+      "sha256:17efd94fa0991f6bcc3072ee4e28cb062f106f21dc9f794155f53f7192d71d70",
+      "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043"
+    ]
+  },
+  "subject": {
+    "id": "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe",
+    "scope": "public-call",
+    "publicOperation": "Polynomial.integral",
+    "sourcePath": "src/lib/sagejs/polynomial_algorithms/public_structural.py",
+    "regionId": "sha256:52440173e580597372f8b953a4254b8b0d1a9216ab8d6a2c9fa1331f005c87fe",
+    "parentIds": [],
+    "predecessorIds": []
+  },
+  "category": "library-route",
+  "mechanism": "Split at characteristic holes and run FLINT nmod_poly_integral on every legal block",
+  "interventionId": "sha256:9ed3772c29fe81dc986c34f0efc0bac6707d4420d409f757854f9c138e78414f",
+  "result": {
+    "outcomeId": "sha256:17efd94fa0991f6bcc3072ee4e28cb062f106f21dc9f794155f53f7192d71d70",
+    "opportunityId": "sha256:02d9163e685939393139304041617602a6b1dcbdeece4e0a85590b99eb04f1f7",
+    "campaignId": null,
+    "promotionId": null,
+    "disposition": "investigate",
+    "regressionState": "not-applicable",
+    "reasons": [
+      "Campaign 2 completed with no selected intervention, dossier, campaign, or promotion.",
+      "Failed deterministic gate: complete-cost-boundary.",
+      "Failed deterministic gate: fallback-or-rollback.",
+      "Failed deterministic gate: mature-capability-audit.",
+      "Failed deterministic gate: platform-fallback.",
+      "Failed deterministic gate: positive-eleven-pair-separation.",
+      "Failed deterministic gate: semantic-obligations.",
+      "Failed deterministic gate: worst-pair-ten-percent.",
+      "current zero-sample evidence lacks required authorities"
+    ]
+  },
+  "binding": {
+    "epochId": "sha256:201e61ffc70569711d598f70ea9cfbf6505c377450ec7b33b2ed08175c40d810",
+    "sourceClosureId": "sha256:bfae0f95838bb367607852a9d139b17f420231b0cb7a0782c7aa38495261b817",
+    "workloadIds": [
+      "sha256:078adf96a0d90f93be420adb84787753ad6f3b3e6076a186e3659ef3bafa38a8",
+      "sha256:8444343ab1a6f8cdda2c504498bdf4654f36d6deb540d2b8d9061f4cb75e4277"
+    ],
+    "compatibleSourceClosureIds": [],
+    "revision": {
+      "commit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+      "tree": "6b1bc0ce4b3472c2f506f09c9ac9d9020aacf2eb"
+    }
+  },
+  "evidence": [
+    {
+      "id": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "kind": "outcome",
+      "logicalId": "sha256:ec5c7c0da811985fbda66249724bf5515b938650336a18cd0104e10a01c40043",
+      "path": "architecture/optimization-engine/memory/manifests/campaign-2-adjudication.json",
+      "uri": "https://github.com/sagemathinc/sagejs/releases/tag/optimization-engine-campaign2-2026-08-29",
+      "sha256": "952be18a85bf6c9425bd823ec1df42aeca504c08b14aa02b68b13fc401280356",
+      "producerCommand": [
+        "node bench/optimization-engine/campaign2-discovery.cjs adjudicate /scratch/campaign2-adjudication-epoch.json campaign2-authoritative-input.json"
+      ],
+      "roles": [
+        "negative",
+        "outcome"
+      ],
+      "validationStatus": "accepted"
+    }
+  ],
+  "fallbackEvidenceIds": [],
+  "supersedesIds": []
+}

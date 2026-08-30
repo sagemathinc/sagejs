@@ -25,7 +25,7 @@ test("loads the generated resource backend through the public package", () => {
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
   assert.ok(
-    resourceBackend.byteLength <= 410_000,
+    resourceBackend.byteLength <= 430_000,
     `generated resource backend grew to ${resourceBackend.byteLength} bytes`,
   );
   assert.ok(
@@ -44,6 +44,8 @@ test("loads the generated resource backend through the public package", () => {
     "nmod_matrix",
     "fmpq_value",
     "byte_region",
+    "native_exact_workspace",
+    "native_exact_workspace_borrow",
     "fmpz_mod_polynomial",
     "fmpz_mod_polynomial_division_result",
     "fmpz_mod_polynomial_xgcd_result",

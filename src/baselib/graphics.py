@@ -5574,10 +5574,18 @@ def parametric_plot(
     *range_args: Any,
     **options: Any,
 ) -> Graphics:
-    """Plot a two-component parametric plane curve."""
+    """Plot a parametric plane curve, space curve, or surface."""
     components = list(functions)
+    if len(components) == 3:
+        plot3d_function = runtime.reflect.get(
+            runtime.global_object,
+            "parametric_plot3d",
+        )
+        if runtime.jstype(plot3d_function) != "function":
+            raise RuntimeError("the 3D plotting module is unavailable")
+        return plot3d_function(components, *range_args, **options)
     if len(components) != 2:
-        raise ValueError("parametric_plot() requires exactly two components")
+        raise ValueError("parametric_plot() requires two or three components")
     minimum, maximum = _plot_range(range_args)
     variable = _plot_variable(range_args)
     count = int(_option_pop(options, "plot_points", 200))

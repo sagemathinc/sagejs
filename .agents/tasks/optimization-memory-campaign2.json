@@ -1,0 +1,52 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "optimization-memory-campaign2",
+  "title": "Campaign 2 no-selection memory",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Check in exact Campaign 2 reject-all v2 outcomes and a concise durable-memory report without dossier or promotion authority",
+  "base_commit": "b5d8f58a0ecb294fafbaeb1ccea212c8dc734029",
+  "claims": [
+    "architecture/optimization-engine/memory/manifests/campaign-2-adjudication.json",
+    "architecture/optimization-engine/memory/campaign-2-cubic-factorization.json",
+    "architecture/optimization-engine/memory/campaign-2-dense-integral.json",
+    "architecture/optimization-engine/memory/campaign-2-hyperelliptic-normalization.json",
+    "architecture/optimization-engine/memory/current-context.json",
+    "architecture/optimization-engine/memory/current-memory.json",
+    "architecture/optimization-engine/memory/manifests/current-memory.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Exact v2 outcome/opportunity/adjudication identities and canonical memory digest"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "Recorded Campaign 2's accepted no-selection adjudication as three exact v2 durable-memory outcomes, preserved Campaign 1 as historical nonactionable memory, generated the checked four-record current report and canonical NDJSON/SQLite manifest, and bound both immutable GitHub releases by content digest.",
+    "risks": [
+      "The integration-owned Campaign 1 focused test still builds its exact report from only the anchor; integration must switch that one assertion to load all memory records before this new four-record report can pass the full test file.",
+      "The release APIs expose asset names and sizes but not digests; physical SHA-256 values were independently verified after downloading both companion-release assets."
+    ],
+    "next_steps": [
+      "Apply the coordinated minimal test update, cherry-pick this outcome/report commit, and run the integration-owned broad gates on the merged HEAD."
+    ]
+  }
+}

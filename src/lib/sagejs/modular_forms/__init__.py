@@ -34,10 +34,19 @@ SparseCharacteristicPolynomialCertificate: Any
 SparseWiedemannCertificate: Any
 AlgebraicHeckeQExpansion: Any
 AlgebraicSupersingularEigenpacket: Any
+BrandtLinearOperator: Any
+BrandtModule: Any
+BrandtModuleElement: Any
+BrandtModule_class: Any
+BrandtSubspace: Any
+BrandtComponentGroup: Any
+BrandtComponentGroupCertificate: Any
+DegreeZeroBrandtLattice: Any
 ClassicalModularPolynomial: Any
 ComponentCuspidalHeckeOperator: Any
 CuspidalHeckeOperator: Any
 ExactHeckeSubspace: Any
+ExactModularForm: Any
 FiniteHeckeSet: Any
 HilbertModularFormsQsqrt3: Any
 HilbertModularFormsQsqrt5: Any
@@ -46,6 +55,7 @@ IcosianLocalSplitting: Any
 IcosianModularForms: Any
 IcosianOrbitSet: Any
 MestreQExpansion: Any
+LevelOneBasisCertificate: Any
 NormalizedAdjacencyOperator: Any
 SupersingularIsogenyGraph: Any
 SupersingularEigenpacket: Any
@@ -64,6 +74,8 @@ QuaternionHeckeCorrespondence: Any
 QuaternionIdealComponent: Any
 QuaternionOldNewDecomposition: Any
 classical_modular_polynomial: Any
+dimension_brandt_module: Any
+brandt_component_group: Any
 berlekamp_massey: Any
 dimension_supersingular_module: Any
 j_invariant_unit_series: Any
@@ -71,11 +83,15 @@ supersingular_j: Any
 sparse_wiedemann_certificate: Any
 sparse_characteristic_polynomial_certificate: Any
 algebraic_supersingular_eigenpacket: Any
+delta_form: Any
+delta_qexp: Any
 finite_hecke_set: Any
+level_one_basis_certificate: Any
 sqrt3_hecke_prime: Any
 sqrt3_prime_ideals: Any
 sqrt5_hecke_prime: Any
 sqrt5_prime_ideals: Any
+victor_miller_basis: Any
 
 _QEXP_EXPORTS = [
     "ExactModularForm",
@@ -139,10 +155,19 @@ __all__ = [
     "SparseWiedemannCertificate",
     "AlgebraicHeckeQExpansion",
     "AlgebraicSupersingularEigenpacket",
+    "BrandtLinearOperator",
+    "BrandtModule",
+    "BrandtModuleElement",
+    "BrandtModule_class",
+    "BrandtSubspace",
+    "BrandtComponentGroup",
+    "BrandtComponentGroupCertificate",
+    "DegreeZeroBrandtLattice",
     "ClassicalModularPolynomial",
     "ComponentCuspidalHeckeOperator",
     "CuspidalHeckeOperator",
     "ExactHeckeSubspace",
+    "ExactModularForm",
     "FiniteHeckeSet",
     "HilbertModularFormsQsqrt3",
     "HilbertModularFormsQsqrt5",
@@ -151,6 +176,7 @@ __all__ = [
     "IcosianModularForms",
     "IcosianOrbitSet",
     "MestreQExpansion",
+    "LevelOneBasisCertificate",
     "NormalizedAdjacencyOperator",
     "SupersingularIsogenyGraph",
     "SupersingularEigenpacket",
@@ -169,6 +195,8 @@ __all__ = [
     "QuaternionIdealComponent",
     "QuaternionOldNewDecomposition",
     "classical_modular_polynomial",
+    "dimension_brandt_module",
+    "brandt_component_group",
     "berlekamp_massey",
     "dimension_supersingular_module",
     "j_invariant_unit_series",
@@ -176,11 +204,15 @@ __all__ = [
     "sparse_wiedemann_certificate",
     "sparse_characteristic_polynomial_certificate",
     "algebraic_supersingular_eigenpacket",
+    "delta_form",
+    "delta_qexp",
     "finite_hecke_set",
+    "level_one_basis_certificate",
     "sqrt3_hecke_prime",
     "sqrt3_prime_ideals",
     "sqrt5_hecke_prime",
     "sqrt5_prime_ideals",
+    "victor_miller_basis",
 ]
 
 
@@ -210,6 +242,26 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import finite_hecke
 
         return getattr(finite_hecke, name)
+    if name in [
+        "BrandtLinearOperator",
+        "BrandtModule",
+        "BrandtModuleElement",
+        "BrandtModule_class",
+        "BrandtSubspace",
+        "dimension_brandt_module",
+    ]:
+        from . import brandt
+
+        return getattr(brandt, name)
+    if name in [
+        "BrandtComponentGroup",
+        "BrandtComponentGroupCertificate",
+        "DegreeZeroBrandtLattice",
+        "brandt_component_group",
+    ]:
+        from . import component_groups
+
+        return getattr(component_groups, name)
     if name in [
         "ComponentCuspidalHeckeOperator",
         "ExactHeckeSubspace",
@@ -273,6 +325,17 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import mestre
 
         return getattr(mestre, name)
+    if name in [
+        "ExactModularForm",
+        "LevelOneBasisCertificate",
+        "delta_form",
+        "delta_qexp",
+        "level_one_basis_certificate",
+        "victor_miller_basis",
+    ]:
+        from . import qexp
+
+        return getattr(qexp, name)
     if name in [
         "ClassicalModularPolynomial",
         "classical_modular_polynomial",

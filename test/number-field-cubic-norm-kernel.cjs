@@ -205,6 +205,80 @@ test("packed cubic integral relation sieve matches ordinary Python", () => {
   assert.equal(output, "True True True");
 });
 
+test("cubic dependency sieve widens an incomplete unit prefix", () => {
+  const output = runSagejs(String.raw`
+import sagejs.number_fields.cubic_class_number as cubic
+
+selected = (((1, 0), (1, 0, 0), 2),)
+primary = (
+    ((1, 0), (1, 0, 0), 2),
+    ((1, 0), (0, 1, 0), 2),
+)
+widened = (
+    ((1, 0), (0, 1, 0), 2),
+    ((0, 1), (0, 0, 1), 3),
+    ((0, 1), (1, 1, 0), 3),
+)
+power_factor_base = object()
+calls = []
+saved = cubic._packed_cubic_relation_candidates
+
+def replacement(
+    order,
+    factor_base,
+    *,
+    maximum_candidates,
+    coefficient_bound,
+    duplicate_row_norms,
+    power_factor_base,
+    cancelled,
+):
+    calls.append((
+        order,
+        factor_base,
+        maximum_candidates,
+        coefficient_bound,
+        tuple(duplicate_row_norms),
+        power_factor_base,
+        cancelled,
+    ))
+    return widened
+
+cubic._packed_cubic_relation_candidates = replacement
+try:
+    dependencies, bound = cubic._bounded_cubic_dependency_candidates(
+        "order",
+        ("p2", "p3"),
+        selected,
+        primary,
+        2,
+        17,
+        cancelled=None,
+        power_factor_base=power_factor_base,
+    )
+finally:
+    cubic._packed_cubic_relation_candidates = saved
+
+assert dependencies == (
+    ((1, 0), (0, 1, 0), 2),
+    ((0, 1), (0, 0, 1), 3),
+    ((0, 1), (1, 1, 0), 3),
+)
+assert bound == cubic._CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
+assert calls == [(
+    "order",
+    ("p2", "p3"),
+    17,
+    cubic._CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
+    (2,),
+    power_factor_base,
+    None,
+)]
+print("cubic-dependency-sieve-ok")
+`);
+  assert.equal(output.split("\n").at(-1), "cubic-dependency-sieve-ok");
+});
+
 test("bounded cubic factorization matches the generic modular oracle", () => {
   runSagejs(cubicFactorDifferential);
 });
@@ -762,6 +836,26 @@ assert packed._factor_base == ()
 assert [record.to_dict() for record in packed_factor_records] == (
     packed.certificate.factor_base
 )
+
+# A detached certificate is process/session portable even though ordinary
+# ideal deserialization remains deliberately bound to one live field/order.
+# Nontrivial norm-obstruction payloads used to call that general decoder and
+# therefore verified only against the producer instance.
+detached_payload = packed.certificate.to_dict()
+detached_field = NumberField(x**3 - x**2 - 6*x - 12, "detached")
+detached_order = detached_field.maximal_order()
+detached_certificate = type(packed.certificate).from_dict(
+    detached_field, detached_payload
+)
+assert detached_certificate.class_number == 3
+assert detached_certificate.verify()
+try:
+    detached_order.ideal_from_dict(
+        detached_payload["obstructions"][0]["integral_ideal"]
+    )
+    raise AssertionError("ordinary ideal deserialization crossed field instances")
+except ValueError as error:
+    assert "different exact field/order fingerprint" in str(error)
 
 # The low-norm prefix may become proof evidence only after exact batch
 # admission reproduces every planned row.  Its modular obstruction is computed

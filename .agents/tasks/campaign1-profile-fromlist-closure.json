@@ -1,0 +1,70 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "campaign1-profile-fromlist-closure",
+  "title": "Authenticate repeated from-list lazy imports",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Make warm sealed optimizer profiling authenticate already-loaded Python from-list imports without inventing pseudo-submodules, with exact fail-closed regression tests",
+  "base_commit": "cb6309c63112135bc2562739e7dbdaeeee7467c1",
+  "claims": [
+    "tools/runtime-bootstrap.ts",
+    "test/optimizer-profile-lazy-modules.cjs"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "same-source",
+    "oracles": [
+      "ordinary evaluator import semantics",
+      "sealed profile closure conservation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check",
+    "pnpm exec tsc --noEmit",
+    "node --test test/optimizer-profile-lazy-modules.cjs test/optimizer-profile-warm.cjs"
+  ],
+  "runs": [
+    {
+      "command": "pnpm exec tsc --noEmit",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.894,
+      "started_at": "2026-08-28T14:17:57.865Z",
+      "commit": "cb6309c63112135bc2562739e7dbdaeeee7467c1",
+      "workspace_fingerprint": "6961bc51c253c96d1bf4e078e686ac19d6cfc354cc560ef2ede296b6a6a7cd2b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/optimizer-profile-lazy-modules.cjs test/optimizer-profile-warm.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 27.853,
+      "started_at": "2026-08-28T14:18:03.610Z",
+      "commit": "cb6309c63112135bc2562739e7dbdaeeee7467c1",
+      "workspace_fingerprint": "6961bc51c253c96d1bf4e078e686ac19d6cfc354cc560ef2ede296b6a6a7cd2b",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Warm sealed profiling now retains session-local negative lazy-module resolutions established during preparation, so repeated CPython-style from-list child probes preserve ImportError semantics instead of being misclassified as late code loads. Focused regressions cover the prepared pseudo-child lookup, and the authentic cubic factor-base profile completes with all 49 artifacts authenticated and no late artifacts.",
+    "risks": [
+      "The negative-resolution memory is deliberately scoped to one optimizer profile session; ordinary evaluator import behavior is unchanged."
+    ],
+    "next_steps": [
+      "Cherry-pick this commit into the integration branch, rebuild the TypeScript runtime, and regenerate the authenticated cubic factor-base receipt there."
+    ]
+  }
+}

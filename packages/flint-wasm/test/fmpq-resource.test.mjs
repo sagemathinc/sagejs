@@ -59,6 +59,8 @@ test("runs a generated dense rational matrix resource slice", () => {
     "nmod_matrix",
     "fmpq_value",
     "byte_region",
+    "native_exact_workspace",
+    "native_exact_workspace_borrow",
     "fmpz_mod_polynomial",
     "fmpz_mod_polynomial_division_result",
     "fmpz_mod_polynomial_xgcd_result",

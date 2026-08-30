@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/opportunity-v2.schema.json",
+  "title": "Sage.js optimization opportunity v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "subjectId", "observationIds", "classifications", "interventionIds", "losingEvidenceIds", "unresolvedObligations", "decision"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-opportunity/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "subjectId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "observationIds": { "type": "array", "minItems": 1 },
+    "classifications": { "type": "array", "minItems": 1 },
+    "interventionIds": { "type": "array" },
+    "losingEvidenceIds": { "type": "array" },
+    "unresolvedObligations": { "type": "array" },
+    "decision": { "type": "object" }
+  }
+}

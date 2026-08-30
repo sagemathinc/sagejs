@@ -5148,6 +5148,7 @@
         "packages/flint-wasm/scripts/production-receipt.cjs",
         "packages/flint-wasm/test/browser-wasm-webkit-memory.mjs",
         "packages/flint-wasm/test/node-cli.test.mjs",
+        "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
         "packages/flint-wasm/test/production-receipt.test.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
@@ -13002,12 +13003,15 @@
         "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
         "packages/flint-wasm/test/node-kernel.test.mjs",
+        "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
         "scripts/test-npm-package.cjs",
         "src/baselib/builtins.py",
         "test/ffi.cjs",
         "test/native-kernel.cjs",
+        "test/native-reusable-exact-workspace.cjs",
+        "test/optimization-campaign2-evidence.cjs",
         "tools/resources.ts"
       ],
       "declared_ffi": null

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/outcome-v2.schema.json",
+  "title": "Sage.js optimization outcome v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "subjectId", "opportunityId", "interventionId", "campaignId", "promotionId", "disposition", "evidenceIds", "reasons", "supersedesIds", "regressionState"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-outcome/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "subjectId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "opportunityId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "interventionId": { "anyOf": [{ "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" }, { "type": "null" }] },
+    "campaignId": { "anyOf": [{ "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" }, { "type": "null" }] },
+    "promotionId": { "anyOf": [{ "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" }, { "type": "null" }] },
+    "disposition": { "enum": ["accepted", "rejected", "investigate", "already-optimized", "superseded", "historical"] },
+    "evidenceIds": { "type": "array", "minItems": 1 },
+    "reasons": { "type": "array", "minItems": 1 },
+    "supersedesIds": { "type": "array" },
+    "regressionState": { "enum": ["current", "passing", "regressed", "not-applicable"] }
+  }
+}

@@ -10,7 +10,7 @@
     "development-cli": {
       "normalized_median_ms": 390,
       "normalized_median_ms_by_platform_arch": {
-        "linux-arm64": 400
+        "linux-arm64": 450
       },
       "hard_limit_ms": 1500,
       "samples": 11,
@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 781000,
+      "max_source_bytes": 805000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -68,7 +68,7 @@
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 950000,
+      "max_source_bytes": 1000000,
       "depends_on": ["core-runtime"],
       "modules": ["sagejs.compiler", "sagejs.native", "sagejs.ffi"],
       "files": [
@@ -82,7 +82,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 760000,
+      "max_source_bytes": 765000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -109,7 +109,7 @@
       "id": "linear-algebra",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 430000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic"],
       "files": [
         "src/baselib/matrix.py"
@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 160000,
+      "max_source_bytes": 175000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -176,6 +176,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
         "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
@@ -198,6 +199,21 @@
       "modules": ["sagejs.number_fields"],
       "files": [],
       "prefixes": ["src/lib/sagejs/number_fields/"]
+    },
+    {
+      "id": "number-field-relation-matrix",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 115000,
+      "depends_on": [
+        "core-runtime",
+        "linear-algebra",
+        "python-stdlib",
+        "number-field-algorithms"
+      ],
+      "modules": ["sagejs.number_fields.class_group_matrix"],
+      "files": ["src/lib/sagejs/number_fields/class_group_matrix.py"],
+      "prefixes": []
     },
     {
       "id": "number-field-prime-arithmetic",
@@ -262,7 +278,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1670000,
+      "max_source_bytes": 1620000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -270,11 +286,11 @@
         "numeric-compat",
         "python-stdlib",
         "number-field-algorithms",
-        "number-field-prime-arithmetic"
+        "number-field-prime-arithmetic",
+        "number-field-relation-matrix"
       ],
       "modules": [
         "sagejs.number_fields.class_group_factor_base",
-        "sagejs.number_fields.class_group_matrix",
         "sagejs.number_fields.class_group_maps",
         "sagejs.number_fields.class_group_proof",
         "sagejs.number_fields.class_group_relations",
@@ -291,7 +307,6 @@
       ],
       "files": [
         "src/lib/sagejs/number_fields/class_group_factor_base.py",
-        "src/lib/sagejs/number_fields/class_group_matrix.py",
         "src/lib/sagejs/number_fields/class_group_maps.py",
         "src/lib/sagejs/number_fields/class_group_proof.py",
         "src/lib/sagejs/number_fields/class_group_relations.py",
@@ -366,9 +381,9 @@
       "id": "symbolics",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 130000,
       "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/symbolic.py"],
+      "files": ["src/baselib/symbolic.py", "src/baselib/piecewise.py"],
       "prefixes": []
     },
     {
@@ -401,11 +416,25 @@
       "id": "combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 60000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
       "files": [
         "src/baselib/combinat.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "coding-theory",
+      "layer": 5,
+      "startup": "bootstrap",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "groups-combinatorics"
+      ],
+      "files": ["src/baselib/coding.py"],
       "prefixes": []
     },
     {
@@ -591,7 +620,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 290000,
+      "max_source_bytes": 295000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -623,20 +652,47 @@
       "prefixes": []
     },
     {
+      "id": "rational-quaternion-algebras",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 115000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic",
+        "linear-algebra"
+      ],
+      "modules": ["sagejs.quaternion_algebras"],
+      "files": [
+        "src/lib/sagejs/quaternion_algebras/__init__.py",
+        "src/lib/sagejs/quaternion_algebras/algebra.py",
+        "src/lib/sagejs/quaternion_algebras/class_set.py",
+        "src/lib/sagejs/quaternion_algebras/ideals.py"
+      ],
+      "prefixes": ["src/lib/sagejs/kernels/quaternion/"]
+    },
+    {
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 265000,
+      "max_source_bytes": 325000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
-        "graph-theory", "modular-forms", "matrix-native-kernels"
+        "graph-theory", "modular-forms", "matrix-native-kernels",
+        "rational-quaternion-algebras"
       ],
-      "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
+      "modules": [
+        "sage.modular.quatalg",
+        "sage.modular.ssmod",
+        "sagejs.modular_forms"
+      ],
       "files": [
+        "src/lib/sage/modular/quatalg/__init__.py",
+        "src/lib/sage/modular/quatalg/brandt.py",
         "src/lib/sage/modular/ssmod/__init__.py",
         "src/lib/sage/modular/ssmod/ssmod.py",
         "src/lib/sagejs/modular_forms/__init__.py",
         "src/lib/sagejs/modular_forms/algebraic.py",
+        "src/lib/sagejs/modular_forms/brandt.py",
+        "src/lib/sagejs/modular_forms/component_groups.py",
         "src/lib/sagejs/modular_forms/finite_hecke.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
         "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",

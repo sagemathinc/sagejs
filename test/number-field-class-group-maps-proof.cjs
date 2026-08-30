@@ -299,7 +299,8 @@ conditional = ConditionalGRHProofRecord.from_dict(conditional_data)
 
 class ConditionalContext:
     saturation_record = conditional.saturation
-    def verify_conditional_grh_record(self, record):
+    def verify_conditional_grh_record(self, record, presentation):
+        assert presentation is Cgrh
         return record.to_dict() == conditional.to_dict()
 
 CONDITIONAL_CONTEXT = ConditionalContext()
@@ -496,6 +497,24 @@ C = class_group_from_engine_result(EngineResult())
 assert isinstance(C, IdealClassGroup)
 assert C.invariants() == tuple(presentation.invariants)
 assert C.order() == int(presentation.order) and C.order() > 1
+
+# An engine that already owns an ordinary public group is still replayed once
+# before the adapter can hand it to the combined public projector.
+class PublicEngineResult:
+    complete = True
+    def class_group(self): return C
+
+original_status = C._proof_status
+C._proof_status = "heuristic"
+try:
+    class_group_from_engine_result(PublicEngineResult())
+    raise AssertionError("an invalid resident public group was accepted")
+except ArithmeticError:
+    pass
+finally:
+    C._proof_status = original_status
+assert class_group_from_engine_result(PublicEngineResult()) is C
+
 assert C.gen().ideal() == generator_ideals[0]
 assert C.gen().order() == C.invariants()[0] and (C.gen()**C.gen().order()).is_one()
 assert C(C.gen().ideal()) == C.gen()

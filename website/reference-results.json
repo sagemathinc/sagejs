@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 194,
+    "pass": 208,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -34,6 +34,26 @@
       "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
+    },
+    {
+      "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
+      "status": "pass",
+      "actual": "(2, x^2 - x - 6)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#9fcd905e50e9aec7-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/modular.py#7ea08ad2f0b57eec-75458977e82a3d0c",
+      "status": "pass",
+      "actual": "1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n"
     },
     {
       "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
@@ -553,7 +573,7 @@
     {
       "id": "src/sage/graphs/generators/random.py#42852f4d06cb2b67-0d1357c75022c1ad",
       "status": "pass",
-      "actual": "sagejs/runtime-bootstrap-sage.js:<location>\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:<location>)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:<location>)\n    at evalmachine.<anonymous>:<location>\n    at Script.runInThisContext (node:vm:<location>)\n    at runInThisContext (node:vm:<location>)\n    at execute (<SAGEJS_ROOT>/dist/tools/repl.js:<location>)\n"
+      "actual": "ValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n"
     },
     {
       "id": "src/sage/graphs/generators/random.py#5f3a32feaebd6256-e3b0c44298fc1c14~2",
@@ -575,6 +595,36 @@
       "id": "src/sage/graphs/generators/random.py#9cb2cb1b63c747ca-3cbc87c7681f34db",
       "status": "skip",
       "reason": "optional features unavailable: networkx"
+    },
+    {
+      "id": "src/baselib/modular.py#d36c977fdca91eed-4b227777d4dd1fc6",
+      "status": "pass",
+      "actual": "4\n"
+    },
+    {
+      "id": "src/baselib/modular.py#eb3186b67e97deea-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#e5f37975162258ad-3910892471943eac",
+      "status": "pass",
+      "actual": "7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#26c8a7b19766b45d-4f53cda18c2baa0c",
+      "status": "pass",
+      "actual": "[]\n"
+    },
+    {
+      "id": "src/baselib/modular.py#44f649fa8bcea764-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#417bff22d9b51e02-6ee662be6ae42850",
+      "status": "pass",
+      "actual": "(3/2, 0)\n"
     },
     {
       "id": "src/baselib/graphics.py#17671abe261ba66e-441459f59cccc537",
@@ -1175,6 +1225,26 @@
       "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
       "status": "pass",
       "actual": "(3, 3, 3)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",
+      "status": "pass",
+      "actual": "1 + 2*q + 2*q^4 + O(q^6)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#66a000ceaf4810b3-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/modular.py#31272cf366612d54-a3ccaba550953bdb",
+      "status": "pass",
+      "actual": "q + q^9 + O(q^12)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#8632a2c8d53f7707-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/builtins.py#bfcaa180a823102e-3cbc87c7681f34db",

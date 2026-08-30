@@ -71,7 +71,7 @@ function runSagejs(source) {
 
 function runCPython(source) {
   const python = process.env.PYTHON ||
-    (process.platform === "win32" ? "python" : "/usr/bin/python3");
+    (process.platform === "win32" ? "python" : "python3");
   const bootstrap = String.raw`
 import importlib.util
 import sys

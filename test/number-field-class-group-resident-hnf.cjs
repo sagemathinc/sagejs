@@ -3,11 +3,14 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const test = require("node:test");
+
+const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = resolve(__dirname, "..");
 const kernelSource = join(
@@ -108,6 +111,56 @@ const fixtures = [
     trials: 1,
   },
 ];
+
+test("the cubic HNF region owns one resident exact resource graph", async () => {
+  const ir = await lowerSource(readFileSync(kernelSource, "utf8"), kernelSource);
+  const fn = ir.functions.find(
+    (candidate) => candidate.name === "resident_exact_relation_hnf_select_v2",
+  );
+  assert.ok(fn);
+  assert.equal(fn.analysis.backend.kind, "gmp");
+  assert.equal(fn.analysis.liveExactWorkspace.count, 1);
+  assert.deepEqual(
+    fn.analysis.liveExactWorkspace.scopes[0].children.map((child) => ({
+      owner: child.owner,
+      storage: child.storage,
+      resource: child.resourceId,
+    })),
+    [
+      "source_matrix",
+      "basis_matrix",
+      "transform_matrix",
+      "trial_source_matrix",
+      "trial_hnf_matrix",
+      "trial_transform_matrix",
+    ].map((owner) => ({
+      owner,
+      storage: "declared-owned-ffi-resource",
+      resource: "fmpz_matrix",
+    })),
+  );
+
+  const core = generateHostCore(ir).source;
+  const start = core.lastIndexOf(
+    "static int native_resident_exact_relation_hnf_select_v2(",
+  );
+  const end = core.indexOf(
+    "static int native_resident_exact_relation_hnf_select(",
+    start,
+  );
+  const region = core.slice(start, end);
+  const checkpoint = region.indexOf("sagejs_native_gmp_checkpoint_begin(");
+  const lastAllocation = region.lastIndexOf("sagejs_fmpz_matrix_init(", checkpoint);
+  const firstEntryWrite = region.indexOf("sagejs_fmpz_matrix_set_entry(", checkpoint);
+  const firstHnf = region.indexOf("sagejs_fmpz_matrix_hnf_transform(", checkpoint);
+  assert.ok(start >= 0);
+  assert.ok(lastAllocation > 0 && checkpoint > lastAllocation);
+  assert.ok(firstEntryWrite > checkpoint && firstHnf > firstEntryWrite);
+  assert.doesNotMatch(
+    region,
+    /packed_(?:fmpz|integer)|PyObject|napi_/,
+  );
+});
 
 function compileInto(cache) {
   return spawnSync(
@@ -272,9 +325,74 @@ try:
 finally:
     matrix._resident_hnf_kernel_override = saved_override
 
-from sagejs.kernels.matrix.class_group_hnf import resident_exact_relation_hnf_select
+# Automatic native dispatch is deliberately limited to the largest authentic
+# shape in this release's differential corpus. Larger exact workspaces must
+# fail closed to the ordinary implementation without entering native code.
+wide_initial = ((1, 0),)
+wide_candidates = tuple(
+    (index + 2, 1) for index in range(matrix.MAX_RESIDENT_HNF_NATIVE_ROWS)
+)
+native_calls = [0]
+def unqualified_native(*_arguments):
+    native_calls[0] += 1
+    raise AssertionError('an unqualified resident HNF shape entered native code')
+matrix._resident_hnf_kernel_override = unqualified_native
+try:
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='python'
+    )
+    assert fallback.basis == oracle.basis
+    assert fallback.selected_candidate_indices == oracle.selected_candidate_indices
+    assert native_calls[0] == 0
+    try:
+        matrix.resident_exact_relation_hnf_selection(
+            wide_initial, wide_candidates, 2, backend='native'
+        )
+    except RuntimeError as error:
+        assert 'qualified shape/bit envelope' in str(error)
+    else:
+        raise AssertionError('an unqualified explicit native shape was accepted')
+finally:
+    matrix._resident_hnf_kernel_override = saved_override
+
+saved_override = matrix._resident_hnf_kernel_override
+bit_calls = [0]
+def unqualified_bit_native(*_arguments):
+    bit_calls[0] += 1
+    raise AssertionError('an unqualified resident HNF bit width entered native code')
+matrix._resident_hnf_kernel_override = unqualified_bit_native
+try:
+    bit_rows = ((1 << matrix.MAX_RESIDENT_HNF_NATIVE_ENTRY_BITS,),)
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        (), bit_rows, 1, backend='python'
+    )
+    assert bit_calls[0] == 0
+    assert fallback == oracle
+    try:
+        matrix.resident_exact_relation_hnf_selection(
+            (), bit_rows, 1, backend='native'
+        )
+    except RuntimeError as error:
+        assert 'qualified shape/bit envelope' in str(error)
+    else:
+        raise AssertionError('an unqualified explicit native bit width was accepted')
+finally:
+    matrix._resident_hnf_kernel_override = saved_override
+
+from sagejs.kernels.matrix.class_group_hnf import (
+    resident_exact_relation_hnf_select,
+    resident_exact_relation_hnf_select_v2,
+)
 assert is_compiled(resident_exact_relation_hnf_select)
 assert resident_exact_relation_hnf_select.nativeAvailable
+assert is_compiled(resident_exact_relation_hnf_select_v2)
+assert resident_exact_relation_hnf_select_v2.nativeAvailable
 print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=True))
 `;
     const result = runSage(cache, program);
@@ -289,8 +407,10 @@ print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=Tr
 });
 
 test("the ordinary CPython oracle retains the same canonical lattices", () => {
+  const pythonExecutable =
+    process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
   const python = spawnSync(
-    "python3",
+    pythonExecutable,
     [
       "-c",
       [
@@ -310,7 +430,11 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
     ],
     { cwd: tmpdir(), encoding: "utf8", timeout: 30_000 },
   );
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.stderr || python.stdout || python.error?.message || "CPython oracle failed",
+  );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",
   });

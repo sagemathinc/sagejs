@@ -10,6 +10,8 @@
     {"library":"flint","id":"byte_region","policy":"copy-and-close","evidence":"src/baselib/sagejs/ffi/flint.py"},
     {"library":"flint","id":"number_field_order_resource","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/number_fields/round4.py"},
     {"library":"flint","id":"number_field_analysis_resource","policy":"desktop-operation-scoped-close","evidence":"src/lib/sagejs/number_fields/round4.py"},
+    {"library":"flint","id":"native_exact_workspace","policy":"bounded-context-with-child-spill","evidence":"test/native-reusable-exact-workspace.cjs"},
+    {"library":"flint","id":"native_exact_workspace_borrow","policy":"operation-scoped-close","evidence":"test/native-reusable-exact-workspace.cjs"},
     {"library":"flint","id":"fmpz_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
     {"library":"flint","id":"fmpq_polynomial","policy":"bounded-exact-spill","evidence":"src/baselib/polynomial.py"},
     {"library":"flint","id":"fmpq_polynomial_workspace","policy":"desktop-owner-scoped-close","evidence":"src/lib/sagejs/hyperelliptic_curves/jacobian_rational_native.py"},

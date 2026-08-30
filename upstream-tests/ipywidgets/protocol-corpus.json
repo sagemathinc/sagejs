@@ -1,0 +1,2690 @@
+{
+  "authority": "CPython",
+  "cases": [
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "SliderStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": "",
+              "handle_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "IntSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "IntSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "integer",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0001",
+              "max": 10,
+              "min": -2,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": "d",
+              "step": 1,
+              "style": "IPY_MODEL_model-0002",
+              "tabbable": null,
+              "tooltip": null,
+              "value": 3
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "SliderStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": "",
+              "handle_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "FloatRangeSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "FloatRangeSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0004",
+              "max": 2.0,
+              "min": -1.0,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": ".2f",
+              "step": 0.25,
+              "style": "IPY_MODEL_model-0005",
+              "tabbable": null,
+              "tooltip": null,
+              "value": [
+                0.25,
+                1.25
+              ]
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0007",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0008",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "TextStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "background": null,
+              "description_width": "",
+              "font_size": null,
+              "text_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0009",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "TextModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "TextView",
+              "continuous_update": true,
+              "description": "name",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0007",
+              "placeholder": "\u200b",
+              "style": "IPY_MODEL_model-0008",
+              "tabbable": null,
+              "tooltip": null,
+              "value": "alpha"
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0010",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0011",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "DescriptionStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": ""
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0012",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "DropdownModel",
+              "_options_labels": [
+                "Alpha",
+                "Beta",
+                "Gamma"
+              ],
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "DropdownView",
+              "description": "choice",
+              "description_allow_html": false,
+              "disabled": false,
+              "index": 1,
+              "layout": "IPY_MODEL_model-0010",
+              "style": "IPY_MODEL_model-0011",
+              "tabbable": null,
+              "tooltip": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": 4
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": [
+                0.5,
+                1.5
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0009",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": "beta"
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0012",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "index": 2
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "method": "echo_update",
+            "state": {
+              "value": 5
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "IntSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "IntSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "integer",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0001",
+              "max": 10,
+              "min": -2,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": "d",
+              "step": 1,
+              "style": "IPY_MODEL_model-0002",
+              "tabbable": null,
+              "tooltip": null,
+              "value": 5
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0007",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0008",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0009",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0010",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0011",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0012",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "scalar-controls",
+      "observations": {
+        "final_values": {
+          "choice": "g",
+          "interval": [
+            0.5,
+            1.5
+          ],
+          "slider": 5,
+          "text": "beta"
+        },
+        "view_bundles": [
+          {
+            "application/vnd.jupyter.widget-view+json": {
+              "model_id": "model-0003",
+              "version_major": 2,
+              "version_minor": 0
+            },
+            "text/plain": "IntSlider(value=3, description='integer', max=10, min=-2)"
+          },
+          {
+            "application/vnd.jupyter.widget-view+json": {
+              "model_id": "model-0006",
+              "version_major": 2,
+              "version_minor": 0
+            },
+            "text/plain": "FloatRangeSlider(value=(0.25, 1.25), max=2.0, min=-1.0, step=0.25)"
+          },
+          {
+            "application/vnd.jupyter.widget-view+json": {
+              "model_id": "model-0009",
+              "version_major": 2,
+              "version_minor": 0
+            },
+            "text/plain": "Text(value='alpha', description='name')"
+          },
+          {
+            "application/vnd.jupyter.widget-view+json": {
+              "model_id": "model-0012",
+              "version_major": 2,
+              "version_minor": 0
+            },
+            "text/plain": "Dropdown(description='choice', index=1, options=(('Alpha', 'a'), ('Beta', 'b'), ('Gamma', 'g')), value='b')"
+          }
+        ]
+      }
+    },
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "SliderStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": "",
+              "handle_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "IntSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "IntSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "left",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0001",
+              "max": 100,
+              "min": 0,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": "d",
+              "step": 1,
+              "style": "IPY_MODEL_model-0002",
+              "tabbable": null,
+              "tooltip": null,
+              "value": 2
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "TextStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "background": null,
+              "description_width": "",
+              "font_size": null,
+              "text_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "TextModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "TextView",
+              "continuous_update": true,
+              "description": "",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0004",
+              "placeholder": "\u200b",
+              "style": "IPY_MODEL_model-0005",
+              "tabbable": null,
+              "tooltip": null,
+              "value": "right"
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0007",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": "center",
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": "flex",
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": "90%"
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0008",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "HBoxModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "HBoxView",
+              "box_style": "",
+              "children": [
+                "IPY_MODEL_model-0003",
+                "IPY_MODEL_model-0006"
+              ],
+              "layout": "IPY_MODEL_model-0007",
+              "tabbable": null,
+              "tooltip": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0009",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0010",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "HTMLMathStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "background": null,
+              "description_width": "",
+              "font_size": null,
+              "text_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0011",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "HTMLMathModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "HTMLMathView",
+              "description": "",
+              "description_allow_html": false,
+              "layout": "IPY_MODEL_model-0009",
+              "placeholder": "\u200b",
+              "style": "IPY_MODEL_model-0010",
+              "tabbable": null,
+              "tooltip": null,
+              "value": "\\(x^2+y^2=1\\)"
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0012",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0013",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "VBoxModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "VBoxView",
+              "box_style": "",
+              "children": [
+                "IPY_MODEL_model-0008",
+                "IPY_MODEL_model-0011"
+              ],
+              "layout": "IPY_MODEL_model-0012",
+              "tabbable": null,
+              "tooltip": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0013",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "_dom_classes": [
+                "teaching-panel"
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "handle_color": "#336699"
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0007",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0008",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0009",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0010",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0011",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0012",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0013",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "nested-layouts",
+      "observations": {
+        "children": [
+          "model-0008",
+          "model-0011"
+        ],
+        "panel_bundle": {
+          "application/vnd.jupyter.widget-view+json": {
+            "model_id": "model-0013",
+            "version_major": 2,
+            "version_minor": 0
+          },
+          "text/plain": "VBox(children=(HBox(children=(IntSlider(value=2, description='left', style=SliderStyle(handle_color='#336699')\u2026"
+        },
+        "row_children": [
+          "model-0003",
+          "model-0006"
+        ]
+      }
+    },
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": "1px solid #888",
+              "border_left": "1px solid #888",
+              "border_right": "1px solid #888",
+              "border_top": "1px solid #888",
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/output",
+              "_model_module_version": "1.0.0",
+              "_model_name": "OutputModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/output",
+              "_view_module_version": "1.0.0",
+              "_view_name": "OutputView",
+              "layout": "IPY_MODEL_model-0001",
+              "msg_id": "",
+              "outputs": [],
+              "tabbable": null,
+              "tooltip": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "outputs": [
+                {
+                  "name": "stdout",
+                  "output_type": "stream",
+                  "text": "ordinary output\n"
+                }
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "outputs": [
+                {
+                  "name": "stdout",
+                  "output_type": "stream",
+                  "text": "ordinary output\n"
+                },
+                {
+                  "name": "stderr",
+                  "output_type": "stream",
+                  "text": "diagnostic output\n"
+                }
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "outputs": [
+                {
+                  "name": "stdout",
+                  "output_type": "stream",
+                  "text": "ordinary output\n"
+                },
+                {
+                  "name": "stderr",
+                  "output_type": "stream",
+                  "text": "diagnostic output\n"
+                },
+                {
+                  "data": {
+                    "text/latex": "$\\displaystyle \\int_0^1 x^2\\,dx=\\frac13$",
+                    "text/plain": "<IPython.core.display.Math object>"
+                  },
+                  "metadata": {},
+                  "output_type": "display_data"
+                }
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "output-capture-model",
+      "observations": {
+        "bundle": {
+          "application/vnd.jupyter.widget-view+json": {
+            "model_id": "model-0002",
+            "version_major": 2,
+            "version_minor": 0
+          },
+          "text/plain": "Output(layout=Layout(border_bottom='1px solid #888', border_left='1px solid #888', border_right='1px solid #88\u2026"
+        },
+        "outputs": [
+          {
+            "name": "stdout",
+            "output_type": "stream",
+            "text": "ordinary output\n"
+          },
+          {
+            "name": "stderr",
+            "output_type": "stream",
+            "text": "diagnostic output\n"
+          },
+          {
+            "data": {
+              "text/latex": "$\\displaystyle \\int_0^1 x^2\\,dx=\\frac13$",
+              "text/plain": "<IPython.core.display.Math object>"
+            },
+            "metadata": {},
+            "output_type": "display_data"
+          }
+        ]
+      }
+    },
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 30,
+                "sha256": "15076ee5dccc1aa06915cdd85efc93d67abf5872529b304b5186a8e7e06db354"
+              }
+            }
+          ],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [
+              [
+                "value"
+              ]
+            ],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "ImageModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "ImageView",
+              "format": "png",
+              "height": "32",
+              "layout": "IPY_MODEL_model-0001",
+              "tabbable": null,
+              "tooltip": null,
+              "width": "64"
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "ButtonStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "button_color": null,
+              "font_family": null,
+              "font_size": null,
+              "font_style": null,
+              "font_variant": null,
+              "font_weight": null,
+              "text_color": null,
+              "text_decoration": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "FileUploadModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "FileUploadView",
+              "accept": ".txt",
+              "button_style": "",
+              "description": "Upload",
+              "description_allow_html": false,
+              "disabled": false,
+              "error": "",
+              "icon": "upload",
+              "layout": "IPY_MODEL_model-0003",
+              "multiple": false,
+              "style": "IPY_MODEL_model-0004",
+              "tabbable": null,
+              "tooltip": null,
+              "value": []
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 15,
+                "sha256": "16db0753442473b3282bde3b073274a19ab10cd596205419fa29a976c3916be5"
+              }
+            }
+          ],
+          "comm_id": "model-0005",
+          "data": {
+            "buffer_paths": [
+              [
+                "value",
+                0,
+                "content"
+              ]
+            ],
+            "method": "update",
+            "state": {
+              "value": [
+                {
+                  "last_modified": 1788091200000,
+                  "name": "example.txt",
+                  "size": 15,
+                  "type": "text/plain"
+                }
+              ]
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "binary-media",
+      "observations": {
+        "image_bundle": {
+          "application/vnd.jupyter.widget-view+json": {
+            "model_id": "model-0002",
+            "version_major": 2,
+            "version_minor": 0
+          },
+          "text/plain": "Image(value=b'\\x89PNG\\r\\n\\x1a\\nSage.js widget fixture', height='32', width='64')"
+        },
+        "image_sha256": "15076ee5dccc1aa06915cdd85efc93d67abf5872529b304b5186a8e7e06db354",
+        "upload_state": {
+          "value": [
+            {
+              "content": {
+                "$binary": {
+                  "length": 15,
+                  "sha256": "16db0753442473b3282bde3b073274a19ab10cd596205419fa29a976c3916be5"
+                }
+              },
+              "last_modified": 1788091200000,
+              "name": "example.txt",
+              "size": 15,
+              "type": "text/plain"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "SliderStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": "",
+              "handle_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "IntSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "IntSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0001",
+              "max": 20,
+              "min": 0,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": "d",
+              "step": 1,
+              "style": "IPY_MODEL_model-0002",
+              "tabbable": null,
+              "tooltip": null,
+              "value": 1
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "SliderStyleModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "StyleView",
+              "description_width": "",
+              "handle_color": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@jupyter-widgets/controls",
+              "_model_module_version": "2.0.0",
+              "_model_name": "IntSliderModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/controls",
+              "_view_module_version": "2.0.0",
+              "_view_name": "IntSliderView",
+              "behavior": "drag-tap",
+              "continuous_update": true,
+              "description": "",
+              "description_allow_html": false,
+              "disabled": false,
+              "layout": "IPY_MODEL_model-0004",
+              "max": 20,
+              "min": 0,
+              "orientation": "horizontal",
+              "readout": true,
+              "readout_format": "d",
+              "step": 1,
+              "style": "IPY_MODEL_model-0005",
+              "tabbable": null,
+              "tooltip": null,
+              "value": 8
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": 1
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": 13
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {
+            "buffer_paths": [],
+            "method": "update",
+            "state": {
+              "value": 13
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 12,
+                "sha256": "b6843c25eaf0e88fcf4ed1516eba906f8bca7b2763b34c726996f8b18b808ca1"
+              }
+            }
+          ],
+          "comm_id": "model-0006",
+          "data": {
+            "content": {
+              "action": "pong",
+              "count": 3
+            },
+            "method": "custom"
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0003",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0004",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0005",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0006",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "links-and-custom-messages",
+      "observations": {
+        "custom_messages": [
+          [
+            {
+              "action": "ping",
+              "count": 2
+            },
+            [
+              {
+                "$binary": {
+                  "length": 13,
+                  "sha256": "a2047975f9b8215ab240859167ac0512aafab2a55864f7a44aa7fbc766d1b2c7"
+                }
+              }
+            ]
+          ]
+        ],
+        "linked_value": 13
+      }
+    },
+    {
+      "events": [
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {
+            "buffer_paths": [],
+            "state": {
+              "_model_module": "@jupyter-widgets/base",
+              "_model_module_version": "2.0.0",
+              "_model_name": "LayoutModel",
+              "_view_count": null,
+              "_view_module": "@jupyter-widgets/base",
+              "_view_module_version": "2.0.0",
+              "_view_name": "LayoutView",
+              "align_content": null,
+              "align_items": null,
+              "align_self": null,
+              "border_bottom": null,
+              "border_left": null,
+              "border_right": null,
+              "border_top": null,
+              "bottom": null,
+              "display": null,
+              "flex": null,
+              "flex_flow": null,
+              "grid_area": null,
+              "grid_auto_columns": null,
+              "grid_auto_flow": null,
+              "grid_auto_rows": null,
+              "grid_column": null,
+              "grid_gap": null,
+              "grid_row": null,
+              "grid_template_areas": null,
+              "grid_template_columns": null,
+              "grid_template_rows": null,
+              "height": null,
+              "justify_content": null,
+              "justify_items": null,
+              "left": null,
+              "margin": null,
+              "max_height": null,
+              "max_width": null,
+              "min_height": null,
+              "min_width": null,
+              "object_fit": null,
+              "object_position": null,
+              "order": null,
+              "overflow": null,
+              "padding": null,
+              "right": null,
+              "top": null,
+              "visibility": null,
+              "width": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 15,
+                "sha256": "cfd9568b5afb851c0ec144901a6c8ce7bfb80641393b18a3a4f83a72a0a4f992"
+              }
+            }
+          ],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [
+              [
+                "payload"
+              ]
+            ],
+            "state": {
+              "_dom_classes": [],
+              "_model_module": "@sagejs/widget-fixture",
+              "_model_module_version": "1.0.0",
+              "_model_name": "FixtureModel",
+              "_view_count": null,
+              "_view_module": "@sagejs/widget-fixture",
+              "_view_module_version": "1.0.0",
+              "_view_name": "FixtureView",
+              "label": "fixture",
+              "layout": "IPY_MODEL_model-0001",
+              "tabbable": null,
+              "tooltip": null
+            }
+          },
+          "keys": {
+            "target_module": null,
+            "target_name": "jupyter.widget"
+          },
+          "metadata": {
+            "version": "2.1.0"
+          },
+          "type": "comm_open"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 15,
+                "sha256": "438849f51d8d58b34f16120f4887ca69ec5301a5436a2f53d47c3ea0887828a4"
+              }
+            }
+          ],
+          "comm_id": "model-0002",
+          "data": {
+            "buffer_paths": [
+              [
+                "payload"
+              ]
+            ],
+            "method": "update",
+            "state": {}
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [
+            {
+              "$binary": {
+                "length": 15,
+                "sha256": "438849f51d8d58b34f16120f4887ca69ec5301a5436a2f53d47c3ea0887828a4"
+              }
+            }
+          ],
+          "comm_id": "control-0001",
+          "data": {
+            "buffer_paths": [
+              [
+                "model-0002",
+                "state",
+                "payload"
+              ]
+            ],
+            "method": "update_states",
+            "states": {
+              "model-0001": {
+                "model_module": "@jupyter-widgets/base",
+                "model_module_version": "2.0.0",
+                "model_name": "LayoutModel",
+                "state": {
+                  "_model_module": "@jupyter-widgets/base",
+                  "_model_module_version": "2.0.0",
+                  "_model_name": "LayoutModel",
+                  "_view_count": null,
+                  "_view_module": "@jupyter-widgets/base",
+                  "_view_module_version": "2.0.0",
+                  "_view_name": "LayoutView",
+                  "align_content": null,
+                  "align_items": null,
+                  "align_self": null,
+                  "border_bottom": null,
+                  "border_left": null,
+                  "border_right": null,
+                  "border_top": null,
+                  "bottom": null,
+                  "display": null,
+                  "flex": null,
+                  "flex_flow": null,
+                  "grid_area": null,
+                  "grid_auto_columns": null,
+                  "grid_auto_flow": null,
+                  "grid_auto_rows": null,
+                  "grid_column": null,
+                  "grid_gap": null,
+                  "grid_row": null,
+                  "grid_template_areas": null,
+                  "grid_template_columns": null,
+                  "grid_template_rows": null,
+                  "height": null,
+                  "justify_content": null,
+                  "justify_items": null,
+                  "left": null,
+                  "margin": null,
+                  "max_height": null,
+                  "max_width": null,
+                  "min_height": null,
+                  "min_width": null,
+                  "object_fit": null,
+                  "object_position": null,
+                  "order": null,
+                  "overflow": null,
+                  "padding": null,
+                  "right": null,
+                  "top": null,
+                  "visibility": null,
+                  "width": null
+                }
+              },
+              "model-0002": {
+                "model_module": "@sagejs/widget-fixture",
+                "model_module_version": "1.0.0",
+                "model_name": "FixtureModel",
+                "state": {
+                  "_dom_classes": [],
+                  "_model_module": "@sagejs/widget-fixture",
+                  "_model_module_version": "1.0.0",
+                  "_model_name": "FixtureModel",
+                  "_view_count": null,
+                  "_view_module": "@sagejs/widget-fixture",
+                  "_view_module_version": "1.0.0",
+                  "_view_name": "FixtureView",
+                  "label": "fixture",
+                  "layout": "IPY_MODEL_model-0001",
+                  "tabbable": null,
+                  "tooltip": null
+                }
+              }
+            }
+          },
+          "metadata": {},
+          "type": "comm_msg"
+        },
+        {
+          "buffers": [],
+          "comm_id": "control-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0001",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        },
+        {
+          "buffers": [],
+          "comm_id": "model-0002",
+          "data": {},
+          "metadata": {},
+          "type": "comm_close"
+        }
+      ],
+      "name": "control-channel-and-fixture",
+      "observations": {
+        "fixture_bundle": {
+          "application/vnd.jupyter.widget-view+json": {
+            "model_id": "model-0002",
+            "version_major": 2,
+            "version_minor": 0
+          },
+          "text/plain": "FixtureWidget(payload=b'updated-payload')"
+        },
+        "fixture_model_id": "model-0002"
+      }
+    }
+  ],
+  "normalization": {
+    "binary": "SHA-256 and byte length",
+    "comm_ids": "model-NNNN per case",
+    "omitted": [
+      "timestamps",
+      "Jupyter parent message UUIDs"
+    ]
+  },
+  "packages": {
+    "comm": "0.2.3",
+    "ipywidgets": "8.1.9",
+    "traitlets": "5.15.1"
+  },
+  "protocols": {
+    "control": "1.0.0",
+    "widget": "2.1.0"
+  },
+  "python": "3.14",
+  "schema": "sagejs.ipywidgets-protocol-corpus/v1"
+}

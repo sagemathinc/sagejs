@@ -1,0 +1,755 @@
+{
+  "schema": "sagejs.optimizer-reason-registry/v1",
+  "id": "sha256:b8b253ef91d3d032153625430b9a91c35da94d61b70770b36c15d79f514c1a5b",
+  "codes": [
+    {
+      "code": "binary64-nested-all.builtin-all-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural all call lacks a proved stable identity with the Python builtin.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.indexed-pair-shape-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The ordered index-zero and index-one reads lack a proved exact fixed-pair shape.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.inner-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The inner generator iterable lacks proved exact-list iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.interrupt-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Interrupt checks and catchability are not proved equivalent for a fused reduction.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.math-isfinite-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural math.isfinite calls lack a proved stable identity with the strict binary64 predicate.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.native-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Native conversion, isolation, interrupt, and result-boundary costs have not been evaluated.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.outer-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer generator iterable lacks proved exact-list iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.short-circuit-order-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Nested generator traversal, pair conjunction, and all short-circuit order are not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.strict-binary64-fixed-pair-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Inner elements lack an authenticated exact fixed-pair strict binary64 representation.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.strict-binary64-scalar-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Inner elements lack an authenticated strict binary64 scalar representation.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.untouched-restart-fallback-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Guard failure cannot yet prove restart through the untouched expression before observable iterator advancement.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.v8-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No verified V8 lowering is registered for nested binary64 all reductions.",
+      "detailFields": []
+    },
+    {
+      "code": "binary64-nested-all.wasm-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "WebAssembly copy, residency, interrupt, and result-boundary costs have not been evaluated.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.bigint-per-operation-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Per-operation JavaScript BigInt costs dominate the bounded exact-integer target.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.code-size-budget",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The generated bounded-integer target would exceed its reviewed code-size budget.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.dynamic-call",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains a call whose implementation and effects are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.mutable-buffer-access",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate uses mutable indexed storage without the required ownership and alias proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.native-region-unproved",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The source-transparent native candidate lacks an isolated-region proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.resident-wasm-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No resident WebAssembly ownership and overflow contract is registered.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.scalar-boundary-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Scalar target-boundary cost dominates the bounded arithmetic.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.scalar-compilation-cost",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Compilation cost dominates the scalar workload.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unproved-live-in",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "At least one scalar live-in lacks an exact representation proof.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unproved-sequence",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "A sequence input lacks an authenticated packed representation.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-control-flow",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate has control flow outside the verified transactional subset.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-iterator",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate iterator does not have proved built-in range semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "bounded-integer.unsupported-operation",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains an operation outside the verified exact-integer graph.",
+      "detailFields": ["operator"]
+    },
+    {
+      "code": "bounded-integer.unsupported-power",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The exact exponentiation lacks a bounded-power proof.",
+      "detailFields": []
+    },
+    {
+      "code": "catchable-interrupt-region",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate is nested where interrupt exceptions can be caught observably.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.comprehension-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found a comprehension.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.control-flow-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found internal branches.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.dynamic-call-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found dynamic calls.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.indexed-access-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found indexed access.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.module-scope-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The loop is at module scope rather than in a function.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.nested-loop-sites",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static loop inventory found nested loops.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.no-current-pass-claimed",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "No current mathematical-domain pass claimed the loop.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.no-mathematical-domain-evidence",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The loop has no current mathematical-domain evidence.",
+      "detailFields": []
+    },
+    {
+      "code": "dashboard.unsupported-while-loop",
+      "kind": "heuristic",
+      "origin": "dashboard",
+      "description": "The static inventory found a while loop without a proved progress measure.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.algorithm-disposition-unresolved",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The workload has not been classified as compiler work or mathematical algorithm work.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.ambiguous-source-map",
+      "kind": "integrity",
+      "origin": "collector",
+      "description": "A generated sample maps to more than one current semantic region.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.below-materiality-threshold",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The observed region is below the reviewed workload materiality threshold.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.insufficient-coverage",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "Current source attribution coverage is below the reviewed eligibility threshold.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.intervention-unreviewed",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "No evidence-reviewed algorithm, library, representation, runtime, boundary, cache, source, or compiler intervention has been selected.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.no-plausible-fallback",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "No same-source fallback-preserving transformation is currently plausible.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.oracle-unverified",
+      "kind": "integrity",
+      "origin": "validator",
+      "description": "The authentic workload output has not passed its exact oracle.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-artifact",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The artifact identity differs from the current required artifact.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-compiler",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The compiler identity differs from the current required compiler.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.stale-source",
+      "kind": "staleness",
+      "origin": "validator",
+      "description": "The source identity differs from the current required source bundle.",
+      "detailFields": []
+    },
+    {
+      "code": "evidence.unmatched-sample",
+      "kind": "integrity",
+      "origin": "collector",
+      "description": "A profiler sample could not be attributed to current source.",
+      "detailFields": []
+    },
+    {
+      "code": "general-operation-graph-native-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "A native lowering for the general operation graph is not registered.",
+      "detailFields": []
+    },
+    {
+      "code": "isolated-modular-batch-native-lowering-not-registered",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The modular-batch native target has no registered isolated lowering.",
+      "detailFields": []
+    },
+    {
+      "code": "isolated-modular-batch-wasm-lowering-not-registered",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The modular-batch WebAssembly target has no registered isolated lowering.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-expression-unsupported",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular expression is outside the verified operation graph.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-operation-required",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate contains no modular arithmetic operation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.callback-effects-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The callback implementation, effects, and exception behavior are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.early-exit-publication-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer-loop early exit and publication semantics are not proved for an optimized target.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.element-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The consumed sequence elements lack an authenticated machine representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.guard-hoisting-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Representation and operation guards are not proved hoistable outside the complete outer scan.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.inline-sequence-preparation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The inline sequence producer must be evaluated exactly once before iterator creation and lacks a lowering proof.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.iterator-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The iterator callable, construction, consumption, and observable exit semantics are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.lexical-sequence-binding-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The lexical sequence binding lacks an authenticated canonical representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.machine-range-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The complete operation graph lacks a proof that every intermediate remains exactly machine representable.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.native-boundary-unmeasured",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The complete native conversion and boundary cost has not been measured.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.operation-dispatch-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Arithmetic, comparison, and sequence operations lack authenticated primitive dispatch.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.outer-range-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer range callable and complete iteration semantics are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.pow-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular power call lacks authenticated builtin dispatch and bounded result semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.resident-wasm-unproved",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Resident WebAssembly ownership, copying, and publication costs are not proved.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.staged-sequence-binding-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The staged producer result must remain an ordinary pre-loop effect and lacks an authenticated canonical representation.",
+      "detailFields": []
+    },
+    {
+      "code": "modular-sequence.v8-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No verified V8 lowering is registered for the modular-sequence reconnaissance domain.",
+      "detailFields": []
+    },
+    {
+      "code": "not-complete-range-batch",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The indexed operation is not one complete range batch.",
+      "detailFields": []
+    },
+    {
+      "code": "not-top-level-contracted-batch",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The modular batch is not a top-level contracted region.",
+      "detailFields": []
+    },
+    {
+      "code": "optimization-level-too-low",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The selected optimization level does not enable this pass.",
+      "detailFields": []
+    },
+    {
+      "code": "output-allocation-not-proven",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate output is not proved to be a fresh private allocation with the required extent.",
+      "detailFields": []
+    },
+    {
+      "code": "pass-disabled",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The relevant optimizer pass was explicitly disabled.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.arrow-pivot-domain-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The pivot live-in lacks a proved exact supported value or authenticated preservation of the arbitrary-value tail branch.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.binary64-signed-zero-nonfinite-overflow-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Signed zero, infinities, NaN, underflow, overflow, and Python binary64 edge semantics are not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.builtin-enumerate-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural outer and inner enumerate calls lack a proved stable identity with the Python builtin.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.captured-runtime-intrinsic-identities-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The fast route lacks authenticated captured runtime intrinsics independent of mutable ambient constructors, math objects, and prototypes.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.complete-parallel-grid-index-bounds-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Complete u-before-v row and element bounds across the parallel grids are not proved before fast entry.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.complete-preflight-before-effects-interrupts-allocations-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Every fallible guard is not yet proved complete before optimized allocation, arithmetic, writes, or interrupt polling.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.exact-list-fixed-pair-or-parallel-grid-representation-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The candidate lacks authenticated exact list, fixed-pair, or parallel-grid brands, prototypes, dense slots, and stable lengths.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.exception-and-index-error-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Exception types, messages, tracebacks, and ordered row and indexed-access failures are not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.final-loop-targets-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Final outer and inner loop-target state, including zero-trip behavior, is not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.float-boxing-and-output-materialization-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Python float boxing and ordered output materialization are not yet proved equivalent at every observable result point.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.float-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural float calls lack a proved stable identity with strict Python binary64 conversion.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.fresh-ordered-output-streams-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Freshness, distinctness, ordering, and nonescape of output streams are not yet proved.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.inner-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The inner coordinate traversal lacks proved exact-list enumerate and iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.input-alias-and-mutation-stability-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Input aliases, read-only ownership, mutation stability, getters, proxies, holes, and callback-free reads are not yet proved.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.known-math-hypot-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The structural hypot calls lack proved source provenance and identity with the reviewed strict binary64 implementation.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.list-construction-and-extension-identity-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "List and tuple construction plus ordered list extension lack authenticated intrinsic identities and callback-free behavior.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.mature-library-route-unavailable",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No mature library implements the ordered Sage-to-Plotly segment projection without adding a foreign representation and materialization boundary.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.native-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "Native host conversion, variable output transfer, interrupt, browser fallback, and isolation costs have not been justified.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.optional-ordered-first-element-max-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The optional reduction lacks proved Python ordering, first-element retention, empty-input failure, and selected-object identity semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.outer-and-inner-loop-backedge-interrupt-semantics-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Interrupt polling, catchability, reset, and recovery are not proved equivalent at both represented source-loop backedges.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.outer-exact-list-iteration-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The outer coordinate traversal lacks proved exact-list enumerate and iteration semantics.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.parallel-rectangular-grid-shape-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The complete rectangular relationship among coordinate sequences and parallel component grids is not yet authenticated.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.private-intermediate-fusion-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Intermediate collections are not yet proved private, nonescaping, callback-free, and legally fusible across source traversals.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.safe-iteration-and-output-capacity-bounds-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Safe integer iteration counts and worst-case private output capacities are not proved before fast entry.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.source-operation-order-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "The complete source order of loads, conversions, comparisons, arithmetic, branches, extensions, and failures is not yet proved equivalent.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.strict-binary64-inputs-and-live-ins-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Coordinates, components, maximum, extent, head length, and head width lack authenticated strict Python binary64 representations.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.strict-binary64-result-boxing-and-arithmetic-grouping-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Left-associated binary64 arithmetic and exact Python float boxing at every source result point are not yet proved.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.transactional-private-publication-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Both output streams are not yet proved private until one atomic publication after the complete region succeeds.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.untouched-same-source-restart-fallback-unproved",
+      "kind": "rejection",
+      "origin": "compiler",
+      "description": "Guard failure cannot yet prove selection of the untouched same-source loop over existing live-ins before fast effects, without repeating preheader work.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.v8-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "No verified two-backedge transactional V8 lowering is registered for closed rectangular binary64 dataflow.",
+      "detailFields": []
+    },
+    {
+      "code": "rectangular-binary64-dataflow.wasm-boundary-unevaluated",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "WebAssembly input copying, variable output rematerialization, browser residency, lifetime, and interrupt costs have not been justified.",
+      "detailFields": []
+    },
+    {
+      "code": "resident-general-region-lowering-unimplemented",
+      "kind": "target-rejection",
+      "origin": "compiler",
+      "description": "The resident target for the general operation graph is not implemented.",
+      "detailFields": []
+    },
+    {
+      "code": "telemetry.guard-failure",
+      "kind": "guard",
+      "origin": "evaluator",
+      "description": "A runtime optimization guard rejected an invocation.",
+      "detailFields": ["guard"]
+    },
+    {
+      "code": "telemetry.route-unavailable",
+      "kind": "guard",
+      "origin": "evaluator",
+      "description": "The requested runtime route was unavailable.",
+      "detailFields": ["target"]
+    }
+  ]
+}

@@ -23,6 +23,14 @@
         <span class="status-dot" aria-hidden="true"></span><span>Loading kernel</span>
       </div>
       <a class="quiet-button" href="https://www.npmjs.com/package/@sagemath/sagejs">Embed / npm</a>
+      <label class="theme-control" for="theme">
+        Theme
+        <select id="theme">
+          <option value="system" selected>System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
       <button id="about" class="quiet-button" type="button">Capabilities &amp; privacy</button>
     </header>
 
@@ -89,7 +97,10 @@
             <p class="eyebrow">Local results</p>
             <h2 id="results-heading">Output</h2>
           </div>
-          <button id="clear-output" class="quiet-button" type="button">Clear</button>
+          <div class="result-controls">
+            <label><input id="typeset-math" type="checkbox" checked /> Typeset math</label>
+            <button id="clear-output" class="quiet-button" type="button">Clear</button>
+          </div>
         </div>
         <p id="diagnostics" class="diagnostics">No evaluations yet. Memory availability is reported honestly when the browser exposes it.</p>
         <div id="output" aria-live="polite" aria-relevant="additions text"></div>

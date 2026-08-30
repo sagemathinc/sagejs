@@ -466,6 +466,56 @@
       },
       {
         "schema_version": 1,
+        "name": "BrandtModule",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.quatalg.brandt",
+        "signature": "BrandtModule(D: Any, N: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, realization: str='auto', dense_entry_limit: Any=1000000) -> Any",
+        "summary": "Construct the weight-two Brandt module over $\\mathbf Q$.",
+        "doc": "Construct the weight-two Brandt module over $\\mathbf Q$.\n\nThe quaternion discriminant `D` is squarefree with an odd number of\nprime factors, and the Eichler conductor `N` is positive and coprime to\n`D`. The canonical sparse supersingular realization is selected when it\napplies; all other valid pairs use the exact Jacquet--Langlands Hecke\nrealization. Pass `realization=\"ideal-classes\"` to construct genuine\nEichler right ideal classes, their unit weights, and their integral\npairing.\n\n```sage\nsage: B = BrandtModule(11, 1)\nsage: (B.dimension(), B.T(2).charpoly())\n(2, x^2 - x - 6)\n```",
+        "tags": [
+          "modular forms",
+          "Brandt modules",
+          "quaternion algebras",
+          "Eichler orders",
+          "Hecke operators",
+          "Jacquet-Langlands"
+        ],
+        "backends": [
+          "Sage.js sparse supersingular graphs",
+          "Sage.js exact modular symbols",
+          "Sage.js exact rational quaternion ideals"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The default general basis is an exact Jacquet--Langlands Hecke realization; the explicit ideal-class realization constructs genuine quaternion ideals and their integral lattice."
+        },
+        "provenance": [
+          {
+            "kind": "literature-implemented",
+            "source": "Jacquet--Langlands correspondence for definite quaternion algebras"
+          },
+          {
+            "kind": "sage-derived",
+            "source": "SageMath Brandt-module API",
+            "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/quatalg/brandt.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "Kirschmer--Voight ideal-class enumeration and Kohel--Stein monodromy/component-group formulas"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Bad-prime operators at primes dividing the Eichler conductor are not yet exposed.",
+          "Only weight two and base rings QQ/ZZ are implemented.",
+          "Atkin--Lehner operators are currently exposed for divisors of D.",
+          "Full-Jacobian component groups are implemented; newform-quotient groups await audited integral modular-degree maps."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "circle",
         "aliases": [],
         "kind": "function",
@@ -521,7 +571,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any",
         "summary": "Return the replayable Cohen coefficient-formula certificate.",
-        "doc": "Return the replayable Cohen coefficient-formula certificate.",
+        "doc": "Return the replayable Cohen coefficient-formula certificate.\n\n```sage\nsage: cohen_eisenstein_series_certificate(2, 12).verify()\nTrue\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -566,7 +616,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any",
         "summary": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
-        "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
+        "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n```sage\nsage: cohen_eisenstein_series_qexp(2, 6)\n1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -6593,7 +6643,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "half_integral_formula_registry() -> Any",
         "summary": "Return the bounded, certificate-bearing half-integral formula registry.",
-        "doc": "Return the bounded, certificate-bearing half-integral formula registry.",
+        "doc": "Return the bounded, certificate-bearing half-integral formula registry.\n\n```sage\nsage: len(half_integral_formula_registry())\n4\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -6638,7 +6688,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any",
         "summary": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
-        "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
+        "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n```sage\nsage: f = cohen_eisenstein_series_qexp(2, 82)\nsage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)\n7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -6683,7 +6733,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]",
         "summary": "Return Sage-compatible Basmaji half-integral cusp expansions.",
-        "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.",
+        "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.\n\n```sage\nsage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n[]\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -6728,7 +6778,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any",
         "summary": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
-        "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
+        "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n```sage\nsage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\nsage: (H.weight(), H.dimension())\n(3/2, 0)\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -8060,7 +8110,7 @@
         "aliases": [],
         "kind": "function",
         "module": "sage.rings.finite_rings.integer_mod",
-        "signature": "Mod(value: Any, modulus: Any) -> IntegerModElement",
+        "signature": "Mod(value: Any, modulus: Any) -> Any",
         "summary": "Construct `value` in the ring of integers modulo `modulus`.",
         "doc": "Construct `value` in the ring of integers modulo `modulus`.",
         "tags": [
@@ -9556,8 +9606,8 @@
         "kind": "function",
         "module": "sage.plot",
         "signature": "parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics",
-        "summary": "Plot a two-component parametric plane curve.",
-        "doc": "Plot a two-component parametric plane curve.",
+        "summary": "Plot a parametric plane curve, space curve, or surface.",
+        "doc": "Plot a parametric plane curve, space curve, or surface.",
         "tags": [
           "graphics",
           "plotting",
@@ -12358,7 +12408,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
         "summary": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
-        "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
+        "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n```sage\nsage: theta_qexp(6)\n1 + 2*q + 2*q^4 + O(q^6)\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -12403,7 +12453,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
         "summary": "Return the replayable standard-theta coefficient certificate.",
-        "doc": "Return the replayable standard-theta coefficient certificate.",
+        "doc": "Return the replayable standard-theta coefficient certificate.\n\n```sage\nsage: theta_qexp_certificate(12).verify()\nTrue\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -12448,7 +12498,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
         "summary": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
-        "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
+        "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n```sage\nsage: theta2_qexp(12)\nq + q^9 + O(q^12)\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -12493,7 +12543,7 @@
         "module": "sage.modular.modform.half_integral",
         "signature": "theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
         "summary": "Return the replayable odd-square theta coefficient certificate.",
-        "doc": "Return the replayable odd-square theta coefficient certificate.",
+        "doc": "Return the replayable odd-square theta coefficient certificate.\n\n```sage\nsage: theta2_qexp_certificate(12).verify()\nTrue\n```",
         "tags": [
           "modular forms",
           "half-integral weight",
@@ -13363,6 +13413,100 @@
     },
     {
       "schema_version": 1,
+      "name": "BrandtModule",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.quatalg.brandt",
+      "signature": "BrandtModule(D: Any, N: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, realization: str='auto', dense_entry_limit: Any=1000000) -> Any",
+      "summary": "Construct the weight-two Brandt module over $\\mathbf Q$.",
+      "doc": "Construct the weight-two Brandt module over $\\mathbf Q$.\n\nThe quaternion discriminant `D` is squarefree with an odd number of\nprime factors, and the Eichler conductor `N` is positive and coprime to\n`D`. The canonical sparse supersingular realization is selected when it\napplies; all other valid pairs use the exact Jacquet--Langlands Hecke\nrealization. Pass `realization=\"ideal-classes\"` to construct genuine\nEichler right ideal classes, their unit weights, and their integral\npairing.\n\n```sage\nsage: B = BrandtModule(11, 1)\nsage: (B.dimension(), B.T(2).charpoly())\n(2, x^2 - x - 6)\n```",
+      "tags": [
+        "modular forms",
+        "Brandt modules",
+        "quaternion algebras",
+        "Eichler orders",
+        "Hecke operators",
+        "Jacquet-Langlands"
+      ],
+      "backends": [
+        "Sage.js sparse supersingular graphs",
+        "Sage.js exact modular symbols",
+        "Sage.js exact rational quaternion ideals"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "Supports every definite squarefree rational quaternion discriminant and coprime Eichler conductor in weight two. The default general basis is an exact Jacquet--Langlands Hecke realization; the explicit ideal-class realization constructs genuine quaternion ideals and their integral lattice."
+      },
+      "provenance": [
+        {
+          "kind": "literature-implemented",
+          "source": "Jacquet--Langlands correspondence for definite quaternion algebras"
+        },
+        {
+          "kind": "sage-derived",
+          "source": "SageMath Brandt-module API",
+          "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/quatalg/brandt.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "Kirschmer--Voight ideal-class enumeration and Kohel--Stein monodromy/component-group formulas"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Bad-prime operators at primes dividing the Eichler conductor are not yet exposed.",
+        "Only weight two and base rings QQ/ZZ are implemented.",
+        "Atkin--Lehner operators are currently exposed for divisors of D.",
+        "Full-Jacobian component groups are implemented; newform-quotient groups await audited integral modular-degree maps."
+      ],
+      "source": {
+        "name": "BrandtModule",
+        "qualified": "BrandtModule",
+        "path": "src/baselib/modular.py",
+        "line": 64,
+        "excerpt": {
+          "start_line": 52,
+          "text": "\ndef _brandt_module() -> Any:\n    \"\"\"Load the rational Brandt-module implementation lazily.\"\"\"\n    global _brandt_module_cache\n    if _brandt_module_cache is runtime.undefined:\n        _brandt_module_cache = __import__(\n            \"sagejs.modular_forms.brandt\",\n            fromlist=[\"BrandtModule\"],\n        )\n    return _brandt_module_cache\n\n\ndef BrandtModule(\n    D: Any,\n    N: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    realization: str = \"auto\",\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    r\"\"\"Construct the weight-two Brandt module over $\\mathbf Q$.\n\n    The quaternion discriminant `D` is squarefree with an odd number of\n    prime factors, and the Eichler conductor `N` is positive and coprime to"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
+          "line": 84,
+          "source": "B = BrandtModule(11, 1)",
+          "want": "",
+          "tags": [],
+          "owner": "BrandtModule",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
+          "line": 85,
+          "source": "(B.dimension(), B.T(2).charpoly())",
+          "want": "(2, x^2 - x - 6)\n",
+          "tags": [],
+          "owner": "BrandtModule",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
+            "status": "pass",
+            "actual": "(2, x^2 - x - 6)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "circle",
       "aliases": [],
       "kind": "function",
@@ -13429,7 +13573,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any",
       "summary": "Return the replayable Cohen coefficient-formula certificate.",
-      "doc": "Return the replayable Cohen coefficient-formula certificate.",
+      "doc": "Return the replayable Cohen coefficient-formula certificate.\n\n```sage\nsage: cohen_eisenstein_series_certificate(2, 12).verify()\nTrue\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -13469,13 +13613,30 @@
         "name": "cohen_eisenstein_series_certificate",
         "qualified": "cohen_eisenstein_series_certificate",
         "path": "src/baselib/modular.py",
-        "line": 762,
+        "line": 841,
         "excerpt": {
-          "start_line": 750,
-          "text": "    **opts: Any,\n) -> Any:\n    r\"\"\"Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\"\"\"\n    return _half_integral_module().cohen_eisenstein_series_qexp(\n        r,\n        prec,\n        variable,\n        normalization,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_certificate(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable Cohen coefficient-formula certificate.\"\"\"\n    return _half_integral_module().cohen_eisenstein_series_certificate(\n        r,\n        prec,\n        variable,\n        **opts,\n    )"
+          "start_line": 829,
+          "text": "    1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n    ```\n    \"\"\"\n    return _half_integral_module().cohen_eisenstein_series_qexp(\n        r,\n        prec,\n        variable,\n        normalization,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_certificate(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable Cohen coefficient-formula certificate.\n\n    ```sage\n    sage: cohen_eisenstein_series_certificate(2, 12).verify()\n    True\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#9fcd905e50e9aec7-3cbc87c7681f34db",
+          "line": 850,
+          "source": "cohen_eisenstein_series_certificate(2, 12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "cohen_eisenstein_series_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#9fcd905e50e9aec7-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -13485,7 +13646,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any",
       "summary": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
-      "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
+      "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n```sage\nsage: cohen_eisenstein_series_qexp(2, 6)\n1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -13525,13 +13686,30 @@
         "name": "cohen_eisenstein_series_qexp",
         "qualified": "cohen_eisenstein_series_qexp",
         "path": "src/baselib/modular.py",
-        "line": 745,
+        "line": 818,
         "excerpt": {
-          "start_line": 733,
-          "text": "    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable odd-square theta coefficient certificate.\"\"\"\n    return _half_integral_module().theta2_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_qexp(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    normalization: str = \"cohen\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\"\"\"\n    return _half_integral_module().cohen_eisenstein_series_qexp(\n        r,\n        prec,\n        variable,\n        normalization,"
+          "start_line": 806,
+          "text": "    sage: theta2_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().theta2_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_qexp(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    normalization: str = \"cohen\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n    ```sage\n    sage: cohen_eisenstein_series_qexp(2, 6)\n    1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n    ```"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#7ea08ad2f0b57eec-75458977e82a3d0c",
+          "line": 828,
+          "source": "cohen_eisenstein_series_qexp(2, 6)",
+          "want": "1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n",
+          "tags": [],
+          "owner": "cohen_eisenstein_series_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#7ea08ad2f0b57eec-75458977e82a3d0c",
+            "status": "pass",
+            "actual": "1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -13638,16 +13816,16 @@
         "name": "complex_plot",
         "qualified": "complex_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5699,
+        "line": 5707,
         "excerpt": {
-          "start_line": 5687,
+          "start_line": 5695,
           "text": "        \"interpolation\": \"catrom\",\n        \"colorbar\": False,\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef complex_plot(\n    function_value: Any,\n    x_range: Any,\n    y_range: Any,\n    contoured: bool = False,\n    tiled: bool = False,\n    cmap: Any = None,\n    contour_type: str = \"logarithmic\",\n    contour_base: Any = None,\n    dark_rate: float = 0.5,\n    nphases: int = 10,\n    **options: Any,\n) -> Graphics:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
-          "line": 5728,
+          "line": 5736,
           "source": "complex_plot(lambda z: z^5 + z - 1 + 1/z,\n             (-3, 3), (-3, 3))",
           "want": "Graphics object consisting of 1 graphics primitive\n",
           "tags": [],
@@ -13904,9 +14082,9 @@
         "name": "contour_plot",
         "qualified": "contour_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5647,
+        "line": 5655,
         "excerpt": {
-          "start_line": 5635,
+          "start_line": 5643,
           "text": "        for index in range(len(primitive.xdata)):\n            theta = primitive.xdata[index]\n            radius = primitive.ydata[index]\n            points.append(\n                (radius * runtime.math.cos(theta), radius * runtime.math.sin(theta))\n            )\n        primitive_options = primitive.options()\n        answer = answer + line(points, **primitive_options)\n    answer.set_extra_kwds(radial.get_extra_kwds())\n    return answer\n\n\ndef contour_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sampled scalar function as a filled contour grid.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 50)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -14129,16 +14307,16 @@
         "name": "CuspForms",
         "qualified": "CuspForms",
         "path": "src/baselib/modular.py",
-        "line": 1627,
+        "line": 1738,
         "excerpt": {
-          "start_line": 1615,
+          "start_line": 1726,
           "text": "\n    ```sage\n    sage: E = EisensteinForms(389, 2)\n    sage: b = E.basis(prec=20)[0]\n    sage: b.q_expansion(100).precision_absolute()\n    100\n    ```\n    \"\"\"\n    ambient = ModularForms(group, weight, base_ring, use_cache, prec)\n    return ambient.eisenstein_subspace()\n\n\ndef CuspForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSubspace:\n    r\"\"\"Construct the cuspidal subspace of `ModularForms(group, weight)`.\n\n    ### Examples\n\n    ```sage\n    sage: S = CuspForms(11, 2)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#c49ea7b9bb92c689-e3b0c44298fc1c14",
-          "line": 1639,
+          "line": 1750,
           "source": "S = CuspForms(11, 2)",
           "want": "",
           "tags": [],
@@ -14154,7 +14332,7 @@
         },
         {
           "id": "src/baselib/modular.py#5670fbe72b120815-2fdf166df5e7a97d",
-          "line": 1640,
+          "line": 1751,
           "source": "(S.dimension(), S.q_expansion_basis(6))",
           "want": "(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])\n",
           "tags": [],
@@ -14281,16 +14459,16 @@
         "name": "delta_qexp",
         "qualified": "delta_qexp",
         "path": "src/baselib/modular.py",
-        "line": 819,
+        "line": 930,
         "excerpt": {
-          "start_line": 807,
-          "text": "        p,\n        chi,\n        prec,\n        variable,\n    )\n\n\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)"
+          "start_line": 918,
+          "text": "\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\n\n    ```sage\n    sage: len(half_integral_formula_registry())\n    4\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#8f1725c87ba22433-1ca04d43b63acec4",
-          "line": 830,
+          "line": 941,
           "source": "delta_qexp(6)",
           "want": "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n",
           "tags": [],
@@ -14358,9 +14536,9 @@
         "name": "density_plot",
         "qualified": "density_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5673,
+        "line": 5681,
         "excerpt": {
-          "start_line": 5661,
+          "start_line": 5669,
           "text": "        \"colorbar\": True,\n        \"cmap\": \"Viridis\",\n        \"alpha\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Contour(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef density_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the values of a function of two variables as a color density.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 25)\n    xvalues, yvalues, zvalues = _sample_grid_2d(\n        function_value, xrange, yrange, plot_points\n    )\n    defaults = {"
         }
       },
@@ -14959,16 +15137,16 @@
         "name": "dimension_cusp_forms",
         "qualified": "CongruenceSubgroup.dimension_cusp_forms",
         "path": "src/baselib/modular.py",
-        "line": 221,
+        "line": 270,
         "excerpt": {
-          "start_line": 209,
+          "start_line": 258,
           "text": "    def ncusps(self) -> int:\n        return self._cusps_value\n\n    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#523d40dbb1bee28b-6b86b273ff34fce1",
-          "line": 499,
+          "line": 548,
           "source": "dimension_cusp_forms(Gamma0(11), 2)",
           "want": "1\n",
           "tags": [],
@@ -14984,7 +15162,7 @@
         },
         {
           "id": "src/baselib/modular.py#afbbfc8ae5a1bd04-6b86b273ff34fce1",
-          "line": 501,
+          "line": 550,
           "source": "dimension_cusp_forms(Gamma0(1), 12)",
           "want": "1\n",
           "tags": [],
@@ -15000,7 +15178,7 @@
         },
         {
           "id": "src/baselib/modular.py#acd048704b1adcd2-e3b0c44298fc1c14",
-          "line": 503,
+          "line": 552,
           "source": "eps = DirichletGroup(13).gen(0)^2",
           "want": "",
           "tags": [],
@@ -15016,7 +15194,7 @@
         },
         {
           "id": "src/baselib/modular.py#e9dec85705e2ad32-6b86b273ff34fce1",
-          "line": 504,
+          "line": 553,
           "source": "dimension_cusp_forms(eps, 2)",
           "want": "1\n",
           "tags": [],
@@ -15094,9 +15272,9 @@
         "name": "dimension_eis",
         "qualified": "CongruenceSubgroup.dimension_eis",
         "path": "src/baselib/modular.py",
-        "line": 224,
+        "line": 273,
         "excerpt": {
-          "start_line": 212,
+          "start_line": 261,
           "text": "    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n"
         }
       },
@@ -15164,9 +15342,9 @@
         "name": "dimension_modular_forms",
         "qualified": "CongruenceSubgroup.dimension_modular_forms",
         "path": "src/baselib/modular.py",
-        "line": 227,
+        "line": 276,
         "excerpt": {
-          "start_line": 215,
+          "start_line": 264,
           "text": "    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n\n    def __repr__(self) -> str:\n        if self._level == 1:\n            return \"Modular Group SL(2,Z)\""
         }
       },
@@ -15481,16 +15659,16 @@
         "name": "EisensteinForms",
         "qualified": "EisensteinForms",
         "path": "src/baselib/modular.py",
-        "line": 1601,
+        "line": 1712,
         "excerpt": {
-          "start_line": 1589,
+          "start_line": 1700,
           "text": "        raise TypeError(\"ModularForms requires a congruence subgroup\")\n    weight = _exact_nonnegative_integer(weight, \"weight\")\n    precision = _exact_nonnegative_integer(prec, \"precision\")\n    if base_ring is None:\n        base_ring = sage.QQ\n    if base_ring is not sage.QQ:\n        raise NotImplementedError(\n            \"the initial modular-forms spaces are defined over QQ\"\n        )\n    return ModularFormsSpace(group, weight, base_ring, precision)\n\n\ndef EisensteinForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> EisensteinSubspace:\n    r\"\"\"\n    Construct the Eisenstein subspace of `ModularForms(group, weight)`.\n\n    Basis elements retain their parent and can be expanded later to a\n    different precision with `q_expansion(prec)`.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14~2",
-          "line": 1617,
+          "line": 1728,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -15506,7 +15684,7 @@
         },
         {
           "id": "src/baselib/modular.py#1b21701f388cda2d-e3b0c44298fc1c14",
-          "line": 1618,
+          "line": 1729,
           "source": "b = E.basis(prec=20)[0]",
           "want": "",
           "tags": [],
@@ -15522,7 +15700,7 @@
         },
         {
           "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
-          "line": 1619,
+          "line": 1730,
           "source": "b.q_expansion(100).precision_absolute()",
           "want": "100\n",
           "tags": [],
@@ -15599,16 +15777,16 @@
         "name": "q_expansion",
         "qualified": "EisensteinSeriesElement.q_expansion",
         "path": "src/baselib/modular.py",
-        "line": 955,
+        "line": 1066,
         "excerpt": {
-          "start_line": 943,
+          "start_line": 1054,
           "text": "    def __init__(\n        self,\n        parent: EisensteinSubspace,\n        index: int,\n        precision: int,\n    ) -> None:\n        self._kind = \"EisensteinSeriesElement\"\n        self._parent = parent\n        self._index = index\n        self._display_precision = precision\n        runtime.object.freeze(self)\n\n    def q_expansion(self, prec: Any = None) -> Any:\n        r\"\"\"\n        Return the `q`-expansion to absolute precision `O(q^prec)`.\n\n        ### Parameters\n\n        - `prec` — nonnegative integer; when omitted, use the precision\n          requested when this basis element was constructed.\n\n        ### Examples\n\n        The level-389 weight-2 Eisenstein form can be displayed briefly and\n        then expanded farther without reconstructing its parent:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
-          "line": 970,
+          "line": 1081,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -15624,7 +15802,7 @@
         },
         {
           "id": "src/baselib/modular.py#8399bc92cd631c46-e3b0c44298fc1c14",
-          "line": 971,
+          "line": 1082,
           "source": "b = E.basis(prec=8)[0]",
           "want": "",
           "tags": [],
@@ -15640,7 +15818,7 @@
         },
         {
           "id": "src/baselib/modular.py#337f75dac4f3b63e-a51e5fc544a1400b",
-          "line": 972,
+          "line": 1083,
           "source": "b.q_expansion(5)",
           "want": "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)\n",
           "tags": [],
@@ -15700,9 +15878,9 @@
         "name": "basis",
         "qualified": "ModularFormsSubspace.basis",
         "path": "src/baselib/modular.py",
-        "line": 1151,
+        "line": 1262,
         "excerpt": {
-          "start_line": 1139,
+          "start_line": 1250,
           "text": "\n    old_submodule = old_subspace\n\n    def newforms(self, names: str = \"a\") -> list[Any]:\n        r\"\"\"Return normalized newform Galois packets with exact coefficients.\"\"\"\n        return _qexp_module().modular_forms_newforms(self, names)\n\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:"
         }
       },
@@ -15952,9 +16130,9 @@
         "name": "factor",
         "qualified": "FormattedCharacteristicPolynomial.factor",
         "path": "src/baselib/modular.py",
-        "line": 1676,
+        "line": 1787,
         "excerpt": {
-          "start_line": 1664,
+          "start_line": 1775,
           "text": "    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedCharacteristicPolynomial:\n    def __init__(self, text: str, factorization: str) -> None:\n        self._text = text\n        self._factorization = factorization\n\n    def factor(self) -> FormattedFactorization:\n        return FormattedFactorization(self._factorization)\n\n    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedQExpansion:\n    def __init__(self, text: str) -> None:\n        self._text = text"
         }
       },
@@ -16012,9 +16190,9 @@
         "name": "fast_callable",
         "qualified": "fast_callable",
         "path": "src/baselib/symbolic.py",
-        "line": 2650,
+        "line": 3411,
         "excerpt": {
-          "start_line": 2638,
+          "start_line": 3399,
           "text": ") -> Any:\n    if isinstance(value, Expression):\n        return value.n(prec=prec, digits=digits)\n    if hasattr(value, \"numerical_approx\"):\n        return value.numerical_approx(prec=prec, digits=digits)\n    return SR(value).n(prec=prec, digits=digits)\n\n\nn = numerical_approx\nN = numerical_approx\n\n\ndef fast_callable(\n    expression: Any,\n    vars: Sequence[Any] | None = None,\n) -> Any:\n    \"\"\"Compile a symbolic expression to a hot JavaScript numeric function.\"\"\"\n    symbolic_expression = SR(expression)\n    variables = symbolic_expression.variables() if vars is None else list(vars)\n    names = [_symbol_name(variable) for variable in variables]\n    return _call_backend(\"compile\", [symbolic_expression._tree, names])\n\n\npi = Expression(\"Pi\")\ne = Expression(\"ExponentialE\")"
         }
       },
@@ -22975,12 +23153,12 @@
       ],
       "source": {
         "name": "cardinality",
-        "qualified": "Partitions_all.cardinality",
-        "path": "src/baselib/combinat.py",
-        "line": 597,
+        "qualified": "LinearCodeParent.cardinality",
+        "path": "src/baselib/coding.py",
+        "line": 104,
         "excerpt": {
-          "start_line": 585,
-          "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
+          "start_line": 92,
+          "text": "\n    def dimension(self) -> int:\n        return self._generator.nrows()\n\n    def generator_matrix(self) -> Any:\n        return self._generator\n\n    def basis(self) -> list[Any]:\n        return self._generator.rows()\n\n    gens = basis\n\n    def cardinality(self) -> Any:\n        return self._base.cardinality() ** self.dimension()\n\n    def dual_code(self) -> LinearCodeParent:\n        return LinearCodeParent(self._generator.right_kernel().basis_matrix())\n\n    dual = dual_code\n\n    def is_self_dual(self) -> bool:\n        if 2 * self.dimension() != self.length():\n            return False\n        return self._space == self.dual_code()._space\n"
         }
       },
       "examples": [
@@ -26011,7 +26189,7 @@
           "verification": {
             "id": "src/sage/graphs/generators/random.py#42852f4d06cb2b67-0d1357c75022c1ad",
             "status": "pass",
-            "actual": "sagejs/runtime-bootstrap-sage.js:<location>\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:<location>)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:<location>)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:<location>)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:<location>)\n    at evalmachine.<anonymous>:<location>\n    at Script.runInThisContext (node:vm:<location>)\n    at runInThisContext (node:vm:<location>)\n    at execute (<SAGEJS_ROOT>/dist/tools/repl.js:<location>)\n"
+            "actual": "ValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n"
           }
         },
         {
@@ -26353,7 +26531,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "half_integral_formula_registry() -> Any",
       "summary": "Return the bounded, certificate-bearing half-integral formula registry.",
-      "doc": "Return the bounded, certificate-bearing half-integral formula registry.",
+      "doc": "Return the bounded, certificate-bearing half-integral formula registry.\n\n```sage\nsage: len(half_integral_formula_registry())\n4\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -26393,13 +26571,30 @@
         "name": "half_integral_formula_registry",
         "qualified": "half_integral_formula_registry",
         "path": "src/baselib/modular.py",
-        "line": 814,
+        "line": 919,
         "excerpt": {
-          "start_line": 802,
-          "text": ") -> Any:\n    r\"\"\"Apply $T_{p^2}$ using Shimura's exact coefficient formula.\"\"\"\n    return _half_integral_module().half_integral_weight_hecke_qexp(\n        series,\n        k,\n        p,\n        chi,\n        prec,\n        variable,\n    )\n\n\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n"
+          "start_line": 907,
+          "text": "    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_hecke_qexp(\n        series,\n        k,\n        p,\n        chi,\n        prec,\n        variable,\n    )\n\n\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\n\n    ```sage\n    sage: len(half_integral_formula_registry())\n    4\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#d36c977fdca91eed-4b227777d4dd1fc6",
+          "line": 923,
+          "source": "len(half_integral_formula_registry())",
+          "want": "4\n",
+          "tags": [],
+          "owner": "half_integral_formula_registry",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#d36c977fdca91eed-4b227777d4dd1fc6",
+            "status": "pass",
+            "actual": "4\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -26409,7 +26604,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any",
       "summary": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
-      "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
+      "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n```sage\nsage: f = cohen_eisenstein_series_qexp(2, 82)\nsage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)\n7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -26449,13 +26644,46 @@
         "name": "half_integral_weight_hecke_qexp",
         "qualified": "half_integral_weight_hecke_qexp",
         "path": "src/baselib/modular.py",
-        "line": 795,
+        "line": 893,
         "excerpt": {
-          "start_line": 783,
-          "text": "    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)\n\n\ndef half_integral_weight_modform_basis(\n    chi: Any,\n    k: Any,\n    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)\n\n\ndef half_integral_weight_hecke_qexp(\n    series: Any,\n    k: Any,\n    p: Any,\n    chi: Any = None,\n    prec: Any = None,\n    variable: str = \"q\",\n) -> Any:\n    r\"\"\"Apply $T_{p^2}$ using Shimura's exact coefficient formula.\"\"\"\n    return _half_integral_module().half_integral_weight_hecke_qexp(\n        series,\n        k,\n        p,"
+          "start_line": 881,
+          "text": "    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\n\n    ```sage\n    sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n    []\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)\n\n\ndef half_integral_weight_hecke_qexp(\n    series: Any,\n    k: Any,\n    p: Any,\n    chi: Any = None,\n    prec: Any = None,\n    variable: str = \"q\",\n) -> Any:\n    r\"\"\"Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n    ```sage\n    sage: f = cohen_eisenstein_series_qexp(2, 82)\n    sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#eb3186b67e97deea-e3b0c44298fc1c14",
+          "line": 904,
+          "source": "f = cohen_eisenstein_series_qexp(2, 82)",
+          "want": "",
+          "tags": [],
+          "owner": "half_integral_weight_hecke_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#eb3186b67e97deea-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#e5f37975162258ad-3910892471943eac",
+          "line": 905,
+          "source": "half_integral_weight_hecke_qexp(f, 5, 3, prec=5)",
+          "want": "7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n",
+          "tags": [],
+          "owner": "half_integral_weight_hecke_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#e5f37975162258ad-3910892471943eac",
+            "status": "pass",
+            "actual": "7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -26465,7 +26693,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]",
       "summary": "Return Sage-compatible Basmaji half-integral cusp expansions.",
-      "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.",
+      "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.\n\n```sage\nsage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n[]\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -26505,13 +26733,30 @@
         "name": "half_integral_weight_modform_basis",
         "qualified": "half_integral_weight_modform_basis",
         "path": "src/baselib/modular.py",
-        "line": 786,
+        "line": 878,
         "excerpt": {
-          "start_line": 774,
-          "text": "    )\n\n\ndef HalfIntegralWeightModularForms(\n    chi: Any,\n    k: Any,\n    prec: Any = 10,\n) -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\"\"\"\n    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)\n\n\ndef half_integral_weight_modform_basis(\n    chi: Any,\n    k: Any,\n    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)\n\n\ndef half_integral_weight_hecke_qexp(\n    series: Any,\n    k: Any,\n    p: Any,"
+          "start_line": 866,
+          "text": ") -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n    ```sage\n    sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\n    sage: (H.weight(), H.dimension())\n    (3/2, 0)\n    ```\n    \"\"\"\n    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)\n\n\ndef half_integral_weight_modform_basis(\n    chi: Any,\n    k: Any,\n    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\n\n    ```sage\n    sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n    []\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)"
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#26c8a7b19766b45d-4f53cda18c2baa0c",
+          "line": 886,
+          "source": "half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)",
+          "want": "[]\n",
+          "tags": [],
+          "owner": "half_integral_weight_modform_basis",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#26c8a7b19766b45d-4f53cda18c2baa0c",
+            "status": "pass",
+            "actual": "[]\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -26521,7 +26766,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any",
       "summary": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
-      "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
+      "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n```sage\nsage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\nsage: (H.weight(), H.dimension())\n(3/2, 0)\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -26561,13 +26806,46 @@
         "name": "HalfIntegralWeightModularForms",
         "qualified": "HalfIntegralWeightModularForms",
         "path": "src/baselib/modular.py",
-        "line": 777,
+        "line": 862,
         "excerpt": {
-          "start_line": 765,
-          "text": "    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable Cohen coefficient-formula certificate.\"\"\"\n    return _half_integral_module().cohen_eisenstein_series_certificate(\n        r,\n        prec,\n        variable,\n        **opts,\n    )\n\n\ndef HalfIntegralWeightModularForms(\n    chi: Any,\n    k: Any,\n    prec: Any = 10,\n) -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\"\"\"\n    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)\n\n\ndef half_integral_weight_modform_basis(\n    chi: Any,\n    k: Any,\n    prec: Any,"
+          "start_line": 850,
+          "text": "    sage: cohen_eisenstein_series_certificate(2, 12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().cohen_eisenstein_series_certificate(\n        r,\n        prec,\n        variable,\n        **opts,\n    )\n\n\ndef HalfIntegralWeightModularForms(\n    chi: Any,\n    k: Any,\n    prec: Any = 10,\n) -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n    ```sage\n    sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\n    sage: (H.weight(), H.dimension())\n    (3/2, 0)\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#44f649fa8bcea764-e3b0c44298fc1c14",
+          "line": 870,
+          "source": "H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)",
+          "want": "",
+          "tags": [],
+          "owner": "HalfIntegralWeightModularForms",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#44f649fa8bcea764-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#417bff22d9b51e02-6ee662be6ae42850",
+          "line": 871,
+          "source": "(H.weight(), H.dimension())",
+          "want": "(3/2, 0)\n",
+          "tags": [],
+          "owner": "HalfIntegralWeightModularForms",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#417bff22d9b51e02-6ee662be6ae42850",
+            "status": "pass",
+            "actual": "(3/2, 0)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -27176,9 +27454,9 @@
         "name": "implicit_plot",
         "qualified": "implicit_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5975,
+        "line": 5983,
         "excerpt": {
-          "start_line": 5963,
+          "start_line": 5971,
           "text": "    graphics_options[\"xmin\"] = xmin\n    graphics_options[\"xmax\"] = xmax\n    graphics_options[\"ymin\"] = ymin\n    graphics_options[\"ymax\"] = ymax\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(ComplexPlot(rgb_data, (xmin, xmax), (ymin, ymax), defaults))\n    if plot_diagnostics is not None:\n        graphic._plot_spec_diagnostics.append(plot_diagnostics)\n    return graphic\n\n\ndef implicit_plot(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot the plane curve where a function is zero or an equality holds.\n    \"\"\"\n    if hasattr(function_value, \"_plot_zero_set_expression\"):\n        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]"
         }
       },
@@ -27766,9 +28044,9 @@
         "name": "list_plot",
         "qualified": "list_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6321,
+        "line": 6329,
         "excerpt": {
-          "start_line": 6309,
+          "start_line": 6317,
           "text": "    returned semantic object using Plotly-compatible HTML/data, without\n    requiring a Jupyter extension.\n    \"\"\"\n\n    answer = value\n    for other in others:\n        answer = answer + other\n    if len(options) and hasattr(answer, \"set_extra_kwds\"):\n        answer.set_extra_kwds(options)\n    return answer\n\n\ndef list_plot(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a sequence of y-values or a sequence of `(x, y)` pairs.\"\"\"\n    options = _copy_options(options)\n    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:"
         }
       },
@@ -27826,9 +28104,9 @@
         "name": "list_plot_loglog",
         "qualified": "list_plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6395,
+        "line": 6403,
         "excerpt": {
-          "start_line": 6383,
+          "start_line": 6391,
           "text": "\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -27886,9 +28164,9 @@
         "name": "list_plot_semilogx",
         "qualified": "list_plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6405,
+        "line": 6413,
         "excerpt": {
-          "start_line": 6393,
+          "start_line": 6401,
           "text": "\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -27946,9 +28224,9 @@
         "name": "list_plot_semilogy",
         "qualified": "list_plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6415,
+        "line": 6423,
         "excerpt": {
-          "start_line": 6403,
+          "start_line": 6411,
           "text": "\n\ndef list_plot_semilogx(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\ndef list_plot_semilogy(\n    data: Any,\n    plotjoined: bool = False,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot list data with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return list_plot(data, plotjoined=plotjoined, **options)\n\n\nline2d = line\narrow2d = arrow\npoint2d = point"
         }
       },
@@ -28218,16 +28496,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 8998,
+        "line": 9132,
         "excerpt": {
-          "start_line": 8986,
+          "start_line": 9120,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError(\"matrix rows must all have the same length\")\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#3777d1a944e35692-e3b0c44298fc1c14",
-          "line": 9009,
+          "line": 9143,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -28243,7 +28521,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9593f09a484811c7-cf3bae39dd692048",
-          "line": 9010,
+          "line": 9144,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -28259,7 +28537,7 @@
         },
         {
           "id": "src/baselib/matrix.py#405777987b283881-149964165c0e1bbf",
-          "line": 9012,
+          "line": 9146,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -28327,9 +28605,9 @@
         "name": "matrix_plot",
         "qualified": "matrix_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6063,
+        "line": 6071,
         "excerpt": {
-          "start_line": 6051,
+          "start_line": 6059,
           "text": "        \"colorbar\": False,\n        \"alpha\": 1,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, options)\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))\n    return graphic\n\n\ndef matrix_plot(\n    matrix_value: Any,\n    xrange: Any = None,\n    yrange: Any = None,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot a matrix or rectangular array as a color-valued grid.\"\"\"\n    if hasattr(matrix_value, \"nrows\") and hasattr(matrix_value, \"ncols\"):\n        row_count = int(matrix_value.nrows())\n        column_count = int(matrix_value.ncols())\n        values = [\n            [float(matrix_value[row, column]) for column in range(column_count)]\n            for row in range(row_count)"
         }
       },
@@ -28436,7 +28714,7 @@
       "aliases": [],
       "kind": "function",
       "module": "sage.rings.finite_rings.integer_mod",
-      "signature": "Mod(value: Any, modulus: Any) -> IntegerModElement",
+      "signature": "Mod(value: Any, modulus: Any) -> Any",
       "summary": "Construct `value` in the ring of integers modulo `modulus`.",
       "doc": "Construct `value` in the ring of integers modulo `modulus`.",
       "tags": [
@@ -28490,7 +28768,7 @@
         "line": 2155,
         "excerpt": {
           "start_line": 2143,
-          "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    _register_machine_integer_coercion(ring)\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> IntegerModElement:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    return Zmod(modulus)(value)\n\n\nruntime.set_class_repr(FiniteFieldElement, \"<class 'FiniteFieldElement'>\")\nruntime.set_class_repr(\n    IntegerModElement, \"<class 'sage.rings.finite_rings.integer_mod.IntegerMod_int64'>\"\n)\nruntime.set_class_repr(\n    FiniteFieldExtensionElement,\n    \"<class 'sage.rings.finite_rings.element_givaro.\" + \"FiniteField_givaroElement'>\",\n)"
+          "text": "    ring = _residue_rings.get(key)\n    if ring is not runtime.undefined:\n        return ring\n    ring = IntegerModRing(order)\n    _residue_rings.set(key, ring)\n    _register_machine_integer_coercion(ring)\n    return ring\n\n\nIntegers = Zmod\n\n\ndef Mod(value: Any, modulus: Any) -> Any:\n    \"\"\"Construct `value` in the ring of integers modulo `modulus`.\"\"\"\n    modulus = runtime.integer_bigint(modulus)\n    if modulus == 0:\n        return sage.ZZ(value)\n    if modulus < 0:\n        modulus = -modulus\n    return Zmod(modulus)(value)\n\n\n# Sage publishes both spellings.\nmod = Mod\n"
         }
       },
       "examples": []
@@ -28556,16 +28834,16 @@
         "name": "ModularForms",
         "qualified": "ModularForms",
         "path": "src/baselib/modular.py",
-        "line": 1557,
+        "line": 1668,
         "excerpt": {
-          "start_line": 1545,
+          "start_line": 1656,
           "text": "            + \" for \"\n            + str(self._group)\n            + \" of weight \"\n            + str(self._weight)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSpace:\n    r\"\"\"\n    Construct the implemented ambient space of modular forms.\n\n    `group` is a level or congruence subgroup, `weight` is nonnegative,\n    and `prec` controls the default displayed q-expansion precision.\n    Initial ambient spaces are exact over `QQ`."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
-          "line": 1574,
+          "line": 1685,
           "source": "M = ModularForms(Gamma0(11), 2)",
           "want": "",
           "tags": [],
@@ -28581,7 +28859,7 @@
         },
         {
           "id": "src/baselib/modular.py#2bfe9bbec3425b17-d4735e3a265e16ee",
-          "line": 1575,
+          "line": 1686,
           "source": "M.dimension()",
           "want": "2\n",
           "tags": [],
@@ -28597,7 +28875,7 @@
         },
         {
           "id": "src/baselib/modular.py#3cfe7569fb8876d8-6b86b273ff34fce1",
-          "line": 1577,
+          "line": 1688,
           "source": "M.cuspidal_subspace().dimension()",
           "want": "1\n",
           "tags": [],
@@ -28673,9 +28951,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 4773,
+        "line": 4884,
         "excerpt": {
-          "start_line": 4761,
+          "start_line": 4872,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -28754,16 +29032,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 3835,
+        "line": 3946,
         "excerpt": {
-          "start_line": 3823,
+          "start_line": 3934,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 3843,
+          "line": 3954,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -28779,7 +29057,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 3844,
+          "line": 3955,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -28868,9 +29146,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4530,
+        "line": 4641,
         "excerpt": {
-          "start_line": 4518,
+          "start_line": 4629,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -28951,16 +29229,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 4104,
+        "line": 4215,
         "excerpt": {
-          "start_line": 4092,
+          "start_line": 4203,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 4124,
+          "line": 4235,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -28976,7 +29254,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 4125,
+          "line": 4236,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -28992,7 +29270,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 4132,
+          "line": 4243,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -29008,7 +29286,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 4133,
+          "line": 4244,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -29024,7 +29302,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 4134,
+          "line": 4245,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -29114,16 +29392,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 3860,
+        "line": 3971,
         "excerpt": {
-          "start_line": 3848,
+          "start_line": 3959,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 3873,
+          "line": 3984,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -29139,7 +29417,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 3874,
+          "line": 3985,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -29155,7 +29433,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 3875,
+          "line": 3986,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -29219,16 +29497,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 3007,
+        "line": 3118,
         "excerpt": {
-          "start_line": 2995,
+          "start_line": 3106,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 4518,
+          "line": 4629,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -29244,7 +29522,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 4519,
+          "line": 4630,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -29333,9 +29611,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4357,
+        "line": 4468,
         "excerpt": {
-          "start_line": 4345,
+          "start_line": 4456,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -29414,9 +29692,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 3938,
+        "line": 4049,
         "excerpt": {
-          "start_line": 3926,
+          "start_line": 4037,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -29502,16 +29780,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4187,
+        "line": 4298,
         "excerpt": {
-          "start_line": 4175,
+          "start_line": 4286,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 4197,
+          "line": 4308,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -29527,7 +29805,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 4198,
+          "line": 4309,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -29543,7 +29821,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 4199,
+          "line": 4310,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -29559,7 +29837,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 4201,
+          "line": 4312,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -29648,9 +29926,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4351,
+        "line": 4462,
         "excerpt": {
-          "start_line": 4339,
+          "start_line": 4450,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -29730,16 +30008,16 @@
         "name": "q_expansion_basis",
         "qualified": "ModularFormsSubspace.q_expansion_basis",
         "path": "src/baselib/modular.py",
-        "line": 1157,
+        "line": 1268,
         "excerpt": {
-          "start_line": 1145,
+          "start_line": 1256,
           "text": "\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:\n        r\"\"\"Return an exact echelon basis of cusp-form $q$-expansions.\"\"\"\n        if \"var\" in opts:\n            variable = opts[\"var\"]\n        if \"ρσ_py_var\" in opts:\n            variable = opts[\"ρσ_py_var\"]\n        if algorithm == \"default\":"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
-          "line": 4634,
+          "line": 4745,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -29755,7 +30033,7 @@
         },
         {
           "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
-          "line": 4635,
+          "line": 4746,
           "source": "S.q_expansion_basis(6)",
           "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n",
           "tags": [],
@@ -29845,16 +30123,16 @@
         "name": "q_expansion_basis_certificate",
         "qualified": "ModularFormsSubspace.q_expansion_basis_certificate",
         "path": "src/baselib/modular.py",
-        "line": 1218,
+        "line": 1329,
         "excerpt": {
-          "start_line": 1206,
+          "start_line": 1317,
           "text": "                R,\n            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_module(\n            effective_precision,\n            R,\n            \"modular_symbols\",\n        )\n\n    def q_expansion_basis_certificate(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return a replayable formula or Hecke-dual basis certificate.\"\"\"\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            return self.basis_certificate(prec)\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
-          "line": 4705,
+          "line": 4816,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -29870,7 +30148,7 @@
         },
         {
           "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
-          "line": 4706,
+          "line": 4817,
           "source": "C = S.q_expansion_basis_certificate()",
           "want": "",
           "tags": [],
@@ -29886,7 +30164,7 @@
         },
         {
           "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
-          "line": 4707,
+          "line": 4818,
           "source": "(C.dimension(), C.is_sturm_certified(), C.verify())",
           "want": "(1, True, True)\n",
           "tags": [],
@@ -29976,16 +30254,16 @@
         "name": "q_expansion_module",
         "qualified": "ModularFormsSubspace.q_expansion_module",
         "path": "src/baselib/modular.py",
-        "line": 1191,
+        "line": 1302,
         "excerpt": {
-          "start_line": 1179,
+          "start_line": 1290,
           "text": "            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_basis(\n            effective_precision,\n            \"modular_symbols\",\n            variable,\n            **opts,\n        )\n\n    def q_expansion_module(\n        self,\n        prec: Any = None,\n        R: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return the $QQ$-space or saturated $ZZ$-module of expansions.\"\"\"\n        effective_precision = self.precision() if prec is None else prec\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            self._require_level_one_cuspidal_basis()\n            return _qexp_module().formula_q_expansion_module("
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
-          "line": 4681,
+          "line": 4792,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -30001,7 +30279,7 @@
         },
         {
           "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
-          "line": 4682,
+          "line": 4793,
           "source": "S.q_expansion_module(5, ZZ).basis_matrix()",
           "want": "[ 0  1 -2 -1  2]\n",
           "tags": [],
@@ -30090,9 +30368,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 3985,
+        "line": 4096,
         "excerpt": {
-          "start_line": 3973,
+          "start_line": 4084,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -30319,16 +30597,16 @@
         "name": "number_of_partitions",
         "qualified": "number_of_partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1301,
+        "line": 1353,
         "excerpt": {
-          "start_line": 1289,
+          "start_line": 1341,
           "text": "            _combinat_state.partitions_by_size[key] = Partitions_n(value)\n        return _combinat_state.partitions_by_size[key]\n    return Partitions_n(\n        value,\n        min_part,\n        max_part,\n        min_length,\n        max_length,\n        parts_in,\n    )\n\n\ndef number_of_partitions(size: Any) -> Any:\n    r\"\"\"\n    Return the number of partitions of a nonnegative integer.\n\n    The value comes from FLINT's exact Hardy-Ramanujan-Rademacher\n    implementation in production native and WebAssembly hosts.  A host that\n    explicitly lacks the declared capability retains Euler's exact pentagonal\n    recurrence; binding and execution failures are never hidden by fallback.\n\n    ### Input\n\n    - `size` -- a nonnegative integer\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#caacab55d28ddb22-73475cb40a568e8d",
-          "line": 1317,
+          "line": 1369,
           "source": "number_of_partitions(10)",
           "want": "42\n",
           "tags": [],
@@ -30344,7 +30622,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3e7cfccf2a61051a-50de17d47bcec0fd",
-          "line": 1319,
+          "line": 1371,
           "source": "number_of_partitions(100)",
           "want": "190569292\n",
           "tags": [],
@@ -30360,7 +30638,7 @@
         },
         {
           "id": "src/baselib/combinat.py#cc36a8ee0a524f64-734a7c05b5614ca1",
-          "line": 1321,
+          "line": 1373,
           "source": "number_of_partitions(1000)",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -30376,7 +30654,7 @@
         },
         {
           "id": "src/baselib/combinat.py#864ab09b92162a32-3cbc87c7681f34db",
-          "line": 1323,
+          "line": 1375,
           "source": "number_of_partitions(4) == Partitions(4).cardinality()",
           "want": "True\n",
           "tags": [],
@@ -30501,9 +30779,9 @@
         "name": "numerical_integral",
         "qualified": "numerical_integral",
         "path": "src/baselib/symbolic.py",
-        "line": 1790,
+        "line": 2294,
         "excerpt": {
-          "start_line": 1778,
+          "start_line": 2282,
           "text": "        for index in range(len(parameters)):\n            runtime.reflect.set(\n                substitutions,\n                _symbol_name(variables[index + 1]),\n                _expression_tree(parameters[index]),\n            )\n        function_value = Expression(\n            _call_backend(\"substitute\", [function_value._tree, substitutions])\n        )\n    return function_value._tree, _symbol_name(variables[0])\n\n\ndef numerical_integral(\n    function_value: Any,\n    a: Any,\n    b: Any = None,\n    algorithm: str = \"qag\",\n    max_points: int = 87,\n    params: Any = None,\n    eps_abs: float = 1e-6,\n    eps_rel: float = 1e-6,\n    rule: int = 6,\n) -> tuple[float, float]:\n    r\"\"\"Numerically integrate a real function and estimate absolute error.\n"
         }
       },
@@ -30610,16 +30888,16 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 3697,
+        "line": 3808,
         "excerpt": {
-          "start_line": 3685,
+          "start_line": 3796,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#27665c6e15d3a040-e3b0c44298fc1c14",
-          "line": 2616,
+          "line": 2727,
           "source": "P = P1List(12)",
           "want": "",
           "tags": [],
@@ -30635,7 +30913,7 @@
         },
         {
           "id": "src/baselib/modular.py#d52a02d377a80ad4-c2356069e9d1e79c",
-          "line": 2617,
+          "line": 2728,
           "source": "len(P)",
           "want": "24\n",
           "tags": [],
@@ -30651,7 +30929,7 @@
         },
         {
           "id": "src/baselib/modular.py#5c880c0c53650549-619e895320f7e770",
-          "line": 2619,
+          "line": 2730,
           "source": "P.normalize(7, 15)",
           "want": "(1, 9)\n",
           "tags": [],
@@ -30667,7 +30945,7 @@
         },
         {
           "id": "src/baselib/modular.py#c2e1ed5fead602dc-4a44dc15364204a8",
-          "line": 2621,
+          "line": 2732,
           "source": "P.apply_S(P.apply_S(10))",
           "want": "10\n",
           "tags": [],
@@ -30731,16 +31009,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 3007,
+        "line": 3118,
         "excerpt": {
-          "start_line": 2995,
+          "start_line": 3106,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 3018,
+          "line": 3129,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -30804,9 +31082,9 @@
         "name": "higher_weight_presentation",
         "qualified": "P1List.higher_weight_presentation",
         "path": "src/baselib/modular.py",
-        "line": 2772,
+        "line": 2883,
         "excerpt": {
-          "start_line": 2760,
+          "start_line": 2871,
           "text": "                self._native, self._action_index(index)\n            )\n        )\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        return ManinRelations(self, modulus)\n\n    def manin_presentation(self) -> ManinPresentation:\n        if self._manin_presentation_cache is None:\n            self._manin_presentation_cache = ManinPresentation(self)\n        return self._manin_presentation_cache\n\n    def higher_weight_presentation(\n        self,\n        weight: Any,\n        sign: Any = 0,\n    ) -> Any:\n        \"\"\"Return the exact triple-Manin-symbol presentation over `QQ`.\"\"\"\n        weight = _positive_integer(weight, \"modular-symbol weight\")\n        if weight < 2:\n            raise ValueError(\"modular-symbol weight must be at least 2\")\n        sign = _exact_integer(sign, \"sign\")\n        if sign not in [-1, 0, 1]:\n            raise ValueError(\"sign must be -1, 0, or 1\")\n        key = str(weight) + \":\" + str(sign)"
         }
       },
@@ -30819,8 +31097,8 @@
       "kind": "function",
       "module": "sage.plot",
       "signature": "parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics",
-      "summary": "Plot a two-component parametric plane curve.",
-      "doc": "Plot a two-component parametric plane curve.",
+      "summary": "Plot a parametric plane curve, space curve, or surface.",
+      "doc": "Plot a parametric plane curve, space curve, or surface.",
       "tags": [
         "graphics",
         "plotting",
@@ -30867,7 +31145,7 @@
         "line": 5572,
         "excerpt": {
           "start_line": 5560,
-          "text": "        \"constructor\": \"plot\",\n        \"source\": {\"expressions\": [str(value) for value in functions]},\n        \"ranges\": [[xmin, xmax]],\n        \"sampling\": {} if sampling_context is None else sampling_context,\n    }\n    return answer.with_plot_spec_context(\n        provenance=provenance,\n        source_intent={\"frontend_constructor\": \"plot\"},\n        diagnostics=_curve_diagnostics(all_diagnostics),\n    )\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a two-component parametric plane curve.\"\"\"\n    components = list(functions)\n    if len(components) != 2:\n        raise ValueError(\"parametric_plot() requires exactly two components\")\n    minimum, maximum = _plot_range(range_args)\n    variable = _plot_variable(range_args)\n    count = int(_option_pop(options, \"plot_points\", 200))\n    if count < 2:"
+          "text": "        \"constructor\": \"plot\",\n        \"source\": {\"expressions\": [str(value) for value in functions]},\n        \"ranges\": [[xmin, xmax]],\n        \"sampling\": {} if sampling_context is None else sampling_context,\n    }\n    return answer.with_plot_spec_context(\n        provenance=provenance,\n        source_intent={\"frontend_constructor\": \"plot\"},\n        diagnostics=_curve_diagnostics(all_diagnostics),\n    )\n\n\ndef parametric_plot(\n    functions: Sequence[Any],\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot a parametric plane curve, space curve, or surface.\"\"\"\n    components = list(functions)\n    if len(components) == 3:\n        plot3d_function = runtime.reflect.get(\n            runtime.global_object,\n            \"parametric_plot3d\",\n        )\n        if runtime.jstype(plot3d_function) != \"function\":"
         }
       },
       "examples": []
@@ -30973,7 +31251,7 @@
       "examples": [
         {
           "id": "src/baselib/combinat.py#56e645c462a93421-2799b28117f4e249",
-          "line": 269,
+          "line": 321,
           "source": "Partition([3, 1])",
           "want": "[3, 1]\n",
           "tags": [],
@@ -30989,7 +31267,7 @@
         },
         {
           "id": "src/baselib/combinat.py#3b24eab1d7c02967-4b227777d4dd1fc6",
-          "line": 271,
+          "line": 323,
           "source": "Partition([3, 1]).size()",
           "want": "4\n",
           "tags": [],
@@ -31005,7 +31283,7 @@
         },
         {
           "id": "src/baselib/combinat.py#e195a0622aa208ed-672981554b806ef2",
-          "line": 273,
+          "line": 325,
           "source": "Partition([3, 1]).conjugate()",
           "want": "[2, 1, 1]\n",
           "tags": [],
@@ -31055,16 +31333,16 @@
         "name": "cells",
         "qualified": "Partition.cells",
         "path": "src/baselib/combinat.py",
-        "line": 415,
+        "line": 467,
         "excerpt": {
-          "start_line": 403,
+          "start_line": 455,
           "text": "        ```\n        \"\"\"\n        minimum = _partition_exact_integer(minimum_length, \"minimum_length\")\n        if minimum < 0:\n            raise ValueError(\"minimum_length must be nonnegative\")\n        largest = self._entries[0] if self._entries else 0\n        width = largest if largest > minimum else minimum\n        counts = [0] * width\n        for part in self._entries:\n            counts[part - 1] += 1\n        return counts\n\n    def cells(self) -> list[tuple[int, int]]:\n        \"\"\"\n        Return the coordinates of the cells of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#2388bae5fef95e77-ed293429f50edc29",
-          "line": 422,
+          "line": 474,
           "source": "Partition([2, 1]).cells()",
           "want": "[(0, 0), (0, 1), (1, 0)]\n",
           "tags": [],
@@ -31114,16 +31392,16 @@
         "name": "conjugate",
         "qualified": "Partition.conjugate",
         "path": "src/baselib/combinat.py",
-        "line": 363,
+        "line": 415,
         "excerpt": {
-          "start_line": 351,
+          "start_line": 403,
           "text": "        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n\n    def conjugate(self) -> Partition:\n        \"\"\"\n        Return the conjugate partition, the transpose of the Ferrers diagram.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).conjugate()\n            [3, 2, 1, 1]\n            sage: Partition([4, 2, 1]).conjugate().conjugate()\n            [4, 2, 1]\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1d703c2450be82e5-83df4668f684ac56",
-          "line": 370,
+          "line": 422,
           "source": "Partition([4, 2, 1]).conjugate()",
           "want": "[3, 2, 1, 1]\n",
           "tags": [],
@@ -31139,7 +31417,7 @@
         },
         {
           "id": "src/baselib/combinat.py#b07803690950edd3-57f422a516aa0883",
-          "line": 372,
+          "line": 424,
           "source": "Partition([4, 2, 1]).conjugate().conjugate()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -31189,16 +31467,16 @@
         "name": "dominates",
         "qualified": "Partition.dominates",
         "path": "src/baselib/combinat.py",
-        "line": 480,
+        "line": 532,
         "excerpt": {
-          "start_line": 468,
+          "start_line": 520,
           "text": "            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):\n            lengths = []\n            for column in range(self._entries[row]):\n                lengths.append(self.hook_length(row, column))\n            rows.append(lengths)\n        return rows\n\n    def dominates(self, other: Any) -> bool:\n        \"\"\"\n        Return whether `self` dominates `other` in the dominance order.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 1]).dominates([2, 2])\n            True\n            sage: Partition([2, 2]).dominates([3, 1])\n            False\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#931beec9b2aeccc4-3cbc87c7681f34db",
-          "line": 487,
+          "line": 539,
           "source": "Partition([3, 1]).dominates([2, 2])",
           "want": "True\n",
           "tags": [],
@@ -31214,7 +31492,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8f446272f474972f-60a33e6cf5151f2d",
-          "line": 489,
+          "line": 541,
           "source": "Partition([2, 2]).dominates([3, 1])",
           "want": "False\n",
           "tags": [],
@@ -31264,16 +31542,16 @@
         "name": "ferrers_diagram",
         "qualified": "Partition.ferrers_diagram",
         "path": "src/baselib/combinat.py",
-        "line": 509,
+        "line": 561,
         "excerpt": {
-          "start_line": 497,
+          "start_line": 549,
           "text": "            width = len(entries)\n        left = 0\n        right = 0\n        for index in range(width):\n            if index < len(self._entries):\n                left += self._entries[index]\n            if index < len(entries):\n                right += entries[index]\n            if left < right:\n                return False\n        return True\n\n    def ferrers_diagram(self) -> str:\n        \"\"\"\n        Return the Ferrers diagram as text, one row of asterisks per part.\n\n        ### Examples\n\n        ```sage\n            sage: print(Partition([3, 1]).ferrers_diagram())\n            ***\n            *\n        ```\n        \"\"\"\n        return \"\\n\".join([\"*\" * part for part in self._entries])"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9011106e3dfb7c06-a3de3ed412b0f630",
-          "line": 516,
+          "line": 568,
           "source": "print(Partition([3, 1]).ferrers_diagram())",
           "want": "***\n*\n",
           "tags": [],
@@ -31323,16 +31601,16 @@
         "name": "hook_length",
         "qualified": "Partition.hook_length",
         "path": "src/baselib/combinat.py",
-        "line": 432,
+        "line": 484,
         "excerpt": {
-          "start_line": 420,
+          "start_line": 472,
           "text": "\n        ```sage\n            sage: Partition([2, 1]).cells()\n            [(0, 0), (0, 1), (1, 0)]\n        ```\n        \"\"\"\n        coordinates = []\n        for row in range(len(self._entries)):\n            for column in range(self._entries[row]):\n                coordinates.append(runtime.math_tuple([row, column]))\n        return coordinates\n\n    def hook_length(self, row: int, column: int) -> int:\n        \"\"\"\n        Return the hook length of the cell in the given row and column.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_length(0, 0)\n            5\n            sage: Partition([3, 2, 1]).hook_length(1, 1)\n            1\n        ```\n        \"\"\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6ff416d9c55f0beb-ef2d127de37b942b",
-          "line": 439,
+          "line": 491,
           "source": "Partition([3, 2, 1]).hook_length(0, 0)",
           "want": "5\n",
           "tags": [],
@@ -31348,7 +31626,7 @@
         },
         {
           "id": "src/baselib/combinat.py#eabf7794040ccb13-6b86b273ff34fce1",
-          "line": 441,
+          "line": 493,
           "source": "Partition([3, 2, 1]).hook_length(1, 1)",
           "want": "1\n",
           "tags": [],
@@ -31398,16 +31676,16 @@
         "name": "hook_lengths",
         "qualified": "Partition.hook_lengths",
         "path": "src/baselib/combinat.py",
-        "line": 461,
+        "line": 513,
         "excerpt": {
-          "start_line": 449,
+          "start_line": 501,
           "text": "            or index_row >= len(self._entries)\n            or index_column < 0\n            or index_column >= self._entries[index_row]\n        ):\n            raise IndexError(\"the cell is outside the Ferrers diagram\")\n        arm = self._entries[index_row] - index_column - 1\n        leg = 0\n        for part in self._entries[index_row + 1 :]:\n            if part > index_column:\n                leg += 1\n        return arm + leg + 1\n\n    def hook_lengths(self) -> list[list[int]]:\n        \"\"\"\n        Return the hook lengths of every cell, row by row.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 1]).hook_lengths()\n            [[5, 3, 1], [3, 1], [1]]\n        ```\n        \"\"\"\n        rows = []\n        for row in range(len(self._entries)):"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#b67464ae2fae701e-8855a7ca0b4b034c",
-          "line": 468,
+          "line": 520,
           "source": "Partition([3, 2, 1]).hook_lengths()",
           "want": "[[5, 3, 1], [3, 1], [1]]\n",
           "tags": [],
@@ -31457,16 +31735,16 @@
         "name": "length",
         "qualified": "Partition.length",
         "path": "src/baselib/combinat.py",
-        "line": 337,
+        "line": 389,
         "excerpt": {
-          "start_line": 325,
+          "start_line": 377,
           "text": "        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:\n            total += part\n        return total\n\n    def length(self) -> int:\n        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#f72a6b7ed0a0fa54-4e07408562bedb8b",
-          "line": 344,
+          "line": 396,
           "source": "Partition([4, 2, 1]).length()",
           "want": "3\n",
           "tags": [],
@@ -31516,16 +31794,16 @@
         "name": "size",
         "qualified": "Partition.size",
         "path": "src/baselib/combinat.py",
-        "line": 321,
+        "line": 373,
         "excerpt": {
-          "start_line": 309,
+          "start_line": 361,
           "text": "    def __len__(self) -> int:\n        return len(self._entries)\n\n    def __iter__(self) -> Iterator[int]:\n        return iter(self._entries)\n\n    def __getitem__(self, index: Any) -> Any:\n        return self._entries[index]\n\n    def __contains__(self, part: object) -> bool:\n        return part in self._entries\n\n    def size(self) -> int:\n        \"\"\"\n        Return the integer partitioned by `self`.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).size()\n            7\n        ```\n        \"\"\"\n        total = 0\n        for part in self._entries:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#9a8541771bb37eca-7902699be42c8a8e",
-          "line": 328,
+          "line": 380,
           "source": "Partition([4, 2, 1]).size()",
           "want": "7\n",
           "tags": [],
@@ -31575,16 +31853,16 @@
         "name": "to_exp",
         "qualified": "Partition.to_exp",
         "path": "src/baselib/combinat.py",
-        "line": 387,
+        "line": 439,
         "excerpt": {
-          "start_line": 375,
+          "start_line": 427,
           "text": "        \"\"\"\n        if not self._entries:\n            return Partition([], self._parent)\n        columns = []\n        for index in range(self._entries[0]):\n            height = 0\n            for part in self._entries:\n                if part > index:\n                    height += 1\n            columns.append(height)\n        return Partition(columns, self._parent)\n\n    def to_exp(self, minimum_length: int = 0) -> list[int]:\n        \"\"\"\n        Return part multiplicities, where entry `i` counts the parts equal to\n        `i + 1`.\n\n        ### Input\n\n        - `minimum_length` -- pad the result to at least this length\n\n        ### Examples\n\n        ```sage\n            sage: Partition([3, 2, 2, 1]).to_exp()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1c6a76c077e2ef9c-792c6e54fa859586",
-          "line": 399,
+          "line": 451,
           "source": "Partition([3, 2, 2, 1]).to_exp()",
           "want": "[1, 2, 1]\n",
           "tags": [],
@@ -31600,7 +31878,7 @@
         },
         {
           "id": "src/baselib/combinat.py#834d5d09e66e6728-d068002bae854b23",
-          "line": 401,
+          "line": 453,
           "source": "Partition([3, 2, 2, 1]).to_exp(5)",
           "want": "[1, 2, 1, 0, 0]\n",
           "tags": [],
@@ -31650,16 +31928,16 @@
         "name": "to_list",
         "qualified": "Partition.to_list",
         "path": "src/baselib/combinat.py",
-        "line": 350,
+        "line": 402,
         "excerpt": {
-          "start_line": 338,
+          "start_line": 390,
           "text": "        \"\"\"\n        Return the number of parts.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).length()\n            3\n        ```\n        \"\"\"\n        return len(self._entries)\n\n    def to_list(self) -> list[int]:\n        \"\"\"\n        Return the parts as an ordinary list.\n\n        ### Examples\n\n        ```sage\n            sage: Partition([4, 2, 1]).to_list()\n            [4, 2, 1]\n        ```\n        \"\"\"\n        return self._entries[:]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#fcd7a04bacbc65f5-57f422a516aa0883",
-          "line": 357,
+          "line": 409,
           "source": "Partition([4, 2, 1]).to_list()",
           "want": "[4, 2, 1]\n",
           "tags": [],
@@ -31765,16 +32043,16 @@
         "name": "Partitions",
         "qualified": "Partitions",
         "path": "src/baselib/combinat.py",
-        "line": 1169,
+        "line": 1221,
         "excerpt": {
-          "start_line": 1157,
+          "start_line": 1209,
           "text": "    entries = []\n    if not isinstance(value, (list, tuple)):\n        raise TypeError(\"parts_in must be a list or tuple of positive integers\")\n    for part in value:\n        if not runtime.is_exact_integer(part):\n            raise TypeError(\"parts_in must contain integers\")\n        if int(part) <= 0:\n            raise ValueError(\"parts_in must contain positive integers\")\n        entries.append(int(part))\n    return entries\n\n\ndef Partitions(size: Any = None, **constraints: Any) -> Any:\n    r\"\"\"\n    Return the combinatorial class of partitions described by the arguments.\n\n    With no argument this is the class of all partitions of all nonnegative\n    integers.  With an integer argument it is the class of partitions of that\n    integer, optionally restricted by the supported keyword constraints.\n\n    ### Input\n\n    - `size` -- optional nonnegative integer to partition\n    - `min_part` -- smallest allowed part\n    - `max_part` -- largest allowed part"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1271fca89dd13ea8-0e5cda42d87c5802~2",
-          "line": 1190,
+          "line": 1242,
           "source": "Partitions(4).list()",
           "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
           "tags": [],
@@ -31790,7 +32068,7 @@
         },
         {
           "id": "src/baselib/combinat.py#d45f8a2533dfcfef-f663ecece38e365a",
-          "line": 1192,
+          "line": 1244,
           "source": "Partitions(5, max_part=3).list()",
           "want": "[[3, 2], [3, 1, 1], [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -31806,7 +32084,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a21ce899f51f9b8d-0dcbe9ad9baa89df",
-          "line": 1194,
+          "line": 1246,
           "source": "Partitions(5, length=2).list()",
           "want": "[[4, 1], [3, 2]]\n",
           "tags": [],
@@ -31822,7 +32100,7 @@
         },
         {
           "id": "src/baselib/combinat.py#15989ff1c8c08bc7-7fb8e374d1ac6c90",
-          "line": 1196,
+          "line": 1248,
           "source": "Partitions(5, min_part=2).list()",
           "want": "[[5], [3, 2]]\n",
           "tags": [],
@@ -31838,7 +32116,7 @@
         },
         {
           "id": "src/baselib/combinat.py#5b11ef3f7bc3e1eb-9825836aa684ee0a",
-          "line": 1198,
+          "line": 1250,
           "source": "Partitions(5, parts_in=[1, 2]).list()",
           "want": "[[2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1]]\n",
           "tags": [],
@@ -31854,7 +32132,7 @@
         },
         {
           "id": "src/baselib/combinat.py#45d6cd3cd4e3c21a-734a7c05b5614ca1",
-          "line": 1205,
+          "line": 1257,
           "source": "Partitions(1000).cardinality()",
           "want": "24061467864032622473692149727991\n",
           "tags": [],
@@ -31904,16 +32182,16 @@
         "name": "cardinality",
         "qualified": "Partitions_all.cardinality",
         "path": "src/baselib/combinat.py",
-        "line": 597,
+        "line": 649,
         "excerpt": {
-          "start_line": 585,
+          "start_line": 637,
           "text": "        sage: Partitions()\n        Partitions\n        sage: Partitions().cardinality()\n        +Infinity\n        sage: Partitions().unrank(6)\n        [1, 1, 1]\n    ```\n    \"\"\"\n\n    def __repr__(self) -> str:\n        return \"Partitions\"\n\n    def cardinality(self) -> Any:\n        \"\"\"Return `+Infinity`; the class of all partitions is infinite.\"\"\"\n        return _combinat_infinity\n\n    def __contains__(self, value: object) -> bool:\n        if isinstance(value, Partition):\n            return True\n        if not isinstance(value, (list, tuple)):\n            return False\n        entries = []\n        for part in value:\n            if not runtime.is_exact_integer(part):\n                return False"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#07fb375274b810f6-ef2d127de37b942b~2",
-          "line": 922,
+          "line": 974,
           "source": "Partitions(4).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -31929,7 +32207,7 @@
         },
         {
           "id": "src/baselib/combinat.py#9be2d535b381270d-50de17d47bcec0fd",
-          "line": 924,
+          "line": 976,
           "source": "Partitions(100).cardinality()",
           "want": "190569292\n",
           "tags": [],
@@ -31945,7 +32223,7 @@
         },
         {
           "id": "src/baselib/combinat.py#a7934eaaf9e925ad-ef2d127de37b942b",
-          "line": 926,
+          "line": 978,
           "source": "Partitions(5, max_part=3).cardinality()",
           "want": "5\n",
           "tags": [],
@@ -31995,16 +32273,16 @@
         "name": "first",
         "qualified": "Partitions_all.first",
         "path": "src/baselib/combinat.py",
-        "line": 620,
+        "line": 672,
         "excerpt": {
-          "start_line": 608,
+          "start_line": 660,
           "text": "            if not runtime.is_exact_integer(part):\n                return False\n            entries.append(int(part))\n        return _partition_is_weakly_decreasing(entries)\n\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#ab28f07b012dc982-1ae3592f8248c3f8",
-          "line": 988,
+          "line": 1040,
           "source": "Partitions(5).first()",
           "want": "[5]\n",
           "tags": [],
@@ -32054,16 +32332,16 @@
         "name": "last",
         "qualified": "Partitions_n.last",
         "path": "src/baselib/combinat.py",
-        "line": 994,
+        "line": 1046,
         "excerpt": {
-          "start_line": 982,
+          "start_line": 1034,
           "text": "        \"\"\"\n        Return the first partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).first()\n            [5]\n        ```\n        \"\"\"\n        return self.unrank(0)\n\n    def last(self) -> Partition:\n        \"\"\"\n        Return the last partition in the enumeration order.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(5).last()\n            [1, 1, 1, 1, 1]\n        ```\n        \"\"\"\n        count = self._count(\n            self._size,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6b4a3dc70e15c2a0-15d67f715f212612",
-          "line": 1001,
+          "line": 1053,
           "source": "Partitions(5).last()",
           "want": "[1, 1, 1, 1, 1]\n",
           "tags": [],
@@ -32113,16 +32391,16 @@
         "name": "list",
         "qualified": "_PartitionsBase.list",
         "path": "src/baselib/combinat.py",
-        "line": 558,
+        "line": 610,
         "excerpt": {
-          "start_line": 546,
+          "start_line": 598,
           "text": "    def __iter__(self) -> Iterator[Partition]:\n        raise NotImplementedError(\"enumeration is defined by each partition class\")\n\n    def __call__(self, entries: Any = None) -> Partition:\n        if entries is None:\n            raise TypeError(\"a partition is built from a list or tuple of parts\")\n        candidate = _partition_entries(entries)\n        _partition_validate(candidate)\n        if candidate not in self:\n            raise ValueError(\"the partition is not a member of \" + repr(self))\n        return self._element(candidate)\n\n    def list(self) -> list[Partition]:\n        \"\"\"\n        Return every member of a finite combinatorial class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(3).list()\n            [[3], [2, 1], [1, 1, 1]]\n        ```\n        \"\"\"\n        return [entry for entry in self]\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ca07fb9de45b0e9-64dc3d027c3bb6a9",
-          "line": 565,
+          "line": 617,
           "source": "Partitions(3).list()",
           "want": "[[3], [2, 1], [1, 1, 1]]\n",
           "tags": [],
@@ -32172,16 +32450,16 @@
         "name": "random_element",
         "qualified": "Partitions_n.random_element",
         "path": "src/baselib/combinat.py",
-        "line": 1115,
+        "line": 1167,
         "excerpt": {
-          "start_line": 1103,
+          "start_line": 1155,
           "text": "                            remaining - first,\n                            first,\n                            min_length - 1,\n                            max_length - 1,\n                        ),\n                    )\n            remaining -= part\n            max_part = part\n            min_length -= 1\n            max_length -= 1\n        return runtime.normalize_integer(position)\n\n    def random_element(self) -> Partition:\n        \"\"\"\n        Return a uniformly random member of this class.\n\n        The part sizes are chosen one at a time with probability proportional\n        to the exact number of completions, so every partition is equally\n        likely without enumerating the class.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions(6).random_element() in Partitions(6)\n            True"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#c6114ee4d762a06b-3cbc87c7681f34db",
-          "line": 1126,
+          "line": 1178,
           "source": "Partitions(6).random_element() in Partitions(6)",
           "want": "True\n",
           "tags": [],
@@ -32197,7 +32475,7 @@
         },
         {
           "id": "src/baselib/combinat.py#46cf4cb9bdfdcac2-3cbc87c7681f34db",
-          "line": 1128,
+          "line": 1180,
           "source": "Partitions(6, max_part=2).random_element().to_list()[0] <= 2",
           "want": "True\n",
           "tags": [],
@@ -32247,16 +32525,16 @@
         "name": "rank",
         "qualified": "Partitions_all.rank",
         "path": "src/baselib/combinat.py",
-        "line": 647,
+        "line": 699,
         "excerpt": {
-          "start_line": 635,
+          "start_line": 687,
           "text": "        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:\n            raise ValueError(\"a rank must be nonnegative\")\n        size = 0\n        while True:\n            available = Partitions(size)\n            count = int(available.cardinality())\n            if position < count:\n                return Partition(available.unrank(position).to_list(), self)\n            position -= count\n            size += 1\n\n    def rank(self, value: Any) -> Any:\n        \"\"\"\n        Return the position of `value` in the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: Partitions().rank([2, 1])\n            5\n        ```\n        \"\"\"\n        entries = _partition_entries(value)\n        _partition_validate(entries)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#1ce443a75fccb628-ef2d127de37b942b",
-          "line": 654,
+          "line": 706,
           "source": "Partitions().rank([2, 1])",
           "want": "5\n",
           "tags": [],
@@ -32272,7 +32550,7 @@
         },
         {
           "id": "src/baselib/combinat.py#61484fa7860e9cef-4e07408562bedb8b",
-          "line": 1082,
+          "line": 1134,
           "source": "Partitions(5).rank([3, 1, 1])",
           "want": "3\n",
           "tags": [],
@@ -32288,7 +32566,7 @@
         },
         {
           "id": "src/baselib/combinat.py#127abb9a1536a345-507a6faf94abad26",
-          "line": 1084,
+          "line": 1136,
           "source": "Partitions(5).unrank(Partitions(5).rank([2, 2, 1]))",
           "want": "[2, 2, 1]\n",
           "tags": [],
@@ -32338,16 +32616,16 @@
         "name": "unrank",
         "qualified": "Partitions_all.unrank",
         "path": "src/baselib/combinat.py",
-        "line": 624,
+        "line": 676,
         "excerpt": {
-          "start_line": 612,
+          "start_line": 664,
           "text": "\n    def __iter__(self) -> Iterator[Partition]:\n        size = 0\n        while True:\n            for entry in Partitions(size):\n                yield Partition(entry.to_list(), self)\n            size += 1\n\n    def first(self) -> Partition:\n        \"\"\"Return the empty partition, the first in the enumeration order.\"\"\"\n        return self._element([])\n\n    def unrank(self, index: Any) -> Partition:\n        \"\"\"\n        Return the partition at position `index` of the enumeration.\n\n        ### Examples\n\n        ```sage\n            sage: [Partitions().unrank(index) for index in range(5)]\n            [[], [1], [2], [1, 1], [3]]\n        ```\n        \"\"\"\n        position = _partition_exact_integer(index, \"a rank\")\n        if position < 0:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/combinat.py#6cd3a27c73b88e67-511963b215a747ff",
-          "line": 631,
+          "line": 683,
           "source": "[Partitions().unrank(index) for index in range(5)]",
           "want": "[[], [1], [2], [1, 1], [3]]\n",
           "tags": [],
@@ -32363,7 +32641,7 @@
         },
         {
           "id": "src/baselib/combinat.py#8b49d6272120b0e7-1ae3592f8248c3f8",
-          "line": 1054,
+          "line": 1106,
           "source": "Partitions(5).unrank(0)",
           "want": "[5]\n",
           "tags": [],
@@ -32379,7 +32657,7 @@
         },
         {
           "id": "src/baselib/combinat.py#25379a031a768146-c9f4320c86359dc6",
-          "line": 1056,
+          "line": 1108,
           "source": "Partitions(5).unrank(3)",
           "want": "[3, 1, 1]\n",
           "tags": [],
@@ -32635,9 +32913,9 @@
         "name": "plot_loglog",
         "qualified": "plot_loglog",
         "path": "src/baselib/graphics.py",
-        "line": 6365,
+        "line": 6373,
         "excerpt": {
-          "start_line": 6353,
+          "start_line": 6361,
           "text": "            if index + 1 < len(points):\n                path.append((points[index + 1][0], points[index][1]))\n        return line(path, **options)\n    answer = Graphics()\n    for index in range(len(points) - 1):\n        answer = answer + line(\n            [points[index], (points[index + 1][0], points[index][1])],\n            **options,\n        )\n    return answer\n\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -32695,9 +32973,9 @@
         "name": "plot_semilogx",
         "qualified": "plot_semilogx",
         "path": "src/baselib/graphics.py",
-        "line": 6375,
+        "line": 6383,
         "excerpt": {
-          "start_line": 6363,
+          "start_line": 6371,
           "text": "\n\ndef plot_loglog(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with logarithmic horizontal and vertical axes.\"\"\"\n    options[\"scale\"] = \"loglog\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,"
         }
       },
@@ -32755,9 +33033,9 @@
         "name": "plot_semilogy",
         "qualified": "plot_semilogy",
         "path": "src/baselib/graphics.py",
-        "line": 6385,
+        "line": 6393,
         "excerpt": {
-          "start_line": 6373,
+          "start_line": 6381,
           "text": "\n\ndef plot_semilogx(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic horizontal axis.\"\"\"\n    options[\"scale\"] = \"semilogx\"\n    return plot(funcs, *range_args, **options)\n\n\ndef plot_semilogy(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    \"\"\"Plot functions with a logarithmic vertical axis.\"\"\"\n    options[\"scale\"] = \"semilogy\"\n    return plot(funcs, *range_args, **options)\n\n\ndef list_plot_loglog(\n    data: Any,\n    plotjoined: bool = False,"
         }
       },
@@ -32815,9 +33093,9 @@
         "name": "plot_slope_field",
         "qualified": "plot_slope_field",
         "path": "src/baselib/graphics.py",
-        "line": 6156,
+        "line": 6164,
         "excerpt": {
-          "start_line": 6144,
+          "start_line": 6152,
           "text": "        PlotField(\n            sampled[0],\n            sampled[1],\n            sampled[2],\n            sampled[3],\n            sampled[4],\n            defaults,\n        )\n    )\n    return graphic\n\n\ndef plot_slope_field(\n    function_value: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot short normalized line segments with slope `function_value`.\n    \"\"\"\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])\n    slope = _plot_callable_2d(function_value, xvariable, yvariable)\n"
         }
       },
@@ -32875,9 +33153,9 @@
         "name": "plot_step_function",
         "qualified": "plot_step_function",
         "path": "src/baselib/graphics.py",
-        "line": 6340,
+        "line": 6348,
         "excerpt": {
-          "start_line": 6328,
+          "start_line": 6336,
           "text": "    values = list(data)\n    if len(values) == 0:\n        return Graphics()\n    if isinstance(values[0], (list, tuple)):\n        points = [_point_pair(value) for value in values]\n    else:\n        points = [(float(index), float(values[index])) for index in range(len(values))]\n    if plotjoined:\n        return line(points, **options)\n    return point(points, **options)\n\n\ndef plot_step_function(\n    values: Any,\n    vertical_lines: bool = True,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the step function defined by a sequence of `(x, y)` pairs.\"\"\"\n    points = sorted([_point_pair(value) for value in values])\n    if len(points) <= 1:\n        return line([], **options)\n    if vertical_lines:\n        path = []\n        for index in range(len(points)):\n            path.append(points[index])"
         }
       },
@@ -32935,9 +33213,9 @@
         "name": "plot_vector_field",
         "qualified": "plot_vector_field",
         "path": "src/baselib/graphics.py",
-        "line": 6115,
+        "line": 6123,
         "excerpt": {
-          "start_line": 6103,
+          "start_line": 6111,
           "text": "        \"flip_y\": True,\n        \"ticks_integer\": True,\n        \"aspect_ratio\": 1,\n    }\n    _option_update(defaults, _copy_options(options))\n    graphics_options = _graphics_options(defaults)\n    graphic = Graphics()\n    graphic.set_extra_kwds(graphics_options)\n    graphic.add_primitive(Density(xvalues, yvalues, values, defaults))\n    return graphic\n\n\ndef plot_vector_field(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot a two-dimensional vector field on a rectangular sample grid.\n\n    The two components may be symbolic expressions or callables.  Invalid\n    values are omitted, matching Sage's masked-vector behavior.\n    \"\"\"\n    defaults = {"
         }
       },
@@ -33355,9 +33633,9 @@
         "name": "polar_plot",
         "qualified": "polar_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5618,
+        "line": 5626,
         "excerpt": {
-          "start_line": 5606,
+          "start_line": 5614,
           "text": "\n            callables.append(constant)\n    step = (maximum - minimum) / float(count - 1)\n    points = []\n    for index in range(count):\n        value = maximum if index == count - 1 else minimum + index * step\n        points.append(\n            (_finite_value(callables[0](value)), _finite_value(callables[1](value)))\n        )\n    return line(points, **options)\n\n\ndef polar_plot(\n    funcs: Any,\n    *range_args: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot one or more functions in polar coordinates.\n\n    The input function gives the radius `r` as a function of angle `theta`.\n    All adaptive sampling and line options accepted by `plot` are supported.\n    \"\"\"\n    radial = plot(funcs, *range_args, **options)\n    answer = Graphics()"
         }
       },
@@ -34070,10 +34348,10 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 8320,
+        "line": 8342,
         "excerpt": {
-          "start_line": 8308,
-          "text": "arraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nvars = ρσ_vars\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
+          "start_line": 8330,
+          "text": "        return copier()\n    copier = getattr(value, \"copy\", None)\n    if callable(copier):\n        return copier()\n    if isinstance(value, (str, bytes, int, float, complex, tuple, frozenset)):\n        return value\n    try:\n        return type(value)(value)\n    except Exception:\n        raise TypeError(\"object does not support shallow copying\")  # noqa: B904\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
       "examples": []
@@ -34197,16 +34475,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 9870,
+        "line": 10136,
         "excerpt": {
-          "start_line": 9858,
+          "start_line": 10124,
           "text": "            return MatrixSpace(sage.QQ, rows, columns)._from_fmpq_matrix_resource(\n                resource\n            )\n        except Exception:\n            private_resource.close()\n            if resource is not runtime.undefined:\n                resource.close()\n            raise\n\n    return runtime.undefined\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = \"randomize\",\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b17ff7be6a528fc2-e3b0c44298fc1c14",
-          "line": 9894,
+          "line": 10160,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -34222,7 +34500,7 @@
         },
         {
           "id": "src/baselib/matrix.py#97db44fc39945d18-41f2eaaeeeb24074",
-          "line": 9895,
+          "line": 10161,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -34238,7 +34516,7 @@
         },
         {
           "id": "src/baselib/matrix.py#fa1961c5906b90ea-3cbc87c7681f34db",
-          "line": 9897,
+          "line": 10163,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -34306,9 +34584,9 @@
         "name": "region_plot",
         "qualified": "region_plot",
         "path": "src/baselib/graphics.py",
-        "line": 5997,
+        "line": 6005,
         "excerpt": {
-          "start_line": 5985,
+          "start_line": 5993,
           "text": "        function_value = function_value._plot_zero_set_expression()\n    options = _copy_options(options)\n    options[\"contours\"] = [0]\n    options[\"colorbar\"] = False\n    if not _option_has(options, \"fill\"):\n        options[\"fill\"] = False\n    if _option_has(options, \"fillcolor\") and not _option_has(options, \"cmap\"):\n        fillcolor = _option_get(options, \"fillcolor\")\n        options[\"cmap\"] = [fillcolor, fillcolor]\n    return contour_plot(function_value, xrange, yrange, **options)\n\n\ndef region_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"Plot the region where one or more boolean functions are true.\"\"\"\n    options = _copy_options(options)\n    plot_points = _option_pop(options, \"plot_points\", 100)\n    xminimum, xmaximum = _plot_range([xrange])\n    yminimum, ymaximum = _plot_range([yrange])\n    xvariable = _plot_variable([xrange])\n    yvariable = _plot_variable([yrange])"
         }
       },
@@ -34735,18 +35013,18 @@
       ],
       "source": {
         "name": "solve",
-        "qualified": "solve",
+        "qualified": "Expression.solve",
         "path": "src/baselib/symbolic.py",
-        "line": 2525,
+        "line": 716,
         "excerpt": {
-          "start_line": 2513,
-          "text": "                    Expression(\n                        [\n                            \"Equal\",\n                            _expression_tree(variables[index]),\n                            values[index]._tree,\n                        ]\n                    )\n                )\n            answers.append(relations)\n    return answers\n\n\ndef solve(\n    equations: Any,\n    *variables: Any,\n    **options: Any,\n) -> Any:\n    r\"\"\"\n    Solve supported elementary symbolic equations.\n\n    One equation or a list of equations may be supplied, followed by one or\n    more variables. Set `solution_dict=True` for dictionary-valued\n    solutions.\n\n    ### Examples"
+          "start_line": 704,
+          "text": "            [self.derivative(variable) for variable in variable_values],\n        )\n\n    def hessian(self) -> Any:\n        variables = self.variables()\n        entries = []\n        for row_variable in variables:\n            first = self.derivative(row_variable)\n            for column_variable in variables:\n                entries.append(first.derivative(column_variable))\n        return SymbolicMatrix(len(variables), len(variables), entries, variables)\n\n    def solve(self, *variables: Any, **options: Any) -> Any:\n        return solve(self, *variables, **options)\n\n    def taylor(\n        self,\n        variable: Any,\n        point: Any,\n        degree: int,\n    ) -> Expression:\n        return taylor(self, variable, point, degree)\n\n    def limit(\n        self,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/symbolic.py#92a64902788254ae-9c10500612dcb6f1",
-          "line": 2540,
+          "line": 3258,
           "source": "solve(x^2 == 4, x)",
           "want": "[x == -2, x == 2]\n",
           "tags": [],
@@ -34983,9 +35261,9 @@
         "name": "streamline_plot",
         "qualified": "streamline_plot",
         "path": "src/baselib/graphics.py",
-        "line": 6186,
+        "line": 6194,
         "excerpt": {
-          "start_line": 6174,
+          "start_line": 6182,
           "text": "        current = float(slope(xvalue, yvalue))\n        return current / runtime.math.sqrt(current * current + 1.0)\n\n    slope_options = {\n        \"headaxislength\": 0,\n        \"headlength\": 1e-9,\n        \"pivot\": \"middle\",\n    }\n    _option_update(slope_options, _copy_options(options))\n    return plot_vector_field((horizontal, vertical), xrange, yrange, **slope_options)\n\n\ndef streamline_plot(\n    functions: Any,\n    xrange: Any,\n    yrange: Any,\n    **options: Any,\n) -> Graphics:\n    r\"\"\"\n    Plot integral curves of a vector field or first-order slope field.\n\n    Streamlines are integrated in both directions with a deterministic\n    midpoint method.  `density` controls seed count and integration step;\n    `start_points` supplies explicit seeds.\n    \"\"\""
         }
       },
@@ -35047,16 +35325,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 9104,
+        "line": 9370,
         "excerpt": {
-          "start_line": 9092,
+          "start_line": 9358,
           "text": "    elif len(values) == 1:\n        entries = list(values[0])\n    else:\n        raise TypeError(\"unsupported vector() constructor signature\")\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return source if base is None else source.change_ring(base)\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
           "id": "src/baselib/matrix.py#b58bb4a279a18edf-e3b0c44298fc1c14",
-          "line": 9115,
+          "line": 9381,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -35072,7 +35350,7 @@
         },
         {
           "id": "src/baselib/matrix.py#9971501a52f38d1a-b7945d60e67a36b5",
-          "line": 9121,
+          "line": 9387,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -35135,16 +35413,16 @@
         "name": "SupersingularModule",
         "qualified": "SupersingularModule",
         "path": "src/baselib/modular.py",
-        "line": 52,
+        "line": 101,
         "excerpt": {
-          "start_line": 40,
-          "text": "\ndef _supersingular_module() -> Any:\n    \"\"\"Load the sparse supersingular-module implementation lazily.\"\"\"\n    global _supersingular_module_cache\n    if _supersingular_module_cache is runtime.undefined:\n        _supersingular_module_cache = __import__(\n            \"sagejs.modular_forms.supersingular\",\n            fromlist=[\"SupersingularModule\"],\n        )\n    return _supersingular_module_cache\n\n\ndef SupersingularModule(\n    characteristic: Any = 2,\n    level: Any = 1,\n    base_ring: Any = None,\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    \"\"\"Construct the sparse level-one supersingular Brandt module.\n\n    The authoritative Hecke representation is sparse. Calling `matrix()` on\n    an operator is a bounded compatibility operation for small examples.\n\n    ```sage\n    sage: S = SupersingularModule(37)"
+          "start_line": 89,
+          "text": "    module = _brandt_module()\n    return module.BrandtModule(\n        D,\n        N,\n        weight,\n        base_ring,\n        use_cache,\n        realization=realization,\n        dense_entry_limit=dense_entry_limit,\n    )\n\n\ndef SupersingularModule(\n    characteristic: Any = 2,\n    level: Any = 1,\n    base_ring: Any = None,\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    \"\"\"Construct the sparse level-one supersingular Brandt module.\n\n    The authoritative Hecke representation is sparse. Calling `matrix()` on\n    an operator is a bounded compatibility operation for small examples.\n\n    ```sage\n    sage: S = SupersingularModule(37)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#0d7572a9a651f00c-e3b0c44298fc1c14",
-          "line": 64,
+          "line": 113,
           "source": "S = SupersingularModule(37)",
           "want": "",
           "tags": [],
@@ -35160,7 +35438,7 @@
         },
         {
           "id": "src/baselib/modular.py#e0cc1038fb9d40ed-4e07408562bedb8b",
-          "line": 65,
+          "line": 114,
           "source": "S.dimension()",
           "want": "3\n",
           "tags": [],
@@ -35176,7 +35454,7 @@
         },
         {
           "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
-          "line": 67,
+          "line": 116,
           "source": "S.T(2) * vector(ZZ, [1, 1, 1])",
           "want": "(3, 3, 3)\n",
           "tags": [],
@@ -35365,7 +35643,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
       "summary": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
-      "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
+      "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n```sage\nsage: theta_qexp(6)\n1 + 2*q + 2*q^4 + O(q^6)\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -35405,13 +35683,30 @@
         "name": "theta_qexp",
         "qualified": "theta_qexp",
         "path": "src/baselib/modular.py",
-        "line": 695,
+        "line": 744,
         "excerpt": {
-          "start_line": 683,
-          "text": "\n    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(\n        native_value\n    )\n    coefficients = rational_polynomial.coefficients()\n    generator = ring.gen()\n    result = ring(0)\n    for coefficient in reversed(coefficients):\n        result = result * generator + coefficient_ring(coefficient)\n    return result.add_bigoh(precision)\n\n\ndef theta_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\"\"\"\n    return _half_integral_module().theta_qexp(prec, K, variable, **opts)\n\n\ndef theta2_qexp(\n    prec: Any = 20,\n    K: Any = None,"
+          "start_line": 732,
+          "text": "\n    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(\n        native_value\n    )\n    coefficients = rational_polynomial.coefficients()\n    generator = ring.gen()\n    result = ring(0)\n    for coefficient in reversed(coefficients):\n        result = result * generator + coefficient_ring(coefficient)\n    return result.add_bigoh(precision)\n\n\ndef theta_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n    ```sage\n    sage: theta_qexp(6)\n    1 + 2*q + 2*q^4 + O(q^6)\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",
+          "line": 753,
+          "source": "theta_qexp(6)",
+          "want": "1 + 2*q + 2*q^4 + O(q^6)\n",
+          "tags": [],
+          "owner": "theta_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",
+            "status": "pass",
+            "actual": "1 + 2*q + 2*q^4 + O(q^6)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -35421,7 +35716,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
       "summary": "Return the replayable standard-theta coefficient certificate.",
-      "doc": "Return the replayable standard-theta coefficient certificate.",
+      "doc": "Return the replayable standard-theta coefficient certificate.\n\n```sage\nsage: theta_qexp_certificate(12).verify()\nTrue\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -35461,13 +35756,30 @@
         "name": "theta_qexp_certificate",
         "qualified": "theta_qexp_certificate",
         "path": "src/baselib/modular.py",
-        "line": 715,
+        "line": 776,
         "excerpt": {
-          "start_line": 703,
-          "text": "\n\ndef theta2_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\"\"\"\n    return _half_integral_module().theta2_qexp(prec, K, variable, **opts)\n\n\ndef theta_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable standard-theta coefficient certificate.\"\"\"\n    return _half_integral_module().theta_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )"
+          "start_line": 764,
+          "text": "    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n    ```sage\n    sage: theta2_qexp(12)\n    q + q^9 + O(q^12)\n    ```\n    \"\"\"\n    return _half_integral_module().theta2_qexp(prec, K, variable, **opts)\n\n\ndef theta_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable standard-theta coefficient certificate.\n\n    ```sage\n    sage: theta_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#66a000ceaf4810b3-3cbc87c7681f34db",
+          "line": 785,
+          "source": "theta_qexp_certificate(12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "theta_qexp_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#66a000ceaf4810b3-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -35477,7 +35789,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
       "summary": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
-      "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
+      "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n```sage\nsage: theta2_qexp(12)\nq + q^9 + O(q^12)\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -35517,13 +35829,30 @@
         "name": "theta2_qexp",
         "qualified": "theta2_qexp",
         "path": "src/baselib/modular.py",
-        "line": 705,
+        "line": 760,
         "excerpt": {
-          "start_line": 693,
-          "text": "\n\ndef theta_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\"\"\"\n    return _half_integral_module().theta_qexp(prec, K, variable, **opts)\n\n\ndef theta2_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\"\"\"\n    return _half_integral_module().theta2_qexp(prec, K, variable, **opts)\n\n\ndef theta_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,"
+          "start_line": 748,
+          "text": "    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n    ```sage\n    sage: theta_qexp(6)\n    1 + 2*q + 2*q^4 + O(q^6)\n    ```\n    \"\"\"\n    return _half_integral_module().theta_qexp(prec, K, variable, **opts)\n\n\ndef theta2_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n    ```sage\n    sage: theta2_qexp(12)\n    q + q^9 + O(q^12)\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#31272cf366612d54-a3ccaba550953bdb",
+          "line": 769,
+          "source": "theta2_qexp(12)",
+          "want": "q + q^9 + O(q^12)\n",
+          "tags": [],
+          "owner": "theta2_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#31272cf366612d54-a3ccaba550953bdb",
+            "status": "pass",
+            "actual": "q + q^9 + O(q^12)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -35533,7 +35862,7 @@
       "module": "sage.modular.modform.half_integral",
       "signature": "theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
       "summary": "Return the replayable odd-square theta coefficient certificate.",
-      "doc": "Return the replayable odd-square theta coefficient certificate.",
+      "doc": "Return the replayable odd-square theta coefficient certificate.\n\n```sage\nsage: theta2_qexp_certificate(12).verify()\nTrue\n```",
       "tags": [
         "modular forms",
         "half-integral weight",
@@ -35573,13 +35902,30 @@
         "name": "theta2_qexp_certificate",
         "qualified": "theta2_qexp_certificate",
         "path": "src/baselib/modular.py",
-        "line": 730,
+        "line": 797,
         "excerpt": {
-          "start_line": 718,
-          "text": "    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable standard-theta coefficient certificate.\"\"\"\n    return _half_integral_module().theta_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef theta2_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable odd-square theta coefficient certificate.\"\"\"\n    return _half_integral_module().theta2_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )"
+          "start_line": 785,
+          "text": "    sage: theta_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().theta_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef theta2_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable odd-square theta coefficient certificate.\n\n    ```sage\n    sage: theta2_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\""
         }
       },
-      "examples": []
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#8632a2c8d53f7707-3cbc87c7681f34db",
+          "line": 806,
+          "source": "theta2_qexp_certificate(12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "theta2_qexp_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#8632a2c8d53f7707-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -35793,16 +36139,16 @@
         "name": "victor_miller_basis",
         "qualified": "victor_miller_basis",
         "path": "src/baselib/modular.py",
-        "line": 837,
+        "line": 948,
         "excerpt": {
-          "start_line": 825,
+          "start_line": 936,
           "text": "    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n    ```\n    \"\"\"\n    return _qexp_module().delta_qexp(prec, variable, K, **opts)\n\n\ndef victor_miller_basis(\n    k: Any,\n    prec: Any = 10,\n    cusp_only: bool = False,\n    variable: str = \"q\",\n    **opts: Any,\n) -> list[Any]:\n    r\"\"\"Return the integral Victor Miller basis in level $1$ and weight $k$.\n\n    ### Examples\n\n    ```sage\n    sage: victor_miller_basis(12, 5)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#56a3e6c3efa8e275-04270e7a5b807270",
-          "line": 849,
+          "line": 960,
           "source": "victor_miller_basis(12, 5)",
           "want": "[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]\n",
           "tags": [],
@@ -35939,23 +36285,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 308,
-      "with_docstring": 308,
-      "with_summary": 308,
-      "with_tags": 308,
-      "with_backend": 308,
-      "with_provenance": 308,
-      "with_compatibility_notes": 308,
+      "registry_entries": 309,
+      "with_docstring": 309,
+      "with_summary": 309,
+      "with_tags": 309,
+      "with_backend": 309,
+      "with_provenance": 309,
+      "with_compatibility_notes": 309,
       "with_references": 94,
-      "markdown_docstrings": 308,
+      "markdown_docstrings": 309,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 203,
-      "entries_without_examples": 105,
-      "documented": 200,
-      "verified": 194,
+      "entries_with_examples": 214,
+      "entries_without_examples": 95,
+      "documented": 214,
+      "verified": 208,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,

@@ -1,5 +1,8 @@
 import { loadSageRuntime, requestCredentials } from "./runtime-api.mjs";
-import { createSourceEditor } from "./codemirror-editor.mjs";
+import {
+  createReadOnlySource,
+  createSourceEditor,
+} from "./codemirror-editor.mjs";
 import { executionSource } from "./execution-source.mjs";
 import { EXAMPLES } from "./examples.mjs";
 import { capabilityFamilies, filterCapabilities, validateCapabilityReport } from "./capability-report.mjs";
@@ -36,7 +39,45 @@ const elements = {
   capabilitySearch: $("#capability-search"),
   capabilitySummary: $("#capability-summary"),
   capabilityRecords: $("#capability-records"),
+  typesetMath: $("#typeset-math"),
+  theme: $("#theme"),
 };
+
+const THEME_KEY = "sagejs-theme";
+const themeMedia = matchMedia("(prefers-color-scheme: dark)");
+
+function storedTheme() {
+  try {
+    const value = localStorage.getItem(THEME_KEY);
+    return value === "light" || value === "dark" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function applyTheme(preference, { persist = false } = {}) {
+  if (!new Set(["system", "light", "dark"]).has(preference)) {
+    preference = "system";
+  }
+  const resolved = preference === "system"
+    ? (themeMedia.matches ? "dark" : "light")
+    : preference;
+  document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.themePreference = preference;
+  elements.theme.value = preference;
+  if (persist) {
+    try { localStorage.setItem(THEME_KEY, preference); } catch { /* storage is optional */ }
+  }
+}
+
+applyTheme(storedTheme());
+elements.theme.addEventListener("change", () => {
+  applyTheme(elements.theme.value, { persist: true });
+  setLive(`Theme set to ${elements.theme.selectedOptions[0].textContent}.`);
+});
+themeMedia.addEventListener("change", () => {
+  if (elements.theme.value === "system") applyTheme("system");
+});
 
 const store = new WorkspaceStore();
 let workspace;
@@ -50,6 +91,13 @@ let SageSessionTimeoutError;
 let running = false;
 let runCounter = 0;
 let autosaveTimer;
+
+function userErrorText(error) {
+  const name = error?.name === "ReferenceError"
+    ? "NameError"
+    : error?.name || "Error";
+  return `${name}: ${error?.message || String(error)}`;
+}
 
 function setLive(message) {
   elements.live.textContent = message;
@@ -198,11 +246,10 @@ function renderMessage(kind, title, text = "", input = "") {
       }
     });
     inputHeading.append(inputLabel, copy);
-    const inputSource = document.createElement("pre");
+    const inputSource = document.createElement("div");
     inputSource.className = "result-input";
-    inputSource.textContent = input;
-    inputSource.tabIndex = 0;
     article.append(inputHeading, inputSource);
+    createReadOnlySource(inputSource, input, `Input for ${title}`);
   }
   article.append(outputLabel, pre);
   elements.output.prepend(article);
@@ -259,12 +306,16 @@ async function run(mode) {
         return appended;
       },
     });
-    if (result.repr) collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
+    const typesetLatex = result.display?.mime === "text/latex" && elements.typesetMath.checked;
+    if (result.repr && !typesetLatex) {
+      collector.append((collector.text && !collector.text.endsWith("\n") ? "\n" : "") + result.repr);
+    }
     pre.textContent = collector.text || "Completed without textual output.";
-    if (result.display) {
+    if (result.display && (result.display.mime !== "text/latex" || typesetLatex)) {
       const plotBytes = assertDisplayWithinLimit(result.display);
       await renderSageDisplay(plot, result.display);
       plot.dataset.bytes = String(plotBytes);
+      if (typesetLatex && !collector.text) pre.remove();
     } else {
       plot.remove();
     }
@@ -278,14 +329,20 @@ async function run(mode) {
     if (outputLimitRestarted) {
       pre.textContent = collector.text;
       setLive("The output limit was reached. The kernel was restarted and variables were cleared.");
-    } else if (error instanceof SageSessionTimeoutError) {
+    } else if (
+      typeof SageSessionTimeoutError === "function" &&
+      error instanceof SageSessionTimeoutError
+    ) {
       pre.textContent = `Time limit reached.\n\n${collector.text}`;
       setLive("The time limit was reached. The kernel was restarted and variables were cleared.");
-    } else if (error instanceof SageSessionInterruptedError) {
+    } else if (
+      typeof SageSessionInterruptedError === "function" &&
+      error instanceof SageSessionInterruptedError
+    ) {
       pre.textContent = `${collector.text}\n[Interrupted; variables were cleared.]`.trim();
       setLive("Interrupted. The kernel restarted with a clean session.");
     } else {
-      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${error.stack ?? error.message}`;
+      pre.textContent = `${collector.text}${collector.text ? "\n" : ""}${userErrorText(error)}`;
       setLive(`Run ${currentRun} failed: ${error.message}`);
     }
   } finally {

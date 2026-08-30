@@ -1,0 +1,458 @@
+# ADR 0004: Source-transparent resident exact machine
+
+- Status: accepted for implementation
+- Date: 2026-08-29
+- Supersedes: the C4/C5 deferral in ADR 0003
+
+## Context
+
+ADR 0003 deliberately stopped after one lexical `NativeIntegerVector`.  The
+post-sprint profile then available did not justify a larger ownership language.
+That evidence has changed.
+
+Two independent exact-mathematics pipelines now show the same boundary:
+
+- For LMFDB cubic field `3.3.2989441.2`, Sage.js reaches the correct tentative
+  group `C3 x C3` and now closes the missing unit index exactly.  On the
+  dedicated Linux x64 host, however, the prepared public group takes 65.37
+  seconds, the coupled engine takes 19.23 seconds, and detached replay takes
+  174.28 seconds.  Forty-four retained relations are decoded 1,170 times,
+  witness logarithms are requested 394 times, and six exact presentations are
+  extracted.  PARI's comparable conditional computation is at the millisecond
+  scale.
+- The Brandt-module pipeline independently spends almost all of its time
+  constructing norm plans and repeatedly converting, canonicalizing, hashing,
+  and classifying small exact lattices.  Its compiled enumeration recurrence
+  is already a small fraction of the complete operation.  Mature systems keep
+  the rank-four lattice and ideal state in one low-level lifecycle.
+
+The common missing abstraction is not another scalar kernel.  It is a bounded
+owned exact workspace whose representations survive across several
+mathematical stages and cross the host boundary only at initial import and final
+transactional publication.
+
+## Decision
+
+Extend Native Kernel into a richer **source-transparent exact machine**.  This
+is not a second source language and not an application-specific C engine.
+Mathematical code remains ordinary CPython-parseable Python; `@native` lowers
+the typed body itself and retains the same dynamic fallback.
+
+The machine has two related ownership forms:
+
+1. `NativeExactArena` is lexical compiler-owned state for one coarse compiled
+   region.  It may own several bounded exact containers and declared foreign
+   resources.  All exits close children exactly once in reverse construction
+   order.
+2. `NativeExactWorkspace` is a reusable opaque owner held by a mathematical
+   computation context.  A compiled call may borrow it synchronously, mutate
+   private acceleration state, and return a scalar or detached result.  Reset,
+   close, generation, and shape identity are explicit.  The workspace itself
+   cannot be serialized or become proof authority.
+
+The first accepted source vocabulary is:
+
+```python
+from sagejs.native import NativeExactArena, NativeRecord, native, uint64
+
+
+class RelationMetadata(NativeRecord):
+    witness_index: uint64
+    provenance_index: uint64
+
+
+@native
+def admit_and_present(
+    ..., resident_limit: uint64, temporary_limit: uint64
+) -> bool:
+    with NativeExactArena(resident_limit, temporary_limit) as arena:
+        rows = arena.integer_matrix(maximum_rows, columns, relation_bits)
+        row_lengths = arena.uint64_vector(maximum_rows)
+        metadata = arena.records(RelationMetadata, maximum_rows)
+        seen = arena.bounded_map(KeyRecord, uint64, map_capacity)
+        ...
+        return True
+```
+
+Exact spellings may be tightened by accepted/rejected compiler probes, but the
+ownership and effect contracts below are normative.
+
+## Storage vocabulary
+
+The implementation proceeds in dependency order.
+
+### Exact aggregates
+
+- fixed-capacity exact integer vectors;
+- row-major exact integer matrices with checked shaped indexing and row views;
+- normalized exact rational vectors/matrices represented by paired exact
+  integer storage;
+- fixed-degree number-field elements represented by exact rational coordinate
+  records plus an authenticated field/model fingerprint;
+- compact factored elements whose exponent and factor storage remain separate;
+- fixed-schema records containing scalars, checked references, and accepted
+  exact aggregates; and
+- declared FLINT resources, especially `fmpz_mat`, borrowed or owned through
+  the existing generated FFI lifecycle.
+
+### Bounded dynamic structures
+
+- append-only vectors of records;
+- compact sparse exact rows;
+- deterministic open-addressed maps and sets;
+- bounded queues/stacks for coarse relation work; and
+- checked arena offsets or indices, never raw pointers.
+
+Every structure has an exact capacity, element type, shape, semantic memory
+charge, and failure contract.  No operation silently allocates an unbounded
+Python, JavaScript, GMP, FLINT, or Wasm object graph.
+
+### Physical allocation
+
+Exact capacities are part of the mathematical program, not accounting added
+after code generation.  Every resident GMP destination declares a positive
+maximum bit length.  The compiler initializes its limbs once, preallocates
+owned arithmetic scratch for the declared operation schedule, and proves each
+update fits before invoking GMP.  Loads consumed by the next exact operation
+are read-only borrows of resident limbs rather than copied `mpz_t` values.
+
+Short-lived exact temporaries use compiler-delimited checkpoints in a
+thread-local bump arena.  A process-wide GMP allocation hook routes memory to
+that arena only while such a proved scope is active; pointers retain allocator
+provenance so ordinary GMP/FLINT state outside the scope continues to use the
+system allocator.  Rewind is legal only after ownership analysis proves that
+no arena-backed limb or foreign resource can escape.  Resident values and
+published outputs are never silently allocated from rewindable storage.
+
+On 64-bit operating systems the temporary capacity should reserve one stable
+virtual address range and make pages accessible only as the high-water mark
+advances; the operating system backs touched pages according to its virtual
+memory policy.  A large default reservation is therefore cheap in resident
+memory and retains bump-pointer arithmetic.  WASI or another host without this
+virtual memory contract must expose its different allocation route rather than
+pretend to provide it.
+
+Native Kernel v27 initially admits a deliberately narrower proof: the arena
+body must end in an unconditional return, publication temporarily suspends the
+checkpoint, and generated all-exit cleanup destroys exact scratch and child
+owners before rewinding the parent.  This restriction may be relaxed only when
+the IR records capacity and ownership for every scalar live-out; ordinary
+Python lexical scope alone is not an allocation-lifetime proof.
+
+Capacity exhaustion is transactional.  A checked internal execution result
+prevents publication and retains the observed high-water mark; a
+source-transparent dispatcher may then enlarge the workspace and replay from
+the same authenticated inputs.  It must never relocate the region silently in
+the middle of a computation, because doing so would invalidate resident
+pointers and erase the allocation proof.  Native Kernel v28 implements stable
+virtual reservation, activation telemetry, and bounded doubling retry for
+replay-safe Node execution.  Extending the same retry authority to browser/Wasm
+dispatch remains a separate platform obligation.
+
+Native Kernel v29 separates the current soft capacity estimate from the hard
+virtual retry envelope.  Crossing the estimate is still serviced by the same
+private bump region, records a retry requirement, and does not call the general
+allocator while the bounded envelope suffices.  The discarded attempt's
+high-water mark selects the next capacity directly.  Actual upstream GMP
+allocations have a distinct counter and are permitted only as hard-envelope
+failure scaffolding; they make the attempt ineligible for publication and must
+not be conflated with a successful allocation-stable route.
+
+Native Kernel v30 completed C4a with fixed-capacity record vectors. Native
+Kernel v31 completes C4b with deterministic fixed-capacity record-keyed maps
+and sets using a specified FNV64 field hash and linear probing, plus compact
+append-only sparse exact rows. The first resident schema is deliberately
+scalar: every key field is `uint64`, every record is copied as one value, and
+borrowed buffers, prime-modulus values, or exact-object references fail
+lowering. Sparse entries own pre-sized GMP destinations and accept only strict
+row-major coordinates. The portable Python contract, private JavaScript
+storage, contiguous C structs, and Wasm core use one deterministic semantic
+charge and checked shape/capacity contract. The compiler records every schema
+and child owner in source-mapped IR and generates reverse-order cleanup for
+success, range failure, memory failure, and cancellation edges.
+
+Native Kernel v32 completes C5a's first declared-library residency slice.
+`NativeExactArena.foreign_resource()` admits only statically declared,
+native-capable constructors whose result has owned clear and size protocols.
+The resulting FLINT owner is a child in the same compiler-visible graph: it
+cannot be aliased or returned, resource-to-resource calls pass the live ABI
+value directly, and generated JavaScript and C close foreign children in
+reverse construction order before the arena is rewound. FLINT HNF now has a
+cross-tier witness which constructs, fills, reduces, reads, and destroys
+resident `fmpz_mat` values without an intermediate packed matrix. The IR
+retains the declared allocated-byte callback as physical-memory telemetry;
+until C6 proves a foreign operation's allocation schedule, its internal
+allocations remain outside the allocation-free hot-region claim.
+
+Native Kernel v33 completes C5b's first reusable-owner slice. The declared
+`NativeExactWorkspace` resource owns one fixed-capacity vector of preallocated
+GMP destinations plus preallocated arithmetic scratch. Its immutable shape,
+positive bit bound, memory limit, 128-bit specification identity, generation,
+open state, and mutable-borrow state live in one reference-counted allocation.
+A compiled transaction acquires an owned lexical borrow as an arena child;
+reverse-order all-exit cleanup releases that borrow before arena rewind.
+Reset zeroes resident values without replacing their limb storage, increments
+the generation, and is rejected while borrowed. Stale generations, wrong
+specifications, overlapping borrows, closed owners, invalid indices, and
+result bit overflow fail before mutation or retain the previous exact value.
+The owner has no byte-transfer/serialization route and its private contents
+are not proof authority. Generated JavaScript, native C, sanitizer builds, and
+the isolated WASI core execute one differential witness; public owner creation
+and lease wrappers allocate only at the call/lifecycle boundary, while the
+compiled borrow operations themselves reuse resident storage.
+
+Native Kernel v34 completes C6's first code-quality slice. Declared exact
+resource operations may expose a reviewed compiler-only `mpz_t` symbol beside
+their public `fmpz_t` ABI. The dynamic boundary remains unchanged, while the
+host-isolated C and isolated compiled Wasm cores eliminate temporary FLINT
+integer construction and copy directly between compiler-owned GMP values and
+resident workspace entries. The first witness removes eight conversions per
+source iteration shape, performs generation/specification/exclusive-borrow
+authentication once before the loop, reuses the owner's preallocated
+product/result scratch, and retains checked transactional result bounds.
+`native explain` records the hoisted invariants, fused updates, allocation-free
+loop calls, scratch policy, and reverse cleanup contract. A separately compiled
+and executed direct C reference must agree exactly, and the optimized generated
+symbol is mechanically capped at 1.5x its machine-code size.
+
+Allocator receipts report setup, hot-loop, foreign-call, publication, and
+cleanup calls separately.  An accepted allocation-free region must have no
+general-heap allocation or reallocation after entry and before publication.
+Opaque GMP or FLINT operations that allocate internally must either execute in
+the checkpoint allocator or remain outside the claimed allocation-free region.
+
+## Ownership and lifetime
+
+- Each allocation has one compiler-visible owner.
+- An arena child cannot be returned, captured, stored in a public object,
+  passed to an unknown call, or used after the arena closes.
+- A borrowed view names its root owner and cannot outlive it.
+- At most one mutable borrow of overlapping state is live at a time.
+- A reusable workspace has an authenticated type, shape/specification digest,
+  generation, and open/borrowed state.  Reset increments the generation and is
+  forbidden while borrowed.
+- Cleanup is generated for normal return, early return, compiler status error,
+  cancellation, and host translation failure.
+- Ownership transfer is admitted only for one indivisible result aggregate;
+  partial moves and child transplantation are rejected.
+
+The compiler exposes this graph in `native explain` and retains it in the IR
+and artifact identity.
+
+## Control and effects
+
+The exact machine supports the structured control required by the two witness
+algorithms:
+
+- `while` and bounded `range` loops;
+- `break` and `continue` with generated cleanup edges;
+- early scalar or detached-result return;
+- checked indexing and capacity failure;
+- periodic interrupt polls at source-visible or compiler-proved backedges;
+- direct calls to compiled helpers and declared mature-library operations; and
+- one final transactional publication.
+
+No compiled core may call Python, JavaScript, Node-API, or another interpreter.
+An unbounded foreign call without a reviewed interrupt/worker policy is not
+admitted merely because it uses FLINT or GMP.
+
+## Semantic and proof authority
+
+Resident state is acceleration state.  The authoritative mathematical source
+remains the ordinary Python algorithm, and accepted relations still have exact
+principal witnesses.  A successful compiled transaction may issue a private
+live-authentication token binding:
+
+- source and compiler identities;
+- field/order/model identity;
+- workspace specification and generation;
+- every admitted row and witness identity;
+- exact presentation and completeness state; and
+- the requested and achieved proof contract.
+
+That token can prevent duplicate replay inside the uninterrupted computation,
+but it is not serializable.  Detached output remains canonical data with an
+independent bounded verifier.  A new process, changed source, reset workspace,
+or ambiguous identity must use the detached path.
+
+## Native, JavaScript, and Wasm
+
+One typed IR defines all targets.
+
+- The dynamic fallback uses checked Python containers.
+- Generated JavaScript uses private `BigInt`/typed-array storage and
+  `try/finally` cleanup.
+- Native C uses initialized GMP/FLINT objects with generated all-exit cleanup.
+- Wasm uses the same isolated C core and linear-memory ownership model.
+- Windows x64 remains first-class.
+
+Packed buffers are import/export and checkpoint formats.  They are not the
+representation used for every inner update.  Native and Wasm adapters report
+crossings, copied bytes, allocations, high-water storage, resets, and cleanup.
+
+## First vertical slice
+
+The first production slice is the cubic relation/presentation lifecycle:
+
+1. import authenticated factor-base and candidate data once;
+2. keep accepted sparse rows, modular pivots, exact row matrix, and factored
+   principal elements resident;
+3. call mature FLINT HNF/SNF operations on resident matrices;
+4. retain dependency rows and unit coordinates without constructing public
+   ideals or JSON records;
+5. perform the exact cubic unit-index completion, including the trace-equation
+   square-root regime;
+6. issue one private live-authentication result; and
+7. publish only the requested scalar/group data plus one canonical detached
+   proof payload.
+
+The source remains a family-level cubic class-group program, not a recognizer
+for selected LMFDB labels.  The 60 tune fields select policy.  The unchanged
+30-field policy holdout tests generalization after a candidate freeze.
+
+Brandt modules are the independent second witness.  The same arena, exact
+matrix, fixed-record, and bounded-map operations must express a rank-four
+lattice/ideal pipeline without a Brandt-specific compiler rule.
+
+## Implementation waves
+
+1. **C4a: arena and shaped exact aggregates.** Add lexical multi-owner cleanup,
+   exact matrices, record vectors, source-mapped IR, JavaScript/C/Wasm
+   differentials, and sanitizer failure schedules.
+2. **C4b: bounded sparse structures.** Add sparse rows, deterministic maps and
+   sets, collision/full-capacity behavior, and relation-admission witnesses.
+3. **C5a: declared-library residency.** Permit arena-owned FLINT resources and
+   resource-to-resource HNF/SNF/kernel calls without intermediate packing.
+4. **C5b: reusable workspace owner.** Add context-owned resettable state,
+   synchronous borrows, generation authentication, and transactional result
+   transfer.
+5. **C6: code quality.** Hoist proven bounds, reuse nonoverlapping scratch,
+   fuse exact updates, add cleanup/ownership explanations, and keep generated
+   C within 1.5x of direct reference code for the relevant kernels.
+6. **C7: cubic integration.** Replace the measured vertical slice, preserve
+   canonical proof equality, and reprofile complete public and detached
+   boundaries.
+7. **C8: second witness and platform closure.** Exercise Brandt rank-four
+   state, then validate Linux x64/arm64, macOS arm64, Windows x64, and browser
+   Wasm before automatic production selection.
+
+### C7 coarse-slice result
+
+The first C7 replacement is complete for the resident relation-HNF selection
+boundary.  The ordinary Python source now imports the authenticated relation
+matrix once, owns six fixed-shape FLINT matrices in one `NativeExactArena`,
+performs HNF, exact transform replay, support extraction, and bounded deletion
+trials without intermediate packed matrices, and publishes only the compact
+basis and masks after the transaction succeeds.  Guard failure and any native
+failure retain the original same-source route.
+
+On the dedicated four-core `opt` VM, the prepared-order public
+`class_number(proof=False)` call for tune field `3.3.2989441.2` took
+75.7958208 seconds at the pre-C7 revision and 19.758558208 seconds with the
+proof-checked C7 candidate, a 3.84x speedup.  Three additional candidate
+observations had median 18.028 seconds.  Both revisions returned class group
+`[3, 3]`, proof status `exact-relations-conditional-grh`, and byte-identical
+383,850-byte detached proof payloads with SHA-256
+`54afd22349f3f32f15d080e34aa5f8421cdda131a78e3b7d6db0cd96ad99c5dd`.
+Detached replay remained a separately timed roughly 176-second boundary; it
+was not hidden inside the improved public call.  This establishes the C7
+coarse 2x acceptance threshold, not PARI parity or complete-corpus promotion.
+The raw one-line receipts are retained outside Git as content-addressed
+campaign evidence; tune/heldout closure remains a separate freeze gate.
+
+The post-C7 profile also changes the next engineering question.  On the same
+prepared public call, the candidate spent 19.896 seconds inside the class-unit
+engine.  Its coarse phases were 3.712 seconds for relation collection, 1.869
+seconds for unit recovery, 1.298 seconds for the analytic index, 0.695 seconds
+for the factor base, and 0.011 seconds for the final class-group calculation.
+The inclusive CPU profile instead concentrates the remaining execution under
+`_finish_class_unit_computation`, `_adaptive_saturation`,
+`try_unit_saturation`, `saturate_unit_lattice`,
+`_bounded_exact_pth_root`, `_exact_unit`, and `exact_norm_is_unit`.  Generic
+runtime dispatch, exact-object construction, attribute access, list handling,
+and garbage collection dominate the self-time aggregates.  This rules out
+another isolated scalar arithmetic kernel as the immediate answer: the next
+measured resident slice is the unit-saturation and exact-root verification
+pipeline, with its exact intermediate state retained across the whole proof
+transition.
+
+### C8 independent-witness result
+
+The second mathematical witness now uses the same generic machine model.  A
+CPython-parseable rank-four lattice workspace owns three declared FLINT
+matrices, one exact matrix, fixed-schema classification records, a bounded
+open-addressed map, and sparse exact incidence rows inside one
+`NativeExactArena`.  It authenticates every canonical HNF before completing a
+read-only validation pass, then publishes all HNFs, class identifiers, and
+incidence entries transactionally.  It contains no Brandt- or
+quaternion-specific compiler operation.
+
+The independent fixture was generated by Magma V2.18-5 from the nine left
+ideal classes of the Eichler order with quaternion discriminant 37 and level
+2.  Three distinct class representatives and three unimodularly equivalent
+bases produce the exact Magma row HNFs and the deterministic class sequence
+`[0, 0, 1, 1, 2, 2]`.  The generator and raw Magma transcript are retained as
+SHA-256-authenticated fixtures.  Generated JavaScript, native FLINT, GMP, and
+tagged fallbacks agree exactly; capacity, memory, representation, and corrupt
+fingerprint failures leave caller outputs untouched; native sanitizers and an
+isolated FLINT/WASI core pass.
+
+The production browser pack contains all 17 reusable-workspace FFI
+capabilities and the generic rank-four source kernel.  Its authenticated
+artifact identity is
+`sha256:27788fc5088653cf147b89311b3d4a88d4550e79159d078f5e030e35cba90d0e`;
+the pack reports 278 compiled source functions and no unsupported production
+functions.  A real Chromium Web Worker imported the ordinary Python module,
+proved `is_compiled(...)`, and reproduced every Magma HNF, class identifier,
+and incidence entry before the complete browser mathematics and plotting
+smoke passed.
+
+The exact native-host closure is recorded by GitHub Actions run
+`33289518199` at commit `ee2e22120a748d039b7cd2fe7b535426d3c0d5a1`.
+The complete focused witness passed on Linux x64 in job `99199007674`, Linux
+arm64 in job `99199007616`, and macOS arm64 in job `99199007619`.  The arm64
+Linux job reached and passed that witness before a separate startup-budget
+gate failed.  Windows job `99199007627` reproduced every exact mathematical
+result, then correctly exposed that a loaded native DLL cannot be unlinked
+before its process exits.  Commit
+`ef2493bc2c4a2650cd859b61a725522585b3fb54` assigns that ephemeral cache to
+runner teardown on Windows instead of pretending retries can violate the OS
+module-lifetime rule.  The targeted final Windows receipt is GitHub Actions
+run `33291079618`, job `99203126634`, at commit
+`111caf6b5968cbd5212d9dadd8f51fb228aa16d5`.  The compiler and native-stack
+build passed from `03:55:36Z` to `04:20:28Z`, and the complete focused Windows
+x64 witness passed from `04:20:28Z` to `04:20:32Z`.  Together with the
+authenticated browser, Linux x64/arm64, and macOS arm64 receipts above, this
+fully closes C8.
+
+## Acceptance
+
+The language slice is accepted only when:
+
+- dynamic, generated JavaScript, native C, and Wasm agree exactly;
+- ownership, alias, capacity, cancellation, exception, and cleanup
+  counterfeits fail closed;
+- generated cores remain host-isolated and sanitizer-clean;
+- the selected cubic tune workload improves by at least 2x end to end in the
+  first coarse slice, with a documented path to PARI parity;
+- no tune field loses proof strength or exact public output;
+- the frozen heldout corpus passes unchanged after the candidate freeze;
+- the mathematical source is shorter or clearer than its flat-buffer/object
+  pipeline predecessor; and
+- Brandt's independent rank-four witness uses the same generic operations.
+
+Parity and beyond-parity remain separate frontier claims.  They require exact
+compatible proof/output/resource cells against PARI, Magma, and Hecke; compiler
+success alone is not parity.
+
+## Consequences
+
+This decision deliberately increases the compiler and runtime trust surface.
+The increase is justified by a repeated measured boundary across independent
+mathematics, not by a desire for a general systems language.  Raw pointers,
+host callbacks, arbitrary Python objects, unbounded containers, and
+application-named lowering rules remain prohibited.
+
+Ordinary-source improvements and mature-library routing continue in parallel.
+The new machine is successful only if it removes representation and lifetime
+plumbing while preserving readable mathematics and exact independent proof.

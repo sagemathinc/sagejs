@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/promotion-v2.schema.json",
+  "title": "Sage.js optimization promotion v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "campaignId", "interventionId", "category", "decision", "comparisons", "equivalence", "fallbackEvidenceIds", "resourceEvidenceIds", "negativeEvidenceIds", "platforms", "browsers", "candidateRevision"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-promotion/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "campaignId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "interventionId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "category": { "type": "string" },
+    "decision": { "enum": ["accepted", "rejected", "investigate", "already-optimized"] },
+    "comparisons": { "type": "array", "minItems": 2 },
+    "equivalence": { "type": "object" },
+    "fallbackEvidenceIds": { "type": "array", "minItems": 1 },
+    "resourceEvidenceIds": { "type": "array", "minItems": 1 },
+    "negativeEvidenceIds": { "type": "array", "minItems": 1 },
+    "platforms": { "type": "array", "minItems": 1 },
+    "browsers": { "type": "array" },
+    "candidateRevision": { "type": "object" }
+  }
+}

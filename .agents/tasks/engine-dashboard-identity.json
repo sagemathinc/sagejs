@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "engine-dashboard-identity",
+  "title": "Portable optimizer dashboard identities",
+  "lane": "optimizer-development",
+  "status": "active",
+  "owner": "user",
+  "objective": "Replace location-only dashboard identities with normalized SHA-256 source/function/semantic-region identities, fail ambiguous location queries, and preserve deterministic generated inventory",
+  "base_commit": "9101ea70397d9ed98a7b8d1520165bdfc654c2b2",
+  "claims": [
+    "scripts/optimizer-opportunity-dashboard.cjs",
+    "architecture/optimizer-opportunities.json",
+    "docs/optimizer-opportunities.md",
+    "test/optimizer-opportunity-dashboard.cjs",
+    "test/fixtures/optimizer-development/dashboard/"
+  ],
+  "dependencies": [
+    "engine-foundation@8c051bee+d82ab720+9723b308+acfa0ab7+cbaf4998",
+    "engine-profiler@94a40eca+f6d76dd8+1380ef55+b16ea1fa+8fce7a2d+263b4014"
+  ],
+  "references": [],
+  "architecture": {
+    "strategy": "compiler-infrastructure",
+    "fallback": "not-applicable",
+    "oracles": [
+      "Path-relocation identity fixtures, source mutation/stale dashboard rejection, and ambiguous nested-loop queries"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm build",
+    "pnpm test:compiler",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

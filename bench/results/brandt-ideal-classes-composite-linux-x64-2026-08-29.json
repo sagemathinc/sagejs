@@ -1,0 +1,216 @@
+{
+  "schema": "sagejs.brandt-ideal-classes-competitive-receipt.v2",
+  "recorded_at": "2026-08-29T05:06:10.289Z",
+  "source_commit": "07bc15f6243891173d650395fb904d1518849ce4",
+  "host": {
+    "platform": "linux",
+    "arch": "x64",
+    "node": "v26.7.0",
+    "cpu_model": "AMD EPYC 7B13",
+    "cpu_count": 16,
+    "total_memory_bytes": 67418701824
+  },
+  "contract": {
+    "cases": [
+      [
+        30,
+        7,
+        11
+      ],
+      [
+        66,
+        5,
+        7
+      ]
+    ],
+    "work": "construct genuine right ideal classes, then the first full good-prime Hecke matrix",
+    "correctness": "dimension and complete characteristic polynomial agree exactly",
+    "timing": "one descriptive process-cold run for Sage.js and SageMath; Magma construction and first-operator stages are averages over the recorded number of fresh BrandtModule objects, with the operator repetition count doubled until aggregate CPU reaches 100 ms; no competitiveness gate"
+  },
+  "sources": {
+    "runner": "bench/modular/brandt-ideal-classes/competitive.cjs",
+    "runner_sha256": "e3ccb998d50dd44aa7dcdab8880493ef84809d920264939a5ac743647304113d",
+    "sage_oracle": "bench/modular/brandt-ideal-classes/sage-oracle.py",
+    "sage_oracle_sha256": "4d2ebaa3757b031c32bc9f2cd8dc9b2fbe1642a972e92f859da7c482c2b14906",
+    "magma_oracle": "bench/modular/brandt-ideal-classes/magma-oracle.m",
+    "magma_oracle_sha256": "408a35d53746164b299fd3bbc00bc93e7cf16dd9a0700d4cbdcba4cd314715f7"
+  },
+  "sagejs": {
+    "executable": "/opt/cocalc/bin/node",
+    "process_cold_wall_seconds": 26.08802794,
+    "peak_rss_bytes": 452042752,
+    "stdout_sha256": "195bd5c4eddefc58507005af53a25d2ffb54b5f0dc02468d7d1c6c0e280d6a91",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "records": [
+      {
+        "D": 30,
+        "N": 7,
+        "ell": 11,
+        "dimension": 8,
+        "class_count": 8,
+        "standalone_order_seconds": 0.8728435039520264,
+        "construction_seconds": 3.0845999717712402,
+        "first_operator_seconds": 5.8734376430511475,
+        "cached_operator_seconds": 0.00009608268737792969,
+        "charpoly_seconds": 0.0000457763671875,
+        "mass": "16/3",
+        "weights": [
+          "3",
+          "3",
+          "3",
+          "3",
+          "1",
+          "1",
+          "1",
+          "1"
+        ],
+        "row_sums": [
+          "12",
+          "12",
+          "12",
+          "12",
+          "12",
+          "12",
+          "12",
+          "12"
+        ],
+        "charpoly_coefficients": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "768",
+          "128",
+          "-64",
+          "-8",
+          "1"
+        ],
+        "mass_verified": true,
+        "operator_sha256": "a367c60866675ab5115350d05341d2871d421dbb2e36d51533b96c38680123de",
+        "pairing_sha256": "b802e031a0c8e74e596055781b1eb8ec7874733ea3ba5bdfdd3066938bdde670"
+      },
+      {
+        "D": 66,
+        "N": 5,
+        "ell": 7,
+        "dimension": 12,
+        "class_count": 12,
+        "standalone_order_seconds": 0.30510497093200684,
+        "construction_seconds": 6.1664488315582275,
+        "first_operator_seconds": 6.1359782218933105,
+        "cached_operator_seconds": 0.00010538101196289062,
+        "charpoly_seconds": 0.000025272369384765625,
+        "mass": "10",
+        "weights": [
+          "2",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "1",
+          "2",
+          "2",
+          "2"
+        ],
+        "row_sums": [
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8",
+          "8"
+        ],
+        "charpoly_coefficients": [
+          "0",
+          "0",
+          "0",
+          "32768",
+          "12288",
+          "-18432",
+          "-7168",
+          "3072",
+          "1296",
+          "-128",
+          "-72",
+          "0",
+          "1"
+        ],
+        "mass_verified": true,
+        "operator_sha256": "dc5f1181f153c4967eecc53d96670d8beb40bcc393f70d6a85540e941cf4f964",
+        "pairing_sha256": "69b081691aa1fce86f38f07a3d89ae6284be5aef95848b6d45d5fdb92c966039"
+      }
+    ]
+  },
+  "sagemath": {
+    "available": false,
+    "reason": "SageMath BrandtModule rejects composite quaternion discriminants; Sage.js uses its independent Jacquet-Langlands spectrum oracle internally",
+    "records": []
+  },
+  "magma": {
+    "executable": "/home/user/magma-2.18/bin/magma",
+    "process_cold_wall_seconds": 293.8563538,
+    "peak_rss_bytes": 28307456,
+    "stdout_sha256": "90d02af78cc0c17eebf367a29c6164affb8e022b28b7dae921ac7ea3266eb898",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "records": [
+      {
+        "D": 30,
+        "N": 7,
+        "ell": 11,
+        "dimension": 8,
+        "construction_cpu_seconds": 1.22,
+        "first_operator_cpu_seconds": 0.0011428571428571427,
+        "construction_repeats": 25,
+        "operator_repeats": 105,
+        "operator_total_cpu_seconds": 0.12,
+        "charpoly_coefficients": [
+          "0",
+          "0",
+          "0",
+          "0",
+          "768",
+          "128",
+          "-64",
+          "-8",
+          "1"
+        ]
+      },
+      {
+        "D": 66,
+        "N": 5,
+        "ell": 7,
+        "dimension": 12,
+        "construction_cpu_seconds": 1.69,
+        "first_operator_cpu_seconds": 0.0024528301886792454,
+        "construction_repeats": 25,
+        "operator_repeats": 53,
+        "operator_total_cpu_seconds": 0.13,
+        "charpoly_coefficients": [
+          "0",
+          "0",
+          "0",
+          "32768",
+          "12288",
+          "-18432",
+          "-7168",
+          "3072",
+          "1296",
+          "-128",
+          "-72",
+          "0",
+          "1"
+        ]
+      }
+    ]
+  },
+  "exact_agreement": true
+}

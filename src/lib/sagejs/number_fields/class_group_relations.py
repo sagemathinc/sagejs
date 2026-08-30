@@ -3134,11 +3134,15 @@ class _RelationSteeringContext:
     exact presentation remains authoritative, and final regulator/index
     certification is unchanged.
 
-    The fixed subfactor base contains at most one prime ideal above each
-    rational prime.  This is the clean-room analogue of the small subfactor
-    bases used to steer unit discovery in Hecke 0.40; no Hecke source was
-    copied.  Random choices consume the existing `RelationSearchState` only,
-    so checkpoint replay needs no second PRNG or schema extension.
+    Each source ideal contains at most one prime ideal above each selected
+    rational prime.  The representative above a split rational prime rotates
+    through that complete factor-base block instead of being frozen forever:
+    a fixed representative can confine every dependency unit to a proper
+    logarithmic subspace even while the collector keeps admitting exact
+    relations.  This is the clean-room analogue of the small subfactor bases
+    used to steer unit discovery in Hecke 0.40; no Hecke source was copied.
+    Random choices consume the existing `RelationSearchState` only, so
+    checkpoint replay needs no second PRNG or schema extension.
     """
 
     def __init__(
@@ -3176,6 +3180,12 @@ class _RelationSteeringContext:
             )
             for _rational_prime, indices in self.rational_prime_partition
         )
+        self._subfactor_index_by_rational_prime = {
+            rational_prime: index
+            for (rational_prime, _indices), index in zip(
+                self.rational_prime_partition, self.subfactor_indices, strict=True
+            )
+        }
         self._allowed_rational_primes = tuple(
             rational_prime for rational_prime, _indices in self.rational_prime_partition
         )
@@ -3191,6 +3201,8 @@ class _RelationSteeringContext:
         self._statistics = {
             "activations": 0,
             "subfactor_ideal_requests": 0,
+            "rotating_subfactor_requests": 0,
+            "rotating_subfactor_representative_changes": 0,
             "norm_screen_requests": 0,
             "norm_screen_rejects": 0,
             "norm_unit_candidates": 0,
@@ -3236,25 +3248,35 @@ class _RelationSteeringContext:
         return len(self._provisional_unit_logarithms)
 
     def source_row(self, coefficient_bound: int) -> tuple[tuple[int, ...], str]:
-        """Return one fixed-subfactor-base product row using the shared PRNG."""
+        """Return one rotating-subfactor product row using the shared PRNG."""
         self._require_binding()
         self._statistics["activations"] += 1
         self._statistics["subfactor_ideal_requests"] += 1
         width = self.factor_base_size
         if width == 0:
             return (), "post-class-rank-unit-ideal"
-        indices = self.subfactor_indices
+        blocks = self.rational_prime_partition
         row = [0] * width
-        count = min(2, len(indices))
-        start = int(self._search_state.next_u64() % len(indices))
-        chosen = [indices[start]]
+        count = min(2, len(blocks))
+        start = int(self._search_state.next_u64() % len(blocks))
+        chosen = [blocks[start]]
         if count == 2:
-            offset = 1 + int(self._search_state.next_u64() % (len(indices) - 1))
-            chosen.append(indices[(start + offset) % len(indices)])
+            offset = 1 + int(self._search_state.next_u64() % (len(blocks) - 1))
+            chosen.append(blocks[(start + offset) % len(blocks)])
         bound = max(1, int(coefficient_bound))
-        for index in chosen:
+        changed = 0
+        for rational_prime, block in chosen:
+            index = (
+                block[0]
+                if len(block) == 1
+                else block[int(self._search_state.next_u64() % len(block))]
+            )
+            if index != self._subfactor_index_by_rational_prime[rational_prime]:
+                changed += 1
             row[index] = 1 + int(self._search_state.next_u64() % min(2, bound))
-        return tuple(row), "post-class-rank-distinct-p-subfactor-product"
+        self._statistics["rotating_subfactor_requests"] += 1
+        self._statistics["rotating_subfactor_representative_changes"] += changed
+        return tuple(row), "post-class-rank-rotating-p-subfactor-product"
 
     def screen_norm(self, norm: Any) -> Any | None:
         """Return an exact smooth norm, or reject before ideal valuations."""

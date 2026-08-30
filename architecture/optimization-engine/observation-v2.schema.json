@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/optimization-engine/observation-v2.schema.json",
+  "title": "Sage.js optimization observation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "authority", "binding", "subjectId", "workloadId", "channel", "scope", "measurement", "costBoundary", "oracle", "provenance", "details"],
+  "properties": {
+    "schema": { "const": "sagejs.optimization-observation/v2" },
+    "id": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "authority": { "$ref": "wire-definitions-v2.schema.json#/$defs/authority" },
+    "binding": { "$ref": "wire-definitions-v2.schema.json#/$defs/binding" },
+    "subjectId": { "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" },
+    "workloadId": { "anyOf": [{ "$ref": "wire-definitions-v2.schema.json#/$defs/contentId" }, { "type": "null" }] },
+    "channel": { "type": "string" },
+    "scope": { "type": "object" },
+    "measurement": { "type": "object" },
+    "costBoundary": { "type": "object" },
+    "oracle": { "type": "object" },
+    "provenance": { "type": "object" },
+    "details": {}
+  }
+}

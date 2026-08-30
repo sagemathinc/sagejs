@@ -26,6 +26,7 @@ function operationInputs(operation) {
     case "integer.round_sqrt":
     case "bool.not":
     case "uint64.truth":
+    case "value.discard":
       return [operation.source];
     case "integer.pow_uint":
       return [operation.base];
@@ -72,6 +73,7 @@ function operationInputs(operation) {
     case "integer.vector.length":
       return [operation.vector];
     case "integer.vector.get":
+    case "integer.vector.borrow":
       return [operation.vector, operation.index];
     case "integer.vector.set":
       return [operation.vector, operation.index, operation.value];
@@ -85,8 +87,93 @@ function operationInputs(operation) {
       ];
     case "integer.vector.swap":
       return [operation.vector, operation.left, operation.right];
+    case "integer.matrix.scope":
+      return [operation.rows, operation.columns, operation.memoryLimit];
+    case "integer.matrix.length":
+      return [operation.matrix];
+    case "integer.matrix.get":
+    case "integer.matrix.borrow":
+      return [operation.matrix, operation.row, operation.column];
+    case "integer.matrix.set":
+      return [
+        operation.matrix,
+        operation.row,
+        operation.column,
+        operation.value,
+      ];
+    case "integer.matrix.addmul":
+    case "integer.matrix.submul":
+      return [
+        operation.matrix,
+        operation.row,
+        operation.column,
+        operation.left,
+        operation.right,
+      ];
+    case "integer.matrix.swap_rows":
+      return [operation.matrix, operation.left, operation.right];
+    case "integer.arena.scope":
+      return [operation.memoryLimit, operation.temporaryLimit];
+    case "integer.arena.vector.allocate":
+      return [operation.arena, operation.capacity, operation.maximumBits];
+    case "integer.arena.matrix.allocate":
+      return [
+        operation.arena,
+        operation.rows,
+        operation.columns,
+        operation.maximumBits,
+      ];
+    case "record.construct":
+      return operation.fields.map((field) => field.value);
+    case "record.copy":
+    case "record.get":
+      return [operation.source];
+    case "record.vector.length":
+      return [operation.vector];
+    case "record.vector.get":
+      return [operation.vector, operation.index];
+    case "record.vector.set":
+      return [operation.vector, operation.index, operation.value];
+    case "record.arena.vector.allocate":
+      return [operation.arena, operation.capacity];
+    case "bounded.map.arena.allocate":
+    case "bounded.set.arena.allocate":
+      return [operation.arena, operation.capacity];
+    case "bounded.map.insert":
+      return [operation.owner, operation.key, operation.value];
+    case "bounded.map.get":
+      return [operation.owner, operation.key, operation.value];
+    case "bounded.map.contains":
+    case "bounded.set.add":
+    case "bounded.set.contains":
+      return [operation.owner, operation.key];
+    case "bounded.map.length":
+    case "bounded.set.length":
+      return [operation.owner];
+    case "sparse.rows.arena.allocate":
+      return [
+        operation.arena,
+        operation.rows,
+        operation.columns,
+        operation.entryCapacity,
+        operation.maximumBits,
+      ];
+    case "sparse.rows.append":
+      return [operation.owner, operation.row, operation.column, operation.value];
+    case "sparse.rows.get":
+      return [
+        operation.owner,
+        operation.row,
+        operation.column,
+        operation.defaultValue,
+      ];
+    case "sparse.rows.row_length":
+      return [operation.owner, operation.row];
+    case "sparse.rows.length":
+      return [operation.owner];
     case "native.call":
     case "ffi.call":
+    case "ffi.arena.resource.allocate":
       return operation.arguments.map((argument) => argument.name);
     case "return":
       return operation.values || [operation.value];
@@ -141,7 +228,9 @@ function walkStatements(statements, handlers) {
       handlers.exitLoop?.("range");
       continue;
     }
-    if (statement.kind === "integer.vector.scope") {
+    if (statement.kind === "integer.vector.scope" ||
+        statement.kind === "integer.matrix.scope" ||
+        statement.kind === "integer.arena.scope") {
       handlers.operation(statement);
       walkStatements(statement.setup, handlers);
       walkStatements(statement.body, handlers);
@@ -158,6 +247,66 @@ function walkStatements(statements, handlers) {
   }
 }
 
+function introduceResidentBorrows(fn) {
+  const uses = new Map();
+  const recordUse = (name) => {
+    uses.set(name, (uses.get(name) || 0) + 1);
+  };
+  walkStatements(fn.body, {
+    loop() {},
+    operation(operation) {
+      for (const name of operationInputs(operation)) recordUse(name);
+    },
+    read: recordUse,
+    write() {},
+  });
+
+  const rewrite = (statements) => {
+    for (const statement of statements) {
+      if (statement.kind === "if") {
+        rewrite(statement.condition.operations);
+        rewrite(statement.body);
+        rewrite(statement.alternative);
+      } else if (statement.kind === "while") {
+        rewrite(statement.condition.operations);
+        rewrite(statement.body);
+      } else if (
+        statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact"
+      ) {
+        rewrite(statement.body);
+      } else if (
+        statement.kind === "integer.vector.scope" ||
+        statement.kind === "integer.matrix.scope" ||
+        statement.kind === "integer.arena.scope"
+      ) {
+        rewrite(statement.setup);
+        rewrite(statement.body);
+      }
+    }
+    for (let index = 0; index + 1 < statements.length; index += 1) {
+      const load = statements[index];
+      const consumer = statements[index + 1];
+      if (
+        !["integer.vector.get", "integer.matrix.get"].includes(load.kind) ||
+        uses.get(load.target) !== 1 ||
+        ![
+          "integer.vector.addmul",
+          "integer.vector.submul",
+          "integer.matrix.addmul",
+          "integer.matrix.submul",
+        ].includes(consumer.kind) ||
+        !operationInputs(consumer).includes(load.target)
+      ) {
+        continue;
+      }
+      load.kind = load.kind.replace(".get", ".borrow");
+      load.borrowLifetime = "next-operation";
+    }
+  };
+  rewrite(fn.body);
+}
+
 function storageAnalysis(fn) {
   const types = exactTypes(fn);
   const integerParams = new Set(
@@ -166,10 +315,17 @@ function storageAnalysis(fn) {
       .map((param) => param.name),
   );
   const mutatedParams = new Set();
+  const borrowedLocals = new Set();
   let position = 0;
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
+      if (
+        operation.kind === "integer.vector.borrow" ||
+        operation.kind === "integer.matrix.borrow"
+      ) {
+        borrowedLocals.add(operation.target);
+      }
       for (const target of operationTargets(operation)) {
         if (integerParams.has(target)) mutatedParams.add(target);
       }
@@ -250,7 +406,8 @@ function storageAnalysis(fn) {
 
   const candidates = Array.from(intervals.values())
     .filter((interval) =>
-      !integerParams.has(interval.name) || mutatedParams.has(interval.name)
+      !borrowedLocals.has(interval.name) &&
+      (!integerParams.has(interval.name) || mutatedParams.has(interval.name))
     )
     .sort((left, right) =>
       left.start - right.start || left.end - right.end ||
@@ -276,6 +433,9 @@ function storageAnalysis(fn) {
           param.type === "Integer" && !mutatedParams.has(param.name),
       )
       .map((param) => param.name),
+    ...(borrowedLocals.size > 0
+      ? { borrowedLocals: Array.from(borrowedLocals).sort() }
+      : {}),
     mutableParameters: Array.from(mutatedParams).sort(),
     scratchSlots: slots.length,
     slots: assignments,
@@ -348,10 +508,13 @@ function executionProfile(fn) {
       if (operation.kind === "uint64.binary") {
         profile.uint64ArithmeticOperations += 1;
       }
-      if (operation.kind === "native.call" || operation.kind === "ffi.call") {
+      if (operation.kind === "native.call" || operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
         profile.nativeCalls += 1;
       }
-      if (operation.kind === "integer.vector.scope") {
+      if (operation.kind === "integer.vector.scope" ||
+          operation.kind === "integer.matrix.scope" ||
+          operation.kind === "integer.arena.scope") {
         profile.liveExactScopes += 1;
       }
       if (operation.kind === "integer.constant") {
@@ -439,23 +602,56 @@ function localEffects(fn) {
       ) {
         mayRaise.add("IndexError");
       }
-      if (operation.kind === "integer.vector.scope") {
+      if (operation.kind === "integer.vector.scope" ||
+          operation.kind === "integer.matrix.scope" ||
+          operation.kind === "integer.arena.scope" ||
+          operation.kind === "integer.arena.vector.allocate" ||
+          operation.kind === "integer.arena.matrix.allocate" ||
+          operation.kind === "record.arena.vector.allocate" ||
+          operation.kind === "bounded.map.arena.allocate" ||
+          operation.kind === "bounded.set.arena.allocate" ||
+          operation.kind === "sparse.rows.arena.allocate") {
         foreignMayAllocate = true;
         mayRaise.add("MemoryError");
       }
+      if (operation.kind === "bounded.map.insert" ||
+          operation.kind === "bounded.set.add" ||
+          operation.kind === "sparse.rows.append") {
+        mayRaise.add("MemoryError");
+      }
+      if (operation.kind === "sparse.rows.append") {
+        mayRaise.add("ValueError");
+        mayRaise.add("IndexError");
+      }
+      if (operation.kind === "sparse.rows.get" ||
+          operation.kind === "sparse.rows.row_length") {
+        mayRaise.add("IndexError");
+      }
       if (
         operation.kind === "integer.vector.get" ||
+        operation.kind === "integer.vector.borrow" ||
         operation.kind === "integer.vector.set" ||
         operation.kind === "integer.vector.addmul" ||
         operation.kind === "integer.vector.submul" ||
-        operation.kind === "integer.vector.swap"
+        operation.kind === "integer.vector.swap" ||
+        operation.kind === "integer.matrix.get" ||
+        operation.kind === "integer.matrix.borrow" ||
+        operation.kind === "integer.matrix.set" ||
+        operation.kind === "integer.matrix.addmul" ||
+        operation.kind === "integer.matrix.submul" ||
+        operation.kind === "integer.matrix.swap_rows" ||
+        operation.kind === "record.vector.get" ||
+        operation.kind === "record.vector.set"
       ) {
         mayRaise.add("IndexError");
       }
       if (
         operation.kind === "integer.vector.set" ||
         operation.kind === "integer.vector.addmul" ||
-        operation.kind === "integer.vector.submul"
+        operation.kind === "integer.vector.submul" ||
+        operation.kind === "integer.matrix.set" ||
+        operation.kind === "integer.matrix.addmul" ||
+        operation.kind === "integer.matrix.submul"
       ) {
         mayRaise.add("MemoryError");
       }
@@ -464,7 +660,8 @@ function localEffects(fn) {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "raise") mayRaise.add(operation.errorType);
-      if (operation.kind === "ffi.call") {
+      if (operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
         const effects = operation.foreign.function.effects;
         foreignPure = foreignPure && effects.pure;
         foreignDeterministic = foreignDeterministic && effects.deterministic;
@@ -544,7 +741,8 @@ function bufferWrites(fn, dependencyEffects) {
             for (const root of roots(argument.name)) writes.add(root);
           }
         }
-      } else if (statement.kind === "ffi.call") {
+      } else if (statement.kind === "ffi.call" ||
+          statement.kind === "ffi.arena.resource.allocate") {
         const parameters = statement.foreign.function.signature.parameters;
         for (const written of statement.foreign.function.effects.writes || []) {
           const position = parameters.findIndex((param) => param.name === written);
@@ -561,7 +759,9 @@ function bufferWrites(fn, dependencyEffects) {
       } else if (statement.kind === "while" ||
           statement.kind === "loop.range" ||
           statement.kind === "loop.range_exact" ||
-          statement.kind === "integer.vector.scope") {
+          statement.kind === "integer.vector.scope" ||
+          statement.kind === "integer.matrix.scope" ||
+          statement.kind === "integer.arena.scope") {
         if (statement.setup) {
           changed = visit(statement.setup) || changed;
         }
@@ -812,18 +1012,25 @@ function taggedIntegerProof(fn, effects) {
         operations.add(operation.kind.replace("integer.", "tagged-"));
       }
       if (operation.kind === "native.call") operations.add("direct-tagged-call");
-      if (operation.kind === "ffi.call") operations.add("direct-ffi-call");
+      if (operation.kind === "ffi.call" ||
+          operation.kind === "ffi.arena.resource.allocate") {
+        operations.add("direct-ffi-call");
+      }
     },
     read() {},
     write() {},
   });
-  const ownsLiveExactWorkspace = operations.has("tagged-vector.scope");
+  const ownsLiveExactWorkspace = [
+    "tagged-vector.scope",
+    "tagged-matrix.scope",
+    "tagged-arena.scope",
+  ].some((operation) => operations.has(operation));
   if (ownsLiveExactWorkspace) {
     return {
       eligible: true,
       representation: "gmp-live-exact-workspace",
       smallRepresentation: "tagged entry bridge only",
-      largeRepresentation: "lexical-owned-mpz-vector",
+      largeRepresentation: "lexical-owned-mpz-workspace",
       entry: "lossless-tagged-to-gmp",
       operations: Array.from(operations).sort(),
       promotion: "before lexical workspace entry",
@@ -863,26 +1070,184 @@ function liveExactWorkspaceAnalysis(fn) {
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
-      if (operation.kind !== "integer.vector.scope") return;
-      scopes.push({
-        owner: operation.owner,
-        capacity: operation.capacity,
-        memoryLimit: operation.memoryLimit,
-        storage: "lexical-owned-mpz-vector",
-        cleanup: "all-exit-idempotent",
-        canonicalAuthority: false,
-      });
+      if (operation.kind === "integer.vector.scope") {
+        scopes.push({
+          owner: operation.owner,
+          capacity: operation.capacity,
+          memoryLimit: operation.memoryLimit,
+          storage: "lexical-owned-mpz-vector",
+          cleanup: "all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      } else if (operation.kind === "integer.matrix.scope") {
+        scopes.push({
+          owner: operation.owner,
+          rows: operation.rows,
+          columns: operation.columns,
+          memoryLimit: operation.memoryLimit,
+          storage: "lexical-owned-row-major-mpz-matrix",
+          cleanup: "all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      } else if (operation.kind === "integer.arena.scope") {
+        scopes.push({
+          owner: operation.owner,
+          memoryLimit: operation.memoryLimit,
+          temporaryLimit: operation.temporaryLimit,
+          storage: "shared-budget-lexical-exact-arena",
+          children: operation.children.map((child) =>
+            child.childKind === "foreign-resource"
+              ? {
+                  owner: child.owner,
+                  storage: "declared-owned-ffi-resource",
+                  type: child.type,
+                  resourceId: child.resourceId,
+                  resourceIdentity: child.resourceIdentity,
+                  abiType: child.abiType,
+                  clearSymbol: child.clearSymbol,
+                  sizeSymbol: child.sizeSymbol,
+                  constructorDeclarationId: child.constructorDeclarationId,
+                  cleanup: "before-arena-rewind-all-exit-idempotent",
+                }
+            : child.type === "NativeIntegerMatrix"
+              ? {
+                  owner: child.owner,
+                  storage: "row-major-mpz-matrix",
+                  rows: child.rows,
+                  columns: child.columns,
+                  maximumBits: child.maximumBits,
+                }
+              : child.type === "NativeIntegerVector"
+                ? {
+                    owner: child.owner,
+                    storage: "mpz-vector",
+                    capacity: child.capacity,
+                    maximumBits: child.maximumBits,
+                  }
+                : child.collectionKind === "map" ||
+                    child.collectionKind === "set"
+                  ? {
+                      owner: child.owner,
+                      storage: child.collectionKind === "map"
+                        ? "bounded-open-addressed-map"
+                        : "bounded-open-addressed-set",
+                      capacity: child.capacity,
+                      record: child.record,
+                      fields: child.fields,
+                      entryCharge: child.entryCharge,
+                      probing: "linear",
+                      hash: "fnv64-record-fields-v1",
+                    }
+                  : child.type === "NativeSparseIntegerRows"
+                    ? {
+                        owner: child.owner,
+                        storage: "append-only-row-major-sparse-mpz-rows",
+                        rows: child.rows,
+                        columns: child.columns,
+                        entryCapacity: child.entryCapacity,
+                        maximumBits: child.maximumBits,
+                        metadataBaseCharge: child.metadataBaseCharge,
+                        rowCharge: child.rowCharge,
+                        entryCharge: child.entryCharge,
+                      }
+                  : {
+                    owner: child.owner,
+                    storage: "fixed-schema-record-vector",
+                    capacity: child.capacity,
+                    record: child.record,
+                    fields: child.fields,
+                    entryCharge: child.entryCharge,
+                  }
+          ),
+          cleanup: "reverse-child-order-all-exit-idempotent",
+          canonicalAuthority: false,
+        });
+      }
     },
     read() {},
     write() {},
   });
+  const fixedCapacityArena = scopes.some(
+    (scope) => scope.storage === "shared-budget-lexical-exact-arena",
+  );
   return {
     count: scopes.length,
     scopes,
     ownership: "compiler-owned-lexical",
-    allocation: "bounded-capacity-and-semantic-charge",
-    physicalMemory: "reported-by-receipt-not-semantic-limit",
+    allocation: fixedCapacityArena
+      ? "fixed-limb-capacity-with-owned-arithmetic-scratch"
+      : "bounded-capacity-and-semantic-charge",
+    physicalMemory: fixedCapacityArena
+      ? "declared-resident-capacity-plus-receipt-audited-library-temporaries"
+      : "reported-by-receipt-not-semantic-limit",
     automaticSelection: "receipt-gated",
+  };
+}
+
+function residentCodeQualityAnalysis(fn) {
+  const exactBridges = new Set();
+  let exactBridgeCalls = 0;
+  let exactBridgeLoopCalls = 0;
+  let eliminatedFmpzConversions = 0;
+  let fusedExactUpdates = 0;
+  let allocationFreeLoopCalls = 0;
+  let authenticatedBorrows = 0;
+  function visit(statements, loopDepth = 0) {
+    for (const operation of statements || []) {
+      const nextDepth = loopDepth + (operation.kind.startsWith("loop.") ? 1 : 0);
+      if (operation.kind === "ffi.arena.resource.allocate" &&
+          operation.resource?.resourceId?.includes("workspace_borrow")) {
+        authenticatedBorrows += 1;
+      }
+      if (operation.kind === "ffi.call" &&
+          typeof operation.foreign?.function?.native?.exact_symbol === "string") {
+        const foreign = operation.foreign.function;
+        exactBridgeCalls += 1;
+        if (loopDepth > 0) exactBridgeLoopCalls += 1;
+        exactBridges.add(foreign.native.exact_symbol);
+        eliminatedFmpzConversions += foreign.native.arguments.filter(
+          (argument) => argument.abi_type === "fmpz_t",
+        ).length;
+        if (foreign.effects.writes.length > 0 &&
+            foreign.signature.parameters.filter(
+              (parameter) => parameter.type === "Integer",
+            ).length >= 2) {
+          fusedExactUpdates += 1;
+        }
+        if (loopDepth > 0 && foreign.effects.may_allocate === false) {
+          allocationFreeLoopCalls += 1;
+        }
+      }
+      visit(operation.condition?.operations, loopDepth);
+      visit(operation.right?.operations, loopDepth);
+      visit(operation.body, nextDepth);
+      visit(operation.alternative, nextDepth);
+    }
+  }
+  visit(fn.body);
+  if (exactBridgeCalls === 0 && authenticatedBorrows === 0) return undefined;
+  return {
+    authenticatedBorrows,
+    authenticationPlacement: authenticatedBorrows === 1
+      ? "once-before-resident-operations" : "not-proved-single",
+    hoistedInvariants: authenticatedBorrows === 1 ? [
+      "exclusive-mutable-borrow",
+      "generation",
+      "owner-open-state",
+      "specification-identity",
+    ] : [],
+    exactBridgeCalls,
+    exactBridgeLoopCalls,
+    exactBridgeSymbols: Array.from(exactBridges).sort(),
+    eliminatedFmpzConversions,
+    fusedExactUpdates,
+    allocationFreeLoopCalls,
+    scratchPolicy: fusedExactUpdates > 0
+      ? "one-owner-preallocated-nonoverlapping-product-and-result"
+      : "not-applicable",
+    cleanup: authenticatedBorrows > 0
+      ? "reverse-owner-order-on-success-error-cancellation-and-publication-failure"
+      : "ordinary-generated-cleanup",
   };
 }
 
@@ -1019,6 +1384,9 @@ function backendPolicy(fn, profile, recursive) {
 }
 
 function analyzeExactModule(functions) {
+  for (const fn of functions) {
+    if (fn.kernelKind === "integer") introduceResidentBorrows(fn);
+  }
   const recursive = recursiveFunctions(functions);
   const effects = effectAnalyses(functions);
   const exact = new Map(
@@ -1055,6 +1423,7 @@ function analyzeExactModule(functions) {
       };
     }
     const effect = effects.get(fn.name);
+    const residentCodeQuality = residentCodeQualityAnalysis(fn);
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
@@ -1064,6 +1433,7 @@ function analyzeExactModule(functions) {
       ...(profile.liveExactScopes > 0
         ? { liveExactWorkspace: liveExactWorkspaceAnalysis(fn) }
         : {}),
+      ...(residentCodeQuality === undefined ? {} : { residentCodeQuality }),
       ...(hasUint64Bitwise(fn.body) ? { uint64: UINT64_SEMANTICS } : {}),
     };
   }
@@ -1086,4 +1456,5 @@ module.exports = {
   primeSourceEffectAnalyses,
   storageAnalysis,
   taggedIntegerProof,
+  residentCodeQualityAnalysis,
 };

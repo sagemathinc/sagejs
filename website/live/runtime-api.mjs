@@ -1,9 +1,10 @@
 let runtimePromise;
 
-export function requestCredentials(search = "") {
-  return new URLSearchParams(search).get("cocalc-preview") === "1"
-    ? "same-origin"
-    : "omit";
+export function requestCredentials() {
+  // Managed CoCalc apps authenticate same-origin asset requests with their
+  // session cookie. This is harmless on the public, cookie-free deployment
+  // and never sends credentials to the immutable cross-origin runtime host.
+  return "same-origin";
 }
 
 function loadScript(source) {
@@ -13,6 +14,17 @@ function loadScript(source) {
     script.addEventListener("load", resolve, { once: true });
     script.addEventListener("error", () => reject(new Error(`could not load ${source}`)), { once: true });
     document.head.append(script);
+  });
+}
+
+function loadStylesheet(source) {
+  return new Promise((resolve, reject) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = source;
+    link.addEventListener("load", resolve, { once: true });
+    link.addEventListener("error", () => reject(new Error(`could not load ${source}`)), { once: true });
+    document.head.append(link);
   });
 }
 
@@ -32,7 +44,11 @@ export function loadSageRuntime() {
     ) {
       throw new Error("runtime version metadata is invalid");
     }
-    await loadScript(`${version.assetBase}dist/plotly.min.js`);
+    await Promise.all([
+      loadScript(`${version.assetBase}dist/plotly.min.js`),
+      loadScript("./vendor/katex/katex.min.js"),
+      loadStylesheet("./vendor/katex/katex.min.css"),
+    ]);
     const [kernel, renderer] = await Promise.all([
       import(`${version.assetBase}kernel.mjs`),
       import(`${version.assetBase}plotly-renderer.mjs`),

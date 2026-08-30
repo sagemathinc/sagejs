@@ -180,6 +180,7 @@ function syntheticEvidenceRaw({
   requestedProof = "conditional-grh",
   achievedProof = "exact-unconditional",
   rssScope = "case-process-peak",
+  juliaThreads = 1,
 } = {}) {
   const answer = {
     class_number: "1",
@@ -225,6 +226,7 @@ function syntheticEvidenceRaw({
     systems: ["sagejs"],
     samples: 5,
     timeout_seconds: 60,
+    julia_threads: juliaThreads,
   };
   const jobs = evidence.TIMING_BOUNDARIES.map((boundary) => ({
     system: "sagejs",
@@ -235,11 +237,13 @@ function syntheticEvidenceRaw({
     requested_proof: requestedProof,
     boundary,
     samples: 5,
+    julia_threads: juliaThreads,
     status: "selected",
     invocation: ["/opt/test/sagejs", "--python", "<adapter>"],
   }));
   const comparisonKey = evidence.semanticComparisonKey({
     achievedProofSemantics: achievedProof,
+    juliaThreads: configuration.julia_threads,
     requestedOutput: evidence.REQUESTED_OUTPUT,
     regulatorContract: configuration.regulator_contract,
   });
@@ -401,11 +405,72 @@ test("evidence rejects a retained sample that disagrees with its aggregate answe
 test("the runner defaults to receipt-eligible sampling and all boundaries", () => {
   const options = runner.parseArguments([]);
   assert.equal(options.samples, 5);
+  assert.equal(options.juliaThreads, 1);
   assert.deepEqual(options.boundaries, evidence.TIMING_BOUNDARIES);
   assert.deepEqual(runner.proofModes("both"), [
     "conditional-grh",
     "unconditional",
   ]);
+  assert.equal(runner.parseArguments(["--julia-threads", "4"]).juliaThreads, 4);
+  assert.throws(
+    () => runner.parseArguments(["--julia-threads", "2"]),
+    /exactly 1 or 4/,
+  );
+});
+
+test("Julia thread count changes invocation, tool, and semantic identities", () => {
+  const argvT1 = runner.juliaArgvPrefix("/opt/julia", "/opt/Hecke.jl", 1);
+  const argvT4 = runner.juliaArgvPrefix("/opt/julia", "/opt/Hecke.jl", 4);
+  assert.deepEqual(argvT1.filter((entry) => entry.startsWith("--threads=")), ["--threads=1"]);
+  assert.deepEqual(argvT4.filter((entry) => entry.startsWith("--threads=")), ["--threads=4"]);
+  assert.throws(
+    () => runner.juliaArgvPrefix("/opt/julia", "/opt/Hecke.jl", 2),
+    /exactly 1 or 4/,
+  );
+
+  const tool = (argvPrefix) => evidence.createToolFingerprint("hecke", {
+    status: "ok",
+    executable: "/opt/julia",
+    argv_prefix: argvPrefix,
+    project: "/opt/Hecke.jl",
+    version: "Julia 1.12.7; Hecke 0.40.0",
+    executable_sha256: "1".repeat(64),
+    artifacts: [{ role: "executable", path: "/opt/julia", sha256: "1".repeat(64) }],
+    reason: null,
+  });
+  assert.notEqual(tool(argvT1).fingerprint, tool(argvT4).fingerprint);
+
+  const semanticKey = (juliaThreads) => evidence.semanticComparisonKey({
+    achievedProofSemantics: "exact-unconditional",
+    juliaThreads,
+    requestedOutput: evidence.REQUESTED_OUTPUT,
+    regulatorContract: { minimum_decimal_digits: 10, require_rigorous: false },
+  });
+  assert.notEqual(semanticKey(1), semanticKey(4));
+
+  const reportT1 = evidence.finalizeClassUnitEvidence(
+    syntheticEvidenceRaw({ juliaThreads: 1 }),
+  ).report;
+  const reportT4 = evidence.finalizeClassUnitEvidence(
+    syntheticEvidenceRaw({ juliaThreads: 4 }),
+  ).report;
+  assert.notEqual(reportT1.canonical_fingerprint, reportT4.canonical_fingerprint);
+
+  const configurationCounterfeit = syntheticEvidenceRaw({ juliaThreads: 1 });
+  configurationCounterfeit.configuration.julia_threads = 4;
+  assert.throws(
+    () => evidence.finalizeClassUnitEvidence(configurationCounterfeit),
+    /julia_threads must equal configuration\.julia_threads/,
+  );
+
+  const semanticCounterfeit = syntheticEvidenceRaw({ juliaThreads: 4 });
+  for (const result of semanticCounterfeit.results) {
+    result.semantic_parity.comparison_key = semanticKey(1);
+  }
+  assert.throws(
+    () => evidence.finalizeClassUnitEvidence(semanticCounterfeit),
+    /comparison_key does not bind.*Julia thread profile/s,
+  );
 });
 
 test("Magma and pinned Hecke adapters encode proof and warm-batch contracts", () => {
@@ -424,12 +489,14 @@ test("Magma and pinned Hecke adapters encode proof and warm-batch contracts", ()
   assert.match(magmaConditional, /SAGEJS_CLASS_UNIT_MAGMA_DONE\|1/);
 
   const heckeConditional = runner.heckeAdapterSource(
-    [record], false, "kernel-warm", 1,
+    [record], false, "kernel-warm", 1, 0, 4,
   );
   const heckeUnconditional = runner.heckeAdapterSource(
     [record], true, "field-cold", 1,
   );
   assert.match(heckeConditional, /const SAGEJS_PROOF_GRH = true/);
+  assert.match(heckeConditional, /const SAGEJS_EXPECTED_THREADS = 4/);
+  assert.match(heckeConditional, /Threads\.nthreads\(\) == SAGEJS_EXPECTED_THREADS/);
   assert.match(heckeUnconditional, /const SAGEJS_PROOF_GRH = false/);
   assert.match(heckeUnconditional, /class_group\(order; GRH=true\)/);
   assert.match(heckeUnconditional, /class_group\(order; GRH=false\)/);
@@ -437,6 +504,30 @@ test("Magma and pinned Hecke adapters encode proof and warm-batch contracts", ()
   assert.match(heckeUnconditional, /BigFloat\(regulator_value, RoundDown\)/);
   assert.match(heckeUnconditional, /SAGEJS_TARGET_BATCH_SECONDS = .*1\.2/);
   assert.match(heckeUnconditional, /for warm_index in 1:8/);
+  assert.match(
+    heckeUnconditional,
+    /root_seconds = \(time_ns\(\) - root_started\) \/ 1\.0e9/,
+  );
+  assert.match(
+    heckeUnconditional,
+    /calibration\.root_seconds < SAGEJS_TARGET_BATCH_SECONDS/,
+  );
+  assert.match(
+    heckeUnconditional,
+    /retained_candidate\.root_seconds >= SAGEJS_TARGET_BATCH_SECONDS/,
+  );
+  assert.doesNotMatch(
+    heckeUnconditional,
+    /batch_seconds\s*=\s*field_seconds\s*\+\s*computation_seconds/,
+  );
+  const phaseSumCounterfeit = heckeUnconditional.replace(
+    "root_seconds = (time_ns() - root_started) / 1.0e9",
+    "root_seconds = field_seconds + computation_seconds + verification_seconds",
+  );
+  assert.throws(
+    () => runner.assertHeckeRootTimerContract(phaseSumCounterfeit),
+    /phase attribution must not be promoted to a root timer/,
+  );
   assert.match(heckeUnconditional, /SAGEJS_CLASS_UNIT_HECKE_DONE\|1/);
 });
 
@@ -558,6 +649,7 @@ test("job aggregation rejects duplicate identities and every bad retained sample
     requested_proof: "conditional-grh",
     boundary: "kernel-warm",
     samples: 5,
+    julia_threads: 1,
   };
   const answer = {
     class_number: expected.class_number,
@@ -710,8 +802,9 @@ test("external comparator identities bind their mathematical runtimes", {
   }
   const hecke = tools.hecke;
   if (hecke.status === "available") {
-    assert.equal(hecke.execution_mode, "authenticated-pinned-hecke");
+    assert.equal(hecke.execution_mode, "authenticated-pinned-hecke-julia-t1");
     assert.match(hecke.version, /Hecke 0\.40\./);
+    assert.match(hecke.version, /Julia threads 1/);
     assert.match(hecke.version, /git [0-9a-f]{40}/);
     assert.match(hecke.libraries.flint, /^FLINT_jll-.*@sha256:[0-9a-f]{64}$/);
     assert.match(hecke.libraries.gmp, /^GMP_jll-.*@sha256:[0-9a-f]{64}$/);

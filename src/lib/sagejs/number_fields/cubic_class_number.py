@@ -1985,24 +1985,55 @@ def _bounded_cubic_dependency_candidates(
     maximum_candidates: int,
     *,
     cancelled: Callable[[], bool] | None,
+    power_factor_base: Any = None,
 ) -> tuple[tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...], int]:
-    """Find bounded duplicate rows, widening the coefficient box once."""
+    """Find bounded duplicate rows, widening the coefficient box once.
+
+    The small primary box can expose one unit dependency without spanning the
+    full cubic unit rank.  Widen whenever the requested bounded dependency
+    count is not yet present, then retain the deterministic prefix of distinct
+    exact proposals.  Every returned proposal still crosses the independent
+    integral norm and prime-power containment admission boundary before it can
+    affect a relation lattice.
+    """
     dependencies = _select_cubic_dependency_candidates(selected, primary, maximum)
+
+    selected_rows = tuple(tuple(row) for row, _coordinates, _norm in selected)
+
+    def dependency_count(
+        proposals: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    ) -> int:
+        count = 0
+        new_rows: list[tuple[int, ...]] = []
+        for row, _coordinates, _norm in proposals:
+            normalized_row = tuple(row)
+            if normalized_row in selected_rows:
+                count += 1
+            elif normalized_row not in new_rows:
+                new_rows.append(normalized_row)
+                count += 1
+        return count
+
+    achieved = dependency_count(dependencies)
     bound = _CUBIC_RELATION_SIEVE_BOUND
-    if not dependencies:
+    if achieved < maximum:
         widened = _packed_cubic_relation_candidates(
             order,
             factor_base,
             maximum_candidates=maximum_candidates,
             coefficient_bound=_CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND,
             duplicate_row_norms=(norm for _row, _coordinates, norm in selected),
+            power_factor_base=power_factor_base,
             cancelled=cancelled,
         )
         if widened is not None:
-            dependencies = _select_cubic_dependency_candidates(
+            widened_dependencies = _select_cubic_dependency_candidates(
                 selected, widened, maximum
             )
-            if dependencies:
+            if dependency_count(widened_dependencies) > achieved and all(
+                dependency in widened_dependencies for dependency in dependencies
+            ):
+                dependencies = widened_dependencies
                 bound = _CUBIC_RELATION_DEPENDENCY_SIEVE_BOUND
     return dependencies, bound
 
@@ -2223,7 +2254,7 @@ def _verify_cubic_norm_obstruction(
         reconstructed = relations.reconstruct_factor_base_ideal(
             order, factor_base, evidence["ambient_row"]
         ).numerator()
-        stored = order.ideal_from_dict(evidence["integral_ideal"])
+        stored = _cubic_certificate_ideal_from_dict(order, evidence["integral_ideal"])
         if stored != reconstructed or not stored.is_integral():
             return False
         norm = _integer_rational(stored.norm(), "an integral ideal norm")
@@ -2250,6 +2281,99 @@ def _verify_cubic_norm_obstruction(
         KeyError,
     ):
         return False
+
+
+def _cubic_certificate_ideal_from_dict(order: Any, payload: Any) -> Any:
+    """Decode one obstruction ideal on an exact isomorphic replay order.
+
+    Ordinary ideal serialization is deliberately bound to one live field and
+    order instance: loading it elsewhere would otherwise make maps and caches
+    appear interchangeable.  A detached class-number certificate has a
+    different contract.  Its caller supplies a fresh field built from the
+    identical defining polynomial and maximal-order basis, and the verifier
+    independently reconstructs the ideal from the asserted quotient class
+    immediately after this decode.
+
+    Authenticate precisely that representation identity here while ignoring
+    only the display variable and live instance tokens.  This keeps the
+    general serializer fail-closed yet permits proof replay in another
+    process, session, or separately constructed isomorphic field.
+    """
+    if not isinstance(payload, dict):
+        raise TypeError("a cubic obstruction ideal must be a dictionary")
+    expected = {
+        "schema",
+        "field_instance",
+        "order_instance",
+        "field_order_fingerprint",
+        "basis",
+    }
+    if set(payload) != expected:
+        raise ValueError("a cubic obstruction ideal has unexpected fields")
+    ideal_module = __import__(
+        "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+    )
+    if payload["schema"] != ideal_module.SERIALIZATION_SCHEMA:
+        raise ValueError("unsupported cubic obstruction ideal schema")
+    for name in ("field_instance", "order_instance"):
+        if not isinstance(payload[name], int) or isinstance(payload[name], bool):
+            raise TypeError("cubic obstruction instance tokens must be integers")
+        if int(payload[name]) < 1:
+            raise ValueError("cubic obstruction instance tokens must be positive")
+    prime_module = __import__(
+        "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+    )
+    source = payload["field_order_fingerprint"]
+    target = prime_module._field_order_fingerprint(order)
+    fingerprint_keys = {
+        "defining_polynomial",
+        "variable",
+        "maximal_order_basis",
+        "discriminant",
+    }
+    if (
+        not isinstance(source, dict)
+        or set(source) != fingerprint_keys
+        or not isinstance(source["variable"], str)
+        or any(
+            source[name] != target[name]
+            for name in (
+                "defining_polynomial",
+                "maximal_order_basis",
+                "discriminant",
+            )
+        )
+    ):
+        raise ValueError(
+            "a cubic obstruction ideal has a different exact field/order representation"
+        )
+    degree = int(order.degree())
+    encoded_rows = payload["basis"]
+    if (
+        not isinstance(encoded_rows, list)
+        or len(encoded_rows) != degree
+        or any(not isinstance(row, list) or len(row) != degree for row in encoded_rows)
+    ):
+        raise ValueError("a cubic obstruction ideal has malformed basis rows")
+    rows = []
+    for encoded_row in encoded_rows:
+        row = []
+        for pair in encoded_row:
+            if (
+                not isinstance(pair, list)
+                or len(pair) != 2
+                or not all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in pair
+                )
+                or pair[1] == 0
+            ):
+                raise TypeError(
+                    "cubic obstruction basis entries must be integer rational pairs"
+                )
+            row.append(sage.QQ(pair[0]) / sage.QQ(pair[1]))
+        rows.append(row)
+    return ideal_module.NumberFieldIdeal(order, rows)
 
 
 class CubicMinkowskiClassNumberCertificate:

@@ -1,10 +1,39 @@
-# Native Kernel v23
+# Native Kernel v34
 
-Native Kernel v23 asks whether selected Sage.js library functions can compile
+Native Kernel v34 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
 and resumes at that exact instruction. There is no whole-function replay.
+
+Version 32 adds explicit arena ownership for declared FLINT resources. A
+resource constructor and resource-to-resource operations remain visible in
+source and IR; generated cleanup releases every owned resource before the
+arena checkpoint rewinds. The resident FLINT matrix witness performs HNF
+without staging a packed matrix between construction, reduction, and reads.
+
+Version 33 adds the first reusable context-owned exact workspace. The owner
+preallocates a fixed-capacity GMP vector and arithmetic scratch, records a
+128-bit specification identity and a generation, and cannot be serialized.
+Each compiled transaction acquires an owned lexical borrow through
+`NativeExactArena.foreign_resource`, so all normal, error, cancellation, and
+translation exits end the mutable borrow before returning. Reset increments
+the generation and fails while borrowed; stale generations, specification
+mismatches, overlapping borrows, and checked bit-capacity failures are
+transactional. The same declared owner and lease ABI runs in generated
+JavaScript, native C, and Wasm.
+
+Version 34 completes the first code-quality wave. A declaration may provide a
+reviewed `exact_symbol` only for an unshielded resource call with a public
+`fmpz_t` ABI. Dynamic FFI and its generated Wasm adapter retain that public
+ABI, while host-isolated exact C and the isolated compiled Wasm core pass
+compiler-owned `mpz_t` values directly to the equivalent symbol. The reusable
+workspace witness thereby removes eight temporary `fmpz_t` conversions,
+authenticates its exclusive generation/specification borrow once, reuses one
+owner's preallocated product/result scratch, and keeps the two exact updates
+fused. `native explain` records these facts and the reverse all-exit cleanup
+contract. A compiled ELF symbol-size test runs the generated and handwritten
+reference kernels and requires the generated core to remain within 1.5x.
 
 The input is ordinary Sage.js source. `@native` is a no-op under CPython and
 remains the readable fallback in Sage.js. When a source-hash-matched compiled
@@ -65,7 +94,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v23 is currently a source-tree development feature and uses the
+Native Kernel v34 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -144,8 +173,8 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to the serialized Native Kernel IR v22. Native Kernel
-v22 supports:
+lowers marked functions to the serialized Native Kernel IR v34. Native Kernel
+v34 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -182,6 +211,10 @@ v22 supports:
 - non-escaping opaque owned FFI resources created in the top-level native
   block, with declaration-driven initialization flags, all-exit cleanup, and
   reverse-order cleanup in the generated JavaScript fallback;
+- context-owned `NativeExactWorkspace` resources with checked specification
+  and generation identity, explicit reset, one synchronous mutable borrow,
+  preallocated bounded GMP storage and scratch, and scalar/detached-only
+  transactional results;
 - generated, inspectable BigInt-versus-GMP selection based on call/loop shape,
   constant sizes, recursion, and runtime operand magnitude;
 - source-transparent binary64 kernels with mixed `uint64`/`Float64`
@@ -462,9 +495,9 @@ pnpm run bench:native:cowasm
 For the matched real-number comparison against SageMath, see
 [`MPFR-BENCHMARK.md`](MPFR-BENCHMARK.md).
 
-## Lexical live exact vectors
+## Lexical live exact aggregates
 
-V23 introduces the first slice of the native mathematical machine model:
+V23 introduced the first slice of the native mathematical machine model:
 `NativeIntegerVector` is a compiler-owned exact workspace scoped by an ordinary
 Python `with` statement. Its initialized GMP entries remain live across loop
 iterations, so `addmul` and `submul` lower directly to `mpz_addmul` and
@@ -480,11 +513,107 @@ bridge. The workspace is acceleration state, never canonical or serialized
 authority, and cannot be passed, returned, aliased, or used after its lexical
 scope.
 
-The neutral witness is
-[`native_live_exact_vector.py`](native_live_exact_vector.py). This is
-deliberately not yet a general arena, resizable container, or owned aggregate
-result. The production relation-admission witness and its stage-resolved
-receipt determine which additional storage feature is implemented next.
+V24 adds `NativeIntegerMatrix`, a fixed rectangular owner using the same
+semantic memory charge and resident GMP storage. Ordinary source uses checked
+`matrix[row, column]` access, `addmul`, `submul`, and allocation-free complete
+row swaps; it never manually flattens indices or materializes row objects.
+Every backend authenticates both dimensions before computing the row-major
+position, rejects shape-product overflow before allocation, and preserves the
+same all-exit cleanup and nonescape rules as the vector.
+
+V25 adds `NativeExactArena`, a parent owner for several vectors and matrices.
+Source allocates children explicitly with `workspace.integer_vector(...)` and
+`workspace.integer_matrix(...)`; the compiler records that ownership graph,
+requires allocation on the arena body's unconditional path, and rejects child
+aliases or escape. Base storage and changing GMP payload charges debit one
+shared limit. Every backend clears children in reverse creation order before
+closing the parent, including on exceptions and early returns.
+
+V26 makes physical exact allocation part of that source contract. Arena-owned
+vectors and matrices take a declared `maximum_bits`; native code initializes
+every resident limb and one owned arithmetic scratch at entry, checks bounds
+before each update, and borrows resident operands for their single consuming
+operation instead of copying them through growing scalar temporaries. The
+allocation audit in `native-live-exact-allocation-audit.cjs` installs GMP's
+memory hooks and requires allocator-call counts to remain independent of the
+hot-loop iteration count. This is the fixed-resident half of the allocation
+model; checkpoint-rewind storage for opaque GMP and FLINT temporaries is the
+next layer.
+
+V27 adds that checkpoint-rewind layer. `NativeExactArena` now takes separate
+resident and temporary byte limits. Generated exact cores install one GMP
+allocation hook, route allocations made only during the compiler-delimited
+arena region to a thread-local bump slab, preserve system-allocation provenance
+for persistent values, and suspend the checkpoint while publishing results.
+Cleanup destroys foreign resources, resident children, and checkpoint-backed
+exact scratch before the single rewind. The allocation audit records the slab
+high-water mark and rejects spills. For now an arena body must end in an
+unconditional return; this fail-closed rule prevents scalar live-outs until the
+IR can represent their ownership and capacity explicitly.
+
+V28 separates reserved address space from activated checkpoint pages. Linux
+and macOS use an inaccessible anonymous mapping and activate pages
+geometrically; Windows uses `VirtualAlloc` reservation and commitment. WASI,
+which has no comparable virtual-memory API, retains the authenticated upstream
+allocator path. Thus a 64-bit host can reserve a PARI-sized temporary region
+without immediately consuming that much physical memory, while every receipt
+reports reserved bytes, activated bytes, high-water use, and capacity
+exhaustion. V28 does
+not silently move or grow an active region. When a replay-safe arena exhausts
+its reservation, the core returns an internal typed retry status before
+publication. The Node boundary doubles only the next virtual reservation and
+replays the complete transaction, up to eight times; resident outputs and
+caller-visible state remain untouched between attempts. Non-replay-safe
+functions never receive this automatic policy. Exhausting all attempts becomes
+one ordinary range failure instead of a process abort or partial publication.
+
+V29 reserves the complete bounded retry envelope separately from the current
+soft estimate. An estimate overrun continues in the same private bump region,
+without using the upstream GMP allocator, as long as it fits that envelope.
+The failed attempt records its high-water mark, so the dispatcher jumps to the
+smallest sufficient power-of-two capacity instead of paying every intermediate
+doubling. Soft-limit crossings and true upstream allocations are separate
+telemetry. Either prevents publication; a production allocation-stable route
+requires zero upstream allocations on its accepted attempt. POSIX and Windows
+cap the automatically enlarged virtual envelope at 64 GiB unless the explicit
+effective capacity is larger; WASI retains its physically allocated route.
+
+V30 completes the first shaped-aggregate wave with fixed-capacity resident
+record vectors. Ordinary source declares a `NativeRecord` schema and allocates
+`workspace.records(Schema, capacity)`. The initial admitted fields are scalar
+`uint64` values; borrowed buffers, prime-modulus values, and exact-object fields
+are rejected because their ownership has not yet been proved. Complete-record
+reads and writes have value semantics, every index is checked, zero
+initialization is deterministic, and each entry reserves a fixed semantic
+charge before the arena body begins. Generated C stores contiguous structs,
+JavaScript stores private scalar records, and Wasm executes the same isolated C
+core. All targets clear record vectors in reverse child-construction order.
+
+V31 adds the first bounded dynamic structures without introducing a general
+heap. `workspace.bounded_map(Key, uint64, capacity)` and
+`workspace.bounded_set(Key, capacity)` use scalar record keys, one specified
+FNV64 field hash, linear probing, no deletion, and no resize. Replacement is
+value-copying and deterministic; a new key in a full table raises the same
+capacity failure on every target. `workspace.sparse_integer_rows(...)` owns a
+fixed number of pre-sized GMP destinations plus compact row/column metadata.
+It admits entries only in strictly increasing row-major order and provides
+checked lookup, row lengths, and total length without constructing public row
+objects. All three structures debit the parent arena before the checkpointed
+body and participate in reverse all-exit cleanup. Collision, full-capacity,
+wrong-order, shape, memory, sanitizer, and WASI witnesses are checked in
+`native-bounded-relations.cjs` and `native-sparse-exact-rows.cjs`.
+
+The neutral witnesses are
+[`native_live_exact_vector.py`](native_live_exact_vector.py) and
+[`native_live_exact_matrix.py`](native_live_exact_matrix.py), with the
+multi-owner budget witness in
+[`native_live_exact_arena.py`](native_live_exact_arena.py) and the fixed-schema
+record witness in
+[`native_live_exact_records.py`](native_live_exact_records.py). These are
+joined by [`native_bounded_relations.py`](native_bounded_relations.py) and
+[`native_sparse_exact_rows.py`](native_sparse_exact_rows.py). They remain
+deliberately bounded and are not owned aggregate results or cross-call reusable
+workspaces. The next dependency is declared-library residency.
 
 The first production-shaped witness is
 `packed_factor_base_rows_in_place` in
@@ -681,15 +810,22 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v23 limits
+## Deliberate v31 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
 prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
 or a flat typed tuple. Their mutable exact containers are deliberately limited
-to fixed-shape signed-64-bit buffers, bounded record views, and fixed-capacity
-arbitrary-precision integer buffers; resizable lists, keyword-only native ABI
+to fixed-shape signed-64-bit buffers, bounded record views, fixed-capacity
+arbitrary-precision integer vectors and dense matrices, and lexical exact
+arenas whose children share one deterministic semantic-memory budget. Arenas
+also own fixed-capacity scalar record vectors, while append-only vectors,
+sparse exact rows, and deterministic maps/sets. General resizable maps, raw
+pointers, and unbounded object graphs remain unsupported.
+Arena children are allocated unconditionally, cannot alias or escape, and are
+cleared in reverse creation order on every exit. Resizable lists,
+keyword-only native ABI
 arguments, general iterators, exception
 handlers, and calls into uncompiled Python remain outside the typed subset.
 Fixed local integer sequences are compile-time values,

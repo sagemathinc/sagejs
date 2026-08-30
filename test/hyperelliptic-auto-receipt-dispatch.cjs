@@ -384,7 +384,7 @@ test("an enabled empty policy gates auto while explicit accelerators remain coll
   assert.equal(observed.group_explicit, "smalljac");
 });
 
-test("absent policy preserves development auto while the merged release admits the receipted Cantor domain", (context) => {
+test("absent policy preserves development auto while stale release entries fail closed", (context) => {
   const item = enabledEmptyPolicy();
   context.after(() => fs.rmSync(item.root, { recursive: true, force: true }));
   const absent = parseSageJson(runSage(selectorWitness, {
@@ -400,11 +400,11 @@ test("absent policy preserves development auto while the merged release admits t
   assert.equal(absent.group_auto, "smalljac");
 
   const release = parseSageJson(runSage(selectorWitness));
-  assert.equal(release.decision.allowed, true);
-  assert.equal(release.decision.reason, "exact-receipt-policy-match");
-  assert.equal(release.matched_decision.allowed, true);
-  assert.equal(release.matched_decision.reason, "exact-receipt-policy-match");
-  assert.deepEqual(release.prepared, ["native", "exact-receipt-policy-match"]);
+  assert.equal(release.decision.allowed, false);
+  assert.equal(release.decision.reason, "unreceipted-fallback");
+  assert.equal(release.matched_decision.allowed, false);
+  assert.equal(release.matched_decision.reason, "unreceipted-fallback");
+  assert.deepEqual(release.prepared, ["reference", "unreceipted-fallback"]);
   assert.equal(release.rational_auto, "exhaustive");
   assert.equal(release.kummer_selected, false);
   assert.equal(release.group_auto, "squarefree-order");
@@ -463,14 +463,14 @@ test("trusted startup rejects a provider installed before Sage.js", (context) =>
   assert.match(result.stderr, /existed before trusted startup/);
 });
 
-test("the merged release policy contains only the three branch-covered Cantor envelopes", () => {
+test("the release policy retains but disables the three stale Cantor envelopes", () => {
   const candidate = readJson(
     path.join(ROOT, "architecture", "hyperelliptic-auto-receipt-policy.json"),
   );
   assert.equal(candidate.enabled, true);
   assert.equal(
     candidate.source_bundle.sha256,
-    "99925c8c76de72991f7cad590ebb78ade21314c3982490c7a53bb6f3782d370d",
+    "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
   );
   assert.deepEqual(
     candidate.entries.map((entry) => entry.id),
@@ -480,7 +480,7 @@ test("the merged release policy contains only the three branch-covered Cantor en
       "prime-cantor-domain-progression-c5622982-v1",
     ],
   );
-  assert(candidate.entries.every((entry) => entry.enabled));
+  assert(candidate.entries.every((entry) => !entry.enabled));
   assert(candidate.entries.every((entry) => entry.receipts.length === 4));
   assert(candidate.entries.every((entry) => entry.model.kind === "domain-envelope"));
   assert(candidate.entries.every(

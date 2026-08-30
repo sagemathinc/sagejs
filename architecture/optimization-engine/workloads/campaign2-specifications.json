@@ -1,0 +1,338 @@
+{
+  "schema": "sagejs.optimization-campaign-workload-specifications/v1",
+  "campaign": "mature-capability-routing-calibration",
+  "owner": "optimization-engine",
+  "subjects": [
+    {
+      "key": "cubic-factorization-held-out",
+      "family": "cubic-factorization",
+      "role": "held-out",
+      "title": "Held-out cubic class-number calls with exact LMFDB answers",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_number",
+        "mode": "sage",
+        "outputBoundary": "complete class number, proof status, and canonical class-group presentation"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimizer-workloads/cubic-neighbors.cjs",
+        "src/baselib/number_fields.py",
+        "src/lib/sagejs/number_fields/cubic_class_number.py",
+        "src/lib/sagejs/number_fields/om_types.py",
+        "test/fixtures/number-field-lmfdb-cubic-class-numbers.json"
+      ],
+      "corpus": {
+        "id": "cubic-lmfdb-neighbors",
+        "provenance": "Pinned LMFDB CC-BY-SA cubic records, disjoint from x^3-1009 discovery",
+        "definition": {
+          "records": [
+            { "label": "3.1.588.1", "coefficientsAscending": [1, 5, -1, 1], "classNumber": 3 },
+            { "label": "3.1.4027.2", "coefficientsAscending": [8, 7, -1, 1], "classNumber": 6 },
+            { "label": "3.1.5448.1", "coefficientsAscending": [30, -14, -1, 1], "classNumber": 8 }
+          ],
+          "proofModes": [false, true]
+        }
+      },
+      "oracles": [
+        {
+          "id": "detached-class-group-verification",
+          "kind": "invariant",
+          "provenance": "Reconstruct the reported class-group presentation and verify its order"
+        },
+        {
+          "id": "pinned-lmfdb-class-numbers",
+          "kind": "digest",
+          "provenance": "Pinned LMFDB class numbers and defining polynomials"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 1800000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": [],
+      "instrumentation": ["boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["all cubic factorizations", "all foreign crossings", "all payload conversion", "class-group construction", "proof and presentation construction", "public result materialization", "resource cleanup"],
+        "excluded": ["field construction before the public call"]
+      }
+    },
+    {
+      "key": "cubic-factorization-representative",
+      "family": "cubic-factorization",
+      "role": "representative",
+      "title": "Complete class-number call whose x^3-1009 factor base scans 94 primes",
+      "publicEntry": {
+        "path": "src/baselib/number_fields.py",
+        "name": "NumberField.class_number",
+        "mode": "sage",
+        "outputBoundary": "complete class number, proof status, and canonical class-group presentation"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimizer-workloads/number-field-cubic-factor-base.py",
+        "src/baselib/number_fields.py",
+        "src/lib/sagejs/number_fields/cubic_class_number.py",
+        "src/lib/sagejs/number_fields/om_types.py"
+      ],
+      "corpus": {
+        "id": "cubic-factor-base-1009",
+        "provenance": "Deterministic pure cubic and Minkowski factor-base plan",
+        "definition": {
+          "definingPolynomial": "x^3-1009",
+          "theorem": "minkowski",
+          "expectedRationalPrimeCount": 94,
+          "expectedFactorRecordCount": 91,
+          "expectedPackedPayloadSha256": "4de40d4659dadeda0b2e2ce8d06362bc15de9367bc173273cd0c74bd0e28fc04",
+          "proofModes": [false, true]
+        }
+      },
+      "oracles": [
+        {
+          "id": "complete-class-group-verification",
+          "kind": "invariant",
+          "provenance": "Verify the complete class-group presentation independently of modular factor production"
+        },
+        {
+          "id": "generic-factor-replay",
+          "kind": "invariant",
+          "provenance": "Replay every cubic modular factorization through the generic exact factorizer"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 1800000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": [],
+      "instrumentation": ["boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["94 cubic factorizations", "all foreign crossings", "all payload conversion", "class-group construction", "proof and presentation construction", "public result materialization", "resource cleanup"],
+        "excluded": ["field construction before the public call"]
+      }
+    },
+    {
+      "key": "dense-integral-held-out",
+      "family": "dense-integral",
+      "role": "held-out",
+      "title": "Held-out GF(257) length-10000 integral crossing 38 characteristic holes",
+      "publicEntry": {
+        "path": "src/lib/sagejs/polynomial_algorithms/public_structural.py",
+        "name": "Polynomial.integral",
+        "mode": "sage",
+        "outputBoundary": "complete published antiderivative or exact public exception"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimization-engine/integral-library-candidate.py",
+        "src/baselib/sagejs/ffi/flint.py",
+        "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+        "src/lib/sagejs/polynomial_algorithms/public_structural.py"
+      ],
+      "corpus": {
+        "id": "dense-integral-gf257-thirty-eight-holes",
+        "provenance": "Deterministic held-out generator with independently specified characteristic holes",
+        "definition": {
+          "modulus": 257,
+          "degree": 9999,
+          "coefficientRule": "(i*i+3*i-7) mod 257",
+          "forcedZeroRule": "set coefficient i to zero exactly when (i+1) mod 257 is zero",
+          "expectedProjection": [0, 250, 127, 9, 0, 250, 146],
+          "singularAdversary": { "sourceIndex": 513, "replacement": 1 }
+        }
+      },
+      "oracles": [
+        {
+          "id": "independent-modular-antiderivative",
+          "kind": "invariant",
+          "provenance": "Independent coefficient formula using modular inverses on every legal denominator"
+        },
+        {
+          "id": "public-derivative-and-exception-replay",
+          "kind": "invariant",
+          "provenance": "Differentiate the complete result and replay the exact singular-denominator exception"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 600000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": ["chromium", "firefox", "webkit"],
+      "instrumentation": ["allocation-counter", "boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["characteristic-hole preflight", "input conversion", "all FLINT calls", "all foreign crossings", "all copied bytes", "output allocation", "block placement", "trim", "public polynomial construction"],
+        "excluded": ["construction of the input polynomial before the public call"]
+      }
+    },
+    {
+      "key": "dense-integral-representative",
+      "family": "dense-integral",
+      "role": "representative",
+      "title": "Public GF(65537) degree-69999 polynomial integral",
+      "publicEntry": {
+        "path": "src/lib/sagejs/polynomial_algorithms/public_structural.py",
+        "name": "Polynomial.integral",
+        "mode": "sage",
+        "outputBoundary": "complete published antiderivative or exact public exception"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimization-engine/integral-library-candidate.py",
+        "bench/optimizer-workloads/public-prime-polynomial-integral.py",
+        "src/baselib/sagejs/ffi/flint.py",
+        "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+        "src/lib/sagejs/polynomial_algorithms/public_structural.py"
+      ],
+      "corpus": {
+        "id": "public-prime-polynomial-integral",
+        "provenance": "Deterministic GF(65537) public polynomial generator",
+        "definition": {
+          "modulus": 65537,
+          "degree": 69999,
+          "coefficientRule": "(i*i+3*i-7) mod 65537",
+          "forcedZeroSourceIndices": [65536],
+          "expectedProjection": [70000, true, [0, 65530, 32767, 9, 0, 65530, 52453]],
+          "singularAdversary": { "sourceIndex": 65536, "replacement": 1 }
+        }
+      },
+      "oracles": [
+        {
+          "id": "independent-modular-antiderivative",
+          "kind": "invariant",
+          "provenance": "Independent coefficient formula using modular inverses on every legal denominator"
+        },
+        {
+          "id": "public-derivative-and-exception-replay",
+          "kind": "invariant",
+          "provenance": "Differentiate the complete result and replay the exact singular-denominator exception"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 600000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": ["chromium", "firefox", "webkit"],
+      "instrumentation": ["allocation-counter", "boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["characteristic-hole preflight", "input conversion", "all FLINT calls", "all foreign crossings", "all copied bytes", "output allocation", "block placement", "trim", "public polynomial construction"],
+        "excluded": ["construction of the input polynomial before the public call"]
+      }
+    },
+    {
+      "key": "hyperelliptic-normalization-held-out",
+      "family": "hyperelliptic-normalization",
+      "role": "held-out",
+      "title": "Held-out semistable normalization factors at 10009 and 20011",
+      "publicEntry": {
+        "path": "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "name": "HyperellipticCurve.local_reduction",
+        "mode": "sage",
+        "outputBoundary": "complete certified local Euler factor, conductor data, and reduction certificate"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimizer-workloads/hyperelliptic-local-reduction.py",
+        "src/baselib/elliptic_curves.py",
+        "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "src/lib/sagejs/hyperelliptic_curves/frobenius.py"
+      ],
+      "corpus": {
+        "id": "hyperelliptic-normalization-held-out",
+        "provenance": "Locked held-out subset of the independent point-count corpus",
+        "definition": {
+          "curveRule": "y^2=x^5+x^2+p",
+          "normalizationCurve": "y^2=x^3+1",
+          "cases": [
+            { "prime": 10009, "expectedEulerFactor": [1, -183, 10191, -10009] },
+            { "prime": 20011, "expectedEulerFactor": [1, 111, 19899, -20011] }
+          ]
+        }
+      },
+      "oracles": [
+        {
+          "id": "independent-cpython-point-count",
+          "kind": "cpython",
+          "provenance": "Direct Legendre-symbol point counts over the normalization curve"
+        },
+        {
+          "id": "local-certificate-reconstruction",
+          "kind": "invariant",
+          "provenance": "Reconstruct normalization and dual-graph factors from the public certificate"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 600000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": ["chromium", "firefox", "webkit"],
+      "instrumentation": ["boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["complete public local reduction", "normalization transformation", "smalljac call", "all foreign crossings", "all copied bytes", "Euler-factor reconstruction", "certificate construction", "resource cleanup"],
+        "excluded": ["construction of the input curve before the public call"]
+      }
+    },
+    {
+      "key": "hyperelliptic-normalization-representative",
+      "family": "hyperelliptic-normalization",
+      "role": "representative",
+      "title": "Representative semistable normalization factor at 5003",
+      "publicEntry": {
+        "path": "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "name": "HyperellipticCurve.local_reduction",
+        "mode": "sage",
+        "outputBoundary": "complete certified local Euler factor, conductor data, and reduction certificate"
+      },
+      "sourcePaths": [
+        "architecture/optimization-engine/workloads/campaign2-evidence.schema.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.json",
+        "architecture/optimization-engine/workloads/campaign2-specifications.schema.json",
+        "bench/optimization-engine/campaign2-discovery.cjs",
+        "bench/optimization-engine/campaign2-workloads.cjs",
+        "bench/optimizer-workloads/hyperelliptic-local-reduction.py",
+        "src/baselib/elliptic_curves.py",
+        "src/lib/sagejs/hyperelliptic_curves/bad_reduction.py",
+        "src/lib/sagejs/hyperelliptic_curves/frobenius.py"
+      ],
+      "corpus": {
+        "id": "hyperelliptic-normalization-5003",
+        "provenance": "Deterministic public semistable reduction corpus",
+        "definition": {
+          "curveRule": "y^2=x^5+x^2+p",
+          "normalizationCurve": "y^2=x^3+1",
+          "cases": [
+            { "prime": 5003, "expectedEulerFactor": [1, -1, 5003, -5003] }
+          ]
+        }
+      },
+      "oracles": [
+        {
+          "id": "independent-cpython-point-count",
+          "kind": "cpython",
+          "provenance": "Direct Legendre-symbol point count over the normalization curve"
+        },
+        {
+          "id": "local-certificate-reconstruction",
+          "kind": "invariant",
+          "provenance": "Reconstruct normalization and dual-graph factors from the public certificate"
+        }
+      ],
+      "protocol": { "warmupRuns": 3, "repetitions": 11, "timeoutMilliseconds": 600000 },
+      "platforms": ["linux-arm64", "linux-x64", "macos-arm64", "windows-x64"],
+      "browsers": ["chromium", "firefox", "webkit"],
+      "instrumentation": ["boundary-counter", "copied-byte-counter", "inclusive-timer", "resource-lifetime"],
+      "costBoundary": {
+        "included": ["complete public local reduction", "normalization transformation", "smalljac call", "all foreign crossings", "all copied bytes", "Euler-factor reconstruction", "certificate construction", "resource cleanup"],
+        "excluded": ["construction of the input curve before the public call"]
+      }
+    }
+  ]
+}
