@@ -743,6 +743,10 @@ def print_class(output):
         ".__varargs__",
         ".__varkw__",
     ]
+    constructor_annotation_attributes = [
+        (".__annotations__", ".__signature_annotations__"),
+        (".__annotations_text__", ".__signature_annotations_text__"),
+    ]
 
     # actual methods
     if not self.init:
@@ -807,6 +811,22 @@ def print_class(output):
                 self.name.print(output)
                 output.print(".prototype.__init__" + attr)
                 output.end_statement()
+            for source_attr, target_attr in constructor_annotation_attributes:
+                output.indent()
+                self.name.print(output)
+                output.print(".prototype.__init__")
+                output.assign(source_attr)
+                self.parent.print(output)
+                output.print(".prototype.__init__ && ")
+                self.parent.print(output)
+                output.print(".prototype.__init__" + source_attr)
+                output.end_statement()
+                output.indent()
+                self.name.print(output)
+                output.assign(target_attr)
+                self.name.print(output)
+                output.print(".prototype.__init__" + source_attr)
+                output.end_statement()
 
     defined_methods = {}
 
@@ -854,6 +874,13 @@ def print_class(output):
                     (
                         self.name.print(output),
                         output.print(".prototype.__init__" + attr),
+                        output.end_statement(),
+                    )
+                for source_attr, target_attr in constructor_annotation_attributes:
+                    output.indent(), self.name.print(output), output.assign(target_attr)
+                    (
+                        self.name.print(output),
+                        output.print(".prototype.__init__" + source_attr),
                         output.end_statement(),
                     )
             if sname is "__iter__":
@@ -1002,6 +1029,15 @@ def print_class(output):
                 output.print(".prototype.__init__ && ")
                 self.name.print(output)
                 output.print(".prototype.__init__" + attr)
+                output.end_statement()
+            for source_attr, target_attr in constructor_annotation_attributes:
+                output.indent()
+                self.name.print(output)
+                output.assign(target_attr)
+                self.name.print(output)
+                output.print(".prototype.__init__ && ")
+                self.name.print(output)
+                output.print(".prototype.__init__" + source_attr)
                 output.end_statement()
 
     # Every Python class has ``__doc__``.  Keep the attribute present with a

@@ -199,6 +199,18 @@ assert list(signature(introspection_method.callback).parameters) == ["change"]
 assert getfullargspec(introspection_method.callback).args == ["self", "change"]
 
 
+class AnnotatedInitializer:
+    def __init__(self, value: int = 1) -> None:
+        self.value = value
+
+
+annotated_initializer_signature = signature(AnnotatedInitializer)
+assert list(annotated_initializer_signature.parameters) == ["value"]
+assert annotated_initializer_signature.parameters["value"].annotation is int
+assert annotated_initializer_signature.return_annotation is None
+assert getattr(AnnotatedInitializer, "__annotations__", {}) == {}
+
+
 class CustomAllocatorOnly:
     def __new__(cls, *args, **kwargs):
         instance = object.__new__(cls)
@@ -208,6 +220,20 @@ class CustomAllocatorOnly:
 
 custom_allocator_only = CustomAllocatorOnly(1, label=2)
 assert custom_allocator_only.received == ((1,), {"label": 2})
+
+
+class AnnotatedAllocatorOnly:
+    def __new__(cls, value: str = "value") -> "AnnotatedAllocatorOnly":
+        instance = object.__new__(cls)
+        instance.value = value
+        return instance
+
+
+annotated_allocator_signature = signature(AnnotatedAllocatorOnly)
+assert list(annotated_allocator_signature.parameters) == ["value"]
+assert annotated_allocator_signature.parameters["value"].annotation is str
+assert annotated_allocator_signature.return_annotation == "AnnotatedAllocatorOnly"
+assert getattr(AnnotatedAllocatorOnly, "__annotations__", {}) == {}
 
 
 class DynamicBase:

@@ -245,7 +245,13 @@ def signature(
     # records.  Normalize it to Python mappings before using the public dict
     # API; third-party decorators should never have to know the distinction.
     defaults = dict(getattr(callable, "__defaults__", {}))
-    annotations = dict(getattr(callable, "__annotations__", {}))
+    annotations = dict(
+        getattr(
+            callable,
+            "__signature_annotations__",
+            getattr(callable, "__annotations__", {}),
+        )
+    )
     parameters = []
     positional_only = getattr(callable, "__positional_only__", 0)
     if positional_only is True:

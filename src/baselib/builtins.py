@@ -5982,6 +5982,13 @@ def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
             attribute_name,
             _builtins_get_member(allocator, attribute_name),
         )
+    for source_name, target_name in (
+        ("__annotations__", "__signature_annotations__"),
+        ("__annotations_text__", "__signature_annotations_text__"),
+    ):
+        runtime.reflect.set(
+            cls, target_name, _builtins_get_member(allocator, source_name)
+        )
     positional_only = _builtins_get_member(allocator, "__positional_only__")
     if positional_only is True:
         positional_only = argument_names.length
