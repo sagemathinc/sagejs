@@ -1024,11 +1024,17 @@ def print_imports(container, output):
                 "ρσ_getattr_missing)"
             )
             output.end_statement()
-            output.indent()
-            output.print("globalThis[ρσ_star_name] = ρσ_modules[")
-            output.print_string(target_module)
-            output.print("][ρσ_star_name]")
-            output.end_statement()
+            # Hygienic Python modules resolve dynamic star-import names from
+            # their live module namespace.  Publishing them onto `globalThis`
+            # is both unnecessary and unsafe: an ordinary package exporting
+            # `Set`, `Map`, or `Object` would replace the JavaScript host
+            # intrinsic while the lazy-module loader is still running.
+            if not container.python_lexical_hygiene:
+                output.indent()
+                output.print("globalThis[ρσ_star_name] = ρσ_modules[")
+                output.print_string(target_module)
+                output.print("][ρσ_star_name]")
+                output.end_statement()
 
         output.with_block(copy_star_name)
 

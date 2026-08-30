@@ -192,10 +192,20 @@ function signature(value: unknown, fallbackName: string): string {
   const name = callableName(value) || fallbackName.split(".").at(-1) || fallbackName;
   const argumentNames = Reflect.get(value, "__argnames__");
   const defaults = Reflect.get(value, "__defaults__");
+  const signatureAnnotationText = Reflect.get(
+    value,
+    "__signature_annotations_text__",
+  );
+  const signatureAnnotations = Reflect.get(value, "__signature_annotations__");
   const annotationText = Reflect.get(value, "__annotations_text__");
   const annotations = Reflect.get(value, "__annotations__");
   const annotation = (argument: string): string => {
-    for (const source of [annotationText, annotations]) {
+    for (const source of [
+      signatureAnnotationText,
+      signatureAnnotations,
+      annotationText,
+      annotations,
+    ]) {
       if (
         source &&
         (typeof source === "object" || typeof source === "function") &&

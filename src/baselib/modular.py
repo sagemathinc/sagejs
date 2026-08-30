@@ -916,6 +916,34 @@ def half_integral_weight_hecke_qexp(
     )
 
 
+def shimura_lift_qexp(
+    series: Any,
+    k: Any,
+    t: Any = 1,
+    chi: Any = None,
+    level: Any = None,
+    prec: Any = None,
+    variable: str = "q",
+) -> Any:
+    r"""Return the exact cuspidal Shimura lift for squarefree $t$.
+
+    ```sage
+    sage: q = PowerSeriesRing(QQ, 'q', default_prec=10).gen()
+    sage: shimura_lift_qexp(q + O(q^10), 3, level=4, prec=4)
+    q - q^3 + O(q^4)
+    ```
+    """
+    return _half_integral_module().shimura_lift_qexp(
+        series,
+        k,
+        t,
+        chi,
+        level,
+        prec,
+        variable,
+    )
+
+
 def half_integral_formula_registry() -> Any:
     """Return the bounded, certificate-bearing half-integral formula registry.
 
@@ -5943,6 +5971,8 @@ _half_integral_doc = {
         "theta series",
         "Cohen Eisenstein series",
         "Hecke operators",
+        "Kohnen plus space",
+        "Shimura lift",
         "Sturm bounds",
     ],
     "backends": [
@@ -5986,14 +6016,22 @@ _half_integral_doc = {
             "kind": "sagejs-original",
             "source": (
                 "Half-integral Sturm certification, replayable formula "
-                "certificates, and exact T_(p^2) matrix recovery"
+                "certificates, exact T_(p^2) matrix recovery, and certified "
+                "Kohnen-plus/Shimura maps"
             ),
+        },
+        {
+            "kind": "software-derived",
+            "source": "PARI/GP mfkohnenbasis and mfshimura",
+            "url": "https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html",
+            "license": "GPL-2.0-or-later",
         },
     ],
     "limitations": [
         "Basmaji cusp spaces currently require character modulus divisible by 16.",
         "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
-        "General Shimura lifts and the complete Kohnen-plus object layer remain future work.",
+        "Shimura target-coordinate certificates currently require trivial character.",
+        "The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.",
     ],
 }
 for _half_integral_name, _half_integral_function in [
@@ -6006,6 +6044,7 @@ for _half_integral_name, _half_integral_function in [
     ("HalfIntegralWeightModularForms", HalfIntegralWeightModularForms),
     ("half_integral_weight_modform_basis", half_integral_weight_modform_basis),
     ("half_integral_weight_hecke_qexp", half_integral_weight_hecke_qexp),
+    ("shimura_lift_qexp", shimura_lift_qexp),
     ("half_integral_formula_registry", half_integral_formula_registry),
 ]:
     runtime.register_doc(

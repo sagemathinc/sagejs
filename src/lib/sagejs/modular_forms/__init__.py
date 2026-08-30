@@ -16,11 +16,15 @@ CohenEisensteinSeriesCertificate: Any
 HalfIntegralWeightBasisCertificate: Any
 HalfIntegralWeightModularFormsSpace: Any
 HalfIntegralWeightModularForms: Any
+KohnenPlusBasisCertificate: Any
+KohnenPlusSpace: Any
+ShimuraLiftCertificate: Any
 cohen_eisenstein_series_certificate: Any
 cohen_eisenstein_series_qexp: Any
 half_integral_formula_registry: Any
 half_integral_weight_hecke_qexp: Any
 half_integral_weight_modform_basis: Any
+shimura_lift_qexp: Any
 theta2_qexp: Any
 theta2_qexp_certificate: Any
 theta_qexp: Any
@@ -113,11 +117,15 @@ _HALF_INTEGRAL_EXPORTS = [
     "HalfIntegralWeightBasisCertificate",
     "HalfIntegralWeightModularFormsSpace",
     "HalfIntegralWeightModularForms",
+    "KohnenPlusBasisCertificate",
+    "KohnenPlusSpace",
+    "ShimuraLiftCertificate",
     "cohen_eisenstein_series_certificate",
     "cohen_eisenstein_series_qexp",
     "half_integral_formula_registry",
     "half_integral_weight_hecke_qexp",
     "half_integral_weight_modform_basis",
+    "shimura_lift_qexp",
     "theta2_qexp",
     "theta2_qexp_certificate",
     "theta_qexp",
@@ -141,11 +149,15 @@ __all__ = [
     "HalfIntegralWeightBasisCertificate",
     "HalfIntegralWeightModularFormsSpace",
     "HalfIntegralWeightModularForms",
+    "KohnenPlusBasisCertificate",
+    "KohnenPlusSpace",
+    "ShimuraLiftCertificate",
     "cohen_eisenstein_series_certificate",
     "cohen_eisenstein_series_qexp",
     "half_integral_formula_registry",
     "half_integral_weight_hecke_qexp",
     "half_integral_weight_modform_basis",
+    "shimura_lift_qexp",
     "theta2_qexp",
     "theta2_qexp_certificate",
     "theta_qexp",

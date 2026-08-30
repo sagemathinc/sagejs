@@ -9,6 +9,53 @@ export interface SageDisplayData {
   data: unknown;
 }
 
+export type SageOutputEvent =
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "stream";
+      parentId?: string;
+      name: "stdout" | "stderr";
+      text: string;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "display_data" | "update_display_data";
+      parentId?: string;
+      data: Record<string, unknown>;
+      metadata: Record<string, unknown>;
+      displayId?: string;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "clear_output";
+      parentId?: string;
+      wait: boolean;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "error";
+      parentId?: string;
+      name: string;
+      message: string;
+      traceback: string[];
+    };
+
+export interface SageCommEvent {
+  schema: "sagejs.comm-event/v1";
+  type: "open" | "message" | "close";
+  parentId?: string;
+  commId: string;
+  targetName?: string;
+  targetModule?: string;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  buffers: Uint8Array[];
+}
+
+export interface SageCommInfo {
+  [commId: string]: { targetName: string };
+}
+
 export interface SageOptimizationReport {
   schema: "sagejs.optimizer-evaluation/v1";
   authority: "compiler-verified-static";
@@ -33,6 +80,8 @@ export interface SageEvaluationResult {
   durationMs: number;
   /** Optional rich representation of the final value. */
   display?: SageDisplayData;
+  events: SageOutputEvent[];
+  commEvents: SageCommEvent[];
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
 }
@@ -41,6 +90,9 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+  parentId?: string;
   language?:
     | "sage"
     | "python"
@@ -141,6 +193,8 @@ export class SageSession extends EventEmitter {
   complete(source: string, cursorPosition: number): Promise<SageCompletion>;
   inspect(source: string, cursorPosition: number): Promise<SageInspection>;
   documentation(): Promise<DocumentationCatalog>;
+  comm(event: SageCommEvent): Promise<void>;
+  commInfo(targetName?: string): Promise<SageCommInfo>;
   isComplete(
     source: string,
     options?: SageLanguageOptions,
