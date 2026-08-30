@@ -4933,6 +4933,13 @@ def ρσ_getattr_internal(
             value,
             [name],
         )
+        class_prototype_member = runtime.undefined
+        if runtime.strict_equal(runtime.jstype(value), "function"):
+            class_prototype = _builtins_get_member(value, "prototype")
+            if class_prototype is not runtime.undefined and _builtins_has_member(
+                class_prototype, name
+            ):
+                class_prototype_member = _builtins_get_member(class_prototype, name)
         if runtime.strict_equal(
             runtime.jstype(value), "function"
         ) and _builtins_has_member(member, "__classmethod__"):
@@ -4966,6 +4973,13 @@ def ρσ_getattr_internal(
             and runtime.strict_equal(runtime.jstype(member), "function")
             and not _builtins_is_python_class(member)
             and _builtins_get_member(member, "__python_descriptor__") is not True
+            # Compiler-emitted Python methods are copied from the prototype
+            # onto the constructor and still use JavaScript receiver calling.
+            # Builtin classes instead publish explicit-self implementations on
+            # the constructor alongside a distinct receiver adapter on the
+            # prototype (for example `str.replace` and `list.append`).  Only
+            # the former needs conversion back to an unbound Python method.
+            and runtime.strict_equal(member, class_prototype_member)
         ):
             return runtime.unbound_method_adapter(member)
         if (

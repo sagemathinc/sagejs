@@ -30,6 +30,13 @@ assert builtin_class_attributes.list_class is list
 assert builtin_class_attributes.set_class is set
 assert builtin_class_attributes.dict_class is dict
 
+# Recognizing builtin constructors as Python classes must not reinterpret
+# their explicit-self class APIs as JavaScript receiver methods.
+assert str.replace("class_member", "_", "-") == "class-member"
+values = []
+list.append(values, 5)
+assert values == [5]
+
 
 class SetupBaseMeta(type):
     def __init__(cls, name, bases, namespace):
