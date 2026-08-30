@@ -565,6 +565,96 @@
       },
       {
         "schema_version": 1,
+        "name": "cohen_eisenstein_series_certificate",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any",
+        "summary": "Return the replayable Cohen coefficient-formula certificate.",
+        "doc": "Return the replayable Cohen coefficient-formula certificate.\n\n```sage\nsage: cohen_eisenstein_series_certificate(2, 12).verify()\nTrue\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "cohen_eisenstein_series_qexp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any",
+        "summary": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
+        "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n```sage\nsage: cohen_eisenstein_series_qexp(2, 6)\n1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "Color",
         "aliases": [],
         "kind": "function",
@@ -6547,6 +6637,186 @@
       },
       {
         "schema_version": 1,
+        "name": "half_integral_formula_registry",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "half_integral_formula_registry() -> Any",
+        "summary": "Return the bounded, certificate-bearing half-integral formula registry.",
+        "doc": "Return the bounded, certificate-bearing half-integral formula registry.\n\n```sage\nsage: len(half_integral_formula_registry())\n4\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "half_integral_weight_hecke_qexp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any",
+        "summary": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
+        "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n```sage\nsage: f = cohen_eisenstein_series_qexp(2, 82)\nsage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)\n7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "half_integral_weight_modform_basis",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]",
+        "summary": "Return Sage-compatible Basmaji half-integral cusp expansions.",
+        "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.\n\n```sage\nsage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n[]\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "HalfIntegralWeightModularForms",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any",
+        "summary": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
+        "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n```sage\nsage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\nsage: (H.weight(), H.dimension())\n(3/2, 0)\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "help",
         "aliases": [],
         "kind": "function",
@@ -12132,6 +12402,186 @@
       },
       {
         "schema_version": 1,
+        "name": "theta_qexp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+        "summary": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
+        "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n```sage\nsage: theta_qexp(6)\n1 + 2*q + 2*q^4 + O(q^6)\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "theta_qexp_certificate",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+        "summary": "Return the replayable standard-theta coefficient certificate.",
+        "doc": "Return the replayable standard-theta coefficient certificate.\n\n```sage\nsage: theta_qexp_certificate(12).verify()\nTrue\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "theta2_qexp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+        "summary": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
+        "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n```sage\nsage: theta2_qexp(12)\nq + q^9 + O(q^12)\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "theta2_qexp_certificate",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.half_integral",
+        "signature": "theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+        "summary": "Return the replayable odd-square theta coefficient certificate.",
+        "doc": "Return the replayable odd-square theta coefficient certificate.\n\n```sage\nsage: theta2_qexp_certificate(12).verify()\nTrue\n```",
+        "tags": [
+          "modular forms",
+          "half-integral weight",
+          "theta series",
+          "Cohen Eisenstein series",
+          "Hecke operators",
+          "Sturm bounds"
+        ],
+        "backends": [
+          "Sage.js exact modular symbols",
+          "FLINT exact rational and cyclotomic linear algebra",
+          "ordinary Python coefficient formulas"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath half_integral.py",
+            "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+          }
+        ],
+        "references": [],
+        "limitations": [
+          "Basmaji cusp spaces currently require character modulus divisible by 16.",
+          "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+          "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "var",
         "aliases": [],
         "kind": "function",
@@ -13014,16 +13464,16 @@
         "name": "BrandtModule",
         "qualified": "BrandtModule",
         "path": "src/baselib/modular.py",
-        "line": 52,
+        "line": 64,
         "excerpt": {
-          "start_line": 40,
+          "start_line": 52,
           "text": "\ndef _brandt_module() -> Any:\n    \"\"\"Load the rational Brandt-module implementation lazily.\"\"\"\n    global _brandt_module_cache\n    if _brandt_module_cache is runtime.undefined:\n        _brandt_module_cache = __import__(\n            \"sagejs.modular_forms.brandt\",\n            fromlist=[\"BrandtModule\"],\n        )\n    return _brandt_module_cache\n\n\ndef BrandtModule(\n    D: Any,\n    N: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    realization: str = \"auto\",\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    r\"\"\"Construct the weight-two Brandt module over $\\mathbf Q$.\n\n    The quaternion discriminant `D` is squarefree with an odd number of\n    prime factors, and the Eichler conductor `N` is positive and coprime to"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
-          "line": 72,
+          "line": 84,
           "source": "B = BrandtModule(11, 1)",
           "want": "",
           "tags": [],
@@ -13039,7 +13489,7 @@
         },
         {
           "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
-          "line": 73,
+          "line": 85,
           "source": "(B.dimension(), B.T(2).charpoly())",
           "want": "(2, x^2 - x - 6)\n",
           "tags": [],
@@ -13114,6 +13564,152 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "cohen_eisenstein_series_certificate",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "cohen_eisenstein_series_certificate(r: Any, prec: Any=20, variable: str='q', **opts: Any) -> Any",
+      "summary": "Return the replayable Cohen coefficient-formula certificate.",
+      "doc": "Return the replayable Cohen coefficient-formula certificate.\n\n```sage\nsage: cohen_eisenstein_series_certificate(2, 12).verify()\nTrue\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "cohen_eisenstein_series_certificate",
+        "qualified": "cohen_eisenstein_series_certificate",
+        "path": "src/baselib/modular.py",
+        "line": 841,
+        "excerpt": {
+          "start_line": 829,
+          "text": "    1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n    ```\n    \"\"\"\n    return _half_integral_module().cohen_eisenstein_series_qexp(\n        r,\n        prec,\n        variable,\n        normalization,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_certificate(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable Cohen coefficient-formula certificate.\n\n    ```sage\n    sage: cohen_eisenstein_series_certificate(2, 12).verify()\n    True\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#9fcd905e50e9aec7-3cbc87c7681f34db",
+          "line": 850,
+          "source": "cohen_eisenstein_series_certificate(2, 12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "cohen_eisenstein_series_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#9fcd905e50e9aec7-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "cohen_eisenstein_series_qexp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "cohen_eisenstein_series_qexp(r: Any, prec: Any=20, variable: str='q', normalization: str='cohen', **opts: Any) -> Any",
+      "summary": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.",
+      "doc": "Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n```sage\nsage: cohen_eisenstein_series_qexp(2, 6)\n1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "cohen_eisenstein_series_qexp",
+        "qualified": "cohen_eisenstein_series_qexp",
+        "path": "src/baselib/modular.py",
+        "line": 818,
+        "excerpt": {
+          "start_line": 806,
+          "text": "    sage: theta2_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().theta2_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef cohen_eisenstein_series_qexp(\n    r: Any,\n    prec: Any = 20,\n    variable: str = \"q\",\n    normalization: str = \"cohen\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return Cohen's exact Eisenstein series of weight $r+\\tfrac12$.\n\n    ```sage\n    sage: cohen_eisenstein_series_qexp(2, 6)\n    1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n    ```"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#7ea08ad2f0b57eec-75458977e82a3d0c",
+          "line": 828,
+          "source": "cohen_eisenstein_series_qexp(2, 6)",
+          "want": "1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n",
+          "tags": [],
+          "owner": "cohen_eisenstein_series_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#7ea08ad2f0b57eec-75458977e82a3d0c",
+            "status": "pass",
+            "actual": "1/120 - 1/12*q - 7/12*q^4 - 2/5*q^5 + O(q^6)\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -13711,16 +14307,16 @@
         "name": "CuspForms",
         "qualified": "CuspForms",
         "path": "src/baselib/modular.py",
-        "line": 1540,
+        "line": 1738,
         "excerpt": {
-          "start_line": 1528,
+          "start_line": 1726,
           "text": "\n    ```sage\n    sage: E = EisensteinForms(389, 2)\n    sage: b = E.basis(prec=20)[0]\n    sage: b.q_expansion(100).precision_absolute()\n    100\n    ```\n    \"\"\"\n    ambient = ModularForms(group, weight, base_ring, use_cache, prec)\n    return ambient.eisenstein_subspace()\n\n\ndef CuspForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSubspace:\n    r\"\"\"Construct the cuspidal subspace of `ModularForms(group, weight)`.\n\n    ### Examples\n\n    ```sage\n    sage: S = CuspForms(11, 2)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#c49ea7b9bb92c689-e3b0c44298fc1c14",
-          "line": 1552,
+          "line": 1750,
           "source": "S = CuspForms(11, 2)",
           "want": "",
           "tags": [],
@@ -13736,7 +14332,7 @@
         },
         {
           "id": "src/baselib/modular.py#5670fbe72b120815-2fdf166df5e7a97d",
-          "line": 1553,
+          "line": 1751,
           "source": "(S.dimension(), S.q_expansion_basis(6))",
           "want": "(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])\n",
           "tags": [],
@@ -13863,16 +14459,16 @@
         "name": "delta_qexp",
         "qualified": "delta_qexp",
         "path": "src/baselib/modular.py",
-        "line": 732,
+        "line": 930,
         "excerpt": {
-          "start_line": 720,
-          "text": "\n    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(\n        native_value\n    )\n    coefficients = rational_polynomial.coefficients()\n    generator = ring.gen()\n    result = ring(0)\n    for coefficient in reversed(coefficients):\n        result = result * generator + coefficient_ring(coefficient)\n    return result.add_bigoh(precision)\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)"
+          "start_line": 918,
+          "text": "\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\n\n    ```sage\n    sage: len(half_integral_formula_registry())\n    4\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#8f1725c87ba22433-1ca04d43b63acec4",
-          "line": 743,
+          "line": 941,
           "source": "delta_qexp(6)",
           "want": "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n",
           "tags": [],
@@ -14541,16 +15137,16 @@
         "name": "dimension_cusp_forms",
         "qualified": "CongruenceSubgroup.dimension_cusp_forms",
         "path": "src/baselib/modular.py",
-        "line": 258,
+        "line": 270,
         "excerpt": {
-          "start_line": 246,
+          "start_line": 258,
           "text": "    def ncusps(self) -> int:\n        return self._cusps_value\n\n    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#523d40dbb1bee28b-6b86b273ff34fce1",
-          "line": 536,
+          "line": 548,
           "source": "dimension_cusp_forms(Gamma0(11), 2)",
           "want": "1\n",
           "tags": [],
@@ -14566,7 +15162,7 @@
         },
         {
           "id": "src/baselib/modular.py#afbbfc8ae5a1bd04-6b86b273ff34fce1",
-          "line": 538,
+          "line": 550,
           "source": "dimension_cusp_forms(Gamma0(1), 12)",
           "want": "1\n",
           "tags": [],
@@ -14582,7 +15178,7 @@
         },
         {
           "id": "src/baselib/modular.py#acd048704b1adcd2-e3b0c44298fc1c14",
-          "line": 540,
+          "line": 552,
           "source": "eps = DirichletGroup(13).gen(0)^2",
           "want": "",
           "tags": [],
@@ -14598,7 +15194,7 @@
         },
         {
           "id": "src/baselib/modular.py#e9dec85705e2ad32-6b86b273ff34fce1",
-          "line": 541,
+          "line": 553,
           "source": "dimension_cusp_forms(eps, 2)",
           "want": "1\n",
           "tags": [],
@@ -14676,9 +15272,9 @@
         "name": "dimension_eis",
         "qualified": "CongruenceSubgroup.dimension_eis",
         "path": "src/baselib/modular.py",
-        "line": 261,
+        "line": 273,
         "excerpt": {
-          "start_line": 249,
+          "start_line": 261,
           "text": "    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n"
         }
       },
@@ -14746,9 +15342,9 @@
         "name": "dimension_modular_forms",
         "qualified": "CongruenceSubgroup.dimension_modular_forms",
         "path": "src/baselib/modular.py",
-        "line": 264,
+        "line": 276,
         "excerpt": {
-          "start_line": 252,
+          "start_line": 264,
           "text": "    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n\n    def __repr__(self) -> str:\n        if self._level == 1:\n            return \"Modular Group SL(2,Z)\""
         }
       },
@@ -15063,16 +15659,16 @@
         "name": "EisensteinForms",
         "qualified": "EisensteinForms",
         "path": "src/baselib/modular.py",
-        "line": 1514,
+        "line": 1712,
         "excerpt": {
-          "start_line": 1502,
+          "start_line": 1700,
           "text": "        raise TypeError(\"ModularForms requires a congruence subgroup\")\n    weight = _exact_nonnegative_integer(weight, \"weight\")\n    precision = _exact_nonnegative_integer(prec, \"precision\")\n    if base_ring is None:\n        base_ring = sage.QQ\n    if base_ring is not sage.QQ:\n        raise NotImplementedError(\n            \"the initial modular-forms spaces are defined over QQ\"\n        )\n    return ModularFormsSpace(group, weight, base_ring, precision)\n\n\ndef EisensteinForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> EisensteinSubspace:\n    r\"\"\"\n    Construct the Eisenstein subspace of `ModularForms(group, weight)`.\n\n    Basis elements retain their parent and can be expanded later to a\n    different precision with `q_expansion(prec)`.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14~2",
-          "line": 1530,
+          "line": 1728,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -15088,7 +15684,7 @@
         },
         {
           "id": "src/baselib/modular.py#1b21701f388cda2d-e3b0c44298fc1c14",
-          "line": 1531,
+          "line": 1729,
           "source": "b = E.basis(prec=20)[0]",
           "want": "",
           "tags": [],
@@ -15104,7 +15700,7 @@
         },
         {
           "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
-          "line": 1532,
+          "line": 1730,
           "source": "b.q_expansion(100).precision_absolute()",
           "want": "100\n",
           "tags": [],
@@ -15181,16 +15777,16 @@
         "name": "q_expansion",
         "qualified": "EisensteinSeriesElement.q_expansion",
         "path": "src/baselib/modular.py",
-        "line": 868,
+        "line": 1066,
         "excerpt": {
-          "start_line": 856,
+          "start_line": 1054,
           "text": "    def __init__(\n        self,\n        parent: EisensteinSubspace,\n        index: int,\n        precision: int,\n    ) -> None:\n        self._kind = \"EisensteinSeriesElement\"\n        self._parent = parent\n        self._index = index\n        self._display_precision = precision\n        runtime.object.freeze(self)\n\n    def q_expansion(self, prec: Any = None) -> Any:\n        r\"\"\"\n        Return the `q`-expansion to absolute precision `O(q^prec)`.\n\n        ### Parameters\n\n        - `prec` — nonnegative integer; when omitted, use the precision\n          requested when this basis element was constructed.\n\n        ### Examples\n\n        The level-389 weight-2 Eisenstein form can be displayed briefly and\n        then expanded farther without reconstructing its parent:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
-          "line": 883,
+          "line": 1081,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -15206,7 +15802,7 @@
         },
         {
           "id": "src/baselib/modular.py#8399bc92cd631c46-e3b0c44298fc1c14",
-          "line": 884,
+          "line": 1082,
           "source": "b = E.basis(prec=8)[0]",
           "want": "",
           "tags": [],
@@ -15222,7 +15818,7 @@
         },
         {
           "id": "src/baselib/modular.py#337f75dac4f3b63e-a51e5fc544a1400b",
-          "line": 885,
+          "line": 1083,
           "source": "b.q_expansion(5)",
           "want": "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)\n",
           "tags": [],
@@ -15282,9 +15878,9 @@
         "name": "basis",
         "qualified": "ModularFormsSubspace.basis",
         "path": "src/baselib/modular.py",
-        "line": 1064,
+        "line": 1262,
         "excerpt": {
-          "start_line": 1052,
+          "start_line": 1250,
           "text": "\n    old_submodule = old_subspace\n\n    def newforms(self, names: str = \"a\") -> list[Any]:\n        r\"\"\"Return normalized newform Galois packets with exact coefficients.\"\"\"\n        return _qexp_module().modular_forms_newforms(self, names)\n\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:"
         }
       },
@@ -15534,9 +16130,9 @@
         "name": "factor",
         "qualified": "FormattedCharacteristicPolynomial.factor",
         "path": "src/baselib/modular.py",
-        "line": 1589,
+        "line": 1787,
         "excerpt": {
-          "start_line": 1577,
+          "start_line": 1775,
           "text": "    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedCharacteristicPolynomial:\n    def __init__(self, text: str, factorization: str) -> None:\n        self._text = text\n        self._factorization = factorization\n\n    def factor(self) -> FormattedFactorization:\n        return FormattedFactorization(self._factorization)\n\n    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedQExpansion:\n    def __init__(self, text: str) -> None:\n        self._text = text"
         }
       },
@@ -25929,6 +26525,330 @@
     },
     {
       "schema_version": 1,
+      "name": "half_integral_formula_registry",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "half_integral_formula_registry() -> Any",
+      "summary": "Return the bounded, certificate-bearing half-integral formula registry.",
+      "doc": "Return the bounded, certificate-bearing half-integral formula registry.\n\n```sage\nsage: len(half_integral_formula_registry())\n4\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "half_integral_formula_registry",
+        "qualified": "half_integral_formula_registry",
+        "path": "src/baselib/modular.py",
+        "line": 919,
+        "excerpt": {
+          "start_line": 907,
+          "text": "    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_hecke_qexp(\n        series,\n        k,\n        p,\n        chi,\n        prec,\n        variable,\n    )\n\n\ndef half_integral_formula_registry() -> Any:\n    \"\"\"Return the bounded, certificate-bearing half-integral formula registry.\n\n    ```sage\n    sage: len(half_integral_formula_registry())\n    4\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_formula_registry()\n\n\ndef delta_qexp(\n    prec: Any = 10,"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#d36c977fdca91eed-4b227777d4dd1fc6",
+          "line": 923,
+          "source": "len(half_integral_formula_registry())",
+          "want": "4\n",
+          "tags": [],
+          "owner": "half_integral_formula_registry",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#d36c977fdca91eed-4b227777d4dd1fc6",
+            "status": "pass",
+            "actual": "4\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "half_integral_weight_hecke_qexp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "half_integral_weight_hecke_qexp(series: Any, k: Any, p: Any, chi: Any=None, prec: Any=None, variable: str='q') -> Any",
+      "summary": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.",
+      "doc": "Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n```sage\nsage: f = cohen_eisenstein_series_qexp(2, 82)\nsage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)\n7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "half_integral_weight_hecke_qexp",
+        "qualified": "half_integral_weight_hecke_qexp",
+        "path": "src/baselib/modular.py",
+        "line": 893,
+        "excerpt": {
+          "start_line": 881,
+          "text": "    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\n\n    ```sage\n    sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n    []\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)\n\n\ndef half_integral_weight_hecke_qexp(\n    series: Any,\n    k: Any,\n    p: Any,\n    chi: Any = None,\n    prec: Any = None,\n    variable: str = \"q\",\n) -> Any:\n    r\"\"\"Apply $T_{p^2}$ using Shimura's exact coefficient formula.\n\n    ```sage\n    sage: f = cohen_eisenstein_series_qexp(2, 82)\n    sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#eb3186b67e97deea-e3b0c44298fc1c14",
+          "line": 904,
+          "source": "f = cohen_eisenstein_series_qexp(2, 82)",
+          "want": "",
+          "tags": [],
+          "owner": "half_integral_weight_hecke_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#eb3186b67e97deea-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#e5f37975162258ad-3910892471943eac",
+          "line": 905,
+          "source": "half_integral_weight_hecke_qexp(f, 5, 3, prec=5)",
+          "want": "7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n",
+          "tags": [],
+          "owner": "half_integral_weight_hecke_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#e5f37975162258ad-3910892471943eac",
+            "status": "pass",
+            "actual": "7/30 - 7/3*q - 49/3*q^4 + O(q^5)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "half_integral_weight_modform_basis",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "half_integral_weight_modform_basis(chi: Any, k: Any, prec: Any) -> list[Any]",
+      "summary": "Return Sage-compatible Basmaji half-integral cusp expansions.",
+      "doc": "Return Sage-compatible Basmaji half-integral cusp expansions.\n\n```sage\nsage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n[]\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "half_integral_weight_modform_basis",
+        "qualified": "half_integral_weight_modform_basis",
+        "path": "src/baselib/modular.py",
+        "line": 878,
+        "excerpt": {
+          "start_line": 866,
+          "text": ") -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n    ```sage\n    sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\n    sage: (H.weight(), H.dimension())\n    (3/2, 0)\n    ```\n    \"\"\"\n    return _half_integral_module().HalfIntegralWeightModularForms(chi, k, prec)\n\n\ndef half_integral_weight_modform_basis(\n    chi: Any,\n    k: Any,\n    prec: Any,\n) -> list[Any]:\n    \"\"\"Return Sage-compatible Basmaji half-integral cusp expansions.\n\n    ```sage\n    sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)\n    []\n    ```\n    \"\"\"\n    return _half_integral_module().half_integral_weight_modform_basis(chi, k, prec)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#26c8a7b19766b45d-4f53cda18c2baa0c",
+          "line": 886,
+          "source": "half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)",
+          "want": "[]\n",
+          "tags": [],
+          "owner": "half_integral_weight_modform_basis",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#26c8a7b19766b45d-4f53cda18c2baa0c",
+            "status": "pass",
+            "actual": "[]\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "HalfIntegralWeightModularForms",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "HalfIntegralWeightModularForms(chi: Any, k: Any, prec: Any=10) -> Any",
+      "summary": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.",
+      "doc": "Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n```sage\nsage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\nsage: (H.weight(), H.dimension())\n(3/2, 0)\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "HalfIntegralWeightModularForms",
+        "qualified": "HalfIntegralWeightModularForms",
+        "path": "src/baselib/modular.py",
+        "line": 862,
+        "excerpt": {
+          "start_line": 850,
+          "text": "    sage: cohen_eisenstein_series_certificate(2, 12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().cohen_eisenstein_series_certificate(\n        r,\n        prec,\n        variable,\n        **opts,\n    )\n\n\ndef HalfIntegralWeightModularForms(\n    chi: Any,\n    k: Any,\n    prec: Any = 10,\n) -> Any:\n    r\"\"\"Construct the certified cusp space $S_{k/2}(\\Gamma_0(N),\\chi)$.\n\n    ```sage\n    sage: H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)\n    sage: (H.weight(), H.dimension())\n    (3/2, 0)\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#44f649fa8bcea764-e3b0c44298fc1c14",
+          "line": 870,
+          "source": "H = HalfIntegralWeightModularForms(list(DirichletGroup(16))[4], 3)",
+          "want": "",
+          "tags": [],
+          "owner": "HalfIntegralWeightModularForms",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#44f649fa8bcea764-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
+          }
+        },
+        {
+          "id": "src/baselib/modular.py#417bff22d9b51e02-6ee662be6ae42850",
+          "line": 871,
+          "source": "(H.weight(), H.dimension())",
+          "want": "(3/2, 0)\n",
+          "tags": [],
+          "owner": "HalfIntegralWeightModularForms",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#417bff22d9b51e02-6ee662be6ae42850",
+            "status": "pass",
+            "actual": "(3/2, 0)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "help",
       "aliases": [],
       "kind": "function",
@@ -27914,16 +28834,16 @@
         "name": "ModularForms",
         "qualified": "ModularForms",
         "path": "src/baselib/modular.py",
-        "line": 1470,
+        "line": 1668,
         "excerpt": {
-          "start_line": 1458,
+          "start_line": 1656,
           "text": "            + \" for \"\n            + str(self._group)\n            + \" of weight \"\n            + str(self._weight)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSpace:\n    r\"\"\"\n    Construct the implemented ambient space of modular forms.\n\n    `group` is a level or congruence subgroup, `weight` is nonnegative,\n    and `prec` controls the default displayed q-expansion precision.\n    Initial ambient spaces are exact over `QQ`."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
-          "line": 1487,
+          "line": 1685,
           "source": "M = ModularForms(Gamma0(11), 2)",
           "want": "",
           "tags": [],
@@ -27939,7 +28859,7 @@
         },
         {
           "id": "src/baselib/modular.py#2bfe9bbec3425b17-d4735e3a265e16ee",
-          "line": 1488,
+          "line": 1686,
           "source": "M.dimension()",
           "want": "2\n",
           "tags": [],
@@ -27955,7 +28875,7 @@
         },
         {
           "id": "src/baselib/modular.py#3cfe7569fb8876d8-6b86b273ff34fce1",
-          "line": 1490,
+          "line": 1688,
           "source": "M.cuspidal_subspace().dimension()",
           "want": "1\n",
           "tags": [],
@@ -28031,9 +28951,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 4672,
+        "line": 4884,
         "excerpt": {
-          "start_line": 4660,
+          "start_line": 4872,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -28112,16 +29032,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 3748,
+        "line": 3946,
         "excerpt": {
-          "start_line": 3736,
+          "start_line": 3934,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 3756,
+          "line": 3954,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -28137,7 +29057,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 3757,
+          "line": 3955,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -28226,9 +29146,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4429,
+        "line": 4641,
         "excerpt": {
-          "start_line": 4417,
+          "start_line": 4629,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -28309,16 +29229,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 4017,
+        "line": 4215,
         "excerpt": {
-          "start_line": 4005,
+          "start_line": 4203,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 4037,
+          "line": 4235,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -28334,7 +29254,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 4038,
+          "line": 4236,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -28350,7 +29270,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 4045,
+          "line": 4243,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -28366,7 +29286,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 4046,
+          "line": 4244,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -28382,7 +29302,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 4047,
+          "line": 4245,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -28472,16 +29392,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 3773,
+        "line": 3971,
         "excerpt": {
-          "start_line": 3761,
+          "start_line": 3959,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 3786,
+          "line": 3984,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -28497,7 +29417,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 3787,
+          "line": 3985,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -28513,7 +29433,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 3788,
+          "line": 3986,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -28577,16 +29497,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2920,
+        "line": 3118,
         "excerpt": {
-          "start_line": 2908,
+          "start_line": 3106,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 4417,
+          "line": 4629,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -28602,7 +29522,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 4418,
+          "line": 4630,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -28691,9 +29611,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4270,
+        "line": 4468,
         "excerpt": {
-          "start_line": 4258,
+          "start_line": 4456,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -28772,9 +29692,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 3851,
+        "line": 4049,
         "excerpt": {
-          "start_line": 3839,
+          "start_line": 4037,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -28860,16 +29780,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4100,
+        "line": 4298,
         "excerpt": {
-          "start_line": 4088,
+          "start_line": 4286,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 4110,
+          "line": 4308,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -28885,7 +29805,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 4111,
+          "line": 4309,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -28901,7 +29821,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 4112,
+          "line": 4310,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -28917,7 +29837,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 4114,
+          "line": 4312,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -29006,9 +29926,9 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 4264,
+        "line": 4462,
         "excerpt": {
-          "start_line": 4252,
+          "start_line": 4450,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
         }
       },
@@ -29088,16 +30008,16 @@
         "name": "q_expansion_basis",
         "qualified": "ModularFormsSubspace.q_expansion_basis",
         "path": "src/baselib/modular.py",
-        "line": 1070,
+        "line": 1268,
         "excerpt": {
-          "start_line": 1058,
+          "start_line": 1256,
           "text": "\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:\n        r\"\"\"Return an exact echelon basis of cusp-form $q$-expansions.\"\"\"\n        if \"var\" in opts:\n            variable = opts[\"var\"]\n        if \"ρσ_py_var\" in opts:\n            variable = opts[\"ρσ_py_var\"]\n        if algorithm == \"default\":"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
-          "line": 4533,
+          "line": 4745,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -29113,7 +30033,7 @@
         },
         {
           "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
-          "line": 4534,
+          "line": 4746,
           "source": "S.q_expansion_basis(6)",
           "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n",
           "tags": [],
@@ -29203,16 +30123,16 @@
         "name": "q_expansion_basis_certificate",
         "qualified": "ModularFormsSubspace.q_expansion_basis_certificate",
         "path": "src/baselib/modular.py",
-        "line": 1131,
+        "line": 1329,
         "excerpt": {
-          "start_line": 1119,
+          "start_line": 1317,
           "text": "                R,\n            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_module(\n            effective_precision,\n            R,\n            \"modular_symbols\",\n        )\n\n    def q_expansion_basis_certificate(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return a replayable formula or Hecke-dual basis certificate.\"\"\"\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            return self.basis_certificate(prec)\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
-          "line": 4604,
+          "line": 4816,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -29228,7 +30148,7 @@
         },
         {
           "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
-          "line": 4605,
+          "line": 4817,
           "source": "C = S.q_expansion_basis_certificate()",
           "want": "",
           "tags": [],
@@ -29244,7 +30164,7 @@
         },
         {
           "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
-          "line": 4606,
+          "line": 4818,
           "source": "(C.dimension(), C.is_sturm_certified(), C.verify())",
           "want": "(1, True, True)\n",
           "tags": [],
@@ -29334,16 +30254,16 @@
         "name": "q_expansion_module",
         "qualified": "ModularFormsSubspace.q_expansion_module",
         "path": "src/baselib/modular.py",
-        "line": 1104,
+        "line": 1302,
         "excerpt": {
-          "start_line": 1092,
+          "start_line": 1290,
           "text": "            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_basis(\n            effective_precision,\n            \"modular_symbols\",\n            variable,\n            **opts,\n        )\n\n    def q_expansion_module(\n        self,\n        prec: Any = None,\n        R: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return the $QQ$-space or saturated $ZZ$-module of expansions.\"\"\"\n        effective_precision = self.precision() if prec is None else prec\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            self._require_level_one_cuspidal_basis()\n            return _qexp_module().formula_q_expansion_module("
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
-          "line": 4580,
+          "line": 4792,
           "source": "S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()",
           "want": "",
           "tags": [],
@@ -29359,7 +30279,7 @@
         },
         {
           "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
-          "line": 4581,
+          "line": 4793,
           "source": "S.q_expansion_module(5, ZZ).basis_matrix()",
           "want": "[ 0  1 -2 -1  2]\n",
           "tags": [],
@@ -29448,9 +30368,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 3898,
+        "line": 4096,
         "excerpt": {
-          "start_line": 3886,
+          "start_line": 4084,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -29968,16 +30888,16 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 3610,
+        "line": 3808,
         "excerpt": {
-          "start_line": 3598,
+          "start_line": 3796,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#27665c6e15d3a040-e3b0c44298fc1c14",
-          "line": 2529,
+          "line": 2727,
           "source": "P = P1List(12)",
           "want": "",
           "tags": [],
@@ -29993,7 +30913,7 @@
         },
         {
           "id": "src/baselib/modular.py#d52a02d377a80ad4-c2356069e9d1e79c",
-          "line": 2530,
+          "line": 2728,
           "source": "len(P)",
           "want": "24\n",
           "tags": [],
@@ -30009,7 +30929,7 @@
         },
         {
           "id": "src/baselib/modular.py#5c880c0c53650549-619e895320f7e770",
-          "line": 2532,
+          "line": 2730,
           "source": "P.normalize(7, 15)",
           "want": "(1, 9)\n",
           "tags": [],
@@ -30025,7 +30945,7 @@
         },
         {
           "id": "src/baselib/modular.py#c2e1ed5fead602dc-4a44dc15364204a8",
-          "line": 2534,
+          "line": 2732,
           "source": "P.apply_S(P.apply_S(10))",
           "want": "10\n",
           "tags": [],
@@ -30089,16 +31009,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2920,
+        "line": 3118,
         "excerpt": {
-          "start_line": 2908,
+          "start_line": 3106,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 2931,
+          "line": 3129,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -30162,9 +31082,9 @@
         "name": "higher_weight_presentation",
         "qualified": "P1List.higher_weight_presentation",
         "path": "src/baselib/modular.py",
-        "line": 2685,
+        "line": 2883,
         "excerpt": {
-          "start_line": 2673,
+          "start_line": 2871,
           "text": "                self._native, self._action_index(index)\n            )\n        )\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        return ManinRelations(self, modulus)\n\n    def manin_presentation(self) -> ManinPresentation:\n        if self._manin_presentation_cache is None:\n            self._manin_presentation_cache = ManinPresentation(self)\n        return self._manin_presentation_cache\n\n    def higher_weight_presentation(\n        self,\n        weight: Any,\n        sign: Any = 0,\n    ) -> Any:\n        \"\"\"Return the exact triple-Manin-symbol presentation over `QQ`.\"\"\"\n        weight = _positive_integer(weight, \"modular-symbol weight\")\n        if weight < 2:\n            raise ValueError(\"modular-symbol weight must be at least 2\")\n        sign = _exact_integer(sign, \"sign\")\n        if sign not in [-1, 0, 1]:\n            raise ValueError(\"sign must be -1, 0, or 1\")\n        key = str(weight) + \":\" + str(sign)"
         }
       },
@@ -34493,16 +35413,16 @@
         "name": "SupersingularModule",
         "qualified": "SupersingularModule",
         "path": "src/baselib/modular.py",
-        "line": 89,
+        "line": 101,
         "excerpt": {
-          "start_line": 77,
+          "start_line": 89,
           "text": "    module = _brandt_module()\n    return module.BrandtModule(\n        D,\n        N,\n        weight,\n        base_ring,\n        use_cache,\n        realization=realization,\n        dense_entry_limit=dense_entry_limit,\n    )\n\n\ndef SupersingularModule(\n    characteristic: Any = 2,\n    level: Any = 1,\n    base_ring: Any = None,\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    \"\"\"Construct the sparse level-one supersingular Brandt module.\n\n    The authoritative Hecke representation is sparse. Calling `matrix()` on\n    an operator is a bounded compatibility operation for small examples.\n\n    ```sage\n    sage: S = SupersingularModule(37)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#0d7572a9a651f00c-e3b0c44298fc1c14",
-          "line": 101,
+          "line": 113,
           "source": "S = SupersingularModule(37)",
           "want": "",
           "tags": [],
@@ -34518,7 +35438,7 @@
         },
         {
           "id": "src/baselib/modular.py#e0cc1038fb9d40ed-4e07408562bedb8b",
-          "line": 102,
+          "line": 114,
           "source": "S.dimension()",
           "want": "3\n",
           "tags": [],
@@ -34534,7 +35454,7 @@
         },
         {
           "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
-          "line": 104,
+          "line": 116,
           "source": "S.T(2) * vector(ZZ, [1, 1, 1])",
           "want": "(3, 3, 3)\n",
           "tags": [],
@@ -34714,6 +35634,298 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "theta_qexp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "theta_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+      "summary": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.",
+      "doc": "Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n```sage\nsage: theta_qexp(6)\n1 + 2*q + 2*q^4 + O(q^6)\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "theta_qexp",
+        "qualified": "theta_qexp",
+        "path": "src/baselib/modular.py",
+        "line": 744,
+        "excerpt": {
+          "start_line": 732,
+          "text": "\n    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(\n        native_value\n    )\n    coefficients = rational_polynomial.coefficients()\n    generator = ring.gen()\n    result = ring(0)\n    for coefficient in reversed(coefficients):\n        result = result * generator + coefficient_ring(coefficient)\n    return result.add_bigoh(precision)\n\n\ndef theta_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n    ```sage\n    sage: theta_qexp(6)\n    1 + 2*q + 2*q^4 + O(q^6)\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",
+          "line": 753,
+          "source": "theta_qexp(6)",
+          "want": "1 + 2*q + 2*q^4 + O(q^6)\n",
+          "tags": [],
+          "owner": "theta_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#fb49fc62b2de3f59-fa70629e534e2a03",
+            "status": "pass",
+            "actual": "1 + 2*q + 2*q^4 + O(q^6)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "theta_qexp_certificate",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "theta_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+      "summary": "Return the replayable standard-theta coefficient certificate.",
+      "doc": "Return the replayable standard-theta coefficient certificate.\n\n```sage\nsage: theta_qexp_certificate(12).verify()\nTrue\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "theta_qexp_certificate",
+        "qualified": "theta_qexp_certificate",
+        "path": "src/baselib/modular.py",
+        "line": 776,
+        "excerpt": {
+          "start_line": 764,
+          "text": "    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n    ```sage\n    sage: theta2_qexp(12)\n    q + q^9 + O(q^12)\n    ```\n    \"\"\"\n    return _half_integral_module().theta2_qexp(prec, K, variable, **opts)\n\n\ndef theta_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable standard-theta coefficient certificate.\n\n    ```sage\n    sage: theta_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#66a000ceaf4810b3-3cbc87c7681f34db",
+          "line": 785,
+          "source": "theta_qexp_certificate(12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "theta_qexp_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#66a000ceaf4810b3-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "theta2_qexp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "theta2_qexp(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+      "summary": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.",
+      "doc": "Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n```sage\nsage: theta2_qexp(12)\nq + q^9 + O(q^12)\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "theta2_qexp",
+        "qualified": "theta2_qexp",
+        "path": "src/baselib/modular.py",
+        "line": 760,
+        "excerpt": {
+          "start_line": 748,
+          "text": "    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact unary theta series $\\sum_{n\\in\\ZZ}q^{n^2}$.\n\n    ```sage\n    sage: theta_qexp(6)\n    1 + 2*q + 2*q^4 + O(q^6)\n    ```\n    \"\"\"\n    return _half_integral_module().theta_qexp(prec, K, variable, **opts)\n\n\ndef theta2_qexp(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return $\\sum_{n>0,\\ n\\text{ odd}}q^{n^2}$ exactly.\n\n    ```sage\n    sage: theta2_qexp(12)\n    q + q^9 + O(q^12)\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#31272cf366612d54-a3ccaba550953bdb",
+          "line": 769,
+          "source": "theta2_qexp(12)",
+          "want": "q + q^9 + O(q^12)\n",
+          "tags": [],
+          "owner": "theta2_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#31272cf366612d54-a3ccaba550953bdb",
+            "status": "pass",
+            "actual": "q + q^9 + O(q^12)\n"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
+      "name": "theta2_qexp_certificate",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.half_integral",
+      "signature": "theta2_qexp_certificate(prec: Any=20, K: Any=None, variable: str='q', **opts: Any) -> Any",
+      "summary": "Return the replayable odd-square theta coefficient certificate.",
+      "doc": "Return the replayable odd-square theta coefficient certificate.\n\n```sage\nsage: theta2_qexp_certificate(12).verify()\nTrue\n```",
+      "tags": [
+        "modular forms",
+        "half-integral weight",
+        "theta series",
+        "Cohen Eisenstein series",
+        "Hecke operators",
+        "Sturm bounds"
+      ],
+      "backends": [
+        "Sage.js exact modular symbols",
+        "FLINT exact rational and cyclotomic linear algebra",
+        "ordinary Python coefficient formulas"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath half_integral.py",
+          "url": "https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery"
+        }
+      ],
+      "references": [],
+      "limitations": [
+        "Basmaji cusp spaces currently require character modulus divisible by 16.",
+        "Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level.",
+        "General Shimura lifts and the complete Kohnen-plus object layer remain future work."
+      ],
+      "source": {
+        "name": "theta2_qexp_certificate",
+        "qualified": "theta2_qexp_certificate",
+        "path": "src/baselib/modular.py",
+        "line": 797,
+        "excerpt": {
+          "start_line": 785,
+          "text": "    sage: theta_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\"\n    return _half_integral_module().theta_qexp_certificate(\n        prec,\n        K,\n        variable,\n        **opts,\n    )\n\n\ndef theta2_qexp_certificate(\n    prec: Any = 20,\n    K: Any = None,\n    variable: str = \"q\",\n    **opts: Any,\n) -> Any:\n    \"\"\"Return the replayable odd-square theta coefficient certificate.\n\n    ```sage\n    sage: theta2_qexp_certificate(12).verify()\n    True\n    ```\n    \"\"\""
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#8632a2c8d53f7707-3cbc87c7681f34db",
+          "line": 806,
+          "source": "theta2_qexp_certificate(12).verify()",
+          "want": "True\n",
+          "tags": [],
+          "owner": "theta2_qexp_certificate",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "id": "src/baselib/modular.py#8632a2c8d53f7707-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -34927,16 +36139,16 @@
         "name": "victor_miller_basis",
         "qualified": "victor_miller_basis",
         "path": "src/baselib/modular.py",
-        "line": 750,
+        "line": 948,
         "excerpt": {
-          "start_line": 738,
+          "start_line": 936,
           "text": "    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n    ```\n    \"\"\"\n    return _qexp_module().delta_qexp(prec, variable, K, **opts)\n\n\ndef victor_miller_basis(\n    k: Any,\n    prec: Any = 10,\n    cusp_only: bool = False,\n    variable: str = \"q\",\n    **opts: Any,\n) -> list[Any]:\n    r\"\"\"Return the integral Victor Miller basis in level $1$ and weight $k$.\n\n    ### Examples\n\n    ```sage\n    sage: victor_miller_basis(12, 5)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#56a3e6c3efa8e275-04270e7a5b807270",
-          "line": 762,
+          "line": 960,
           "source": "victor_miller_basis(12, 5)",
           "want": "[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]\n",
           "tags": [],
@@ -35073,23 +36285,23 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 299,
-      "with_docstring": 299,
-      "with_summary": 299,
-      "with_tags": 299,
-      "with_backend": 299,
-      "with_provenance": 299,
-      "with_compatibility_notes": 299,
+      "registry_entries": 309,
+      "with_docstring": 309,
+      "with_summary": 309,
+      "with_tags": 309,
+      "with_backend": 309,
+      "with_provenance": 309,
+      "with_compatibility_notes": 309,
       "with_references": 94,
-      "markdown_docstrings": 299,
+      "markdown_docstrings": 309,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 204,
+      "entries_with_examples": 214,
       "entries_without_examples": 95,
-      "documented": 202,
-      "verified": 196,
+      "documented": 214,
+      "verified": 208,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
