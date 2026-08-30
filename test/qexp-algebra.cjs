@@ -129,6 +129,14 @@ test("formula spans report full and proper subspaces honestly", async () => {
       "[2, 2, True, True, 2, 5, 4, 5, True, True]",
     );
 
+    assert.equal(
+      (await session.evaluate("BF")).repr,
+      "Certified formula-generated proper subspace of dimension 4 of " +
+        "Cuspidal subspace of dimension 5 of Modular Forms space of " +
+        "dimension 7 for Congruence Subgroup Gamma0(2) of weight 24 " +
+        "over Rational Field",
+    );
+
     await assert.rejects(
       session.evaluate("CuspForms(2,24).q_expansion_basis(8,algorithm='formulas')"),
       /certify only a proper subspace of dimension 4 in ambient dimension 5/,

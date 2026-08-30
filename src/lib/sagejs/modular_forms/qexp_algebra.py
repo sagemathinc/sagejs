@@ -834,8 +834,7 @@ def _series_from_matrix(matrix: Any, precision: int, variable: str) -> list[Any]
     return [ring(row.list()).add_bigoh(precision) for row in matrix.rows()]
 
 
-@runtime.lightweight_math_class
-class CertifiedFormulaSubspace:
+class CertifiedFormulaSubspace(sage.Parent):
     """The exact contained subspace spanned by certified formula candidates."""
 
     def __init__(
@@ -962,18 +961,14 @@ class CertifiedFormulaSubspace:
         return self
 
     def __repr__(self) -> str:
-        label = "full ambient space" if self.is_full_ambient() else "proper subspace"
+        label = "full subspace" if self.is_full_ambient() else "proper subspace"
         return (
             "Certified formula-generated "
             + label
             + " of dimension "
             + str(self.dimension())
-            + " in a cusp space of dimension "
-            + str(self.ambient_dimension())
-            + " at level "
-            + str(self.level())
-            + " and weight "
-            + str(self.weight())
+            + " of "
+            + str(self._ambient)
         )
 
     __str__ = __repr__

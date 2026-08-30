@@ -350,6 +350,8 @@ dimension:
 
 ```sage
 sage: F = CuspForms(2, 24).formula_subspace(prec=8)
+sage: F
+Certified formula-generated proper subspace of dimension 4 of Cuspidal subspace of dimension 5 of Modular Forms space of dimension 7 for Congruence Subgroup Gamma0(2) of weight 24 over Rational Field
 sage: F.dimension(), F.ambient_dimension(), F.is_proper_subspace(), F.verify()
 (4, 5, True, True)
 ```
