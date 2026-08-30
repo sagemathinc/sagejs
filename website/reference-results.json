@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 187,
+    "pass": 194,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -34,16 +34,6 @@
       "id": "src/baselib/graphics3d.py#bd661656eedd781d-0c3a441869f788d9",
       "status": "pass",
       "actual": "Graphics3d Object\n"
-    },
-    {
-      "id": "src/baselib/modular.py#ea6c8141694a4009-e3b0c44298fc1c14",
-      "status": "pass",
-      "actual": ""
-    },
-    {
-      "id": "src/baselib/modular.py#4210b4dea9968116-280b0051a65ba3fb",
-      "status": "pass",
-      "actual": "(2, x^2 - x - 6)\n"
     },
     {
       "id": "src/baselib/graphics.py#f39e2c7290ff6bae-441459f59cccc537",
@@ -84,6 +74,16 @@
       "id": "src/baselib/polynomial.py#06c5e7960cda410c-5badf7217b080d99",
       "status": "pass",
       "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+    },
+    {
+      "id": "src/baselib/modular.py#c49ea7b9bb92c689-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#5670fbe72b120815-2fdf166df5e7a97d",
+      "status": "pass",
+      "actual": "(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])\n"
     },
     {
       "id": "src/baselib/modular.py#8f1725c87ba22433-1ca04d43b63acec4",
@@ -770,6 +770,41 @@
       "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
       "status": "pass",
       "actual": "[2, 2, 2, 2, 4, 4, 4, 4]\n"
+    },
+    {
+      "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#af2fb6f84988516a-b5e9ab680a923c0f",
+      "status": "pass",
+      "actual": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]\n"
+    },
+    {
+      "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~3",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#f4aeb5aa7208c1f6-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#449784d892aed5b0-db814fb8aef595e4",
+      "status": "pass",
+      "actual": "(1, True, True)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#dd74d40e2e7466f3-e3b0c44298fc1c14~2",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#34c87c2bfa3e38a6-ed61d37e25515866",
+      "status": "pass",
+      "actual": "[ 0  1 -2 -1  2]\n"
     },
     {
       "id": "src/baselib/graphics.py#e56965e227de7acb-e3b0c44298fc1c14",

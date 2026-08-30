@@ -74,7 +74,7 @@ classical API.
   exact P0A/P0B span comparison on their overlap.
 - [x] Slice 4: coefficient fields, normalized newforms, and composite-level
   old/new spaces.
-- [ ] Slice 5: general Eisenstein-character formulas and character-valued
+- [x] Slice 5: general Eisenstein-character formulas and character-valued
   modular-symbol reconstruction.
 - [ ] Slice 6: theta/Cohen constructions and the first certified
   half-integral-weight spaces.
@@ -105,7 +105,9 @@ classical API.
 - [x] Ambient cuspidal, new, old, and simple Hecke subspaces.
 - [x] Composite levels, including repeated prime factors and bad-prime
   operators.
-- [ ] Dirichlet-character spaces over their exact cyclotomic value fields.
+- [x] Dirichlet-character cusp spaces over their exact cyclotomic value
+  fields, including full sign-zero and directly constructed signed spaces;
+  arbitrary proper sign-zero subspaces remain excluded.
 - [ ] $\Gamma_1(N)$ via its exact character decomposition or an equally
   audited direct construction.
 - [ ] A declared bounded domain for weight $1$, or an explicit fail-closed
@@ -172,11 +174,12 @@ many coefficients and an independently known dimension.
 
 #### Formula families
 
-- [ ] General Eisenstein series $E_k(\chi,\psi)$, including exact generalized
+- [x] General Eisenstein series $E_k(\chi,\psi)$, including exact generalized
   Bernoulli constant terms and the correct parity/conductor conditions.
-- [x] Primitive-pair first slice of $E_k(\chi,\psi)(q^t)$ with exact
-  cyclotomic coefficients, generalized Bernoulli constant terms, and parity
-  rejection; imprimitive character reduction remains.
+- [x] Primitive and imprimitive inputs for $E_k(\chi,\psi)(q^t)$, with exact
+  cyclotomic coefficients, reduction to primitive inducing characters,
+  generalized Bernoulli constant terms, parity rejection, and fail-closed
+  exclusion of the quasimodular $E_2(1,1)$ case.
 - [ ] Degeneracy images of Eisenstein and cusp forms at higher levels.
 - [x] Level-$1$ generators $E_4$, $E_6$, and $\Delta$, with the relation
   $E_4^3-E_6^2=1728\Delta$ checked exactly.
@@ -272,12 +275,12 @@ many coefficients and an independently known dimension.
 - [ ] Cover a higher-weight trivial-character space of dimension greater than
   one.
 - [ ] Cover quadratic and higher-degree coefficient fields.
-- [ ] Cover nontrivial primitive and imprimitive Dirichlet characters.
+- [x] Cover nontrivial primitive and imprimitive Dirichlet characters.
 - [ ] Cover old/new decompositions at levels $p$, $p^2$, $pq$, and a level
   with several degeneracy sources.
 - [ ] Cover a repeated anemic eigensystem that must be separated using bad
   primes or additional operators.
-- [ ] Cover exact Eisenstein series with nontrivial characters and compare
+- [x] Cover exact Eisenstein series with nontrivial characters and compare
   generalized Bernoulli constant terms.
 - [ ] Cover eta-product and quadratic-theta-series bases with independently
   verified cusp behavior and dimensions.

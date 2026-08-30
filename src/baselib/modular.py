@@ -663,6 +663,21 @@ def eisenstein_series_qexp(
     normalization: str = "linear",
     **opts: Any,
 ) -> Any:
+    r"""Return an exact Eisenstein-series $q$-expansion.
+
+    With `chi` and `psi`, this constructs $E_k(\chi,\psi)(q^t)$ and
+    canonically replaces imprimitive inputs by their primitive inducing
+    characters.
+
+    ### Examples
+
+    ```sage
+    sage: chi = list(DirichletGroup(4))[1]
+    sage: one = DirichletGroup(1)(1)
+    sage: eisenstein_series_qexp(3, 6, chi=one, psi=chi)
+    -1/4 + q + q^2 - 8*q^3 + q^4 + 26*q^5 + O(q^6)
+    ```
+    """
     character_left = opts["chi"] if "chi" in opts else None
     character_right = opts["psi"] if "psi" in opts else None
     if character_left is not None or character_right is not None:
@@ -1529,7 +1544,16 @@ def CuspForms(
     use_cache: bool = True,
     prec: Any = 6,
 ) -> ModularFormsSubspace:
-    r"""Construct the cuspidal subspace of `ModularForms(group, weight)`."""
+    r"""Construct the cuspidal subspace of `ModularForms(group, weight)`.
+
+    ### Examples
+
+    ```sage
+    sage: S = CuspForms(11, 2)
+    sage: (S.dimension(), S.q_expansion_basis(6))
+    (1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])
+    ```
+    """
     ambient = ModularForms(group, weight, base_ring, use_cache, prec)
     return ambient.cuspidal_subspace()
 
@@ -4498,19 +4522,25 @@ class ModularSymbolsSpace(sage.Parent):
     ) -> list[Any]:
         r"""Return an echelon basis of associated cusp-form expansions.
 
-        Trivial-character $\Gamma_0(N)$ spaces over $\QQ$ use exact Hecke-dual
-        reconstruction. The returned power series retain opaque FLINT
-        polynomial storage; only their public coefficient views are
-        materialized on demand.
+        Trivial- and Dirichlet-character $\Gamma_0(N)$ spaces use exact
+        Hecke-dual reconstruction over their coefficient field. The returned
+        power series retain opaque FLINT polynomial storage; only their public
+        coefficient views are materialized on demand.
+
+        ### Examples
+
+        ```sage
+        sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+        sage: S.q_expansion_basis(6)
+        [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]
+        ```
         """
         if "var" in opts:
             variable = opts["var"]
         if "ρσ_py_var" in opts:
             variable = opts["ρσ_py_var"]
-        if (
-            self._character is None
-            and self._group._family == "Gamma0"
-            and self.base_ring() is sage.QQ
+        if self._group._family == "Gamma0" and (
+            self._character is not None or self.base_ring() is sage.QQ
         ):
             return _qexp_module().modular_symbols_q_expansion_basis(
                 self,
@@ -4532,15 +4562,6 @@ class ModularSymbolsSpace(sage.Parent):
             for coefficient in reversed(coefficients):
                 result = result * generator + coefficient
             return [result.add_bigoh(precision)]
-        if key == "character-13-2-cusp" and precision == 10:
-            return [
-                FormattedQExpansion(
-                    "q + (-zeta6 - 1)*q^2 + (2*zeta6 - 2)*q^3 "
-                    "+ zeta6*q^4 + (-2*zeta6 + 1)*q^5 "
-                    "+ (-2*zeta6 + 4)*q^6 + (2*zeta6 - 1)*q^8 "
-                    "- zeta6*q^9 + O(q^10)"
-                )
-            ]
         raise NotImplementedError(
             "q-expansion bases are not available for this modular-symbol model"
         )
@@ -4551,11 +4572,18 @@ class ModularSymbolsSpace(sage.Parent):
         R: Any = None,
         algorithm: str = "default",
     ) -> Any:
-        r"""Return the $\QQ$-space or saturated $\ZZ$-module of expansions."""
-        if (
-            self._character is None
-            and self._group._family == "Gamma0"
-            and self.base_ring() is sage.QQ
+        r"""Return the coefficient module of the expansions.
+
+        ### Examples
+
+        ```sage
+        sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+        sage: S.q_expansion_module(5, ZZ).basis_matrix()
+        [ 0  1 -2 -1  2]
+        ```
+        """
+        if self._group._family == "Gamma0" and (
+            self._character is not None or self.base_ring() is sage.QQ
         ):
             return _qexp_module().modular_symbols_q_expansion_module(
                 self,
@@ -4568,11 +4596,19 @@ class ModularSymbolsSpace(sage.Parent):
         )
 
     def q_expansion_basis_certificate(self, prec: Any = None) -> Any:
-        r"""Return a replayable Sturm certificate for a cusp-form basis."""
-        if (
-            self._character is None
-            and self._group._family == "Gamma0"
-            and self.base_ring() is sage.QQ
+        r"""Return a replayable Sturm certificate for a cusp-form basis.
+
+        ### Examples
+
+        ```sage
+        sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+        sage: C = S.q_expansion_basis_certificate()
+        sage: (C.dimension(), C.is_sturm_certified(), C.verify())
+        (1, True, True)
+        ```
+        """
+        if self._group._family == "Gamma0" and (
+            self._character is not None or self.base_ring() is sage.QQ
         ):
             return _qexp_module().modular_symbols_q_expansion_certificate(self, prec)
         raise NotImplementedError(
@@ -5272,13 +5308,14 @@ _modular_symbols_qexp_doc = _modular_symbols_method_doc(
 _modular_symbols_qexp_doc["sage_compatibility"] = {
     "status": "compatible",
     "notes": (
-        "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 "
-        "and arbitrary weights at least two, all signs, and caller-selected "
-        "precision. Sign-zero spaces use the common signed Hecke module."
+        "Gamma0 cusp spaces with trivial or Dirichlet character support "
+        "weights at least two, all signs, caller-selected precision, and "
+        "their exact rational or cyclotomic coefficient field. Sign-zero "
+        "spaces use the common signed Hecke module."
     ),
 }
 _modular_symbols_qexp_doc["limitations"] = [
-    "Character-valued and arbitrary proper sign-zero subspaces are not yet supported.",
+    "Arbitrary proper sign-zero subspaces are not yet supported.",
 ]
 runtime.register_doc(
     "ModularSymbolsSpace.q_expansion_basis",

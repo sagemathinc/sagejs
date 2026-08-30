@@ -102,6 +102,54 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
   }
 });
 
+test("character Hecke-dual q-expansions match Sage exactly", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = list(DirichletGroup(13))[2]",
+            "S = ModularSymbols(e,4,sign=1).cuspidal_submodule()",
+            "C = S.q_expansion_basis_certificate(8)",
+            "[S.q_expansion_basis(8), S.q_expansion_module(8).base_ring(),",
+            " C.dimension(), C.verify(), C.is_sturm_certified()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[q + (-zeta6 + 1)*q^3 - 2*zeta6*q^4 + " +
+        "(4*zeta6 - 2)*q^5 + (6*zeta6 - 12)*q^6 + " +
+        "(zeta6 - 2)*q^7 + O(q^8), q^2 + (2*zeta6 - 1)*q^3 + " +
+        "(-zeta6 - 1)*q^4 - 3*zeta6*q^5 + " +
+        "(-4*zeta6 + 4)*q^6 + (7*zeta6 - 7)*q^7 + O(q^8)], " +
+        "Cyclotomic Field of order 6 and degree 2, 2, True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = list(DirichletGroup(12))[1]",
+            "S = ModularSymbols(e,3,sign=1).cuspidal_submodule()",
+            "[e.conductor(), S.q_expansion_basis(8)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[4, [q - q^3 - 4*q^4 - 2*q^5 + 4*q^6 + 4*q^7 + " +
+        "O(q^8), q^2 - q^3 - 2*q^4 + q^6 + 4*q^7 + O(q^8)]]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "e=list(DirichletGroup(13))[2]\n" +
+          "ModularSymbols(e,4,sign=1).cuspidal_submodule()" +
+          ".q_expansion_module(8,QQ)",
+      ),
+      /exact coefficient field/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("Gamma0 cusp q-expansion bases match Sage in weights 2 and 4", async () => {
   const session = await createSage();
   try {
