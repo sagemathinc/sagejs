@@ -848,6 +848,66 @@
       },
       {
         "schema_version": 1,
+        "name": "CuspForms",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.constructor",
+        "signature": "CuspForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> ModularFormsSubspace",
+        "summary": "Construct the cuspidal subspace of `ModularForms(group, weight)`.",
+        "doc": "Construct the cuspidal subspace of `ModularForms(group, weight)`.",
+        "tags": [
+          "modular forms",
+          "spaces",
+          "cusp forms",
+          "q-expansions",
+          "modular symbols"
+        ],
+        "backends": [
+          "FLINT",
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "extension",
+          "notes": "The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular forms API",
+            "url": "https://doc.sagemath.org/html/en/reference/modfrm/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "library-backed",
+            "source": "FLINT exact arithmetic",
+            "url": "https://flintlib.org/"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Lightweight parent-aware modular-form implementation"
+          }
+        ],
+        "references": [
+          {
+            "id": "flint",
+            "title": "FLINT: Fast Library for Number Theory",
+            "type": "software",
+            "authors": [
+              "The FLINT contributors"
+            ],
+            "url": "https://flintlib.org/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
+        },
+        "limitations": [
+          "Only QQ is currently accepted as the ambient base ring.",
+          "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "cylindrical_plot3d",
         "aliases": [],
         "kind": "function",
@@ -887,6 +947,61 @@
           "algorithm": "Semantic 3D primitives with Plotly rendering"
         },
         "limitations": []
+      },
+      {
+        "schema_version": 1,
+        "name": "delta_qexp",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.vm_basis",
+        "signature": "delta_qexp(prec: Any=10, variable: str='q', K: Any=None, **opts: Any) -> Any",
+        "summary": "Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.",
+        "doc": "Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n### Examples\n\n```sage\nsage: delta_qexp(6)\nq - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n```",
+        "tags": [
+          "modular forms",
+          "q-expansions",
+          "level one",
+          "Delta",
+          "cusp forms"
+        ],
+        "backends": [
+          "FLINT",
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath Victor Miller basis",
+            "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "The graded-ring identity QQ[E4,E6]"
+          }
+        ],
+        "references": [
+          {
+            "id": "stein-modform",
+            "title": "Modular Forms: A Computational Approach",
+            "type": "book",
+            "authors": [
+              "William Stein"
+            ],
+            "year": 2007,
+            "url": "https://wstein.org/books/modform/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization"
+        },
+        "limitations": [
+          "This first exact formula algebra is level one over QQ."
+        ]
       },
       {
         "schema_version": 1,
@@ -1583,11 +1698,11 @@
           }
         ],
         "implementation": {
-          "algorithm": "Exact dimension formulas and native Eisenstein coefficient generation"
+          "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
         },
         "limitations": [
           "Only QQ is currently accepted as the ambient base ring.",
-          "General Hecke operators and cusp-form bases are not implemented."
+          "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
         ]
       },
       {
@@ -7774,11 +7889,11 @@
           }
         ],
         "implementation": {
-          "algorithm": "Exact dimension formulas and native Eisenstein coefficient generation"
+          "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
         },
         "limitations": [
           "Only QQ is currently accepted as the ambient base ring.",
-          "General Hecke operators and cusp-form bases are not implemented."
+          "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
         ]
       },
       {
@@ -8451,6 +8566,219 @@
         },
         "limitations": [
           "This general native implementation currently covers weight 2, Gamma0, and trivial character."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "ModularSymbolsSpace.q_expansion_basis",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.modular.modsym.space",
+        "signature": "q_expansion_basis(prec: Any=None, algorithm: str='default', variable: str='q', **opts: Any) -> list[Any]",
+        "summary": "Return an echelon basis of associated cusp-form expansions.",
+        "doc": "Return an echelon basis of associated cusp-form expansions.\n\nTrivial-character $\\Gamma_0(N)$ spaces over $\\QQ$ use exact Hecke-dual\nreconstruction. The returned power series retain opaque FLINT\npolynomial storage; only their public coefficient views are\nmaterialized on demand.",
+        "tags": [
+          "number theory",
+          "modular symbols",
+          "cusp forms",
+          "q-expansions",
+          "Hecke operators",
+          "Sturm bound"
+        ],
+        "backends": [
+          "Sage.js portable C modular-symbol core",
+          "FLINT exact matrices"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular-symbol API",
+            "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "software-derived",
+            "source": "PARI/GP src/basemath/modsym.c",
+            "revision": "0f5a08ee7e",
+            "url": "https://pari.math.u-bordeaux.fr/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Portable preallocated coordinate and subspace adapter"
+          }
+        ],
+        "references": [
+          {
+            "id": "stein-modform",
+            "title": "Modular Forms: A Computational Approach",
+            "type": "book",
+            "authors": [
+              "William Stein"
+            ],
+            "url": "https://wstein.org/books/modform/"
+          },
+          {
+            "id": "cremona-algorithms",
+            "title": "Algorithms for Modular Elliptic Curves",
+            "type": "book",
+            "authors": [
+              "John Cremona"
+            ],
+            "url": "https://johncremona.github.io/book/fulltext/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+        },
+        "limitations": [
+          "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "ModularSymbolsSpace.q_expansion_basis_certificate",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.modular.modsym.space",
+        "signature": "q_expansion_basis_certificate(prec: Any=None) -> Any",
+        "summary": "Return a replayable Sturm certificate for a cusp-form basis.",
+        "doc": "Return a replayable Sturm certificate for a cusp-form basis.",
+        "tags": [
+          "number theory",
+          "modular symbols",
+          "cusp forms",
+          "q-expansions",
+          "Hecke operators",
+          "Sturm bound"
+        ],
+        "backends": [
+          "Sage.js portable C modular-symbol core",
+          "FLINT exact matrices"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular-symbol API",
+            "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "software-derived",
+            "source": "PARI/GP src/basemath/modsym.c",
+            "revision": "0f5a08ee7e",
+            "url": "https://pari.math.u-bordeaux.fr/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Portable preallocated coordinate and subspace adapter"
+          }
+        ],
+        "references": [
+          {
+            "id": "stein-modform",
+            "title": "Modular Forms: A Computational Approach",
+            "type": "book",
+            "authors": [
+              "William Stein"
+            ],
+            "url": "https://wstein.org/books/modform/"
+          },
+          {
+            "id": "cremona-algorithms",
+            "title": "Algorithms for Modular Elliptic Curves",
+            "type": "book",
+            "authors": [
+              "John Cremona"
+            ],
+            "url": "https://johncremona.github.io/book/fulltext/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+        },
+        "limitations": [
+          "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
+        ]
+      },
+      {
+        "schema_version": 1,
+        "name": "ModularSymbolsSpace.q_expansion_module",
+        "aliases": [],
+        "kind": "method",
+        "module": "sage.modular.modsym.space",
+        "signature": "q_expansion_module(prec: Any=None, R: Any=None, algorithm: str='default') -> Any",
+        "summary": "Return the $\\QQ$-space or saturated $\\ZZ$-module of expansions.",
+        "doc": "Return the $\\QQ$-space or saturated $\\ZZ$-module of expansions.",
+        "tags": [
+          "number theory",
+          "modular symbols",
+          "cusp forms",
+          "q-expansions",
+          "Hecke operators",
+          "Sturm bound"
+        ],
+        "backends": [
+          "Sage.js portable C modular-symbol core",
+          "FLINT exact matrices"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath modular-symbol API",
+            "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "software-derived",
+            "source": "PARI/GP src/basemath/modsym.c",
+            "revision": "0f5a08ee7e",
+            "url": "https://pari.math.u-bordeaux.fr/",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "sagejs-original",
+            "source": "Portable preallocated coordinate and subspace adapter"
+          }
+        ],
+        "references": [
+          {
+            "id": "stein-modform",
+            "title": "Modular Forms: A Computational Approach",
+            "type": "book",
+            "authors": [
+              "William Stein"
+            ],
+            "url": "https://wstein.org/books/modform/"
+          },
+          {
+            "id": "cremona-algorithms",
+            "title": "Algorithms for Modular Elliptic Curves",
+            "type": "book",
+            "authors": [
+              "John Cremona"
+            ],
+            "url": "https://johncremona.github.io/book/fulltext/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+        },
+        "limitations": [
+          "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
         ]
       },
       {
@@ -11830,6 +12158,61 @@
       },
       {
         "schema_version": 1,
+        "name": "victor_miller_basis",
+        "aliases": [],
+        "kind": "function",
+        "module": "sage.modular.modform.vm_basis",
+        "signature": "victor_miller_basis(k: Any, prec: Any=10, cusp_only: bool=False, variable: str='q', **opts: Any) -> list[Any]",
+        "summary": "Return the integral Victor Miller basis in level $1$ and weight $k$.",
+        "doc": "Return the integral Victor Miller basis in level $1$ and weight $k$.\n\n### Examples\n\n```sage\nsage: victor_miller_basis(12, 5)\n[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]\n```",
+        "tags": [
+          "modular forms",
+          "q-expansions",
+          "level one",
+          "Victor Miller basis",
+          "cusp forms"
+        ],
+        "backends": [
+          "FLINT",
+          "Sage.js exact arithmetic"
+        ],
+        "sage_compatibility": {
+          "status": "compatible",
+          "notes": "The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath."
+        },
+        "provenance": [
+          {
+            "kind": "sage-derived",
+            "source": "SageMath Victor Miller basis",
+            "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html",
+            "license": "GPL-2.0-or-later"
+          },
+          {
+            "kind": "literature-implemented",
+            "source": "The graded-ring identity QQ[E4,E6]"
+          }
+        ],
+        "references": [
+          {
+            "id": "stein-modform",
+            "title": "Modular Forms: A Computational Approach",
+            "type": "book",
+            "authors": [
+              "William Stein"
+            ],
+            "year": 2007,
+            "url": "https://wstein.org/books/modform/"
+          }
+        ],
+        "implementation": {
+          "algorithm": "Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization"
+        },
+        "limitations": [
+          "This first exact formula algebra is level one over QQ."
+        ]
+      },
+      {
+        "schema_version": 1,
         "name": "Zmod",
         "aliases": [],
         "kind": "function",
@@ -13123,6 +13506,77 @@
     },
     {
       "schema_version": 1,
+      "name": "CuspForms",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.constructor",
+      "signature": "CuspForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> ModularFormsSubspace",
+      "summary": "Construct the cuspidal subspace of `ModularForms(group, weight)`.",
+      "doc": "Construct the cuspidal subspace of `ModularForms(group, weight)`.",
+      "tags": [
+        "modular forms",
+        "spaces",
+        "cusp forms",
+        "q-expansions",
+        "modular symbols"
+      ],
+      "backends": [
+        "FLINT",
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "extension",
+        "notes": "The supported exact space and q-expansion operations follow SageMath; Sage.js does not yet implement the complete Hecke-module surface."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular forms API",
+          "url": "https://doc.sagemath.org/html/en/reference/modfrm/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "library-backed",
+          "source": "FLINT exact arithmetic",
+          "url": "https://flintlib.org/"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Lightweight parent-aware modular-form implementation"
+        }
+      ],
+      "references": [
+        {
+          "id": "flint",
+          "title": "FLINT: Fast Library for Number Theory",
+          "type": "software",
+          "authors": [
+            "The FLINT contributors"
+          ],
+          "url": "https://flintlib.org/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
+      },
+      "limitations": [
+        "Only QQ is currently accepted as the ambient base ring.",
+        "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
+      ],
+      "source": {
+        "name": "CuspForms",
+        "qualified": "CuspForms",
+        "path": "src/baselib/modular.py",
+        "line": 1476,
+        "excerpt": {
+          "start_line": 1464,
+          "text": "\n    ```sage\n    sage: E = EisensteinForms(389, 2)\n    sage: b = E.basis(prec=20)[0]\n    sage: b.q_expansion(100).precision_absolute()\n    100\n    ```\n    \"\"\"\n    ambient = ModularForms(group, weight, base_ring, use_cache, prec)\n    return ambient.eisenstein_subspace()\n\n\ndef CuspForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSubspace:\n    r\"\"\"Construct the cuspidal subspace of `ModularForms(group, weight)`.\"\"\"\n    ambient = ModularForms(group, weight, base_ring, use_cache, prec)\n    return ambient.cuspidal_subspace()\n\n\ndef Newforms("
+        }
+      },
+      "examples": []
+    },
+    {
+      "schema_version": 1,
       "name": "cylindrical_plot3d",
       "aliases": [],
       "kind": "function",
@@ -13173,6 +13627,88 @@
         }
       },
       "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "delta_qexp",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.vm_basis",
+      "signature": "delta_qexp(prec: Any=10, variable: str='q', K: Any=None, **opts: Any) -> Any",
+      "summary": "Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.",
+      "doc": "Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n### Examples\n\n```sage\nsage: delta_qexp(6)\nq - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n```",
+      "tags": [
+        "modular forms",
+        "q-expansions",
+        "level one",
+        "Delta",
+        "cusp forms"
+      ],
+      "backends": [
+        "FLINT",
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath Victor Miller basis",
+          "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "The graded-ring identity QQ[E4,E6]"
+        }
+      ],
+      "references": [
+        {
+          "id": "stein-modform",
+          "title": "Modular Forms: A Computational Approach",
+          "type": "book",
+          "authors": [
+            "William Stein"
+          ],
+          "year": 2007,
+          "url": "https://wstein.org/books/modform/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization"
+      },
+      "limitations": [
+        "This first exact formula algebra is level one over QQ."
+      ],
+      "source": {
+        "name": "delta_qexp",
+        "qualified": "delta_qexp",
+        "path": "src/baselib/modular.py",
+        "line": 668,
+        "excerpt": {
+          "start_line": 656,
+          "text": "\n    rational_polynomial = sage.PolynomialRing(sage.QQ, variable)._from_native(\n        native_value\n    )\n    coefficients = rational_polynomial.coefficients()\n    generator = ring.gen()\n    result = ring(0)\n    for coefficient in reversed(coefficients):\n        result = result * generator + coefficient_ring(coefficient)\n    return result.add_bigoh(precision)\n\n\ndef delta_qexp(\n    prec: Any = 10,\n    variable: str = \"q\",\n    K: Any = None,\n    **opts: Any,\n) -> Any:\n    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#8f1725c87ba22433-1ca04d43b63acec4",
+          "line": 679,
+          "source": "delta_qexp(6)",
+          "want": "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n",
+          "tags": [],
+          "owner": "delta_qexp",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        }
+      ]
     },
     {
       "schema_version": 1,
@@ -13827,16 +14363,16 @@
         "name": "dimension_cusp_forms",
         "qualified": "CongruenceSubgroup.dimension_cusp_forms",
         "path": "src/baselib/modular.py",
-        "line": 197,
+        "line": 209,
         "excerpt": {
-          "start_line": 185,
+          "start_line": 197,
           "text": "    def ncusps(self) -> int:\n        return self._cusps_value\n\n    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#523d40dbb1bee28b-6b86b273ff34fce1",
-          "line": 475,
+          "line": 487,
           "source": "dimension_cusp_forms(Gamma0(11), 2)",
           "want": "1\n",
           "tags": [],
@@ -13852,7 +14388,7 @@
         },
         {
           "id": "src/baselib/modular.py#afbbfc8ae5a1bd04-6b86b273ff34fce1",
-          "line": 477,
+          "line": 489,
           "source": "dimension_cusp_forms(Gamma0(1), 12)",
           "want": "1\n",
           "tags": [],
@@ -13868,7 +14404,7 @@
         },
         {
           "id": "src/baselib/modular.py#acd048704b1adcd2-e3b0c44298fc1c14",
-          "line": 479,
+          "line": 491,
           "source": "eps = DirichletGroup(13).gen(0)^2",
           "want": "",
           "tags": [],
@@ -13884,7 +14420,7 @@
         },
         {
           "id": "src/baselib/modular.py#e9dec85705e2ad32-6b86b273ff34fce1",
-          "line": 480,
+          "line": 492,
           "source": "dimension_cusp_forms(eps, 2)",
           "want": "1\n",
           "tags": [],
@@ -13962,9 +14498,9 @@
         "name": "dimension_eis",
         "qualified": "CongruenceSubgroup.dimension_eis",
         "path": "src/baselib/modular.py",
-        "line": 200,
+        "line": 212,
         "excerpt": {
-          "start_line": 188,
+          "start_line": 200,
           "text": "    def nregcusps(self) -> int:\n        return self._regular_cusps_value\n\n    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n"
         }
       },
@@ -14032,9 +14568,9 @@
         "name": "dimension_modular_forms",
         "qualified": "CongruenceSubgroup.dimension_modular_forms",
         "path": "src/baselib/modular.py",
-        "line": 203,
+        "line": 215,
         "excerpt": {
-          "start_line": 191,
+          "start_line": 203,
           "text": "    def nirregcusps(self) -> int:\n        return self.ncusps() - self.nregcusps()\n\n    def genus(self) -> int:\n        return self._genus_value\n\n    def dimension_cusp_forms(self, weight: Any = 2) -> int:\n        return dimension_cusp_forms(self, weight)\n\n    def dimension_eis(self, weight: Any = 2) -> int:\n        return dimension_eis(self, weight)\n\n    def dimension_modular_forms(self, weight: Any = 2) -> int:\n        return dimension_modular_forms(self, weight)\n\n    def __eq__(self, other: object) -> bool:\n        return (\n            isinstance(other, CongruenceSubgroup)\n            and self._family == other._family\n            and self._level == other._level\n        )\n\n    def __repr__(self) -> str:\n        if self._level == 1:\n            return \"Modular Group SL(2,Z)\""
         }
       },
@@ -14339,26 +14875,26 @@
         }
       ],
       "implementation": {
-        "algorithm": "Exact dimension formulas and native Eisenstein coefficient generation"
+        "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
       },
       "limitations": [
         "Only QQ is currently accepted as the ambient base ring.",
-        "General Hecke operators and cusp-form bases are not implemented."
+        "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
       ],
       "source": {
         "name": "EisensteinForms",
         "qualified": "EisensteinForms",
         "path": "src/baselib/modular.py",
-        "line": 1076,
+        "line": 1450,
         "excerpt": {
-          "start_line": 1064,
+          "start_line": 1438,
           "text": "        raise TypeError(\"ModularForms requires a congruence subgroup\")\n    weight = _exact_nonnegative_integer(weight, \"weight\")\n    precision = _exact_nonnegative_integer(prec, \"precision\")\n    if base_ring is None:\n        base_ring = sage.QQ\n    if base_ring is not sage.QQ:\n        raise NotImplementedError(\n            \"the initial modular-forms spaces are defined over QQ\"\n        )\n    return ModularFormsSpace(group, weight, base_ring, precision)\n\n\ndef EisensteinForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> EisensteinSubspace:\n    r\"\"\"\n    Construct the Eisenstein subspace of `ModularForms(group, weight)`.\n\n    Basis elements retain their parent and can be expanded later to a\n    different precision with `q_expansion(prec)`.\n"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14~2",
-          "line": 1092,
+          "line": 1466,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -14374,7 +14910,7 @@
         },
         {
           "id": "src/baselib/modular.py#1b21701f388cda2d-e3b0c44298fc1c14",
-          "line": 1093,
+          "line": 1467,
           "source": "b = E.basis(prec=20)[0]",
           "want": "",
           "tags": [],
@@ -14390,7 +14926,7 @@
         },
         {
           "id": "src/baselib/modular.py#a58cba3a14881509-ad57366865126e55",
-          "line": 1094,
+          "line": 1468,
           "source": "b.q_expansion(100).precision_absolute()",
           "want": "100\n",
           "tags": [],
@@ -14467,16 +15003,16 @@
         "name": "q_expansion",
         "qualified": "EisensteinSeriesElement.q_expansion",
         "path": "src/baselib/modular.py",
-        "line": 722,
+        "line": 804,
         "excerpt": {
-          "start_line": 710,
+          "start_line": 792,
           "text": "    def __init__(\n        self,\n        parent: EisensteinSubspace,\n        index: int,\n        precision: int,\n    ) -> None:\n        self._kind = \"EisensteinSeriesElement\"\n        self._parent = parent\n        self._index = index\n        self._display_precision = precision\n        runtime.object.freeze(self)\n\n    def q_expansion(self, prec: Any = None) -> Any:\n        r\"\"\"\n        Return the `q`-expansion to absolute precision `O(q^prec)`.\n\n        ### Parameters\n\n        - `prec` — nonnegative integer; when omitted, use the precision\n          requested when this basis element was constructed.\n\n        ### Examples\n\n        The level-389 weight-2 Eisenstein form can be displayed briefly and\n        then expanded farther without reconstructing its parent:"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#fcae88bf1b380c12-e3b0c44298fc1c14",
-          "line": 737,
+          "line": 819,
           "source": "E = EisensteinForms(389, 2)",
           "want": "",
           "tags": [],
@@ -14492,7 +15028,7 @@
         },
         {
           "id": "src/baselib/modular.py#8399bc92cd631c46-e3b0c44298fc1c14",
-          "line": 738,
+          "line": 820,
           "source": "b = E.basis(prec=8)[0]",
           "want": "",
           "tags": [],
@@ -14508,7 +15044,7 @@
         },
         {
           "id": "src/baselib/modular.py#337f75dac4f3b63e-a51e5fc544a1400b",
-          "line": 739,
+          "line": 821,
           "source": "b.q_expansion(5)",
           "want": "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)\n",
           "tags": [],
@@ -14566,12 +15102,12 @@
       "limitations": [],
       "source": {
         "name": "basis",
-        "qualified": "EisensteinSubspace.basis",
+        "qualified": "ModularFormsSubspace.basis",
         "path": "src/baselib/modular.py",
-        "line": 901,
+        "line": 1000,
         "excerpt": {
-          "start_line": 889,
-          "text": "\n    def __getitem__(self, index: int) -> Any:\n        return self._require_basis()[index]\n\n    def gen(self, index: int = 0) -> Any:\n        return self._require_basis()[index]\n\n    def _first_ngens(self, count: int) -> list[Any]:\n        if count > self._dimension:\n            raise ValueError(\"too many Eisenstein generators requested\")\n        return self._require_basis()[:count]\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        r\"\"\"\n        Return a basis of modular forms, optionally with display precision.\n\n        ### Parameters\n\n        - `prec` — nonnegative integer or `None`. If specified, basis\n          entries are displayed to `O(q^prec)`. They retain their parent\n          and can subsequently be expanded to any supported precision with\n          `q_expansion`.\n\n        This optional argument is a convenient Sage.js extension: SageMath's\n        `basis()` currently uses the space's default precision instead."
+          "start_line": 988,
+          "text": "\n    old_submodule = old_subspace\n\n    def newforms(self, names: str = \"a\") -> list[Any]:\n        r\"\"\"Return normalized newform Galois packets with exact coefficients.\"\"\"\n        return _qexp_module().modular_forms_newforms(self, names)\n\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:"
         }
       },
       "examples": []
@@ -14820,9 +15356,9 @@
         "name": "factor",
         "qualified": "FormattedCharacteristicPolynomial.factor",
         "path": "src/baselib/modular.py",
-        "line": 1118,
+        "line": 1516,
         "excerpt": {
-          "start_line": 1106,
+          "start_line": 1504,
           "text": "    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedCharacteristicPolynomial:\n    def __init__(self, text: str, factorization: str) -> None:\n        self._text = text\n        self._factorization = factorization\n\n    def factor(self) -> FormattedFactorization:\n        return FormattedFactorization(self._factorization)\n\n    def __repr__(self) -> str:\n        return self._text\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass FormattedQExpansion:\n    def __init__(self, text: str) -> None:\n        self._text = text"
         }
       },
@@ -27190,26 +27726,26 @@
         }
       ],
       "implementation": {
-        "algorithm": "Exact dimension formulas and native Eisenstein coefficient generation"
+        "algorithm": "Exact dimension formulas, native Eisenstein coefficient generation, and certified level-one Victor Miller bases"
       },
       "limitations": [
         "Only QQ is currently accepted as the ambient base ring.",
-        "General Hecke operators and cusp-form bases are not implemented."
+        "Full ambient and cuspidal q-expansion bases currently require level one; Eisenstein bases also support prime level."
       ],
       "source": {
         "name": "ModularForms",
         "qualified": "ModularForms",
         "path": "src/baselib/modular.py",
-        "line": 1032,
+        "line": 1406,
         "excerpt": {
-          "start_line": 1020,
+          "start_line": 1394,
           "text": "            + \" for \"\n            + str(self._group)\n            + \" of weight \"\n            + str(self._weight)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularForms(\n    group: Any = 1,\n    weight: Any = 2,\n    base_ring: Any = None,\n    use_cache: bool = True,\n    prec: Any = 6,\n) -> ModularFormsSpace:\n    r\"\"\"\n    Construct the implemented ambient space of modular forms.\n\n    `group` is a level or congruence subgroup, `weight` is nonnegative,\n    and `prec` controls the default displayed q-expansion precision.\n    Initial ambient spaces are exact over `QQ`."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#90f6ac1f31cf147f-e3b0c44298fc1c14",
-          "line": 1049,
+          "line": 1423,
           "source": "M = ModularForms(Gamma0(11), 2)",
           "want": "",
           "tags": [],
@@ -27225,7 +27761,7 @@
         },
         {
           "id": "src/baselib/modular.py#2bfe9bbec3425b17-d4735e3a265e16ee",
-          "line": 1050,
+          "line": 1424,
           "source": "M.dimension()",
           "want": "2\n",
           "tags": [],
@@ -27241,7 +27777,7 @@
         },
         {
           "id": "src/baselib/modular.py#3cfe7569fb8876d8-6b86b273ff34fce1",
-          "line": 1052,
+          "line": 1426,
           "source": "M.cuspidal_subspace().dimension()",
           "want": "1\n",
           "tags": [],
@@ -27317,9 +27853,9 @@
         "name": "ModularSymbols",
         "qualified": "ModularSymbols",
         "path": "src/baselib/modular.py",
-        "line": 4101,
+        "line": 4587,
         "excerpt": {
-          "start_line": 4089,
+          "start_line": 4575,
           "text": "            + \") of weight \"\n            + str(self._weight)\n            + \" with sign \"\n            + str(self._sign)\n            + \" over \"\n            + str(self._base)\n        )\n\n    __str__ = __repr__\n    toString = __repr__\n\n\ndef ModularSymbols(\n    group: Any = 1,\n    weight: Any = 2,\n    sign: Any = 0,\n    base_ring: Any = None,\n) -> ModularSymbolsSpace:\n    r\"\"\"\n    Construct a modular-symbol Hecke module.\n\n    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices\n    for every Hecke operator `T_n`. Prime operators are assembled natively\n    from a minimal Manin presentation; general indices use multiplicativity\n    and the weight-2 prime-power recurrence. Higher even weights over `QQ`"
         }
       },
@@ -27398,16 +27934,16 @@
         "name": "boundary_map",
         "qualified": "ModularSymbolsSpace.boundary_map",
         "path": "src/baselib/modular.py",
-        "line": 3251,
+        "line": 3675,
         "excerpt": {
-          "start_line": 3239,
+          "start_line": 3663,
           "text": "        boundary_space = BoundarySymbolsSpace(ambient, cusps)\n        ambient._boundary_data_cache = runtime.math_tuple(\n            [defining_matrix, boundary_space]\n        )\n        return ambient._boundary_data_cache\n\n    def _boundary_matrix(self) -> Any:\n        return self._boundary_data()[0]\n\n    def boundary_space(self) -> BoundarySymbolsSpace:\n        return self._boundary_data()[1]\n\n    def boundary_map(self) -> ModularSymbolsBoundaryMap:\n        r\"\"\"\n        Return the exact map from modular symbols to cusp divisors.\n\n        Rows of the matrix are boundaries of the domain basis vectors. Its\n        kernel is the cuspidal submodule.\n\n        ```sage\n        sage: M = ModularSymbols(11)\n        sage: M.boundary_map().matrix()\n        [ 1 -1]\n        [ 0  0]\n        [ 0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#be246b1bd85db602-e3b0c44298fc1c14",
-          "line": 3259,
+          "line": 3683,
           "source": "M = ModularSymbols(11)",
           "want": "",
           "tags": [],
@@ -27423,7 +27959,7 @@
         },
         {
           "id": "src/baselib/modular.py#88facfb84ea232c1-90ae519c16c23134",
-          "line": 3260,
+          "line": 3684,
           "source": "M.boundary_map().matrix()",
           "want": "[ 1 -1]\n[ 0  0]\n[ 0  0]\n",
           "tags": [],
@@ -27512,9 +28048,9 @@
         "name": "cuspidal_submodule",
         "qualified": "ModularSymbolsSpace.cuspidal_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3932,
+        "line": 4356,
         "excerpt": {
-          "start_line": 3920,
+          "start_line": 4344,
           "text": "        sage: M = ModularSymbols(1000, 2)\n        sage: M.hecke_matrix(6).trace()\n        60\n        ```\n        \"\"\"\n        return self.T(index).matrix()\n\n    def T(self, index: Any) -> HeckeOperator:\n        return HeckeOperator(self, _positive_integer(index, \"Hecke index\"))\n\n    hecke_operator = T\n\n    def cuspidal_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the exact kernel of the boundary map.\"\"\"\n        if self._is_cuspidal:\n            return self\n        if self._supports_native_weight2():\n            if self._cuspidal_cache is None:\n                ambient = self.ambient_module()\n                change = ambient._ambient_change_of_basis()\n                if self.is_ambient():\n                    if change is None:\n                        basis = (\n                            ambient.p1list()\n                            .cuspidal_basis_matrix()"
         }
       },
@@ -27595,16 +28131,16 @@
         "name": "decomposition",
         "qualified": "ModularSymbolsSpace.decomposition",
         "path": "src/baselib/modular.py",
-        "line": 3520,
+        "line": 3944,
         "excerpt": {
-          "start_line": 3508,
+          "start_line": 3932,
           "text": "                    continue\n                constituent = space._subspace_from_local_basis(local_basis, \"Hecke\")\n                if exponent == 1:\n                    finished.append(constituent)\n                else:\n                    remaining.append(constituent)\n        return finished + remaining\n\n    def _bad_hecke_primes(self) -> list[int]:\n        \"\"\"Return the prime divisors whose operators are `U_p`.\"\"\"\n        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]\n\n    def decomposition(\n        self,\n        bound: Any = None,\n        anemic: bool = True,\n        **_kwds: Any,\n    ) -> list[ModularSymbolsSpace]:\n        r\"\"\"Decompose this space into simple modules for Hecke operators.\n\n        The implementation follows the standard modular-symbol algorithm:\n        factor characteristic polynomials of successive `T_p`, and split by\n        the left kernels of their irreducible factors.  A constituent whose\n        restricted characteristic polynomial is irreducible is certified\n        simple as a module for the commutative Hecke algebra."
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#e773e65ae60c2b9f-e3b0c44298fc1c14",
-          "line": 3540,
+          "line": 3964,
           "source": "M = ModularSymbols(389, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -27620,7 +28156,7 @@
         },
         {
           "id": "src/baselib/modular.py#611b234d59ea3095-8559994e24c5cb01",
-          "line": 3541,
+          "line": 3965,
           "source": "[A.dimension() for A in M.decomposition()]",
           "want": "[1, 1, 2, 3, 6, 20]\n",
           "tags": [],
@@ -27636,7 +28172,7 @@
         },
         {
           "id": "src/baselib/modular.py#405518e5fdedddca-e3b0c44298fc1c14",
-          "line": 3548,
+          "line": 3972,
           "source": "G = DirichletGroup(37)",
           "want": "",
           "tags": [],
@@ -27652,7 +28188,7 @@
         },
         {
           "id": "src/baselib/modular.py#858b266f0968cf76-e3b0c44298fc1c14",
-          "line": 3549,
+          "line": 3973,
           "source": "M = ModularSymbols(G.0, 5)",
           "want": "",
           "tags": [],
@@ -27668,7 +28204,7 @@
         },
         {
           "id": "src/baselib/modular.py#8258fe03019e163d-7638ad4d4f4c164d",
-          "line": 3550,
+          "line": 3974,
           "source": "[A.dimension() for A in M.decomposition(bound=2)]",
           "want": "[1, 1, 24]\n",
           "tags": [],
@@ -27758,16 +28294,16 @@
         "name": "degeneracy_map",
         "qualified": "ModularSymbolsSpace.degeneracy_map",
         "path": "src/baselib/modular.py",
-        "line": 3276,
+        "line": 3700,
         "excerpt": {
-          "start_line": 3264,
+          "start_line": 3688,
           "text": "        ```\n        \"\"\"\n        if self._boundary_map_cache is None:\n            if self.is_ambient():\n                defining_matrix = self._boundary_matrix()\n            else:\n                defining_matrix = self.basis_matrix() * self._boundary_matrix()\n            self._boundary_map_cache = ModularSymbolsBoundaryMap(\n                self, self.boundary_space(), defining_matrix\n            )\n        return self._boundary_map_cache\n\n    def degeneracy_map(\n        self,\n        codomain: Any,\n        index: Any = 1,\n    ) -> ModularSymbolsDegeneracyMap:\n        r\"\"\"Return an exact level-lowering degeneracy map.\n\n        `codomain` may be a modular-symbol space or its level. The target\n        must divide this space's level; level-raising maps are not yet\n        implemented. The returned morphism exposes `matrix()`, `rank()`,\n        `kernel()`, `image()`, and evaluation on modular symbols.\n\n        ```sage"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#44bcc9a53bb1591b-e3b0c44298fc1c14",
-          "line": 3289,
+          "line": 3713,
           "source": "M = ModularSymbols(22, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -27783,7 +28319,7 @@
         },
         {
           "id": "src/baselib/modular.py#9fe9ef85d9e7d7c3-e3b0c44298fc1c14",
-          "line": 3290,
+          "line": 3714,
           "source": "d = M.degeneracy_map(11, 1)",
           "want": "",
           "tags": [],
@@ -27799,7 +28335,7 @@
         },
         {
           "id": "src/baselib/modular.py#2e1a3f149e87befa-05d9e5123438e21c",
-          "line": 3291,
+          "line": 3715,
           "source": "(d.matrix().dimensions(), d.rank())",
           "want": "((5, 2), 2)\n",
           "tags": [],
@@ -27863,16 +28399,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2449,
+        "line": 2847,
         "excerpt": {
-          "start_line": 2437,
+          "start_line": 2835,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#1e0fada8cc8c7990-e3b0c44298fc1c14",
-          "line": 3920,
+          "line": 4344,
           "source": "M = ModularSymbols(1000, 2)",
           "want": "",
           "tags": [],
@@ -27888,7 +28424,7 @@
         },
         {
           "id": "src/baselib/modular.py#92b5ba6413319e6f-39fa9ec190eee7b6",
-          "line": 3921,
+          "line": 4345,
           "source": "M.hecke_matrix(6).trace()",
           "want": "60\n",
           "tags": [],
@@ -27977,9 +28513,9 @@
         "name": "minus_submodule",
         "qualified": "ModularSymbolsSpace.minus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3773,
+        "line": 4197,
         "excerpt": {
-          "start_line": 3761,
+          "start_line": 4185,
           "text": "            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:\n        ambient = self.ambient_module()\n        projective_line = ambient.p1list()\n        dimension = ambient.dimension()\n        result = None\n        for prime, exponent in sage.factor(index):\n            p = runtime.number(prime)"
         }
       },
@@ -28058,9 +28594,9 @@
         "name": "modular_symbol",
         "qualified": "ModularSymbolsSpace.modular_symbol",
         "path": "src/baselib/modular.py",
-        "line": 3354,
+        "line": 3778,
         "excerpt": {
-          "start_line": 3342,
+          "start_line": 3766,
           "text": "            raise NotImplementedError(\n                \"degeneracy maps require a native Gamma0 Manin presentation over QQ\"\n            )\n        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)\n        defining_matrix = target.basis_matrix().solve_left(images)\n        return ModularSymbolsDegeneracyMap(\n            self, target, defining_matrix, ambient_matrix, index\n        )\n\n    def cusps(self) -> list[ModularCusp]:\n        return self.boundary_space().cusps()\n\n    def modular_symbol(\n        self,\n        start: Any,\n        stop: Any,\n    ) -> ModularSymbolElement:\n        r\"\"\"\n        Construct the rational path `{start, stop}` as an exact element.\n\n        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.\n        Continued-fraction reduction happens in one native call.\n        \"\"\"\n        ambient = self.ambient_module()\n        if ambient.weight() != 2:"
         }
       },
@@ -28146,16 +28682,16 @@
         "name": "new_submodule",
         "qualified": "ModularSymbolsSpace.new_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3603,
+        "line": 4027,
         "excerpt": {
-          "start_line": 3591,
+          "start_line": 4015,
           "text": "            for prime in self._bad_hecke_primes():\n                answer = self._refine_decomposition_with_operator(answer, prime)\n        for index in range(1, len(answer)):\n            item = answer[index]\n            position = index\n            while position > 0 and answer[position - 1].dimension() > item.dimension():\n                answer[position] = answer[position - 1]\n                position -= 1\n            answer[position] = item\n        self._decomposition_cache.set(key, answer)\n        return answer\n\n    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:\n        r\"\"\"Return the new, or `p`-new, submodule of this space.\n\n        For trivial-character Gamma0 spaces over `QQ`, this computes the\n        intersection of the kernels of the two level-lowering degeneracy\n        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are\n        assembled natively and horizontally joined before taking one exact\n        kernel, following the optimized Magma modular-symbols algorithm.\n\n        ```sage\n        sage: M = ModularSymbols(1000, 2, sign=1)\n        sage: N = M.new_submodule()\n        sage: N.dimension()"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d668c2300b6a68dd-e3b0c44298fc1c14",
-          "line": 3613,
+          "line": 4037,
           "source": "M = ModularSymbols(1000, 2, sign=1)",
           "want": "",
           "tags": [],
@@ -28171,7 +28707,7 @@
         },
         {
           "id": "src/baselib/modular.py#b30e6bf0f0f5ee51-e3b0c44298fc1c14",
-          "line": 3614,
+          "line": 4038,
           "source": "N = M.new_submodule()",
           "want": "",
           "tags": [],
@@ -28187,7 +28723,7 @@
         },
         {
           "id": "src/baselib/modular.py#93c9f0c2cd6d7087-c2356069e9d1e79c",
-          "line": 3615,
+          "line": 4039,
           "source": "N.dimension()",
           "want": "24\n",
           "tags": [],
@@ -28203,7 +28739,7 @@
         },
         {
           "id": "src/baselib/modular.py#e38abd35fcdc37b2-3b01616cb89b0520",
-          "line": 3617,
+          "line": 4041,
           "source": "[A.dimension() for A in N.decomposition()]",
           "want": "[2, 2, 2, 2, 4, 4, 4, 4]\n",
           "tags": [],
@@ -28292,10 +28828,256 @@
         "name": "plus_submodule",
         "qualified": "ModularSymbolsSpace.plus_submodule",
         "path": "src/baselib/modular.py",
-        "line": 3767,
+        "line": 4191,
         "excerpt": {
-          "start_line": 3755,
+          "start_line": 4179,
           "text": "            basis = (\n                eigenspace if self.is_ambient() else self._intersect_basis(eigenspace)\n            )\n        prefix = \"Cuspidal \" if self._is_cuspidal else \"\"\n        result = self._new_coordinate_subspace(\n            basis,\n            prefix + (\"Plus\" if sign == 1 else \"Minus\"),\n            sign,\n        )\n        runtime.reflect.set(self, cache_name, result)\n        return result\n\n    def plus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `+1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(1)\n\n    plus_subspace = plus_submodule\n\n    def minus_submodule(self) -> ModularSymbolsSpace:\n        \"\"\"Return the `-1` eigenspace of the star involution.\"\"\"\n        return self._star_submodule(-1)\n\n    minus_subspace = minus_submodule\n\n    def _native_weight2_hecke_matrix(self, index: int) -> Any:"
+        }
+      },
+      "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "ModularSymbolsSpace.q_expansion_basis",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.modular.modsym.space",
+      "signature": "q_expansion_basis(prec: Any=None, algorithm: str='default', variable: str='q', **opts: Any) -> list[Any]",
+      "summary": "Return an echelon basis of associated cusp-form expansions.",
+      "doc": "Return an echelon basis of associated cusp-form expansions.\n\nTrivial-character $\\Gamma_0(N)$ spaces over $\\QQ$ use exact Hecke-dual\nreconstruction. The returned power series retain opaque FLINT\npolynomial storage; only their public coefficient views are\nmaterialized on demand.",
+      "tags": [
+        "number theory",
+        "modular symbols",
+        "cusp forms",
+        "q-expansions",
+        "Hecke operators",
+        "Sturm bound"
+      ],
+      "backends": [
+        "Sage.js portable C modular-symbol core",
+        "FLINT exact matrices"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular-symbol API",
+          "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "software-derived",
+          "source": "PARI/GP src/basemath/modsym.c",
+          "revision": "0f5a08ee7e",
+          "url": "https://pari.math.u-bordeaux.fr/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Portable preallocated coordinate and subspace adapter"
+        }
+      ],
+      "references": [
+        {
+          "id": "stein-modform",
+          "title": "Modular Forms: A Computational Approach",
+          "type": "book",
+          "authors": [
+            "William Stein"
+          ],
+          "url": "https://wstein.org/books/modform/"
+        },
+        {
+          "id": "cremona-algorithms",
+          "title": "Algorithms for Modular Elliptic Curves",
+          "type": "book",
+          "authors": [
+            "John Cremona"
+          ],
+          "url": "https://johncremona.github.io/book/fulltext/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+      },
+      "limitations": [
+        "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
+      ],
+      "source": {
+        "name": "q_expansion_basis",
+        "qualified": "ModularFormsSubspace.q_expansion_basis",
+        "path": "src/baselib/modular.py",
+        "line": 1006,
+        "excerpt": {
+          "start_line": 994,
+          "text": "\n    def basis_certificate(self, prec: Any = None) -> Any:\n        \"\"\"Return the verified Victor Miller certificate for this cusp space.\"\"\"\n        self._require_level_one_cuspidal_basis()\n        return self._ambient.basis_certificate(prec, cusp_only=True)\n\n    def basis(self, prec: Any = None) -> list[Any]:\n        \"\"\"Return an exact level-one cuspidal Victor Miller basis.\"\"\"\n        return self.basis_certificate(prec).basis()\n\n    gens = basis\n\n    def q_expansion_basis(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n        variable: str = \"q\",\n        **opts: Any,\n    ) -> list[Any]:\n        r\"\"\"Return an exact echelon basis of cusp-form $q$-expansions.\"\"\"\n        if \"var\" in opts:\n            variable = opts[\"var\"]\n        if \"ρσ_py_var\" in opts:\n            variable = opts[\"ρσ_py_var\"]\n        if algorithm == \"default\":"
+        }
+      },
+      "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "ModularSymbolsSpace.q_expansion_basis_certificate",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.modular.modsym.space",
+      "signature": "q_expansion_basis_certificate(prec: Any=None) -> Any",
+      "summary": "Return a replayable Sturm certificate for a cusp-form basis.",
+      "doc": "Return a replayable Sturm certificate for a cusp-form basis.",
+      "tags": [
+        "number theory",
+        "modular symbols",
+        "cusp forms",
+        "q-expansions",
+        "Hecke operators",
+        "Sturm bound"
+      ],
+      "backends": [
+        "Sage.js portable C modular-symbol core",
+        "FLINT exact matrices"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular-symbol API",
+          "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "software-derived",
+          "source": "PARI/GP src/basemath/modsym.c",
+          "revision": "0f5a08ee7e",
+          "url": "https://pari.math.u-bordeaux.fr/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Portable preallocated coordinate and subspace adapter"
+        }
+      ],
+      "references": [
+        {
+          "id": "stein-modform",
+          "title": "Modular Forms: A Computational Approach",
+          "type": "book",
+          "authors": [
+            "William Stein"
+          ],
+          "url": "https://wstein.org/books/modform/"
+        },
+        {
+          "id": "cremona-algorithms",
+          "title": "Algorithms for Modular Elliptic Curves",
+          "type": "book",
+          "authors": [
+            "John Cremona"
+          ],
+          "url": "https://johncremona.github.io/book/fulltext/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+      },
+      "limitations": [
+        "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
+      ],
+      "source": {
+        "name": "q_expansion_basis_certificate",
+        "qualified": "ModularFormsSubspace.q_expansion_basis_certificate",
+        "path": "src/baselib/modular.py",
+        "line": 1067,
+        "excerpt": {
+          "start_line": 1055,
+          "text": "                R,\n            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_module(\n            effective_precision,\n            R,\n            \"modular_symbols\",\n        )\n\n    def q_expansion_basis_certificate(\n        self,\n        prec: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return a replayable formula or Hecke-dual basis certificate.\"\"\"\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            return self.basis_certificate(prec)\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\""
+        }
+      },
+      "examples": []
+    },
+    {
+      "schema_version": 1,
+      "name": "ModularSymbolsSpace.q_expansion_module",
+      "aliases": [],
+      "kind": "method",
+      "module": "sage.modular.modsym.space",
+      "signature": "q_expansion_module(prec: Any=None, R: Any=None, algorithm: str='default') -> Any",
+      "summary": "Return the $\\QQ$-space or saturated $\\ZZ$-module of expansions.",
+      "doc": "Return the $\\QQ$-space or saturated $\\ZZ$-module of expansions.",
+      "tags": [
+        "number theory",
+        "modular symbols",
+        "cusp forms",
+        "q-expansions",
+        "Hecke operators",
+        "Sturm bound"
+      ],
+      "backends": [
+        "Sage.js portable C modular-symbol core",
+        "FLINT exact matrices"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath modular-symbol API",
+          "url": "https://doc.sagemath.org/html/en/reference/modsym/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "software-derived",
+          "source": "PARI/GP src/basemath/modsym.c",
+          "revision": "0f5a08ee7e",
+          "url": "https://pari.math.u-bordeaux.fr/",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "sagejs-original",
+          "source": "Portable preallocated coordinate and subspace adapter"
+        }
+      ],
+      "references": [
+        {
+          "id": "stein-modform",
+          "title": "Modular Forms: A Computational Approach",
+          "type": "book",
+          "authors": [
+            "William Stein"
+          ],
+          "url": "https://wstein.org/books/modform/"
+        },
+        {
+          "id": "cremona-algorithms",
+          "title": "Algorithms for Modular Elliptic Curves",
+          "type": "book",
+          "authors": [
+            "John Cremona"
+          ],
+          "url": "https://johncremona.github.io/book/fulltext/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification"
+      },
+      "limitations": [
+        "Character-valued and arbitrary proper sign-zero subspaces are not yet supported."
+      ],
+      "source": {
+        "name": "q_expansion_module",
+        "qualified": "ModularFormsSubspace.q_expansion_module",
+        "path": "src/baselib/modular.py",
+        "line": 1040,
+        "excerpt": {
+          "start_line": 1028,
+          "text": "            )\n        if algorithm != \"modular_symbols\":\n            raise ValueError(\n                \"q-expansion algorithm must be 'formulas' or 'modular_symbols'\"\n            )\n        return self._modular_symbols_cusp_space().q_expansion_basis(\n            effective_precision,\n            \"modular_symbols\",\n            variable,\n            **opts,\n        )\n\n    def q_expansion_module(\n        self,\n        prec: Any = None,\n        R: Any = None,\n        algorithm: str = \"default\",\n    ) -> Any:\n        r\"\"\"Return the $QQ$-space or saturated $ZZ$-module of expansions.\"\"\"\n        effective_precision = self.precision() if prec is None else prec\n        if algorithm == \"default\":\n            algorithm = \"formulas\" if self.level() == 1 else \"modular_symbols\"\n        if algorithm == \"formulas\":\n            self._require_level_one_cuspidal_basis()\n            return _qexp_module().formula_q_expansion_module("
         }
       },
       "examples": []
@@ -28373,9 +29155,9 @@
         "name": "star_involution",
         "qualified": "ModularSymbolsSpace.star_involution",
         "path": "src/baselib/modular.py",
-        "line": 3401,
+        "line": 3825,
         "excerpt": {
-          "start_line": 3389,
+          "start_line": 3813,
           "text": "                ).transpose()\n        return ambient._star_matrix_cache\n\n    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:\n        if self.is_ambient():\n            return defining_matrix\n        basis = self.basis_matrix()\n        pivot_columns = list(basis.pivots())\n        return basis._sparse_left_multiply(\n            defining_matrix.matrix_from_columns(pivot_columns)\n        )\n\n    def star_involution(self) -> ModularSymbolsLinearOperator:\n        \"\"\"Return complex conjugation on this modular-symbol space.\"\"\"\n        if (\n            self._supports_native_higher_weight() or self._supports_native_character()\n        ) and self.sign() != 0:\n            defining_matrix = (\n                identity_matrix(  # type: ignore[name-defined]  # noqa: F821\n                    self.base_ring(), self.dimension()\n                )\n                * self.sign()\n            )\n            return ModularSymbolsLinearOperator(\n                self, defining_matrix, \"Star involution\""
         }
       },
@@ -28893,16 +29675,16 @@
         "name": "p1list",
         "qualified": "ModularSymbolsSpace.p1list",
         "path": "src/baselib/modular.py",
-        "line": 3113,
+        "line": 3537,
         "excerpt": {
-          "start_line": 3101,
+          "start_line": 3525,
           "text": "        operator = self.T(index)\n        operator._matrix_cache = matrix_value\n        return operator\n\n    def _from_serialized_linear_operator(\n        self,\n        matrix_value: Any,\n        name: str,\n        ambient_matrix: Any = None,\n    ) -> ModularSymbolsLinearOperator:\n        return ModularSymbolsLinearOperator(self, matrix_value, name, ambient_matrix)\n\n    def p1list(self) -> P1List:\n        if self._group._family != \"Gamma0\":\n            raise NotImplementedError(\"native P1 lists currently model Gamma0 spaces\")\n        if self._p1list_cache is None:\n            self._p1list_cache = P1List(self.level())\n        return self._p1list_cache\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        if self._character is not None:\n            raise NotImplementedError(\n                \"the machine-word ManinRelations relation matrix models \"\n                \"trivial character only; use M.manin_presentation() for \"\n                \"the exact character presentation\""
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#27665c6e15d3a040-e3b0c44298fc1c14",
-          "line": 2058,
+          "line": 2456,
           "source": "P = P1List(12)",
           "want": "",
           "tags": [],
@@ -28918,7 +29700,7 @@
         },
         {
           "id": "src/baselib/modular.py#d52a02d377a80ad4-c2356069e9d1e79c",
-          "line": 2059,
+          "line": 2457,
           "source": "len(P)",
           "want": "24\n",
           "tags": [],
@@ -28934,7 +29716,7 @@
         },
         {
           "id": "src/baselib/modular.py#5c880c0c53650549-619e895320f7e770",
-          "line": 2061,
+          "line": 2459,
           "source": "P.normalize(7, 15)",
           "want": "(1, 9)\n",
           "tags": [],
@@ -28950,7 +29732,7 @@
         },
         {
           "id": "src/baselib/modular.py#c2e1ed5fead602dc-4a44dc15364204a8",
-          "line": 2063,
+          "line": 2461,
           "source": "P.apply_S(P.apply_S(10))",
           "want": "10\n",
           "tags": [],
@@ -29014,16 +29796,16 @@
         "name": "hecke_matrix",
         "qualified": "P1List.hecke_matrix",
         "path": "src/baselib/modular.py",
-        "line": 2449,
+        "line": 2847,
         "excerpt": {
-          "start_line": 2437,
+          "start_line": 2835,
           "text": "            raise ValueError(\"Hecke index must be prime\")\n        dimension = _exact_nonnegative_integer(dimension, \"known Hecke dimension\")\n        native = runtime.flint_backend().p1ListHeckeMatrix(\n            self._native, runtime.bigint(prime)\n        )\n        return Matrix(  # type: ignore[name-defined]  # noqa: F821\n            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821\n                sage.ZZ, dimension, dimension\n            ),\n            native,\n        )\n\n    def hecke_matrix(self, prime: Any) -> Any:\n        r\"\"\"\n        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native\n        minimal Manin basis.\n\n        The index must be prime. If it divides the level this constructs\n        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix\n        assembly happen in one native batch, so matrix entries never cross\n        the JavaScript boundary individually.\n\n        ```sage\n        sage: P1List(11).hecke_matrix(2)\n        [ 3  0  0]"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#d678e5ffb4d20ee6-87fce8343ac4cd78",
-          "line": 2460,
+          "line": 2858,
           "source": "P1List(11).hecke_matrix(2)",
           "want": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n",
           "tags": [],
@@ -29087,9 +29869,9 @@
         "name": "higher_weight_presentation",
         "qualified": "P1List.higher_weight_presentation",
         "path": "src/baselib/modular.py",
-        "line": 2214,
+        "line": 2612,
         "excerpt": {
-          "start_line": 2202,
+          "start_line": 2600,
           "text": "                self._native, self._action_index(index)\n            )\n        )\n\n    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:\n        return ManinRelations(self, modulus)\n\n    def manin_presentation(self) -> ManinPresentation:\n        if self._manin_presentation_cache is None:\n            self._manin_presentation_cache = ManinPresentation(self)\n        return self._manin_presentation_cache\n\n    def higher_weight_presentation(\n        self,\n        weight: Any,\n        sign: Any = 0,\n    ) -> Any:\n        \"\"\"Return the exact triple-Manin-symbol presentation over `QQ`.\"\"\"\n        weight = _positive_integer(weight, \"modular-symbol weight\")\n        if weight < 2:\n            raise ValueError(\"modular-symbol weight must be at least 2\")\n        sign = _exact_integer(sign, \"sign\")\n        if sign not in [-1, 0, 1]:\n            raise ValueError(\"sign must be -1, 0, or 1\")\n        key = str(weight) + \":\" + str(sign)"
         }
       },
@@ -33418,16 +34200,16 @@
         "name": "SupersingularModule",
         "qualified": "SupersingularModule",
         "path": "src/baselib/modular.py",
-        "line": 28,
+        "line": 40,
         "excerpt": {
-          "start_line": 16,
+          "start_line": 28,
           "text": "\ndef _supersingular_module() -> Any:\n    \"\"\"Load the sparse supersingular-module implementation lazily.\"\"\"\n    global _supersingular_module_cache\n    if _supersingular_module_cache is runtime.undefined:\n        _supersingular_module_cache = __import__(\n            \"sagejs.modular_forms.supersingular\",\n            fromlist=[\"SupersingularModule\"],\n        )\n    return _supersingular_module_cache\n\n\ndef SupersingularModule(\n    characteristic: Any = 2,\n    level: Any = 1,\n    base_ring: Any = None,\n    dense_entry_limit: Any = 1000000,\n) -> Any:\n    \"\"\"Construct the sparse level-one supersingular Brandt module.\n\n    The authoritative Hecke representation is sparse. Calling `matrix()` on\n    an operator is a bounded compatibility operation for small examples.\n\n    ```sage\n    sage: S = SupersingularModule(37)"
         }
       },
       "examples": [
         {
           "id": "src/baselib/modular.py#0d7572a9a651f00c-e3b0c44298fc1c14",
-          "line": 40,
+          "line": 52,
           "source": "S = SupersingularModule(37)",
           "want": "",
           "tags": [],
@@ -33443,7 +34225,7 @@
         },
         {
           "id": "src/baselib/modular.py#e0cc1038fb9d40ed-4e07408562bedb8b",
-          "line": 41,
+          "line": 53,
           "source": "S.dimension()",
           "want": "3\n",
           "tags": [],
@@ -33459,7 +34241,7 @@
         },
         {
           "id": "src/baselib/modular.py#959a51d353f2e5ad-63bd7e92de99d396",
-          "line": 43,
+          "line": 55,
           "source": "S.T(2) * vector(ZZ, [1, 1, 1])",
           "want": "(3, 3, 3)\n",
           "tags": [],
@@ -33796,6 +34578,88 @@
     },
     {
       "schema_version": 1,
+      "name": "victor_miller_basis",
+      "aliases": [],
+      "kind": "function",
+      "module": "sage.modular.modform.vm_basis",
+      "signature": "victor_miller_basis(k: Any, prec: Any=10, cusp_only: bool=False, variable: str='q', **opts: Any) -> list[Any]",
+      "summary": "Return the integral Victor Miller basis in level $1$ and weight $k$.",
+      "doc": "Return the integral Victor Miller basis in level $1$ and weight $k$.\n\n### Examples\n\n```sage\nsage: victor_miller_basis(12, 5)\n[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]\n```",
+      "tags": [
+        "modular forms",
+        "q-expansions",
+        "level one",
+        "Victor Miller basis",
+        "cusp forms"
+      ],
+      "backends": [
+        "FLINT",
+        "Sage.js exact arithmetic"
+      ],
+      "sage_compatibility": {
+        "status": "compatible",
+        "notes": "The name, integral leading-term normalization, cusp_only option, precision, and variable conventions follow SageMath."
+      },
+      "provenance": [
+        {
+          "kind": "sage-derived",
+          "source": "SageMath Victor Miller basis",
+          "url": "https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/modform/vm_basis.html",
+          "license": "GPL-2.0-or-later"
+        },
+        {
+          "kind": "literature-implemented",
+          "source": "The graded-ring identity QQ[E4,E6]"
+        }
+      ],
+      "references": [
+        {
+          "id": "stein-modform",
+          "title": "Modular Forms: A Computational Approach",
+          "type": "book",
+          "authors": [
+            "William Stein"
+          ],
+          "year": 2007,
+          "url": "https://wstein.org/books/modform/"
+        }
+      ],
+      "implementation": {
+        "algorithm": "Exact arithmetic in QQ[E4,E6], the independent Jacobi Delta identity, and certified triangular normalization"
+      },
+      "limitations": [
+        "This first exact formula algebra is level one over QQ."
+      ],
+      "source": {
+        "name": "victor_miller_basis",
+        "qualified": "victor_miller_basis",
+        "path": "src/baselib/modular.py",
+        "line": 686,
+        "excerpt": {
+          "start_line": 674,
+          "text": "    r\"\"\"Return the exact $q$-expansion of the weight-$12$ form $\\Delta$.\n\n    ### Examples\n\n    ```sage\n    sage: delta_qexp(6)\n    q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 + O(q^6)\n    ```\n    \"\"\"\n    return _qexp_module().delta_qexp(prec, variable, K, **opts)\n\n\ndef victor_miller_basis(\n    k: Any,\n    prec: Any = 10,\n    cusp_only: bool = False,\n    variable: str = \"q\",\n    **opts: Any,\n) -> list[Any]:\n    r\"\"\"Return the integral Victor Miller basis in level $1$ and weight $k$.\n\n    ### Examples\n\n    ```sage\n    sage: victor_miller_basis(12, 5)"
+        }
+      },
+      "examples": [
+        {
+          "id": "src/baselib/modular.py#56a3e6c3efa8e275-04270e7a5b807270",
+          "line": 698,
+          "source": "victor_miller_basis(12, 5)",
+          "want": "[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + O(q^5), q - 24*q^2 + 252*q^3 - 1472*q^4 + O(q^5)]\n",
+          "tags": [],
+          "owner": "victor_miller_basis",
+          "path": "src/baselib/modular.py",
+          "origin": "sagejs",
+          "language": "sage",
+          "verification": {
+            "status": "unverified",
+            "reason": "run pnpm docs:verify"
+          }
+        }
+      ]
+    },
+    {
+      "schema_version": 1,
       "name": "Zmod",
       "aliases": [],
       "kind": "function",
@@ -33915,27 +34779,27 @@
     },
     "documentation": {
       "schema_version": 1,
-      "registry_entries": 292,
-      "with_docstring": 292,
-      "with_summary": 292,
-      "with_tags": 292,
-      "with_backend": 292,
-      "with_provenance": 292,
-      "with_compatibility_notes": 292,
-      "with_references": 88,
-      "markdown_docstrings": 292,
+      "registry_entries": 298,
+      "with_docstring": 298,
+      "with_summary": 298,
+      "with_tags": 298,
+      "with_backend": 298,
+      "with_provenance": 298,
+      "with_compatibility_notes": 298,
+      "with_references": 94,
+      "markdown_docstrings": 298,
       "invalid_markdown_entries": [],
       "incomplete_entries": []
     },
     "examples": {
-      "entries_with_examples": 197,
-      "entries_without_examples": 95,
-      "documented": 189,
+      "entries_with_examples": 199,
+      "entries_without_examples": 99,
+      "documented": 191,
       "verified": 183,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 0,
+      "unverified": 2,
       "random_seed": "sagejs-reference-0"
     }
   }

@@ -1631,6 +1631,35 @@ static napi_value zz_poly_to_qq(napi_env env, napi_callback_info info)
     return result;
 }
 
+/* Convert an integral rational polynomial without publishing coefficients. */
+static napi_value qq_poly_to_zz_exact(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *source;
+    sagejs_poly *target;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_poly(env, args[0], SAGEJS_POLY_QQ);
+    if (source == NULL)
+        return NULL;
+    if (!fmpz_is_one(fmpq_poly_denref(source->rational)))
+    {
+        napi_throw_range_error(
+            env, NULL, "rational polynomial has nonintegral coefficients");
+        return NULL;
+    }
+    result = create_poly(env, SAGEJS_POLY_ZZ, 0);
+    if (result == NULL)
+        return NULL;
+    target = unwrap_poly(env, result, SAGEJS_POLY_ZZ);
+    if (target == NULL)
+        return NULL;
+    fmpq_poly_get_numerator(target->integer, source->rational);
+    return result;
+}
+
 static napi_value word_is_prime(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -2501,6 +2530,165 @@ static napi_value poly_coefficients(napi_env env, napi_callback_info info)
     fmpz_clear(integer);
     fmpq_clear(rational);
     return result;
+}
+
+/* Read one coefficient without constructing the complete coefficient array. */
+static napi_value poly_coefficient(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result = NULL;
+    napi_value numerator;
+    napi_value denominator;
+    sagejs_poly *poly;
+    ulong index;
+    fmpz_t integer;
+    fmpq_t rational;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[1], &index))
+        return NULL;
+    if (index > (ulong) WORD_MAX)
+    {
+        napi_throw_range_error(
+            env, NULL, "polynomial coefficient index is out of range");
+        return NULL;
+    }
+    poly = unwrap_poly(env, args[0], 0);
+    if (poly == NULL)
+        return NULL;
+    fmpz_init(integer);
+    fmpq_init(rational);
+    if (poly->kind == SAGEJS_POLY_ZZ)
+    {
+        fmpz_poly_get_coeff_fmpz(integer, poly->integer, (slong) index);
+        result = fmpz_to_bigint(env, integer);
+    }
+    else if (poly->kind == SAGEJS_POLY_QQ)
+    {
+        fmpq_poly_get_coeff_fmpq(rational, poly->rational, (slong) index);
+        numerator = fmpz_to_bigint(env, fmpq_numref(rational));
+        denominator = fmpz_to_bigint(env, fmpq_denref(rational));
+        if (numerator != NULL && denominator != NULL &&
+            check_napi(env, napi_create_object(env, &result)) &&
+            check_napi(env, napi_set_named_property(
+                env, result, "numerator", numerator)) &&
+            check_napi(env, napi_set_named_property(
+                env, result, "denominator", denominator)))
+        {
+            /* result is complete */
+        }
+        else
+            result = NULL;
+    }
+    else if (!check_napi(env, napi_create_bigint_uint64(
+        env, nmod_poly_get_coeff_ui(poly->modular, (slong) index), &result)))
+        result = NULL;
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    return result;
+}
+
+/*
+ * Clone and reduce a ZZ[x] basis whose first square coefficient block is
+ * upper unitriangular.  The polynomials remain opaque across the complete
+ * elimination; only the resulting handles cross Node-API.
+ */
+static napi_value zz_poly_unitriangular_basis(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value input;
+    napi_value output;
+    sagejs_poly *source;
+    sagejs_poly **rows = NULL;
+    uint32_t length;
+    uint32_t row;
+    uint32_t column;
+    fmpz_t coefficient;
+    bool is_array = false;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !check_napi(env, napi_is_array(env, args[0], &is_array)))
+        return NULL;
+    if (!is_array)
+    {
+        napi_throw_type_error(env, NULL, "expected an array of ZZ polynomials");
+        return NULL;
+    }
+    if (!check_napi(env, napi_get_array_length(env, args[0], &length)) ||
+        !check_napi(env, napi_create_array_with_length(env, length, &result)))
+        return NULL;
+    if (length == 0)
+        return result;
+    rows = calloc(length, sizeof(*rows));
+    if (rows == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate polynomial basis");
+        return NULL;
+    }
+    for (row = 0; row < length; row++)
+    {
+        if (!check_napi(env, napi_get_element(env, args[0], row, &input)))
+            goto fail;
+        source = unwrap_poly(env, input, SAGEJS_POLY_ZZ);
+        if (source == NULL)
+            goto fail;
+        output = create_poly(env, SAGEJS_POLY_ZZ, 0);
+        if (output == NULL)
+            goto fail;
+        rows[row] = unwrap_poly(env, output, SAGEJS_POLY_ZZ);
+        if (rows[row] == NULL)
+            goto fail;
+        fmpz_poly_set(rows[row]->integer, source->integer);
+        if (!check_napi(env, napi_set_element(env, result, row, output)))
+            goto fail;
+    }
+    fmpz_init(coefficient);
+    for (row = 0; row < length; row++)
+    {
+        for (column = 0; column < row; column++)
+        {
+            fmpz_poly_get_coeff_fmpz(
+                coefficient, rows[row]->integer, (slong) column);
+            if (!fmpz_is_zero(coefficient))
+            {
+                fmpz_clear(coefficient);
+                napi_throw_range_error(
+                    env, NULL, "polynomial basis is not unitriangular");
+                goto fail;
+            }
+        }
+        fmpz_poly_get_coeff_fmpz(
+            coefficient, rows[row]->integer, (slong) row);
+        if (!fmpz_is_one(coefficient))
+        {
+            fmpz_clear(coefficient);
+            napi_throw_range_error(
+                env, NULL, "polynomial basis is not unitriangular");
+            goto fail;
+        }
+    }
+    for (row = 1; row < length; row++)
+    {
+        for (column = 0; column < row; column++)
+        {
+            fmpz_poly_get_coeff_fmpz(
+                coefficient, rows[column]->integer, (slong) row);
+            if (!fmpz_is_zero(coefficient))
+                fmpz_poly_scalar_submul_fmpz(
+                    rows[column]->integer,
+                    rows[row]->integer,
+                    coefficient);
+        }
+    }
+    fmpz_clear(coefficient);
+    free(rows);
+    return result;
+
+fail:
+    free(rows);
+    return NULL;
 }
 
 /*
@@ -4834,6 +5022,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"zzPolyToQQ", NULL, zz_poly_to_qq, NULL, NULL, NULL,
             napi_default, NULL},
+        {"qqPolyToZZExact", NULL, qq_poly_to_zz_exact, NULL, NULL, NULL,
+            napi_default, NULL},
         {"wordIsPrime", NULL, word_is_prime, NULL, NULL, NULL,
             napi_default, NULL},
         {"isPrime", NULL, is_prime, NULL, NULL, NULL,
@@ -4979,6 +5169,10 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"polyCoefficients", NULL, poly_coefficients, NULL, NULL, NULL,
             napi_default, NULL},
+        {"polyCoefficient", NULL, poly_coefficient, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zzPolyUnitriangularBasis", NULL, zz_poly_unitriangular_basis,
+            NULL, NULL, NULL, napi_default, NULL},
         {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,

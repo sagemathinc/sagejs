@@ -233,6 +233,17 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
         index: Reflect.get(Object(value), "_index"),
         displayPrecision: Reflect.get(Object(value), "_display_precision"),
       });
+    case "ModularForms":
+      if (kind(value) !== "ExactModularForm") {
+        throw new SageSerializationError("unsupported modular-forms element");
+      }
+      return context.encode({
+        kind: "ExactModularForm",
+        parent,
+        terms: Reflect.get(Object(value), "_terms"),
+        displayPrecision: Reflect.get(Object(value), "_display_precision"),
+        provenance: Reflect.get(Object(value), "_provenance"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-forms element");
   }
@@ -252,6 +263,12 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
       return callMethod(data.parent, "_from_serialized_element", [
         data.index,
         data.displayPrecision,
+      ]);
+    case "ExactModularForm":
+      return callMethod(data.parent, "_from_serialized_element", [
+        data.terms,
+        data.displayPrecision,
+        data.provenance,
       ]);
     default:
       throw new SageSerializationError(
@@ -284,6 +301,7 @@ const elementCodec: SageCodec = {
     "DirichletGroup",
     "ModularSymbols",
     "EisensteinSubspace",
+    "ModularForms",
   ].includes(
     parentKind(value) ?? "",
   ),

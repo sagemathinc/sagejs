@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const newformOracles = require("./fixtures/modular-newform-lmfdb.json");
 
 test("level-one Eisenstein q-expansions match Sage normalizations", async () => {
   const session = await createSage();
@@ -265,6 +266,232 @@ test("ModularForms exposes Sage-style ambient and subspaces", async () => {
         )
       ).repr,
       "[12, 6, 6]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("E4, E6, and Delta retain exact modular-form formulas", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "E4=EisensteinForms(1,4,prec=7).gen()\n" +
+            "E6=EisensteinForms(1,6,prec=7).gen()\n" +
+            "D=(E4^3-E6^2)/1728\n" +
+            "[D.weight(),D.level(),D.base_ring(),D.is_cuspidal(),D.valuation()," +
+            "D[0],D[1],D.prec(),E4^2==EisensteinForms(1,8).gen()," +
+            "E4*E6==EisensteinForms(1,10).gen(),D.q_expansion(7)," +
+            "delta_qexp(7),D==ModularForms(1,12,prec=7).delta()]",
+        )
+      ).repr,
+      "[12, 1, Rational Field, True, 1, 0, 1, 7, True, True, " +
+        "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - " +
+        "6048*q^6 + O(q^7), q - 24*q^2 + 252*q^3 - 1472*q^4 + " +
+        "4830*q^5 - 6048*q^6 + O(q^7), True]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          "[delta_qexp(6,var='t'),delta_qexp(6,K=GF(5),var='z')]",
+        )
+      ).repr,
+      "[t - 24*t^2 + 252*t^3 - 1472*t^4 + 4830*t^5 + O(t^6), " +
+        "z + z^2 + 2*z^3 + 3*z^4 + O(z^6)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Victor Miller bases match Sage's integral leading-term normalization", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "[victor_miller_basis(12,6),victor_miller_basis(24,6)]",
+        )
+      ).repr,
+      "[[1 + 196560*q^2 + 16773120*q^3 + 398034000*q^4 + " +
+        "4629381120*q^5 + O(q^6), q - 24*q^2 + 252*q^3 - " +
+        "1472*q^4 + 4830*q^5 + O(q^6)], " +
+        "[1 + 52416000*q^3 + 39007332000*q^4 + " +
+        "6609020221440*q^5 + O(q^6), q + 195660*q^3 + " +
+        "12080128*q^4 + 44656110*q^5 + O(q^6), q^2 - 48*q^3 + " +
+        "1080*q^4 - 15040*q^5 + O(q^6)]]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          "[victor_miller_basis(0,4),victor_miller_basis(2,4)," +
+            "victor_miller_basis(7,4)," +
+            "victor_miller_basis(24,6,cusp_only=True,var='t')]",
+        )
+      ).repr,
+      "[[1 + O(q^4)], [], [], [t + 195660*t^3 + 12080128*t^4 + " +
+        "44656110*t^5 + O(t^6), t^2 - 48*t^3 + 1080*t^4 - " +
+        "15040*t^5 + O(t^6)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("large Victor Miller bases retain their exact native-series normalization", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "B=victor_miller_basis(200,50)\n" +
+            "d=len(B)\n" +
+            "leading=all(B[i][j]==(1 if i==j else 0) " +
+            "for i in range(d) for j in range(d))\n" +
+            "digest=sum((i+1)*(j+1)*B[i][j] for i in range(d) " +
+            "for j in range(50)) % 1000000007\n" +
+            "[d,leading,digest]",
+        )
+      ).repr,
+      "[17, True, 694217421]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Victor Miller bases use their known identity truncation", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "B=victor_miller_basis(2000,50)\n" +
+            "S=victor_miller_basis(2000,50,cusp_only=True)\n" +
+            "edge=victor_miller_basis(24,3)\n" +
+            "[len(B),str(B[0]),str(B[1]),str(B[49]),str(B[50])," +
+            "str(B[-1]),len(S),str(S[0]),str(S[48]),str(S[49]),edge]",
+        )
+      ).repr,
+      "[167, '1 + O(q^50)', 'q + O(q^50)', 'q^49 + O(q^50)', " +
+        "'O(q^50)', 'O(q^50)', 166, 'q + O(q^50)', " +
+        "'q^49 + O(q^50)', 'O(q^50)', " +
+        "[1 + O(q^3), q + O(q^3), q^2 + O(q^3)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("level-one ambient and cusp bases carry replayable certificates", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "M=ModularForms(1,24,prec=6)\n" +
+            "C=M.basis_certificate()\n" +
+            "S=M.cuspidal_subspace()\n" +
+            "CS=S.basis_certificate()\n" +
+            "B=C.basis()\n" +
+            "[C.is_verified(),C.verify(),C.dimension(),C.sturm_bound()," +
+            "C.algorithm(),len(B),[f.weight() for f in B]," +
+            "[f.parent() is M for f in B],M.gens()==B," +
+            "CS.is_verified(),CS.dimension(),S.dimension()," +
+            "S.q_expansion_basis(4)]",
+        )
+      ).repr,
+      "[True, True, 3, 2, 'victor-miller-e4-e6-delta', 3, " +
+        "[24, 24, 24], [True, True, True], True, True, 2, 2, " +
+        "[q + 195660*q^3 + O(q^4), q^2 - 48*q^3 + O(q^4)]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("normalized newforms reconstruct exact coefficient fields and LMFDB rows", async () => {
+  const session = await createSage();
+  try {
+    const rational = newformOracles.oracles[0];
+    const quadratic = newformOracles.oracles[1];
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            `f=CuspForms(${rational.level},${rational.weight}).newforms('a')[0]`,
+            `g=CuspForms(${quadratic.level},${quadratic.weight}).newforms('a')[0]`,
+            "[[f[i] for i in [0..7]],f.certificate(8).verify()," +
+              "str(g.defining_polynomial()),[g[i].list() for i in [0..7]]," +
+              "g.certificate(8).verify(),g.q_expansion(8)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[0, 1, -2, -1, 2, 1, 2, -2], True, " +
+        "'x^2 + x - 1', [[0, 0], [1, 0], [0, 1], [-1, -2], " +
+        "[-1, -1], [0, 2], [-2, 1], [2, 2]], True, " +
+        "q + a0*q^2 + (-2*a0 - 1)*q^3 + (-a0 - 1)*q^4 + " +
+        "2*a0*q^5 + (a0 - 2)*q^6 + (2*a0 + 2)*q^7 + O(q^8)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("composite-level cusp spaces have certified old/new decompositions", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "S=CuspForms(22,2,prec=10)\n" +
+            "O=S.old_subspace()\nN=S.new_subspace()\n" +
+            "C=O.q_expansion_basis_certificate(10)\n" +
+            "[S.dimension(),O.dimension(),N.dimension()," +
+            "C.old_dimension(),C.new_dimension(),C.dimension(),C.verify()," +
+            "len(O.q_expansion_basis(10))]",
+        )
+      ).repr,
+      "[2, 2, 0, 2, 0, 2, True, 2]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "F=Newforms(26,2,names='b')\n" +
+            "[[f.q_expansion(8) for f in F]," +
+            "[f.certificate().verify() for f in F]," +
+            "ModularForms(26,2).new_subspace().dimension()]",
+        )
+      ).repr,
+      "[[q + q^2 - 3*q^3 + q^4 - q^5 - 3*q^6 + q^7 + O(q^8), " +
+        "q - q^2 + q^3 + q^4 - 3*q^5 - q^6 - q^7 + O(q^8)], " +
+        "[True, True], 2]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("primitive character pairs give exact generalized Eisenstein series", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "G=DirichletGroup(5)\nchi=G.gen(0)\n" +
+            "one=DirichletGroup(1)(1)\n" +
+            "f=eisenstein_series_qexp(3,10,chi=chi,psi=one)\n" +
+            "[f,f[1],f[2]==chi(2)+4,f[3]==chi(3)+9,f.prec()]",
+        )
+      ).repr,
+      "[q + (zeta4 + 4)*q^2 + (-zeta4 + 9)*q^3 + " +
+        "(4*zeta4 + 15)*q^4 + 25*q^5 + (5*zeta4 + 37)*q^6 + " +
+        "(zeta4 + 49)*q^7 + (15*zeta4 + 60)*q^8 + " +
+        "(-9*zeta4 + 80)*q^9 + O(q^10), 1, True, True, 10]",
     );
   } finally {
     await session.close();

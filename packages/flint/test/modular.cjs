@@ -44,6 +44,54 @@ test("native polynomial inflation implements q to q^d", () => {
   assert.throws(() => flint.polyInflate(series, 0n), /positive/);
 });
 
+test("native polynomial scalars and exact integral conversion stay opaque", () => {
+  const rational = flint.qqEisensteinSeries(4, 8, "constant");
+  const integral = flint.qqPolyToZZExact(rational);
+  assert.equal(flint.polyCoefficient(integral, 3n), 6720n);
+  assert.equal(flint.polyCoefficient(integral, 100n), 0n);
+  assert.throws(
+    () => flint.polyCoefficient(integral, 1n << 63n),
+    /out of range/,
+  );
+  assert.deepEqual(flint.polyCoefficient(rational, 2n), {
+    numerator: 2160n,
+    denominator: 1n,
+  });
+  assert.deepEqual(
+    flint.polyCoefficients(integral),
+    flint.polyCoefficients(rational).map(({ numerator }) => numerator),
+  );
+  assert.throws(
+    () => flint.qqPolyToZZExact(
+      flint.qqEisensteinSeries(4, 4, "linear"),
+    ),
+    /nonintegral coefficients/,
+  );
+});
+
+test("native integral polynomial bases reduce behind one opaque boundary", () => {
+  const x = flint.zzPolyGen();
+  const one = flint.zzPolyConstant(1n);
+  const x2 = flint.polyPow(x, 2n);
+  const rows = flint.zzPolyUnitriangularBasis([
+    flint.polyAdd(
+      flint.polyAdd(one, flint.polyMul(flint.zzPolyConstant(2n), x)),
+      flint.polyMul(flint.zzPolyConstant(3n), x2),
+    ),
+    flint.polyAdd(x, flint.polyMul(flint.zzPolyConstant(4n), x2)),
+    x2,
+  ]);
+  assert.deepEqual(rows.map((row) => flint.polyCoefficients(row)), [
+    [1n],
+    [0n, 1n],
+    [0n, 0n, 1n],
+  ]);
+  assert.throws(
+    () => flint.zzPolyUnitriangularBasis([x, one]),
+    /not unitriangular/,
+  );
+});
+
 test("native Eisenstein boundary validates its parameters", () => {
   assert.throws(
     () => flint.qqEisensteinSeries(3, 5, "linear"),

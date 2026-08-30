@@ -1,9 +1,20 @@
-"""Sparse modular forms built from finite Hecke sets."""
+"""Exact q-expansions and sparse modular forms built from Hecke data."""
 
 from __future__ import annotations
 
 from typing import Any
 
+ExactModularForm: Any
+LevelOneBasisCertificate: Any
+ModularSymbolsQExpansionCertificate: Any
+NewOldDecompositionCertificate: Any
+NewformCertificate: Any
+NormalizedNewform: Any
+OldModularFormsSubspace: Any
+delta_form: Any
+delta_qexp: Any
+level_one_basis_certificate: Any
+victor_miller_basis: Any
 SparseHeckeOperator: Any
 SparseCharacteristicPolynomialCertificate: Any
 SparseWiedemannCertificate: Any
@@ -52,7 +63,32 @@ sqrt3_prime_ideals: Any
 sqrt5_hecke_prime: Any
 sqrt5_prime_ideals: Any
 
+_QEXP_EXPORTS = [
+    "ExactModularForm",
+    "LevelOneBasisCertificate",
+    "ModularSymbolsQExpansionCertificate",
+    "NewOldDecompositionCertificate",
+    "NewformCertificate",
+    "NormalizedNewform",
+    "OldModularFormsSubspace",
+    "delta_form",
+    "delta_qexp",
+    "level_one_basis_certificate",
+    "victor_miller_basis",
+]
+
 __all__ = [
+    "ExactModularForm",
+    "LevelOneBasisCertificate",
+    "ModularSymbolsQExpansionCertificate",
+    "NewOldDecompositionCertificate",
+    "NewformCertificate",
+    "NormalizedNewform",
+    "OldModularFormsSubspace",
+    "delta_form",
+    "delta_qexp",
+    "level_one_basis_certificate",
+    "victor_miller_basis",
     "SparseHeckeOperator",
     "SparseCharacteristicPolynomialCertificate",
     "SparseWiedemannCertificate",
@@ -105,9 +141,22 @@ __all__ = [
 
 def __getattr__(name: Any, runtime_name: Any = None) -> Any:
     # The Sage.js runtime binds this hook as a module method; CPython calls it
-    # as a plain function.  Normalize the two otherwise equivalent call forms.
+    # as a plain function. Normalize the two otherwise equivalent call forms.
     if isinstance(runtime_name, str):
         name = runtime_name
+    if name in [
+        "NewOldDecompositionCertificate",
+        "NewformCertificate",
+        "NormalizedNewform",
+        "OldModularFormsSubspace",
+    ]:
+        from . import newforms
+
+        return getattr(newforms, name)
+    if name in _QEXP_EXPORTS:
+        from . import qexp
+
+        return getattr(qexp, name)
     if name in ["FiniteHeckeSet", "SupersingularFiniteHeckeSet", "finite_hecke_set"]:
         from . import finite_hecke
 
