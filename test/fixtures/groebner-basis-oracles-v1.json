@@ -1,0 +1,107 @@
+{
+  "schema": "sagejs.groebner-oracles/v1",
+  "packedAbi": "sagejs.groebner.sparse/v1",
+  "normalization": "monic reduced basis, descending terms and descending leading monomials",
+  "sources": {
+    "sage": "SageMath/Singular canonical reduced basis",
+    "msolve": "msolve 0.10.1-14-g1e3af01 packed F4 or modular QQ result",
+    "groebner-jl": "Groebner.jl 0.10.6 deterministic result checked by isgroebner",
+    "flint": "FLINT 3.6 bounded exact Buchberger result",
+    "contract": "independent ordinary-Python change-matrix Buchberger oracle"
+  },
+  "cases": [
+    {
+      "id": "zero-ideal-gf5",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 5, "variables": 2, "order": "degrevlex" },
+      "generators": [[], []],
+      "basis": [],
+      "sources": ["contract", "flint"]
+    },
+    {
+      "id": "unit-ideal-gf5",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 5, "variables": 2, "order": "degrevlex" },
+      "generators": [[[1, [0, 0]]]],
+      "basis": [[[1, [0, 0]]]],
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "duplicate-zero-generators-gf5",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 5, "variables": 2, "order": "degrevlex" },
+      "generators": [[[1, [1, 0]]], [], [[2, [1, 0]]], [[1, [1, 0]]]],
+      "basis": [[[1, [1, 0]]]],
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "inhomogeneous-gf5",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 5, "variables": 2, "order": "degrevlex" },
+      "generators": [[[1, [2, 0]], [4, [0, 1]]], [[1, [1, 1]], [4, [0, 0]]]],
+      "basis": null,
+      "sources": ["contract", "msolve", "groebner-jl"]
+    },
+    {
+      "id": "nonradical-gf65537",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 65537, "variables": 3, "order": "degrevlex" },
+      "generators": [[[1, [2, 0, 0]]], [[1, [0, 3, 0]]], [[1, [0, 0, 2]]]],
+      "basis": [[[1, [0, 3, 0]]], [[1, [2, 0, 0]]], [[1, [0, 0, 2]]]],
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "positive-dimensional-gf31",
+      "kind": "basis",
+      "ring": { "domain": "GF(p)", "characteristic": 31, "variables": 3, "order": "degrevlex" },
+      "generators": [[[1, [1, 1, 0]]], [[1, [1, 0, 1]]]],
+      "basis": [[[1, [1, 1, 0]]], [[1, [1, 0, 1]]]],
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "inhomogeneous-qq",
+      "kind": "basis",
+      "ring": { "domain": "QQ", "characteristic": 0, "variables": 2, "order": "degrevlex" },
+      "generators": [[[[1, 1], [2, 0]], [[1, 1], [0, 2]], [[-1, 1], [0, 0]]], [[[1, 1], [3, 0]], [[1, 1], [0, 3]], [[-1, 1], [0, 0]]]],
+      "basis": null,
+      "sources": ["contract", "msolve", "flint"]
+    },
+    {
+      "id": "rational-denominators-qq",
+      "kind": "basis",
+      "ring": { "domain": "QQ", "characteristic": 0, "variables": 2, "order": "degrevlex" },
+      "generators": [[[[1, 2], [2, 0]], [[1, 3], [0, 1]]], [[[2, 5], [1, 1]], [[-1, 7], [0, 0]]]],
+      "basis": null,
+      "sources": ["contract", "msolve", "groebner-jl"]
+    },
+    {
+      "id": "prime-ceiling",
+      "kind": "rejection",
+      "ring": { "domain": "GF(p)", "characteristic": 2147483659, "variables": 2, "order": "degrevlex" },
+      "reason": "msolve prime-field capability requires p < 2^31",
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "unsupported-lex-msolve",
+      "kind": "rejection",
+      "ring": { "domain": "QQ", "characteristic": 0, "variables": 2, "order": "lex" },
+      "reason": "the first msolve capability is degree-reverse-lexicographic only",
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "malformed-exponent",
+      "kind": "rejection",
+      "ring": { "domain": "GF(p)", "characteristic": 101, "variables": 2, "order": "degrevlex" },
+      "generators": [[[1, [1, -1]]]],
+      "reason": "negative exponent",
+      "sources": ["contract", "msolve"]
+    },
+    {
+      "id": "resource-envelope",
+      "kind": "rejection",
+      "ring": { "domain": "GF(p)", "characteristic": 101, "variables": 65536, "order": "degrevlex" },
+      "reason": "packed adapter variable/resource envelope",
+      "sources": ["contract", "msolve"]
+    }
+  ]
+}
