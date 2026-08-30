@@ -19,6 +19,9 @@ const { PassThrough } = require("node:stream");
 const test = require("node:test");
 
 const root = resolve(__dirname, "..");
+const python =
+  process.env.PYTHON ||
+  (process.platform === "win32" ? "python" : "python3");
 const packageRoot = join(root, "packages", "flint-wasm");
 const {
   buildWasmProductionPacks,
@@ -295,7 +298,7 @@ test("heavy public shortest paths expose the exact installed route", async () =>
 });
 
 test("CPython fallback differentials cover directed, disconnected, and bounds", () => {
-  const result = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const result = spawnSync(python, ["-c", String.raw`
 import random
 import sys
 sys.path.insert(0, "src/lib")

@@ -272,7 +272,12 @@ test("Magma HNFs classify identically across JavaScript and native tiers", async
       assert.ok(unrepresentable.incidence.every((value) => value === 93n));
     }
   } finally {
-    rmSync(cacheRoot, { recursive: true, force: true });
+    rmSync(cacheRoot, {
+      recursive: true,
+      force: true,
+      maxRetries: process.platform === "win32" ? 10 : 0,
+      retryDelay: 100,
+    });
   }
 });
 
@@ -320,7 +325,12 @@ test("rank-four success and rejection cleanup is sanitizer-clean", {
     });
     assert.equal(run.status, 0, run.stderr || run.stdout);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    rmSync(temporary, {
+      recursive: true,
+      force: true,
+      maxRetries: process.platform === "win32" ? 10 : 0,
+      retryDelay: 100,
+    });
   }
 });
 
@@ -376,6 +386,11 @@ const { WASI } = require("node:wasi");
 `, wasm], { cwd: root, encoding: "utf8", timeout: 120_000 });
     assert.equal(run.status, 0, run.stderr || run.stdout);
   } finally {
-    rmSync(temporary, { recursive: true, force: true });
+    rmSync(temporary, {
+      recursive: true,
+      force: true,
+      maxRetries: process.platform === "win32" ? 10 : 0,
+      retryDelay: 100,
+    });
   }
 });

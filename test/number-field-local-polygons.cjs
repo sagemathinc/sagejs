@@ -3,7 +3,7 @@
 
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const { existsSync, readFileSync } = require("node:fs");
+const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const test = require("node:test");
 
@@ -12,7 +12,8 @@ const { createSage } = require("../dist/tools/kernel.js");
 const root = join(__dirname, "..");
 const python =
   process.env.SAGEJS_PYTHON ??
-  (existsSync("/usr/bin/python3") ? "/usr/bin/python3" : "python3");
+  process.env.PYTHON ??
+  (process.platform === "win32" ? "python" : "python3");
 const fixture = JSON.parse(
   readFileSync(
     join(__dirname, "fixtures", "number-field-local-polygons.json"),

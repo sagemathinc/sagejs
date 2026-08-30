@@ -19,6 +19,9 @@ const { PassThrough } = require("node:stream");
 const test = require("node:test");
 
 const root = resolve(__dirname, "..");
+const python =
+  process.env.PYTHON ||
+  (process.platform === "win32" ? "python" : "python3");
 const {
   buildWasmProductionPacks,
   inventoryProductionKernels,
@@ -251,7 +254,7 @@ test.after(async () => {
 });
 
 test("the CPython body preserves closure order and all finite bounds", () => {
-  const oracle = spawnSync("/usr/bin/python3", ["-c", String.raw`
+  const oracle = spawnSync(python, ["-c", String.raw`
 import sys
 sys.path.insert(0, "src/lib")
 from sagejs.kernels.groups.permutation import packed_permutation_center

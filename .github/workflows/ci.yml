@@ -363,6 +363,9 @@ jobs:
           SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap
 
+      - name: Execute the resident exact native witness
+        run: node --test test/native-rank-four-lattice-workspace.cjs
+
       - name: Enforce the development startup budget
         run: pnpm test:startup:run
 
