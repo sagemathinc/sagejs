@@ -1,0 +1,122 @@
+{
+  "schema": "sagejs.ipywidgets-upstream/v1",
+  "generatedBy": "manual audit plus scripts/generate-ipywidgets-corpus.py",
+  "selectedAt": "2026-08-30",
+  "semanticAuthority": "CPython with the pinned Python wheels",
+  "python": {
+    "implementation": "CPython",
+    "version": "3.14",
+    "packages": [
+      {
+        "name": "traitlets",
+        "version": "5.15.1",
+        "repository": "https://github.com/ipython/traitlets.git",
+        "tag": "v5.15.1",
+        "revision": "f82e456af4aa39e62dd2bf45c06eee9913a2e0ba",
+        "wheel": "traitlets-5.15.1-py3-none-any.whl",
+        "wheelSha256": "770a53705f84b81ac107e83a1b3328ff2dae16094d8fc3cfc004e4b22dfd8e92",
+        "license": "BSD-3-Clause",
+        "role": "descriptors, validation, observation, metadata and linking"
+      },
+      {
+        "name": "comm",
+        "version": "0.2.3",
+        "repository": "https://github.com/ipython/comm.git",
+        "tag": "v0.2.3",
+        "revision": "057b00a49aabb97fb3c66eedcd97f09c6481d3c8",
+        "wheel": "comm-0.2.3-py3-none-any.whl",
+        "wheelSha256": "c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417",
+        "license": "BSD-3-Clause",
+        "role": "transport-neutral kernel comm API"
+      },
+      {
+        "name": "ipywidgets",
+        "version": "8.1.9",
+        "repository": "https://github.com/jupyter-widgets/ipywidgets.git",
+        "tag": "8.1.9",
+        "revision": "15f0564eec5e6fc0d8d655c16490c2e475bdd145",
+        "auditedPostReleaseRevision": "8ada3542abe85fdc52e2bfeeecc07f8db351cb9c",
+        "wheel": "ipywidgets-8.1.9-py3-none-any.whl",
+        "wheelSha256": "f2b8cbcaae10252b809fbe4d7470db75c09b769a32cbf816d20e5ca6d3c5a79d",
+        "license": "BSD-3-Clause",
+        "role": "standard widget models, controls and interaction API"
+      }
+    ],
+    "excludedKernelDependencies": [
+      {
+        "name": "widgetsnbextension",
+        "constraint": "~=4.0.16",
+        "disposition": "frontend asset installer; not imported by the Sage.js kernel runtime"
+      },
+      {
+        "name": "jupyterlab_widgets",
+        "constraint": "~=3.0.17",
+        "disposition": "frontend asset installer; not imported by the Sage.js kernel runtime"
+      },
+      {
+        "name": "IPython",
+        "constraint": ">=6.1.0",
+        "disposition": "replace with the narrow source-compatible facade defined by P2"
+      }
+    ]
+  },
+  "protocols": {
+    "widget": "2.1.0",
+    "control": "1.0.0",
+    "baseModule": "2.0.0",
+    "controlsModule": "2.0.0",
+    "outputModule": "1.0.0",
+    "viewMime": "application/vnd.jupyter.widget-view+json"
+  },
+  "browser": {
+    "manager": {
+      "name": "@cocalc/widgets",
+      "version": "1.3.0",
+      "repository": "https://github.com/sagemathinc/cocalc-widgets.git",
+      "revision": "f6b4821cdfd0828134dc33d498f8caeac3698181",
+      "integrity": "sha512-+kYxjA6hD3rghH/YpZ1/YlcR8/6vtCDn55Mbq8gTCa34efAQiMcF3eHYncyh+6xUF787OdRr0fZXXGDZIouh+w==",
+      "license": "Apache-2.0"
+    },
+    "bundledInputs": [
+      {
+        "name": "@jupyter-widgets/base",
+        "version": "6.0.11",
+        "gitHead": "ace1a8fe516699b06914ff59d8a26f33a6911239",
+        "integrity": "sha512-s4+UM7DlrhCOqWCh18fSPjOOLWQlKb+vTxHvOQbvwqgwe6pEuncykzZ1vbii71G5RC5tZ+lQblYR1SWDNdq3qQ==",
+        "license": "BSD-3-Clause"
+      },
+      {
+        "name": "@jupyter-widgets/base-manager",
+        "version": "1.0.12",
+        "gitHead": "ace1a8fe516699b06914ff59d8a26f33a6911239",
+        "integrity": "sha512-MAAzFu2vW6QJARey547QgwCJ23sK6LmJTLVxa53ACnW8q05yXpYusRQUOHW6RFBIjXXANUsvjKtvZgv1r+0Zuw==",
+        "license": "BSD-3-Clause"
+      },
+      {
+        "name": "@jupyter-widgets/controls",
+        "version": "5.0.12",
+        "gitHead": "ace1a8fe516699b06914ff59d8a26f33a6911239",
+        "integrity": "sha512-4ry+1Fb2kB6vdHLDdrvrhZTElyhJfs+Z2XfyqvhkUkIPpCYpF8RXeVay//annWO/H1v0JhfLu44Ett+1/+djVA==",
+        "license": "BSD-3-Clause"
+      }
+    ]
+  },
+  "secondaryReference": {
+    "name": "@jupyterlite/javascript-kernel-root",
+    "version": "0.4.0-a5",
+    "repository": "https://github.com/jupyterlite/javascript-kernel.git",
+    "revision": "936f53f433888a9cdca6c2f21e7782dbcf055f68",
+    "license": "BSD-3-Clause",
+    "authority": false,
+    "knownPartialAreas": [
+      "selection semantics",
+      "Output capture",
+      "button callback behavior"
+    ]
+  },
+  "fixtures": {
+    "testInventory": "test-inventory.json",
+    "normalizedProtocolCorpus": "protocol-corpus.json",
+    "generator": "scripts/generate-ipywidgets-corpus.py"
+  }
+}
