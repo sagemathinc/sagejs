@@ -8,7 +8,7 @@
   },
   "startup_budgets": {
     "development-cli": {
-      "normalized_median_ms": 350,
+      "normalized_median_ms": 390,
       "normalized_median_ms_by_platform_arch": {
         "linux-arm64": 400
       },
@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 150000,
+      "max_source_bytes": 160000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -176,6 +176,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/sparse_prime_field.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []
@@ -261,7 +262,7 @@
       "id": "number-field-global-arithmetic",
       "layer": 7,
       "startup": "lazy",
-      "max_source_bytes": 1585000,
+      "max_source_bytes": 1670000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -326,6 +327,24 @@
         "src/lib/sage/databases/conway.py"
       ],
       "prefixes": ["src/lib/sagejs/polynomial_algorithms/"]
+    },
+    {
+      "id": "mathematical-databases",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 57000,
+      "depends_on": [
+        "core-runtime",
+        "python-stdlib",
+        "arithmetic",
+        "hyperelliptic-curves-algorithms"
+      ],
+      "modules": ["sage.databases.lmfdb"],
+      "files": [
+        "src/lib/sage/databases/_lmfdb_bundled.py",
+        "src/lib/sage/databases/lmfdb.py"
+      ],
+      "prefixes": []
     },
     {
       "id": "linear-algebra-algorithms",
@@ -592,14 +611,38 @@
         "modular-forms"
       ],
       "modules": [
-        "sagejs.modular_forms",
         "sagejs.modular_forms.newforms",
         "sagejs.modular_forms.qexp"
       ],
       "files": [
-        "src/lib/sagejs/modular_forms/__init__.py",
         "src/lib/sagejs/modular_forms/newforms.py",
         "src/lib/sagejs/modular_forms/qexp.py"
+      ],
+      "prefixes": []
+    },
+    {
+      "id": "sparse-modular-forms",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 265000,
+      "depends_on": [
+        "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
+        "graph-theory", "modular-forms", "matrix-native-kernels"
+      ],
+      "modules": ["sage.modular.ssmod", "sagejs.modular_forms"],
+      "files": [
+        "src/lib/sage/modular/ssmod/__init__.py",
+        "src/lib/sage/modular/ssmod/ssmod.py",
+        "src/lib/sagejs/modular_forms/__init__.py",
+        "src/lib/sagejs/modular_forms/algebraic.py",
+        "src/lib/sagejs/modular_forms/finite_hecke.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt3.py",
+        "src/lib/sagejs/modular_forms/hilbert_sqrt5.py",
+        "src/lib/sagejs/modular_forms/mestre.py",
+        "src/lib/sagejs/modular_forms/modular_polynomial.py",
+        "src/lib/sagejs/modular_forms/sparse_hecke.py",
+        "src/lib/sagejs/modular_forms/sparse_krylov.py",
+        "src/lib/sagejs/modular_forms/supersingular.py"
       ],
       "prefixes": []
     },

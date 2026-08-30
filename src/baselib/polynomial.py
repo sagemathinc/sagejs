@@ -449,6 +449,17 @@ def _field_polynomial_quo_rem(
     )
 
 
+def _generated_extension_field_polynomial_roots(
+    polynomial: PolynomialElement,
+) -> list[list[Any]]:
+    """Load the portable extension-field root splitter only when needed."""
+    module = __import__(
+        "sagejs.polynomial_algorithms.extension_field_roots",
+        fromlist=["generated_extension_field_polynomial_roots"],
+    )
+    return module.generated_extension_field_polynomial_roots(polynomial)
+
+
 def _integer_polynomial_quo_rem(
     dividend: list[Any], divisor: list[Any]
 ) -> tuple[list[Any], list[Any]]:
@@ -3002,7 +3013,9 @@ class PolynomialElement(sage.Element):
                 "ring unless the base is a finite field"
             )
         field = self._parent.base_ring()
-        if field._kind == "GF_EXTENSION":
+        if field._kind == "GF_EXTENSION" and self._has_fq_polynomial_resource():
+            raw_roots = _generated_extension_field_polynomial_roots(self)
+        elif field._kind == "GF_EXTENSION":
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
         elif _packed_polynomial_kind(field) == "GF_ARB":
             if self.is_zero():
@@ -3059,12 +3072,19 @@ class PolynomialElement(sage.Element):
 
         def make_root(pair: list[Any]) -> Any:
             if field._kind == "GF_EXTENSION":
-                root = field._from_native(pair[0])
+                root = (
+                    pair[0]
+                    if isinstance(pair[0], field._elementType)
+                    else field._from_native(pair[0])
+                )
             else:
                 root = field(pair[0])
             return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
-        return raw_roots.map(make_root)
+        answer = []
+        for pair in raw_roots:
+            answer.append(make_root(pair))
+        return answer
 
     def coefficients(self) -> list[Any]:
         if self._machineFieldCoefficients is not runtime.undefined:

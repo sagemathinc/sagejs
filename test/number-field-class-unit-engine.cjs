@@ -1640,16 +1640,44 @@ class Components:
         return ()
 
 class FakePresentation:
+    order = 1
     dependency_transforms = ()
     invariants = ()
 
 class FakeCollector:
+    factor_base = ()
     records = []
 
+class FakePlan:
+    pass
+
 class SaturationProbe(ClassUnitGroupEngine):
+    def _relation_stage_exactly_authenticated(self, collector, presentation):
+        return collector.factor_base == () and presentation.order == 1
+    def _generation_authority(self, plan, factor_base, collector, presentation,
+                              proof_status, **options):
+        del plan, factor_base, collector, presentation, options
+        evidence = {"schema": "fake-generation-authority-v1"}
+        def verify(field, order, units, class_number, supplied, status):
+            del units
+            return (
+                field is self.field
+                and order is self.order
+                and int(class_number) == 1
+                and supplied is evidence
+                and status == proof_status
+            )
+        return evidence, verify
     def _analytic_index(self, presentation, units, unit_rank):
         bound = 1 if units[0].name == "new" else 2
-        return FakeTorsion(), FakeRegulator(), FakeIndex(bound)
+        torsion = FakeTorsion()
+        regulator = FakeRegulator()
+        index = FakeIndex(bound)
+        self._bind_context_analytic_proof(
+            (tuple(units), int(presentation.order), int(torsion.order),
+             regulator, object(), index)
+        )
+        return torsion, regulator, index
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -1660,7 +1688,7 @@ engine = SaturationProbe(
 old = (FakeUnit("old", 2.0),)
 values = engine._adaptive_saturation(
     (), FakeCollector(), FakePresentation(), old,
-    FakeTorsion(), FakeRegulator(), FakeIndex(2), 1,
+    FakeTorsion(), FakeRegulator(), FakeIndex(2), 1, plan=FakePlan(),
 )
 units, index, record = values[2], values[5], values[6]
 assert units == (FakeUnit("new", 1.0),)
@@ -2200,14 +2228,15 @@ engine = BoundedProbe(
 )
 values = engine._adaptive_saturation(
     (), FakeCollector(), FakePresentation(), (FakeUnit(),), object(),
-    FakeRegulator(), FakeIndex(), 1,
+    FakeRegulator(), FakeIndex(), 1, defer_record=True,
 )
-record = values[6]
-assert not record.complete and not record.verify()
-assert record.remaining_index_bound == 2
-assert record.attempts[0]["producer"] == "unavailable"
-assert "no exact unit p-saturation producer" in record.attempts[0]["reason"]
+index, state = values[5], values[6]
+assert not index.index_one and index.upper_index == 2
+assert state.matches(engine)
+assert state.attempts[0]["producer"] == "unavailable"
+assert "no exact unit p-saturation producer" in state.attempts[0]["reason"]
 assert engine.stages[-1].state == "bounded"
+assert engine.stages[-1].details["certificate_deferred"]
 print("honest-incomplete")
 `);
   assert.equal(output, "honest-incomplete");
@@ -2286,13 +2315,13 @@ engine = ClassSaturationProbe(
 collector = FakeCollector()
 values = engine._adaptive_saturation(
     (), collector, FakePresentation(2), (), FakeTorsion(),
-    FakeRegulator(), FakeIndex(2), 0,
+    FakeRegulator(), FakeIndex(2), 0, defer_record=True,
 )
-presentation, index, record = values[1], values[5], values[6]
+presentation, index, state = values[1], values[5], values[6]
 assert presentation.order == 1 and index.index_one
-assert record.complete and record.remaining_index_bound == 1
+assert state.matches(engine)
 class_attempt = [
-    attempt for attempt in record.attempts
+    attempt for attempt in state.attempts
     if attempt["schema"] == "sagejs.number-fields/class-saturation-attempt-v1"
 ][0]
 assert class_attempt["prime"] == 2

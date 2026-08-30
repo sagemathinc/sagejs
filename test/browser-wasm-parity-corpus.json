@@ -45,6 +45,10 @@
       "expect": {
         "stdout": "15*a + 81 9999 wasm-compiled-source\n",
         "repr": ""
+      },
+      "node_expect": {
+        "stdout": "15*a + 81 9999 native-compiled-source\n",
+        "repr": ""
       }
     },
     {
@@ -59,6 +63,10 @@
       "timeout_ms": 30000,
       "expect": {
         "stdout": "(2, 2, 0) 9999 wasm-compiled-source\n",
+        "repr": ""
+      },
+      "node_expect": {
+        "stdout": "(2, 2, 0) 9999 native-compiled-source\n",
         "repr": ""
       }
     },

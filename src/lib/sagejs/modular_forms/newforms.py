@@ -107,6 +107,7 @@ class NormalizedNewform(sage.Element):
         self._primitive_operator = primitive
         self._defining_polynomial = polynomial
         self._primitive_recipe = recipe
+        self._coefficient_field: Any
         if self._dimension == 1:
             self._coefficient_field = sage.QQ
         else:

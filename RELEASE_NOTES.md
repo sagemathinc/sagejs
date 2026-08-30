@@ -1,26 +1,37 @@
-# Sage.js 0.4.1
+# Sage.js 0.5.0
 
-Sage.js 0.4.1 is an **early alpha release** for developers and researchers who
+Sage.js 0.5.0 is an **early alpha release** for developers and researchers who
 want to experiment with portable research mathematics in native executables,
 Node.js, Jupyter, and the browser. Missing functionality, incompatible API
 changes, and rough edges remain expected; installation reports and mathematical
 bug reports are especially valuable.
 
-This release makes the public npm package substantially easier to embed:
+This release adds three substantial mathematical systems:
 
-- `createSage` is exported directly from `@sagemath/sagejs` for both CommonJS
-  and ES modules.
-- A Sage session now uses the installed platform executable and therefore has
-  the same native mathematics capabilities as the command line.
-- The package no longer attempts to load the unpublished
-  `@sagemath/sagejs-flint` development package.
-- Installing with pnpm no longer reports an ignored `zeromq` build script.
-- The package, website, and browser application now provide direct Node and
-  browser embedding examples.
-- Sage mode provides `version()` and a machine-readable `version(json=True)`
-  result, while Python mode retains Python-compatible name resolution.
+- A typed, provider-independent LMFDB catalog for genus-2 curves and number
+  fields. It includes a small immutable offline catalog, exact Sage.js object
+  construction, explicitly bounded live HTTP queries, and validated read-only
+  SQLite snapshots. Automatic and bundled modes never access the network.
+- Exact class groups for broader cubic and quartic number-field workloads,
+  including authenticated relation/projection machinery, cached projection
+  reuse, and conservative exact fallbacks when a fast path cannot certify its
+  result.
+- Mestre's method of graphs as a sparse exact modular-forms subsystem. Public
+  APIs cover supersingular Brandt modules, sparse Hecke operators, weighted
+  isogeny graphs, cuspidal and spectral computations, Krylov certificates,
+  rational and algebraic eigenpackets, and q-expansions. The release also adds
+  Hilbert modular-form computations over `Q(sqrt(3))` and `Q(sqrt(5))`.
 
-The mathematical library and supported native platforms are those of 0.4.0:
+The sparse modular-form kernels use the same source-transparent native and Wasm
+compiler path with ordinary-Python fallbacks. Their outputs were checked against
+Sage semantics, Magma transcripts, modular-symbol Sturm certificates, historical
+psage data, and pinned LMFDB records. Browser release gates compile all 279
+production Wasm kernels and exercise exact public computations in Chromium.
+
+Packaging and runtime improvements include a lazy boundary for specialized
+extension-field root splitting, bounded fail-fast coefficient-prefix tests, and
+updated startup and browser payload guardrails. The supported release platforms
+remain:
 
 - macOS arm64, signed with Apple Developer ID and notarized by Apple;
 - Linux x86_64 and arm64;
@@ -34,7 +45,7 @@ SmartScreen may show an unrecognized-app warning for unsigned artifacts.
 Install the command line globally:
 
 ```sh
-npm install -g @sagemath/sagejs@0.4.1
+npm install -g @sagemath/sagejs@0.5.0
 ```
 
 Or embed Sage.js in a Node application:

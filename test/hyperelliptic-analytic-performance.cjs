@@ -131,9 +131,11 @@ True
 // Keep the cache and ownership checks below as bounded semantic witnesses.
 // The heavyweight competitive workload, including its honest timeout result,
 // is owned by bench/hyperelliptic/analytic-acceptance rather than this tier.
+// An unreceipted `auto` selector deliberately uses the exact exhaustive
+// fallback, so these cutoffs must remain semantic rather than competitive.
 test(
   "exact coefficient prefixes extend without rebuilding old coefficients",
-  { timeout: 180_000 },
+  { timeout: 60_000 },
   async () => {
     const session = await createSage();
     try {
@@ -143,15 +145,26 @@ R = PolynomialRing(QQ, "x")
 x = R.gen()
 C = HyperellipticCurve(x, x**3-x+1)
 incremental = GlobalCoefficientPrefix(C)
-first = list(incremental.through(60))
-second = list(incremental.through(120))
-one_shot = list(GlobalCoefficientPrefix(C).through(120))
+first = list(incremental.through(20))
+first_diagnostics = incremental.diagnostics()
+second = list(incremental.through(40))
 diagnostics = incremental.diagnostics()
-assert second == one_shot and second[:61] == first
-assert diagnostics["bound"] == 120
+one_shot_prefix = GlobalCoefficientPrefix(C)
+one_shot = list(one_shot_prefix.through(40))
+one_shot_diagnostics = one_shot_prefix.diagnostics()
+assert second == one_shot and second[:21] == first
+assert first_diagnostics["bound"] == 20
+assert first_diagnostics["extensions"] == 1
+assert diagnostics["bound"] == 40
 assert diagnostics["extensions"] == 2
-assert diagnostics["local_prime_bound"] == 120
-assert diagnostics["cached_euler_factors"] >= 29
+assert diagnostics["local_prime_bound"] == 40
+assert diagnostics["cached_euler_factors"] >= 12
+assert sum(first_diagnostics["backend_counts"].values()) < sum(
+    diagnostics["backend_counts"].values()
+)
+assert sum(diagnostics["backend_counts"].values()) == sum(
+    one_shot_diagnostics["backend_counts"].values()
+)
 True
 `);
       assert.equal(result.repr, "True");

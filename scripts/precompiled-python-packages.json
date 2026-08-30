@@ -3,6 +3,7 @@
     "conway_polynomials",
     "mpmath",
     "sage.databases.conway",
+    "sage.databases.lmfdb",
     "sagejs_elliptic_advanced",
     "sagejs_elliptic_descent",
     "sagejs.compiler",
@@ -36,6 +37,12 @@
     "sagejs.kernels.matrix.combinatorial",
     "sagejs.linear_algebra.combinatorial",
     "sagejs.linear_algebra.sparse_random_m4ri",
+    "sagejs.modular_forms",
+    "sagejs.modular_forms.modular_polynomial",
+    "sagejs.modular_forms.mestre",
+    "sagejs.modular_forms.sparse_krylov",
+    "sagejs.modular_forms.sparse_hecke",
+    "sagejs.modular_forms.supersingular",
     "sagejs.number_fields.analytic_zeta",
     "sagejs.number_fields.buchmann_lenstra",
     "sagejs.number_fields.class_group_factor_base",
@@ -62,6 +69,7 @@
     "sagejs.number_fields.units",
     "sagejs.number_fields.zeta_coefficient_kernel",
     "sagejs.number_fields.zeta_coefficients",
+    "sagejs.polynomial_algorithms.extension_field_roots",
     "traceback"
   ],
   "dynamicWarmups": [

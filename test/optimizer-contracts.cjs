@@ -7,6 +7,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const { default: createCompiler } = require("../dist/tools/compiler.js");
+const { pythonExecutable } = require("../tools/python-executable.cjs");
 const {
   createPythonCompilerFrontend,
 } = require("../dist/tools/python/compiler-frontend.js");
@@ -285,7 +286,9 @@ def f(count: int, value: float):
 
 test("the runtime decorator preserves the callable under CPython", () => {
   const compilerModulePath = path.join(__dirname, "../src/lib");
-  const python = spawnSync("/usr/bin/python3", ["-c", `
+  const python = spawnSync(pythonExecutable(), [
+    "-c",
+    `
 import sys
 sys.path.insert(0, ${JSON.stringify(compilerModulePath)})
 from sagejs.compiler import optimize, optimization_contract
@@ -301,10 +304,18 @@ assert optimization_contract(f) == {
     "target": "auto",
     "guard_failure": "error",
 }
-`], {
+`,
+  ], {
     cwd: path.join(__dirname, ".."),
     env: process.env,
     encoding: "utf8",
   });
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.error?.stack ||
+      python.stderr ||
+      python.stdout ||
+      "CPython subprocess failed",
+  );
 });

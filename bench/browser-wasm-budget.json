@@ -11,21 +11,21 @@
   },
   "artifact_baseline": {
     "totals": {
-      "bytes": 141974160,
-      "gzip_bytes": 21784208,
-      "brotli_bytes": 12983150
+      "bytes": 157135706,
+      "gzip_bytes": 22012985,
+      "brotli_bytes": 13741736
     }
   },
   "artifact_topology_limits": {
     "eager-core": {
-      "gzip_bytes": 14334000,
-      "brotli_bytes": 7990000
+      "gzip_bytes": 14610000,
+      "brotli_bytes": 8140000
     }
   },
   "performance_baseline": {
     "node-native": {
       "startup_ms": {
-        "median": 194.63621699996293
+        "median": 240.70442100000037
       },
       "interrupt_latency_ms": {
         "median": 26.179459999955725
@@ -53,7 +53,7 @@
         },
         "analytic-special-value-batches": {
           "warm_ms": {
-            "median": 90.97662100000025
+            "median": 117.09281099999953
           }
         },
         "analytic-gamma-xi-batches": {

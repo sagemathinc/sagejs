@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs-win32-x64",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Private workspace version anchor for Sage.js Windows x64",
   "private": true,
   "license": "GPL-3.0-only",

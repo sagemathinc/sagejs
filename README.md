@@ -1,6 +1,6 @@
 # Sage.js
 
-> **Early alpha:** Sage.js 0.4.1 is intended for outside experimentation.
+> **Early alpha:** Sage.js 0.5.0 is intended for outside experimentation.
 > Expect missing functionality, incompatible changes, and rough edges.
 
 > **Sage.js is open, portable, high-performance software for exploring
@@ -61,9 +61,9 @@ Inside Sage mode, `version()` reports the human-readable release and target;
 
 ```sage
 sage: version()
-'Sage.js v0.4.1 [linux-x64], Release Date: 2026-08-27'
+'Sage.js v0.5.0 [linux-x64], Release Date: 2026-08-29'
 sage: version(json=True)
-{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.4.1', 'release_date': '2026-08-27', 'platform': 'linux-x64'}
+{'schema': 'sagejs.version/v1', 'name': 'Sage.js', 'version': '0.5.0', 'release_date': '2026-08-29', 'platform': 'linux-x64'}
 ```
 
 - [npm package](https://www.npmjs.com/package/@sagemath/sagejs)
@@ -91,7 +91,7 @@ It installs into `~/.local/bin` by default and, when necessary, adds that
 directory to the current user's shell startup file. Restart the shell (or
 source the file named by the installer) after a first installation. When run
 as root it instead installs system-wide into `/usr/local/bin`; set
-`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.4.1` to
+`SAGEJS_INSTALL_DIR` to choose another directory or `SAGEJS_VERSION=0.5.0` to
 pin a release. The archives
 include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
@@ -111,7 +111,7 @@ built on Ubuntu 24.04; a minimal Debian/Ubuntu image needs `curl`, `xz-utils`,
 and `libatomic1` for the one-command installer and official Node-based
 executable. Windows executables are intended for ordinary Windows
 10/11 x64 systems; Authenticode provisioning is still in progress, so the
-0.4.1 early-alpha executables may be unsigned. macOS executables use the hardened
+0.5.0 early-alpha executables may be unsigned. macOS executables use the hardened
 runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
 submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
@@ -217,7 +217,7 @@ build/sea/sagejs program.sage      # Linux/macOS: no Node or checkout
 build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
-pnpm test:startup                  # enforce the 350 ms development startup budget
+pnpm test:startup                  # enforce the 390 ms development startup budget
 pnpm test:native                   # FLINT, igraph, and native integration tests
 pnpm test:tutorial                 # complete Sage tutorial compatibility
 pnpm test:sea                      # rebuild and relocation-test both SEAs
@@ -265,7 +265,7 @@ credentials can reproduce the signed, notarized macOS artifacts locally with:
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.4.1
+pnpm release:macos -- --publish v0.5.0
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
@@ -366,13 +366,13 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs@0.4.1
+npm install --global @sagemath/sagejs@0.5.0
 ```
 
 Or, with pnpm:
 
 ```sh
-pnpm add --global @sagemath/sagejs@0.4.1
+pnpm add --global @sagemath/sagejs@0.5.0
 ```
 
 The public package keeps the Sage.js library and embedding APIs, while its
@@ -453,7 +453,7 @@ console.log(result.repr);
 await sage.close();
 ```
 
-The 0.4.1 npm embedding API starts the installed platform executable behind a
+The 0.5.0 npm embedding API starts the installed platform executable behind a
 small JSON-lines protocol, so `createSage()` exposes the same full native
 mathematics runtime as the command line without a compiler or postinstall
 script. The explicit `@sagemath/sagejs/kernel` export remains available for
@@ -526,8 +526,11 @@ sage: dimension_cusp_forms(DirichletGroup(13).0^2, 2)
 
 FLINT computes the Bernoulli constant and all divisor sums in one native
 sieve, returning the complete exact polynomial through a single Node-API
-call. Cuspidal bases, Hecke operators, composite-level Eisenstein newforms,
-and modular symbols remain separate future layers.
+call. This is complemented by a sparse prime-level supersingular
+implementation of Mestre's graph method, exact Wiedemann/CRT certificates,
+Mestre q-expansion reconstruction, expander graph views, and checked Hilbert
+Brandt modules over $\mathbf Q(\sqrt5)$ and $\mathbf Q(\sqrt3)$. See
+[Mestre's method of graphs and sparse modular forms](docs/mestre-method-of-graphs.md).
 
 ## Sage mode
 
@@ -535,7 +538,7 @@ The `sagejs` command uses Sage-style syntax by default:
 
 ```py
 $ sagejs
-Welcome to Sage.js v0.4.1 [linux-x64].
+Welcome to Sage.js v0.5.0 [linux-x64].
 sage: 2^100
 1267650600228229401496703205376
 sage: sum([1..100])
@@ -823,7 +826,7 @@ Python mode retains Python's meaning of `^`:
 
 ```py
 $ sagejs --python
-Welcome to Sage.js v0.4.1 (Python mode) [linux-x64].
+Welcome to Sage.js v0.5.0 (Python mode) [linux-x64].
 >>> 2^3
 1
 >>> 2**3
