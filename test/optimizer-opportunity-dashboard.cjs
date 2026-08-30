@@ -376,7 +376,17 @@ test("portable identities bind real production optimizer IR", async () => {
     }],
     automaticIdentity: true,
   });
-  const region = dashboard.loops.find((loop) => loop.source.line === 126);
+  const production = dashboard.functions.find(
+    (fn) => fn.qualifiedName === "resident_exact_relation_hnf_select_v2",
+  );
+  assert.ok(production, "expected the production resident HNF function");
+  const region = dashboard.loops.find(
+    (loop) => loop.functionId === production.id &&
+      loop.decisions.some(
+        (decision) => decision.selected &&
+          decision.passId === "math.closed-ring-region.v1",
+      ),
+  );
   assert.ok(region, "expected the production retained-workspace loop");
   assert.equal(region.status, "selected");
   assert.deepEqual(

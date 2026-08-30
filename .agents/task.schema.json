@@ -41,6 +41,7 @@
         "polyglot",
         "documentation-compat",
         "native-compiler",
+        "optimizer-development",
         "distribution",
         "integration"
       ]

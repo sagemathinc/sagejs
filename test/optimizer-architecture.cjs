@@ -181,6 +181,7 @@ test("every registered lowering has one verifier and one Python emitter", () => 
   assert.deepEqual(registered, [
     "v8.bounded-integer-loop.v1",
     "v8.closed-ring-loop.v1",
+    "v8.closed-transactional-rectangular-binary64-dataflow.v1",
     "v8.fixed-extension-loop.v1",
     "v8.modular-batch-loop.v1",
     "v8.strict-float-array-loop.v1",

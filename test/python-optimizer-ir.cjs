@@ -112,6 +112,10 @@ test("the mathematical optimizer emits versioned verified IR", async () => {
       STRICT_FLOAT_ARRAY_PASS,
       STRICT_FLOAT_REGION_PASS,
       MODULAR_BATCH_REGION_PASS,
+      "math.closed-transactional-rectangular-binary64-dataflow.v1",
+      "math.closed-transactional-rectangular-binary64-dataflow-reconnaissance.v1",
+      "math.binary64-nested-all-reconnaissance.v1",
+      "math.modular-sequence-reconnaissance.v1",
       FIXED_EXTENSION_REGION_PASS,
       CLOSED_RING_REGION_PASS,
     ]);
