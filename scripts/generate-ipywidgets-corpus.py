@@ -107,7 +107,9 @@ def view_bundle(widget: widgets.Widget) -> dict[str, Any]:
     return normalize(widget._repr_mimebundle_())
 
 
-def frontend_message(widget: widgets.Widget, data: dict[str, Any], buffers=None) -> None:
+def frontend_message(
+    widget: widgets.Widget, data: dict[str, Any], buffers=None
+) -> None:
     widget.comm.handle_msg(
         {
             "header": {"msg_id": "frontend-message"},
@@ -198,9 +200,7 @@ def binary_media() -> dict[str, Any]:
             "name": "example.txt",
             "type": "text/plain",
             "size": 15,
-            "last_modified": dt.datetime(
-                2026, 8, 30, 12, 0, 0, tzinfo=dt.timezone.utc
-            ),
+            "last_modified": dt.datetime(2026, 8, 30, 12, 0, 0, tzinfo=dt.timezone.utc),
             "content": memoryview(b"widget payload\n"),
         }
     ]
@@ -218,7 +218,9 @@ def links_and_custom_messages() -> dict[str, Any]:
     left.value = 13
 
     custom_messages: list[Any] = []
-    right.on_msg(lambda _widget, content, buffers: custom_messages.append((content, buffers)))
+    right.on_msg(
+        lambda _widget, content, buffers: custom_messages.append((content, buffers))
+    )
     frontend_message(
         right,
         {"method": "custom", "content": {"action": "ping", "count": 2}},
