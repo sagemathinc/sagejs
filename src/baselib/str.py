@@ -564,8 +564,6 @@ def string_format(
                 raise IndexError("Not enough arguments to match template: " + template)
             value = format_args[next_index]
             next_index += 1
-        if _value_type_is(value, "function"):
-            value = value()
         if conversion == "r":
             formatted_value = ρσ_repr(value)
         elif conversion == "s":
@@ -1318,11 +1316,81 @@ def _str_encode(
     return bytes(_native_string(value), encoding, errors)
 
 
+def _str_translate(value: _Str, table: Any) -> _Str:
+    answer = ""
+    for character in _native_string(value):
+        code = ord(character)
+        getter = runtime.native_get(table, "__getitem__")
+        if runtime.strict_equal(runtime.jstype(getter), "function"):
+            try:
+                replacement = runtime.reflect.apply(getter, table, [code])
+            except LookupError:
+                replacement = character
+        elif runtime.reflect.has(table, code):
+            replacement = runtime.native_get(table, code)
+        else:
+            replacement = character
+        if replacement is None:
+            continue
+        if isinstance(replacement, int):
+            if replacement < 0 or replacement > 0x10FFFF:
+                raise ValueError("character mapping must be in range(0x110000)")
+            replacement = chr(replacement)
+        elif not isinstance(replacement, str):  # pyright: ignore[reportArgumentType]
+            raise TypeError("character mapping must return integer, None or str")
+        answer += replacement
+    return answer
+
+
+def _str_maketrans(
+    first: Any, second: Any = runtime.undefined, third: Any = runtime.undefined
+) -> dict[Any, Any]:
+    if second is runtime.undefined and third is runtime.undefined:
+        if not hasattr(first, "items"):
+            raise TypeError(
+                "if you give only one argument to maketrans it must be a dict"
+            )
+        answer = dict()
+        for key, replacement in first.items():
+            if isinstance(key, str):  # pyright: ignore[reportArgumentType]
+                if len(key) != 1:
+                    raise ValueError(
+                        "string keys in translate table must be of length 1"
+                    )
+                key = ord(key)
+            elif not isinstance(key, int):
+                raise TypeError("keys in translate table must be strings or integers")
+            answer[key] = replacement
+        return answer
+    if second is runtime.undefined:
+        raise TypeError("maketrans() argument 2 must be str, not omitted")
+    if third is runtime.undefined:
+        third = ""
+    if (
+        not isinstance(first, str)  # pyright: ignore[reportArgumentType]
+        or not isinstance(second, str)  # pyright: ignore[reportArgumentType]
+        or not isinstance(third, str)  # pyright: ignore[reportArgumentType]
+    ):
+        raise TypeError("maketrans() arguments 1, 2 and 3 must be str")
+    if len(first) != len(second):
+        raise ValueError("the first two maketrans arguments must have equal length")
+    answer = dict()
+    for index in range(len(first)):
+        answer[ord(first[index])] = ord(second[index])
+    for character in third:
+        answer[ord(character)] = None
+    return answer
+
+
 def _define_string_method(
     name: _Str,
     implementation: Any,
 ) -> None:
     native_method = runtime.native_method(implementation)
+    # A function read from ``str`` is an unbound Python method: callers supply
+    # the string explicitly (``str.rstrip(value, chars)``).  The separate
+    # prototype adapter below supplies the receiver for ``value.rstrip``.
+    runtime.reflect.set(implementation, "__staticmethod__", True)
     runtime.reflect.set(
         runtime.reflect.get(ρσ_str, "prototype"),
         name,
@@ -1365,6 +1433,7 @@ _define_string_method("expandtabs", _str_expandtabs)
 _define_string_method("lstrip", _str_lstrip)
 _define_string_method("rstrip", _str_rstrip)
 _define_string_method("strip", _str_strip)
+_define_string_method("translate", _str_translate)
 _define_string_method("partition", _str_partition)
 _define_string_method("rpartition", _str_rpartition)
 _define_string_method("replace", _str_replace)
@@ -1373,6 +1442,9 @@ _define_string_method("rsplit", _str_rsplit)
 _define_string_method("splitlines", _str_splitlines)
 _define_string_method("swapcase", _str_swapcase)
 _define_string_method("zfill", _str_zfill)
+
+runtime.reflect.set(_str_maketrans, "__staticmethod__", True)
+runtime.reflect.set(ρσ_str, "maketrans", _str_maketrans)
 
 runtime.reflect.set(ρσ_str, "ascii_lowercase", "abcdefghijklmnopqrstuvwxyz")
 runtime.reflect.set(ρσ_str, "ascii_uppercase", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")

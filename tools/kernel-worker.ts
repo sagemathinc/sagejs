@@ -42,6 +42,20 @@ async function main(): Promise<void> {
         text,
       });
     },
+    onEvent(event) {
+      port.postMessage({
+        type: "output-event",
+        id: evaluationId,
+        event,
+      });
+    },
+    onComm(event) {
+      port.postMessage({
+        type: "comm-event",
+        id: evaluationId,
+        event,
+      });
+    },
   });
 
   port.on("message", (message) => {
@@ -50,7 +64,9 @@ async function main(): Promise<void> {
     message.type === "complete" ||
     message.type === "inspect" ||
     message.type === "isComplete" ||
-    message.type === "documentation"
+    message.type === "documentation" ||
+    message.type === "comm" ||
+    message.type === "commInfo"
   ) {
     evaluationId = message.id;
     try {
@@ -60,6 +76,7 @@ async function main(): Promise<void> {
           filename: message.filename,
           language: message.language,
           suppressResult: message.suppressResult,
+          parentId: message.parentId,
         });
       } else if (message.type === "complete") {
         result = evaluator.complete(message.source, message.cursorPosition);
@@ -67,6 +84,11 @@ async function main(): Promise<void> {
         result = evaluator.inspect(message.source, message.cursorPosition);
       } else if (message.type === "documentation") {
         result = evaluator.documentation();
+      } else if (message.type === "comm") {
+        evaluator.comm(message.event);
+        result = undefined;
+      } else if (message.type === "commInfo") {
+        result = evaluator.commInfo(message.targetName);
       } else {
         result = evaluator.isComplete(message.source, message.language);
       }

@@ -136,6 +136,16 @@ runtime.object.setPrototypeOf(
     runtime.reflect.get(runtime.syntax_error, "prototype"),
     runtime.reflect.get(Exception, "prototype"),
 )
+for _native_exception in (
+    runtime.type_error,
+    runtime.reference_error,
+    runtime.syntax_error,
+):
+    runtime.object.defineProperty(
+        _native_exception,
+        "__python_type__",
+        {"value": type, "writable": True, "configurable": True},
+    )
 
 
 class SystemExit(BaseException):
@@ -180,6 +190,10 @@ class EOFError(Exception):
 
 
 class ImportError(Exception):
+    pass
+
+
+class ModuleNotFoundError(ImportError):
     pass
 
 
@@ -352,6 +366,7 @@ for _exception_class in [
     ValueError,
     EOFError,
     ImportError,
+    ModuleNotFoundError,
     MemoryError,
     Warning,
     UserWarning,

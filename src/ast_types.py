@@ -605,6 +605,7 @@ class AST_Class(AST_Scope):
         "statements": "[AST_Node*] list of statements in the class scope (excluding method definitions)",
         "dynamic_properties": "[dict] map of dynamic property names to property descriptors of the form {getter:AST_Method, setter:AST_Method",
         "classvars": "[dict] map containing all class variables as keys, to be used to easily test for existence of a class variable",
+        "own_classvars": "[dict] map containing class variables declared in this class body only",
         "nonlocal_names": "[string*] names explicitly rebound outside the class namespace",
         "declared_globals": "[string*] names declared global directly in the class body",
     }

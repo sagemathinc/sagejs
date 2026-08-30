@@ -7,6 +7,8 @@ extend-exclude = [
   "upstream-tests",
   "src/baselib/graph_reference_data.py",
   "src/lib/mpmath",
+  "src/lib/comm",
+  "src/lib/traitlets",
   "test/aes_vectors.py",
   "test/annotations.py",
   "test/baselib.py",

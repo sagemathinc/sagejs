@@ -161,6 +161,11 @@ class List(expr):
     __match_args__ = _fields
 
 
+class Set(expr):
+    _fields = ("elts",)
+    __match_args__ = _fields
+
+
 class Tuple(expr):
     _fields = ("elts", "ctx")
     __match_args__ = _fields
@@ -424,3 +429,415 @@ def parse(
     module.lineno = 1
     module.col_offset = 0
     return module
+
+
+class _LiteralParser:
+    """Parse the deliberately small expression grammar accepted by `literal_eval`."""
+
+    def __init__(self, source):
+        self.source = source
+        self.index = 0
+        self.length = len(source)
+
+    def malformed(self):
+        raise ValueError("malformed node or string: " + repr(self.source))
+
+    def skip_space(self):
+        while self.index < self.length:
+            current = self.source[self.index]
+            if current.isspace():
+                self.index += 1
+                continue
+            if current == "#":
+                newline = self.source.find("\n", self.index)
+                self.index = self.length if newline < 0 else newline + 1
+                continue
+            break
+
+    def consume(self, token):
+        self.skip_space()
+        if self.source.startswith(token, self.index):
+            self.index += len(token)
+            return True
+        return False
+
+    def expect(self, token):
+        if not self.consume(token):
+            self.malformed()
+
+    def identifier(self):
+        self.skip_space()
+        start = self.index
+        if start >= self.length:
+            return None
+        first = self.source[start]
+        if not (first.isalpha() or first == "_"):
+            return None
+        self.index += 1
+        while self.index < self.length:
+            current = self.source[self.index]
+            if not (current.isalpha() or current.isdigit() or current == "_"):
+                break
+            self.index += 1
+        return self.source[start : self.index]
+
+    def starts_string(self):
+        self.skip_space()
+        position = self.index
+        while position < self.length and self.source[position].isalpha():
+            position += 1
+            if position - self.index > 2:
+                return False
+        prefix = self.source[self.index : position].lower()
+        return (
+            prefix in ("", "r", "u", "b", "br", "rb")
+            and position < self.length
+            and self.source[position] in ("'", '"')
+        )
+
+    def string(self):
+        self.skip_space()
+        start = self.index
+        while self.index < self.length and self.source[self.index].isalpha():
+            self.index += 1
+        prefix = self.source[start : self.index].lower()
+        if prefix not in ("", "r", "u", "b", "br", "rb"):
+            self.malformed()
+        if self.index >= self.length or self.source[self.index] not in ("'", '"'):
+            self.malformed()
+        quote = self.source[self.index]
+        triple = self.source.startswith(quote * 3, self.index)
+        delimiter = quote * (3 if triple else 1)
+        self.index += len(delimiter)
+        content_start = self.index
+        while self.index < self.length:
+            if self.source.startswith(delimiter, self.index):
+                content = self.source[content_start : self.index]
+                self.index += len(delimiter)
+                return self.decode_string(content, prefix)
+            if self.source[self.index] == "\\":
+                self.index += 2
+            else:
+                self.index += 1
+        self.malformed()
+
+    def decode_string(self, content, prefix):
+        raw = "r" in prefix
+        binary = "b" in prefix
+        if raw:
+            if binary:
+                return bytes(ord(current) for current in content)
+            return content
+        simple = {
+            "\\": "\\",
+            "'": "'",
+            '"': '"',
+            "a": "\a",
+            "b": "\b",
+            "f": "\f",
+            "n": "\n",
+            "r": "\r",
+            "t": "\t",
+            "v": "\v",
+        }
+        answer = []
+        position = 0
+        while position < len(content):
+            current = content[position]
+            if current != "\\":
+                answer.append(ord(current) if binary else current)
+                position += 1
+                continue
+            if position + 1 >= len(content):
+                self.malformed()
+            escaped = content[position + 1]
+            if escaped in ("\n", "\r"):
+                position += 2
+                if (
+                    escaped == "\r"
+                    and position < len(content)
+                    and content[position] == "\n"
+                ):
+                    position += 1
+                continue
+            if escaped in simple:
+                value = simple[escaped]
+                answer.append(ord(value) if binary else value)
+                position += 2
+                continue
+            if escaped in "01234567":
+                end = position + 2
+                while (
+                    end < min(position + 4, len(content)) and content[end] in "01234567"
+                ):
+                    end += 1
+                value = int(content[position + 1 : end], 8)
+                answer.append(value if binary else chr(value))
+                position = end
+                continue
+            if escaped == "x":
+                digits = content[position + 2 : position + 4]
+                if len(digits) != 2 or any(
+                    digit not in "0123456789abcdefABCDEF" for digit in digits
+                ):
+                    self.malformed()
+                value = int(digits, 16)
+                answer.append(value if binary else chr(value))
+                position += 4
+                continue
+            if not binary and escaped in ("u", "U"):
+                count = 4 if escaped == "u" else 8
+                digits = content[position + 2 : position + 2 + count]
+                if len(digits) != count or any(
+                    digit not in "0123456789abcdefABCDEF" for digit in digits
+                ):
+                    self.malformed()
+                answer.append(chr(int(digits, 16)))
+                position += 2 + count
+                continue
+            if not binary and escaped == "N" and content.startswith("{", position + 2):
+                closing = content.find("}", position + 3)
+                if closing < 0:
+                    self.malformed()
+                from unicodedata import lookup
+
+                answer.append(lookup(content[position + 3 : closing]))
+                position = closing + 1
+                continue
+            answer.append(ord("\\") if binary else "\\")
+            answer.append(ord(escaped) if binary else escaped)
+            position += 2
+        return bytes(answer) if binary else "".join(answer)
+
+    def number(self):
+        self.skip_space()
+        start = self.index
+        if start >= self.length:
+            return None
+        current = self.source[start]
+        if not (
+            current.isdigit()
+            or (
+                current == "."
+                and start + 1 < self.length
+                and self.source[start + 1].isdigit()
+            )
+        ):
+            return None
+        self.index += 1
+        while self.index < self.length:
+            current = self.source[self.index]
+            previous = self.source[self.index - 1]
+            if current.isalpha() or current.isdigit() or current in ("_", "."):
+                self.index += 1
+            elif current in ("+", "-") and previous in ("e", "E"):
+                self.index += 1
+            else:
+                break
+        token = self.source[start : self.index].replace("_", "")
+        imaginary = token[-1:] in ("j", "J")
+        if imaginary:
+            token = token[:-1]
+        try:
+            if token.lower().startswith(("0x", "0o", "0b")):
+                value = int(token, 0)
+            elif any(marker in token for marker in (".", "e", "E")):
+                value = float(token)
+            else:
+                value = int(token, 10)
+        except Exception:
+            self.malformed()
+        return complex(0, value) if imaginary else value
+
+    def sequence(self, closing, factory):
+        values = []
+        self.skip_space()
+        if self.consume(closing):
+            return factory(values)
+        while True:
+            values.append(self.value())
+            if self.consume(closing):
+                return factory(values)
+            self.expect(",")
+            if self.consume(closing):
+                return factory(values)
+
+    def parenthesized(self):
+        self.expect("(")
+        self.skip_space()
+        if self.consume(")"):
+            return ()
+        first = self.value()
+        if self.consume(")"):
+            return first
+        self.expect(",")
+        values = [first]
+        if self.consume(")"):
+            return tuple(values)
+        while True:
+            values.append(self.value())
+            if self.consume(")"):
+                return tuple(values)
+            self.expect(",")
+            if self.consume(")"):
+                return tuple(values)
+
+    def mapping_or_set(self):
+        self.expect("{")
+        if self.consume("}"):
+            return {}
+        first = self.value()
+        if self.consume(":"):
+            answer = {first: self.value()}
+            while not self.consume("}"):
+                self.expect(",")
+                if self.consume("}"):
+                    return answer
+                key = self.value()
+                self.expect(":")
+                answer[key] = self.value()
+            return answer
+        answer = {first}
+        while not self.consume("}"):
+            self.expect(",")
+            if self.consume("}"):
+                return answer
+            answer.add(self.value())
+        return answer
+
+    def atom(self):
+        self.skip_space()
+        if self.starts_string():
+            result = self.string()
+            while self.starts_string():
+                result += self.string()
+            return result
+        if self.source.startswith("...", self.index):
+            self.index += 3
+            return Ellipsis
+        if self.consume("["):
+            return self.sequence("]", list)
+        if self.source.startswith("(", self.index):
+            return self.parenthesized()
+        if self.source.startswith("{", self.index):
+            return self.mapping_or_set()
+        number = self.number()
+        if number is not None:
+            return number
+        name = self.identifier()
+        if name == "None":
+            return None
+        if name == "True":
+            return True
+        if name == "False":
+            return False
+        if name == "set":
+            self.expect("(")
+            self.expect(")")
+            return set()
+        self.malformed()
+
+    def value(self):
+        self.skip_space()
+        sign = None
+        if self.consume("+"):
+            sign = 1
+        elif self.consume("-"):
+            sign = -1
+        left = self.atom()
+        if sign is not None:
+            if type(left) not in (int, float, complex):
+                self.malformed()
+            left = +left if sign > 0 else -left
+        self.skip_space()
+        if self.index < self.length and self.source[self.index] in ("+", "-"):
+            operation = self.source[self.index]
+            self.index += 1
+            right = self.number()
+            if type(left) not in (int, float) or type(right) is not complex:
+                self.malformed()
+            return left + right if operation == "+" else left - right
+        return left
+
+    def parse(self):
+        result = self.value()
+        self.skip_space()
+        if self.index != self.length:
+            self.malformed()
+        return result
+
+
+def _literal_eval_node(node):
+    def malformed(value):
+        message = "malformed node or string"
+        if getattr(value, "lineno", None):
+            message += " on line " + str(value.lineno)
+        raise ValueError(message + ": " + repr(value))
+
+    def number(value):
+        if not isinstance(value, Constant) or type(value.value) not in (
+            int,
+            float,
+            complex,
+        ):
+            malformed(value)
+        return value.value
+
+    def signed_number(value):
+        if isinstance(value, UnaryOp) and isinstance(value.op, (UAdd, USub)):
+            operand = number(value.operand)
+            return +operand if isinstance(value.op, UAdd) else -operand
+        return number(value)
+
+    def convert(value):
+        if isinstance(value, Constant):
+            return value.value
+        if isinstance(value, Tuple):
+            return tuple(convert(item) for item in value.elts)
+        if isinstance(value, List):
+            return [convert(item) for item in value.elts]
+        if isinstance(value, Set):
+            return {convert(item) for item in value.elts}
+        if (
+            isinstance(value, Call)
+            and isinstance(value.func, Name)
+            and value.func.id == "set"
+            and value.args == value.keywords == []
+        ):
+            return set()
+        if isinstance(value, Dict):
+            if len(value.keys) != len(value.values):
+                malformed(value)
+            return dict(
+                zip(
+                    (convert(key) for key in value.keys),
+                    (convert(item) for item in value.values),
+                )
+            )
+        if isinstance(value, BinOp) and isinstance(value.op, (Add, Sub)):
+            left = signed_number(value.left)
+            right = number(value.right)
+            if type(left) in (int, float) and type(right) is complex:
+                return left + right if isinstance(value.op, Add) else left - right
+        return signed_number(value)
+
+    return convert(node)
+
+
+def literal_eval(node_or_string):
+    """Safely evaluate a Python literal expression.
+
+    Accepted input matches CPython's literal structures: strings, bytes,
+    numbers, tuples, lists, dictionaries, sets, booleans, `None`, and
+    `Ellipsis`. Arbitrary names, calls, attributes and comprehensions are
+    rejected without executing them.
+    """
+    if isinstance(node_or_string, str):
+        source = node_or_string.lstrip(" \t")
+        compile(source, "<unknown>", "eval")
+        return _LiteralParser(source).parse()
+    if isinstance(node_or_string, Expression):
+        node_or_string = node_or_string.body
+    if isinstance(node_or_string, AST):
+        return _literal_eval_node(node_or_string)
+    raise ValueError("malformed node or string: " + repr(node_or_string))

@@ -7,12 +7,14 @@ from ast_types import (
     AST_Class,
     AST_ClassCall,
     AST_Dot,
+    AST_ItemAccess,
     AST_Lambda,
     AST_Method,
     AST_New,
     AST_PropAccess,
     AST_Scope,
     AST_Seq,
+    AST_Sub,
     AST_SymbolRef,
     AST_Toplevel,
     has_calls,
@@ -38,7 +40,9 @@ def decorate(decorators, output, func):
     def wrap():
         nonlocal pos
         if pos < decorators.length:
+            output.print("ρσ_resolve_callable(")
             decorators[pos].expression.print(output)
+            output.print(")")
             pos += 1
             output.with_parens(wrap)
         else:
@@ -102,7 +106,7 @@ def function_preamble(node, output, offset, javascript_name):
     if offset and output.options.python_attributes:
         output.indent()
         output.print("if ((this === globalThis || this == null) ")
-        output.print("&& arguments.length > 0) return arguments.callee.apply(")
+        output.print("&& arguments.length > 0) return " + fname + ".apply(")
         output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
         output.end_statement()
 
@@ -599,6 +603,16 @@ def function_annotation(self, output, strip_first, name):
 
     props.__argnames__ = argnames
 
+    positional_only = self.argnames.posonly or 0
+    if strip_first and positional_only:
+        positional_only -= 1
+    if positional_only:
+
+        def positional_only_count():
+            output.print(str(positional_only))
+
+        props.__positional_only__ = positional_only_count
+
     if self.argnames.starargs is not undefined:
 
         def varargs():
@@ -724,9 +738,18 @@ def function_definition(
             # this only inside ``function* js_generator`` returns the nested
             # generator as StopIteration.value instead of delegating to it.
             if strip_first and output.options.python_attributes:
+                generator_wrapper_name = javascript_name or (
+                    output.make_python_name(self.name.name)
+                    if self.name and self.name.python_identifier
+                    else self.name.name
+                    if self.name
+                    else anonfunc
+                )
                 output.indent()
                 output.print("if ((this === globalThis || this == null) ")
-                output.print("&& arguments.length > 0) return arguments.callee.apply(")
+                output.print("&& arguments.length > 0) return ")
+                output.print_name(output.make_name(generator_wrapper_name))
+                output.print(".apply(")
                 output.print("arguments[0], Array.prototype.slice.call(arguments, 1))")
                 output.end_statement()
             output.indent()
@@ -850,11 +873,34 @@ def print_this(expression, output):
     obj = find_this(expression)
     if obj:
         obj.print(output)
+    elif output.options.python_attributes:
+        # A local or global Python function call has no implicit receiver.
+        # Reusing the ambient JavaScript `this` is observable for calls with
+        # `*args` or keyword interpolation and incorrectly turns a nested
+        # function into a bound method of its caller.
+        output.print("undefined")
     else:
         output.print("this")
 
 
 def print_function_call(self, output):
+    def print_scope_binding(scope, name):
+        """Print one locals()/vars() value using its emitted lexical name."""
+        python_identifier = False
+        for symbol in scope.localvars or []:
+            if symbol.name is name and symbol.python_identifier:
+                python_identifier = True
+                break
+        if not python_identifier and is_node_type(scope, AST_Lambda):
+            for argument in scope.argnames:
+                if argument.name is name and argument.python_identifier:
+                    python_identifier = True
+                    break
+        if python_identifier:
+            output.print_python_name(name)
+        else:
+            output.print_name(name)
+
     def scope_for_namespace(want_globals):
         stack = output.stack()
         for index in range(stack.length - 1, -1, -1):
@@ -905,7 +951,7 @@ def print_function_call(self, output):
                 scope.name.print(output)
                 output.print(".prototype[" + JSON.stringify(name) + "]")
             else:
-                output.print_name(name)
+                print_scope_binding(scope, name)
         output.print("})")
 
     if (
@@ -1042,7 +1088,7 @@ def print_function_call(self, output):
                 scope.name.print(output)
                 output.print(".prototype[" + JSON.stringify(name) + "]")
             else:
-                output.print_name(name)
+                print_scope_binding(scope, name)
         output.print("})")
         finish_reusable_guard()
         return
@@ -1093,9 +1139,12 @@ def print_function_call(self, output):
                         output.print("ρσ_expr_temp")
                         print_getattr(self.expression, output, True)
                 elif no_call and not self.direct_call:
-                    output.print(
-                        "(ρσ_expr_temp?.__call__?.bind(ρσ_expr_temp) ?? ρσ_expr_temp)"
-                    )
+                    # A dynamically computed callable may itself be a Python
+                    # class.  Looking up ``.__call__`` first would select its
+                    # metaclass hook instead of constructing the class.  The
+                    # shared resolver preserves host/Python functions and only
+                    # binds ``__call__`` for genuine callable instances.
+                    output.print("ρσ_resolve_callable(ρσ_expr_temp)")
                 else:
                     output.print("ρσ_expr_temp")
             elif (
@@ -1123,6 +1172,8 @@ def print_function_call(self, output):
                     and not self.direct_call
                     and (
                         is_node_type(self.expression, AST_Call)
+                        or is_node_type(self.expression, AST_Sub)
+                        or is_node_type(self.expression, AST_ItemAccess)
                         or (
                             output.options.python_attributes
                             and not has_kwargs

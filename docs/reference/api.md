@@ -365,15 +365,16 @@ True
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `cohen_eisenstein_series_qexp`
 
@@ -392,15 +393,16 @@ sage: cohen_eisenstein_series_qexp(2, 6)
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `Color`
 
@@ -4792,15 +4794,16 @@ sage: len(half_integral_formula_registry())
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `half_integral_weight_hecke_qexp`
 
@@ -4820,15 +4823,16 @@ sage: half_integral_weight_hecke_qexp(f, 5, 3, prec=5)
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `half_integral_weight_modform_basis`
 
@@ -4847,15 +4851,16 @@ sage: half_integral_weight_modform_basis(list(DirichletGroup(16))[4], 3, 5)
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `HalfIntegralWeightModularForms`
 
@@ -4875,15 +4880,16 @@ sage: (H.weight(), H.dimension())
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `help`
 
@@ -8207,6 +8213,35 @@ implemented.
 
 - `sagejs-original`
 
+## `shimura_lift_qexp`
+
+```sage
+shimura_lift_qexp(series: Any, k: Any, t: Any=1, chi: Any=None, level: Any=None, prec: Any=None, variable: str='q') -> Any
+```
+
+Return the exact cuspidal Shimura lift for squarefree $t$.
+
+```sage
+sage: q = PowerSeriesRing(QQ, 'q', default_prec=10).gen()
+sage: shimura_lift_qexp(q + O(q^10), 3, level=4, prec=4)
+q - q^3 + O(q^4)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modform.half_integral`
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
+- Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
+- Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
+
+### Provenance
+
+- `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
+
 ## `show`
 
 ```sage
@@ -8551,15 +8586,16 @@ sage: theta_qexp(6)
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `theta_qexp_certificate`
 
@@ -8578,15 +8614,16 @@ True
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `theta2_qexp`
 
@@ -8605,15 +8642,16 @@ q + q^9 + O(q^12)
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `theta2_qexp_certificate`
 
@@ -8632,15 +8670,16 @@ True
 
 - Kind: `function`
 - Module: `sage.modular.modform.half_integral`
-- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Sturm bounds
+- Tags: modular forms, half-integral weight, theta series, Cohen Eisenstein series, Hecke operators, Kohnen plus space, Shimura lift, Sturm bounds
 - Backends: Sage.js exact modular symbols, FLINT exact rational and cyclotomic linear algebra, ordinary Python coefficient formulas
 - Sage compatibility: compatible — The Basmaji constructor accepts odd k at least three and a Dirichlet character whose modulus is divisible by 16. Unlike SageMath's historical function, it automatically raises the working precision past a proof bound and returns a replayable certificate.
-- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. General Shimura lifts and the complete Kohnen-plus object layer remain future work.
+- Limitations: Basmaji cusp spaces currently require character modulus divisible by 16. Hecke matrices currently require T_(p^2) at an odd prime p not dividing the level. Shimura target-coordinate certificates currently require trivial character. The bounded Shimura coefficient API currently requires cuspidal input and positive squarefree t.
 
 ### Provenance
 
 - `sage-derived` — [SageMath half_integral.py](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modform/half_integral.py); license GPL-2.0-or-later
-- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, and exact T_(p^2) matrix recovery
+- `sagejs-original` — Half-integral Sturm certification, replayable formula certificates, exact T_(p^2) matrix recovery, and certified Kohnen-plus/Shimura maps
+- `software-derived` — [PARI/GP mfkohnenbasis and mfshimura](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html); license GPL-2.0-or-later
 
 ## `var`
 

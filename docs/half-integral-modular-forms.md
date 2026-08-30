@@ -148,6 +148,72 @@ The compatibility function `half_integral_weight_modform_basis(chi,k,prec)`
 returns the same power-series list as
 `HalfIntegralWeightModularForms(chi,k,prec).q_expansion_basis()`.
 
+## 5. Kohnen plus spaces and Shimura lifts
+
+Put $r=(k-1)/2$. Subject to the standard conductor condition, the Kohnen
+$+$-space consists of forms whose coefficient $a(n)$ vanishes in the two
+forbidden residue classes. For trivial character these are equivalently
+
+$$
+a(n)=0\quad\text{unless}\quad (-1)^r n\equiv0,1\pmod4.
+$$
+
+Sage.js constructs this subspace as the exact left kernel of the forbidden
+coefficient functionals. The kernel is checked through the conservative
+half-integral Sturm bound at level $4N$, not merely through the displayed
+precision.
+
+```sage test
+chi = list(DirichletGroup(16))[0]
+H = HalfIntegralWeightModularForms(chi, 9, prec=20)
+P = H.kohnen_plus_subspace()
+C = P.basis_certificate()
+print(P.q_expansion_basis(16))
+assert H.dimension() == 4
+assert P.dimension() == 2
+assert C.epsilon() == 1
+assert C.sturm_bound() == 36
+assert C.verify()
+```
+
+For $f=\sum a(n)q^n$, positive squarefree $t$, and $m>0$, the implemented
+cuspidal Shimura lift is
+
+$$
+A_t(m)=\sum_{d\mid m}\chi(d)
+\left(\frac{(-1)^rt}{d}\right)d^{r-1}
+a\!\left(t(m/d)^2\right),
+$$
+
+with divisors sharing a prime with $Nt$ omitted. The coefficient API checks
+that the input contains every square-index coefficient it reads. On a
+trivial-character plus space, `shimura_lift_certificate(t)` additionally
+places the image in $S_{k-1}(\Gamma_0(N/4))$ through its Sturm bound and
+exposes exact target coordinates.
+
+```sage test
+images = P.shimura_lift_basis(1, 10)
+print(images)
+certificate = P.shimura_lift_certificate(1)
+assert certificate.matrix() == matrix(QQ, 2, 2, [1, 0, 0, 1])
+assert certificate.verify()
+assert certificate.verify_hecke(3)
+```
+
+For this level-$16$, weight-$9/2$ example, PARI/GP's independently
+implemented `mfkohnenbasis` returns the same two coefficient rows, and
+`mfshimura` returns
+
+$$
+q+12q^3-210q^5+1016q^7-2043q^9+O(q^{10})
+$$
+
+and
+
+$$
+q^2-8q^4+12q^6+64q^8+O(q^{10}).
+$$
+
 ## What the certificate proves
 
 For weight $k/2$ the coefficient bound is
@@ -173,8 +239,12 @@ division by $\Theta_3$.
 - Cohen's construction currently covers $r\geq2$; the exceptional
   Hurwitz-class-number series of weight $3/2$ is not silently conflated with
   this domain.
-- General Shimura lifts, complete Kohnen-plus space objects, bad-prime Hecke
-  operators, and Petersson products remain later slices.
+- The certified Shimura target-coordinate map currently requires trivial
+  character; the coefficient-level formula supports exact character values.
+- The bounded Shimura API currently accepts cuspidal inputs and positive
+  squarefree $t$. Fundamental-discriminant aliases and Eisenstein constant
+  terms remain later work.
+- Bad-prime Hecke operators and Petersson products remain later slices.
 
 ## References
 
@@ -184,3 +254,4 @@ division by $\Theta_3$.
 - H. Cohen, *Sums involving the values at negative integers of $L$-functions
   of quadratic characters*, Math. Ann. 217 (1975), 271–285.
 - S. Purkait, [*Hecke operators in half-integral weight*](https://jtnb.centre-mersenne.org/item/10.5802/jtnb.865.pdf), J. Théorie des Nombres de Bordeaux 26 (2014), 233–251.
+- PARI/GP, [`mfkohnenbasis` and `mfshimura`](https://pari.math.u-bordeaux.fr/dochtml/html/Modular_forms.html).
