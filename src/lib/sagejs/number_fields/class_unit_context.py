@@ -1183,27 +1183,44 @@ class _LiveClassUnitArtifacts:
         units: Iterable[Any],
         unit_hashes: Iterable[str],
     ) -> bool:
-        """Retain live units issued from this exact relation presentation."""
+        """Retain live units issued from this exact relation presentation.
+
+        A presentation's Smith dependencies are not the only exact unit
+        dependencies.  The engine may apply an exact unimodular row transform
+        (for example LLL) before materializing the corresponding factored
+        units.  Accept such a row only after replaying it against every column
+        of the already-authenticated live relation matrix.  A zero product in
+        every factor-base column is precisely the ideal-theoretic unit proof;
+        detached or stale relations still take the ordinary replay path.
+        """
         # No callback separates this exact presentation from its live units.
         if (
             self.sealed
             or not self.reusable
             or collector is not self.collector
             or presentation is not self.presentation
+            or not self.relation_stage_authenticated(collector, presentation)
         ):
             return False
         relations = self.relations
-        dependency_values = tuple(
-            tuple(int(value) for value in dependency) for dependency in dependencies
-        )
-        unit_values = tuple(units)
-        hash_values = tuple(str(value) for value in unit_hashes)
+        try:
+            dependency_values = tuple(
+                tuple(int(value) for value in dependency) for dependency in dependencies
+            )
+            unit_values = tuple(units)
+            hash_values = tuple(str(value) for value in unit_hashes)
+            relation_rows = tuple(
+                tuple(int(value) for value in relation.row) for relation in relations
+            )
+        except (AttributeError, OverflowError, TypeError, ValueError):
+            return False
         if not (len(dependency_values) == len(unit_values) == len(hash_values)):
             return False
-        exact_dependencies = tuple(
-            tuple(int(value) for value in dependency)
-            for dependency in getattr(presentation, "dependency_transforms", ())
-        )
+        factor_base_width = len(self.factor_base)
+        if len(relation_rows) != len(relations) or any(
+            len(row) != factor_base_width for row in relation_rows
+        ):
+            return False
         retained: list[tuple[Any, str]] = []
         for coefficients, unit, unit_hash in zip(
             dependency_values, unit_values, hash_values, strict=True
@@ -1211,11 +1228,16 @@ class _LiveClassUnitArtifacts:
             if (
                 len(coefficients) != len(relations)
                 or not any(coefficients)
-                or coefficients not in exact_dependencies
                 or len(unit_hash) != 64
                 or any(character not in "0123456789abcdef" for character in unit_hash)
             ):
                 return False
+            for column in range(factor_base_width):
+                if sum(
+                    coefficient * relation_rows[index][column]
+                    for index, coefficient in enumerate(coefficients)
+                ):
+                    return False
             retained.append((unit, unit_hash))
         for unit, unit_hash in retained:
             if any(

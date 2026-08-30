@@ -248,6 +248,12 @@ admissions = trial._admit_validated_integral_order_basis_rows(
     _validated_token=relations._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
 )
 assert len(admissions) == 19
+maximum_relation_entry_bits = max(
+    abs(int(value)).bit_length()
+    for record in trial.records
+    for value in record.row
+)
+assert maximum_relation_entry_bits <= 3
 presentation = matrix.extract_relation_presentation(
     [record.row for record in trial.records],
     len(factor_base),
@@ -257,9 +263,27 @@ assert presentation.rank == 10
 assert presentation.order == 9
 assert presentation.invariants == (3, 3)
 assert len(presentation.dependency_transforms) == 9
+assert engine._bind_context_relations(factor_base, trial, presentation)
+forged_dependency = (1,) + (0,) * (len(trial.records) - 1)
+assert any(trial.records[0].row)
+assert not engine.context._live_artifacts.retain_dependency_units(
+    trial,
+    presentation,
+    (forged_dependency,),
+    (K.one(),),
+    ("0" * 64,),
+)
+assert engine.context.live_diagnostics()["authenticated_dependency_units"] == 0
 units = engine._independent_units(trial, presentation, 2)
 _torsion, _regulator, index = engine._analytic_index(presentation, units, 2)
-assert len(units) == 2 and index.index_one and index.upper_index == 1
+# The guarded exact-Python selector chooses a different valid class support
+# from the formerly unqualified native 52-by-10 call.  This reduced-ideal-only
+# prefix has unit index two; the complete public pipeline combines it with the
+# independent integral prefix below and proves index one without saturation.
+assert len(units) == 2 and not index.index_one and index.upper_index == 2
+assert engine._resource_usage["unit_principal_authority_hits"] == 2
+assert engine._resource_usage["unit_principal_authority_fallbacks"] == 0
+assert engine.context.live_diagnostics()["authenticated_dependency_units"] == 2
 
 # A missing checked kernel declines before publication.  Cancellation remains
 # ordered before the first bounded source iteration.
@@ -303,12 +327,16 @@ assert result.proof_status == "exact-relations-conditional-grh"
 assert result.class_group().invariants() == (3, 3)
 assert resources["cubic_reduced_ideal_sieve_uses"] == 1
 assert resources["cubic_reduced_ideal_sieve_candidates"] == 46
-assert resources["cubic_reduced_ideal_sieve_relations"] == 4
+assert resources["cubic_reduced_ideal_sieve_relations"] == 5
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["saturation_rounds"] == 0
+assert resources["unit_principal_authority_requests"] == 2
+assert resources["unit_principal_authority_hits"] == 2
+assert resources["unit_principal_authority_fallbacks"] == 0
+assert result.context.live_diagnostics()["authenticated_dependency_units"] == 2
 print("cubic-reduced-ideal-relation-batch-ok")
 `;
 
