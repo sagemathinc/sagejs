@@ -342,6 +342,16 @@ assert resources["cubic_reduced_ideal_sieve_candidates"] == 46
 assert resources["cubic_reduced_ideal_sieve_relations"] == 5
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
+assert resources["cubic_relation_selector_calls"] == 1
+assert resources["cubic_relation_selector_initial_rows"] == 6
+assert resources["cubic_relation_selector_candidate_rows"] == 48
+assert resources["cubic_relation_selector_total_rows"] == 54
+assert resources["cubic_relation_selector_columns"] == 10
+assert resources["cubic_relation_selector_maximum_entry_bits"] == 3
+assert resources["cubic_relation_selector_deletion_trials"] == 22
+assert resources["cubic_relation_selector_hnf_calls"] == 23
+assert resources["cubic_relation_selector_native_boundary_calls"] == 0
+assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 1
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["saturation_rounds"] == 0

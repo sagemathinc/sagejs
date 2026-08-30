@@ -2023,6 +2023,7 @@ def _select_cubic_relation_candidates(
     initial_rows: tuple[tuple[int, ...], ...],
     candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
     width: int,
+    selection_receipt: dict[str, Any] | None = None,
 ) -> tuple[
     tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None,
     int,
@@ -2034,6 +2035,30 @@ def _select_cubic_relation_candidates(
     deletion schedule before any selected proposal proceeds to the independent
     ideal-containment admission boundary.
     """
+    if selection_receipt is not None:
+        source_rows = initial_rows + tuple(entry[0] for entry in candidates)
+        selection_receipt.update(
+            {
+                "initial_rows": len(initial_rows),
+                "candidate_rows": len(candidates),
+                "total_rows": len(source_rows),
+                "columns": int(width),
+                "maximum_entry_bits": max(
+                    (
+                        abs(int(value)).bit_length()
+                        for row in source_rows
+                        for value in row
+                    ),
+                    default=1,
+                ),
+                "completed": 0,
+                "rank": 0,
+                "deletion_trials": 0,
+                "hnf_calls": 0,
+                "native_boundary_calls": 0,
+                "flint_basis_deletions": 0,
+            }
+        )
     if not candidates:
         return (), 0
     try:
@@ -2042,6 +2067,19 @@ def _select_cubic_relation_candidates(
             (entry[0] for entry in candidates),
             width,
         )
+        if selection_receipt is not None:
+            selection_receipt.update(
+                {
+                    "completed": int(selection.deletion_complete),
+                    "rank": int(selection.rank),
+                    "deletion_trials": int(selection.deletion_trials),
+                    "hnf_calls": int(selection.hnf_calls),
+                    "native_boundary_calls": int(selection.boundary_calls),
+                    "flint_basis_deletions": int(
+                        selection.backend == "python+flint-basis-deletions"
+                    ),
+                }
+            )
         if selection.rank < 1 or not selection.deletion_complete:
             return None, 0
         return (

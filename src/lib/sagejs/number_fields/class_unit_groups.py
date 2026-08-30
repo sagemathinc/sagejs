@@ -1824,6 +1824,16 @@ class ClassUnitGroupEngine:
             "cubic_reduced_ideal_sieve_relations": 0,
             "cubic_reduced_ideal_sieve_dependency_relations": 0,
             "cubic_reduced_ideal_sieve_source_norm": 0,
+            "cubic_relation_selector_calls": 0,
+            "cubic_relation_selector_initial_rows": 0,
+            "cubic_relation_selector_candidate_rows": 0,
+            "cubic_relation_selector_total_rows": 0,
+            "cubic_relation_selector_columns": 0,
+            "cubic_relation_selector_maximum_entry_bits": 0,
+            "cubic_relation_selector_deletion_trials": 0,
+            "cubic_relation_selector_hnf_calls": 0,
+            "cubic_relation_selector_native_boundary_calls": 0,
+            "cubic_relation_selector_flint_basis_deletion_uses": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -2995,12 +3005,44 @@ class ClassUnitGroupEngine:
                 candidates = tuple(combined)
             if packed_factor_base is not None:
                 self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
+            selection_receipt: dict[str, Any] = {}
             selected_result: Any = select(
                 matrix,
                 tuple(proposal[1] for proposal in initial_proposals),
                 candidates,
                 len(factor_base),
+                selection_receipt,
             )
+            self._resource_usage["cubic_relation_selector_calls"] += 1
+            for resource_name, receipt_name in (
+                ("cubic_relation_selector_initial_rows", "initial_rows"),
+                ("cubic_relation_selector_candidate_rows", "candidate_rows"),
+                ("cubic_relation_selector_total_rows", "total_rows"),
+                ("cubic_relation_selector_deletion_trials", "deletion_trials"),
+                ("cubic_relation_selector_hnf_calls", "hnf_calls"),
+                (
+                    "cubic_relation_selector_native_boundary_calls",
+                    "native_boundary_calls",
+                ),
+                (
+                    "cubic_relation_selector_flint_basis_deletion_uses",
+                    "flint_basis_deletions",
+                ),
+            ):
+                self._resource_usage[resource_name] += int(
+                    selection_receipt.get(receipt_name, 0)
+                )
+            for resource_name, receipt_name in (
+                ("cubic_relation_selector_columns", "columns"),
+                (
+                    "cubic_relation_selector_maximum_entry_bits",
+                    "maximum_entry_bits",
+                ),
+            ):
+                self._resource_usage[resource_name] = max(
+                    int(self._resource_usage[resource_name]),
+                    int(selection_receipt.get(receipt_name, 0)),
+                )
             if not isinstance(selected_result, tuple) or len(selected_result) != 2:
                 return collector
             raw_selected = selected_result[0]

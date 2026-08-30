@@ -2220,15 +2220,13 @@ def exact_relation_hnf_support(
     return basis, support
 
 
-def exact_relation_hnf_basis(
-    rows: Iterable[Any], column_count: int
-) -> tuple[tuple[int, ...], ...]:
-    """Return the exact nonzero row-HNF basis without computing an SNF."""
-    columns = _nonnegative_integer(column_count, "column_count")
-    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
-    source = [row.dense() for row in sparse_rows]
+def _exact_relation_hnf_basis_from_source(
+    source_rows: Sequence[Sequence[int]], columns: int
+) -> tuple[tuple[tuple[int, ...], ...], str]:
+    """Return an exact row-HNF basis and the route that produced it."""
+    source = [list(row) for row in source_rows]
     if not source:
-        return ()
+        return (), "empty"
     try:
         row_count = len(source)
         flat = [entry for row in source for entry in row]
@@ -2236,13 +2234,30 @@ def exact_relation_hnf_basis(
         algebra_module = __import__("sagejs._baselib.algebra", fromlist=["ZZ"])
         matrix = matrix_module.matrix(algebra_module.ZZ, row_count, columns, flat)
         hermite = matrix.hermite_form(include_zero_rows=False)
-        return tuple(
-            tuple(int(hermite[row, column]) for column in range(columns))
-            for row in range(hermite.nrows())
+        return (
+            tuple(
+                tuple(int(hermite[row, column]) for column in range(columns))
+                for row in range(hermite.nrows())
+            ),
+            "flint",
         )
     except (ImportError, RuntimeError, TypeError, ValueError, ArithmeticError):
         hnf, _left = _python_hnf_transform(source, columns)
-        return tuple(tuple(int(value) for value in row) for row in hnf if any(row))
+        return (
+            tuple(tuple(int(value) for value in row) for row in hnf if any(row)),
+            "python",
+        )
+
+
+def exact_relation_hnf_basis(
+    rows: Iterable[Any], column_count: int
+) -> tuple[tuple[int, ...], ...]:
+    """Return the exact nonzero row-HNF basis without computing an SNF."""
+    columns = _nonnegative_integer(column_count, "column_count")
+    sparse_rows = tuple(SparseRelationRow(columns, row) for row in rows)
+    source = [row.dense() for row in sparse_rows]
+    basis, _backend = _exact_relation_hnf_basis_from_source(source, columns)
+    return basis
 
 
 def _resident_hnf_rows(
@@ -2277,6 +2292,8 @@ def _python_resident_relation_hnf_selection(
     columns: int,
     maximum_trials: int,
     cancelled: Any,
+    *,
+    accelerate_basis_deletions: bool = False,
 ) -> ResidentRelationHNFSelection:
     """Ordinary exact oracle for resident HNF support and deletion."""
     _resident_hnf_cancelled(cancelled)
@@ -2319,6 +2336,7 @@ def _python_resident_relation_hnf_selection(
     )
     cursor = 0
     trials = 0
+    deletion_backend = "flint"
     while cursor < len(selected) and trials < maximum_trials:
         _resident_hnf_cancelled(cancelled)
         trial_indices = selected[:cursor] + selected[cursor + 1 :]
@@ -2326,8 +2344,24 @@ def _python_resident_relation_hnf_selection(
         if len(trial_rows) < len(basis):
             cursor += 1
             continue
-        trial_hnf, _trial_left = _python_hnf_transform(trial_rows, columns)
-        trial_basis = tuple(tuple(row) for row in trial_hnf if any(row))
+        # Only the first HNF needs a transform: it authenticates exact replay,
+        # unimodularity, and source support above.  Stable deletion trials ask
+        # solely whether the canonical lattice basis changes.  Route those
+        # basis-only queries through the mature FLINT HNF boundary when it is
+        # available, with the ordinary exact implementation as its fail-closed
+        # fallback.  This avoids repeatedly constructing large Python
+        # transformation matrices without widening the separately qualified
+        # resident-kernel envelope.
+        if accelerate_basis_deletions:
+            trial_basis, trial_backend = _exact_relation_hnf_basis_from_source(
+                trial_rows, columns
+            )
+            if trial_backend != "flint":
+                deletion_backend = "python"
+        else:
+            trial_hnf, _trial_left = _python_hnf_transform(trial_rows, columns)
+            trial_basis = tuple(tuple(row) for row in trial_hnf if any(row))
+            deletion_backend = "python"
         trials += 1
         if trial_basis == basis:
             selected = trial_indices
@@ -2347,7 +2381,11 @@ def _python_resident_relation_hnf_selection(
         deletion_trials=trials,
         hnf_calls=1 + trials,
         deletion_complete=cursor >= len(selected),
-        backend="python",
+        backend=(
+            "python+flint-basis-deletions"
+            if accelerate_basis_deletions and trials and deletion_backend == "flint"
+            else "python"
+        ),
         boundary_calls=0,
         packed_input_bytes=0,
         published_output_values=(
@@ -2425,7 +2463,12 @@ def resident_exact_relation_hnf_selection(
                 "resident HNF native kernel is outside its qualified shape/bit envelope"
             )
         return _python_resident_relation_hnf_selection(
-            initial, candidates, columns, bounded_trials, cancelled
+            initial,
+            candidates,
+            columns,
+            bounded_trials,
+            cancelled,
+            accelerate_basis_deletions=True,
         )
     required_work = (
         row_count * row_entries
@@ -2530,7 +2573,12 @@ def resident_exact_relation_hnf_selection(
         if backend != "auto":
             raise
         return _python_resident_relation_hnf_selection(
-            initial, candidates, columns, bounded_trials, cancelled
+            initial,
+            candidates,
+            columns,
+            bounded_trials,
+            cancelled,
+            accelerate_basis_deletions=True,
         )
 
     if len(metadata) != 7:

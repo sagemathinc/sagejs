@@ -346,6 +346,8 @@ try:
     )
     assert fallback.basis == oracle.basis
     assert fallback.selected_candidate_indices == oracle.selected_candidate_indices
+    assert fallback.backend in ('python+flint-basis-deletions', 'python')
+    assert oracle.backend == 'python'
     assert native_calls[0] == 0
     try:
         matrix.resident_exact_relation_hnf_selection(
@@ -357,6 +359,28 @@ try:
         raise AssertionError('an unqualified explicit native shape was accepted')
 finally:
     matrix._resident_hnf_kernel_override = saved_override
+
+# If the mature basis-only route is unavailable, automatic selection remains
+# exact and reports the ordinary Python deletion route.  This is independent
+# of the custom resident-kernel guard exercised above.
+saved_basis_route = matrix._exact_relation_hnf_basis_from_source
+def forced_python_basis(source, columns):
+    hnf, _left = matrix._python_hnf_transform(
+        [list(row) for row in source], columns
+    )
+    return tuple(tuple(row) for row in hnf if any(row)), 'python'
+matrix._exact_relation_hnf_basis_from_source = forced_python_basis
+try:
+    fallback = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='auto'
+    )
+    oracle = matrix.resident_exact_relation_hnf_selection(
+        wide_initial, wide_candidates, 2, backend='python'
+    )
+    assert fallback == oracle
+    assert fallback.backend == 'python'
+finally:
+    matrix._exact_relation_hnf_basis_from_source = saved_basis_route
 
 saved_override = matrix._resident_hnf_kernel_override
 bit_calls = [0]
