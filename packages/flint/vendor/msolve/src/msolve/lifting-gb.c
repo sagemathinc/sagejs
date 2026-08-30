@@ -20,6 +20,7 @@
 
 #include<flint/fmpz.h>
 #include "streams.h"
+#include "../neogb/meta_data.h"
 
 #define NBCHECK 2
 #ifndef MIN
@@ -1813,8 +1814,7 @@ gb_modpoly_t *groebner_qq(
   free_mstrace(msd, md);
   free_basis_without_hash_table(&bs);
   free_trace(&md->tr);
-  free(md);
-  md    = NULL;
+  free_meta_data(&md);
 
   return modgbsp;
 
@@ -1986,8 +1986,7 @@ int64_t export_groebner_qq(
     free_mstrace(msd, md);
     free_basis_without_hash_table(&bs);
     free_trace(&md->tr);
-    free(md);
-    md = NULL;
+    free_meta_data(&md);
     gb_modpoly_clear((*modgbsp));
     free(modgbsp);
 

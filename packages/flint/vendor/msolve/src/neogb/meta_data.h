@@ -33,6 +33,10 @@ md_t *allocate_meta_data(
                               void
     );
 
+void free_meta_data(
+                              md_t **mdp
+    );
+
 void print_initial_statistics(
                               FILE *,
                               const md_t *md

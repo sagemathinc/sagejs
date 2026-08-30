@@ -135,6 +135,14 @@ if (!isMainThread) {
     );
   });
 
+  test("repeated modular QQ calls release their per-call state", () => {
+    const system = simpleSystem("qq");
+    for (let repetition = 0; repetition < 64; repetition += 1) {
+      const basis = flint.mpolyGroebnerMsolve(system.generators);
+      assertBasisContainsGenerators(system, basis);
+    }
+  });
+
   test("finite specializations may change the leading ideal", () => {
     function specialized(kind, modulus = 0n) {
       const context = flint.mpolyContext(kind, 2, "degrevlex", modulus);

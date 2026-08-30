@@ -17,12 +17,14 @@
   ],
   "upstreamCAndHeaderAggregateSha256": "04620da216c298ec9594db65c7e0050e3a63a9736bfccec5ddf23430098e3227",
   "vendoredAggregateAlgorithm": "sha256(path\\0length\\0bytes\\0) over sorted relative .c/.h paths",
-  "vendoredCAndHeaderAggregateSha256": "9926f96a93afcca9f49a5898929a2f9f2f07a7486af671ad99703d16d03ced93",
+  "vendoredCAndHeaderAggregateSha256": "07650bb514d4a23887d829dc0533c57a8c5a8c2bad564128b87ccc2b6f16bee3",
   "localPortabilityPatches": [
     "Do not include POSIX getopt.h from the library-only Windows build.",
     "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK.",
     "Redirect upstream process exits through the Sage.js native/Wasm containment boundary.",
-    "Namespace msolve's private prime helpers to avoid whole-addon symbol collisions."
+    "Namespace msolve's private prime helpers to avoid whole-addon symbol collisions.",
+    "Make the scalar row-conversion degree-fall check defined for empty matrices and independent of OpenMP loop scheduling.",
+    "Release modular Groebner metadata through its complete upstream destructor instead of leaking pair, hash, and conversion workspaces."
   ],
   "scope": "Packed F4 over prime fields and modular Groebner bases over QQ; no CLI, root solver, or public msolve ABI is exposed."
 }

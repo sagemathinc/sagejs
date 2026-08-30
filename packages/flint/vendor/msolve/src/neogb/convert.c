@@ -641,7 +641,6 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         )
 {
     len_t i, j, k;
-    deg_t deg;
 
     const len_t bl = bs->ld;
     const len_t np = mat->np;
@@ -673,7 +672,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         for (j = OFFSET; j < len; ++j) {
             rows[i][j] = hcm[rows[i][j]];
         }
-        deg = bht->hd[rows[i][OFFSET]].deg;
+        deg_t deg = bht->hd[rows[i][OFFSET]].deg;
         if (st->nev > 0) {
             const len_t len = rows[i][LENGTH]+OFFSET;
             for (j = OFFSET+1; j < len; ++j) {
@@ -750,13 +749,14 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     /* last element has smallest leading monomial, i.e. also the smallest
     possible degree, so check with this for a degree fall */
     if (
-            st->trace_level != APPLY_TRACER
+            np > 0
+            && st->trace_level != APPLY_TRACER
             && st->in_final_reduction_step != 1
             && st->homogeneous == 0
             && st->min_deg_in_first_deg_fall == INT32_MAX
-            && deg < pairs_deg
+            && bs->hm[bl+np-1][DEG] < pairs_deg
         ) {
-            st->min_deg_in_first_deg_fall = deg;
+            st->min_deg_in_first_deg_fall = bs->hm[bl+np-1][DEG];
     }
 
     /* timings */
