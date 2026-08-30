@@ -3,9 +3,9 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { existsSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { sageMathOracle } = require("./helpers/sage-math.cjs");
 
 const root = resolve(__dirname, "..");
 const generatedDirectory = join(
@@ -99,8 +99,8 @@ const actual = cases.map(([rows, columns, values]) => (
   kernel(rows, columns, values)
 ));
 
-const sage = process.env.SAGE_BIN || "/home/user/sagelite/sage";
-if (existsSync(sage)) {
+const sage = sageMathOracle({ root, environmentVariables: ["SAGE_BIN"] });
+if (sage !== null) {
   const input = cases.map(([rows, columns, values]) => ({
     rows, columns, values: values.map(String),
   }));
@@ -144,5 +144,5 @@ assert.deepEqual(kernel(0, 3, []).entries, [
 process.stdout.write(JSON.stringify({
   schema: "sagejs.test/fmpz-matrix-right-kernel-v1",
   cases: cases.length,
-  sageOracle: existsSync(sage),
+  sageOracle: sage !== null,
 }) + "\n");
