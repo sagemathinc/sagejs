@@ -360,6 +360,22 @@ coarse 2x acceptance threshold, not PARI parity or complete-corpus promotion.
 The raw one-line receipts are retained outside Git as content-addressed
 campaign evidence; tune/heldout closure remains a separate freeze gate.
 
+The post-C7 profile also changes the next engineering question.  On the same
+prepared public call, the candidate spent 19.896 seconds inside the class-unit
+engine.  Its coarse phases were 3.712 seconds for relation collection, 1.869
+seconds for unit recovery, 1.298 seconds for the analytic index, 0.695 seconds
+for the factor base, and 0.011 seconds for the final class-group calculation.
+The inclusive CPU profile instead concentrates the remaining execution under
+`_finish_class_unit_computation`, `_adaptive_saturation`,
+`try_unit_saturation`, `saturate_unit_lattice`,
+`_bounded_exact_pth_root`, `_exact_unit`, and `exact_norm_is_unit`.  Generic
+runtime dispatch, exact-object construction, attribute access, list handling,
+and garbage collection dominate the self-time aggregates.  This rules out
+another isolated scalar arithmetic kernel as the immediate answer: the next
+measured resident slice is the unit-saturation and exact-root verification
+pipeline, with its exact intermediate state retained across the whole proof
+transition.
+
 ### C8 independent-witness result
 
 The second mathematical witness now uses the same generic machine model.  A

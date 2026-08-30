@@ -277,7 +277,10 @@ test("Magma HNFs classify identically across JavaScript and native tiers", async
 });
 
 test("rank-four success and rejection cleanup is sanitizer-clean", {
-  skip: process.platform === "win32" ? "sanitizer harness is Unix-only" : false,
+  skip:
+    process.platform !== "linux"
+      ? "the direct static sanitizer harness uses the GNU/Linux archive toolchain"
+      : false,
 }, async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
   const core = generateHostCore(ir);

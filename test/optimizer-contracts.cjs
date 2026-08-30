@@ -285,7 +285,7 @@ def f(count: int, value: float):
 
 test("the runtime decorator preserves the callable under CPython", () => {
   const compilerModulePath = path.join(__dirname, "../src/lib");
-  const python = spawnSync("/usr/bin/python3", ["-c", `
+  const python = spawnSync(process.env.PYTHON || "python3", ["-c", `
 import sys
 sys.path.insert(0, ${JSON.stringify(compilerModulePath)})
 from sagejs.compiler import optimize, optimization_contract
@@ -306,5 +306,9 @@ assert optimization_contract(f) == {
     env: process.env,
     encoding: "utf8",
   });
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.stderr || python.stdout || "CPython decorator check failed",
+  );
 });
