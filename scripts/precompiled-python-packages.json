@@ -34,6 +34,7 @@
     "sagejs.kernels.groups",
     "sagejs.kernels.groups.permutation",
     "sagejs.kernels.matrix.combinatorial",
+    "sagejs.kernels.matrix.rank_four_lattice",
     "sagejs.linear_algebra.combinatorial",
     "sagejs.linear_algebra.sparse_random_m4ri",
     "sagejs.number_fields.analytic_zeta",

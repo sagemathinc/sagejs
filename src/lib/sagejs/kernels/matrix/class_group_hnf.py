@@ -233,6 +233,7 @@ def resident_exact_relation_hnf_select_v2(
         if deletion_complete:
             metadata[6] = 1
         return 1
+    return -1
 
 
 @native

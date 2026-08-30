@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 160000,
+      "max_source_bytes": 170000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -176,6 +176,7 @@
         "src/lib/sagejs/kernels/matrix/dense_rational.py",
         "src/lib/sagejs/kernels/matrix/dense_rational_flint.py",
         "src/lib/sagejs/kernels/matrix/dense_word_prime_flint.py",
+        "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
         "src/lib/sagejs/kernels/matrix/word_prime_krylov.py"
       ],
       "prefixes": []

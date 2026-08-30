@@ -124,6 +124,13 @@
           "test/number-field-class-group-resident-hnf.cjs"
         ]
       },
+      "rank-four-lattice-workspace-differential": {
+        "differential": true,
+        "paths": [
+          "test/native-rank-four-lattice-workspace.cjs",
+          "packages/flint-wasm/test/browser-smoke.mjs"
+        ]
+      },
       "hyperelliptic-native-kummer": {
         "differential": true,
         "paths": [
@@ -10747,6 +10754,33 @@
       "tests": [
         "production-kernel-differential",
         "class-group-resident-hnf-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 2,
+        "fallback_functions": 0,
+        "total_functions": 2,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:rank-four-lattice-workspace-production",
+      "kind": "production-kernel",
+      "family": "rank-four-lattice-workspace",
+      "source": "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "generic-rank-four-lattice-workspace"
+      ],
+      "tests": [
+        "production-kernel-differential",
+        "rank-four-lattice-workspace-differential"
       ],
       "status": "available",
       "reviewed": true,
@@ -22025,13 +22059,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The reusable exact owner is declaration-generated for Wasm and its isolated core passes the same lifecycle, generation, borrow, reset, and arithmetic differential as native C.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "The reusable exact owner and its checked lifecycle are available in the generated FLINT Wasm module."
     },
     {
@@ -22042,13 +22082,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The synchronous mutable-borrow lease is declaration-generated for Wasm and is closed on every generated lexical cleanup edge.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "The synchronous reusable-workspace borrow lease is available in the generated FLINT Wasm module."
     },
     {
@@ -22059,13 +22105,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The checked preallocated workspace constructor is included in the generated FLINT Wasm adapter.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Checked reusable exact-workspace construction is available in Wasm."
     },
     {
@@ -22076,13 +22128,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The generation- and specification-authenticated synchronous borrow constructor is included in the generated FLINT Wasm adapter.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Authenticated synchronous workspace borrowing is available in Wasm."
     },
     {
@@ -22093,13 +22151,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Bounded resident addmul reuses preallocated workspace scratch in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Bounded resident addmul is available in Wasm."
     },
     {
@@ -22110,13 +22174,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Checked detached exact entry publication is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Checked exact entry publication is available in Wasm."
     },
     {
@@ -22127,13 +22197,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Authenticated borrow-generation inspection is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Borrow-generation inspection is available in Wasm."
     },
     {
@@ -22144,13 +22220,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Checked borrow-shape inspection is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Borrow-shape inspection is available in Wasm."
     },
     {
@@ -22161,13 +22243,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Transactional checked resident assignment is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Transactional checked resident assignment is available in Wasm."
     },
     {
@@ -22178,13 +22266,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Bounded resident submul reuses preallocated workspace scratch in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Bounded resident submul is available in Wasm."
     },
     {
@@ -22195,13 +22289,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Allocation-free resident entry swap is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Allocation-free resident entry swap is available in Wasm."
     },
     {
@@ -22212,13 +22312,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Immutable workspace-capacity inspection is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Workspace-capacity inspection is available in Wasm."
     },
     {
@@ -22229,13 +22335,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Workspace-generation inspection is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Workspace-generation inspection is available in Wasm."
     },
     {
@@ -22246,13 +22358,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Immutable workspace bit-bound inspection is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Workspace bit-bound inspection is available in Wasm."
     },
     {
@@ -22263,13 +22381,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "Authenticated allocation-stable reset and generation advance are included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Authenticated workspace reset is available in Wasm."
     },
     {
@@ -22280,13 +22404,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The high word of immutable workspace specification identity is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Workspace specification identity inspection is available in Wasm."
     },
     {
@@ -22297,13 +22427,19 @@
       "disposition": "generated-wasm",
       "fallback": "declared-ffi-capability-fallback",
       "wasm_module": "flint",
-      "public_consumers": ["sagejs.ffi.flint"],
-      "tests": ["flint-wasm-resource-differential"],
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
       "status": "available",
       "reviewed": true,
       "review_note": "The low word of immutable workspace specification identity is included in the generated FLINT Wasm module.",
       "wasm_declared": true,
-      "wasm_closure": {"status": "planned", "explanation": "The isolated WASI core is differential-tested; production browser-pack publication and receipt sealing are deferred to C8 platform closure."},
+      "wasm_closure": {
+        "status": "included"
+      },
       "public_explanation": "Workspace specification identity inspection is available in Wasm."
     }
   ]

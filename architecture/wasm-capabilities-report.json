@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "ef1953b8e8ec18142b4959753058169d0e813a73c6419bafc92bf9f39ea46cf5",
+  "source_sha256": "3934f814b8c9276f5cf9e28c09d5dcef03739cf588c652b681b966b4fcf3ec18",
   "counts": {
-    "total": 1037,
+    "total": 1038,
     "by_kind": {
       "declared-ffi-function": 455,
       "declared-ffi-resource": 34,
       "napi-export": 325,
-      "production-kernel": 50,
+      "production-kernel": 51,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 50,
+      "compiled-source": 51,
       "desktop-only": 47,
       "generated-wasm": 338,
       "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 575,
+      "available": 576,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -6272,7 +6272,7 @@
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",
@@ -6805,6 +6805,18 @@
         "prime-ideal-candidate-materializer"
       ],
       "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:rank-four-lattice-workspace-production",
+      "family": "rank-four-lattice-workspace",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "generic-rank-four-lattice-workspace"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:sparse-random-matrix-production",

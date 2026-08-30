@@ -475,6 +475,17 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "rank-four-lattice-workspace-production",
+      "source": "src/lib/sagejs/kernels/matrix/rank_four_lattice.py",
+      "functions": ["rank_four_lattice_workspace"],
+      "semantic_domain": "generic resident rank-four integral-lattice HNF authentication, deterministic canonical-class mapping, fixed metadata, and sparse class incidence publication",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "magma"],
+      "benchmark": "bench:rank-four-lattice-workspace",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "buchmann-lenstra-row-hnf-production",
       "source": "src/lib/sagejs/number_fields/bl_composite_kernel.py",
       "functions": [
