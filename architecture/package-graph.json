@@ -671,9 +671,9 @@
       "startup": "lazy",
       "max_source_bytes": 1200000,
       "depends_on": ["core-runtime", "python-stdlib"],
-      "modules": ["traitlets"],
+      "modules": ["IPython", "comm", "traitlets"],
       "files": [],
-      "prefixes": ["src/lib/traitlets/"]
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
       "id": "numeric-compat",

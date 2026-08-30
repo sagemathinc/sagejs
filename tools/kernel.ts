@@ -14,6 +14,9 @@ import {
   KernelCompleteness,
   KernelInspection,
   SageOptimizationReport,
+  SageCommEvent,
+  SageCommInfo,
+  SageOutputEvent,
 } from "./kernel-evaluator";
 import {
   isSageSourceLanguage,
@@ -34,6 +37,10 @@ export interface SageEvaluationResult {
   stdout: string;
   durationMs: number;
   display?: SageDisplayData;
+  /** Ordered stream/display events published while evaluating the cell. */
+  events: SageOutputEvent[];
+  /** Ordered comm events published while evaluating the cell. */
+  commEvents: SageCommEvent[];
   /** Compiler-verified static optimizer decisions for this evaluation. */
   optimization: SageOptimizationReport;
 }
@@ -42,6 +49,10 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+  /** Parent execution identifier propagated to display and comm events. */
+  parentId?: string;
   /** Parse this evaluation using a supported Sage.js language frontend. */
   language?: SageSourceLanguage;
 }
@@ -58,6 +69,8 @@ interface PendingRequest {
   kind: "evaluate" | "request";
   output: string;
   onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
   resolve(result: unknown): void;
   reject(error: Error): void;
   settled: Promise<void>;
@@ -189,6 +202,16 @@ export class SageSession extends EventEmitter {
         this.emit("stdout", message.text, { evaluationId: message.id });
         return;
       }
+      if (message.type === "output-event") {
+        pending.onEvent?.(message.event);
+        this.emit("output", message.event, { evaluationId: message.id });
+        return;
+      }
+      if (message.type === "comm-event") {
+        pending.onComm?.(message.event);
+        this.emit("comm", message.event, { evaluationId: message.id });
+        return;
+      }
       if (message.type !== "result") return;
 
       this.pending.delete(message.id);
@@ -253,6 +276,9 @@ export class SageSession extends EventEmitter {
       filename = "<embedded>",
       timeout,
       onOutput,
+      onEvent,
+      onComm,
+      parentId,
       language = this.mode,
     }: SageEvaluationOptions = {},
   ): Promise<SageEvaluationResult> {
@@ -285,6 +311,8 @@ export class SageSession extends EventEmitter {
         kind: "evaluate",
         output: "",
         onOutput,
+        onEvent,
+        onComm,
         resolve,
         reject,
         settled,
@@ -308,6 +336,7 @@ export class SageSession extends EventEmitter {
         filename,
         language: prepared.compilerLanguage,
         suppressResult: prepared.suppressResult,
+        parentId,
       });
     });
   }
@@ -320,7 +349,7 @@ export class SageSession extends EventEmitter {
   }
 
   private async request<T>(
-    type: "complete" | "inspect" | "isComplete" | "documentation",
+    type: "complete" | "inspect" | "isComplete" | "documentation" | "comm" | "commInfo",
     source: string,
     extra: Record<string, unknown> = {},
   ): Promise<T> {
@@ -365,6 +394,16 @@ export class SageSession extends EventEmitter {
    */
   documentation(): Promise<DocumentationCatalog> {
     return this.request("documentation", "");
+  }
+
+  /** Deliver one normalized frontend comm event on the session queue. */
+  comm(event: SageCommEvent): Promise<void> {
+    return this.request("comm", "", { event });
+  }
+
+  /** Return the exact live comm registry, optionally filtered by target. */
+  commInfo(targetName?: string): Promise<SageCommInfo> {
+    return this.request("commInfo", "", { targetName });
   }
 
   async isComplete(

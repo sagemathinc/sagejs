@@ -8,7 +8,7 @@ This generated dashboard compiles every ordinary Python module under `src/lib` a
 without executing it. Imports are stubbed, optimizer IR is independently verified, and
 every loop-bearing function or method is retained with its exact source location.
 
-Input identity: `be57bc01a0d1b484a4f8bec0d97238fdd8ba78e4f85a54976146f780693d4ce6` (498 files, 10592498 bytes).
+Input identity: `6fea73969d890c72927afda596d0ecebf05dc69f04b286baf4b7361e957f3345` (507 files, 10619348 bytes).
 
 Regenerate or verify it with:
 
@@ -22,13 +22,13 @@ pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_gr
 
 | Measure | Count |
 | --- | ---: |
-| Source modules compiled | 438 / 438 |
-| Functions and methods compiled | 12028 |
-| Loop-bearing functions and methods | 3778 |
-| Loops in functions | 10493 |
+| Source modules compiled | 447 / 447 |
+| Functions and methods compiled | 12089 |
+| Loop-bearing functions and methods | 3782 |
+| Loops in functions | 10497 |
 | Selected optimized loops | 43 |
 | Compiler-rejected loops | 2740 |
-| Unrecognized loops | 7710 |
+| Unrecognized loops | 7714 |
 | One-reason compiler near-misses | 232 |
 
 A rejected loop has a stable reason from a domain pass. An unrecognized loop was compiled
@@ -37,11 +37,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 70594
-- Collection-allocation sites: 8437
+- Potential object-result sites: 70615
+- Collection-allocation sites: 8441
 - Known coercion sites: 15099
 - Potential boundary-call sites: 72
-- Unresolved call sites: 35484
+- Unresolved call sites: 35494
 - Selected-target allocations: 0 known; 43 runtime-dependent
 - Selected-target representation conversions: 0 known; 43 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -110,13 +110,13 @@ convenience, not a performance ranking.
 
 | Stable reason | Loops | Remediation |
 | --- | ---: | --- |
-| `dashboard.no-current-pass-claimed` | 7710 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
-| `dashboard.dynamic-call-sites` | 6920 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
-| `dashboard.no-mathematical-domain-evidence` | 6544 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
+| `dashboard.no-current-pass-claimed` | 7714 | No existing mathematical-domain pass proves this loop; profile it before adding a new domain. |
+| `dashboard.dynamic-call-sites` | 6924 | Profile the calls, then inline, hoist, batch, or give the dominant call an authenticated coarse boundary. |
+| `dashboard.no-mathematical-domain-evidence` | 6548 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
 | `dashboard.comprehension-loop` | 3532 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
-| `dashboard.indexed-access-sites` | 2727 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
+| `dashboard.indexed-access-sites` | 2728 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
 | `bounded-integer.dynamic-call` | 2185 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
-| `dashboard.control-flow-sites` | 1872 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
+| `dashboard.control-flow-sites` | 1875 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
 | `bounded-integer.unsupported-iterator` | 1761 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `bounded-integer.mutable-buffer-access` | 1599 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | `dashboard.nested-loop-sites` | 1477 | Consider a fused multidimensional region with explicit shape and work bounds. |

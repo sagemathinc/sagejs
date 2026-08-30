@@ -20,6 +20,7 @@ const PYTHON_FORMAT_EXCLUDES = Object.freeze([
   "src/lib/mpmath",
   // Audited upstream Python widget runtime sources stay byte-identical to
   // their pinned releases.  They have their own upstream formatting policy.
+  "src/lib/comm",
   "src/lib/traitlets",
   "test/aes_vectors.py",
   "test/annotations.py",
