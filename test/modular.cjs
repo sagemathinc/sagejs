@@ -497,3 +497,40 @@ test("primitive character pairs give exact generalized Eisenstein series", async
     await session.close();
   }
 });
+
+test("imprimitive Eisenstein inputs use their primitive inducing characters", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "chi=list(DirichletGroup(12))[1]\n" +
+            "primitive=list(DirichletGroup(4))[1]\n" +
+            "one=DirichletGroup(1)(1)\n" +
+            "a=eisenstein_series_qexp(3,10,chi=one,psi=chi)\n" +
+            "b=eisenstein_series_qexp(3,10,chi=one,psi=primitive)\n" +
+            "[chi.conductor(),a,a==b]",
+        )
+      ).repr,
+      "[4, -1/4 + q + q^2 - 8*q^3 + q^4 + 26*q^5 - 8*q^6 " +
+        "- 48*q^7 + q^8 + 73*q^9 + O(q^10), True]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "one=DirichletGroup(1)(1)\n" +
+          "eisenstein_series_qexp(2,8,chi=one,psi=one)",
+      ),
+      /quasimodular/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "one=DirichletGroup(1)(1)\n" +
+          "odd=list(DirichletGroup(4))[1]\n" +
+          "eisenstein_series_qexp(4,8,chi=one,psi=odd)",
+      ),
+      /chi\(-1\)\*psi\(-1\)/,
+    );
+  } finally {
+    await session.close();
+  }
+});

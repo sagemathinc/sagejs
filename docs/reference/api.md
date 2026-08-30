@@ -552,6 +552,14 @@ CuspForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True
 
 Construct the cuspidal subspace of `ModularForms(group, weight)`.
 
+### Examples
+
+```sage
+sage: S = CuspForms(11, 2)
+sage: (S.dimension(), S.q_expansion_basis(6))
+(1, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)])
+```
+
 ### Metadata
 
 - Kind: `function`
@@ -5929,10 +5937,18 @@ q_expansion_basis(prec: Any=None, algorithm: str='default', variable: str='q', *
 
 Return an echelon basis of associated cusp-form expansions.
 
-Trivial-character $\Gamma_0(N)$ spaces over $\QQ$ use exact Hecke-dual
-reconstruction. The returned power series retain opaque FLINT
-polynomial storage; only their public coefficient views are
-materialized on demand.
+Trivial- and Dirichlet-character $\Gamma_0(N)$ spaces use exact
+Hecke-dual reconstruction over their coefficient field. The returned
+power series retain opaque FLINT polynomial storage; only their public
+coefficient views are materialized on demand.
+
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: S.q_expansion_basis(6)
+[q - 2*q^2 - q^3 + 2*q^4 + q^5 + O(q^6)]
+```
 
 ### Metadata
 
@@ -5940,9 +5956,9 @@ materialized on demand.
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
-- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
 - Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
-- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
 
 ### Provenance
 
@@ -5963,15 +5979,24 @@ q_expansion_basis_certificate(prec: Any=None) -> Any
 
 Return a replayable Sturm certificate for a cusp-form basis.
 
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: C = S.q_expansion_basis_certificate()
+sage: (C.dimension(), C.is_sturm_certified(), C.verify())
+(1, True, True)
+```
+
 ### Metadata
 
 - Kind: `method`
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
-- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
 - Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
-- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
 
 ### Provenance
 
@@ -5990,7 +6015,15 @@ Return a replayable Sturm certificate for a cusp-form basis.
 q_expansion_module(prec: Any=None, R: Any=None, algorithm: str='default') -> Any
 ```
 
-Return the $\QQ$-space or saturated $\ZZ$-module of expansions.
+Return the coefficient module of the expansions.
+
+### Examples
+
+```sage
+sage: S = ModularSymbols(11, 2, sign=1).cuspidal_submodule()
+sage: S.q_expansion_module(5, ZZ).basis_matrix()
+[ 0  1 -2 -1  2]
+```
 
 ### Metadata
 
@@ -5998,9 +6031,9 @@ Return the $\QQ$-space or saturated $\ZZ$-module of expansions.
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, cusp forms, q-expansions, Hecke operators, Sturm bound
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
-- Sage compatibility: compatible — Trivial-character Gamma0 cusp spaces over QQ support both weight 2 and arbitrary weights at least two, all signs, and caller-selected precision. Sign-zero spaces use the common signed Hecke module.
+- Sage compatibility: compatible — Gamma0 cusp spaces with trivial or Dirichlet character support weights at least two, all signs, caller-selected precision, and their exact rational or cyclotomic coefficient field. Sign-zero spaces use the common signed Hecke module.
 - Algorithm: Exact Hecke-dual coefficient reconstruction, deterministic row reduction, and Sturm certification
-- Limitations: Character-valued and arbitrary proper sign-zero subspaces are not yet supported.
+- Limitations: Arbitrary proper sign-zero subspaces are not yet supported.
 
 ### Provenance
 

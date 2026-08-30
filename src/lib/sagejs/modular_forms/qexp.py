@@ -856,7 +856,12 @@ def _modular_symbols_signed_cusp_space(space: Any) -> Any:
     cached = space._q_expansion_signed_cusp_space_cache
     if cached is not None:
         return cached
-    if space.weight() == 2:
+    if space._character is not None:
+        constructor = _global("ModularSymbols")
+        signed_space = constructor(
+            space.character(), space.weight(), 1, space.base_ring()
+        ).cuspidal_submodule()
+    elif space.weight() == 2:
         signed_space = space.plus_submodule()
     else:
         constructor = _global("ModularSymbols")
@@ -898,7 +903,7 @@ def _modular_symbols_q_expansion_data(
     if target_dimension == 0:
         result = (
             signed_space,
-            matrix_constructor(sage.QQ, 0, precision),
+            matrix_constructor(signed_space.base_ring(), 0, precision),
             runtime.math_tuple([]),
         )
         if use_cache:
@@ -908,7 +913,8 @@ def _modular_symbols_q_expansion_data(
     hecke_matrices = [signed_space.hecke_matrix(index) for index in range(1, precision)]
     accumulated_rows: list[Any] = []
     functional_indices: list[int] = []
-    basis = matrix_constructor(sage.QQ, 0, precision - 1)
+    coefficient_ring = signed_space.base_ring()
+    basis = matrix_constructor(coefficient_ring, 0, precision - 1)
     order = [0]
     order.extend(range(dimension - 1, 0, -1))
     for functional_index in order:
@@ -919,7 +925,11 @@ def _modular_symbols_q_expansion_data(
                 rows[row_index].append(values[row_index])
         accumulated_rows.extend(rows)
         functional_indices.append(functional_index)
-        basis = matrix_constructor(sage.QQ, accumulated_rows).row_space().basis_matrix()
+        basis = (
+            matrix_constructor(coefficient_ring, accumulated_rows)
+            .row_space()
+            .basis_matrix()
+        )
         if basis.nrows() >= target_dimension:
             break
     if basis.nrows() < target_dimension:
@@ -929,8 +939,8 @@ def _modular_symbols_q_expansion_data(
     basis = basis.matrix_from_prefix_rows(target_dimension)
     coefficient_rows = []
     for row in basis.rows():
-        coefficient_rows.append([sage.QQ(0)] + row.list())
-    coefficient_matrix = matrix_constructor(sage.QQ, coefficient_rows)
+        coefficient_rows.append([coefficient_ring(0)] + row.list())
+    coefficient_matrix = matrix_constructor(coefficient_ring, coefficient_rows)
     coefficient_matrix.set_immutable()
     result = (
         signed_space,
@@ -1012,7 +1022,7 @@ def character_eisenstein_series_qexp(
     coefficient_ring: Any = None,
     normalization: str = "linear",
 ) -> Any:
-    r"""Return the exact primitive-pair series $E_k(\chi,\psi)(q^t)$.
+    r"""Return the exact series $E_k(\chi,\psi)(q^t)$.
 
     The normalization is
 
@@ -1020,10 +1030,11 @@ def character_eisenstein_series_qexp(
     a_n=\sum_{d\mid n}\psi(d)\chi(n/d)d^{k-1}.
     $$
 
-    This first general-character slice requires primitive characters and the
-    parity condition $\chi(-1)\psi(-1)=(-1)^k$.  Coefficients default to the
-    exact algebraic field `QQbar`, so characters from different cyclotomic
-    parents can be combined without numerical embeddings.
+    Each supplied character is replaced mathematically by its primitive
+    inducing character, so imprimitive inputs have the standard conductor-
+    based meaning.  The parity condition is
+    $\chi(-1)\psi(-1)=(-1)^k$. Coefficients default to a common exact
+    cyclotomic field, so no numerical embeddings are used.
     """
     weight = _nonnegative(weight, "weight")
     precision = _nonnegative(prec, "precision")
@@ -1035,13 +1046,9 @@ def character_eisenstein_series_qexp(
     for character in [chi, psi]:
         if not all(
             hasattr(character, method)
-            for method in ["modulus", "is_primitive", "bernoulli"]
+            for method in ["modulus", "conductor", "bernoulli"]
         ):
             raise TypeError("chi and psi must be Dirichlet characters")
-        if not character.is_primitive():
-            raise NotImplementedError(
-                "character Eisenstein series currently require primitive characters"
-            )
     left_order = runtime.number(chi._parent.zeta_order())
     right_order = runtime.number(psi._parent.zeta_order())
     gcd = runtime.number(_global("gcd")(left_order, right_order))
@@ -1051,28 +1058,55 @@ def character_eisenstein_series_qexp(
         if coefficient_ring is None
         else coefficient_ring
     )
+    value_caches: list[dict[int, Any]] = [{}, {}]
 
     def character_value(character: Any, value: int) -> Any:
-        evaluated = character(value)
+        conductor = runtime.number(character.conductor())
+        residue = value % conductor
+        cache = value_caches[0] if character is chi else value_caches[1]
+        if residue in cache:
+            return cache[residue]
+        if runtime.number(_global("gcd")(residue, conductor)) != 1:
+            cache[residue] = target(0)
+            return cache[residue]
+        modulus = runtime.number(character.modulus())
+        evaluated = None
+        lift = residue
+        while lift < modulus:
+            if runtime.number(_global("gcd")(lift, modulus)) == 1:
+                evaluated = character(lift)
+                break
+            lift += conductor
+        if evaluated is None:
+            raise ArithmeticError("could not evaluate the primitive inducing character")
         if evaluated.is_zero():
-            return target(0)
+            cache[residue] = target(0)
+            return cache[residue]
         if coefficient_ring is not None:
-            return target(evaluated)
-        source_order = runtime.number(character._parent.zeta_order())
-        exponent = runtime.number(evaluated._exponent)
-        return target.gen() ** (exponent * value_order // source_order)
+            cache[residue] = target(evaluated)
+        else:
+            source_order = runtime.number(character._parent.zeta_order())
+            exponent = runtime.number(evaluated._exponent)
+            cache[residue] = target.gen() ** (exponent * value_order // source_order)
+        return cache[residue]
 
     parity = character_value(chi, -1) * character_value(psi, -1)
     if parity != target(-1 if weight % 2 else 1):
         raise ValueError("chi(-1)*psi(-1) must equal (-1)^weight")
+    if (
+        weight == 2
+        and runtime.number(chi.conductor()) == 1
+        and runtime.number(psi.conductor()) == 1
+    ):
+        raise ValueError("E_2(1,1) is quasimodular, not a modular Eisenstein series")
     if normalization != "linear":
         raise NotImplementedError(
             "character Eisenstein series currently use linear normalization"
         )
     short_precision = 0 if precision == 0 else (precision - 1) // inflation + 1
     coefficients = [target(0) for _index in range(short_precision)]
-    if short_precision and runtime.number(chi.modulus()) == 1:
-        modulus = runtime.number(psi.modulus())
+    if short_precision and runtime.number(chi.conductor()) == 1:
+        modulus = runtime.number(psi.conductor())
         generalized = target(0)
         binomial = _global("binomial")
         bernoulli = _global("bernoulli")
@@ -1080,8 +1114,9 @@ def character_eisenstein_series_qexp(
             polynomial_value = target(0)
             rational = sage.QQ(residue) / modulus
             for index in range(weight + 1):
+                bernoulli_value = sage.QQ(-1) / 2 if index == 1 else bernoulli(index)
                 polynomial_value += target(
-                    binomial(weight, index) * bernoulli(index)
+                    binomial(weight, index) * bernoulli_value
                 ) * target(rational) ** (weight - index)
             generalized += character_value(psi, residue) * polynomial_value
         generalized *= target(modulus) ** (weight - 1)
@@ -1224,7 +1259,7 @@ def modular_symbols_q_expansion_module(
     R: Any = None,
     algorithm: str = "default",
 ) -> Any:
-    """Return the rational or saturated integral coefficient module."""
+    """Return the exact coefficient module, saturated over ZZ for QQ spaces."""
     if algorithm == "default":
         algorithm = "modular_symbols"
     if algorithm != "modular_symbols":
@@ -1233,12 +1268,15 @@ def modular_symbols_q_expansion_module(
     _signed, coefficients, _indices = _modular_symbols_q_expansion_data(
         space, precision
     )
-    coefficient_ring = sage.QQ if R is None else R
-    if coefficient_ring is sage.QQ:
+    source_ring = coefficients.base_ring()
+    coefficient_ring = source_ring if R is None else R
+    if coefficient_ring is source_ring:
         return coefficients.row_space()
-    if coefficient_ring is sage.ZZ:
+    if coefficient_ring is sage.ZZ and source_ring is sage.QQ:
         return _saturated_integer_row_basis(coefficients).row_space()
-    raise NotImplementedError("q-expansion modules support only QQ and ZZ")
+    raise NotImplementedError(
+        "q-expansion modules support their exact coefficient field, and ZZ for QQ spaces"
+    )
 
 
 def modular_symbols_q_expansion_certificate(

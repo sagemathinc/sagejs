@@ -8,7 +8,7 @@ This generated dashboard compiles every ordinary Python module under `src/lib` a
 without executing it. Imports are stubbed, optimizer IR is independently verified, and
 every loop-bearing function or method is retained with its exact source location.
 
-Input identity: `663187935d118b7557def4b193175a2aba33b7374be6872343333fe8248e4d79` (493 files, 10728833 bytes).
+Input identity: `438a59f0dd8a9bcdc390d1981b63a168041007926864559ed1342125372cf3c5` (493 files, 10730406 bytes).
 
 Regenerate or verify it with:
 
@@ -24,10 +24,10 @@ pnpm optimizer:opportunities:query -- src/lib/sagejs/number_fields/class_unit_gr
 | --- | ---: |
 | Source modules compiled | 433 / 433 |
 | Functions and methods compiled | 12306 |
-| Loop-bearing functions and methods | 3869 |
-| Loops in functions | 10881 |
+| Loop-bearing functions and methods | 3870 |
+| Loops in functions | 10882 |
 | Selected optimized loops | 44 |
-| Compiler-rejected loops | 2846 |
+| Compiler-rejected loops | 2847 |
 | Unrecognized loops | 7991 |
 | One-reason compiler near-misses | 244 |
 
@@ -37,11 +37,11 @@ are explicitly heuristic triage signals, not correctness proofs.
 
 ## Static and verified cost evidence
 
-- Potential object-result sites: 72556
+- Potential object-result sites: 72567
 - Collection-allocation sites: 8747
-- Known coercion sites: 15613
+- Known coercion sites: 15617
 - Potential boundary-call sites: 72
-- Unresolved call sites: 36659
+- Unresolved call sites: 36666
 - Selected-target allocations: 0 known; 44 runtime-dependent
 - Selected-target representation conversions: 0 known; 44 runtime-dependent
 - Selected-target boundary crossings: 0 known; 0 runtime-dependent
@@ -115,14 +115,14 @@ convenience, not a performance ranking.
 | `dashboard.no-mathematical-domain-evidence` | 6782 | Add precise annotations or an explicit domain contract only after profiling proves this loop matters. |
 | `dashboard.comprehension-loop` | 3713 | Lower the comprehension through a dedicated packed/container representation before scalar optimization. |
 | `dashboard.indexed-access-sites` | 2834 | Prove shape, element representation, aliasing, and ownership before selecting a packed lowering. |
-| `bounded-integer.dynamic-call` | 2268 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
+| `bounded-integer.dynamic-call` | 2269 | Inline, hoist, or batch the dynamic call so the loop is one closed exact-integer operation graph. |
 | `dashboard.control-flow-sites` | 1891 | Canonicalize the branches into a verified operation graph or add a domain-specific control-flow proof. |
-| `bounded-integer.unsupported-iterator` | 1821 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
+| `bounded-integer.unsupported-iterator` | 1822 | Use a proved built-in `range` iteration shape or add a verifier for the required iterator semantics. |
 | `bounded-integer.mutable-buffer-access` | 1660 | Prove an owner-bound packed buffer, alias discipline, and transactional publication. |
 | `dashboard.nested-loop-sites` | 1559 | Consider a fused multidimensional region with explicit shape and work bounds. |
-| `bounded-integer.unsupported-operation:=` | 1417 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
-| `bounded-integer.unsupported-control-flow` | 771 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
-| `bounded-integer.unsupported-operation:+=` | 764 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-operation:=` | 1418 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
+| `bounded-integer.unsupported-control-flow` | 772 | Restructure the loop into supported transactional branches or add a verified control-flow lowering. |
+| `bounded-integer.unsupported-operation:+=` | 765 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `bounded-integer.unsupported-operation:%` | 753 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
 | `dashboard.unsupported-while-loop` | 740 | Prove a finite progress measure and transactional exits before lowering a `while` loop. |
 | `bounded-integer.unsupported-operation:<` | 400 | Replace or prove the one unsupported exact-integer operation, then pin the bounded-integer pass. |
