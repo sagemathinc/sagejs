@@ -2711,6 +2711,7 @@ class AutomorphismOrbitPlan:
         )
         self._quadratic_linear = None
         self._generator_image = None
+        self._order_coordinate_matrix: tuple[tuple[int, ...], ...] = ()
         self.orbit_order = 0
         if field.degree() == 2:
             self._quadratic_linear = sage.QQ(defining_coefficients[1]) / sage.QQ(
@@ -2787,6 +2788,12 @@ class AutomorphismOrbitPlan:
                     "the exact automorphism does not preserve the maximal order"
                 )
             else:
+                self._order_coordinate_matrix = tuple(
+                    self._order_coordinates_unchecked(
+                        self._map_element_unchecked(element)
+                    )
+                    for element in self._order.basis()
+                )
                 images = tuple(self._map_ideal_unchecked(prime) for prime in factors)
                 permutation: list[int] = []
                 stable = True
@@ -2876,6 +2883,41 @@ class AutomorphismOrbitPlan:
         """Apply the plan's exact nontrivial field automorphism."""
         return self.conjugate_element(value)
 
+    def _order_coordinates_unchecked(self, value: Any) -> tuple[int, ...]:
+        degree = int(self._field.degree())
+        power_coordinates = tuple(sage.QQ(entry) for entry in self._field(value).list())
+        inverse = self._order._basis_inverse_matrix().rows()
+        answer: list[int] = []
+        for target in range(degree):
+            coordinate = sage.QQ(0)
+            for source in range(degree):
+                coordinate += power_coordinates[source] * inverse[source][target]
+            if coordinate.denominator() != 1:
+                raise ArithmeticError(
+                    "an authenticated automorphism left the maximal order"
+                )
+            answer.append(int(coordinate.numerator()))
+        return tuple(answer)
+
+    def map_order_coordinates(self, coordinates: Iterable[int]) -> tuple[int, ...]:
+        """Map exact maximal-order coordinates without retaining an element."""
+        self._require_available()
+        values = tuple(
+            _checked_integer(value, "maximal-order coordinate") for value in coordinates
+        )
+        degree = int(self._field.degree())
+        if len(values) != degree:
+            raise ValueError("an automorphism coordinate row has the wrong width")
+        if len(self._order_coordinate_matrix) != degree:
+            raise ArithmeticError("an automorphism plan lost its exact coordinate map")
+        answer = [0] * degree
+        for target in range(degree):
+            for source in range(degree):
+                answer[target] += (
+                    values[source] * self._order_coordinate_matrix[source][target]
+                )
+        return tuple(answer)
+
     def conjugate_ideal(self, ideal: Any) -> Any:
         """Map an ideal after checking its exact retained order."""
         self._require_available()
@@ -2906,6 +2948,11 @@ class AutomorphismOrbitPlan:
             if not self.available:
                 return True
             if self._map_ideal_unchecked(self._order.ideal(1)) != self._order.ideal(1):
+                return False
+            if self._order_coordinate_matrix != tuple(
+                self._order_coordinates_unchecked(self._map_element_unchecked(element))
+                for element in self._order.basis()
+            ):
                 return False
             for element in self._order.basis():
                 image = element

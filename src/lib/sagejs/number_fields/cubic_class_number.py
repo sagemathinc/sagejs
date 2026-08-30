@@ -1820,6 +1820,317 @@ def _packed_cubic_relation_candidates(
     )
 
 
+def _cyclic_cubic_targeted_relation_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    initial_rows: tuple[tuple[int, ...], ...],
+    base_candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+    *,
+    matrix_module: Any,
+    relation_module: Any,
+    maximum_parents: int = 4,
+    maximum_target_candidates: int = 32,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+    receipt: dict[str, Any] | None = None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose one quotient-targeted cyclic-cubic relation campaign.
+
+    This is a bounded discovery policy, not a proof boundary.  It keeps at
+    most four reduced-ideal parents whose complete order-three Galois orbits
+    improve an exact provisional presentation.  It then chooses a small-norm
+    factor-base class outside the cyclic subgroup of the smallest retained
+    class, searches `P0^e * Pj` in a radius-one reduced lattice, and returns
+    the complete small target batch after one row is seen to shrink the exact
+    provisional quotient.  Ordinary relation admission still reconstructs
+    and proves every returned principal ideal independently.
+    """
+    width = len(factor_base)
+    parent_limit = int(maximum_parents)
+    target_limit = int(maximum_target_candidates)
+    if (
+        int(order.number_field().degree()) != 3
+        or width < 2
+        or width > 16
+        or parent_limit < 1
+        or parent_limit > 8
+        or target_limit < 1
+        or target_limit > _CUBIC_RELATION_SIEVE_MAX_CANDIDATES
+    ):
+        return None
+    try:
+        plan = relation_module.plan_automorphism_orbits(
+            order.number_field(), factor_base
+        )
+        if (
+            not bool(plan.available)
+            or not bool(plan.useful)
+            or int(plan.orbit_order) != 3
+        ):
+            return None
+        checked_initial = tuple(
+            tuple(int(value) for value in row) for row in initial_rows
+        )
+        checked_base = tuple(
+            (
+                tuple(int(value) for value in row),
+                tuple(int(value) for value in coordinates),
+                int(norm),
+            )
+            for row, coordinates, norm in base_candidates
+        )
+        if any(len(row) != width for row in checked_initial) or any(
+            len(row) != width or len(coordinates) != 3 or norm <= 1
+            for row, coordinates, norm in checked_base
+        ):
+            return None
+        factor_norms = tuple(
+            _integer_rational(prime_ideal.norm(), "a factor-base norm")
+            for prime_ideal in factor_base
+        )
+        norm_form = _order_cubic_norm_form_coefficients(order)
+
+        def presentation(
+            candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        ) -> Any:
+            accumulator = matrix_module.RelationMatrixAccumulator(width)
+            for row in checked_initial:
+                accumulator.add_relation(row)
+            for row, _coordinates, _norm in candidates:
+                accumulator.add_relation(row)
+            return accumulator.presentation()
+
+        def lattice_state(
+            candidates: tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        ) -> tuple[int, int | None]:
+            rows = checked_initial + tuple(entry[0] for entry in candidates)
+            basis = matrix_module.exact_relation_hnf_basis(rows, width)
+            rank = len(basis)
+            index = (
+                abs(int(matrix_module._determinant_exact(basis)))
+                if rank == width
+                else None
+            )
+            return rank, index
+
+        def candidate_is_exact(
+            candidate: tuple[tuple[int, ...], tuple[int, ...], int],
+        ) -> bool:
+            row, coordinates, norm = candidate
+            if abs(_cubic_norm_form_value(norm_form, *coordinates)) != norm:
+                return False
+            row_norm = 1
+            for factor_norm, exponent in zip(factor_norms, row, strict=True):
+                if exponent < 0:
+                    return False
+                row_norm *= factor_norm**exponent
+            return row_norm == norm
+
+        retained: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+        current_rank, current_index = lattice_state(())
+        parents_examined = 0
+        retained_parents = 0
+        for parent in checked_base:
+            _check_cubic_cancelled(cancelled)
+            parents_examined += 1
+            orbit: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+            image = parent
+            for _exponent in range(3):
+                if not candidate_is_exact(image):
+                    return None
+                if image not in orbit:
+                    orbit.append(image)
+                row, coordinates, norm = image
+                image = (
+                    tuple(plan.permute_row(row)),
+                    tuple(plan.map_order_coordinates(coordinates)),
+                    norm,
+                )
+            trial_candidates = tuple(retained) + tuple(orbit)
+            trial_rank, trial_index = lattice_state(trial_candidates)
+            improves = trial_rank > current_rank
+            if (
+                not improves
+                and trial_index is not None
+                and current_index is not None
+                and trial_index < current_index
+            ):
+                improves = True
+            if not improves:
+                continue
+            retained.extend(orbit)
+            current_rank = trial_rank
+            current_index = trial_index
+            retained_parents += 1
+            if retained_parents >= parent_limit:
+                break
+        if current_rank != width or current_index is None or current_index <= 1:
+            return None
+        current = presentation(tuple(retained))
+        if current.order is None or int(current.order) != current_index:
+            return None
+
+        class_rows: list[tuple[int, ...]] = []
+        for index in range(width):
+            row = [0] * width
+            row[index] = 1
+            class_rows.append(
+                tuple(int(value) for value in current.class_coordinates(row))
+            )
+        nontrivial_indices = tuple(
+            sorted(
+                (index for index, row in enumerate(class_rows) if any(row)),
+                key=lambda index: (factor_norms[index], index),
+            )
+        )
+        if len(nontrivial_indices) < 2:
+            return None
+        base_index = nontrivial_indices[0]
+        base_class = class_rows[base_index]
+        invariants = tuple(int(value) for value in current.invariants)
+        if len(base_class) != len(invariants) or not invariants:
+            return None
+
+        def gcd(left: int, right: int) -> int:
+            left = abs(left)
+            right = abs(right)
+            while right:
+                left, right = right, left % right
+            return left
+
+        def lcm(left: int, right: int) -> int:
+            return left // gcd(left, right) * right
+
+        base_order = 1
+        for value, invariant in zip(base_class, invariants, strict=True):
+            base_order = lcm(base_order, invariant // gcd(value, invariant))
+        if base_order < 2 or base_order > 4096:
+            return None
+
+        def in_base_subgroup(candidate_class: tuple[int, ...]) -> bool:
+            for multiple in range(base_order):
+                if all(
+                    (multiple * base_value - candidate_value) % invariant == 0
+                    for base_value, candidate_value, invariant in zip(
+                        base_class, candidate_class, invariants, strict=True
+                    )
+                ):
+                    return True
+            return False
+
+        maximum_factor_norm = max(factor_norms)
+        threshold = maximum_factor_norm * maximum_factor_norm
+        base_norm = factor_norms[base_index]
+        source_exponent = 0
+        source_power = 1
+        while source_power * base_norm <= threshold:
+            source_power *= base_norm
+            source_exponent += 1
+        if source_exponent < 1:
+            return None
+
+        inverse = order._basis_inverse_matrix().rows()
+
+        def reduced_order_rows(ideal: Any) -> tuple[tuple[int, ...], ...] | None:
+            lattice = relation_module.minkowski_lll_lattice(ideal)
+            denominator = int(lattice.denominator)
+            exact_rows = tuple(
+                tuple(int(value) for value in row) for row in lattice.exact_rows
+            )
+            if (
+                denominator <= 0
+                or len(exact_rows) != 3
+                or any(len(row) != 3 for row in exact_rows)
+            ):
+                return None
+            answer: list[tuple[int, ...]] = []
+            for row in exact_rows:
+                coordinates: list[int] = []
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source in range(3):
+                        value += (
+                            sage.QQ(row[source])
+                            / sage.QQ(denominator)
+                            * inverse[source][target]
+                        )
+                    if value.denominator() != 1:
+                        return None
+                    coordinates.append(int(value.numerator()))
+                answer.append(tuple(coordinates))
+            return tuple(answer)
+
+        target_indices_examined = 0
+        for target_index in nontrivial_indices[1:]:
+            if in_base_subgroup(class_rows[target_index]):
+                continue
+            _check_cubic_cancelled(cancelled)
+            target_indices_examined += 1
+            source_row = [0] * width
+            source_row[base_index] = source_exponent
+            source_row[target_index] += 1
+            source_ideal = relation_module.reconstruct_factor_base_ideal(
+                order, factor_base, source_row
+            )
+            reduced_rows = reduced_order_rows(source_ideal)
+            if reduced_rows is None:
+                continue
+            targeted = _packed_cubic_reduced_ideal_relation_candidates(
+                order,
+                factor_base,
+                reduced_rows,
+                maximum_candidates=target_limit,
+                coefficient_bound=1,
+                power_factor_base=power_factor_base,
+                cancelled=cancelled,
+            )
+            if targeted is None:
+                continue
+            checked_targeted = tuple(targeted)
+            improving_index = -1
+            final_order = current_index
+            for index, candidate in enumerate(checked_targeted):
+                if not candidate_is_exact(candidate):
+                    return None
+                trial_rank, trial_index = lattice_state(tuple(retained) + (candidate,))
+                if (
+                    trial_index is not None
+                    and trial_rank == width
+                    and trial_index < current_index
+                ):
+                    improving_index = index
+                    final_order = trial_index
+                    break
+            if improving_index < 0:
+                continue
+            if receipt is not None:
+                receipt.update(
+                    {
+                        "available": 1,
+                        "parents_examined": parents_examined,
+                        "retained_parents": retained_parents,
+                        "orbit_candidates": len(retained),
+                        "provisional_order": current_index,
+                        "base_index": base_index,
+                        "base_norm": base_norm,
+                        "source_exponent": source_exponent,
+                        "target_indices_examined": target_indices_examined,
+                        "target_index": target_index,
+                        "target_norm": factor_norms[target_index],
+                        "source_norm": _integer_rational(
+                            source_ideal.norm(), "a targeted source norm"
+                        ),
+                        "target_candidates": len(checked_targeted),
+                        "improving_target_candidate": improving_index,
+                        "final_order": final_order,
+                    }
+                )
+            return tuple(retained) + checked_targeted
+        return None
+    except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+        return None
+
+
 def _validated_cubic_integral_relation_batch(
     relation_module: Any,
     order: Any,
@@ -5185,6 +5496,7 @@ __all__ = [
     "bounded_cubic_minkowski_class_number",
     "materialize_verified_packed_cubic_factor_records",
     "packed_cubic_factor_records",
+    "_cyclic_cubic_targeted_relation_candidates",
     "_packed_cubic_reduced_ideal_relation_candidates",
     "_select_cubic_postrank_dependency_candidates",
 ]

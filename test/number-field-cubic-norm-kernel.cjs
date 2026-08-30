@@ -214,6 +214,57 @@ trial = relations.ExactRelationCollector(engine.order, factor_base)
 initial = relations.initial_rational_prime_relation_proposals(trial)
 initial_rows = tuple(row for _coordinates, row, _provenance in initial)
 assert len(initial_rows) + len(candidates) == 52
+
+# The cyclic-cubic targeted planner treats these 46 rows as untrusted
+# discovery candidates.  Four improving parent orbits give the provisional
+# order 27 quotient; an exact Smith-coordinate target then constructs the
+# norm-1215 product ideal and a radius-one batch lowers the quotient to 9.
+target_receipt = {}
+targeted = cubic._cyclic_cubic_targeted_relation_candidates(
+    engine.order,
+    factor_base,
+    initial_rows,
+    candidates,
+    matrix_module=matrix,
+    relation_module=relations,
+    cancelled=None,
+    receipt=target_receipt,
+)
+assert targeted is not None and len(targeted) == 19
+assert target_receipt == {
+    "available": 1,
+    "parents_examined": 9,
+    "retained_parents": 4,
+    "orbit_candidates": 12,
+    "provisional_order": 27,
+    "base_index": 0,
+    "base_norm": 3,
+    "source_exponent": 5,
+    "target_indices_examined": 1,
+    "target_index": 3,
+    "target_norm": 5,
+    "source_norm": 1215,
+    "target_candidates": 7,
+    "improving_target_candidate": 0,
+    "final_order": 9,
+}
+target_presentation = matrix.extract_relation_presentation(
+    initial_rows + tuple(candidate[0] for candidate in targeted),
+    len(factor_base),
+    require_full_rank=True,
+)
+assert target_presentation.order == 9
+assert target_presentation.invariants == (3, 3)
+for candidate_index in (0, 4, 11, 12, 18):
+    row, coordinates, _expected_norm = targeted[candidate_index]
+    replay = relations.ExactRelationCollector(engine.order, factor_base)
+    admission = replay.admit_integral_order_basis_row(
+        coordinates,
+        row,
+        provenance={"algorithm": "cyclic-cubic-targeted-differential"},
+    )
+    assert admission.record.verify(engine.order, factor_base)["certified"]
+
 safe_selector_native_calls = [0]
 def forbidden_unqualified_selector(*_arguments):
     safe_selector_native_calls[0] += 1
