@@ -265,6 +265,22 @@ class MatchObject:
 class RegexObject:
     def __init__(self, pattern, flags=0):
         self.pattern, self.flags = _transform(pattern, int(flags))
+        # CPython validates patterns in ``re.compile`` rather than waiting for
+        # the first match operation.  Construct one disposable native regexp
+        # here so coercing traits reject malformed patterns immediately.
+        runtime.reflect.construct(
+            runtime.regexp, [self.pattern, _flag_text(self.flags)]
+        )
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, RegexObject)
+            and self.pattern == other.pattern
+            and self.flags == other.flags
+        )
+
+    def __hash__(self):
+        return hash((self.pattern, self.flags))
 
     def _native(self):
         return runtime.reflect.construct(
@@ -414,6 +430,8 @@ def compile(pattern, flags=0):
         return pattern
     if runtime.instance_of(pattern, runtime.regexp):
         pattern = _property(pattern, "source")
+    elif not isinstance(pattern, (str, bytes, bytearray)):
+        raise TypeError("first argument must be string or compiled pattern")
     key = (str(pattern), int(flags))
     if key not in _cache:
         _cache[key] = RegexObject(pattern, flags)

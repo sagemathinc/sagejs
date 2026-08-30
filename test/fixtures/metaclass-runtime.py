@@ -1,3 +1,7 @@
+from contextlib import contextmanager
+from inspect import getfullargspec, signature
+
+
 class AllocatingMeta(type):
     def __new__(mcls, name, bases, namespace, **keywords):
         namespace["allocated_by"] = mcls.__name__
@@ -17,6 +21,16 @@ assert AllocatedProduct.allocated_by == "AllocatingMeta"
 assert AllocatedProduct.initialized_by == "AllocatingMeta"
 assert AllocatedProduct.answer == 42
 assert isinstance(AllocatedProduct(), AllocatedProduct)
+
+DynamicAllocatedProduct = type(
+    "DynamicAllocatedProduct",
+    (AllocatedProduct,),
+    {"answer": 84},
+)
+assert type(DynamicAllocatedProduct) is AllocatingMeta
+assert DynamicAllocatedProduct.allocated_by == "AllocatingMeta"
+assert DynamicAllocatedProduct.initialized_by == "AllocatingMeta"
+assert DynamicAllocatedProduct.answer == 84
 
 
 class BuiltinClassAttributes:
@@ -52,3 +66,172 @@ class SetupProduct(metaclass=SetupDerivedMeta):
 assert SetupProduct.setup_marker == "derived"
 assert SetupProduct.mro() == list(SetupProduct.__mro__)
 assert type.mro(SetupProduct) == list(SetupProduct.__mro__)
+
+
+class InheritedClassMethod:
+    @classmethod
+    def owner(cls):
+        return cls
+
+
+class InheritedClassMethodChild(InheritedClassMethod):
+    pass
+
+
+assert InheritedClassMethodChild().owner() is InheritedClassMethodChild
+
+
+class CustomDirectory:
+    def __dir__(self):
+        return super().__dir__() + ["custom_entry"]
+
+
+assert "custom_entry" in dir(CustomDirectory())
+assert issubclass(ModuleNotFoundError, ImportError)
+
+
+class DecoratedProperty:
+    def __init__(self):
+        self.entered = False
+
+    @property
+    @contextmanager
+    def scope(self):
+        self.entered = True
+        try:
+            yield self
+        finally:
+            self.entered = False
+
+
+decorated = DecoratedProperty()
+with decorated.scope as active:
+    assert active is decorated
+    assert decorated.entered
+assert not decorated.entered
+
+
+class DecoratedMethod:
+    def __init__(self):
+        self.entered = False
+
+    @contextmanager
+    def scope(self):
+        self.entered = True
+        try:
+            yield self
+        finally:
+            self.entered = False
+
+
+decorated_method = DecoratedMethod()
+with decorated_method.scope() as active:
+    assert active is decorated_method
+    assert decorated_method.entered
+assert not decorated_method.entered
+
+
+class CallableDecorator:
+    def __call__(self, function):
+        function.decorated_by_instance = True
+        return function
+
+
+def callable_decorator_factory():
+    return CallableDecorator()
+
+
+@callable_decorator_factory()
+def dynamically_decorated():
+    return 7
+
+
+assert dynamically_decorated() == 7
+assert dynamically_decorated.decorated_by_instance
+
+
+class EmptyMixin:
+    pass
+
+
+class StatefulBase:
+    def __init__(self, value):
+        self.value = value
+
+
+class MixedState(EmptyMixin, StatefulBase):
+    pass
+
+
+assert MixedState(31).value == 31
+
+
+class KeywordCollision(metaclass=AllocatingMeta):
+    def __init__(__self, cls, self):
+        __self.values = (cls, self)
+
+
+keyword_collision = KeywordCollision(cls=3, self=5)
+assert keyword_collision.values == (3, 5)
+
+
+def positional_only_keyword_collision(value, /, **kwargs):
+    return value, kwargs
+
+
+assert positional_only_keyword_collision(1, value=2) == (1, {"value": 2})
+
+
+class IntrospectionMethod:
+    def callback(self, change):
+        return change
+
+
+introspection_method = IntrospectionMethod()
+assert list(signature(introspection_method.callback).parameters) == ["change"]
+assert getfullargspec(introspection_method.callback).args == ["self", "change"]
+
+
+class CustomAllocatorOnly:
+    def __new__(cls, *args, **kwargs):
+        instance = object.__new__(cls)
+        instance.received = (args, kwargs)
+        return instance
+
+
+custom_allocator_only = CustomAllocatorOnly(1, label=2)
+assert custom_allocator_only.received == ((1,), {"label": 2})
+
+
+class DynamicBase:
+    pass
+
+
+DynamicSubclass = type("DynamicSubclass", (DynamicBase,), {})
+dynamic_instance = DynamicBase()
+dynamic_instance.__class__ = DynamicSubclass
+assert type(dynamic_instance) is DynamicSubclass
+assert isinstance(dynamic_instance, DynamicBase)
+
+
+class StrictInitializer:
+    def __init__(self):
+        pass
+
+
+class InheritedStrictInitializer(StrictInitializer):
+    pass
+
+
+try:
+    InheritedStrictInitializer(unexpected=True)
+except TypeError:
+    pass
+else:
+    raise AssertionError("synthetic __init__ silently discarded a keyword")
+
+for builtin_class in (bool, dict, float, int, list, set, str, tuple):
+    assert issubclass(builtin_class, object)
+
+assert issubclass(DeprecationWarning, Warning)
+assert not issubclass(DeprecationWarning, PendingDeprecationWarning)

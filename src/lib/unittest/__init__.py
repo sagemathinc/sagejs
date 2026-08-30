@@ -1,14 +1,16 @@
-"""A compact, compatible foundation for Python's :mod:`unittest`.
+"""A compact, compatible foundation for Python's `unittest`.
 
 The implementation intentionally covers the portable core used by ordinary
 pure-Python libraries: test cases and assertions, exception/warning context
-managers, suites, results, a text runner, and the standard decorators.  Test
-discovery and `unittest.mock` remain separate compatibility milestones.
+managers, suites, results, a text runner, standard decorators, and test-case
+discovery. The portable
+`unittest.mock` core is available as the standard child module.
 """
 
 from __future__ import annotations
 
 import traceback
+import sys
 
 
 class SkipTest(Exception):
@@ -106,6 +108,15 @@ class TestCase:
     def assertEqual(self, first, second, msg=None):
         if first != second:
             self.fail(self._formatMessage(msg, "%r != %r" % (first, second)))
+
+    # CPython dispatches these through type-specific comparison helpers for
+    # improved diagnostics.  The equality semantics are identical, and the
+    # compact Sage.js test framework keeps the shared implementation.
+    assertListEqual = assertEqual
+    assertTupleEqual = assertEqual
+    assertSequenceEqual = assertEqual
+    assertDictEqual = assertEqual
+    assertSetEqual = assertEqual
 
     def assertNotEqual(self, first, second, msg=None):
         if first == second:
@@ -239,14 +250,15 @@ class TestCase:
         result.startTest(self)
         try:
             self.setUp()
-            getattr(self, self._testMethodName)()
+            method = getattr(self, self._testMethodName)
+            method()
             self.tearDown()
         except SkipTest as error:
             result.addSkip(self, str(error))
         except self.failureException:
-            result.addFailure(self, traceback.format_exc())
+            result.addFailure(self, sys.exc_info())
         except Exception:
-            result.addError(self, traceback.format_exc())
+            result.addError(self, sys.exc_info())
         else:
             result.addSuccess(self)
         result.stopTest(self)
@@ -353,6 +365,48 @@ class TextTestRunner:
         return result
 
 
+class TestLoader:
+    """Discover `TestCase` methods using the standard naming convention."""
+
+    testMethodPrefix = "test"
+    sortTestMethodsUsing = None
+    suiteClass = TestSuite
+
+    def getTestCaseNames(self, testCaseClass):
+        names = []
+        for name in dir(testCaseClass):
+            if not name.startswith(self.testMethodPrefix):
+                continue
+            if callable(getattr(testCaseClass, name)):
+                names.append(name)
+        names.sort()
+        return names
+
+    def loadTestsFromTestCase(self, testCaseClass):
+        if not issubclass(testCaseClass, TestCase):
+            raise TypeError("testCaseClass must be a subclass of TestCase")
+        names = self.getTestCaseNames(testCaseClass)
+        if not names and testCaseClass.runTest is not TestCase.runTest:
+            names = ["runTest"]
+        return self.suiteClass(testCaseClass(name) for name in names)
+
+    def loadTestsFromModule(self, module, pattern=None):
+        tests = []
+        for name in dir(module):
+            candidate = getattr(module, name)
+            try:
+                is_test_case = issubclass(candidate, TestCase)
+            except TypeError:
+                is_test_case = False
+            if is_test_case:
+                tests.append(self.loadTestsFromTestCase(candidate))
+        suite = self.suiteClass(tests)
+        hook = getattr(module, "load_tests", None)
+        if hook is not None:
+            return hook(self, suite, pattern)
+        return suite
+
+
 def skip(reason):
     def decorator(test_item):
         def skipped(*args, **kwargs):
@@ -376,7 +430,7 @@ def expectedFailure(function):
     return function
 
 
-defaultTestLoader = None
+defaultTestLoader = TestLoader()
 
 
 def main(*args, **kwargs):

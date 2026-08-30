@@ -67,8 +67,13 @@ def print_while_loop(self, output):
     print_loop_else(self, output)
 
 
-def is_simple_for_in(self):
+def is_simple_for_in(self, output=None):
     # return true if this loop can be simplified into a basic for (i in j) loop
+    if output is not None and output.options.python_attributes:
+        # Python's `dir()` includes inherited and non-enumerable names.  A
+        # JavaScript `for ... in` loop does not, so this legacy shortcut is
+        # only valid for the permissive JavaScript-oriented output mode.
+        return False
     if (
         is_node_type(self.object, AST_BaseCall)
         and is_node_type(self.object.expression, AST_SymbolRef)
@@ -114,7 +119,7 @@ def print_for_loop_body(output):
     self = this
 
     def f_print_for_loop_body():
-        if not (self.simple_for_index or is_simple_for_in(self)):
+        if not (self.simple_for_index or is_simple_for_in(self, output)):
             # if we're using multiple iterators, unpack them
             output.indent()
             itervar = "ρσ_Index" + output.index_counter
@@ -270,7 +275,7 @@ def print_for_in(self, output):
 
         output.with_parens(f_simple_for)
 
-    elif is_simple_for_in(self):
+    elif is_simple_for_in(self, output):
         # optimize dir() into a simple for in loop
         output.print("for")
         output.space()

@@ -30,6 +30,26 @@ class FullArgSpec:
         self.kwonlydefaults = kwonlydefaults
         self.annotations = annotations
 
+    def _as_tuple(self):
+        return (
+            self.args,
+            self.varargs,
+            self.varkw,
+            self.defaults,
+            self.kwonlyargs,
+            self.kwonlydefaults,
+            self.annotations,
+        )
+
+    def __len__(self):
+        return 7
+
+    def __iter__(self):
+        return iter(self._as_tuple())
+
+    def __getitem__(self, index):
+        return self._as_tuple()[index]
+
 
 class BoundArguments:
     """Arguments bound to a :class:`Signature`."""
@@ -286,6 +306,29 @@ def isclass(value):
     return isinstance(value, type)
 
 
+def isabstract(value):
+    """Return whether `value` is an abstract class.
+
+    The host runtime does not expose CPython's private type flags, so use the
+    public abstract-method protocol.  The fallback scan also covers the short
+    interval while an `ABCMeta` subclass is being initialized.
+    """
+    if not isclass(value):
+        return False
+    abstract_methods = getattr(value, "__abstractmethods__", None)
+    if abstract_methods:
+        return True
+    for member in value.__dict__.values():
+        if getattr(member, "__isabstractmethod__", False):
+            return True
+    for base in value.__bases__:
+        for name in getattr(base, "__abstractmethods__", ()):
+            member = getattr(value, name, None)
+            if getattr(member, "__isabstractmethod__", False):
+                return True
+    return False
+
+
 def isroutine(value):
     return isfunction(value) or ismethod(value)
 
@@ -304,14 +347,19 @@ def isasyncgenfunction(value):
 
 def getfullargspec(callable):
     """Return CPython-compatible argument metadata for a callable."""
-    sig = signature(callable, follow_wrapped=False)
+    # Unlike ``signature()``, CPython's legacy ``getfullargspec()`` does not
+    # strip the leading receiver from a bound method.  Traitlets intentionally
+    # relies on this distinction when adapting old ``on_trait_change``
+    # callbacks.  Inspect the underlying function when one is available.
+    inspection_target = getattr(callable, "__func__", callable)
+    sig = signature(inspection_target, follow_wrapped=False)
     args = []
     varargs = None
     varkw = None
     defaults_by_name = {}
     kwonlyargs = []
     kwonlydefaults = {}
-    annotations = dict(getattr(callable, "__annotations__", {}))
+    annotations = dict(getattr(inspection_target, "__annotations__", {}))
     for parameter in sig.parameters.values():
         if parameter.kind in (
             Parameter.POSITIONAL_ONLY,
@@ -349,6 +397,51 @@ def getfullargspec(callable):
 def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
     del globals, locals, eval_str
     return dict(getattr(obj, "__annotations__", {}))
+
+
+class _PortableFrameCode:
+    co_name = "currentframe"
+    co_filename = "<sagejs>"
+
+
+class _PortableFrame:
+    """Minimal frame protocol for libraries doing stack-level bookkeeping."""
+
+    def __init__(self):
+        self.f_code = _PortableFrameCode()
+        self.f_back = None
+        self.f_globals = {"__name__": "__main__"}
+        self.f_locals = {}
+        self.f_lineno = 0
+
+
+def currentframe():
+    """Return a minimal portable frame for introspection bookkeeping.
+
+    JavaScript does not expose CPython frame objects, but warning and
+    decorator libraries commonly need only `f_code`, `f_globals`, `f_locals`,
+    and `f_back`.  This object deliberately provides just that protocol.
+    """
+    return _PortableFrame()
+
+
+def getouterframes(frame, context=1):
+    """Return portable frame-info tuples following `frame.f_back`."""
+    del context
+    result = []
+    while frame is not None:
+        result.append(
+            (
+                frame,
+                frame.f_code.co_filename,
+                frame.f_lineno,
+                frame.f_code.co_name,
+                None,
+                None,
+            )
+        )
+        frame = frame.f_back
+    return result
 
 
 def unwrap(func, *, stop=None):
@@ -399,3 +492,29 @@ def getsourcefile(obj):
     if filename.endswith((".pyc", ".pyo")):
         return filename[:-1]
     return filename
+
+
+def getmro(cls):
+    """Return the method resolution order of `cls` as a tuple."""
+    if not isclass(cls):
+        raise AttributeError("__mro__")
+    return tuple(cls.__mro__)
+
+
+def getsourcelines(obj):
+    """Return source lines and the first line number for `obj`.
+
+    Sage.js only reports source text when the compiler attached an exact
+    `__firstlineno__`.  Raising `OSError` when that metadata is unavailable
+    matches CPython's failure contract and avoids inventing a misleading
+    location for generated callables.
+    """
+    first_line = getattr(obj, "__firstlineno__", None)
+    if first_line is None:
+        raise OSError("exact source line metadata is unavailable")
+    import linecache
+
+    lines = linecache.getlines(getsourcefile(obj))
+    if not lines:
+        raise OSError("source code is unavailable")
+    return lines[first_line - 1 :], first_line

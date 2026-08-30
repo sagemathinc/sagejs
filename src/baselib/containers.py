@@ -7,10 +7,11 @@ Python classes backed by the native JavaScript `Set` and `Map` types.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, List
 
 import sagejs.runtime as runtime
 
+_Str = str
 _CONTAINERS_MISSING = runtime.object.create(None)
 
 
@@ -101,6 +102,20 @@ def _numeric_key(value: Any) -> Any:
 def equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
+
+    # Repeated attribute access creates distinct bound-method function
+    # objects in both CPython and Sage.js.  Python compares them by the
+    # underlying function and receiver, which is essential for removing
+    # observers registered with `obj.method`.
+    if runtime.strict_equal(left_type, "function") and runtime.strict_equal(
+        right_type, "function"
+    ):
+        left_self = _get_member(left, "__self__")
+        right_self = _get_member(right, "__self__")
+        if left_self is not runtime.undefined and right_self is not runtime.undefined:
+            return left_self is right_self and (
+                _get_member(left, "__func__") is _get_member(right, "__func__")
+            )
 
     # Primitive equality is overwhelmingly common in numerical inner loops.
     # Branch on the left shape first so the overwhelmingly common number/
@@ -1289,6 +1304,13 @@ class SageDict:
 
     def __len__(self) -> int:
         return self.jsmap.size
+
+    def __dir__(self) -> List[_Str]:
+        default_dir = runtime.reflect.get(
+            runtime.global_object,
+            "ρσ_default_dir",
+        )
+        return runtime.reflect.apply(default_dir, runtime.undefined, [self])
 
     def __contains__(self, key: Any) -> bool:
         return self.jsmap.has(_dict_resolve_key(self, key))
