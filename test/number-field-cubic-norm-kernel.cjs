@@ -212,12 +212,24 @@ for candidate_index in (0, 7, 23, 45):
 
 trial = relations.ExactRelationCollector(engine.order, factor_base)
 initial = relations.initial_rational_prime_relation_proposals(trial)
-selected, rank = cubic._select_cubic_relation_candidates(
-    matrix,
-    tuple(row for _coordinates, row, _provenance in initial),
-    candidates,
-    len(factor_base),
-)
+initial_rows = tuple(row for _coordinates, row, _provenance in initial)
+assert len(initial_rows) + len(candidates) == 52
+safe_selector_native_calls = [0]
+def forbidden_unqualified_selector(*_arguments):
+    safe_selector_native_calls[0] += 1
+    raise AssertionError("the 52-by-10 selector entered native HNF")
+saved_hnf_override = matrix._resident_hnf_kernel_override
+matrix._resident_hnf_kernel_override = forbidden_unqualified_selector
+try:
+    selected, rank = cubic._select_cubic_relation_candidates(
+        matrix,
+        initial_rows,
+        candidates,
+        len(factor_base),
+    )
+finally:
+    matrix._resident_hnf_kernel_override = saved_hnf_override
+assert safe_selector_native_calls == [0]
 assert selected is not None and rank == 10 and len(selected) == 5
 dependencies = cubic._select_cubic_postrank_dependency_candidates(
     selected,
