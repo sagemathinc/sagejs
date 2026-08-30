@@ -382,11 +382,25 @@
       "id": "combinatorics",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 60000,
+      "max_source_bytes": 80000,
       "depends_on": ["core-runtime", "native-integration", "python-stdlib"],
       "files": [
         "src/baselib/combinat.py"
       ],
+      "prefixes": []
+    },
+    {
+      "id": "coding-theory",
+      "layer": 5,
+      "startup": "bootstrap",
+      "max_source_bytes": 20000,
+      "depends_on": [
+        "core-runtime",
+        "arithmetic",
+        "linear-algebra",
+        "groups-combinatorics"
+      ],
+      "files": ["src/baselib/coding.py"],
       "prefixes": []
     },
     {

@@ -10,6 +10,7 @@
     "src/baselib/hyperelliptic_curves.py",
     "src/baselib/exact_rational.py",
     "src/baselib/combinat.py",
+    "src/baselib/coding.py",
     "src/baselib/errors.py",
     "src/baselib/factorization.py",
     "src/baselib/finite_fields.py",

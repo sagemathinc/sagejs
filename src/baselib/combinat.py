@@ -1387,6 +1387,285 @@ def number_of_partitions(size: Any) -> Any:
     return runtime.normalize_integer(_partition_count(value))
 
 
+def _selection_values(values: Any) -> list[Any]:
+    if runtime.is_exact_integer(values):
+        size = int(values)
+        if size < 0:
+            raise ValueError("selection size must be nonnegative")
+        return [index + 1 for index in range(size)]
+    return list(values)
+
+
+def _selection_distinct(values: list[Any]) -> bool:
+    for index in range(len(values)):
+        for previous in range(index):
+            if values[index] == values[previous]:
+                return False
+    return True
+
+
+def _combination_iterator(
+    values: list[Any],
+    size: int,
+    start: int,
+    prefix: list[Any],
+) -> Iterator[list[Any]]:
+    if len(prefix) == size:
+        yield list(prefix)
+    else:
+        remaining = size - len(prefix)
+        seen = []
+        for index in range(start, len(values) - remaining + 1):
+            value = values[index]
+            duplicate = False
+            for previous in seen:
+                if value == previous:
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            seen.append(value)
+            prefix.append(value)
+            for answer in _combination_iterator(values, size, index + 1, prefix):
+                yield answer
+            prefix.pop()
+
+
+def _permutation_iterator(
+    values: list[Any],
+    size: int,
+    used: list[bool],
+    prefix: list[Any],
+    derangement_values: Any = None,
+) -> Iterator[list[Any]]:
+    if len(prefix) == size:
+        yield list(prefix)
+    else:
+        seen = []
+        position = len(prefix)
+        for index in range(len(values)):
+            if used[index]:
+                continue
+            value = values[index]
+            if derangement_values is not None and value == derangement_values[position]:
+                continue
+            duplicate = False
+            for previous in seen:
+                if value == previous:
+                    duplicate = True
+                    break
+            if duplicate:
+                continue
+            seen.append(value)
+            used[index] = True
+            prefix.append(value)
+            for answer in _permutation_iterator(
+                values,
+                size,
+                used,
+                prefix,
+                derangement_values,
+            ):
+                yield answer
+            prefix.pop()
+            used[index] = False
+
+
+def _selection_count(iterable: Any) -> Any:
+    count = runtime.bigint(0)
+    for _value in iterable:
+        count = runtime.native_add(count, runtime.bigint(1))
+    return runtime.normalize_integer(count)
+
+
+def _selection_binomial(upper: int, lower: int) -> Any:
+    lower = min(lower, upper - lower)
+    answer = runtime.bigint(1)
+    for index in range(1, lower + 1):
+        answer = runtime.native_div(
+            runtime.native_mul(answer, runtime.bigint(upper - lower + index)),
+            runtime.bigint(index),
+        )
+    return runtime.normalize_integer(answer)
+
+
+class CombinationsParent(sage.Parent):
+    """Finite combinations of a sequence, with Sage's size-first order."""
+
+    def __init__(self, values: Any, size: Any = None) -> None:
+        self._values = _selection_values(values)
+        self._size = None if size is None else _partition_exact_integer(size, "size")
+        if self._size is not None and (
+            self._size < 0 or self._size > len(self._values)
+        ):
+            self._size = -1
+
+    def __iter__(self) -> Iterator[list[Any]]:
+        if self._size != -1:
+            if self._size is None:
+                for size in range(len(self._values) + 1):
+                    for answer in _combination_iterator(self._values, size, 0, []):
+                        yield answer
+            else:
+                for answer in _combination_iterator(self._values, self._size, 0, []):
+                    yield answer
+
+    def list(self) -> list[list[Any]]:
+        return list(self)
+
+    def cardinality(self) -> Any:
+        if self._size == -1:
+            return 0
+        if not _selection_distinct(self._values):
+            return _selection_count(self)
+        if self._size is None:
+            return runtime.normalize_integer(
+                runtime.bigint(1) << runtime.bigint(len(self._values))
+            )
+        return _selection_binomial(len(self._values), self._size)
+
+    def __repr__(self) -> str:
+        text = "Combinations of " + str(self._values)
+        if self._size is not None and self._size >= 0:
+            text += " of length " + str(self._size)
+        return text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class PermutationsParent(sage.Parent):
+    """Finite permutations of a sequence, optionally of a fixed length."""
+
+    def __init__(self, values: Any, size: Any = None) -> None:
+        self._standard_size = int(values) if runtime.is_exact_integer(values) else None
+        self._values = _selection_values(values)
+        self._size = (
+            len(self._values)
+            if size is None
+            else _partition_exact_integer(size, "size")
+        )
+        if self._size < 0 or self._size > len(self._values):
+            self._size = -1
+
+    def __iter__(self) -> Iterator[list[Any]]:
+        if self._size >= 0:
+            for answer in _permutation_iterator(
+                self._values,
+                self._size,
+                [False for _value in self._values],
+                [],
+            ):
+                yield answer
+
+    def list(self) -> list[list[Any]]:
+        return list(self)
+
+    def cardinality(self) -> Any:
+        if self._size < 0:
+            return 0
+        if not _selection_distinct(self._values):
+            return _selection_count(self)
+        answer = runtime.bigint(1)
+        for offset in range(self._size):
+            answer = runtime.native_mul(
+                answer,
+                runtime.bigint(len(self._values) - offset),
+            )
+        return runtime.normalize_integer(answer)
+
+    def __repr__(self) -> str:
+        if self._standard_size is not None and self._size == self._standard_size:
+            return "Standard permutations of " + str(self._standard_size)
+        text = "Permutations of the set " + str(self._values)
+        if self._size != len(self._values):
+            text += " of length " + str(self._size)
+        return text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class DerangementsParent(sage.Parent):
+    """Distinct permutations which move every entry from its input position."""
+
+    def __init__(self, values: Any) -> None:
+        self._values = _selection_values(values)
+
+    def __iter__(self) -> Iterator[list[Any]]:
+        for answer in _permutation_iterator(
+            self._values,
+            len(self._values),
+            [False for _value in self._values],
+            [],
+            self._values,
+        ):
+            yield answer
+
+    def list(self) -> list[list[Any]]:
+        return list(self)
+
+    def cardinality(self) -> Any:
+        return _selection_count(self)
+
+    def __repr__(self) -> str:
+        return "Derangements of " + str(self._values)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def Combinations(values: Any, size: Any = None) -> CombinationsParent:
+    return CombinationsParent(values, size)
+
+
+def Permutations(values: Any, size: Any = None) -> PermutationsParent:
+    return PermutationsParent(values, size)
+
+
+def Derangements(values: Any) -> DerangementsParent:
+    return DerangementsParent(values)
+
+
+def falling_factorial(value: Any, count: Any) -> Any:
+    """Return `value * (value-1) * ...` with `count` factors."""
+    count = _partition_exact_integer(count, "count")
+    if count < 0:
+        raise ValueError("count must be nonnegative")
+    answer = 1
+    for index in range(count):
+        answer *= value - index
+    return answer
+
+
+def rising_factorial(value: Any, count: Any) -> Any:
+    """Return `value * (value+1) * ...` with `count` factors."""
+    count = _partition_exact_integer(count, "count")
+    if count < 0:
+        raise ValueError("count must be nonnegative")
+    answer = 1
+    for index in range(count):
+        answer *= value + index
+    return answer
+
+
+def multinomial(*parts: Any) -> Any:
+    """Return the multinomial coefficient for the supplied part sizes."""
+    if len(parts) == 1 and isinstance(parts[0], (list, tuple)):
+        parts = tuple(parts[0])
+    part_values = [_partition_exact_integer(value, "part") for value in parts]
+    if any(value < 0 for value in part_values):
+        return 0
+    total = sum(part_values)
+    answer = runtime.bigint(1)
+    remaining = total
+    for value in part_values:
+        coefficient = runtime.integer_bigint(_selection_binomial(remaining, value))
+        answer = runtime.native_mul(answer, coefficient)
+        remaining -= value
+    return runtime.normalize_integer(answer)
+
+
 # Every algorithm here is implemented from its published description; no
 # SageMath source was transliterated.  What is adapted from Sage is the public
 # API, the enumeration order, and the documentation prose.
