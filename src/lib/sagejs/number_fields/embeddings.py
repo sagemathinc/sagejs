@@ -266,17 +266,36 @@ def exact_conjugate_sum_product(field: Any, element: Any) -> tuple[Any, Any]:
     return (total, product)
 
 
-def exact_norm_is_unit(field: Any, element: Any) -> tuple[bool, int]:
-    """Verify exactly that an integral element has norm `+1` or `-1`."""
-    integral_test = getattr(element, "is_integral", None)
-    is_integral = (
-        bool(integral_test())
-        if callable(integral_test)
-        else element in field.maximal_order()
-    )
+def exact_norm_is_unit(
+    field: Any,
+    element: Any,
+    *,
+    integral_order: Any = None,
+) -> tuple[bool, int]:
+    """Verify exactly that an integral element has norm `+1` or `-1`.
+
+    When a caller already has the relevant order, membership in that order is
+    the integrality proof.  This avoids reconstructing a second characteristic
+    polynomial immediately before the same membership test.  Standard
+    number-field elements also expose their exact algebraic norm directly;
+    the independent conjugate-product implementation remains the fail-closed
+    fallback for other exact element representations.
+    """
+    if integral_order is not None:
+        is_integral = element in integral_order
+    else:
+        integral_test = getattr(element, "is_integral", None)
+        is_integral = (
+            bool(integral_test())
+            if callable(integral_test)
+            else element in field.maximal_order()
+        )
     if not is_integral:
         return (False, 0)
-    product = exact_conjugate_sum_product(field, element)[1]
+    norm = getattr(element, "norm", None)
+    product = (
+        norm() if callable(norm) else exact_conjugate_sum_product(field, element)[1]
+    )
     if product == 1:
         return (True, 1)
     if product == -1:

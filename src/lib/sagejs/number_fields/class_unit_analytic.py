@@ -1446,8 +1446,12 @@ def _exact_unit(field: Any, order: Any, value: Any) -> bool:
         embedding_module = __import__(
             "sagejs.number_fields.embeddings", fromlist=["embeddings"]
         )
-        verified, _norm = embedding_module.exact_norm_is_unit(field, value)
-        return bool(verified and value in order)
+        verified, _norm = embedding_module.exact_norm_is_unit(
+            field,
+            value,
+            integral_order=order,
+        )
+        return bool(verified)
     except (TypeError, ValueError, ArithmeticError, ZeroDivisionError):
         return False
 
