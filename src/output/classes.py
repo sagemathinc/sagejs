@@ -74,17 +74,72 @@ def print_class(output):
 
         # decorate the method
         if stmt.decorators and stmt.decorators.length:
-            decorate(
-                stmt.decorators,
-                output,
-                lambda: function_definition(
+            if is_property:
+                output.print(
+                    "(function(ρσ_property_function){return function"
+                    + ("(value)" if stmt.is_setter else "()")
+                    + "{return ρσ_resolve_callable(ρσ_property_function)(this"
+                    + (", value" if stmt.is_setter else "")
+                    + ")}})("
+                )
+                decorate(
+                    stmt.decorators,
+                    output,
+                    lambda: function_definition(
+                        stmt,
+                        output,
+                        strip_first,
+                        True,
+                        javascript_name,
+                    ),
+                )
+                output.print(")")
+            elif not is_static and not is_classmethod:
+                # A mutating marker decorator such as pluggy's ``@hookimpl``
+                # returns the original compiler-emitted method, whose receiver
+                # already arrives through JavaScript ``this``.  A transforming
+                # decorator such as ``@contextmanager`` returns a distinct
+                # ordinary function expecting explicit ``self``.  Preserve
+                # the former and adapt only the latter.
+                output.print(
+                    "(function(ρσ_original_method){"
+                    "ρσ_original_method."
+                    "__sagejs_method_signature_excludes_self__=true;"
+                    "var ρσ_decorated_method="
+                )
+                decorate(
+                    stmt.decorators,
+                    output,
+                    lambda: output.print("ρσ_original_method"),
+                )
+                output.print(";return ρσ_decorated_method === ρσ_original_method ? ")
+                output.print("ρσ_decorated_method : ")
+                output.print(
+                    '(typeof ρσ_decorated_method === "function" '
+                    "&& ρσ_decorated_method.__sagejs_native_method__ !== true) "
+                    "? ρσ_native_method_adapter(ρσ_decorated_method) "
+                    ": ρσ_decorated_method})("
+                )
+                function_definition(
                     stmt,
                     output,
                     strip_first,
                     True,
                     javascript_name,
-                ),
-            )
+                )
+                output.print(")")
+            else:
+                decorate(
+                    stmt.decorators,
+                    output,
+                    lambda: function_definition(
+                        stmt,
+                        output,
+                        strip_first,
+                        True,
+                        javascript_name,
+                    ),
+                )
             if not is_property:
                 output.end_statement()
         else:
@@ -349,6 +404,12 @@ def print_class(output):
                 output.end_statement()
             output.indent()
             output.print("var ρσ_init_result = ")
+            if output.options.python_attributes:
+                output.print("ρσ_skip_init_for_custom_new(")
+                self.name.print(output)
+                output.comma()
+                self.name.print(output)
+                output.print(".prototype.__init__) ? undefined : ")
             self.name.print(output)
             (
                 output.print(".prototype.__init__.apply(" + instance_name),
@@ -673,6 +734,16 @@ def print_class(output):
 
     emitted_statements = list(early_statements)
 
+    constructor_signature_attributes = [
+        ".__argnames__",
+        ".__defaults__",
+        ".__handles_kwarg_interpolation__",
+        ".__kwonly__",
+        ".__positional_only__",
+        ".__varargs__",
+        ".__varkw__",
+    ]
+
     # actual methods
     if not self.init:
         # Create a default __init__ method
@@ -680,15 +751,28 @@ def print_class(output):
             if self.parent:
                 self.parent.print(output)
                 output.spaced(".prototype.__init__", "&&")
-                output.space(), self.parent.print(output)
-                output.print(".prototype.__init__.apply")
-
-                def f_this_arguments():
+                if output.options.python_attributes:
+                    output.print("\u03c1\u03c3_forward_kwargs(")
                     output.print("this")
                     output.comma()
-                    output.print("arguments")
+                    self.parent.print(output)
+                    output.print(".prototype.__init__")
+                    output.comma()
+                    output.print("Array.from(arguments)")
+                    output.print(")")
+                else:
+                    # The compiler's immutable stage-zero AST constructors
+                    # intentionally pass a JavaScript initializer object
+                    # through their synthetic inheritance chain.
+                    self.parent.print(output)
+                    output.print(".prototype.__init__.apply")
 
-                output.with_parens(f_this_arguments)
+                    def f_this_arguments():
+                        output.print("this")
+                        output.comma()
+                        output.print("arguments")
+
+                    output.with_parens(f_this_arguments)
                 output.end_statement()
 
         define_default_method("__init__", f_default)
@@ -696,6 +780,33 @@ def print_class(output):
         self.name.print(output)
         output.print(".prototype.__init__.__sagejs_synthetic_init__ = true")
         output.end_statement()
+        if self.parent:
+            output.indent()
+            self.name.print(output)
+            output.print(".prototype.__init__.__sagejs_synthetic_init_target__ = ")
+            self.parent.print(output)
+            output.print(".prototype.__init__")
+            output.end_statement()
+            # The class call binder consults constructor metadata before the
+            # synthetic forwarding method runs.  Mirror the inherited
+            # initializer signature on both the forwarding method and class
+            # so keyword validation and binding remain exact.
+            for attr in constructor_signature_attributes:
+                output.indent()
+                self.name.print(output)
+                output.print(".prototype.__init__")
+                output.assign(attr)
+                self.parent.print(output)
+                output.print(".prototype.__init__ && ")
+                self.parent.print(output)
+                output.print(".prototype.__init__" + attr)
+                output.end_statement()
+                output.indent()
+                self.name.print(output)
+                output.assign(attr)
+                self.name.print(output)
+                output.print(".prototype.__init__" + attr)
+                output.end_statement()
 
     defined_methods = {}
 
@@ -738,16 +849,7 @@ def print_class(output):
             sname = stmt.name.name
             if sname is "__init__":
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
-                for attr in [
-                    ".__argnames__",
-                    ".__defaults__",
-                    ".__handles_kwarg_interpolation__",
-                    ".__annotations__",
-                    ".__annotations_text__",
-                    ".__kwonly__",
-                    ".__varargs__",
-                    ".__varkw__",
-                ]:
+                for attr in constructor_signature_attributes:
                     output.indent(), self.name.print(output), output.assign(attr)
                     (
                         self.name.print(output),
@@ -777,6 +879,15 @@ def print_class(output):
             # prototype value after every method has been emitted.
             print_class_statement(stmt)
             emitted_statements.append(stmt)
+
+    if not self.init and output.options.python_attributes:
+        output.indent()
+        output.print("ρσ_apply_custom_new_signature(")
+        self.name.print(output)
+        output.comma()
+        self.name.print(output)
+        output.print(".prototype.__init__)")
+        output.end_statement()
 
     if defined_methods["__next__"]:
         class_def("next", False)
@@ -879,6 +990,19 @@ def print_class(output):
             output.comma()
             self.bases[i].print(output)
         output.print(")"), output.end_statement()
+        if not self.init:
+            # C3 mixin resolution can replace a synthetic initializer from an
+            # empty primary base with an explicit initializer from a later
+            # base.  Refresh the class-call contract from the winning method.
+            for attr in constructor_signature_attributes:
+                output.indent()
+                self.name.print(output)
+                output.assign(attr)
+                self.name.print(output)
+                output.print(".prototype.__init__ && ")
+                self.name.print(output)
+                output.print(".prototype.__init__" + attr)
+                output.end_statement()
 
     # Every Python class has ``__doc__``.  Keep the attribute present with a
     # value of ``None`` even when the class has no docstring; introspection
@@ -934,7 +1058,7 @@ def print_class(output):
                 output.comma()
                 output.space()
                 output.print("{configurable: true, enumerable: true, ")
-                output.print("get: function()")
+                output.print("get: Object.assign(function()")
 
                 def f_lazy_getter():
                     output.indent()
@@ -982,6 +1106,7 @@ def print_class(output):
                     output.end_statement()
 
                 output.with_block(f_lazy_getter)
+                output.print(", {__sagejs_lazy_method_getter__: true})")
                 output.print(", set: function(ρσ_method_value)")
 
                 def f_lazy_setter():
@@ -1016,7 +1141,7 @@ def print_class(output):
     # hook to call.
     classvar_names = [
         name
-        for name in Object.keys(self.classvars)
+        for name in Object.keys(self.own_classvars or self.classvars)
         if not self.dynamic_properties[name]
     ]
     for classvar_name in classvar_names:

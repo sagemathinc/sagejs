@@ -81,6 +81,38 @@ def _encode_utf8(value: _Str) -> list[_Int]:
     return answer
 
 
+def _encode_unicode_escape(value: _Str) -> list[_Int]:
+    """Encode text using CPython's ASCII-only `unicode_escape` form."""
+    digits = "0123456789abcdef"
+    answer = []
+    for character in value:
+        code = ord(character)
+        if code == 9:
+            escaped = r"\t"
+        elif code == 10:
+            escaped = r"\n"
+        elif code == 13:
+            escaped = r"\r"
+        elif code == 92:
+            escaped = r"\\"
+        elif 32 <= code <= 126:
+            answer.append(code)
+            continue
+        elif code <= 0xFF:
+            escaped = r"\x" + digits[(code >> 4) & 15] + digits[code & 15]
+        elif code <= 0xFFFF:
+            escaped = r"\u"
+            for shift in (12, 8, 4, 0):
+                escaped += digits[(code >> shift) & 15]
+        else:
+            escaped = r"\U"
+            for shift in (28, 24, 20, 16, 12, 8, 4, 0):
+                escaped += digits[(code >> shift) & 15]
+        for escaped_character in escaped:
+            answer.append(ord(escaped_character))
+    return answer
+
+
 def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
     decoder_class = runtime.reflect.get(runtime.global_object, "TextDecoder")
     uint8_array = runtime.reflect.get(runtime.global_object, "Uint8Array")
@@ -1362,10 +1394,13 @@ def _construct_bytes(
             "latin-1",
             "latin1",
             "punycode",
+            "unicode-escape",
         ):
             raise ValueError("unknown encoding: " + encoding)
         if normalised in ("utf-8", "utf8"):
             values = _encode_utf8(source)
+        elif normalised == "unicode-escape":
+            values = _encode_unicode_escape(source)
         elif normalised == "punycode":
             module = runtime.require_module("punycode")
             encoder = runtime.reflect.get(module, "encode")

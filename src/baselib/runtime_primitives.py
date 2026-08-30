@@ -66,6 +66,26 @@ def ρσ_validate_class_bases(bases: Any) -> None:
         raise TypeError("multiple bases have instance lay-out conflict")
 
 
+def ρσ_resolve_class_base(base: Any) -> Any:
+    """Resolve a parameterized or dynamic Python class base to one type."""
+    if runtime.strict_equal(runtime.jstype(base), "function"):
+        return base
+    origin = runtime.native_get(base, "__origin__")
+    if runtime.strict_equal(runtime.jstype(origin), "function"):
+        return origin
+    entries = runtime.native_get(base, "__mro_entries__")
+    if runtime.strict_equal(runtime.jstype(entries), "function"):
+        resolved = runtime.reflect.apply(
+            entries,
+            base,
+            [runtime.math_tuple([base])],
+        )
+        if len(resolved) == 1:
+            return resolved[0]
+        raise TypeError("a dynamic class base must resolve to exactly one type")
+    return base
+
+
 def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
     """Return the C3 linearization for a newly created Python class."""
     sequences = []
@@ -126,7 +146,6 @@ def ρσ_mixin(*classes: Any) -> None:
     skipped = [
         "__argnames__",
         "__handles_kwarg_interpolation__",
-        "__init__",
         "__annotations__",
         "__doc__",
         "__bind_methods__",
@@ -201,23 +220,64 @@ def ρσ_mixin(*classes: Any) -> None:
                     )
                     break
 
-    prototype = target
-    while prototype and prototype is not runtime.object.prototype:
-        for name in runtime.object.getOwnPropertyNames(prototype):
-            seen[name] = True
-        prototype = runtime.object.getPrototypeOf(prototype)
+    # JavaScript can represent only the first Python base in its prototype
+    # chain. Resolve every inherited member in Python's C3 order, copying a
+    # descriptor only when its winning owner is outside that primary chain.
+    # This distinction matters for `class C(EmptyMixin, StatefulBase)`: the
+    # `StatefulBase.__init__` precedes `object.__init__` in Python's MRO even
+    # though host prototype lookup through `EmptyMixin` reaches `object`
+    # first.
+    def synthetic_descriptor(descriptor: Any) -> bool:
+        if not runtime.reflect.has(descriptor, "value"):
+            return False
+        value = runtime.reflect.get(descriptor, "value")
+        if not runtime.strict_equal(runtime.jstype(value), "function"):
+            return False
+        return (
+            runtime.native_get(value, "__sagejs_synthetic_init__") is True
+            or runtime.native_get(value, "__sagejs_synthetic_method__") is True
+        )
 
-    for class_index in range(1, len(classes)):
-        prototype = classes[class_index].prototype
-        while prototype and prototype is not runtime.object.prototype:
-            for name in runtime.object.getOwnPropertyNames(prototype):
-                if seen[name]:
-                    continue
-                seen[name] = True
-                resolved_properties[name] = runtime.object.getOwnPropertyDescriptor(
-                    prototype, name
-                )
-            prototype = runtime.object.getPrototypeOf(prototype)
+    for name in runtime.object.getOwnPropertyNames(target):
+        descriptor = runtime.object.getOwnPropertyDescriptor(target, name)
+        if not synthetic_descriptor(descriptor):
+            seen[name] = True
+
+    primary_owners = []
+    direct_bases = runtime.native_get(classes[0], "__bases__")
+    if direct_bases is not runtime.undefined and len(direct_bases):
+        primary_mro = runtime.native_get(direct_bases[0], "__mro__")
+        if primary_mro is runtime.undefined:
+            primary_owners.push(direct_bases[0])  # type: ignore[attr-defined]
+        else:
+            for owner in primary_mro:
+                primary_owners.push(owner)  # type: ignore[attr-defined]
+
+    class_mro = runtime.native_get(classes[0], "__mro__")
+    if class_mro is runtime.undefined:
+        class_mro = classes
+    first = True
+    for owner in class_mro:
+        if first:
+            first = False
+            continue
+        prototype = runtime.native_get(owner, "prototype")
+        if prototype is runtime.undefined:
+            continue
+        owner_is_primary = False
+        for primary_owner in primary_owners:
+            if owner is primary_owner:
+                owner_is_primary = True
+                break
+        for name in runtime.object.getOwnPropertyNames(prototype):
+            if seen[name]:
+                continue
+            descriptor = runtime.object.getOwnPropertyDescriptor(prototype, name)
+            if synthetic_descriptor(descriptor):
+                continue
+            seen[name] = True
+            if not owner_is_primary:
+                resolved_properties[name] = descriptor
     runtime.object.defineProperties(target, resolved_properties)
 
 
@@ -285,4 +345,12 @@ def ρσ_set_class_repr(cls: type[Any], text: str) -> None:
     def class_repr() -> str:
         return text
 
-    runtime.object.defineProperty(cls, "__repr__", {"value": class_repr})
+    # Runtime sessions may be constructed repeatedly in one JavaScript realm
+    # (pytest's cold-import retry and notebook reset both do this).  Keep the
+    # host slot replaceable so initializing the next isolated Python registry
+    # cannot fail on a class shared by the realm, notably JavaScript Function.
+    runtime.object.defineProperty(
+        cls,
+        "__repr__",
+        {"value": class_repr, "writable": True, "configurable": True},
+    )

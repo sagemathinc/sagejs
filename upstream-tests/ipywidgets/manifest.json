@@ -117,6 +117,8 @@
   "fixtures": {
     "testInventory": "test-inventory.json",
     "normalizedProtocolCorpus": "protocol-corpus.json",
-    "generator": "scripts/generate-ipywidgets-corpus.py"
+    "generator": "scripts/generate-ipywidgets-corpus.py",
+    "traitletsSemanticCorpus": "traitlets-semantics-corpus.json",
+    "traitletsSemanticGenerator": "scripts/generate-traitlets-semantics-corpus.py"
   }
 }

@@ -143,6 +143,29 @@ runtime.reflect.set(
 __build_class__ = _builtins_default_build_class
 
 
+def _builtins_valid_lazy_module_name(name: Any) -> _Bool:
+    """Return whether `name` is safe for the host lazy-module registry."""
+    if not isinstance(name, str):
+        return False
+    for part in name.split("."):
+        first = part[0] if part else ""
+        if (
+            not part
+            or part in ("__proto__", "constructor", "prototype")
+            or not (first == "_" or "A" <= first <= "Z" or "a" <= first <= "z")
+        ):
+            return False
+        for character in part:
+            if not (
+                character == "_"
+                or "A" <= character <= "Z"
+                or "a" <= character <= "z"
+                or "0" <= character <= "9"
+            ):
+                return False
+    return True
+
+
 def _builtins_default_import(
     name: str,
     globals: Any = None,
@@ -151,6 +174,13 @@ def _builtins_default_import(
     level: _Int = 0,
 ) -> Any:
     """Load a Python module through the host and return CPython-style bindings."""
+    # Keep invalid import requests inside the Python exception hierarchy.  The
+    # host loader deliberately rejects names outside its lazy-module grammar,
+    # but exposing that host TypeError would violate ``__import__`` semantics.
+    if not isinstance(name, str):
+        raise TypeError("module name must be a string")
+    if not _builtins_valid_lazy_module_name(name):
+        raise ModuleNotFoundError("No module named '" + name + "'")
     modules = runtime.reflect.get(runtime.global_object, "ρσ_modules")
     if modules is runtime.undefined:
         modules = runtime.modules
@@ -165,8 +195,15 @@ def _builtins_default_import(
     if module is runtime.undefined:
         loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
         if loader is runtime.undefined:
-            raise ImportError("No module named '" + name + "'")
-        module = runtime.reflect.apply(loader, runtime.undefined, [name])
+            raise ModuleNotFoundError("No module named '" + name + "'")
+        try:
+            module = runtime.reflect.apply(loader, runtime.undefined, [name])
+        except ImportError as error:
+            if str(error) == "No module named '" + name + "'":
+                # Exception chaining is not yet accepted by the stage-zero
+                # baselib parser used to bootstrap the compiler.
+                raise ModuleNotFoundError(str(error))  # noqa: B904
+            raise
 
     if fromlist:
         loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
@@ -174,12 +211,15 @@ def _builtins_default_import(
             for item in fromlist:
                 if item == "*" or hasattr(module, item):
                     continue
+                child_name = name + "." + item
+                if not _builtins_valid_lazy_module_name(child_name):
+                    continue
                 try:
                     child = runtime.reflect.apply(
-                        loader, runtime.undefined, [name + "." + item]
+                        loader, runtime.undefined, [child_name]
                     )
                     if child is runtime.undefined:
-                        child = runtime.reflect.get(modules, name + "." + item)
+                        child = runtime.reflect.get(modules, child_name)
                     if child is not runtime.undefined:
                         # CPython publishes an imported child module on its
                         # parent package.  Generated from-import code then
@@ -190,7 +230,7 @@ def _builtins_default_import(
                     # ``from module import attribute`` is allowed to resolve an
                     # ordinary attribute rather than a child module.  The
                     # generated from-import performs the definitive check.
-                    if str(error) != "No module named '" + name + "." + item + "'":
+                    if str(error) != "No module named '" + child_name + "'":
                         raise
         return module
 
@@ -483,7 +523,12 @@ def _builtins_class_attribute_resolution(
             or _builtins_has_member(class_value, "__classmethod__")
         ):
             continue
-        class_kind = _BUILTINS_DESCRIPTOR_GENERIC
+        if _builtins_get_member(class_value, "__classmethod__") is True:
+            class_kind = _BUILTINS_DESCRIPTOR_NONDATA
+        elif _builtins_get_member(class_value, "__staticmethod__") is True:
+            class_kind = _BUILTINS_DESCRIPTOR_DIRECT
+        else:
+            class_kind = _BUILTINS_DESCRIPTOR_GENERIC
         if _builtins_member_is_function(class_value, "__get__"):
             class_kind = _BUILTINS_DESCRIPTOR_NONDATA
         cache_entry = runtime.reflect.construct(runtime.array, [])
@@ -3017,22 +3062,28 @@ def _builtins_append_own_dir_names(
             answer.append(name)
 
 
-def _builtins_namespace_dict(value: Any) -> Any:
-    """Return the Python-visible own namespace of an object or class."""
+def _builtins_is_module_namespace(value: Any) -> _Bool:
+    """Return whether `value` is a registered Sage.js module namespace."""
     module_namespaces = runtime.reflect.get(
         runtime.global_object, "__sagejs_module_namespaces__"
     )
-    if module_namespaces is not runtime.undefined:
-        has_module = runtime.reflect.get(module_namespaces, "has")
-        if runtime.reflect.apply(has_module, module_namespaces, [value]):
-            # Unlike class ``__dict__``, a module dictionary is a mutable live
-            # namespace.  Wrapping the actual object is both the CPython
-            # behavior and dramatically cheaper for documentation-heavy
-            # modules such as ``mpmath.function_docs``.
-            live_scope_dict = runtime.reflect.get(
-                runtime.global_object, "ρσ_live_scope_dict"
-            )
-            return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
+    if module_namespaces is runtime.undefined:
+        return False
+    has_module = runtime.reflect.get(module_namespaces, "has")
+    return runtime.reflect.apply(has_module, module_namespaces, [value])
+
+
+def _builtins_namespace_dict(value: Any) -> Any:
+    """Return the Python-visible own namespace of an object or class."""
+    if _builtins_is_module_namespace(value):
+        # Unlike class ``__dict__``, a module dictionary is a mutable live
+        # namespace.  Wrapping the actual object is both the CPython behavior
+        # and dramatically cheaper for documentation-heavy modules such as
+        # ``mpmath.function_docs``.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, "ρσ_live_scope_dict"
+        )
+        return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
 
     if runtime.strict_equal(runtime.jstype(value), "object"):
         # Instance ``__dict__`` is a writable live namespace.  A detached
@@ -3121,19 +3172,10 @@ def _builtins_namespace_dict(value: Any) -> Any:
     return runtime.scope_dict(namespace)
 
 
-def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
-    """Return the sorted Python-facing attributes available on `item`."""
+def ρσ_default_dir(item: Any = runtime.undefined) -> list[_Str]:
+    """Return the default sorted Python-facing attributes for `item`."""
     if item is runtime.undefined:
         item = runtime.global_object
-    elif _builtins_member_is_function(item, "__dir__"):
-        custom_names = _builtins_call_member(item, "__dir__", [])
-        answer = []
-        for name in custom_names:
-            if not runtime.strict_equal(runtime.jstype(name), "string"):
-                raise TypeError("__dir__() must return an iterable of strings")
-            answer.append(name)
-        answer.sort()
-        return answer
 
     target = _builtins_introspection_target(item)
     answer = []
@@ -3182,6 +3224,26 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
                 answer[left_index] = answer[right_index]
                 answer[right_index] = temporary
     return answer
+
+
+def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
+    """Return the sorted Python-facing attributes available on `item`."""
+    if item is runtime.undefined:
+        return ρσ_default_dir(item)
+    if _builtins_member_is_function(item, "__dir__"):
+        # Use ordinary receiver-aware host lookup here.  In particular, a
+        # Python class is itself the receiver for ``object.__dir__``; routing
+        # through the generic class-descriptor path would intentionally expose
+        # an unbound function and make ``dir(SomeClass)`` inspect globals.
+        custom_names = _builtins_call_member(item, "__dir__", [])
+        answer = []
+        for name in custom_names:
+            if not runtime.strict_equal(runtime.jstype(name), "string"):
+                raise TypeError("__dir__() must return an iterable of strings")
+            answer.append(name)
+        answer.sort()
+        return answer
+    return ρσ_default_dir(item)
 
 
 def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
@@ -4067,7 +4129,11 @@ def ρσ_finalize_namedtuple_class(
                 "Expected " + str(len(names)) + " arguments, got " + str(len(args))
             )
         values = list(args)
-        keyword_names = list(keywords)
+        # Compiled `**kwargs` uses a null/plain JavaScript object carrying the
+        # kwargs marker, not a Python mapping instance.  Enumerate it through
+        # the explicit host boundary; `list(keywords)` correctly rejects such
+        # a host object as non-iterable.
+        keyword_names = list(runtime.object.keys(keywords))
         for index in range(len(args)):
             if names[index] in keyword_names:
                 raise TypeError(
@@ -4077,7 +4143,7 @@ def ρσ_finalize_namedtuple_class(
             name = names[index]
             if name not in keyword_names:
                 raise TypeError("missing required argument: '" + name + "'")
-            values.append(keywords.__getitem__(name))
+            values.append(runtime.reflect.get(keywords, name))
         for name in keyword_names:
             if name not in names:
                 raise TypeError("got an unexpected keyword argument '" + name + "'")
@@ -4557,6 +4623,8 @@ class SageProperty:
             return self
         if self.fget is None:
             raise AttributeError("property has no getter")
+        if _builtins_get_member(self.fget, "__python_descriptor__") is True:
+            return runtime.reflect.apply(self.fget, runtime.undefined, [instance])
         if _builtins_get_member(self.fget, "length") == 0:
             return runtime.reflect.apply(self.fget, instance, [])
         return runtime.reflect.apply(self.fget, runtime.undefined, [instance])
@@ -4564,6 +4632,9 @@ class SageProperty:
     def __set__(self, instance: Any, value: Any) -> None:
         if self.fset is None:
             raise AttributeError("can't set attribute")
+        if _builtins_get_member(self.fset, "__python_descriptor__") is True:
+            runtime.reflect.apply(self.fset, runtime.undefined, [instance, value])
+            return
         if _builtins_get_member(self.fset, "length") == 1:
             runtime.reflect.apply(self.fset, instance, [value])
         else:
@@ -4572,6 +4643,9 @@ class SageProperty:
     def __delete__(self, instance: Any) -> None:
         if self.fdel is None:
             raise AttributeError("can't delete attribute")
+        if _builtins_get_member(self.fdel, "__python_descriptor__") is True:
+            runtime.reflect.apply(self.fdel, runtime.undefined, [instance])
+            return
         if _builtins_get_member(self.fdel, "length") == 0:
             runtime.reflect.apply(self.fdel, instance, [])
         else:
@@ -4846,6 +4920,11 @@ def ρσ_getattr_internal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_NONDATA,
         ):
+            if _builtins_get_member(descriptor, "__classmethod__") is True:
+                class_target = _builtins_get_member(descriptor, "__func__")
+                if runtime.strict_equal(runtime.jstype(class_target), "function"):
+                    descriptor = class_target
+                return _builtins_bind_python_function(descriptor, owner)
             if runtime.strict_equal(
                 runtime.jstype(descriptor), "function"
             ) and not _builtins_is_python_class(descriptor):
@@ -5011,6 +5090,11 @@ def ρσ_getattr_internal(
     # authoritative result for ordinary non-data descriptors when the native
     # member lookup missed it.
     if descriptor is not runtime.undefined:
+        if _builtins_get_member(descriptor, "__classmethod__") is True:
+            class_target = _builtins_get_member(descriptor, "__func__")
+            if runtime.strict_equal(runtime.jstype(class_target), "function"):
+                descriptor = class_target
+            return _builtins_bind_python_function(descriptor, owner)
         if _builtins_member_is_function(descriptor, "__get__"):
             return _builtins_call_member(descriptor, "__get__", [value, owner])
         if _builtins_has_member(descriptor, "__staticmethod__"):
@@ -5027,6 +5111,12 @@ def ρσ_getattr_internal(
         return descriptor
     if _builtins_member_is_function(value, "__getattr__"):
         try:
+            if _builtins_is_module_namespace(value):
+                # PEP 562 module hooks are plain functions called with the
+                # missing name only.  They are not descriptors bound to the
+                # module namespace as an implicit receiver.
+                module_getattr = _builtins_get_member(value, "__getattr__")
+                return runtime.reflect.apply(module_getattr, runtime.undefined, [name])
             return _builtins_call_member(value, "__getattr__", [name])
         except AttributeError:
             if default_value is not _BUILTINS_MISSING:
@@ -5064,6 +5154,14 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         value, "__self__"
     ):
         raise AttributeError("'method' object has no attribute '" + name + "'")
+    if name == "__class__":
+        if not _builtins_is_python_class(member):
+            raise TypeError("__class__ must be set to a class")
+        runtime.object.setPrototypeOf(value, runtime.reflect.get(member, "prototype"))
+        return
+    if name == "__dict__":
+        _builtins_replace_instance_dict(value, member)
+        return
     if not runtime.strict_equal(runtime.jstype(value), "function"):
         attribute_setter = _builtins_get_member(value, "__setattr__")
         if runtime.strict_equal(runtime.jstype(attribute_setter), "function") and (
@@ -5639,6 +5737,29 @@ def ρσ_py_super(
                     base_prototype, name
                 )
                 if descriptor is not runtime.undefined:
+                    descriptor_value = runtime.reflect.get(descriptor, "value")
+                    if descriptor_value is not runtime.undefined:
+                        return descriptor_value
+                    descriptor_getter = runtime.reflect.get(descriptor, "get")
+                    if (
+                        runtime.strict_equal(
+                            runtime.jstype(descriptor_getter), "function"
+                        )
+                        and _builtins_get_member(
+                            descriptor_getter,
+                            "__sagejs_lazy_method_getter__",
+                        )
+                        is True
+                    ):
+                        # A lightweight-class method accessor normally caches
+                        # a bound method on its receiver. Super lookup must
+                        # retrieve the raw base function without overwriting a
+                        # same-named method cached by the derived class.
+                        return runtime.reflect.apply(
+                            descriptor_getter,
+                            base_prototype,
+                            [],
+                        )
                     return runtime.reflect.get(base_prototype, name, instance)
         return runtime.undefined
 
@@ -5798,16 +5919,87 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
+def _builtins_synthetic_init_ends_at_object(initializer: Any) -> _Bool:
+    """Return whether a generated initializer only delegates to `object`.
+
+    CPython permits constructor arguments when a class supplies a custom
+    `__new__` but inherits `object.__init__`.  Compiler-generated
+    forwarding initializers form an explicit chain, so unwrap that chain
+    before deciding whether the otherwise strict object initializer should be
+    skipped.
+    """
+    underlying = _builtins_get_member(initializer, "__func__")
+    if runtime.strict_equal(runtime.jstype(underlying), "function"):
+        initializer = underlying
+    remaining = 100
+    while (
+        remaining > 0
+        and _builtins_get_member(initializer, "__sagejs_synthetic_init__") is True
+    ):
+        initializer = _builtins_get_member(
+            initializer,
+            "__sagejs_synthetic_init_target__",
+        )
+        remaining -= 1
+    object_initializer = _builtins_get_member(
+        runtime.reflect.get(SageObject, "prototype"),
+        "__init__",
+    )
+    return initializer is object_initializer
+
+
+def ρσ_skip_init_for_custom_new(cls: Any, initializer: Any) -> _Bool:
+    """Implement CPython's custom-new/object-init exception."""
+    allocator = ρσ_getattr(cls, "__new__", None)
+    return (
+        runtime.strict_equal(runtime.jstype(allocator), "function")
+        and allocator is not _builtins_object_new
+        and _builtins_synthetic_init_ends_at_object(initializer)
+    )
+
+
+def ρσ_apply_custom_new_signature(cls: Any, initializer: Any) -> None:
+    """Publish the user-call signature of a class with only custom allocation."""
+    if not ρσ_skip_init_for_custom_new(cls, initializer):
+        return
+    allocator = ρσ_getattr(cls, "__new__", None)
+    argument_names = _builtins_get_member(allocator, "__argnames__")
+    if runtime.array.isArray(argument_names):
+        runtime.reflect.set(
+            cls,
+            "__argnames__",
+            runtime.reflect.apply(runtime.array.prototype.slice, argument_names, [1]),
+        )
+    for attribute_name in (
+        "__defaults__",
+        "__handles_kwarg_interpolation__",
+        "__kwonly__",
+        "__varargs__",
+        "__varkw__",
+    ):
+        runtime.reflect.set(
+            cls,
+            attribute_name,
+            _builtins_get_member(allocator, attribute_name),
+        )
+    positional_only = _builtins_get_member(allocator, "__positional_only__")
+    if positional_only is True:
+        positional_only = argument_names.length
+    if positional_only is not runtime.undefined:
+        runtime.reflect.set(cls, "__positional_only__", max(0, positional_only - 1))
+
+
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     """Implement `type.__call__` after a custom metaclass delegates."""
     interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
     allocator = ρσ_getattr(cls, "__new__", None)
-    if (
+    custom_allocator = (
         runtime.strict_equal(runtime.jstype(allocator), "function")
         and allocator is not _builtins_object_new
-    ):
+    )
+    if custom_allocator:
         allocator_args = [cls]
         allocator_args.extend(call_args)
         instance = runtime.reflect.apply(
@@ -5820,7 +6012,13 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     if not runtime.instance_of(instance, cls):
         return instance
     initializer = ρσ_getattr(instance, "__init__", None)
-    if runtime.strict_equal(runtime.jstype(initializer), "function"):
+    initializer_contract = _builtins_get_member(
+        runtime.reflect.get(cls, "prototype"),
+        "__init__",
+    )
+    if runtime.strict_equal(runtime.jstype(initializer), "function") and not (
+        ρσ_skip_init_for_custom_new(cls, initializer_contract)
+    ):
         # ``initializer`` is already descriptor-bound.  Calling it through
         # the compiler's generic callable fallback would resolve ``__call__``
         # a second time and lose the keyword packet.
@@ -5832,8 +6030,35 @@ def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
     return instance
 
 
+_BUILTINS_TYPE_NEW_PLAIN_TOKEN = runtime.object.create(None)
+
+
+def _builtins_inherited_metaclass(bases: Any) -> Any:
+    """Select the most-derived metaclass required by `bases`."""
+    selected = ρσ_type
+    for base in bases:
+        candidate = _builtins_get_member(base, "__python_type__")
+        if candidate is runtime.undefined:
+            candidate = ρσ_type
+        if candidate is selected:
+            continue
+        candidate_mro = _builtins_get_member(candidate, "__mro__")
+        selected_mro = _builtins_get_member(selected, "__mro__")
+        if runtime.array.isArray(candidate_mro) and selected in candidate_mro:
+            selected = candidate
+        elif runtime.array.isArray(selected_mro) and candidate in selected_mro:
+            continue
+        else:
+            raise TypeError(
+                "metaclass conflict: the metaclass of a derived class must "
+                "be a subclass of the metaclasses of all its bases"
+            )
+    return selected
+
+
 def ρσ_type(*values: Any) -> Any:
-    if len(values) == 3:
+    plain_type_new = len(values) == 4 and values[3] is _BUILTINS_TYPE_NEW_PLAIN_TOKEN
+    if len(values) == 3 or plain_type_new:
         class_name = values[0]
         bases = values[1]
         namespace = values[2]
@@ -5851,9 +6076,33 @@ def ρσ_type(*values: Any) -> Any:
             raise TypeError("type() bases must be types")
         if not _builtins_member_is_function(namespace, "items"):
             raise TypeError("type() argument 3 must be dict")
+        if not plain_type_new:
+            inherited_metaclass = _builtins_inherited_metaclass(bases)
+            if inherited_metaclass is not ρσ_type:
+                return _builtins_apply_metaclass_namespace(
+                    inherited_metaclass,
+                    class_name,
+                    bases,
+                    namespace,
+                )
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            return _builtins_type_call(dynamic_class, *args, **keywords)
+            # Forward user keywords as the eventual instance initializer's
+            # keyword packet.  Sending them through ordinary interpolation
+            # here would let a user keyword named ``cls`` bind the private
+            # first parameter of ``_builtins_type_call`` instead.
+            runtime.reflect.set(keywords, runtime.kwargs_symbol, True)
+            call_args = [dynamic_class]
+            call_args.extend(args)
+            # A marked keyword packet cannot be passed through the Python
+            # ``list.append`` adapter: the adapter would interpret it as its
+            # own keyword packet.  Append it at the JavaScript boundary.
+            runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
+            return runtime.reflect.apply(
+                _builtins_type_call,
+                runtime.undefined,
+                call_args,
+            )
 
         prototype = runtime.object.create(runtime.reflect.get(parent, "prototype"))
         runtime.reflect.set(prototype, "constructor", dynamic_class)
@@ -5919,6 +6168,10 @@ def ρσ_type(*values: Any) -> Any:
             {"value": ρσ_type, "writable": True, "configurable": True},
         )
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
+        ρσ_apply_custom_new_signature(
+            dynamic_class,
+            _builtins_get_member(prototype, "__init__"),
+        )
         return dynamic_class
     if len(values) != 1:
         raise TypeError("type() takes 1 or 3 arguments")
@@ -6003,7 +6256,7 @@ def _builtins_type_new(
     return runtime.reflect.apply(
         ρσ_type,
         runtime.undefined,
-        [class_name, bases, namespace],
+        [class_name, bases, namespace, _BUILTINS_TYPE_NEW_PLAIN_TOKEN],
     )
 
 
@@ -6033,19 +6286,13 @@ runtime.reflect.set(
 )
 
 
-def ρσ_apply_metaclass(
+def _builtins_apply_metaclass_namespace(
     metaclass: Any,
     class_name: _Str,
     bases: Any,
-    compiled_class: Any,
+    namespace: Any,
 ) -> Any:
-    """Create a class through `metaclass` from a compiled class body."""
-    namespace = _builtins_namespace_dict(compiled_class)
-    # Class construction invokes ``type(metaclass).__call__``.  It must not
-    # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
-    # instances of the eventual class (RegexLexerMeta is a prominent real
-    # example), not instances of the metaclass itself.  Go directly through
-    # the metaclass allocation protocol here.
+    """Create a class from an explicit namespace through `metaclass`."""
     allocator = _builtins_get_member(metaclass, "__new__")
     if not runtime.strict_equal(runtime.jstype(allocator), "function"):
         allocator = _builtins_type_new
@@ -6078,6 +6325,28 @@ def ρσ_apply_metaclass(
             created,
             [class_name, bases, namespace],
         )
+    return created
+
+
+def ρσ_apply_metaclass(
+    metaclass: Any,
+    class_name: _Str,
+    bases: Any,
+    compiled_class: Any,
+) -> Any:
+    """Create a class through `metaclass` from a compiled class body."""
+    namespace = _builtins_namespace_dict(compiled_class)
+    # Class construction invokes ``type(metaclass).__call__``.  It must not
+    # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
+    # instances of the eventual class (RegexLexerMeta is a prominent real
+    # example), not instances of the metaclass itself.  Go directly through
+    # the metaclass allocation protocol here.
+    created = _builtins_apply_metaclass_namespace(
+        metaclass,
+        class_name,
+        bases,
+        namespace,
+    )
     decorators = runtime.reflect.get(compiled_class, "ρσ_decorators")
     if decorators is not runtime.undefined:
         runtime.reflect.set(created, "ρσ_decorators", decorators)
@@ -6113,22 +6382,27 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
             if ρσ_issubclass(cls, candidate):
                 return True
         return False
-    if not runtime.strict_equal(
-        runtime.jstype(cls), "function"
-    ) or not runtime.strict_equal(runtime.jstype(candidates), "function"):
+    if not _builtins_is_python_class(cls) or not _builtins_is_python_class(candidates):
         raise TypeError("issubclass() arg 1 must be a class")
     if cls is candidates:
+        return True
+    # Native builtin constructors use host storage prototypes rather than a
+    # JavaScript prototype chain rooted at the compiled Python `object`.
+    # They are nevertheless ordinary Python classes and, like every Python
+    # class, are subclasses of `object`.
+    if candidates is object:
         return True
     registry = _builtins_get_member(candidates, "_abc_registry")
     if runtime.array.isArray(registry):
         for registered_class in registry:
             if ρσ_issubclass(cls, registered_class):
                 return True
-    bases = _builtins_get_member(cls, "__bases__")
-    if runtime.array.isArray(bases):
-        for base in bases:
-            if ρσ_issubclass(base, candidates):
+    class_mro = _builtins_get_member(cls, "__mro__")
+    if runtime.array.isArray(class_mro):
+        for base in class_mro:
+            if base is candidates:
                 return True
+        return False
     return runtime.instance_of(
         runtime.reflect.get(cls, "prototype"),
         candidates,
@@ -8493,6 +8767,9 @@ class SageObject:
     def __init__(self) -> None:
         pass
 
+    def __dir__(self) -> list[_Str]:
+        return ρσ_default_dir(self)
+
     def __repr__(self) -> _Str:
         constructor = runtime.reflect.get(self, "constructor")
         name = (
@@ -8519,6 +8796,19 @@ def _builtins_object_new(cls: Any) -> Any:
     return runtime.object.create(runtime.reflect.get(cls, "prototype"))
 
 
+def _builtins_replace_instance_dict(instance: Any, namespace: Any) -> None:
+    """Replace an instance namespace while preserving its host identity."""
+    if not _builtins_member_is_function(namespace, "items"):
+        raise TypeError("__dict__ must be set to a dictionary")
+    for key in list(runtime.object.keys(instance)):
+        runtime.reflect.deleteProperty(instance, key)
+    for pair in namespace.items():
+        key = pair[0]
+        if not runtime.strict_equal(runtime.jstype(key), "string"):
+            raise TypeError("__dict__ keys must be strings")
+        runtime.reflect.set(instance, key, pair[1])
+
+
 @runtime.native_method
 def _builtins_object_setattr(
     self: Any,
@@ -8527,6 +8817,14 @@ def _builtins_object_setattr(
 ) -> None:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    if name == "__class__":
+        if not _builtins_is_python_class(value):
+            raise TypeError("__class__ must be set to a class")
+        runtime.object.setPrototypeOf(self, runtime.reflect.get(value, "prototype"))
+        return
+    if name == "__dict__":
+        _builtins_replace_instance_dict(self, value)
+        return
     descriptor_info = _builtins_class_attribute_descriptor(
         _builtins_get_member(self, "constructor"), name
     )
