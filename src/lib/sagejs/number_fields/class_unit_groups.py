@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 from typing import Any, Callable, Iterable, Sequence, cast
 
@@ -1772,6 +1773,9 @@ class ClassUnitGroupEngine:
             "dependency_unit_eager_candidates": 0,
             "dependency_unit_steering_basis_hits": 0,
             "dependency_unit_steering_basis_fallbacks": 0,
+            "dependency_unit_steering_index_preflight_requests": 0,
+            "dependency_unit_steering_index_preflight_accepts": 0,
+            "dependency_unit_steering_index_preflight_rejections": 0,
             "dependency_lattice_lll_requests": 0,
             "dependency_lattice_lll_reductions": 0,
             "dependency_lattice_lll_fallbacks": 0,
@@ -4449,7 +4453,7 @@ class ClassUnitGroupEngine:
         """Select dependency rows by cached logs, then materialize only the basis."""
         if allow_steering_basis:
             steering_basis = self._live_steering_unit_basis(
-                records, dependencies, unit_rank
+                records, dependencies, unit_rank, True
             )
             if steering_basis is not None:
                 return steering_basis
@@ -4543,6 +4547,7 @@ class ClassUnitGroupEngine:
         records: Sequence[Any],
         dependencies: Sequence[Sequence[int]],
         unit_rank: int,
+        consume: bool,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]] | None:
         """Return the exact live unit basis already authenticated by steering.
 
@@ -4576,15 +4581,95 @@ class ClassUnitGroupEngine:
             for key in selected_keys
         ):
             return None
-        self._relation_initial_basis_selected = True
-        self._resource_usage["dependency_unit_steering_basis_hits"] += 1
-        self._resource_usage["relation_dependency_unit_object_cache_hits"] += len(
-            selected_keys
-        )
+        if consume:
+            self._consume_live_steering_unit_basis(len(selected_keys))
         return (
             tuple(self._relation_dependency_units[key] for key in selected_keys),
             tuple(dependency_rows[key] for key in selected_keys),
         )
+
+    def _consume_live_steering_unit_basis(self, unit_count: int) -> None:
+        """Account for one preflight-approved live dependency basis."""
+        if self._relation_initial_basis_selected:
+            raise ArithmeticError("the live dependency basis was already consumed")
+        self._relation_initial_basis_selected = True
+        self._resource_usage["dependency_unit_steering_basis_hits"] += 1
+        self._resource_usage["relation_dependency_unit_object_cache_hits"] += int(
+            unit_count
+        )
+
+    def _live_steering_index_one_likely(
+        self,
+        presentation: Any,
+        units: tuple[Any, ...],
+        unit_rank: int,
+    ) -> bool:
+        """Cheaply reject retained cubic unit lattices far from index one.
+
+        This is an optimization-only route selector.  It combines the already
+        cached 80-bit logarithms with the coarsest rigorous zeta-residue
+        enclosure used by the final adaptive `hR` calculation.  The broad
+        floating interval deliberately accepts only candidates visibly near
+        index one.  An accepted candidate still enters `_analytic_index`, whose
+        exact interval proof remains the sole mathematical authority; a false
+        rejection merely selects the complete LLL dependency route.
+        """
+        if int(self.field.degree()) != 3 or unit_rank != 2 or len(units) != 2:
+            return False
+        self._resource_usage["dependency_unit_steering_index_preflight_requests"] += 1
+        accepted = False
+        try:
+            logarithms = [list(self._unit_logarithms(unit, 80)[:-1]) for unit in units]
+            regulator = _floating_determinant_absolute(logarithms)
+            if not math.isfinite(regulator) or regulator <= 0.0:
+                raise ArithmeticError("the retained regulator estimate is invalid")
+            analytic = self.components.analytic
+            limits = analytic.ZetaLogResidueLimits(
+                maximum_prime_bound=self.limits.max_analytic_prime_bound,
+                maximum_precision_bits=self.limits.max_precision_bits,
+            )
+            options: dict[str, Any] = {
+                "absolute_error": "1",
+                "precision_bits": self.limits.precision_bits,
+                "limits": limits,
+            }
+            if self._analytic_workspace is not None:
+                options["workspace"] = self._analytic_workspace
+            zeta = analytic.zeta_log_residue_bound(
+                int(self.order.discriminant()),
+                int(self.field.degree()),
+                self.order.splitting_records,
+                **options,
+            )
+            r1, r2 = (int(value) for value in _value(self.field, ("signature",)))
+            log_index = (
+                (r1 + r2) * math.log(2.0)
+                + r2 * math.log(math.pi)
+                - math.log(2.0)
+                - 0.5 * math.log(abs(int(self.order.discriminant())))
+                + math.log(int(presentation.order))
+                + math.log(regulator)
+                - _floating_value(zeta.ball.midpoint())
+            )
+            approximate_index = math.exp(log_index)
+            # Corpus calibration separates the index-one cases (0.979--1.004)
+            # from exact indices 3, 8, and 11.  Keep a much wider interval than
+            # those observations while failing closed for ambiguous estimates.
+            accepted = math.isfinite(approximate_index) and (
+                0.75 <= approximate_index <= 1.25
+            )
+        except RuntimeError as error:
+            if _is_cancellation(error) or self.cancelled():
+                raise
+        except (ArithmeticError, AttributeError, ImportError, TypeError, ValueError):
+            pass
+        counter = (
+            "dependency_unit_steering_index_preflight_accepts"
+            if accepted
+            else "dependency_unit_steering_index_preflight_rejections"
+        )
+        self._resource_usage[counter] += 1
+        return accepted
 
     def _reduce_dependency_lattice(
         self,
@@ -4735,11 +4820,22 @@ class ClassUnitGroupEngine:
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
-        steering_basis = (
-            self._live_steering_unit_basis(records, source_dependencies, unit_rank)
-            if unit_rank == 2
-            else None
-        )
+        steering_basis = None
+        if unit_rank == 2:
+            live_basis = self._live_steering_unit_basis(
+                records, source_dependencies, unit_rank, False
+            )
+            if live_basis is not None:
+                live_units, _live_dependencies = live_basis
+                if self._live_steering_index_one_likely(
+                    presentation, live_units, unit_rank
+                ):
+                    self._consume_live_steering_unit_basis(len(live_units))
+                    steering_basis = live_basis
+                else:
+                    # Prevent the complete selector from reconsidering the same
+                    # rejected retained basis after exact lattice reduction.
+                    self._relation_initial_basis_selected = True
         if steering_basis is None:
             dependencies = self._reduce_dependency_lattice(records, source_dependencies)
             units, selected_dependencies = self._select_dependency_unit_basis(

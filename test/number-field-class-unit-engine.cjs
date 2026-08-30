@@ -884,7 +884,9 @@ class SteeringProbe(ClassUnitGroupEngine):
 
 R = PolynomialRing(QQ, "x")
 x = R.gen()
-K = NumberField(x - 1, "a")
+# Live-basis reuse is deliberately restricted to cubic fields.  Keep this
+# synthetic object-cache test inside that production envelope.
+K = NumberField(x**3 - x**2 - 36*x - 18, "a")
 first = FakeRecord()
 second = FakeRecord()
 third = FakeRecord()
@@ -918,7 +920,9 @@ units, dependencies = engine._select_dependency_unit_basis(
 assert len(units) == 2
 assert dependencies == ((1, 0, 0), (0, 0, 1))
 assert len(engine.combinations) == 3
-assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2
+assert engine._resource_usage["relation_dependency_unit_object_cache_hits"] == 2, (
+    engine._resource_usage["relation_dependency_unit_object_cache_hits"]
+)
 assert engine._resource_usage["dependency_unit_steering_basis_hits"] == 1
 assert engine._resource_usage["dependency_unit_materializations"] == 0
 
@@ -1019,6 +1023,9 @@ assert result.class_group().invariants() == ()
 assert result.saturation_record.verify(K, K.maximal_order())
 resources = result.diagnostics["resources"]
 assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["dependency_unit_steering_index_preflight_requests"] == 1
+assert resources["dependency_unit_steering_index_preflight_accepts"] == 1
+assert resources["dependency_unit_steering_index_preflight_rejections"] == 0
 assert resources["relation_dependency_unit_object_cache_hits"] == 2
 assert resources["dependency_unit_eager_candidates"] == 0
 assert resources["dependency_unit_materializations"] == 0
@@ -1028,6 +1035,28 @@ assert resources["dependency_lattice_lll_fallbacks"] == 0
 regulator = result.regulator()
 assert regulator.rigorous
 assert regulator.precision_bits == 128
+
+# A full-rank retained lattice can still have nontrivial unit index.  This
+# ordinary cubic used to pay for a complete rigorous hR computation on its
+# index-three live lattice before falling back.  The coarse preflight must
+# reject it before consuming the live basis, then preserve the exact LLL route.
+nonprimitive_field = NumberField(x**3 - x**2 - 34*x - 57, "nonprimitive")
+nonprimitive = compute_class_unit_group(
+    nonprimitive_field, proof=False, algorithm="auto"
+)
+assert nonprimitive.complete and nonprimitive.class_number() == 4
+assert nonprimitive.class_group().invariants() == (2, 2)
+assert nonprimitive.saturation_record.verify(
+    nonprimitive_field, nonprimitive_field.maximal_order()
+)
+nonprimitive_resources = nonprimitive.diagnostics["resources"]
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_requests"] == 1
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_accepts"] == 0
+assert nonprimitive_resources["dependency_unit_steering_index_preflight_rejections"] == 1
+assert nonprimitive_resources["dependency_unit_steering_basis_hits"] == 0
+assert nonprimitive_resources["dependency_unit_steering_basis_fallbacks"] == 0
+assert nonprimitive_resources["dependency_lattice_lll_requests"] == 1
+assert nonprimitive_resources["dependency_lattice_lll_reductions"] == 1
 
 # A restored computation has no authenticated steering objects.  Its bounded
 # exact LLL path remains available and replays the unimodular transform and
@@ -1116,10 +1145,11 @@ print((
     fallback_resources["dependency_lattice_lll_reductions"],
     retry_resources["dependency_unit_steering_basis_fallbacks"],
     resource_retry_resources["dependency_unit_steering_basis_fallbacks"],
+    nonprimitive_resources["dependency_unit_steering_index_preflight_rejections"],
     regulator.precision_bits,
 ))
 `);
-  assert.equal(output, "(1, 1, 0, 1, 1, 1, 128)");
+  assert.equal(output, "(1, 1, 0, 1, 1, 1, 1, 128)");
 });
 
 test("cubic class saturation searches nonzero p-torsion cosets", () => {

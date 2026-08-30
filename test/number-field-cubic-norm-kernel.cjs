@@ -361,6 +361,9 @@ assert resources["unit_principal_authority_requests"] == 2
 assert resources["unit_principal_authority_hits"] == 2
 assert resources["unit_principal_authority_fallbacks"] == 0
 assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["dependency_unit_steering_index_preflight_requests"] == 1
+assert resources["dependency_unit_steering_index_preflight_accepts"] == 1
+assert resources["dependency_unit_steering_index_preflight_rejections"] == 0
 assert resources["relation_dependency_unit_object_cache_hits"] == 2
 assert resources["dependency_unit_eager_candidates"] == 0
 assert resources["dependency_unit_materializations"] == 0
