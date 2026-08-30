@@ -55,6 +55,19 @@ def _isqrt(value: int) -> int:
     return previous
 
 
+def _is_squarefree(value: int) -> bool:
+    if value <= 0:
+        return False
+    for _prime, raw_exponent in _global("factor")(value):
+        if _integer(raw_exponent, "factor exponent") > 1:
+            return False
+    return True
+
+
+def _integer_divisors(value: int) -> list[int]:
+    return [_integer(divisor, "divisor") for divisor in _global("divisors")(value)]
+
+
 def _coerce_character_value(character: Any, value: int, target: Any) -> Any:
     evaluated = character(value)
     if target is sage.QQ or target is sage.ZZ:
@@ -701,6 +714,421 @@ def half_integral_weight_hecke_qexp(
     return _series_from_rows([coefficients], target, output_precision, variable)[0]
 
 
+def shimura_lift_qexp(
+    series: Any,
+    k: Any,
+    t: Any = 1,
+    chi: Any = None,
+    level: Any = None,
+    prec: Any = None,
+    variable: str = "q",
+) -> Any:
+    r"""Return the exact cuspidal Shimura lift attached to squarefree $t$.
+
+    Here `series` has weight $k/2$. This bounded coefficient-level API
+    requires a cuspidal input and a positive squarefree $t$. Its output has
+    weight $k-1$.
+    """
+    numerator = _positive(k, "weight numerator")
+    squarefree_index = _positive(t, "Shimura index")
+    if numerator < 3 or numerator % 2 == 0:
+        raise ValueError("the weight numerator must be odd and at least 3")
+    if not _is_squarefree(squarefree_index):
+        raise ValueError("the Shimura index must be positive and squarefree")
+    if series[0] != 0:
+        raise NotImplementedError(
+            "the bounded Shimura lift currently requires a cusp form"
+        )
+    if level is None:
+        if chi is None:
+            raise ValueError("level is required when chi is omitted")
+        source_level = _positive(chi.modulus(), "character modulus")
+    else:
+        source_level = _positive(level, "level")
+    if source_level % 4:
+        raise ValueError("the half-integral source level must be divisible by 4")
+    if chi is not None and source_level % _positive(chi.modulus(), "character modulus"):
+        raise ValueError("the character modulus must divide the source level")
+    input_precision = _integer(series.precision_absolute(), "input precision")
+    maximum_precision = (
+        0
+        if input_precision == 0
+        else _isqrt((input_precision - 1) // squarefree_index) + 1
+    )
+    output_precision = (
+        maximum_precision if prec is None else _nonnegative(prec, "precision")
+    )
+    if output_precision > maximum_precision:
+        raise ValueError("the input q-expansion has insufficient precision")
+    target = series.parent().base_ring()
+    exponent = (numerator - 1) // 2
+    signed_index = -squarefree_index if exponent % 2 else squarefree_index
+    excluded = (
+        source_level
+        // _integer(_global("gcd")(source_level, squarefree_index), "gcd")
+        * squarefree_index
+    )
+    coefficients = [target(0)] if output_precision else []
+    for index in range(1, output_precision):
+        total = target(0)
+        for divisor in _integer_divisors(index):
+            if _global("gcd")(divisor, excluded) != 1:
+                continue
+            character_value = (
+                target(1)
+                if chi is None
+                else _coerce_character_value(chi, divisor, target)
+            )
+            symbol = _global("kronecker")(signed_index, divisor)
+            if symbol:
+                quotient = index // divisor
+                total += (
+                    character_value
+                    * symbol
+                    * sage.ZZ(divisor) ** (exponent - 1)
+                    * series[squarefree_index * quotient * quotient]
+                )
+        coefficients.append(total)
+    return _series_from_rows([coefficients], target, output_precision, variable)[0]
+
+
+def _kohnen_plus_epsilon(space: Any) -> int:
+    level_fourth = space.level() // 4
+    character = space.character()
+    conductor = _integer(character.conductor(), "character conductor")
+    if level_fourth % conductor == 0:
+        epsilon = 1
+    else:
+        twisted = _basmaji_character(character, 1)
+        twisted_conductor = _integer(twisted.conductor(), "twisted conductor")
+        if level_fourth % twisted_conductor:
+            raise ValueError(
+                "neither chi nor chi*(-4/.) has conductor dividing level/4"
+            )
+        epsilon = -1
+    if ((space.weight_numerator() - 1) // 2) % 2:
+        epsilon = -epsilon
+    return epsilon
+
+
+class KohnenPlusBasisCertificate:
+    r"""Replayable forbidden-coefficient kernel certificate for $S^+_{k/2}$."""
+
+    def __init__(self, space: Any, precision: int) -> None:
+        self._space = space
+        self._epsilon = _kohnen_plus_epsilon(space)
+        self._bound = (
+            space.weight_numerator()
+            * _global("Gamma0")(4 * space.level()).index()
+            // 24
+        )
+        self._precision = max(precision, self._bound + 1)
+        ambient = space.q_expansion_basis_certificate(self._precision)
+        self._ambient_certificate = ambient
+        ambient_matrix = ambient.coefficient_matrix()
+        forbidden = [
+            index
+            for index in range(1, self._bound + 1)
+            if index % 4 in (2, (2 + self._epsilon) % 4)
+        ]
+        matrix = _global("matrix")
+        obstruction = matrix(
+            space.base_ring(),
+            [
+                [ambient_matrix[row, column] for column in forbidden]
+                for row in range(ambient_matrix.nrows())
+            ],
+        )
+        self._forbidden = tuple(forbidden)
+        self._obstruction_matrix = obstruction
+        self._kernel_matrix = obstruction.left_kernel_matrix()
+        self._coefficient_matrix = self._kernel_matrix * ambient_matrix
+        self._verified = self._verify()
+        runtime.object.freeze(self)
+
+    def ambient_certificate(self) -> Any:
+        return self._ambient_certificate
+
+    def epsilon(self) -> int:
+        return self._epsilon
+
+    def sturm_bound(self) -> int:
+        return self._bound
+
+    def precision(self) -> int:
+        return self._precision
+
+    def dimension(self) -> int:
+        return self._kernel_matrix.nrows()
+
+    def forbidden_indices(self) -> tuple[int, ...]:
+        return self._forbidden
+
+    def ambient_basis_matrix(self) -> Any:
+        return self._kernel_matrix
+
+    def obstruction_matrix(self) -> Any:
+        return self._obstruction_matrix
+
+    def coefficient_matrix(self) -> Any:
+        return self._coefficient_matrix
+
+    def q_expansion_basis(self, prec: Any = None, variable: str = "q") -> list[Any]:
+        precision = self._precision if prec is None else _nonnegative(prec, "precision")
+        if precision > self._precision:
+            return self._space.kohnen_plus_subspace(precision).q_expansion_basis(
+                precision, variable
+            )
+        rows = [list(row)[:precision] for row in self._coefficient_matrix.rows()]
+        return _series_from_rows(rows, self._space.base_ring(), precision, variable)
+
+    basis = q_expansion_basis
+
+    def _verify(self) -> bool:
+        if not self._ambient_certificate.verify():
+            return False
+        if self._kernel_matrix * self._obstruction_matrix != 0:
+            return False
+        if self._coefficient_matrix.rank() != self._kernel_matrix.nrows():
+            return False
+        zero = self._space.base_ring()(0)
+        for row in self._coefficient_matrix.rows():
+            for index in self._forbidden:
+                if row[index] != zero:
+                    return False
+        return self._precision > self._bound
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def __repr__(self) -> str:
+        return (
+            "Sturm-certified Kohnen plus basis of dimension "
+            + str(self.dimension())
+            + " in weight "
+            + str(self._space.weight())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class KohnenPlusSpace:
+    r"""The certified Kohnen $+$-subspace of a Basmaji cusp space."""
+
+    def __init__(self, ambient: Any, precision: int) -> None:
+        self._ambient = ambient
+        self._precision = precision
+        self._certificate_cache = runtime.map()
+        self._hecke_cache = runtime.map()
+        self._shimura_cache = runtime.map()
+        runtime.object.freeze(self)
+
+    def ambient_space(self) -> Any:
+        return self._ambient
+
+    def level(self) -> int:
+        return self._ambient.level()
+
+    def weight(self) -> Any:
+        return self._ambient.weight()
+
+    def weight_numerator(self) -> int:
+        return self._ambient.weight_numerator()
+
+    def character(self) -> Any:
+        return self._ambient.character()
+
+    def base_ring(self) -> Any:
+        return self._ambient.base_ring()
+
+    def basis_certificate(self, prec: Any = None) -> KohnenPlusBasisCertificate:
+        precision = self._precision if prec is None else _nonnegative(prec, "precision")
+        cached = self._certificate_cache.get(precision)
+        if cached is not runtime.undefined:
+            return cached
+        certificate = KohnenPlusBasisCertificate(self._ambient, precision)
+        self._certificate_cache.set(precision, certificate)
+        return certificate
+
+    q_expansion_basis_certificate = basis_certificate
+
+    def dimension(self) -> int:
+        return self.basis_certificate().dimension()
+
+    def q_expansion_basis(self, prec: Any = None, variable: str = "q") -> list[Any]:
+        precision = self._precision if prec is None else _nonnegative(prec, "precision")
+        return self.basis_certificate(precision).q_expansion_basis(precision, variable)
+
+    basis = q_expansion_basis
+
+    def hecke_matrix(self, index: Any) -> Any:
+        hecke_index = _positive(index, "Hecke index")
+        cached = self._hecke_cache.get(hecke_index)
+        if cached is not runtime.undefined:
+            return cached
+        inclusion = self.basis_certificate().ambient_basis_matrix()
+        images = inclusion * self._ambient.hecke_matrix(hecke_index)
+        result = inclusion.solve_left(images)
+        if result * inclusion != images:
+            raise ArithmeticError(
+                "the Hecke operator did not preserve the Kohnen plus space"
+            )
+        self._hecke_cache.set(hecke_index, result)
+        return result
+
+    T = hecke_matrix
+    hecke_operator = hecke_matrix
+
+    def shimura_lift_basis(
+        self, t: Any = 1, prec: Any = None, variable: str = "q"
+    ) -> list[Any]:
+        squarefree_index = _positive(t, "Shimura index")
+        if prec is None:
+            if _integer(self.character().order(), "character order") != 1:
+                raise NotImplementedError(
+                    "automatic Shimura target precision currently requires "
+                    "trivial character"
+                )
+            target = _global("CuspForms")(
+                self.level() // 4, self.weight_numerator() - 1
+            )
+            output_precision = max(2, target.sturm_bound())
+        else:
+            output_precision = _nonnegative(prec, "precision")
+        input_precision = squarefree_index * (output_precision - 1) ** 2 + 1
+        return [
+            shimura_lift_qexp(
+                form,
+                self.weight_numerator(),
+                squarefree_index,
+                self.character(),
+                self.level(),
+                output_precision,
+                variable,
+            )
+            for form in self.q_expansion_basis(input_precision, variable)
+        ]
+
+    def shimura_lift_matrix(self, t: Any = 1) -> Any:
+        return self.shimura_lift_certificate(t).matrix()
+
+    def shimura_lift_certificate(self, t: Any = 1) -> Any:
+        squarefree_index = _positive(t, "Shimura index")
+        cached = self._shimura_cache.get(squarefree_index)
+        if cached is not runtime.undefined:
+            return cached
+        if _integer(self.character().order(), "character order") != 1:
+            raise NotImplementedError(
+                "certified target coordinates currently require trivial character"
+            )
+        certificate = ShimuraLiftCertificate(self, squarefree_index)
+        self._shimura_cache.set(squarefree_index, certificate)
+        return certificate
+
+    def __repr__(self) -> str:
+        return (
+            "Kohnen plus subspace of dimension "
+            + str(self.dimension())
+            + " in weight "
+            + str(self.weight())
+            + " and level "
+            + str(self.level())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ShimuraLiftCertificate:
+    r"""Sturm and Hecke certificate for a Kohnen-plus Shimura map."""
+
+    def __init__(self, source: Any, squarefree_index: int) -> None:
+        self._source = source
+        self._index = squarefree_index
+        self._target = _global("CuspForms")(
+            source.level() // 4, source.weight_numerator() - 1
+        )
+        self._precision = max(2, self._target.sturm_bound())
+        self._images = tuple(
+            source.shimura_lift_basis(squarefree_index, self._precision)
+        )
+        target_basis = self._target.q_expansion_basis(self._precision)
+        matrix = _global("matrix")
+        self._target_coefficients = matrix(
+            source.base_ring(),
+            [
+                [form[index] for index in range(self._precision)]
+                for form in target_basis
+            ],
+        )
+        self._image_coefficients = matrix(
+            source.base_ring(),
+            [
+                [form[index] for index in range(self._precision)]
+                for form in self._images
+            ],
+        )
+        self._matrix = self._target_coefficients.solve_left(self._image_coefficients)
+        self._verified = self._verify()
+        runtime.object.freeze(self)
+
+    def source_space(self) -> Any:
+        return self._source
+
+    def target_space(self) -> Any:
+        return self._target
+
+    def squarefree_index(self) -> int:
+        return self._index
+
+    def precision(self) -> int:
+        return self._precision
+
+    def matrix(self) -> Any:
+        return self._matrix
+
+    def image_basis(self) -> tuple[Any, ...]:
+        return self._images
+
+    def _verify(self) -> bool:
+        if self._matrix * self._target_coefficients != self._image_coefficients:
+            raise ArithmeticError(
+                "the Shimura lift did not lie in the target cusp space"
+            )
+        return self._precision >= self._target.sturm_bound()
+
+    def verify_hecke(self, prime: Any) -> bool:
+        p = _positive(prime, "prime")
+        if p == 2 or not _global("is_prime")(p):
+            raise ValueError("p must be an odd prime")
+        if self._source.level() % p == 0:
+            raise ValueError("p must not divide the source level")
+        source_operator = self._source.hecke_matrix(p * p)
+        target_operator = self._target._modular_symbols_cusp_space().hecke_matrix(p)
+        return source_operator * self._matrix == self._matrix * target_operator
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def __repr__(self) -> str:
+        return (
+            "Sturm-certified Shimura lift from weight "
+            + str(self._source.weight())
+            + " to weight "
+            + str(self._source.weight_numerator() - 1)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class HalfIntegralWeightModularFormsSpace:
     r"""A certified Basmaji cusp space of weight $k/2$ and character $\chi$."""
 
@@ -727,6 +1155,7 @@ class HalfIntegralWeightModularFormsSpace:
         ).base_ring()
         self._certificate_cache = runtime.map()
         self._hecke_cache = runtime.map()
+        self._plus_cache = runtime.map()
         runtime.object.freeze(self)
 
     def character(self) -> Any:
@@ -841,6 +1270,18 @@ class HalfIntegralWeightModularFormsSpace:
         return self.hecke_matrix(index)
 
     hecke_operator = T
+
+    def kohnen_plus_subspace(self, prec: Any = None) -> KohnenPlusSpace:
+        r"""Return the certified Kohnen $+$-subspace."""
+        precision = self._precision if prec is None else _nonnegative(prec, "precision")
+        cached = self._plus_cache.get(precision)
+        if cached is not runtime.undefined:
+            return cached
+        plus = KohnenPlusSpace(self, precision)
+        self._plus_cache.set(precision, plus)
+        return plus
+
+    kohnen_plus_space = kohnen_plus_subspace
 
     def __repr__(self) -> str:
         return (

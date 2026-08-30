@@ -634,7 +634,7 @@
       "id": "modular-form-expansions",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 95000,
+      "max_source_bytes": 115000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "linear-algebra",
         "modular-forms"
