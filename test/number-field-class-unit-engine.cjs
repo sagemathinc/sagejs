@@ -87,6 +87,31 @@ print(answer)
   );
 });
 
+test("specialized dispatch skips the unit box after a class-group decline", () => {
+  const output = run(String.raw`
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 + 4*x - 1, "a_decline")
+units_module = _optional_module("sagejs.number_fields.units")
+original_units = units_module.bounded_unit_subgroup
+unit_calls = []
+
+def forbidden_units(field):
+    unit_calls.append(field)
+    raise AssertionError("an incomplete class computation entered the unit box")
+
+units_module.bounded_unit_subgroup = forbidden_units
+try:
+    engine = ClassUnitGroupEngine(K, proof=False)
+    assert engine._specialized() is None
+    assert unit_calls == []
+finally:
+    units_module.bounded_unit_subgroup = original_units
+print("specialized-decline-short-circuited")
+`);
+  assert.equal(output, "specialized-decline-short-circuited");
+});
+
 test("class/unit engine cache binds producer identity and full policy", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")

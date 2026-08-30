@@ -2342,10 +2342,16 @@ class ClassUnitGroupEngine:
             return None
         try:
             classes = classes_module.bounded_class_group(self.field)
+            # The specialized result requires both complete class and unit
+            # computations.  For an unsupported class-group input, the unit
+            # box cannot change the outcome and may perform many exact norm
+            # tests before returning another incomplete result.
+            if not classes.complete:
+                return None
             units = units_module.bounded_unit_subgroup(self.field)
         except (TypeError, ValueError, ArithmeticError):
             return None
-        if not classes.complete or not units.complete:
+        if not units.complete:
             return None
         factored_type = getattr(
             self.components.factored, "FactoredNumberFieldElement", None
