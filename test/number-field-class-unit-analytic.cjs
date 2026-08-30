@@ -349,6 +349,70 @@ print("exact-unit-norm-reuse")
   assert.equal(output, "exact-unit-norm-reuse");
 });
 
+test("cubic unit-root boxes screen exact nonunit norm coordinates", () => {
+  const output = runSagejs(String.raw`
+import sagejs.number_fields.class_unit_analytic as analytic
+import sagejs.number_fields.cubic_class_number as cubic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x - 1, "a_norm_screen")
+O = K.maximal_order()
+
+saved_exact_unit = analytic._exact_unit
+screened_roots = []
+def audited_exact_unit(field, order, value):
+    screened_roots.append(value)
+    return saved_exact_unit(field, order, value)
+analytic._exact_unit = audited_exact_unit
+try:
+    assert analytic._bounded_exact_pth_root(
+        K, O, (), (K.one(),), 2, 1, None
+    ) is None
+finally:
+    analytic._exact_unit = saved_exact_unit
+
+assert screened_roots
+assert len(screened_roots) < 26
+assert all(root in O and root.norm() in (-1, 1) for root in screened_roots)
+
+saved_norm_form = cubic._order_cubic_norm_form_coefficients
+fallback_roots = []
+def unavailable_norm_form(_order):
+    raise RuntimeError("optional cubic norm form unavailable")
+def audited_fallback(field, order, value):
+    fallback_roots.append(value)
+    return saved_exact_unit(field, order, value)
+cubic._order_cubic_norm_form_coefficients = unavailable_norm_form
+analytic._exact_unit = audited_fallback
+try:
+    assert analytic._bounded_exact_pth_root(
+        K, O, (), (K.one(),), 2, 1, None
+    ) is None
+finally:
+    analytic._exact_unit = saved_exact_unit
+    cubic._order_cubic_norm_form_coefficients = saved_norm_form
+
+assert len(fallback_roots) == 26
+assert screened_roots == [
+    root for root in fallback_roots if root.norm() in (-1, 1)
+]
+
+polls = []
+def cancelled():
+    polls.append(1)
+    return len(polls) == 2
+try:
+    analytic._bounded_exact_pth_root(K, O, (), (K.one(),), 2, 1, cancelled)
+    raise AssertionError("cubic norm screening skipped source-order cancellation")
+except analytic.AnalyticResourceError:
+    pass
+assert len(polls) == 2
+print("cubic-unit-norm-screen")
+`);
+  assert.equal(output, "cubic-unit-norm-screen");
+});
+
 test("BF plan aggregation and bounded provenance preserve exact intervals", () => {
   runPython(String.raw`
 module._shared_integer_log_endpoints.clear()
