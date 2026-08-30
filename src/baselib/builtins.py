@@ -3305,8 +3305,15 @@ def _builtins_has_own(value: Any, name: _Str) -> _Bool:
 def _builtins_signature(value: Any, name: _Str) -> _Str:
     argument_names = _builtins_get_member(value, "__argnames__")
     defaults = _builtins_get_member(value, "__defaults__")
-    annotation_text = _builtins_get_member(value, "__annotations_text__")
-    annotations = _builtins_get_member(value, "__annotations__")
+    annotation_text = _builtins_get_member(
+        value,
+        "__signature_annotations_text__",
+    )
+    if annotation_text is runtime.undefined:
+        annotation_text = _builtins_get_member(value, "__annotations_text__")
+    annotations = _builtins_get_member(value, "__signature_annotations__")
+    if annotations is runtime.undefined:
+        annotations = _builtins_get_member(value, "__annotations__")
 
     def annotation(argument: _Str) -> _Str:
         if _builtins_has_own(annotation_text, argument):
@@ -3537,27 +3544,31 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
 
     if _builtins_is_python_class(item):
         text = _builtins_class_help(item, False)
+    elif runtime.strict_equal(runtime.jstype(item), "function"):
+        # Host functions all have JavaScript's ``Function`` constructor.  It
+        # is also exposed as Python's ``function`` type, so inspecting the
+        # constructor before the callable itself misclassifies an ordinary
+        # function or bound method as a ``Function`` instance.
+        name = _builtins_callable_name(item)
+        bound = _builtins_has_member(item, "__self__")
+        kind = "method" if bound else "function"
+        module = _builtins_get_member(item, "__module__")
+        heading = "Help on " + kind + " " + name
+        if runtime.strict_equal(runtime.jstype(module), "string") and module:
+            heading += " in module " + module
+        lines = [
+            heading + ":",
+            "",
+            _builtins_signature(item, name),
+        ]
+        doc = _builtins_doc(item)
+        if doc:
+            lines.extend(["", _builtins_indent_doc(doc, "    ")])
+        text = str.join("\n", lines)
     else:
         constructor = _builtins_get_member(item, "constructor")
         if _builtins_is_python_class(constructor):
             text = _builtins_class_help(item, True)
-        elif runtime.strict_equal(runtime.jstype(item), "function"):
-            name = _builtins_callable_name(item)
-            bound = _builtins_has_member(item, "__self__")
-            kind = "method" if bound else "function"
-            module = _builtins_get_member(item, "__module__")
-            heading = "Help on " + kind + " " + name
-            if runtime.strict_equal(runtime.jstype(module), "string") and module:
-                heading += " in module " + module
-            lines = [
-                heading + ":",
-                "",
-                _builtins_signature(item, name),
-            ]
-            doc = _builtins_doc(item)
-            if doc:
-                lines.extend(["", _builtins_indent_doc(doc, "    ")])
-            text = str.join("\n", lines)
         else:
             type_name = _builtins_callable_name(constructor)
             text = "Help on " + type_name + " object."
