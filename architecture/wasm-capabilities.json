@@ -5022,6 +5022,29 @@
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:fmpz_matrix_hnf_into",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.kernels.matrix.class_group_hnf"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The caller-owned basis-only HNF operation is Wasm-capable and is used only inside the source-transparent stable class-group selector's private arena.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
+    },
+    {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -10757,12 +10780,12 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 2 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 3 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 2,
+        "compiled_functions": 3,
         "fallback_functions": 0,
-        "total_functions": 2,
+        "total_functions": 3,
         "production_pack": true,
         "fallback_reasons": []
       }

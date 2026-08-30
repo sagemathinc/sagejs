@@ -18,10 +18,152 @@ from sagejs.ffi.flint import (
     fmpz_matrix,
     fmpz_matrix_det,
     fmpz_matrix_entry,
+    fmpz_matrix_hnf_into,
     fmpz_matrix_hnf_transform,
     fmpz_matrix_set_entry,
 )
 from sagejs.native import IntegerBuffer, NativeExactArena, native, uint64
+
+
+@native
+def stable_exact_relation_hnf_select_v1(
+    metadata: IntegerBuffer,
+    basis: IntegerBuffer,
+    selected: IntegerBuffer,
+    source: IntegerBuffer,
+    rows: uint64,
+    initial_rows: uint64,
+    columns: uint64,
+    maximum_trials: uint64,
+    work_limit: uint64,
+    memory_limit: uint64,
+    temporary_limit: uint64,
+) -> int:
+    """Apply stable source-order deletion in one basis-only FLINT arena.
+
+    This is deliberately a different kernel from the transform-based resident
+    selector below.  It implements the ordinary stable selector exactly: all
+    candidate rows begin retained, the canonical HNF basis is computed once,
+    and candidates are deleted from left to right precisely when the basis is
+    unchanged.  Four fixed-shape matrices are allocated before arithmetic;
+    there are no transformation matrices, determinant, or GMP replay
+    accumulator.  The packed buffers are only transactional ingress/egress.
+    """
+    row_entries = rows * columns
+    candidate_rows = rows - initial_rows
+    valid = rows > 0 and columns > 0 and initial_rows <= rows
+    if len(metadata) != 7 or len(basis) != row_entries:
+        valid = False
+    if len(selected) != candidate_rows or len(source) != row_entries:
+        valid = False
+    if not valid:
+        return -1
+
+    work: uint64 = 0
+    for metadata_index in range(7):
+        metadata[metadata_index] = 0
+    for selected_index in range(candidate_rows):
+        selected[selected_index] = 1
+
+    with NativeExactArena(memory_limit, temporary_limit) as arena:
+        source_matrix = arena.foreign_resource(fmpz_matrix, rows, columns)
+        basis_matrix = arena.foreign_resource(fmpz_matrix, rows, columns)
+        trial_source_matrix = arena.foreign_resource(fmpz_matrix, rows, columns)
+        trial_hnf_matrix = arena.foreign_resource(fmpz_matrix, rows, columns)
+
+        for source_row in range(rows):
+            for source_column in range(columns):
+                source_index = source_row * columns + source_column
+                source_value = source[source_index]
+                if not fmpz_matrix_set_entry(
+                    source_matrix, source_row, source_column, source_value
+                ):
+                    return -1
+                if not fmpz_matrix_set_entry(
+                    trial_source_matrix, source_row, source_column, source_value
+                ):
+                    return -1
+
+        if not fmpz_matrix_hnf_into(basis_matrix, source_matrix):
+            return -1
+        metadata[4] = 1
+
+        rank: uint64 = 0
+        for basis_row in range(rows):
+            nonzero = False
+            for basis_column in range(columns):
+                work = work + 1
+                if work > work_limit:
+                    return -1
+                value = fmpz_matrix_entry(basis_matrix, basis_row, basis_column)
+                basis[basis_row * columns + basis_column] = value
+                if value != 0:
+                    nonzero = True
+            if nonzero:
+                rank = rank + 1
+
+        selected_count: uint64 = candidate_rows
+        trials: uint64 = 0
+        deletion_complete = True
+        candidate_index: uint64 = 0
+        while candidate_index < candidate_rows:
+            if trials >= maximum_trials:
+                deletion_complete = False
+                candidate_index = candidate_rows
+            elif initial_rows + selected_count - 1 < rank:
+                candidate_index = candidate_index + 1
+            else:
+                deleted_row: uint64 = initial_rows + candidate_index
+                for deleted_column in range(columns):
+                    work = work + 1
+                    if work > work_limit:
+                        return -1
+                    if not fmpz_matrix_set_entry(
+                        trial_source_matrix, deleted_row, deleted_column, 0
+                    ):
+                        return -1
+
+                if not fmpz_matrix_hnf_into(trial_hnf_matrix, trial_source_matrix):
+                    return -1
+                metadata[4] = metadata[4] + 1
+                same_lattice = True
+                for trial_row in range(rows):
+                    for trial_column in range(columns):
+                        work = work + 1
+                        if work > work_limit:
+                            return -1
+                        if fmpz_matrix_entry(
+                            trial_hnf_matrix, trial_row, trial_column
+                        ) != fmpz_matrix_entry(basis_matrix, trial_row, trial_column):
+                            same_lattice = False
+                trials = trials + 1
+                if same_lattice:
+                    selected[candidate_index] = 0
+                    selected_count = selected_count - 1
+                else:
+                    for restored_column in range(columns):
+                        work = work + 1
+                        if work > work_limit:
+                            return -1
+                        restored_index = deleted_row * columns + restored_column
+                        if not fmpz_matrix_set_entry(
+                            trial_source_matrix,
+                            deleted_row,
+                            restored_column,
+                            source[restored_index],
+                        ):
+                            return -1
+                candidate_index = candidate_index + 1
+
+        metadata[0] = rank
+        metadata[1] = initial_rows + selected_count
+        metadata[2] = selected_count
+        metadata[3] = trials
+        metadata[5] = work
+        if deletion_complete:
+            metadata[6] = 1
+        return 1
+    return -1
 
 
 @native
@@ -418,4 +560,5 @@ def resident_exact_relation_hnf_select(
 __all__ = [
     "resident_exact_relation_hnf_select",
     "resident_exact_relation_hnf_select_v2",
+    "stable_exact_relation_hnf_select_v1",
 ]

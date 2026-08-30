@@ -155,7 +155,7 @@
       "id": "matrix-native-kernels",
       "layer": 4,
       "startup": "lazy",
-      "max_source_bytes": 170000,
+      "max_source_bytes": 176000,
       "depends_on": [
         "core-runtime",
         "native-integration",
@@ -203,7 +203,7 @@
       "id": "number-field-relation-matrix",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 115000,
+      "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime",
         "linear-algebra",

@@ -14132,6 +14132,84 @@
       }
     },
     {
+      "id": "fmpz_matrix_hnf_into",
+      "python_name": "fmpz_matrix_hnf_into",
+      "signature": {
+        "parameters": [
+          {
+            "name": "hermite",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "FmpzMatrix",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiFmpzMatrixHnfInto"
+      },
+      "native": {
+        "symbol": "sagejs_fmpz_matrix_hnf_into",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "hermite",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "source",
+            "abi_type": "sagejs_fmpz_matrix_t",
+            "direction": "in",
+            "adapter": null
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "hermite"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "integer matrix HNF dimensions or aliases are invalid"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "fmpz_matrix_snf",
       "python_name": "fmpz_matrix_snf",
       "signature": {

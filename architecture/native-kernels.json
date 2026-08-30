@@ -465,9 +465,10 @@
       "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
       "functions": [
         "resident_exact_relation_hnf_select",
-        "resident_exact_relation_hnf_select_v2"
+        "resident_exact_relation_hnf_select_v2",
+        "stable_exact_relation_hnf_select_v1"
       ],
-      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, and exact transform replay through one arena-owned declared FLINT resource graph",
+      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, exact transform replay, and a separate basis-only four-matrix stable selector through arena-owned declared FLINT resource graphs",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],

@@ -365,6 +365,19 @@ static inline int sagejs_fmpz_matrix_hnf(
     return 1;
 }
 
+/* Basis-only HNF into a caller-owned resource for resident native regions. */
+static inline int sagejs_fmpz_matrix_hnf_into(
+    sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
+{
+    if (result == source ||
+        fmpz_mat_nrows(result->value) != fmpz_mat_nrows(source->value) ||
+        fmpz_mat_ncols(result->value) != fmpz_mat_ncols(source->value))
+        return 0;
+    fmpz_mat_hnf(result->value, source->value);
+    sagejs_fmpz_matrix_finish_result(result);
+    return 1;
+}
+
 static inline int sagejs_fmpz_matrix_snf(
     sagejs_fmpz_matrix_t result, const sagejs_fmpz_matrix_t source)
 {

@@ -158,6 +158,7 @@
         "ffi:flint:fmpz_matrix_format",
         "ffi:flint:fmpz_matrix_from_fmpq_integral",
         "ffi:flint:fmpz_matrix_hnf",
+        "ffi:flint:fmpz_matrix_hnf_into",
         "ffi:flint:fmpz_matrix_is_one",
         "ffi:flint:fmpz_matrix_mul",
         "ffi:flint:fmpz_matrix_mul_vector",

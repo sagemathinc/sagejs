@@ -61,6 +61,14 @@ MAX_STABLE_HNF_VALUES = 2_048
 MAX_STABLE_HNF_ENTRY_BITS = 4_096
 MAX_STABLE_HNF_DELETION_TRIALS = 128
 MAX_STABLE_HNF_WORK = 1_000_000
+# The basis-only stable native selector is a distinct implementation with its
+# own release envelope.  It deliberately excludes the transform-based
+# resident kernel below.  Qualification includes the old 37-by-8 crash shape
+# plus the reviewed 54-by-10 cubic hard-field workspace; never infer these
+# limits from the older resident-kernel constants.
+MAX_STABLE_HNF_NATIVE_ROWS = 64
+MAX_STABLE_HNF_NATIVE_COLUMNS = 10
+MAX_STABLE_HNF_NATIVE_ENTRY_BITS = 4
 # Native release evidence covers only the authenticated cubic relation
 # prefixes in `test/number-field-class-group-resident-hnf.cjs`.  Keep both
 # automatic and explicit native dispatch inside that demonstrated envelope;
@@ -72,6 +80,7 @@ MAX_RESIDENT_HNF_NATIVE_ENTRY_BITS = 3
 _presentation_replay_kernel_override: Any = None
 _presentation_forms_kernel_override: Any = None
 _resident_hnf_kernel_override: Any = None
+_stable_hnf_kernel_override: Any = None
 
 
 class RelationMatrixError(ValueError):
@@ -2414,6 +2423,138 @@ def _python_resident_relation_hnf_selection(
     )
 
 
+def _native_stable_relation_hnf_selection(
+    initial: tuple[tuple[int, ...], ...],
+    candidates: tuple[tuple[int, ...], ...],
+    columns: int,
+    bounded_trials: int,
+    maximum_work: int,
+    maximum_bits: int,
+) -> ResidentRelationHNFSelection | None:
+    """Try the separately qualified basis-only stable native selector."""
+    source = initial + candidates
+    row_count = len(source)
+    row_entries = row_count * columns
+    largest_dimension = max(row_count, columns)
+    output_bits = largest_dimension * (
+        maximum_bits + largest_dimension.bit_length() + 2
+    )
+    word_capacity = max(8, (output_bits + 63) // 64 + 2)
+    input_word_capacity = max(8, (maximum_bits + 63) // 64)
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.class_group_hnf",
+            fromlist=["class_group_hnf"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        if callable(_stable_hnf_kernel_override):
+            kernel: Any = _stable_hnf_kernel_override
+        else:
+            kernel = kernel_module.stable_exact_relation_hnf_select_v1
+            if not native_module.is_compiled(kernel):
+                return None
+
+        def zeros(length: int, words: int = word_capacity) -> Any:
+            return native_module.kernel_integer_zeros(kernel, length, words)
+
+        flat = [value for row in source for value in row]
+        metadata_buffer = zeros(7, 2)
+        basis_buffer = zeros(row_entries)
+        selected_buffer = zeros(len(candidates), 2)
+        source_buffer = native_module.kernel_integer_buffer(kernel, flat)
+        resident_entries = 4 * row_entries
+        resident_memory_limit = max(
+            1_048_576,
+            min(
+                536_870_912,
+                65_536 + resident_entries * (32 + 8 * word_capacity),
+            ),
+        )
+        temporary_limit = max(
+            1_048_576,
+            min(67_108_864, 1_048_576 + maximum_work * 64),
+        )
+        status = kernel(
+            metadata_buffer,
+            basis_buffer,
+            selected_buffer,
+            source_buffer,
+            row_count,
+            len(initial),
+            columns,
+            bounded_trials,
+            maximum_work,
+            resident_memory_limit,
+            temporary_limit,
+        )
+        if status != 1:
+            return None
+        metadata = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata_buffer)
+        )
+        basis_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(basis_buffer)
+        )
+        selected_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(selected_buffer)
+        )
+        mode = str(native_module.execution_mode(kernel))
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+    if len(metadata) != 7:
+        raise ArithmeticError("stable native HNF metadata has the wrong size")
+    rank = metadata[0]
+    if rank < 0 or rank > min(row_count, columns):
+        raise ArithmeticError("stable native HNF rank is outside its bounds")
+    if len(basis_values) != row_entries or len(selected_values) != len(candidates):
+        raise ArithmeticError("stable native HNF output has the wrong size")
+    if any(value not in (0, 1) for value in selected_values):
+        raise ArithmeticError("stable native HNF selection mask is not boolean")
+    basis_rows = tuple(
+        basis_values[index * columns : (index + 1) * columns]
+        for index in range(row_count)
+    )
+    if any(not any(row) for row in basis_rows[:rank]) or any(
+        any(row) for row in basis_rows[rank:]
+    ):
+        raise ArithmeticError("stable native HNF basis rank failed replay")
+    basis = basis_rows[:rank]
+    selected_indices = tuple(
+        index for index, value in enumerate(selected_values) if value == 1
+    )
+    source_support = tuple(range(len(initial))) + tuple(
+        len(initial) + index for index in selected_indices
+    )
+    if metadata[1] != len(source_support) or metadata[2] != len(selected_indices):
+        raise ArithmeticError("stable native HNF selection counts failed replay")
+    if metadata[3] < 0 or metadata[3] > bounded_trials:
+        raise ArithmeticError("stable native HNF deletion count is outside its bound")
+    if metadata[4] != metadata[3] + 1:
+        raise ArithmeticError("stable native HNF call count failed replay")
+    if metadata[5] < 0 or metadata[5] > maximum_work:
+        raise ArithmeticError("stable native HNF work count is outside its bound")
+    if metadata[6] not in (0, 1):
+        raise ArithmeticError("stable native HNF completion flag is invalid")
+    reported_mode = "native" if mode == "native-capable" else mode
+    return ResidentRelationHNFSelection(
+        basis,
+        source_support,
+        selected_indices,
+        rank=rank,
+        deletion_trials=metadata[3],
+        hnf_calls=metadata[4],
+        deletion_complete=metadata[6] == 1,
+        backend="stable-" + reported_mode + "-basis-deletions",
+        boundary_calls=1,
+        library_boundary_calls=0,
+        packed_input_bytes=row_entries * (4 + 8 * input_word_capacity),
+        published_output_values=7 + len(basis_values) + len(selected_values),
+        work_units=metadata[5],
+    )
+
+
 def stable_exact_relation_hnf_selection(
     initial_rows: Iterable[Any],
     candidate_rows: Iterable[Any],
@@ -2434,10 +2575,11 @@ def stable_exact_relation_hnf_selection(
     The retained subset therefore depends only on the ordered rows and their
     lattice, not on a backend's choice of transformation matrix.
 
-    Every HNF query uses the existing mature FLINT matrix operation when it is
-    available and the ordinary exact Python implementation otherwise.  The
-    separately qualified resident native kernel is never entered.  Initial
-    rows are mandatory and are not deletion candidates.
+    Qualified basis-only workspaces use a distinct four-matrix native kernel.
+    It contains no transformation matrix, determinant, or replay accumulator
+    from the older resident selector.  Other workspaces use the existing
+    mature FLINT matrix operation, with ordinary exact Python as its fail-closed
+    fallback.  Initial rows are mandatory and are not deletion candidates.
     """
     if cancelled is not None and not callable(cancelled):
         raise TypeError("cancelled must be callable")
@@ -2497,6 +2639,23 @@ def stable_exact_relation_hnf_selection(
             published_output_values=0,
             work_units=0,
         )
+
+    native_input_qualified = (
+        row_count <= MAX_STABLE_HNF_NATIVE_ROWS
+        and columns <= MAX_STABLE_HNF_NATIVE_COLUMNS
+        and maximum_bits <= MAX_STABLE_HNF_NATIVE_ENTRY_BITS
+    )
+    if cancelled is None and native_input_qualified:
+        native_answer = _native_stable_relation_hnf_selection(
+            initial,
+            candidates,
+            columns,
+            bounded_trials,
+            maximum_work,
+            maximum_bits,
+        )
+        if native_answer is not None:
+            return native_answer
 
     basis, primary_backend = _exact_relation_hnf_basis_from_source(source, columns)
     all_library = primary_backend == "flint"
@@ -2825,6 +2984,9 @@ __all__ = [
     "MAX_STABLE_HNF_COLUMNS",
     "MAX_STABLE_HNF_DELETION_TRIALS",
     "MAX_STABLE_HNF_ENTRY_BITS",
+    "MAX_STABLE_HNF_NATIVE_COLUMNS",
+    "MAX_STABLE_HNF_NATIVE_ENTRY_BITS",
+    "MAX_STABLE_HNF_NATIVE_ROWS",
     "MAX_STABLE_HNF_ROWS",
     "MAX_STABLE_HNF_VALUES",
     "MAX_STABLE_HNF_WORK",

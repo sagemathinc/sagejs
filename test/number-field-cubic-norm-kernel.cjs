@@ -351,9 +351,9 @@ assert resources["cubic_relation_selector_columns"] == 10
 assert resources["cubic_relation_selector_maximum_entry_bits"] == 3
 assert resources["cubic_relation_selector_deletion_trials"] == 48
 assert resources["cubic_relation_selector_hnf_calls"] == 49
-assert resources["cubic_relation_selector_native_boundary_calls"] == 0
-assert resources["cubic_relation_selector_library_boundary_calls"] == 49
-assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 1
+assert resources["cubic_relation_selector_native_boundary_calls"] == 1
+assert resources["cubic_relation_selector_library_boundary_calls"] == 0
+assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 0
 assert resources["relation_attempts"] == 0
 assert resources["relation_candidates"] == 0
 assert resources["saturation_rounds"] == 0
@@ -370,6 +370,23 @@ assert resources["dependency_unit_materializations"] == 0
 assert resources["dependency_lattice_lll_requests"] == 0
 assert resources["dependency_lattice_lll_reductions"] == 0
 assert result.context.live_diagnostics()["authenticated_dependency_units"] == 2
+
+# This public cubic produces the exact 37-by-8 relation workspace that crashed
+# the older transform-based resident HNF kernel.  The separately qualified
+# basis-only route must execute all 31 HNFs and retain the exact public answer.
+crash_field = NumberField(x**3 - x**2 - 9*x - 16, "a_stable_hnf_public")
+crash_result = crash_field.class_unit_group(proof=False)
+crash_group = crash_result.class_group()
+crash_resources = crash_result.diagnostics["resources"]
+assert int(crash_field.class_number(proof=False)) == 4
+assert crash_group.invariants() == (2, 2)
+assert crash_result.proof_status == "exact-relations-conditional-grh"
+assert crash_resources["cubic_relation_selector_total_rows"] == 37
+assert crash_resources["cubic_relation_selector_columns"] == 8
+assert crash_resources["cubic_relation_selector_maximum_entry_bits"] == 4
+assert crash_resources["cubic_relation_selector_hnf_calls"] == 31
+assert crash_resources["cubic_relation_selector_native_boundary_calls"] == 1
+assert crash_resources["cubic_relation_selector_library_boundary_calls"] == 0
 print("cubic-reduced-ideal-relation-batch-ok")
 `;
 

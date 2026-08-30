@@ -3920,6 +3920,30 @@ def fmpz_matrix_hnf(source: FmpzMatrix) -> FmpzMatrix: ...
 
 
 @flint.function(
+    dynamic="ffiFmpzMatrixHnfInto",
+    symbol="sagejs_fmpz_matrix_hnf_into",
+    returns=int,
+    abi=[
+        in_("hermite", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["hermite"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="integer matrix HNF dimensions or aliases are invalid",
+    ),
+    wasm=True,
+)
+def fmpz_matrix_hnf_into(hermite: Writable[FmpzMatrix], source: FmpzMatrix) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiFmpzMatrixSnf",
     symbol="sagejs_fmpz_matrix_snf",
     returns=int,

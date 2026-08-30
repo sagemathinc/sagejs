@@ -1,11 +1,11 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3934f814b8c9276f5cf9e28c09d5dcef03739cf588c652b681b966b4fcf3ec18",
+  "source_sha256": "c6da1fd6862a03e6ed0e79f57e92de6fa8a25bbf2407fcec426bdf487a3054b8",
   "counts": {
-    "total": 1038,
+    "total": 1039,
     "by_kind": {
-      "declared-ffi-function": 455,
+      "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
       "napi-export": 325,
       "production-kernel": 51,
@@ -15,12 +15,12 @@
     "by_disposition": {
       "compiled-source": 51,
       "desktop-only": 47,
-      "generated-wasm": 338,
+      "generated-wasm": 339,
       "portable-fallback": 557,
       "shared-core": 45
     },
     "by_status": {
-      "available": 576,
+      "available": 577,
       "desktop-only": 47,
       "fallback": 415
     }
@@ -2960,6 +2960,18 @@
         "sagejs.ffi.flint"
       ],
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpz_matrix_hnf_into",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.kernels.matrix.class_group_hnf"
+      ],
+      "explanation": "The reviewed caller-owned HNF declaration is included in the generated WebAssembly resource closure for the source-transparent stable selector."
     },
     {
       "id": "ffi:flint:fmpz_matrix_hnf_transform",
@@ -6272,7 +6284,7 @@
       "public_consumers": [
         "number-field-cubic-class-number"
       ],
-      "explanation": "All 2 registered functions in this family run as compiled WebAssembly in the production artifact."
+      "explanation": "All 3 registered functions in this family run as compiled WebAssembly in the production artifact."
     },
     {
       "id": "kernel:compiler-owned-record-witness",

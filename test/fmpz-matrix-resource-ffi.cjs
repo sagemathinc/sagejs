@@ -426,6 +426,7 @@ for (const [rows, columns, expected] of [
 {
   const sourceValues = [2n, 4n, 4n, -6n, 6n, 12n];
   const source = matrix(2, 3, sourceValues);
+  const hermiteInto = matrix(2, 3, [0n, 0n, 0n, 0n, 0n, 0n]);
   const hermite = matrix(2, 3, [0n, 0n, 0n, 0n, 0n, 0n]);
   const hermiteTransform = matrix(2, 2, [0n, 0n, 0n, 0n]);
   const smith = matrix(2, 3, [0n, 0n, 0n, 0n, 0n, 0n]);
@@ -433,6 +434,11 @@ for (const [rows, columns, expected] of [
   const rightTransform = matrix(3, 3, Array(9).fill(0n));
   const resources = [];
   try {
+    assert.equal(flint.ffiFmpzMatrixHnfInto(hermiteInto, source), true);
+    const detachedHermite = flint.ffiFmpzMatrixHnf(source);
+    resources.push(detachedHermite);
+    assert.deepEqual(entries(hermiteInto), entries(detachedHermite));
+
     assert.equal(flint.ffiFmpzMatrixHnfTransform(
       hermite, hermiteTransform, source,
     ), true);
@@ -455,6 +461,18 @@ for (const [rows, columns, expected] of [
 
     const wrong = matrix(1, 1, [91n]);
     resources.push(wrong);
+    const hermiteIntoBefore = entries(hermiteInto);
+    assert.throws(
+      () => flint.ffiFmpzMatrixHnfInto(wrong, source),
+      /dimensions or aliases/,
+    );
+    assert.deepEqual(entries(wrong), [91n]);
+    assert.throws(
+      () => flint.ffiFmpzMatrixHnfInto(hermiteInto, hermiteInto),
+      /dimensions or aliases/,
+    );
+    assert.deepEqual(entries(hermiteInto), hermiteIntoBefore);
+
     const hermiteBefore = entries(hermite);
     const transformBefore = entries(hermiteTransform);
     assert.throws(
@@ -496,6 +514,7 @@ for (const [rows, columns, expected] of [
     closeTwice(smith, flint.ffiFmpzMatrixClose);
     closeTwice(hermiteTransform, flint.ffiFmpzMatrixClose);
     closeTwice(hermite, flint.ffiFmpzMatrixClose);
+    closeTwice(hermiteInto, flint.ffiFmpzMatrixClose);
     closeTwice(source, flint.ffiFmpzMatrixClose);
   }
 }
@@ -933,7 +952,7 @@ int main(void)
     for (slong round = 0; round < 300; round++)
     {
         sagejs_fmpz_matrix_t left, right, sum, difference, negated;
-        sagejs_fmpz_matrix_t scaled, transposed, product, power, hnf, snf;
+        sagejs_fmpz_matrix_t scaled, transposed, product, power, hnf, hnf_into, snf;
         sagejs_fmpz_matrix_t hnf_transform, hnf_transformed;
         sagejs_fmpz_matrix_t snf_transform, snf_left, snf_right;
         sagejs_fmpz_matrix_t kernel, rational_round_trip, submatrix;
@@ -944,6 +963,7 @@ int main(void)
         sagejs_flint_byte_region_t formatted, serialized;
         if (!sagejs_fmpz_matrix_init(left, 4, 4) ||
             !sagejs_fmpz_matrix_init(right, 4, 4) ||
+            !sagejs_fmpz_matrix_init(hnf_into, 4, 4) ||
             !sagejs_fmpz_matrix_init(hnf_transform, 4, 4) ||
             !sagejs_fmpz_matrix_init(hnf_transformed, 4, 4) ||
             !sagejs_fmpz_matrix_init(snf_transform, 4, 4) ||
@@ -973,6 +993,7 @@ int main(void)
             !sagejs_fmpz_matrix_mul(product, left, right) ||
             !sagejs_fmpz_matrix_pow(power, left, 3) ||
             !sagejs_fmpz_matrix_hnf(hnf, left) ||
+            !sagejs_fmpz_matrix_hnf_into(hnf_into, left) ||
             !sagejs_fmpz_matrix_snf(snf, left) ||
             !sagejs_fmpz_matrix_hnf_transform(
                 hnf_transformed, hnf_transform, left) ||
@@ -997,6 +1018,8 @@ int main(void)
             !sagejs_fmpz_matrix_equal(left, decoded) ||
             !sagejs_fmpz_matrix_equal(left, difference) ||
             !sagejs_fmpz_matrix_equal(left, rational_round_trip) ||
+            !sagejs_fmpz_matrix_equal(hnf, hnf_into) ||
+            sagejs_fmpz_matrix_hnf_into(hnf_into, hnf_into) ||
             sagejs_fmpz_matrix_nonzero_count(left) > 16)
             return 5;
         if (sagejs_fmpz_matrix_allocated_bytes(left) == 0 ||
@@ -1025,6 +1048,7 @@ int main(void)
         sagejs_fmpz_matrix_clear(hnf_transformed);
         sagejs_fmpz_matrix_clear(hnf_transform);
         sagejs_fmpz_matrix_clear(snf);
+        sagejs_fmpz_matrix_clear(hnf_into);
         sagejs_fmpz_matrix_clear(hnf);
         sagejs_fmpz_matrix_clear(power);
         sagejs_fmpz_matrix_clear(product);

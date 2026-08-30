@@ -207,6 +207,7 @@ from sagejs.ffi.flint import (
     fmpz_matrix_det as _ffi_fmpz_matrix_det,
     fmpz_matrix_trace as _ffi_fmpz_matrix_trace,
     fmpz_matrix_hnf as _ffi_fmpz_matrix_hnf,
+    fmpz_matrix_hnf_into as _ffi_fmpz_matrix_hnf_into,
     fmpz_matrix_snf as _ffi_fmpz_matrix_snf,
     fmpz_matrix_hnf_transform as _ffi_fmpz_matrix_hnf_transform,
     fmpz_matrix_snf_transform as _ffi_fmpz_matrix_snf_transform,
@@ -2291,6 +2292,17 @@ def ffiFmpzMatrixHnf(
     source: FmpzMatrix,
 ) -> FmpzMatrix:
     return _ffi_fmpz_matrix_hnf(
+        source,
+    )
+
+
+@native
+def ffiFmpzMatrixHnfInto(
+    hermite: FmpzMatrix,
+    source: FmpzMatrix,
+) -> bool:
+    return _ffi_fmpz_matrix_hnf_into(
+        hermite,
         source,
     )
 
