@@ -18,8 +18,9 @@ This release extends four substantial mathematical systems:
 - Cubic class-group computations gain a resident exact relation/HNF engine,
   authenticated presentation replay, reusable relation workspaces, and
   conservative dynamic fallbacks. Automatic native HNF selection is restricted
-  to the exact shape envelope covered by release evidence; larger matrices
-  fail closed to the ordinary exact backend.
+  to the exact matrix-shape and coefficient-bit envelope covered by release
+  evidence; every out-of-envelope matrix fails closed to the ordinary exact
+  backend.
 - Undergraduate mathematics and browser worksheets add broader calculus and
   symbolic compatibility, piecewise functions, discrete mathematics, linear
   codes, improved matrix operations, numeric-data 3D plots, and richer live
