@@ -774,6 +774,16 @@
       ]
     },
     {
+      "id": "widget-runtime",
+      "layer": 2,
+      "startup": "lazy",
+      "max_source_bytes": 1200000,
+      "depends_on": ["core-runtime", "python-stdlib"],
+      "modules": ["traitlets"],
+      "files": [],
+      "prefixes": ["src/lib/traitlets/"]
+    },
+    {
       "id": "numeric-compat",
       "layer": 4,
       "startup": "lazy",

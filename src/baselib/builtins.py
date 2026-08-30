@@ -3375,11 +3375,18 @@ def _builtins_is_python_class(value: Any) -> _Bool:
     # marker on the constructor itself.  Looking on ``prototype`` is weaker:
     # a dynamic subclass may inherit a non-writable ``__bases__`` descriptor,
     # preventing Reflect.set from creating an own prototype property.
-    return runtime.reflect.apply(
+    if runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         value,
         ["__bases__"],
-    )
+    ):
+        return True
+    # Native builtin constructors such as `list`, `set`, and `dict` do not
+    # all expose an own `__bases__` slot.  They do carry the authoritative
+    # Python metaclass marker, which distinguishes them from ordinary Python
+    # functions and prevents descriptor lookup from binding a class stored as
+    # another class's attribute.
+    return _builtins_get_member(value, "__python_type__") is ρσ_type
 
 
 def _builtins_prototype_member(
@@ -4892,7 +4899,6 @@ def ρσ_getattr_internal(
             _builtins_is_python_class(value)
             and not _builtins_has_member(value, name)
             and runtime.strict_equal(runtime.jstype(python_metaclass), "function")
-            and python_metaclass is not ρσ_type
             and python_metaclass is not value
         ):
             metaclass_prototype = _builtins_get_member(python_metaclass, "prototype")
@@ -5989,6 +5995,28 @@ def _builtins_type_new(
 
 runtime.reflect.set(_builtins_type_new, "__staticmethod__", True)
 runtime.reflect.set(ρσ_type, "__new__", _builtins_type_new)
+# `type.__new__` participates in normal MRO lookup from a Python metaclass.
+# Sage.js class dictionaries live primarily on the JavaScript prototype, while
+# builtin static slots also live on the constructor.  Publish this slot in both
+# places so `super().__new__(mcls, name, bases, namespace)` reaches the builtin
+# allocator instead of falling through generic proxy attribute lookup.
+runtime.reflect.set(
+    runtime.reflect.get(ρσ_type, "prototype"),
+    "__new__",
+    _builtins_type_new,
+)
+
+
+def _builtins_type_mro(cls: Any) -> Any:
+    """Return the class MRO using CPython's mutable-list public shape."""
+    return list(_builtins_get_member(cls, "__mro__"))
+
+
+runtime.reflect.set(
+    runtime.reflect.get(ρσ_type, "prototype"),
+    "mro",
+    runtime.native_method_adapter(_builtins_type_mro),
+)
 
 
 def ρσ_apply_metaclass(
@@ -6012,14 +6040,25 @@ def ρσ_apply_metaclass(
         runtime.undefined,
         [metaclass, class_name, bases, namespace],
     )
+    # The object returned by `metaclass.__new__` is already an instance of the
+    # metaclass while `metaclass.__init__` runs.  Publish that relationship
+    # before invoking the initializer so `super()` inside a metaclass
+    # `__init__` follows the metaclass MRO (traitlets relies on this).
+    runtime.object.defineProperty(
+        created,
+        "__python_type__",
+        {"value": metaclass, "writable": True, "configurable": True},
+    )
     initializer = _builtins_get_member(
         _builtins_get_member(metaclass, "prototype"),
         "__init__",
     )
-    if (
-        runtime.strict_equal(runtime.jstype(initializer), "function")
-        and _builtins_get_member(initializer, "__sagejs_synthetic_init__") is not True
-    ):
+    if runtime.strict_equal(runtime.jstype(initializer), "function"):
+        # A compiler-generated initializer is still semantically significant
+        # on a metaclass: it delegates to an inherited explicit `__init__`.
+        # Calling a truly empty synthetic initializer is harmless, while
+        # skipping it prevents a derived metaclass (for example
+        # traitlets.MetaHasTraits) from running its base initializer at all.
         runtime.reflect.apply(
             initializer,
             created,
@@ -6028,11 +6067,6 @@ def ρσ_apply_metaclass(
     decorators = runtime.reflect.get(compiled_class, "ρσ_decorators")
     if decorators is not runtime.undefined:
         runtime.reflect.set(created, "ρσ_decorators", decorators)
-    runtime.object.defineProperty(
-        created,
-        "__python_type__",
-        {"value": metaclass, "writable": True, "configurable": True},
-    )
     return created
 
 
