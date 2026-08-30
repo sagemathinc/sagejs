@@ -856,6 +856,81 @@ test("a first class assignment reads its same-named module global", async () => 
   }
 });
 
+test("a first annotated class assignment reads its same-named module global", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "description = 'outer'\n" +
+        "class Application:\n" +
+        "    description: str = str(description)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Application\.prototype\.description = ρσ_resolve_callable\(str\)\(ρσ_check_unbound\(\$ρσ\$py\$description/,
+    );
+    assert.doesNotMatch(
+      javascript,
+      /str\)\(Application\.prototype\.description\)/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("formatted strings invoke format on their template value", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("result = f'{value!r}'\n", parserOptions);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\ρσ_getattr_internal\("\{!r\}", "format"/,
+    );
+    assert.doesNotMatch(
+      javascript,
+      /\ρσ_getattr_internal\(ρσ_str, "format"/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("decorated instance methods adapt receivers into explicit arguments", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Session:\n" +
+        "    @contextmanager\n" +
+        "    def transaction(self):\n" +
+        "        yield self\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Session\.prototype\.transaction = \(function\(ρσ_original_method\)/,
+    );
+    assert.match(
+      javascript,
+      /ρσ_original_method\.__sagejs_method_signature_excludes_self__=true/,
+    );
+    assert.match(javascript, /ρσ_native_method_adapter\(ρσ_decorated_method\)/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("generator and coroutine functions expose introspection metadata", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -918,6 +993,75 @@ test("dotted callable instances resolve through __call__", async () => {
       javascript,
       /ρσ_resolve_callable\(ρσ_getattr_internal\(ρσ_py_package, "factory", ρσ_getattr_missing\)\)/,
     );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("subscripted callable instances resolve through __call__", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "result = handlers[name](owner, proposal)\n" +
+        "configured = handlers[name](owner, allow_none=True)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\u03c1\u03c3_resolve_callable\(\u03c1\u03c3_getitem\([^\n]+\)\)\(owner, proposal\)/,
+    );
+    assert.match(
+      javascript,
+      /ρσ_interpolate_kwargs\(ρσ_expr_temp, ρσ_resolve_callable\(ρσ_expr_temp\), \[owner\]\.concat/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("inherited class variables stay out of subclass namespaces", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Base:\n" +
+        "    inherited = 1\n" +
+        "class Child(Base):\n" +
+        "    local = 2\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.doesNotMatch(
+      javascript,
+      /\$ρσ\$py\$Child\["inherited"\]\s*=/,
+    );
+    assert.match(javascript, /\$ρσ\$py\$Child\["local"\]\s*=/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("Python dir loops preserve inherited namespace entries", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "for name in dir(cls):\n" +
+        "    consume(name)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.doesNotMatch(javascript, /for \([^)]* in cls\)/);
+    assert.match(javascript, /ρσ_resolve_callable\(dir\)\(cls\)/);
+    assert.match(javascript, /for \(var ρσ_Index\d+ of ρσ_Iter\d+\)/);
   } finally {
     frontend.close();
   }
@@ -1044,6 +1188,116 @@ test("parameterized builtin bases lower to their runtime origins", async () => {
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     assert.match(output.get(), /ρσ_extends\(\$ρσ\$py\$Entries, list\)/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("parameterized imported bases resolve through the Python base protocol", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "import typing as t\nclass Entries(t.List[str]):\n    pass\n",
+      parserOptions,
+    );
+    const definition = ast.body[1];
+    assert.equal(definition.parent.expression.name, "ρσ_resolve_class_base");
+    const output = new compiler.OutputStream(outputOptions);
+    definition.print(output);
+    assert.match(
+      output.get(),
+      /ρσ_resolve_callable\(ρσ_resolve_class_base\)\(ρσ_getitem\([^\n]*List[^\n]*str/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("hygienic star imports stay inside the Python module", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "from exported_names import *\n",
+      { ...parserOptions, module_id: "star_consumer" },
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /\u03c1\u03c3_modules\["star_consumer"\]\[\u03c1\u03c3_star_name\] =/,
+    );
+    assert.doesNotMatch(javascript, /globalThis\[\u03c1\u03c3_star_name\]/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("reserved JavaScript function names remain Python class variables", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Descriptor:\n" +
+        "    name: str | None = None\n" +
+        "    length = 7\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /Object\.defineProperty\([^,]+, "name", \{value:/,
+    );
+    assert.match(
+      javascript,
+      /Object\.defineProperty\([^,]+, "length", \{value:/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("walrus targets use the Python grammar name field in every scope", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "def choose(values):\n" +
+        "    if (selected := values[0]) is not None:\n" +
+        "        return selected\n" +
+        "    return [item for item in values if (seen := item)]\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    assert.doesNotThrow(() => ast.print(output));
+    assert.match(output.get(), /selected/);
+    assert.match(output.get(), /seen/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("locals captures hygienically emitted function bindings", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "def snapshot(name):\n" +
+        "    if name:\n" +
+        "        level = 1\n" +
+        "    return locals()\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /"level":\s*\$ρσ\$py\$level/);
+    assert.match(javascript, /"name":\s*\$ρσ\$py\$name/);
+    assert.doesNotMatch(javascript, /"level":\s*level[,}]/);
   } finally {
     frontend.close();
   }

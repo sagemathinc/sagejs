@@ -36,6 +36,11 @@ def MethodType(function, instance, cls=None):
     return function.__get__(instance, type(instance))
 
 
+# Sage.js represents bound Python methods as host functions annotated with
+# `__self__`; expose that representation to the builtin `isinstance` path.
+MethodType.__sagejs_method_type__ = True
+
+
 def resolve_bases(bases):
     answer = []
     for base in bases:

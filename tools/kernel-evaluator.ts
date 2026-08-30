@@ -50,10 +50,59 @@ export interface SageDisplayData {
   data: unknown;
 }
 
+export type SageOutputEvent =
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "stream";
+      parentId?: string;
+      name: "stdout" | "stderr";
+      text: string;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "display_data" | "update_display_data";
+      parentId?: string;
+      data: Record<string, unknown>;
+      metadata: Record<string, unknown>;
+      displayId?: string;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "clear_output";
+      parentId?: string;
+      wait: boolean;
+    }
+  | {
+      schema: "sagejs.output-event/v1";
+      type: "error";
+      parentId?: string;
+      name: string;
+      message: string;
+      traceback: string[];
+    };
+
+export interface SageCommEvent {
+  schema: "sagejs.comm-event/v1";
+  type: "open" | "message" | "close";
+  parentId?: string;
+  commId: string;
+  targetName?: string;
+  targetModule?: string;
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  buffers: Uint8Array[];
+}
+
+export interface SageCommInfo {
+  [commId: string]: { targetName: string };
+}
+
 export interface KernelEvaluation {
   repr: string;
   durationMs: number;
   display?: SageDisplayData;
+  events: SageOutputEvent[];
+  commEvents: SageCommEvent[];
   optimization: SageOptimizationReport;
 }
 
@@ -94,6 +143,7 @@ export interface KernelEvaluator {
       filename?: string;
       language?: SageLanguageMode;
       suppressResult?: boolean;
+      parentId?: string;
     },
   ): KernelEvaluation;
   profile(
@@ -110,6 +160,8 @@ export interface KernelEvaluator {
     },
   ): Promise<KernelProfileEvaluation>;
   complete(source: string, cursorPosition: number): KernelCompletion;
+  comm(event: SageCommEvent): void;
+  commInfo(targetName?: string): SageCommInfo;
   inspect(source: string, cursorPosition: number): KernelInspection;
   isComplete(
     source: string,
@@ -122,6 +174,8 @@ export interface KernelEvaluator {
 interface EvaluatorOptions {
   mode: SageLanguageMode;
   onOutput(text: string): void;
+  onEvent?(event: SageOutputEvent): void;
+  onComm?(event: SageCommEvent): void;
   interruptState?: Int32Array;
   compiler?: any;
   compilerFrontends?: Map<SageLanguageMode, PythonCompilerFrontend>;
@@ -144,12 +198,149 @@ function displayTransportValue(
     for (const item of value) answer.push(displayTransportValue(item, seen));
     return answer;
   }
+  const jsmap = Reflect.get(value, "jsmap");
+  const keymap = Reflect.get(value, "keymap");
+  if (jsmap instanceof Map && keymap instanceof Map) {
+    const answer: Record<string, unknown> = {};
+    seen.set(value, answer);
+    for (const normalizedKey of jsmap.keys()) {
+      const key = keymap.get(normalizedKey);
+      if (typeof key !== "string") {
+        throw new TypeError("display dictionaries require string MIME keys");
+      }
+      Object.defineProperty(answer, key, {
+        value: displayTransportValue(jsmap.get(normalizedKey), seen),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
+    }
+    return answer;
+  }
   const answer: Record<string, unknown> = {};
   seen.set(value, answer);
   for (const key of Object.keys(value)) {
-    answer[key] = displayTransportValue(Reflect.get(value, key), seen);
+    Object.defineProperty(answer, key, {
+      value: displayTransportValue(Reflect.get(value, key), seen),
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
   }
   return answer;
+}
+
+const COMM_MAX_JSON_BYTES = 8 * 1024 * 1024;
+const COMM_MAX_DEPTH = 64;
+const COMM_MAX_BUFFERS = 64;
+const COMM_MAX_BUFFER_BYTES = 64 * 1024 * 1024;
+const COMM_MAX_TOTAL_BUFFER_BYTES = 128 * 1024 * 1024;
+
+function validateCommIdentifier(value: unknown, description: string): string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 1024) {
+    throw new TypeError(`${description} must be a nonempty string of at most 1024 characters`);
+  }
+  return value;
+}
+
+function commJsonValue(value: unknown): Record<string, unknown> {
+  const converted = displayTransportValue(value);
+  if (converted === null || typeof converted !== "object" || Array.isArray(converted)) {
+    throw new TypeError("comm data and metadata must be dictionaries");
+  }
+  const seen = new Set<unknown>();
+  const visit = (item: unknown, depth: number): void => {
+    if (depth > COMM_MAX_DEPTH) throw new RangeError("comm JSON exceeds maximum nesting depth");
+    if (item === null || typeof item === "string" || typeof item === "boolean") return;
+    if (typeof item === "number") {
+      if (!Number.isFinite(item)) throw new TypeError("comm JSON numbers must be finite");
+      return;
+    }
+    if (typeof item !== "object") throw new TypeError("comm data is not JSON-compatible");
+    if (ArrayBuffer.isView(item) || item instanceof ArrayBuffer) {
+      throw new TypeError("comm binary data must use the buffers field");
+    }
+    if (seen.has(item)) throw new TypeError("comm JSON cannot contain cycles");
+    seen.add(item);
+    for (const child of Array.isArray(item) ? item : Object.values(item)) visit(child, depth + 1);
+    seen.delete(item);
+  };
+  visit(converted, 0);
+  const encoded = JSON.stringify(converted);
+  if (Buffer.byteLength(encoded, "utf8") > COMM_MAX_JSON_BYTES) {
+    throw new RangeError("comm JSON exceeds the 8 MiB message limit");
+  }
+  return converted as Record<string, unknown>;
+}
+
+function commBuffer(value: unknown): Uint8Array {
+  let candidate = value;
+  if (candidate && typeof candidate === "object") {
+    const values = Reflect.get(candidate, "_values");
+    if (values !== undefined) candidate = values;
+    else {
+      const bytesValues = Reflect.get(candidate, "_bytes_values");
+      if (typeof bytesValues === "function") {
+        candidate = Reflect.apply(bytesValues, candidate, []);
+      }
+    }
+  }
+  let result: Uint8Array;
+  if (candidate instanceof Uint8Array) result = candidate.slice();
+  else if (candidate instanceof ArrayBuffer) result = new Uint8Array(candidate.slice(0));
+  else if (ArrayBuffer.isView(candidate)) {
+    result = new Uint8Array(candidate.buffer, candidate.byteOffset, candidate.byteLength).slice();
+  } else if (Array.isArray(candidate)) {
+    if (candidate.some((item) => !Number.isInteger(item) || item < 0 || item > 255)) {
+      throw new TypeError("comm buffers must contain bytes");
+    }
+    result = Uint8Array.from(candidate);
+  } else {
+    throw new TypeError("comm buffers must be bytes-like values");
+  }
+  if (result.byteLength > COMM_MAX_BUFFER_BYTES) {
+    throw new RangeError("one comm buffer exceeds the 64 MiB limit");
+  }
+  return result;
+}
+
+function commBuffers(value: unknown): Uint8Array[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new TypeError("comm buffers must be a list");
+  if (value.length > COMM_MAX_BUFFERS) throw new RangeError("comm message exceeds 64 buffers");
+  const result = value.map(commBuffer);
+  const total = result.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+  if (total > COMM_MAX_TOTAL_BUFFER_BYTES) {
+    throw new RangeError("comm buffers exceed the 128 MiB aggregate limit");
+  }
+  return result;
+}
+
+function displayBundle(value: unknown): {
+  data: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+} {
+  const data: Record<string, unknown> = {};
+  const metadata: Record<string, unknown> = {};
+  if (value !== null && (typeof value === "object" || typeof value === "function")) {
+    const mimeBundle = Reflect.get(value, "_repr_mimebundle_");
+    if (typeof mimeBundle === "function") {
+      const bundleResult = Reflect.apply(mimeBundle, value, []);
+      const converted = displayTransportValue(bundleResult);
+      if (Array.isArray(converted) && converted.length === 2) {
+        Object.assign(data, converted[0]);
+        Object.assign(metadata, converted[1]);
+      } else if (converted && typeof converted === "object") {
+        Object.assign(data, converted);
+      }
+    }
+  }
+  if (!("text/plain" in data)) {
+    data["text/plain"] = String(global.ρσ_repr(value));
+  }
+  const rich = richDisplay(value);
+  if (rich) data[rich.mime] = rich.data;
+  return { data, metadata };
 }
 
 function richDisplay(value: unknown): SageDisplayData | undefined {
@@ -192,6 +383,8 @@ function richDisplay(value: unknown): SageDisplayData | undefined {
 export function createKernelEvaluator({
   mode,
   onOutput,
+  onEvent = () => undefined,
+  onComm = () => undefined,
   interruptState,
   compiler: suppliedCompiler,
   compilerFrontends,
@@ -211,6 +404,10 @@ export function createKernelEvaluator({
   let sourceEndsWithSemicolon = false;
   let numericLiteralPoolCounter = 0;
   let optimizationReport: SageOptimizationReport | undefined;
+  let activeParentId: string | undefined;
+  let activeEvents: SageOutputEvent[] | undefined;
+  let activeCommEvents: SageCommEvent[] | undefined;
+  let nextDisplayId = 0;
   const scopedFlagsByLanguage = new Map<
     SageLanguageMode,
     Record<string, boolean>
@@ -280,13 +477,114 @@ export function createKernelEvaluator({
     readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
   installNodeGraphicsSaveHook();
   const uninstallNodeHost = installNodeHost(globalThis, mode);
-  global.__sagejs_output_write__ = (text: unknown) => {
-    onOutput(String(text));
+  const emitEvent = (event: SageOutputEvent) => {
+    activeEvents?.push(event);
+    onEvent(event);
+  };
+  const emitComm = (event: SageCommEvent) => {
+    activeCommEvents?.push(event);
+    onComm(event);
+  };
+  const writeOutput = (text: unknown) => {
+    const value = String(text);
+    onOutput(value);
+    emitEvent({
+      schema: "sagejs.output-event/v1",
+      type: "stream",
+      parentId: activeParentId,
+      name: "stdout",
+      text: value,
+    });
+  };
+  global.__sagejs_output_write__ = writeOutput;
+  global.__sagejs_format_display__ = (value: unknown) => displayBundle(value);
+  global.__sagejs_display_publish__ = (
+    value: unknown,
+    requestedDisplayId?: unknown,
+    update = false,
+  ) => {
+    let displayId: string | undefined;
+    if (requestedDisplayId === true) {
+      displayId = `display-${String(++nextDisplayId).padStart(6, "0")}`;
+    } else if (typeof requestedDisplayId === "string" && requestedDisplayId) {
+      displayId = requestedDisplayId;
+    }
+    const formatted = displayBundle(value);
+    emitEvent({
+      schema: "sagejs.output-event/v1",
+      type: update ? "update_display_data" : "display_data",
+      parentId: activeParentId,
+      data: formatted.data,
+      metadata: formatted.metadata,
+      displayId,
+    });
+    return displayId;
+  };
+  global.__sagejs_clear_output__ = (wait = false) => {
+    emitEvent({
+      schema: "sagejs.output-event/v1",
+      type: "clear_output",
+      parentId: activeParentId,
+      wait: Boolean(wait),
+    });
+  };
+  global.__sagejs_get_parent__ = () =>
+    activeParentId ? { header: { msg_id: activeParentId } } : {};
+  global.__sagejs_set_parent__ = (parent: unknown) => {
+    const header = parent && typeof parent === "object"
+      ? Reflect.get(parent, "header")
+      : undefined;
+    const msgId = header && typeof header === "object"
+      ? Reflect.get(header, "msg_id")
+      : undefined;
+    activeParentId = typeof msgId === "string" ? msgId : activeParentId;
+  };
+  global.__sagejs_showtraceback__ = (error: unknown) => {
+    const name = String(Reflect.get(Object(error), "name") ?? "Error");
+    const message = String(Reflect.get(Object(error), "message") ?? error);
+    const stack = Reflect.get(Object(error), "stack");
+    emitEvent({
+      schema: "sagejs.output-event/v1",
+      type: "error",
+      parentId: activeParentId,
+      name,
+      message,
+      traceback: typeof stack === "string" ? stack.split("\n") : [`${name}: ${message}`],
+    });
+  };
+  global.__sagejs_comm_publish__ = (
+    type: unknown,
+    commId: unknown,
+    targetName: unknown,
+    targetModule: unknown,
+    data: unknown,
+    metadata: unknown,
+    buffers: unknown,
+  ) => {
+    if (type !== "open" && type !== "message" && type !== "close") {
+      throw new TypeError(`unknown Sage.js comm event type ${JSON.stringify(type)}`);
+    }
+    const event: SageCommEvent = {
+      schema: "sagejs.comm-event/v1",
+      type,
+      parentId: activeParentId,
+      commId: validateCommIdentifier(commId, "comm id"),
+      data: commJsonValue(data ?? {}),
+      metadata: commJsonValue(metadata ?? {}),
+      buffers: commBuffers(buffers),
+    };
+    if (type === "open") {
+      event.targetName = validateCommIdentifier(targetName, "comm target name");
+      if (typeof targetModule === "string" && targetModule) {
+        event.targetModule = validateCommIdentifier(targetModule, "comm target module");
+      }
+    }
+    emitComm(event);
   };
   global.__sagejs_interrupt_state__ = interruptState;
   const uninstallTimingHooks = installTimingHooks(
     globalThis,
-    (text) => onOutput(`${text}\n`),
+    (text) => writeOutput(`${text}\n`),
   );
   const runtimeBootstrap = runRuntimeBootstrap(
     compiler,
@@ -406,6 +704,8 @@ export function createKernelEvaluator({
     value: unknown,
     durationMs: number,
     suppressResult: boolean,
+    events: SageOutputEvent[] = [],
+    commEvents: SageCommEvent[] = [],
   ): KernelEvaluation {
     const publishResult =
       !suppressResult &&
@@ -420,6 +720,8 @@ export function createKernelEvaluator({
       repr,
       durationMs,
       display,
+      events,
+      commEvents,
       optimization: optimizationReport!,
     };
   }
@@ -552,39 +854,57 @@ export function createKernelEvaluator({
         filename = "<embedded>",
         language = mode,
         suppressResult = false,
+        parentId,
       }: {
         filename?: string;
         language?: SageLanguageMode;
         suppressResult?: boolean;
+        parentId?: string;
       } = {},
     ): KernelEvaluation {
       assertEvaluatorNotProfileContaminated();
-      const timeit = parseTimeitDirective(source);
-      if (timeit) source = timeit.source;
-      const timing = parseTimeDirective(source, language === "sage");
-      if (timing) source = timing.source;
-      const javascript = compile(source, filename, language, timeit?.options);
-      const execution = measureExecution(() => {
-        if (interruptState) Atomics.store(interruptState, 1, 1);
-        try {
-          global.ρσ_check_interrupt();
-          return runInThisContext(javascript, {
-            filename,
-            breakOnSigint: true,
-          });
-        } finally {
-          if (interruptState) Atomics.store(interruptState, 1, 0);
+      const previousParentId = activeParentId;
+      activeParentId = parentId;
+      activeEvents = [];
+      activeCommEvents = [];
+      try {
+        const timeit = parseTimeitDirective(source);
+        if (timeit) source = timeit.source;
+        const timing = parseTimeDirective(source, language === "sage");
+        if (timing) source = timing.source;
+        const javascript = compile(source, filename, language, timeit?.options);
+        const execution = measureExecution(() => {
+          if (interruptState) Atomics.store(interruptState, 1, 1);
+          try {
+            global.ρσ_check_interrupt();
+            return runInThisContext(javascript, {
+              filename,
+              breakOnSigint: true,
+            });
+          } finally {
+            if (interruptState) Atomics.store(interruptState, 1, 0);
+          }
+        });
+        const durationMs = execution.timing.wallMs;
+        if (timing) {
+          writeOutput(
+            `${formatExecutionTiming(execution.timing, {
+              breakdown: timing.breakdown,
+            })}\n`,
+          );
         }
-      });
-      const durationMs = execution.timing.wallMs;
-      if (timing) {
-        onOutput(
-          `${formatExecutionTiming(execution.timing, {
-            breakdown: timing.breakdown,
-          })}\n`,
+        return evaluationFromValue(
+          execution.value,
+          durationMs,
+          suppressResult,
+          activeEvents ?? [],
+          activeCommEvents ?? [],
         );
+      } finally {
+        activeEvents = undefined;
+        activeCommEvents = undefined;
+        activeParentId = previousParentId;
       }
-      return evaluationFromValue(execution.value, durationMs, suppressResult);
     },
 
     async profile(
@@ -787,6 +1107,41 @@ export function createKernelEvaluator({
       } finally {
         optimizerProfileActive = false;
       }
+    },
+    comm(event: SageCommEvent): void {
+      if (event.schema !== "sagejs.comm-event/v1") {
+        throw new TypeError("unsupported Sage.js comm schema");
+      }
+      const dispatch = Reflect.get(globalThis, "__sagejs_comm_dispatch_python__");
+      if (typeof dispatch !== "function") {
+        throw new Error("no Sage.js comm backend is active; import IPython or ipywidgets first");
+      }
+      const normalized: SageCommEvent = {
+        schema: "sagejs.comm-event/v1",
+        type: event.type,
+        parentId: event.parentId,
+        commId: validateCommIdentifier(event.commId, "comm id"),
+        data: commJsonValue(event.data ?? {}),
+        metadata: commJsonValue(event.metadata ?? {}),
+        buffers: commBuffers(event.buffers),
+      };
+      if (event.type === "open") {
+        normalized.targetName = validateCommIdentifier(event.targetName, "comm target name");
+        if (event.targetModule) normalized.targetModule = validateCommIdentifier(event.targetModule, "comm target module");
+      }
+      const previousParentId = activeParentId;
+      activeParentId = event.parentId;
+      try {
+        Reflect.apply(dispatch, undefined, [normalized]);
+      } finally {
+        activeParentId = previousParentId;
+      }
+    },
+    commInfo(targetName?: string): SageCommInfo {
+      const info = Reflect.get(globalThis, "__sagejs_comm_info_python__");
+      if (typeof info !== "function") return {};
+      const value = Reflect.apply(info, undefined, [targetName]);
+      return commJsonValue(value) as SageCommInfo;
     },
 
     complete(source: string, cursorPosition: number): KernelCompletion {

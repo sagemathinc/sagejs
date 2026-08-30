@@ -648,6 +648,35 @@ def ComplexNumber(
     return CC(real, imag)
 
 
+def _parse_python_complex_string(value: str) -> tuple[float, float]:
+    """Parse the ordinary Python `complex()` string grammar."""
+    text = value.strip()
+    if len(text) >= 2 and text[0] == "(" and text[-1] == ")":
+        text = text[1:-1].strip()
+    if not text or any(character.isspace() for character in text):
+        raise ValueError("complex() arg is a malformed string")
+    if text[-1] not in ("j", "J"):
+        return runtime.number(float(text)), 0.0
+
+    body = text[:-1]
+    split = -1
+    for index in range(1, len(body)):
+        if body[index] in ("+", "-") and body[index - 1] not in ("e", "E"):
+            split = index
+    if split == -1:
+        real_text = ""
+        imag_text = body
+    else:
+        real_text = body[:split]
+        imag_text = body[split:]
+    if imag_text in ("", "+"):
+        imag_text = "1"
+    elif imag_text == "-":
+        imag_text = "-1"
+    real_part = 0.0 if not real_text else runtime.number(float(real_text))
+    return real_part, runtime.number(float(imag_text))
+
+
 def _python_complex_parts(
     value: Any,
     convert_protocols: bool = False,
@@ -655,11 +684,7 @@ def _python_complex_parts(
     if isinstance(value, PythonComplex):
         return value._real, value._imag
     if convert_protocols and isinstance(value, str):
-        # The complete complex-string grammar is handled separately as that
-        # frontend is implemented.  A real spelling is already accepted by
-        # Python's complex constructor and is sufficient for numeric sentinels
-        # such as ``-inf`` used by interval packages.
-        return runtime.number(float(value)), 0.0
+        return _parse_python_complex_string(value)
     complex_converter = None
     if convert_protocols:
         complex_converter = getattr(value, "__complex__", None)
@@ -704,9 +729,15 @@ class PythonComplex:
 
     from __python__ import no_bound_methods  # type: ignore
 
-    def __init__(self, real: Any = 0, imag: Any = 0) -> None:
+    def __init__(self, real: Any = 0, imag: Any = runtime.undefined) -> None:
+        if isinstance(real, str) and imag is not runtime.undefined:
+            raise TypeError("complex() can't take second arg if first is a string")
         real_part = _python_complex_parts(real, True)
-        imag_part = _python_complex_parts(imag, True)
+        imag_part = (
+            (0.0, 0.0)
+            if imag is runtime.undefined
+            else _python_complex_parts(imag, True)
+        )
         # Complex components stay as primitive binary64 numbers internally;
         # their public ``real`` and ``imag`` properties restore Python float
         # identity when an integral value crosses back into Python code.
