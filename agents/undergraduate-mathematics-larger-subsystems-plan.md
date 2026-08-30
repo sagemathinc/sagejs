@@ -36,40 +36,14 @@ Acceptance:
   plausible but incorrect object;
 - a generated report lists parity by PREP chapter and public API.
 
-## P2 — Interacts without a Python or Jupyter dependency
+## P2 — Full ipywidgets and Sage interact support
 
-### Kernel model
-
-Implement `interact`, `@interact`, `input_box`, `slider`, `range_slider`,
-`checkbox`, `selector`, `color_selector`, and `button` as ordinary
-CPython-parseable Python.  Normalize annotations/defaults into immutable
-control specifications.  Calling an interact once evaluates its documented
-defaults, so CLI use is deterministic and useful even without a frontend.
-
-Publish live controls as
-`application/vnd.sagejs.interact+json` display data.  The payload contains a
-version, stable interaction id, ordered controls, layout, current values, and
-the output display id.  Control events use a Sage.js-owned request/reply
-channel, not IPython widget state or Python traitlets.  Re-evaluation happens
-inside the owning kernel session and replaces the prior output atomically.
-
-### Frontends
-
-- Jupyter kernel: expose a `sagejs.interact` comm target using the existing
-  pure-JavaScript messaging stack.
-- `app.sagejs.org`: render the same MIME schema directly using accessible HTML
-  controls, KaTeX, and the existing Plotly renderer.
-- Other clients: the initial display remains meaningful even if they do not
-  implement the live protocol.
-
-Acceptance:
-
-- PREP's basic plot, slider, checkbox, selector, and custom-layout interacts
-  work in Jupyter and the browser app;
-- control changes do not leak sessions or retain obsolete outputs;
-- CLI execution evaluates defaults and explains that live controls require a
-  compatible display frontend;
-- protocol conformance tests do not launch `jupyter`, Python, or a browser.
+This subsystem now has its own implementation-grade plan in
+`agents/ipywidgets-full-support-plan.md`. The investigation showed that modern
+Sage interact is a thin specialization of ipywidgets and that CoCalc already
+provides a reusable upstream browser manager. Implement the standard
+ipywidgets Python API and wire protocol described there; do not introduce a
+Sage.js-owned widget MIME type or comm protocol.
 
 ## P3 — Directed rounding and certified real/complex intervals
 
