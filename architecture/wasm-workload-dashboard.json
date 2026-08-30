@@ -20,7 +20,7 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "f524a3db80fb18289fa7247e8115710d06ccc3acaeac4e4302beac29858a29c3"
+      "sha256": "0c6eddce99ee25c3dd0d33db6b1f02b5916fa55a42634125914d8e9dd115d8a0"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",

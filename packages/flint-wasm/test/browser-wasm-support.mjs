@@ -448,6 +448,14 @@ export async function loadParityCorpus() {
     if (!Array.isArray(item.requires) || item.requires.length === 0) {
       throw new Error(`case ${item.id} has no exact required capability routes`);
     }
+    if (
+      item.node_expect !== undefined &&
+      (item.node_expect === null ||
+        typeof item.node_expect !== "object" ||
+        Array.isArray(item.node_expect))
+    ) {
+      throw new Error(`case ${item.id} has an invalid Node-native expectation`);
+    }
     const requirements = item.requires.map((requirement, index) =>
       validateCapabilityRequirement(requirement, `case ${item.id} requirement ${index}`)
     );
@@ -594,9 +602,8 @@ export function unobservedCapabilityRequirements(requirements, trace) {
   return requirements.filter(({ id, route }) => !observed.has(`${id}\0${route}`));
 }
 
-export function assertParityExpectation(item, result) {
+export function assertParityExpectation(item, result, expected = item.expect) {
   const failures = [];
-  const expected = item.expect;
   if (Object.hasOwn(expected, "stdout") && result.stdout !== expected.stdout) {
     failures.push(`stdout: expected ${JSON.stringify(expected.stdout)}, got ${JSON.stringify(result.stdout)}`);
   }
