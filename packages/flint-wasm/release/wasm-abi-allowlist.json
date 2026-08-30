@@ -638,6 +638,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_p1_degeneracy_matrix",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_p1_destroy",
           "kind": "function"
         },
@@ -2039,6 +2043,10 @@
         },
         {
           "name": "sagejs_wasm_numberOfPartitions",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_prime_pi",
           "kind": "function"
         },
         {
