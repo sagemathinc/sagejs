@@ -32,6 +32,7 @@ Start with:
 - [Split even-degree hyperelliptic Jacobians](hyperelliptic-even-degree-jacobians.md)
 - [Exploring elliptic-curve L-series](elliptic-curve-lseries.md)
 - [Exact modular-form q-expansion bases](modular-form-q-expansions.md)
+- [Brandt modules over the rational numbers](brandt-modules.md)
 - [Mestre's method of graphs and sparse modular forms](mestre-method-of-graphs.md)
 - [WebAssembly browser support and capabilities](webassembly-browser-support.md)
 - [Portable Node and browser examples](webassembly-examples.md)

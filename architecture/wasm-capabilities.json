@@ -73,13 +73,20 @@
           "test/browser-compiler-frontend.cjs"
         ]
       },
-      "declared-ffi-differential": {
+    "declared-ffi-differential": {
         "differential": true,
         "paths": [
           "test/ffi.cjs",
           "test/baselib-boundaries.cjs"
-        ]
-      },
+      ]
+    },
+    "brandt-rank4-differential": {
+      "differential": true,
+      "paths": [
+        "test/brandt-rank4-native.cjs",
+        "test/brandt-ideal-classes.cjs"
+      ]
+    },
       "flint-wasm-resource-differential": {
         "differential": true,
         "paths": [
@@ -4560,6 +4567,30 @@
         "status": "included"
       },
       "public_explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_gram_lll_transform",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential",
+        "brandt-rank4-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The exact Gram-mode FLINT LLL declaration shares the generated Wasm adapter contract and has exact unimodular-transform replay in the Brandt lattice consumer.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "The exact Gram-mode FLINT LLL declaration is available in generated WebAssembly with a same-source authenticated consumer fallback."
     },
     {
       "id": "ffi:flint:integer_log_sqrt_balls_packed",
@@ -10988,12 +11019,40 @@
       ],
       "status": "available",
       "reviewed": true,
-      "review_note": "The receipt-authenticated production pack compiles all 17 registered functions in this source-transparent kernel family.",
-      "public_explanation": "All 17 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "review_note": "The receipt-authenticated production pack compiles all 18 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 18 registered functions in this family run as compiled WebAssembly in the production artifact.",
       "compiled_coverage": {
-        "compiled_functions": 17,
+        "compiled_functions": 18,
         "fallback_functions": 0,
-        "total_functions": 17,
+        "total_functions": 18,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:brandt-rank4-production",
+      "kind": "production-kernel",
+      "family": "brandt-rank4",
+      "source": "src/lib/sagejs/kernels/quaternion/brandt_rank4.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "kernel-gmp",
+      "public_consumers": [
+        "eichler-ideal-classes",
+        "brandt-series"
+      ],
+      "tests": [
+        "brandt-rank4-differential",
+        "production-kernel-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "Both registered rank-four functions use one bounded live exact workspace, caller-owned output, deterministic cleanup, and exact dynamic/native differential replay.",
+      "public_explanation": "Exact rank-four theta counts and one-norm vector enumeration run as source-compiled WebAssembly with the same-source Python fallback.",
+      "compiled_coverage": {
+        "compiled_functions": 2,
+        "fallback_functions": 0,
+        "total_functions": 2,
         "production_pack": true,
         "fallback_reasons": []
       }

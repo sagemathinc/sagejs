@@ -2,9 +2,9 @@
   "schema": "sagejs.wasm-production-kernel-coverage/v1",
   "source_registry": "architecture/native-kernels.json",
   "totals": {
-    "registered_kernels": 51,
-    "production_kernels": 44,
-    "compiled_functions": 279,
+    "registered_kernels": 52,
+    "production_kernels": 45,
+    "compiled_functions": 282,
     "unsupported_production_functions": 0,
     "non_production_functions": 30,
     "same_source_fallback_functions": 30
@@ -60,12 +60,21 @@
       ]
     },
     {
+      "id": "brandt-rank4-production",
+      "production": true,
+      "status": "available",
+      "compiled_functions": 2,
+      "fallback_functions": 0,
+      "total_functions": 2,
+      "fallback_reasons": []
+    },
+    {
       "id": "dense-integer-flint-production",
       "production": true,
       "status": "available",
-      "compiled_functions": 17,
+      "compiled_functions": 18,
       "fallback_functions": 0,
-      "total_functions": 17,
+      "total_functions": 18,
       "fallback_reasons": []
     },
     {

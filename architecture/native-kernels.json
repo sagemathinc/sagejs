@@ -211,6 +211,7 @@
         "flint_dense_integer_matrix_hnf_modular_eldiv",
         "flint_dense_integer_matrix_hnf_transform",
         "flint_dense_integer_matrix_lll_transform",
+        "flint_dense_integer_matrix_gram_lll_transform",
         "flint_relation_presentation_replay",
         "flint_dense_integer_matrix_snf_transform",
         "flint_dense_integer_matrix_right_kernel",
@@ -226,6 +227,20 @@
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
       "benchmark": "test:matrix:integer-performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "brandt-rank4-production",
+      "source": "src/lib/sagejs/kernels/quaternion/brandt_rank4.py",
+      "functions": [
+        "brandt_rank4_theta_counts",
+        "brandt_rank4_vectors_of_norm"
+      ],
+      "semantic_domain": "bounded exact enumeration and theta counting for authenticated positive-definite integral rank-four quaternion norm forms over caller-owned buffers",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "sage", "magma", "exhaustive-enumeration"],
+      "benchmark": "bench:modular:brandt-ideal-classes:competitive",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
