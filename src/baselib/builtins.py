@@ -3537,27 +3537,27 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
 
     if _builtins_is_python_class(item):
         text = _builtins_class_help(item, False)
+    elif runtime.strict_equal(runtime.jstype(item), "function"):
+        name = _builtins_callable_name(item)
+        bound = _builtins_has_member(item, "__self__")
+        kind = "method" if bound else "function"
+        module = _builtins_get_member(item, "__module__")
+        heading = "Help on " + kind + " " + name
+        if runtime.strict_equal(runtime.jstype(module), "string") and module:
+            heading += " in module " + module
+        lines = [
+            heading + ":",
+            "",
+            _builtins_signature(item, name),
+        ]
+        doc = _builtins_doc(item)
+        if doc:
+            lines.extend(["", _builtins_indent_doc(doc, "    ")])
+        text = str.join("\n", lines)
     else:
         constructor = _builtins_get_member(item, "constructor")
         if _builtins_is_python_class(constructor):
             text = _builtins_class_help(item, True)
-        elif runtime.strict_equal(runtime.jstype(item), "function"):
-            name = _builtins_callable_name(item)
-            bound = _builtins_has_member(item, "__self__")
-            kind = "method" if bound else "function"
-            module = _builtins_get_member(item, "__module__")
-            heading = "Help on " + kind + " " + name
-            if runtime.strict_equal(runtime.jstype(module), "string") and module:
-                heading += " in module " + module
-            lines = [
-                heading + ":",
-                "",
-                _builtins_signature(item, name),
-            ]
-            doc = _builtins_doc(item)
-            if doc:
-                lines.extend(["", _builtins_indent_doc(doc, "    ")])
-            text = str.join("\n", lines)
         else:
             type_name = _builtins_callable_name(constructor)
             text = "Help on " + type_name + " object."

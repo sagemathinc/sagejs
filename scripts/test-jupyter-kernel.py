@@ -9,6 +9,7 @@ import signal
 import subprocess
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -249,6 +250,154 @@ def main(kernel_command: list[str]) -> None:
                 == "ok"
             )
 
+            widget_id = client.execute(
+                "import ipywidgets as widgets\n"
+                "from IPython.display import display, clear_output\n"
+                "slider = widgets.IntSlider(value=2, min=0, max=9, description='power')\n"
+                "output = widgets.Output()\n"
+                "image = widgets.Image(value=b'\\x89PNG\\r\\n\\x1a\\n', format='png')\n"
+                "def update_widget(change):\n"
+                "    with output:\n"
+                "        clear_output(wait=True)\n"
+                "        display(change['new']^2)\n"
+                "slider.observe(update_widget, names='value')\n"
+                "display(widgets.VBox([slider, output, image]))"
+            )
+            widget_messages = iopub_until_idle(client, widget_id, timeout=40)
+            widget_reply = matching_message(client, "shell", widget_id)["content"]
+            assert widget_reply["status"] == "ok", widget_reply
+            widget_opens = [
+                message
+                for message in widget_messages
+                if message["header"]["msg_type"] == "comm_open"
+            ]
+            slider_open = next(
+                message
+                for message in widget_opens
+                if message["content"]["data"]["state"].get("_model_name")
+                == "IntSliderModel"
+            )
+            image_open = next(
+                message
+                for message in widget_opens
+                if message["content"]["data"]["state"].get("_model_name")
+                == "ImageModel"
+            )
+            slider_comm_id = slider_open["content"]["comm_id"]
+            assert slider_open["metadata"] == {"version": "2.1.0"}
+            assert image_open["content"]["data"]["buffer_paths"] == [["value"]]
+            assert bytes(image_open["buffers"][0]) == b"\x89PNG\r\n\x1a\n"
+            widget_view = next(
+                message
+                for message in widget_messages
+                if message["header"]["msg_type"] == "display_data"
+                and "application/vnd.jupyter.widget-view+json"
+                in message["content"]["data"]
+            )
+            assert (
+                widget_view["content"]["data"][
+                    "application/vnd.jupyter.widget-view+json"
+                ]["version_major"]
+                == 2
+            )
+
+            comm_info_request = client.session.send(
+                client.shell_channel.socket,
+                "comm_info_request",
+                content={"target_name": "jupyter.widget"},
+            )
+            assert comm_info_request is not None
+            comm_info_id = comm_info_request["header"]["msg_id"]
+            iopub_until_idle(client, comm_info_id)
+            comm_info = matching_message(client, "shell", comm_info_id)["content"]
+            assert comm_info["status"] == "ok"
+            assert comm_info["comms"][slider_comm_id] == {
+                "target_name": "jupyter.widget"
+            }
+
+            slider_update = client.session.send(
+                client.shell_channel.socket,
+                "comm_msg",
+                content={
+                    "comm_id": slider_comm_id,
+                    "data": {
+                        "method": "update",
+                        "state": {"value": 5},
+                        "buffer_paths": [],
+                    },
+                },
+            )
+            assert slider_update is not None
+            slider_update_id = slider_update["header"]["msg_id"]
+            slider_messages = iopub_until_idle(client, slider_update_id)
+            assert any(
+                message["header"]["msg_type"] == "comm_msg"
+                and message["content"]["comm_id"] == slider_comm_id
+                and message["content"]["data"].get("method") == "echo_update"
+                and message["content"]["data"]["state"].get("value") == 5
+                for message in slider_messages
+            ), [
+                (message["header"]["msg_type"], message["content"])
+                for message in slider_messages
+            ]
+            assert any(
+                message["header"]["msg_type"] == "clear_output"
+                and message["content"]["wait"]
+                for message in slider_messages
+            )
+            assert any(
+                message["header"]["msg_type"] == "display_data"
+                and message["content"]["data"].get("text/plain") == "25"
+                for message in slider_messages
+            )
+            slider_value_id = client.execute("slider.value")
+            slider_value_messages = iopub_until_idle(client, slider_value_id)
+            assert (
+                message_of_type(slider_value_messages, "execute_result")["content"][
+                    "data"
+                ]["text/plain"]
+                == "5"
+            )
+            assert (
+                matching_message(client, "shell", slider_value_id)["content"]["status"]
+                == "ok"
+            )
+
+            control_comm_id = uuid.uuid4().hex
+            control_open = client.session.send(
+                client.shell_channel.socket,
+                "comm_open",
+                content={
+                    "comm_id": control_comm_id,
+                    "target_name": "jupyter.widget.control",
+                    "data": {},
+                },
+                metadata={"version": "1.0.0"},
+            )
+            assert control_open is not None
+            iopub_until_idle(client, control_open["header"]["msg_id"])
+            control_request = client.session.send(
+                client.shell_channel.socket,
+                "comm_msg",
+                content={
+                    "comm_id": control_comm_id,
+                    "data": {"method": "request_states"},
+                },
+            )
+            assert control_request is not None
+            control_messages = iopub_until_idle(
+                client, control_request["header"]["msg_id"]
+            )
+            state_reply = next(
+                message
+                for message in control_messages
+                if message["header"]["msg_type"] == "comm_msg"
+                and message["content"]["comm_id"] == control_comm_id
+                and message["content"]["data"].get("method") == "update_states"
+            )
+            assert slider_comm_id in state_reply["content"]["data"]["states"]
+            assert state_reply["buffers"], "image state must remain binary"
+
             complete_id = client.complete("prime_p", 7)
             completion = matching_message(client, "shell", complete_id)["content"]
             assert completion["status"] == "ok"
@@ -294,7 +443,7 @@ def main(kernel_command: list[str]) -> None:
             qmark_id = client.execute("b.q_expansion?")
             messages = iopub_until_idle(client, qmark_id)
             qmark_text = message_of_type(messages, "stream")["content"]["text"]
-            assert "Help on method q_expansion" in qmark_text
+            assert "Help on method q_expansion" in qmark_text, qmark_text
             assert "FLINT" in qmark_text
             assert (
                 matching_message(client, "shell", qmark_id)["content"]["status"] == "ok"

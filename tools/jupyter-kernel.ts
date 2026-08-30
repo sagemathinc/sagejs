@@ -177,6 +177,12 @@ function decodeJson(frame: Buffer): Record<string, any> {
   return JSON.parse(frame.toString("utf8"));
 }
 
+function nodeBuffers(buffers: readonly Uint8Array[]): Buffer[] {
+  return buffers.map((buffer) =>
+    Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength),
+  );
+}
+
 function hashName(signatureScheme: string): string {
   const prefix = "hmac-";
   if (!signatureScheme.startsWith(prefix)) {
@@ -345,6 +351,7 @@ export class SageJupyterKernel {
     parent: JupyterMessage | undefined,
     content: Record<string, unknown>,
     metadata: Record<string, unknown> = {},
+    buffers: Buffer[] = [],
   ): Promise<void> {
     await this.iopubQueue.send([
       Buffer.from(`kernel.${this.kernelId}.${msgType}`),
@@ -354,6 +361,7 @@ export class SageJupyterKernel {
         parent,
         content,
         metadata,
+        buffers,
       ),
     ]);
   }
@@ -363,6 +371,66 @@ export class SageJupyterKernel {
     parent?: JupyterMessage,
   ): Promise<void> {
     return this.publish("status", parent, { execution_state: state });
+  }
+
+  private displayBundleWithFallback(
+    input: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const data = { ...input };
+    if (PLOTLY_MIME in data && !("text/html" in data)) {
+      data["text/html"] = plotlyHtmlFallback(data[PLOTLY_MIME]);
+    }
+    return data;
+  }
+
+  private publishOutputEvent(
+    event: import("./kernel-evaluator").SageOutputEvent,
+    parent: JupyterMessage,
+  ): Promise<void> {
+    if (event.type === "stream") {
+      return this.publish("stream", parent, {
+        name: event.name,
+        text: event.text,
+      });
+    }
+    if (event.type === "clear_output") {
+      return this.publish("clear_output", parent, { wait: event.wait });
+    }
+    if (event.type === "error") {
+      return this.publish("error", parent, {
+        ename: event.name,
+        evalue: event.message,
+        traceback: event.traceback,
+      });
+    }
+    return this.publish(event.type, parent, {
+      data: this.displayBundleWithFallback(event.data),
+      metadata: event.metadata,
+      ...(event.displayId
+        ? { transient: { display_id: event.displayId } }
+        : {}),
+    });
+  }
+
+  private publishCommEvent(
+    event: import("./kernel-evaluator").SageCommEvent,
+    parent: JupyterMessage,
+  ): Promise<void> {
+    const content: Record<string, unknown> = {
+      comm_id: event.commId,
+      data: event.data,
+    };
+    if (event.type === "open") {
+      content.target_name = event.targetName;
+      if (event.targetModule) content.target_module = event.targetModule;
+    }
+    return this.publish(
+      event.type === "message" ? "comm_msg" : `comm_${event.type}`,
+      parent,
+      content,
+      event.metadata,
+      nodeBuffers(event.buffers),
+    );
   }
 
   private kernelInfo(): Record<string, unknown> {
@@ -436,6 +504,19 @@ export class SageJupyterKernel {
             }),
           );
         },
+        onEvent: (event) => {
+          if (silent || event.type === "stream") return;
+          outputTail = outputTail.then(() =>
+            this.publishOutputEvent(event, request),
+          );
+        },
+        onComm: (event) => {
+          if (silent) return;
+          outputTail = outputTail.then(() =>
+            this.publishCommEvent(event, request),
+          );
+        },
+        parentId: request.header.msg_id,
       });
       const optimizerMetadata = {
         sagejs: {
@@ -449,13 +530,10 @@ export class SageJupyterKernel {
         if (result.repr) data["text/plain"] = result.repr;
         if (result.display) {
           data[result.display.mime] = result.display.data;
-          if (result.display.mime === PLOTLY_MIME) {
-            data["text/html"] = plotlyHtmlFallback(result.display.data);
-          }
         }
         await this.publish("execute_result", request, {
           execution_count: executionCount,
-          data,
+          data: this.displayBundleWithFallback(data),
           metadata: optimizerMetadata,
         }, optimizerMetadata);
       }
@@ -488,6 +566,49 @@ export class SageJupyterKernel {
     }
   }
 
+  private async handleCommRequest(request: JupyterMessage): Promise<void> {
+    const suffix = request.header.msg_type.slice("comm_".length);
+    if (suffix !== "open" && suffix !== "msg" && suffix !== "close") {
+      throw new TypeError(`unsupported comm message ${request.header.msg_type}`);
+    }
+    const event: import("./kernel-evaluator").SageCommEvent = {
+      schema: "sagejs.comm-event/v1",
+      type: suffix === "msg" ? "message" : suffix,
+      parentId: request.header.msg_id,
+      commId: String(request.content.comm_id ?? ""),
+      data: request.content.data ?? {},
+      metadata: request.metadata,
+      buffers: request.buffers.map((buffer) =>
+        new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength),
+      ),
+    };
+    if (event.type === "open") {
+      event.targetName = String(request.content.target_name ?? "");
+      if (request.content.target_module !== undefined) {
+        event.targetModule = String(request.content.target_module);
+      }
+    }
+    let outputTail = Promise.resolve();
+    try {
+      await this.session!.comm(event, {
+        onEvent: (output) => {
+          outputTail = outputTail.then(() =>
+            this.publishOutputEvent(output, request),
+          );
+        },
+        onComm: (published) => {
+          outputTail = outputTail.then(() =>
+            this.publishCommEvent(published, request),
+          );
+        },
+      });
+      await outputTail;
+    } catch (error) {
+      await outputTail;
+      await this.publish("error", request, traceback(error));
+    }
+  }
+
   private async handleShell(request: JupyterMessage): Promise<void> {
     await this.publishStatus("busy", request);
     try {
@@ -502,6 +623,11 @@ export class SageJupyterKernel {
           break;
         case "execute_request":
           await this.execute(request);
+          break;
+        case "comm_open":
+        case "comm_msg":
+        case "comm_close":
+          await this.handleCommRequest(request);
           break;
         case "complete_request": {
           const source = String(request.content.code ?? "");
@@ -598,14 +724,28 @@ export class SageJupyterKernel {
             { status: "ok", history: [] },
           );
           break;
-        case "comm_info_request":
+        case "comm_info_request": {
+          const info = await this.session!.commInfo(
+            request.content.target_name === undefined
+              ? undefined
+              : String(request.content.target_name),
+          );
           await this.sendRouterReply(
             this.shellQueue,
             request,
             "comm_info_reply",
-            { status: "ok", comms: {} },
+            {
+              status: "ok",
+              comms: Object.fromEntries(
+                Object.entries(info).map(([commId, value]) => [
+                  commId,
+                  { target_name: value.targetName },
+                ]),
+              ),
+            },
           );
           break;
+        }
         case "shutdown_request":
           await this.sendRouterReply(
             this.shellQueue,

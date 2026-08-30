@@ -314,7 +314,7 @@ Return a circle centered at `center` with the given radius.
 ## `Color`
 
 ```sage
-Color(red: Any='#0000ff', green: Any=None, blue: Any=None, space: str='rgb') -> None
+Color(red='#0000ff', green=None, blue=None, space='rgb')
 ```
 
 A Sage-compatible RGB color with color-space conversions.
@@ -4926,7 +4926,7 @@ cubes refinements.
 ## `IndexFaceSet`
 
 ```sage
-IndexFaceSet(faces: Any, point_list: Any=None, enclosed: bool=False, texture_list: Any=None, **options: Any) -> None
+IndexFaceSet(faces, point_list=None, enclosed=False, texture_list=None, **options)
 ```
 
 A Sage-compatible indexed collection of polygonal faces.
@@ -5258,7 +5258,7 @@ sage: float(log2)
 ## `ManinPresentation`
 
 ```sage
-ManinPresentation(projective_line: P1List) -> None
+ManinPresentation(projective_line)
 ```
 
 A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
@@ -5286,7 +5286,7 @@ the `E1` paths together with order-two and order-three stabilizer paths.
 ## `ManinRelations`
 
 ```sage
-ManinRelations(projective_line: P1List, modulus: Any) -> None
+ManinRelations(projective_line, modulus)
 ```
 
 Sparse weight-2 `Gamma_0(N)` Manin relations over `GF(p)`.
@@ -5416,7 +5416,7 @@ conjugacy classes using the conjugation action of the generators.
 ## `Mod`
 
 ```sage
-Mod(value: Any, modulus: Any) -> IntegerModElement
+Mod(value: Any, modulus: Any) -> Any
 ```
 
 Construct `value` in the ring of integers modulo `modulus`.
@@ -6081,7 +6081,7 @@ Return a regular octahedron centered at `center`.
 ## `P1List`
 
 ```sage
-P1List(level: Any) -> None
+P1List(level)
 ```
 
 The projective line `P^1(Z/NZ)` with Sage-compatible representatives.
@@ -6180,7 +6180,7 @@ Return the exact triple-Manin-symbol presentation over `QQ`.
 parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics
 ```
 
-Plot a two-component parametric plane curve.
+Plot a parametric plane curve, space curve, or surface.
 
 ### Metadata
 
@@ -6225,7 +6225,7 @@ Plot a parametric space curve or parametric surface.
 ## `Partition`
 
 ```sage
-Partition(entries: Any, parent: Any=None) -> None
+Partition(entries, parent=None)
 ```
 
 A partition of a nonnegative integer.

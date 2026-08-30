@@ -24,11 +24,13 @@ test("kernel comms exchange JSON and exact binary buffers", async (t) => {
   const created = await session.evaluate(
     [
       "from IPython import get_ipython",
+      "from IPython.display import display",
       "import comm",
       "received = []",
       "channel = comm.create_comm(target_name='sagejs.test', comm_id='kernel-one', data={'value': 1}, buffers=[b'\\x00\\xff'])",
       "def receive(message):",
       "    received.append(message['content']['data']['value'])",
+      "    display({'callback': received[-1]})",
       "    channel.send(data={'echo': received[-1]}, buffers=message['buffers'])",
       "channel.on_msg(receive)",
     ].join("\n"),
@@ -45,6 +47,7 @@ test("kernel comms exchange JSON and exact binary buffers", async (t) => {
   });
   assert.deepEqual(await session.commInfo("different.target"), {});
 
+  const callbackOutput = [];
   await session.comm(
     event("message", {
       parentId: "slider-change",
@@ -52,12 +55,15 @@ test("kernel comms exchange JSON and exact binary buffers", async (t) => {
       data: { value: 37 },
       buffers: [Uint8Array.from([3, 1, 4, 1, 5])],
     }),
+    { onEvent: (output) => callbackOutput.push(output) },
   );
   const reply = published.at(-1);
   assert.equal(reply.type, "message");
   assert.equal(reply.parentId, "slider-change");
   assert.deepEqual(reply.data, { echo: 37 });
   assert.deepEqual(Array.from(reply.buffers[0]), [3, 1, 4, 1, 5]);
+  assert.equal(callbackOutput[0].type, "display_data");
+  assert.equal(callbackOutput[0].data["text/plain"], "{'callback': 37}");
   assert.equal((await session.evaluate("received")).repr, "[37]");
 
   await session.comm(event("close", { commId: "kernel-one" }));

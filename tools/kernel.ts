@@ -57,6 +57,12 @@ export interface SageEvaluationOptions {
   language?: SageSourceLanguage;
 }
 
+export interface SageRequestHandlers {
+  onOutput?: (text: string) => void;
+  onEvent?: (event: SageOutputEvent) => void;
+  onComm?: (event: SageCommEvent) => void;
+}
+
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
 }
@@ -352,6 +358,7 @@ export class SageSession extends EventEmitter {
     type: "complete" | "inspect" | "isComplete" | "documentation" | "comm" | "commInfo",
     source: string,
     extra: Record<string, unknown> = {},
+    handlers: SageRequestHandlers = {},
   ): Promise<T> {
     if (this.closed) throw new SageSessionClosedError();
     if (typeof source !== "string") {
@@ -369,6 +376,9 @@ export class SageSession extends EventEmitter {
       this.pending.set(id, {
         kind: "request",
         output: "",
+        onOutput: handlers.onOutput,
+        onEvent: handlers.onEvent,
+        onComm: handlers.onComm,
         resolve,
         reject,
         settled,
@@ -397,8 +407,11 @@ export class SageSession extends EventEmitter {
   }
 
   /** Deliver one normalized frontend comm event on the session queue. */
-  comm(event: SageCommEvent): Promise<void> {
-    return this.request("comm", "", { event });
+  comm(
+    event: SageCommEvent,
+    handlers: SageRequestHandlers = {},
+  ): Promise<void> {
+    return this.request("comm", "", { event }, handlers);
   }
 
   /** Return the exact live comm registry, optionally filtered by target. */
