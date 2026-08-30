@@ -380,8 +380,10 @@ print(json.dumps({'status': 'resident-hnf-ok', 'reports': reports}, sort_keys=Tr
 });
 
 test("the ordinary CPython oracle retains the same canonical lattices", () => {
+  const pythonExecutable =
+    process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
   const python = spawnSync(
-    "python3",
+    pythonExecutable,
     [
       "-c",
       [
@@ -401,7 +403,11 @@ test("the ordinary CPython oracle retains the same canonical lattices", () => {
     ],
     { cwd: tmpdir(), encoding: "utf8", timeout: 30_000 },
   );
-  assert.equal(python.status, 0, python.stderr || python.stdout);
+  assert.equal(
+    python.status,
+    0,
+    python.stderr || python.stdout || python.error?.message || "CPython oracle failed",
+  );
   assert.deepEqual(JSON.parse(python.stdout), {
     status: "cpython-resident-hnf-ok",
   });
