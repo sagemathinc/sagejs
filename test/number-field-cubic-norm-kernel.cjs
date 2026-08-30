@@ -158,6 +158,160 @@ for function in (row_dynamic, row_packed):
     assert tuple(integer_buffer_values(smooth)) == (1, 1)
 `;
 
+const reducedIdealRelationBatch = String.raw`
+import sagejs.number_fields.class_group_factor_base as factor_bases
+import sagejs.number_fields.class_group_matrix as matrix
+import sagejs.number_fields.class_group_relations as relations
+import sagejs.number_fields.class_unit_groups as class_unit
+import sagejs.number_fields.cubic_class_number as cubic
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 - x**2 - 576*x - 1665, "a_reduced_batch")
+engine = class_unit.ClassUnitGroupEngine(K, proof=False)
+plan = factor_bases.factor_base_plan(engine.order, proof=False)
+factor_base = tuple(
+    record.prime_ideal for record in factor_bases.build_factor_base(plan)
+)
+assert [int(prime.norm()._numerator) for prime in factor_base] == [
+    3, 3, 3, 5, 5, 5, 7, 8, 13, 19
+]
+reduced = engine._reduced_cubic_relation_order_rows(relations, factor_base)
+assert reduced == (
+    ((19, 0, 0), (-32, 2, -1), (6, 15, -8)),
+    9,
+    19,
+)
+candidates = cubic._packed_cubic_reduced_ideal_relation_candidates(
+    engine.order,
+    factor_base,
+    reduced[0],
+    maximum_candidates=128,
+    coefficient_bound=3,
+    cancelled=None,
+)
+assert candidates is not None and len(candidates) == 46
+
+# Independently construct a sparse sample of public field elements and cross
+# the ordinary exact containment boundary.  The packed row producer remains
+# only a proposal mechanism.
+basis = tuple(engine.order.basis())
+for candidate_index in (0, 7, 23, 45):
+    row, coordinates, expected_norm = candidates[candidate_index]
+    element = K.zero()
+    for coefficient, basis_element in zip(coordinates, basis, strict=True):
+        element += coefficient * basis_element
+    assert abs(int(element.norm()._numerator)) == expected_norm
+    replay = relations.ExactRelationCollector(engine.order, factor_base)
+    admission = replay.admit_integral_order_basis_row(
+        coordinates,
+        row,
+        provenance={"algorithm": "reduced-ideal-differential"},
+    )
+    assert admission.record.row == row
+
+trial = relations.ExactRelationCollector(engine.order, factor_base)
+initial = relations.initial_rational_prime_relation_proposals(trial)
+selected, rank = cubic._select_cubic_relation_candidates(
+    matrix,
+    tuple(row for _coordinates, row, _provenance in initial),
+    candidates,
+    len(factor_base),
+)
+assert selected is not None and rank == 10 and len(selected) == 5
+dependencies = cubic._select_cubic_postrank_dependency_candidates(
+    selected,
+    candidates,
+    8,
+)
+assert len(dependencies) == 8
+retained = tuple(selected) + tuple(dependencies)
+proposals = tuple(initial) + tuple(
+    (
+        coordinates,
+        row,
+        {"algorithm": "reduced-ideal-selected"},
+    )
+    for row, coordinates, _norm in retained
+)
+authority = cubic._validated_cubic_integral_relation_batch(
+    relations,
+    engine.order,
+    factor_base,
+    initial,
+    retained,
+)
+assert authority is not None
+admissions = trial._admit_validated_integral_order_basis_rows(
+    authority,
+    proposals,
+    _validated_token=relations._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
+)
+assert len(admissions) == 19
+presentation = matrix.extract_relation_presentation(
+    [record.row for record in trial.records],
+    len(factor_base),
+    require_full_rank=False,
+)
+assert presentation.rank == 10
+assert presentation.order == 9
+assert presentation.invariants == (3, 3)
+assert len(presentation.dependency_transforms) == 9
+units = engine._independent_units(trial, presentation, 2)
+_torsion, _regulator, index = engine._analytic_index(presentation, units, 2)
+assert len(units) == 2 and index.index_one and index.upper_index == 1
+
+# A missing checked kernel declines before publication.  Cancellation remains
+# ordered before the first bounded source iteration.
+saved_override = cubic._cubic_relation_sieve_kernel_override
+cubic._cubic_relation_sieve_kernel_override = False
+try:
+    assert cubic._packed_cubic_reduced_ideal_relation_candidates(
+        engine.order,
+        factor_base,
+        reduced[0],
+        maximum_candidates=128,
+        coefficient_bound=3,
+        cancelled=None,
+    ) is None
+finally:
+    cubic._cubic_relation_sieve_kernel_override = saved_override
+
+cancelled_calls = []
+def cancelled():
+    cancelled_calls.append(len(cancelled_calls))
+    return True
+try:
+    cubic._packed_cubic_reduced_ideal_relation_candidates(
+        engine.order,
+        factor_base,
+        reduced[0],
+        maximum_candidates=128,
+        coefficient_bound=3,
+        cancelled=cancelled,
+    )
+    raise AssertionError("cancelled reduced-ideal search did not stop")
+except RuntimeError as error:
+    assert str(error) == "class/unit computation cancelled"
+assert cancelled_calls == [0]
+
+public_field = NumberField(x**3 - x**2 - 576*x - 1665, "a_reduced_public")
+assert public_field.class_number(proof=False) == 9
+result = public_field.class_unit_group(proof=False)
+resources = result.diagnostics["resources"]
+assert result.proof_status == "exact-relations-conditional-grh"
+assert result.class_group().invariants() == (3, 3)
+assert resources["cubic_reduced_ideal_sieve_uses"] == 1
+assert resources["cubic_reduced_ideal_sieve_candidates"] == 46
+assert resources["cubic_reduced_ideal_sieve_relations"] == 4
+assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
+assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
+assert resources["relation_attempts"] == 0
+assert resources["relation_candidates"] == 0
+assert resources["saturation_rounds"] == 0
+print("cubic-reduced-ideal-relation-batch-ok")
+`;
+
 const cubicFactorDifferential = String.raw`
 from sagejs.number_fields import prime_ideals
 
@@ -203,6 +357,11 @@ test("packed cubic integral relation sieve matches ordinary Python", () => {
     `${relationSieveDifferential}\nfrom sagejs.native import is_compiled\nprint(is_compiled(coefficient_packed), is_compiled(candidate_packed), is_compiled(row_packed))\n`,
   );
   assert.equal(output, "True True True");
+});
+
+test("reduced cubic ideal batches close class and unit relation lattices", () => {
+  assert.equal(runSagejs(reducedIdealRelationBatch, 180_000),
+    "cubic-reduced-ideal-relation-batch-ok");
 });
 
 test("cubic dependency sieve widens an incomplete unit prefix", () => {

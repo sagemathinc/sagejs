@@ -21,6 +21,7 @@ import json
 import time
 from typing import Any, Callable, Iterable, Sequence, cast
 
+import sagejs as sage
 import sagejs.runtime as runtime
 
 EXACT_UNCONDITIONAL = "exact-unconditional"
@@ -1818,6 +1819,11 @@ class ClassUnitGroupEngine:
             "cubic_integral_sieve_dependency_relations": 0,
             "cubic_integral_sieve_dependency_bound": 0,
             "cubic_integral_sieve_validated_batch_uses": 0,
+            "cubic_reduced_ideal_sieve_uses": 0,
+            "cubic_reduced_ideal_sieve_candidates": 0,
+            "cubic_reduced_ideal_sieve_relations": 0,
+            "cubic_reduced_ideal_sieve_dependency_relations": 0,
+            "cubic_reduced_ideal_sieve_source_norm": 0,
             "cubic_specialized_seed_skips": 0,
             "automorphism_orbit_plans": 0,
             "automorphism_orbit_available_plans": 0,
@@ -2806,6 +2812,64 @@ class ClassUnitGroupEngine:
                 steering.abort_candidate(steering_ticket)
         return admitted
 
+    def _reduced_cubic_relation_order_rows(
+        self,
+        relations: Any,
+        factor_base: tuple[Any, ...],
+    ) -> tuple[tuple[tuple[int, ...], ...], int, int] | None:
+        """Return exact order coordinates for one deterministically reduced ideal.
+
+        A high-norm factor-base ideal is a selection heuristic only.  Its LLL
+        rows are converted back to the maximal-order basis exactly; subsequent
+        norm-form evaluation and prime-power valuation replay authenticate all
+        relations independently of this choice.
+        """
+        if len(factor_base) < 1:
+            return None
+        try:
+            source_index = max(
+                range(len(factor_base)),
+                key=lambda index: (
+                    int(factor_base[index].norm()._numerator),
+                    index,
+                ),
+            )
+            source = factor_base[source_index]
+            lattice = relations.minkowski_lll_lattice(source)
+            denominator = int(lattice.denominator)
+            exact_rows = tuple(
+                tuple(int(value) for value in row) for row in lattice.exact_rows
+            )
+            if (
+                denominator <= 0
+                or len(exact_rows) != 3
+                or any(len(row) != 3 for row in exact_rows)
+            ):
+                return None
+            inverse = self.order._basis_inverse_matrix().rows()
+            answer: list[tuple[int, ...]] = []
+            for row in exact_rows:
+                coordinates: list[int] = []
+                for target in range(3):
+                    value = sage.QQ(0)
+                    for source_coordinate in range(3):
+                        value += (
+                            sage.QQ(row[source_coordinate])
+                            / sage.QQ(denominator)
+                            * inverse[source_coordinate][target]
+                        )
+                    if value.denominator() != 1:
+                        return None
+                    coordinates.append(int(value.numerator()))
+                answer.append(tuple(coordinates))
+            return (
+                tuple(answer),
+                source_index,
+                int(source.norm()._numerator),
+            )
+        except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+            return None
+
     def _default_cubic_integral_relation_prefix(
         self,
         collector: Any,
@@ -2835,9 +2899,15 @@ class ClassUnitGroupEngine:
                 fromlist=["cubic_class_number"],
             )
             propose = getattr(cubic, "_packed_cubic_relation_candidates", None)
+            propose_reduced = getattr(
+                cubic, "_packed_cubic_reduced_ideal_relation_candidates", None
+            )
             select = getattr(cubic, "_select_cubic_relation_candidates", None)
             select_dependencies = getattr(
                 cubic, "_select_cubic_dependency_candidates", None
+            )
+            select_postrank_dependencies = getattr(
+                cubic, "_select_cubic_postrank_dependency_candidates", None
             )
             bounded_dependencies = getattr(
                 cubic, "_bounded_cubic_dependency_candidates", None
@@ -2847,8 +2917,10 @@ class ClassUnitGroupEngine:
             )
             if (
                 not callable(propose)
+                or not callable(propose_reduced)
                 or not callable(select)
                 or not callable(select_dependencies)
+                or not callable(select_postrank_dependencies)
                 or not callable(bounded_dependencies)
             ):
                 return collector
@@ -2884,6 +2956,43 @@ class ClassUnitGroupEngine:
             )
             if candidates is None:
                 return collector
+            candidates = tuple(candidates)
+            reduced_candidates: tuple[Any, ...] = ()
+            reduced_source_index = -1
+            reduced_source_norm = 0
+            reduced_bound = int(
+                getattr(cubic, "_CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND", 3)
+            )
+            if unit_rank >= 2 and len(factor_base) >= 8:
+                reduced_source = self._reduced_cubic_relation_order_rows(
+                    relations, factor_base
+                )
+                if reduced_source is not None:
+                    reduced_rows, reduced_source_index, reduced_source_norm = (
+                        reduced_source
+                    )
+                    reduced_result: Any = propose_reduced(
+                        self.order,
+                        factor_base,
+                        reduced_rows,
+                        maximum_candidates=remaining,
+                        coefficient_bound=reduced_bound,
+                        power_factor_base=packed_factor_base,
+                        cancelled=self.cancelled,
+                    )
+                    if reduced_result is not None:
+                        reduced_candidates = tuple(reduced_result)
+            if reduced_candidates:
+                combined: list[Any] = []
+                for candidate in reduced_candidates + candidates:
+                    row, coordinates, _norm = candidate
+                    key = (tuple(row), tuple(coordinates))
+                    if any(
+                        key == (tuple(prior[0]), tuple(prior[1])) for prior in combined
+                    ):
+                        continue
+                    combined.append(candidate)
+                candidates = tuple(combined)
             if packed_factor_base is not None:
                 self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
             selected_result: Any = select(
@@ -2894,40 +3003,88 @@ class ClassUnitGroupEngine:
             )
             if not isinstance(selected_result, tuple) or len(selected_result) != 2:
                 return collector
-            selected, _selected_rank = selected_result
-            if selected is None or len(selected) > remaining:
+            raw_selected = selected_result[0]
+            if raw_selected is None or not isinstance(raw_selected, (list, tuple)):
                 return collector
-            dependency_result: Any = bounded_dependencies(
-                self.order,
-                factor_base,
-                selected,
-                candidates,
-                unit_rank,
-                remaining,
-                cancelled=self.cancelled,
-                power_factor_base=packed_factor_base,
-            )
-            if not isinstance(dependency_result, tuple) or len(dependency_result) != 2:
+            selected = tuple(raw_selected)
+            if len(selected) > remaining:
                 return collector
-            dependency_candidates, dependency_bound = dependency_result
+            if reduced_candidates:
+                dependency_limit = min(
+                    int(
+                        getattr(
+                            cubic,
+                            "_CUBIC_REDUCED_IDEAL_RELATION_DEPENDENCIES",
+                            8,
+                        )
+                    ),
+                    max(0, remaining - len(selected)),
+                )
+                raw_dependency_candidates: Any = select_postrank_dependencies(
+                    selected,
+                    candidates,
+                    dependency_limit,
+                )
+                if not isinstance(raw_dependency_candidates, (list, tuple)):
+                    return collector
+                dependency_candidates = tuple(raw_dependency_candidates)
+                dependency_bound = reduced_bound
+            else:
+                dependency_result: Any = bounded_dependencies(
+                    self.order,
+                    factor_base,
+                    selected,
+                    candidates,
+                    unit_rank,
+                    remaining,
+                    cancelled=self.cancelled,
+                    power_factor_base=packed_factor_base,
+                )
+                if (
+                    not isinstance(dependency_result, tuple)
+                    or len(dependency_result) != 2
+                ):
+                    return collector
+                raw_dependency_candidates = dependency_result[0]
+                if not isinstance(raw_dependency_candidates, (list, tuple)):
+                    return collector
+                dependency_candidates = tuple(raw_dependency_candidates)
+                dependency_bound = dependency_result[1]
             if len(dependency_candidates) > remaining - len(selected):
                 dependency_candidates = ()
-            proposals = tuple(
-                (
-                    coordinates,
-                    row,
-                    {
-                        "algorithm": algorithm,
-                        "coefficient_bound": coefficient_bound,
-                        "order_basis_coordinates": list(coordinates),
-                    },
-                )
-                for algorithm, candidates_group in (
-                    ("packed-cubic-engine-relation-sieve", selected),
-                    ("packed-cubic-engine-unit-seed", dependency_candidates),
-                )
-                for row, coordinates, _expected_norm in candidates_group
+            reduced_keys = tuple(
+                (tuple(row), tuple(coordinates))
+                for row, coordinates, _norm in reduced_candidates
             )
+            proposals_list: list[tuple[Any, Any, dict[str, Any]]] = []
+            for role, candidates_group in (
+                ("relation-sieve", selected),
+                ("unit-seed", dependency_candidates),
+            ):
+                for row, coordinates, _expected_norm in candidates_group:
+                    reduced = any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                    provenance = {
+                        "algorithm": (
+                            "packed-cubic-engine-reduced-ideal-" + role
+                            if reduced
+                            else "packed-cubic-engine-" + role
+                        ),
+                        "coefficient_bound": (
+                            reduced_bound if reduced else coefficient_bound
+                        ),
+                        "order_basis_coordinates": list(coordinates),
+                    }
+                    if reduced:
+                        provenance.update(
+                            {
+                                "reduced_source_factor_index": reduced_source_index,
+                                "reduced_source_ideal_norm": reduced_source_norm,
+                            }
+                        )
+                    proposals_list.append((coordinates, row, provenance))
+            proposals = tuple(proposals_list)
             batch_admit = getattr(trial, "admit_integral_order_basis_rows", None)
             validated_admit = getattr(
                 trial, "_admit_validated_integral_order_basis_rows", None
@@ -2982,6 +3139,35 @@ class ClassUnitGroupEngine:
                 int(self._resource_usage["cubic_integral_sieve_dependency_bound"]),
                 int(dependency_bound),
             )
+            if reduced_candidates:
+                reduced_selected = sum(
+                    1
+                    for row, coordinates, _norm in selected
+                    if any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                )
+                reduced_dependencies = sum(
+                    1
+                    for row, coordinates, _norm in dependency_candidates
+                    if any(
+                        (tuple(row), tuple(coordinates)) == key for key in reduced_keys
+                    )
+                )
+                self._resource_usage["cubic_reduced_ideal_sieve_uses"] += 1
+                self._resource_usage["cubic_reduced_ideal_sieve_candidates"] += len(
+                    reduced_candidates
+                )
+                self._resource_usage["cubic_reduced_ideal_sieve_relations"] += (
+                    reduced_selected
+                )
+                self._resource_usage[
+                    "cubic_reduced_ideal_sieve_dependency_relations"
+                ] += reduced_dependencies
+                self._resource_usage["cubic_reduced_ideal_sieve_source_norm"] = max(
+                    int(self._resource_usage["cubic_reduced_ideal_sieve_source_norm"]),
+                    reduced_source_norm,
+                )
             return trial
         except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
             return collector
