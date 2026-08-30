@@ -360,6 +360,12 @@ assert resources["saturation_rounds"] == 0
 assert resources["unit_principal_authority_requests"] == 2
 assert resources["unit_principal_authority_hits"] == 2
 assert resources["unit_principal_authority_fallbacks"] == 0
+assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["relation_dependency_unit_object_cache_hits"] == 2
+assert resources["dependency_unit_eager_candidates"] == 0
+assert resources["dependency_unit_materializations"] == 0
+assert resources["dependency_lattice_lll_requests"] == 0
+assert resources["dependency_lattice_lll_reductions"] == 0
 assert result.context.live_diagnostics()["authenticated_dependency_units"] == 2
 print("cubic-reduced-ideal-relation-batch-ok")
 `;

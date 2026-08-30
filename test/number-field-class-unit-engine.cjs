@@ -1006,7 +1006,7 @@ print("monotone-log-steering")
   assert.equal(output, "monotone-log-steering");
 });
 
-test("cubic unit kernels are reduced before rigorous regulator evaluation", () => {
+test("cubic unit recovery reuses live state and retains its exact LLL fallback", () => {
   const output = run(String.raw`
 R = PolynomialRing(QQ, "x")
 x = R.gen()
@@ -1018,25 +1018,77 @@ assert result.class_number() == 1
 assert result.class_group().invariants() == ()
 assert result.saturation_record.verify(K, K.maximal_order())
 resources = result.diagnostics["resources"]
-assert resources["dependency_lattice_lll_requests"] == 1
-assert resources["dependency_lattice_lll_reductions"] == 1
+assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["relation_dependency_unit_object_cache_hits"] == 2
+assert resources["dependency_unit_eager_candidates"] == 0
+assert resources["dependency_unit_materializations"] == 0
+assert resources["dependency_lattice_lll_requests"] == 0
+assert resources["dependency_lattice_lll_reductions"] == 0
 assert resources["dependency_lattice_lll_fallbacks"] == 0
-maximum_exponent = max(
-    abs(int(exponent))
-    for unit in result.units()
-    for _factor, exponent in unit.factors()
-)
-assert maximum_exponent <= 8
 regulator = result.regulator()
 assert regulator.rigorous
 assert regulator.precision_bits == 128
+
+# A restored computation has no authenticated steering objects.  Its bounded
+# exact LLL path remains available and replays the unimodular transform and
+# complete left-kernel relation before accepting the shorter basis.
+class ZeroRecord:
+    row = (0,)
+
+fallback = ClassUnitGroupEngine(K, algorithm="buchmann-hecke")
+source = ((100, 1, 0), (1, 0, 0))
+reduced = fallback._reduce_dependency_lattice(
+    (ZeroRecord(), ZeroRecord(), ZeroRecord()), source
+)
+assert reduced != source
+fallback_resources = fallback._resource_usage
+assert fallback_resources["dependency_lattice_lll_requests"] == 1
+assert fallback_resources["dependency_lattice_lll_reductions"] == 1
+assert fallback_resources["dependency_lattice_lll_fallbacks"] == 0
+
+# Logarithmic independence is weaker than being a fundamental basis.  Force
+# the first otherwise-valid analytic result to expose a nontrivial index and
+# prove that the engine discards the live shortcut, executes the complete exact
+# dependency route, and only then accepts the rigorous index-one result.
+original_analytic_index = ClassUnitGroupEngine._analytic_index
+forced_nontrivial_index = [False]
+class NontrivialIndex:
+    index_one = False
+
+def force_first_steering_index(self, presentation, units, unit_rank):
+    answer = original_analytic_index(self, presentation, units, unit_rank)
+    if (
+        not forced_nontrivial_index[0]
+        and self._resource_usage["dependency_unit_steering_basis_hits"] > 0
+    ):
+        forced_nontrivial_index[0] = True
+        return answer[0], answer[1], NontrivialIndex()
+    return answer
+
+ClassUnitGroupEngine._analytic_index = force_first_steering_index
+try:
+    retry_field = NumberField(x**3 - x**2 - 36*x - 18, "retry")
+    retry = compute_class_unit_group(
+        retry_field, proof=False, algorithm="auto"
+    )
+finally:
+    ClassUnitGroupEngine._analytic_index = original_analytic_index
+assert retry.complete and retry.class_number() == 1
+retry_resources = retry.diagnostics["resources"]
+assert retry_resources["dependency_unit_steering_basis_hits"] == 1
+assert retry_resources["dependency_unit_steering_basis_fallbacks"] == 1
+assert retry_resources["dependency_lattice_lll_requests"] == 1
+assert retry_resources["dependency_lattice_lll_reductions"] == 1
 print((
     result.class_number(),
+    resources["dependency_unit_steering_basis_hits"],
     resources["dependency_lattice_lll_reductions"],
+    fallback_resources["dependency_lattice_lll_reductions"],
+    retry_resources["dependency_unit_steering_basis_fallbacks"],
     regulator.precision_bits,
 ))
 `);
-  assert.equal(output, "(1, 1, 128)");
+  assert.equal(output, "(1, 1, 0, 1, 1, 128)");
 });
 
 test("cubic class saturation searches nonzero p-torsion cosets", () => {
@@ -1182,6 +1234,8 @@ assert group.verify_proof_payload(payload)
 resources = result.diagnostics["resources"]
 assert resources["relation_exact_rank_one_expansion_skips"] >= 1
 assert resources["relation_factored_log_rank_units"] >= 1
+assert resources["dependency_unit_steering_basis_hits"] == 1
+assert resources["dependency_unit_steering_basis_fallbacks"] == 1
 print((
     group.order(),
     group.invariants(),

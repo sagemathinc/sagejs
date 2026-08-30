@@ -1771,6 +1771,7 @@ class ClassUnitGroupEngine:
             "dependency_unit_materializations": 0,
             "dependency_unit_eager_candidates": 0,
             "dependency_unit_steering_basis_hits": 0,
+            "dependency_unit_steering_basis_fallbacks": 0,
             "dependency_lattice_lll_requests": 0,
             "dependency_lattice_lll_reductions": 0,
             "dependency_lattice_lll_fallbacks": 0,
@@ -4446,6 +4447,12 @@ class ClassUnitGroupEngine:
         allow_steering_basis: bool = True,
     ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]]:
         """Select dependency rows by cached logs, then materialize only the basis."""
+        if allow_steering_basis:
+            steering_basis = self._live_steering_unit_basis(
+                records, dependencies, unit_rank
+            )
+            if steering_basis is not None:
+                return steering_basis
         # Cubic relation prefixes contain only a handful of dependencies.
         # Relation-rank steering has already materialized and cached several
         # of these exact units, so forming the remaining candidates once is
@@ -4460,44 +4467,6 @@ class ClassUnitGroupEngine:
                 normalized.pop()
             normalized_dependencies.append(tuple(normalized))
         retained_prefix = tuple(records) == self._relation_log_record_prefix
-        # The relation loop has already found an observed full-rank unit
-        # subgroup.  Use that exact live basis for the first rigorous `hR`
-        # test instead of eagerly minimizing its regulator over every
-        # dependency.  If its certified index is not one, adaptive saturation
-        # calls this method again and deliberately takes the complete
-        # minimum-volume path below.
-        if (
-            allow_steering_basis
-            and not self._relation_initial_basis_selected
-            and retained_prefix
-            and unit_rank > 0
-            and len(self._relation_independent_dependency_keys) >= unit_rank
-        ):
-            dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
-            for dependency, dependency_key in zip(
-                dependencies, normalized_dependencies, strict=True
-            ):
-                dependency_rows.setdefault(
-                    dependency_key, tuple(int(value) for value in dependency)
-                )
-            selected_keys = tuple(
-                self._relation_independent_dependency_keys[:unit_rank]
-            )
-            if all(
-                key in dependency_rows and key in self._relation_dependency_units
-                for key in selected_keys
-            ):
-                self._relation_initial_basis_selected = True
-                self._resource_usage["dependency_unit_steering_basis_hits"] += 1
-                self._resource_usage["relation_dependency_unit_object_cache_hits"] += (
-                    len(selected_keys)
-                )
-                return (
-                    tuple(
-                        self._relation_dependency_units[key] for key in selected_keys
-                    ),
-                    tuple(dependency_rows[key] for key in selected_keys),
-                )
         retained_complete = bool(
             retained_prefix
             and all(
@@ -4568,6 +4537,53 @@ class ClassUnitGroupEngine:
         if not eager_units:
             self._resource_usage["dependency_unit_materializations"] += len(units)
         return units, selected_dependencies
+
+    def _live_steering_unit_basis(
+        self,
+        records: Sequence[Any],
+        dependencies: Sequence[Sequence[int]],
+        unit_rank: int,
+    ) -> tuple[tuple[Any, ...], tuple[tuple[int, ...], ...]] | None:
+        """Return the exact live unit basis already authenticated by steering.
+
+        Relation collection must exhibit full logarithmic rank before it can
+        finish.  Its selected dependency units are retained as exact factored
+        objects bound to the identical live relation prefix.  Consume that
+        basis for the first rigorous `hR` test instead of first replacing the
+        dependency lattice and rebuilding every candidate.  If the live basis
+        is absent, stale, or later proves a nontrivial analytic index, the
+        ordinary complete LLL/minimum-volume path remains the fallback.
+        """
+        if (
+            self._relation_initial_basis_selected
+            or tuple(records) != self._relation_log_record_prefix
+            or unit_rank <= 0
+            or len(self._relation_independent_dependency_keys) < unit_rank
+        ):
+            return None
+        dependency_rows: dict[tuple[int, ...], tuple[int, ...]] = {}
+        for dependency in dependencies:
+            normalized = [int(value) for value in dependency]
+            while normalized and normalized[-1] == 0:
+                normalized.pop()
+            dependency_rows.setdefault(
+                tuple(normalized), tuple(int(value) for value in dependency)
+            )
+        selected_keys = tuple(self._relation_independent_dependency_keys[:unit_rank])
+        if not all(
+            key in dependency_rows and key in self._relation_dependency_units
+            for key in selected_keys
+        ):
+            return None
+        self._relation_initial_basis_selected = True
+        self._resource_usage["dependency_unit_steering_basis_hits"] += 1
+        self._resource_usage["relation_dependency_unit_object_cache_hits"] += len(
+            selected_keys
+        )
+        return (
+            tuple(self._relation_dependency_units[key] for key in selected_keys),
+            tuple(dependency_rows[key] for key in selected_keys),
+        )
 
     def _reduce_dependency_lattice(
         self,
@@ -4718,13 +4734,19 @@ class ClassUnitGroupEngine:
         for dependency in presentation.dependency_transforms:
             if len(dependency) != len(records):
                 raise ArithmeticError("a relation dependency has the wrong exact width")
-        dependencies = self._reduce_dependency_lattice(records, source_dependencies)
-        units, selected_dependencies = self._select_dependency_unit_basis(
-            records,
-            dependencies,
-            unit_rank,
-            allow_steering_basis=dependencies == source_dependencies,
+        steering_basis = self._live_steering_unit_basis(
+            records, source_dependencies, unit_rank
         )
+        if steering_basis is None:
+            dependencies = self._reduce_dependency_lattice(records, source_dependencies)
+            units, selected_dependencies = self._select_dependency_unit_basis(
+                records,
+                dependencies,
+                unit_rank,
+                allow_steering_basis=False,
+            )
+        else:
+            units, selected_dependencies = steering_basis
         selected_unit_hashes: list[str] = []
         for dependency, unit in zip(selected_dependencies, units, strict=True):
             normalized = [int(value) for value in dependency]
@@ -4768,7 +4790,7 @@ class ClassUnitGroupEngine:
                 "unit-recovery",
                 "bounded",
                 rank=unit_rank,
-                candidates=len(dependencies),
+                candidates=len(source_dependencies),
             )
             return ()
         self._verify_exact_units(units)
@@ -4777,7 +4799,7 @@ class ClassUnitGroupEngine:
             "unit-recovery",
             "complete",
             rank=unit_rank,
-            candidates=len(dependencies),
+            candidates=len(source_dependencies),
         )
         return units
 
@@ -6032,10 +6054,52 @@ class ClassUnitGroupEngine:
                         "unit_rank_target": unit_rank,
                     },
                 )
+            steering_hits_before = self._resource_usage[
+                "dependency_unit_steering_basis_hits"
+            ]
             units = self._independent_units(collector, presentation, unit_rank)
-            torsion, regulator, index = self._analytic_index(
-                presentation, units, unit_rank
+            used_steering_basis = bool(
+                self._resource_usage["dependency_unit_steering_basis_hits"]
+                > steering_hits_before
             )
+            steering_basis_fell_back = False
+            try:
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
+            except RuntimeError as error:
+                analytic_resource_error = getattr(
+                    self.components.analytic, "AnalyticResourceError", None
+                )
+                if (
+                    not used_steering_basis
+                    or not isinstance(analytic_resource_error, type)
+                    or not isinstance(error, analytic_resource_error)
+                ):
+                    raise
+                self._resource_usage["dependency_unit_steering_basis_fallbacks"] += 1
+                steering_basis_fell_back = True
+                units = self._independent_units(collector, presentation, unit_rank)
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
+            # Full logarithmic rank does not by itself prove that the steering
+            # basis is a fundamental unit basis.  Keep its zero-materialization
+            # win when the rigorous `hR` test proves index one, but fall back to
+            # the complete LLL/minimum-volume dependency route before entering
+            # adaptive saturation when it does not.  This preserves the lazy
+            # class-number projection and avoids mistaking producer liveness
+            # for mathematical completeness.
+            if (
+                used_steering_basis
+                and not steering_basis_fell_back
+                and not index.index_one
+            ):
+                self._resource_usage["dependency_unit_steering_basis_fallbacks"] += 1
+                units = self._independent_units(collector, presentation, unit_rank)
+                torsion, regulator, index = self._analytic_index(
+                    presentation, units, unit_rank
+                )
             initial_proof_status = _factor_base_proof_status(plan)
             if (
                 class_number_only
