@@ -113,6 +113,12 @@ export function unpackExactIntegers(input) {
 }
 
 function gcd(left, right) {
+  // Cyclotomic orders cross the generated Python/JavaScript boundary, whose
+  // exact-integer representation is deliberately allowed to be either a
+  // safe Number or a BigInt.  Normalize at this arithmetic boundary before
+  // using BigInt operators.
+  left = BigInt(left);
+  right = BigInt(right);
   left = left < 0n ? -left : left;
   right = right < 0n ? -right : right;
   while (right !== 0n) [left, right] = [right, left % right];
@@ -294,6 +300,9 @@ function convertCyclotomic(expression, order) {
 
 function cyclotomicBinary(name, left, right) {
   if (left === undefined || right === undefined) return undefined;
+  if (left?.order === undefined || right?.order === undefined) {
+    throw new TypeError(`malformed tracked cyclotomic expression for ${name}: ${typeof left}:${String(left)} / ${typeof right}:${String(right)}`);
+  }
   const order = lcm(left.order, right.order);
   const leftCoefficients = convertCyclotomic(left, order).coefficients;
   const rightCoefficients = convertCyclotomic(right, order).coefficients;
@@ -589,6 +598,9 @@ export function createAlgebraicBackend(instance, {
     const state = { handle: handle >>> 0, snapshot: undefined };
     liveObjects.set(object, state);
     if (cyclotomicExpression !== undefined) {
+      if (cyclotomicExpression === null || typeof cyclotomicExpression !== "object") {
+        throw new TypeError(`invalid tracked cyclotomic expression: ${typeof cyclotomicExpression}:${String(cyclotomicExpression)}`);
+      }
       cyclotomicExpressions.set(object, cyclotomicExpression);
     }
     activeValues.add(state);
@@ -1212,7 +1224,10 @@ export function createAlgebraicBackend(instance, {
       );
       const count = wasm.sagejs_wasm_algebraic_result_count() >>> 0;
       const handles = new Uint32Array(memory.buffer, rootHandlesPointer, count);
-      const coefficients = Array.from(handles, native);
+      // Array.from passes the element index as the callback's second
+      // argument.  Do not forward that index as optional cyclotomic
+      // provenance to native().
+      const coefficients = Array.from(handles, (handle) => native(handle));
       recordMatrix("charpoly", 4, count * 4);
       return coefficients;
     },
