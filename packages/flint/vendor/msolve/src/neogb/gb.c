@@ -26,6 +26,11 @@
 #include <stdlib.h>
 #include <gmp.h>
 
+/* Sage.js embeds this library in a long-lived host process.  Reachable
+ * upstream process exits are intercepted by the status-returning adapter. */
+void sagejs_msolve_exit(int status);
+#define exit sagejs_msolve_exit
+
 #include "libneogb.h"
 #include "data.c"
 #include "meta_data.c"/* computational meta data */
@@ -49,4 +54,3 @@
 #include "nf.c"       /* implemenation of normal form algorithm */
 #include "f4sat.c"    /* implemenation of saturation algorithm */
 #include "modular.c"  /* implemenation of modular Groebner for F4 */
-

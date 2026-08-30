@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 5341,
-      "bytes": 174867,
+      "lines": 5345,
+      "bytes": 175107,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -478,24 +478,66 @@
     },
     {
       "path": "packages/flint-wasm/src/multivariate.c",
-      "lines": 68,
-      "bytes": 1761,
+      "lines": 99,
+      "bytes": 2774,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded Wasm32 ingress and egress buffer ownership",
-        "stable flat exports over the host-neutral FLINT resultant core",
+        "stable flat exports over the host-neutral FLINT resultant and msolve Groebner cores",
         "copy-length and capacity reporting without retained host pointers"
       ],
-      "rationale": "This file contains only a fixed-size linear-memory adapter around the separately reviewed host-neutral FLINT multivariate core; all polynomial validation and mathematical work remains in that shared core and mature FLINT.",
-      "fallback": "Native Node uses its exact FLINT route; unsupported browser domains fail explicitly rather than selecting a heavyweight portable resultant.",
+      "rationale": "This file contains only a fixed-size linear-memory adapter around separately reviewed host-neutral multivariate cores; all polynomial validation and mathematical work remains in those shared cores, FLINT, and pinned msolve.",
+      "fallback": "Native Node uses exact FLINT or msolve routes; unsupported browser domains and malformed packets fail explicitly before entering a mathematical engine.",
       "oracles": [
         "CPython",
         "Sage.js JavaScript fallback",
         "FLINT",
         "SageMath"
       ],
-      "next": "Keep the six-export surface bounded and preserve one copied ingress and egress per public resultant."
+      "next": "Keep the bounded export surface versioned and preserve one copied ingress and egress per public resultant or Groebner computation."
+    },
+    {
+      "path": "packages/flint/src/groebner_wasm_core.c",
+      "lines": 461,
+      "bytes": 17417,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "validate bounded versioned prime-field and rational polynomial packets",
+        "translate owned fixed-width packets to and from the msolve wrapper",
+        "enforce exact input and 16 MiB output resource limits"
+      ],
+      "rationale": "The core owns no mathematical policy and implements no Groebner algorithm; it is a host-neutral parser, ownership adapter, and serializer around the independently pinned msolve engine.",
+      "fallback": "Malformed and out-of-envelope packets fail before msolve, while higher-level Sage.js keeps exact dynamic polynomial algorithms available for unsupported domains.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Keep packet schemas versioned and extend limits only with malformed-input, sanitizer, and cross-target evidence."
+    },
+    {
+      "path": "packages/flint/src/msolve_core.c",
+      "lines": 337,
+      "bytes": 10076,
+      "decision": "retain-bridge",
+      "priority": "high",
+      "responsibilities": [
+        "convert msolve fatal process exits into recoverable native failures or contained Wasm traps",
+        "own and release prime-field and rational result allocations",
+        "pin deterministic scalar reduced-basis engine options"
+      ],
+      "rationale": "This narrow wrapper is necessary because upstream msolve exposes allocator-owned arrays and process exits rather than a status-only embedding ABI; all Groebner mathematics remains in the pinned upstream source.",
+      "fallback": "Native failures return without partial results, Wasm fatal paths trap only the current call, and higher-level explicit selection prevents an unproved rational route from impersonating the default exact backend.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT",
+        "SageMath"
+      ],
+      "next": "Upstream the status-returning embedding changes and remove local containment code when msolve provides an equivalent stable library contract."
     },
     {
       "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",

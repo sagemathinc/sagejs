@@ -22,6 +22,9 @@
 #include "config.h"
 #endif
 
+void sagejs_msolve_exit(int status);
+#define exit sagejs_msolve_exit
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<gmp.h>

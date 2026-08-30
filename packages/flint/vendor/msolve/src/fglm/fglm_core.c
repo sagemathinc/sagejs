@@ -22,6 +22,9 @@
 #include "config.h"
 #endif
 
+void sagejs_msolve_exit(int status);
+#define exit sagejs_msolve_exit
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -1863,4 +1866,3 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   /* printf ("free fglm\n"); */
   return param;
 }
-

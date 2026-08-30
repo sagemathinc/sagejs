@@ -1,13 +1,13 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c9393cc5b23fafc488276895edaa4d3f9d2faf13c936a64afb9bf5542b3a4966",
+  "source_sha256": "21312542632b59c0b80849051451594f2044a07bd9811079b04f94842a028369",
   "counts": {
-    "total": 1044,
+    "total": 1046,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
-      "napi-export": 328,
+      "napi-export": 330,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
@@ -16,13 +16,13 @@
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
-      "portable-fallback": 560,
-      "shared-core": 45
+      "portable-fallback": 561,
+      "shared-core": 46
     },
     "by_status": {
-      "available": 579,
+      "available": 580,
       "desktop-only": 47,
-      "fallback": 418
+      "fallback": 419
     }
   },
   "workflow_aliases": {
@@ -8841,6 +8841,18 @@
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "family": "multivariate",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "exact-flint-or-dynamic-polynomial-algorithm",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Bounded prime-field and rational msolve Gröbner computations are available through the receipt-authenticated FLINT WebAssembly artifact."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "family": "multivariate",
       "disposition": "portable-fallback",
@@ -8851,6 +8863,18 @@
         "src/baselib/polynomial.py"
       ],
       "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "family": "multivariate",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "canonical-sparse-polynomial-leading-term",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "explanation": "Leading monomials use exact canonical polynomial order in both native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyLength",

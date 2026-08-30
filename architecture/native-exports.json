@@ -3,7 +3,7 @@
   "policy": "architecture/native-export-policy.json",
   "counts": {
     "declared-ffi": 7,
-    "migrate-to-declared-ffi": 214,
+    "migrate-to-declared-ffi": 216,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 6,
     "retain-host-adapter": 35,
@@ -6933,7 +6933,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 666,
+        "line": 668,
         "lines": 2,
         "sha256": "10d821d7828606cae577a8cb728859ae24622ac59e630c2b2022aeeff9133e63",
         "calls": [
@@ -6951,8 +6951,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -6968,7 +6970,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 673,
+        "line": 675,
         "lines": 59,
         "sha256": "5a8cd6ec03b079a01cb7f9df966d3e79571ae4c8f650f71ceb385dd112822f6a",
         "calls": [
@@ -7022,7 +7024,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1151,
+        "line": 1153,
         "lines": 77,
         "sha256": "b7c62546f4fee36aa5fe0c235c632de52dd5e17a36dd60e6c43bff317b9c9600",
         "calls": [
@@ -7072,7 +7074,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 498,
+        "line": 500,
         "lines": 85,
         "sha256": "0b34b539bbbfdfe6b8140dea30b701d1fb21052e7032d4065bd1aa48fca0ef31",
         "calls": [
@@ -7110,8 +7112,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7127,7 +7131,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 393,
+        "line": 395,
         "lines": 104,
         "sha256": "3e12b89ff8c4a7da42317fd9b86e4c43ad40105f135630382c6c395db026ca70",
         "calls": [
@@ -7172,8 +7176,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7189,7 +7195,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1454,
+        "line": 1456,
         "lines": 2,
         "sha256": "8d18a783d45c9b4290432acae5c5b2fe43020eedce257f528ec47b26ac63cc0c",
         "calls": [
@@ -7223,7 +7229,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 863,
+        "line": 865,
         "lines": 2,
         "sha256": "771826f2b7b9fc852f5480df6073191f1a45bce17abb9c7d5ffd8ca84da6f3f6",
         "calls": [
@@ -7256,7 +7262,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 788,
+        "line": 790,
         "lines": 25,
         "sha256": "bb7889fdae79efe69dddfea8c96c5fd22545da53bb12f6c985f1ca349b976e08",
         "calls": [
@@ -7296,7 +7302,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 865,
+        "line": 867,
         "lines": 2,
         "sha256": "ff8d2271c8328f293849a73c7a652b52838e0fd6c9bf7a44d4bd223002e6164f",
         "calls": [
@@ -7329,7 +7335,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 584,
+        "line": 586,
         "lines": 26,
         "sha256": "e65b31c73142b2ebd33dba286413ccfa4041fea2a9ec3328fef63002d8c849b3",
         "calls": [
@@ -7355,8 +7361,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7372,9 +7380,9 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1533,
-        "lines": 76,
-        "sha256": "6bf7b69a6d1a24d90d4087a495dfedeef015d9bf787f9e646602f95011f96111",
+        "line": 2051,
+        "lines": 78,
+        "sha256": "71def36cf37d854032cba7718ec374433ca9370ff19cfef8db3854c72b5ee3e4",
         "calls": [
           "array_to_fmpz_mpoly_vec",
           "check_napi",
@@ -7384,6 +7392,7 @@
           "fmpz_mpoly_vec_clear",
           "fmpz_mpoly_vec_entry",
           "fmpz_mpoly_vec_init",
+          "msolve_nmod_groebner",
           "napi_create_array",
           "napi_create_array_with_length",
           "napi_get_array_length",
@@ -7413,6 +7422,50 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyGroebnerMsolve",
+      "callback": "sagejs_mpoly_groebner_msolve",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/multivariate.c",
+        "line": 2020,
+        "lines": 30,
+        "sha256": "391384ce6e1e2b4451d2ced106a0a8766db24c5ce6640765e79c2ca98f1be018",
+        "calls": [
+          "check_napi",
+          "msolve_nmod_groebner",
+          "msolve_qq_groebner",
+          "napi_create_array",
+          "napi_get_array_length",
+          "napi_get_element",
+          "napi_is_array",
+          "napi_throw_type_error",
+          "require_arguments",
+          "unwrap_value"
+        ]
+      },
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Multivariate polynomial operations adapt mature FLINT and Groebner implementations through native resources.",
+      "fallback": "Strict Python polynomial objects preserve public semantics when the native capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
+        "packages/flint/test/msolve-groebner.cjs",
+        "src/baselib/polynomial.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyIrreducibleFactors",
@@ -7422,7 +7475,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 911,
+        "line": 913,
         "lines": 239,
         "sha256": "d1efa3452390c653a3aa888a1b03982ab2971711ba743e5d79cbcf013cca2628",
         "calls": [
@@ -7477,6 +7530,49 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyLeadingMonomial",
+      "callback": "sagejs_mpoly_leading_monomial",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/multivariate.c",
+        "line": 1461,
+        "lines": 30,
+        "sha256": "88a6e841b33423a86509734b01181d263997637cdbf2ff44d69f91cfb92bb9e4",
+        "calls": [
+          "create_value",
+          "fmpq_mpoly_get_term_monomial",
+          "fmpq_mpoly_is_zero",
+          "fmpz_mpoly_get_term_monomial",
+          "fmpz_mpoly_is_zero",
+          "fq_nmod_mpoly_get_term_monomial",
+          "fq_nmod_mpoly_is_zero",
+          "nmod_mpoly_get_term_monomial",
+          "nmod_mpoly_is_zero",
+          "require_arguments",
+          "unwrap_value"
+        ]
+      },
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Multivariate polynomial operations adapt mature FLINT and Groebner implementations through native resources.",
+      "fallback": "Strict Python polynomial objects preserve public semantics when the native capability is absent.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/test/msolve-groebner.cjs",
+        "src/baselib/polynomial.py"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyLength",
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyLength",
@@ -7486,7 +7582,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1452,
+        "line": 1454,
         "lines": 2,
         "sha256": "ac7107559514328f69395dc5bafd59456da2680066d320815aa3ce030dce4ded",
         "calls": [
@@ -7520,7 +7616,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 670,
+        "line": 672,
         "lines": 2,
         "sha256": "ad669ca87867a9d5ad97384cac7b1a6d7d288c959e2ab8dc98f3d84d8cf29006",
         "calls": [
@@ -7538,7 +7634,9 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7554,7 +7652,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 733,
+        "line": 735,
         "lines": 25,
         "sha256": "17400ba307c24043ae2fb18c2ab085e5dace6a9069969df1950f1d2d7a020f24",
         "calls": [
@@ -7594,7 +7692,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 759,
+        "line": 761,
         "lines": 28,
         "sha256": "a6b75723a57fc6cce13a4060b7e4c543e37c2aa57c134e5515848dc63e4a94a3",
         "calls": [
@@ -7619,7 +7717,9 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7635,18 +7735,32 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1610,
-        "lines": 35,
-        "sha256": "ac71163433e21a3baf9e5284261c10aa8463ff243f7369e83a4d7d373543205c",
+        "line": 2130,
+        "lines": 102,
+        "sha256": "3d650c766771f3f33e9420e02f0e3ce443e6845695c3b361e62632bdc8008bce",
         "calls": [
           "array_to_fmpz_mpoly_vec",
+          "check_napi",
+          "create_value",
           "create_value_from_fmpz",
           "fmpq_mpoly_zpoly_ref",
           "fmpz_mpoly_clear",
           "fmpz_mpoly_init",
           "fmpz_mpoly_reduction_primitive_part",
           "fmpz_mpoly_vec_clear",
+          "free",
+          "malloc",
+          "napi_get_array_length",
+          "napi_get_element",
+          "napi_is_array",
           "napi_throw_error",
+          "napi_throw_range_error",
+          "napi_throw_type_error",
+          "nmod_mpoly_clear",
+          "nmod_mpoly_divrem_ideal",
+          "nmod_mpoly_init",
+          "nmod_mpoly_is_zero",
+          "nmod_mpoly_set",
           "require_arguments",
           "unwrap_value"
         ]
@@ -7662,6 +7776,9 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7677,7 +7794,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 868,
+        "line": 870,
         "lines": 42,
         "sha256": "ba5f669ce2c054a2778d3e213fcc80e0ccf9bf544ef32d8d56d4e5cc384b36f1",
         "calls": [
@@ -7720,7 +7837,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 668,
+        "line": 670,
         "lines": 2,
         "sha256": "b90d4cb8bc195f87149f9e03c770743e2c2b82f09909588fc06d44814618f3a6",
         "calls": [
@@ -7738,6 +7855,9 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
+        "packages/flint-wasm/test/multivariate-backend.test.mjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7753,7 +7873,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1263,
+        "line": 1265,
         "lines": 38,
         "sha256": "d70595cd511c5bd80cf9e698c7329de16dbae368a9a931f9e01cd37191368258",
         "calls": [
@@ -7782,8 +7902,10 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint-wasm/test/groebner-browser-smoke.mjs",
         "packages/flint-wasm/test/multivariate-backend.test.mjs",
         "packages/flint/test/extension-field-lifecycle.cjs",
+        "packages/flint/test/msolve-groebner.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/polynomial.py"
       ],
@@ -7799,7 +7921,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1456,
+        "line": 1458,
         "lines": 2,
         "sha256": "7b0f9b039551dc29847dbb08055437453316e5400cbbea3420586469900c520d",
         "calls": [
@@ -7832,7 +7954,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/multivariate.c",
-        "line": 1302,
+        "line": 1304,
         "lines": 102,
         "sha256": "01e8c148ccc317f17389cb977d7c4c009c7f0c1d87663e2459c78d4aaffdc945",
         "calls": [
@@ -13005,6 +13127,7 @@
         "packages/flint-wasm/test/node-kernel.test.mjs",
         "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
         "packages/flint/scripts/build-deps.cjs",
+        "packages/flint/scripts/verify-msolve-source.cjs",
         "packages/flint/test/test.cjs",
         "scripts/test-npm-package.cjs",
         "src/baselib/builtins.py",

@@ -18,10 +18,10 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-uint32_t primes_table[10] = {2, 3, 4, 5, 7, 11, 13, 17, 19, 23};
-int is_prime(uint32_t n){
+uint32_t sagejs_msolve_primes_table[10] = {2, 3, 4, 5, 7, 11, 13, 17, 19, 23};
+int sagejs_msolve_is_prime(uint32_t n){
   for(int i = 0; i < 10; i++){
-    if(n % primes_table[i] == 0){
+    if(n % sagejs_msolve_primes_table[i] == 0){
       return 0;
     }
   }
@@ -33,8 +33,8 @@ int is_prime(uint32_t n){
 }
 
 // assumes n >= 2
-uint32_t next_prime(uint32_t n){
+uint32_t sagejs_msolve_next_prime(uint32_t n){
   uint32_t cand = n + 1;
-  while(!is_prime(cand)) cand++;
+  while(!sagejs_msolve_is_prime(cand)) cand++;
   return cand;
 }

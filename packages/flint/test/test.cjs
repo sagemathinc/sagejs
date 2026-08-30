@@ -675,6 +675,64 @@ assert.equal(
   "0",
 );
 
+{
+  const context = flint.mpolyContext("nmod", 2, "degrevlex", 65537n);
+  const x = flint.mpolyGen(context, 0);
+  const y = flint.mpolyGen(context, 1);
+  const one = flint.mpolyConstant(context, 1n, 1n);
+  const seven = flint.mpolyConstant(context, 7n, 1n);
+  const generators = [
+    flint.mpolySub(flint.mpolyMul(x, y), one),
+    flint.mpolyAdd(
+      flint.mpolyPow(x, 3),
+      flint.mpolyMul(seven, flint.mpolyPow(y, 2)),
+    ),
+  ];
+  const expected = [
+    "x*y+65536",
+    "y^3+18725*x^2",
+    "x^3+7*y^2",
+  ];
+  for (let repetition = 0; repetition < 8; repetition += 1) {
+    const basis = flint.mpolyGroebner([
+      generators[0],
+      flint.mpolyConstant(context, 0n, 1n),
+      generators[1],
+      generators[0],
+    ]);
+    assert.deepEqual(
+      basis.map((value) => flint.mpolyToString(value, ["x", "y"])),
+      expected,
+    );
+    assert.deepEqual(
+      generators.map((value) =>
+        flint.mpolyToString(flint.mpolyReduce(value, basis), ["x", "y"])),
+      ["0", "0"],
+    );
+  }
+  assert.deepEqual(flint.mpolyGroebner([]), []);
+  assert.deepEqual(
+    flint.mpolyGroebner([flint.mpolyConstant(context, 0n, 1n)]),
+    [],
+  );
+  assert.throws(
+    () => {
+      const bad = flint.mpolyContext("nmod", 1, "degrevlex", 12n);
+      flint.mpolyGroebner([flint.mpolyGen(bad, 0)]);
+    },
+    /prime characteristic/,
+  );
+  assert.throws(
+    () => {
+      const tooLarge = flint.mpolyContext(
+        "nmod", 1, "degrevlex", 2147483659n,
+      );
+      flint.mpolyGroebner([flint.mpolyGen(tooLarge, 0)]);
+    },
+    /below 2\^31/,
+  );
+}
+
 const fq4 = flint.fqContext(2n, 2, "a");
 const fq4a = flint.fqGen(fq4);
 const fq4one = flint.fqFromBigInt(fq4, 1n);

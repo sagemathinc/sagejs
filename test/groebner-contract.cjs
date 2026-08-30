@@ -10,6 +10,7 @@ const test = require("node:test");
 const root = path.resolve(__dirname, "..");
 const moduleRoot = path.join(root, "src", "lib");
 const contractProgram = String.raw`
+import json
 import sys
 sys.path.insert(0, ${JSON.stringify(moduleRoot)})
 from sagejs.polynomial_algorithms.groebner_contract import *
@@ -55,6 +56,39 @@ assert not verify_groebner_certificate(generators, basis, bad, prime).valid
 assert REFERENCE_CAPABILITY["proof"] == "deterministic-exact"
 assert MSOLVE_F4_CAPABILITY["orders"] == ["degrevlex"]
 assert prime.descriptor()["abi"] == PACKED_ABI
+
+with open(${JSON.stringify(path.join(__dirname, "fixtures", "groebner-basis-oracles-v1.json"))}) as handle:
+    corpus = json.load(handle)
+for case in corpus["cases"]:
+    if case["kind"] != "basis":
+        continue
+    descriptor = case["ring"]
+    ring = GroebnerRing(
+        descriptor["variables"],
+        descriptor["order"],
+        descriptor["characteristic"],
+    )
+    def packed_polynomial(value):
+        return tuple(
+            (
+                tuple(coefficient)
+                if descriptor["domain"] == "QQ"
+                else coefficient,
+                tuple(exponents),
+            )
+            for coefficient, exponents in value
+        )
+    case_generators = tuple(
+        packed_polynomial(value) for value in case["generators"]
+    )
+    case_basis, case_transform = groebner_basis_reference(
+        case_generators, ring
+    )
+    expected = tuple(packed_polynomial(value) for value in case["basis"])
+    assert case_basis == expected, case["id"]
+    assert verify_groebner_certificate(
+        case_generators, case_basis, case_transform, ring
+    ).valid, case["id"]
 print("groebner contract ok")
 `;
 
@@ -80,5 +114,6 @@ test("the versioned Groebner oracle corpus is structurally complete", () => {
     assert.ok(entry.ring);
     assert.ok(entry.kind === "basis" || entry.kind === "rejection");
     assert.ok(Array.isArray(entry.sources) && entry.sources.length >= 2);
+    if (entry.kind === "basis") assert.ok(Array.isArray(entry.basis));
   }
 });

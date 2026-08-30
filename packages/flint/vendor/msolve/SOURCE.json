@@ -16,9 +16,13 @@
     "src/usolve"
   ],
   "upstreamCAndHeaderAggregateSha256": "04620da216c298ec9594db65c7e0050e3a63a9736bfccec5ddf23430098e3227",
+  "vendoredAggregateAlgorithm": "sha256(path\\0length\\0bytes\\0) over sorted relative .c/.h paths",
+  "vendoredCAndHeaderAggregateSha256": "9926f96a93afcca9f49a5898929a2f9f2f07a7486af671ad99703d16d03ced93",
   "localPortabilityPatches": [
     "Do not include POSIX getopt.h from the library-only Windows build.",
-    "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK."
+    "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK.",
+    "Redirect upstream process exits through the Sage.js native/Wasm containment boundary.",
+    "Namespace msolve's private prime helpers to avoid whole-addon symbol collisions."
   ],
   "scope": "Packed F4 over prime fields and modular Groebner bases over QQ; no CLI, root solver, or public msolve ABI is exposed."
 }

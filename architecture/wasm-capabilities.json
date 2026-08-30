@@ -96,6 +96,14 @@
           "test/native-reusable-exact-workspace.cjs"
         ]
       },
+      "groebner-msolve-wasm-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/multivariate-backend.test.mjs",
+          "packages/flint-wasm/test/groebner-browser-smoke.mjs",
+          "test/groebner.py"
+        ]
+      },
       "partition-count-wasm-differential": {
         "differential": true,
         "paths": [
@@ -15290,6 +15298,29 @@
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "shared-core",
+      "fallback": "exact-flint-or-dynamic-polynomial-algorithm",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "groebner-msolve-wasm-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "Prime-field F4 and explicitly selected modular rational Gröbner bases use the pinned scalar msolve core through bounded native and Wasm adapters.",
+      "shared_core": "packages/flint/src/msolve_core.c",
+      "availability_evidence": {
+        "path": "packages/flint-wasm/release/production-capabilities.json"
+      },
+      "public_explanation": "Bounded prime-field and rational msolve Gröbner computations are available through the receipt-authenticated FLINT WebAssembly artifact."
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "kind": "napi-export",
       "family": "multivariate",
@@ -15326,6 +15357,25 @@
       "reviewed": true,
       "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
       "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "kind": "napi-export",
+      "family": "multivariate",
+      "source": "packages/flint/src/multivariate.c",
+      "disposition": "portable-fallback",
+      "fallback": "canonical-sparse-polynomial-leading-term",
+      "wasm_module": "host-runtime",
+      "public_consumers": [
+        "src/baselib/polynomial.py"
+      ],
+      "tests": [
+        "groebner-msolve-wasm-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The native adapter asks FLINT for the leading monomial; browser execution obtains the same monomial from the canonical ordered sparse representation.",
+      "public_explanation": "Leading monomials use exact canonical polynomial order in both native and browser runtimes."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyMul",

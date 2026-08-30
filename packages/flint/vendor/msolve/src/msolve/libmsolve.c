@@ -22,11 +22,23 @@
 #include "config.h"
 #endif
 
+void sagejs_msolve_exit(int status);
+#define exit sagejs_msolve_exit
+
 #include "msolve-data.h"
 #include "msolve-data.c"
 #include "streams.h"
 #include "iofiles.c"
 #include "hilbert.c"
+
+/* msolve's amalgamated library translation unit exports these very generic
+ * helper names.  Sage.js links it into a larger mathematical addon that also
+ * contains smalljac, whose public ABI includes next_prime.  Keep msolve's
+ * private prime helpers local to its namespace instead of relying on ELF
+ * interposition (which is unavailable on Windows and Wasm in any case). */
+#define primes_table sagejs_msolve_primes_table
+#define is_prime sagejs_msolve_is_prime
+#define next_prime sagejs_msolve_next_prime
 #include "primes.c"
 #include "../crt/mpz_CRT_ui.c"
 #include "../crt/mpq_reconstruct.c"
@@ -34,4 +46,3 @@
 #include "../usolve/libusolve.h"
 #include "../neogb/libneogb.h"
 #include "msolve.c"
-
