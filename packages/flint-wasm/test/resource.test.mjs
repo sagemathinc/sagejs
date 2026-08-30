@@ -21,7 +21,9 @@ function liveResources() {
 
 test("loads the generated resource backend through the public package", () => {
   assert.ok(
-    wasm.byteLength <= 6_650_000,
+    // The reviewed msolve F4/QQ slice raises the production artifact to
+    // 6,739,430 bytes (2,551,799 bytes under gzip -9).
+    wasm.byteLength <= 6_800_000,
     `FLINT Wasm payload grew to ${wasm.byteLength} bytes`,
   );
   assert.ok(

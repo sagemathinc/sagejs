@@ -76,6 +76,12 @@ input packet to 1 MiB and an output packet to 16 MiB. These are safety bounds,
 not promises that every computation inside them will be fast or fit a browser's
 memory budget.
 
+The reviewed msolve slice raises the complete production FLINT Wasm artifact
+to 6,739,430 bytes uncompressed and 2,551,799 bytes with `gzip -9`. The raw
+payload guard is intentionally 6,800,000 bytes so future growth remains
+visible; the production topology's independent compressed-payload budgets
+continue to apply as well.
+
 The versioned oracle corpus is
 [`test/fixtures/groebner-basis-oracles-v1.json`](../test/fixtures/groebner-basis-oracles-v1.json).
 Its ordinary-Python verifier checks both ideal containments through a change
