@@ -12,12 +12,16 @@ Implementation is active. As of 2026-08-31:
 - The app portion of P6B is complete for core widgets and `Output`, including
   offline assets, bidirectional state updates, reset behavior, and browser
   acceptance coverage. Extracting the reusable P6A Cell remains open.
-- P7's core product is implemented: Sage-global `@interact`, `input_box`,
+- P7's PREP quickstart control layer is implemented and covered by an
+  executable Sage differential corpus. Sage-global `@interact`, `input_box`,
   `slider`, `range_slider`, `checkbox`, `selector`, `color_selector`,
-  `input_grid`, and `text_control` use standard ipywidgets models. The app's
-  primary interactive symbolic-plot preset now exercises Sage `@interact`
-  offline and verifies a live frontend update. Broader PREP and
-  `sage.interacts.library` qualification remains open.
+  `input_grid`, and `text_control` use standard ipywidgets models. Automatic
+  boolean/string/integer/real/list/iterator/tuple inference, matrix and vector
+  grids, custom PREP layout placement, initial and manual updates, localized
+  callback errors, and text-only CLI behavior are qualified. The app's primary
+  interactive symbolic-plot preset exercises Sage `@interact` offline and
+  verifies a live frontend update. The PREP calculus/plotting chapters and a
+  representative `sage.interacts.library` subset remain open.
 - P8–P10 and the remaining lifecycle, embedding, documentation, budget, and
   four-platform gates remain open. Custom widgets remain deliberately last.
 

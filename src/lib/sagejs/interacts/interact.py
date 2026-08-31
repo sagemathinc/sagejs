@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable
 from typing import Any
 
-from ipywidgets.widgets import SelectionSlider, ToggleButtons, ValueWidget
+from ipywidgets.widgets import (
+    HBox,
+    SelectionSlider,
+    ToggleButtons,
+    ValueWidget,
+    VBox,
+)
 from ipywidgets.widgets.interaction import interactive, signature
 from sagejs.interacts.controls import input_grid
 from sagejs.interacts.widgets import EvalText, SageColorPicker
@@ -18,6 +24,45 @@ def _looks_like_matrix(value: Any) -> bool:
 
 def _looks_like_color(value: Any) -> bool:
     return hasattr(value, "html_color")
+
+
+def _is_iterator(value: Any) -> bool:
+    """Test the Python iterator contract without relying on runtime ABCs."""
+    try:
+        return iter(value) is value
+    except TypeError:
+        return False
+
+
+def _looks_like_sage_real(value: Any) -> bool:
+    name = getattr(type(value), "__name__", "")
+    return name in {"RealLiteral", "RealNumber", "RealNumberElement"}
+
+
+def _layout_rows(
+    rows: Any,
+    widgets: dict[str, Any],
+    placed: set[str],
+) -> list[Any]:
+    if not isinstance(rows, (list, tuple)):
+        raise TypeError("interact layout regions must be lists of rows")
+    result = []
+    for row in rows:
+        names = row if isinstance(row, (list, tuple)) else [row]
+        row_widgets = []
+        for name in names:
+            if not isinstance(name, str):
+                raise TypeError("interact layout entries must be parameter names")
+            if name not in widgets:
+                raise ValueError("unknown interact layout parameter {!r}".format(name))
+            if name in placed:
+                raise ValueError(
+                    "duplicate interact layout parameter {!r}".format(name)
+                )
+            placed.add(name)
+            row_widgets.append(widgets[name])
+        result.append(HBox(children=row_widgets))
+    return result
 
 
 class sage_interactive(interactive):
@@ -34,6 +79,7 @@ class sage_interactive(interactive):
             function, supplied_options = arguments
             options = supplied_options.copy()
 
+        custom_layout = kwargs.pop("layout", None)
         function_signature = signature(function)
         parameters = OrderedDict(function_signature.parameters)
         try:
@@ -53,11 +99,52 @@ class sage_interactive(interactive):
             for widget in self.kwargs_widgets:
                 if isinstance(widget, ToggleButtons):
                     widget.on_msg(self.update)
+        if custom_layout is not None:
+            self._apply_custom_layout(custom_layout)
+
+    def _apply_custom_layout(self, layout: Any) -> None:
+        if not isinstance(layout, dict):
+            raise TypeError("interact layout must be a dictionary")
+        allowed = {"top", "left", "right", "bottom"}
+        unknown = set(layout).difference(allowed)
+        if unknown:
+            raise ValueError(
+                "unknown interact layout region{}: {}".format(
+                    "s" if len(unknown) != 1 else "",
+                    ", ".join(sorted(unknown)),
+                )
+            )
+
+        widgets = {widget._kwarg: widget for widget in self.kwargs_widgets}
+        placed: set[str] = set()
+        top = _layout_rows(layout.get("top", []), widgets, placed)
+        left = _layout_rows(layout.get("left", []), widgets, placed)
+        right = _layout_rows(layout.get("right", []), widgets, placed)
+        bottom = _layout_rows(layout.get("bottom", []), widgets, placed)
+        remaining = [widget for name, widget in widgets.items() if name not in placed]
+        if remaining:
+            top.append(HBox(children=remaining))
+        if self.manual:
+            bottom.append(HBox(children=[self.manual_button]))
+
+        middle_children = []
+        if left:
+            middle_children.append(VBox(children=left))
+        middle_children.append(self.out)
+        if right:
+            middle_children.append(VBox(children=right))
+        children = []
+        if top:
+            children.append(VBox(children=top))
+        children.append(HBox(children=middle_children))
+        if bottom:
+            children.append(VBox(children=bottom))
+        self.children = children
 
     def __repr__(self) -> str:
         prefix = "Manual interactive" if self.manual else "Interactive"
         widgets = [
-            widget for widget in self.children if isinstance(widget, ValueWidget)
+            widget for widget in self.kwargs_widgets if isinstance(widget, ValueWidget)
         ]
         count = len(widgets)
         answer = "{} function {!r} with {} widget{}".format(
@@ -87,6 +174,10 @@ class sage_interactive(interactive):
             )
         if _looks_like_color(abbreviation):
             return SageColorPicker(value=abbreviation.html_color())
+        if _looks_like_sage_real(abbreviation):
+            return super().widget_from_single_value(float(abbreviation))
+        if _is_iterator(abbreviation):
+            return SelectionSlider(options=list(abbreviation))
         widget = super().widget_from_single_value(abbreviation, *args, **kwargs)
         if widget is not None or isinstance(abbreviation, Iterable):
             return widget
@@ -121,7 +212,7 @@ class sage_interactive(interactive):
 
     @classmethod
     def widget_from_iterable(cls, abbreviation: Any, *args: Any, **kwargs: Any) -> Any:
-        if isinstance(abbreviation, Iterator):
+        if _is_iterator(abbreviation):
             return SelectionSlider(options=list(abbreviation))
         return super().widget_from_iterable(abbreviation, *args, **kwargs)
 

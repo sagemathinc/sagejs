@@ -9448,7 +9448,11 @@ def zero_matrix(
     return MatrixSpace(base, rows, cols)(0)
 
 
-def identity_matrix(base: sage.Parent, size: int) -> Matrix:
+def identity_matrix(base: Any, size: int | None = None) -> Matrix:
+    """Return an identity matrix, defaulting to `ZZ` when only size is given."""
+    if size is None:
+        size = int(base)
+        base = sage.ZZ
     base = _canonical_base(base)
     size = int(size)
     if size < 0:
