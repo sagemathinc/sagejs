@@ -139,30 +139,33 @@
               <p class="eyebrow">The successful computation</p>
               <h2 id="trace-title">Watch the evidence accumulate.</h2>
             </div>
-            <p>Orange circles are bracket endpoints. The green diamond is the candidate. Shape and the table carry the same meaning without color.</p>
+            <p>Blue circles are retained callback evaluations, the orange segment is the bracket, and the green diamond is the candidate. Nothing is sampled again for presentation.</p>
           </div>
           <div class="plot-layout">
             <figure class="plot-card">
               <svg id="root-plot" viewBox="0 0 760 400" role="img" aria-labelledby="root-plot-title root-plot-description">
                 <title id="root-plot-title">First retained Brent iteration for cos(x) minus x</title>
-                <desc id="root-plot-description">The graph of f(x) = cos(x) - x decreases across [0, 1], from 1 to about -0.46, and crosses the x-axis once near x = 0.739085. Orange circles mark the sign-changing bracket [0, 0.685], and a green diamond marks the candidate 0.685. The table below gives exact retained values.</desc>
+                <desc id="root-plot-description">Three blue circles show the function values actually retained at x equals 0, 1, and 0.685 during the first Brent iteration. An orange segment on y equals zero marks the retained sign-changing bracket from 0 to 0.685, and a green diamond marks the retained candidate. No curve is inferred and the callback is not evaluated again. The table below gives every retained iteration.</desc>
                 <rect width="100%" height="100%" class="plot-background" />
-                <line x1="62" y1="284" x2="738" y2="284" class="plot-axis" />
+                <line x1="62" y1="235" x2="738" y2="235" class="plot-axis" />
                 <line x1="62" y1="24" x2="62" y2="348" class="plot-axis" />
-                <path d="M62 40 C190 77 310 143 430 210 C550 276 650 325 738 360" class="plot-function" />
-                <circle cx="62" cy="40" r="6" class="plot-bracket"><title>left bracket endpoint x=0</title></circle>
-                <circle cx="525" cy="260" r="6" class="plot-bracket"><title>right bracket endpoint x=0.685073357</title></circle>
-                <polygon points="525,253 532,260 525,267 518,260" class="plot-candidate"><title>candidate x=0.685073357</title></polygon>
+                <line x1="62" y1="235" x2="525" y2="235" class="plot-bracket-line" />
+                <circle cx="62" cy="40" r="5" class="plot-evaluation"><title>retained evaluation f(0) = 1</title></circle>
+                <circle cx="738" cy="325" r="5" class="plot-evaluation"><title>retained evaluation f(1) = -0.459697694</title></circle>
+                <circle cx="525" cy="217" r="5" class="plot-evaluation"><title>retained evaluation f(0.685073357) = 0.0892992765</title></circle>
+                <circle cx="62" cy="235" r="6" class="plot-bracket"><title>retained left bracket endpoint x=0</title></circle>
+                <circle cx="525" cy="235" r="6" class="plot-bracket"><title>retained right bracket endpoint x=0.685073357</title></circle>
+                <polygon points="525,210 532,217 525,224 518,217" class="plot-candidate"><title>retained candidate x=0.685073357</title></polygon>
                 <text x="380" y="388" class="plot-label">x</text>
                 <text x="18" y="200" transform="rotate(-90 18 200)" class="plot-label">f(x)</text>
                 <text x="62" y="370" class="plot-tick">0</text>
                 <text x="738" y="370" text-anchor="end" class="plot-tick">1</text>
               </svg>
               <figcaption>
-                <strong>Static description.</strong> The graph decreases from
-                <code>f(0) = 1</code> to <code>f(1) ≈ −0.46</code> and crosses
-                once near <code>x = 0.739085</code>. Playback changes only the
-                bracket and candidate markers; the axes and function stay fixed.
+                <strong>Static description.</strong> The three plotted values
+                were computed by the solver. Playback reveals additional retained
+                evaluations and updates the bracket and candidate; it never draws
+                an inferred curve or invokes the callback again.
               </figcaption>
             </figure>
             <aside class="iteration-panel" aria-labelledby="iteration-panel-title">
@@ -176,8 +179,8 @@
               <input id="iteration-slider" type="range" min="0" max="5" value="0" step="1" disabled />
               <p class="fine-print">Playback never starts automatically. Reduced-motion preference disables timed playback while keeping this slider available.</p>
               <div class="legend" aria-label="Plot legend">
-                <span><i class="legend-line" aria-hidden="true"></i> function</span>
-                <span><i class="legend-circle" aria-hidden="true"></i> bracket</span>
+                <span><i class="legend-circle" aria-hidden="true"></i> retained evaluation</span>
+                <span><i class="legend-line" aria-hidden="true"></i> bracket</span>
                 <span><i class="legend-diamond" aria-hidden="true"></i> candidate</span>
               </div>
             </aside>

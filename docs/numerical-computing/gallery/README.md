@@ -51,16 +51,18 @@ visual presentations.
 - Payload measurements are generated beside the evidence and checked
   fail-closed. Python's source-side byte receipts are retained because JSON
   distinguishes `1.0` there while JavaScript reserialization does not.
-- The gallery uses only the bounded 2-D `line`, `point`, and `text` subset when
-  a new domain PlotSpec has not yet converged on the shared axis vocabulary.
-  Such a fallback is recorded rather than hidden.
+- Public numerical PlotSpecs use the canonical `Axes2DSettings` `xaxis` and
+  `yaxis` vocabulary accepted by shared Plotly lowering. The gallery keeps a
+  bounded 2-D `line`, `point`, and `text` adapter only as a fail-closed check
+  for older or independently serialized evidence.
 
-One important public-surface gap remains explicit in the bundle: the root
-`NumericalResult.animate()` currently samples the live callback to draw a
-smooth curve. The durable story instead builds a point/bracket animation from
-retained `evaluation` and `iteration` trace events. This is not a fabricated
-curve and does not spend callback budget. A future root result can remove the
-gap by retaining an explicitly budgeted visualization sample set.
+The gallery exposed and helped resolve an important public-surface defect.
+Root `NumericalResult.plot()` and `.animate()` now use only retained
+`evaluation` and `iteration` events; they never sample the live callback for
+presentation. The root stories render those computed points, bracket segments,
+and candidates without inferring a smooth curve. Both semantic and Plotly
+exports retain `computed_evidence_only` and `callback_reevaluated: false`
+metadata, and focused tests freeze callback counts across presentation.
 
 ## Original root vertical slice
 

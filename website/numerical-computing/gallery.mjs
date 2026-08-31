@@ -199,16 +199,24 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function lineGeometry(frame) {
+function plotGeometry(frame) {
   const layers = frame.state.value.layers;
-  const line = layers.find((layer) => layer.source_intent?.role === "function");
-  if (!line) throw new Error("root animation frame has no function layer");
-  const finitePoints = line.data.x.map((x, index) => [x, line.data.y[index]])
-    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+  const finitePoints = layers.flatMap((layer) =>
+    (layer.data?.x || []).map((x, index) => [x, layer.data?.y?.[index]])
+      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y)),
+  );
+  if (finitePoints.length === 0) {
+    throw new Error("root animation frame has no finite retained evidence");
+  }
   const xs = finitePoints.map(([x]) => x);
   const ys = finitePoints.map(([, y]) => y);
-  const xMin = Math.min(...xs);
-  const xMax = Math.max(...xs);
+  let xMin = Math.min(...xs);
+  let xMax = Math.max(...xs);
+  if (xMin === xMax) {
+    const padding = Math.max(Math.abs(xMin) * 0.1, 1);
+    xMin -= padding;
+    xMax += padding;
+  }
   const yMinRaw = Math.min(0, ...ys);
   const yMaxRaw = Math.max(0, ...ys);
   const yPadding = Math.max((yMaxRaw - yMinRaw) * 0.08, 0.05);
@@ -224,19 +232,7 @@ function lineGeometry(frame) {
   const plotHeight = height - top - bottom;
   const sx = (x) => left + ((x - xMin) / (xMax - xMin)) * plotWidth;
   const sy = (y) => top + ((yMax - y) / (yMax - yMin)) * plotHeight;
-  let path = "";
-  let active = false;
-  for (let index = 0; index < line.data.x.length; index += 1) {
-    const x = line.data.x[index];
-    const y = line.data.y[index];
-    if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      active = false;
-      continue;
-    }
-    path += `${active ? " L" : "M"}${sx(x).toFixed(2)} ${sy(y).toFixed(2)}`;
-    active = true;
-  }
-  return { layers, path, sx, sy, width, height, left, right, top, bottom, xMin, xMax, yMin, yMax };
+  return { layers, sx, sy, width, height, left, right, top, bottom, xMin, xMax, yMin, yMax };
 }
 
 function markerMarkup(layer, geometry) {
@@ -249,19 +245,35 @@ function markerMarkup(layer, geometry) {
       const size = 7;
       return `<polygon points="${cx},${cy - size} ${cx + size},${cy} ${cx},${cy + size} ${cx - size},${cy}" class="plot-candidate"><title>candidate x=${escapeHtml(formatNumber(x))}, residual=${escapeHtml(formatNumber(Math.abs(y)))}</title></polygon>`;
     }
-    return `<circle cx="${cx}" cy="${cy}" r="6" class="plot-bracket"><title>bracket endpoint x=${escapeHtml(formatNumber(x))}, f(x)=${escapeHtml(formatNumber(y))}</title></circle>`;
+    const role = layer.source_intent?.role || "retained evidence";
+    return `<circle cx="${cx}" cy="${cy}" r="5" class="plot-evaluation"><title>${escapeHtml(role)} x=${escapeHtml(formatNumber(x))}, y=${escapeHtml(formatNumber(y))}</title></circle>`;
   }).join("");
 }
 
+function bracketMarkup(layer, geometry) {
+  const points = layer.data.x.map((x, index) => [x, layer.data.y[index]])
+    .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+  if (points.length < 2) return "";
+  const [[x0, y0], [x1, y1]] = points;
+  const endpoints = points.slice(0, 2).map(([x, y]) =>
+    `<circle cx="${geometry.sx(x)}" cy="${geometry.sy(y)}" r="6" class="plot-bracket"><title>retained bracket endpoint x=${escapeHtml(formatNumber(x))}</title></circle>`,
+  ).join("");
+  return `<line x1="${geometry.sx(x0)}" y1="${geometry.sy(y0)}" x2="${geometry.sx(x1)}" y2="${geometry.sy(y1)}" class="plot-bracket-line"/>${endpoints}`;
+}
+
 export function svgMarkup(frame, description) {
-  const geometry = lineGeometry(frame);
+  const geometry = plotGeometry(frame);
+  const brackets = geometry.layers
+    .filter((layer) => layer.source_intent?.role === "bracket")
+    .map((layer) => bracketMarkup(layer, geometry))
+    .join("");
   const markers = geometry.layers
-    .filter((layer) => layer.kind === "point")
+    .filter((layer) => layer.kind === "point" && layer.source_intent?.role !== "bracket")
     .map((layer) => markerMarkup(layer, geometry))
     .join("");
   const zeroY = geometry.sy(0);
   const title = "Brent root-finding iteration";
-  return `<svg viewBox="0 0 ${geometry.width} ${geometry.height}" role="img" aria-labelledby="export-plot-title export-plot-desc" xmlns="${SVG_NS}"><title id="export-plot-title">${title}</title><desc id="export-plot-desc">${escapeHtml(description)}</desc><rect width="100%" height="100%" class="plot-background"/><line x1="${geometry.left}" y1="${zeroY}" x2="${geometry.width - geometry.right}" y2="${zeroY}" class="plot-axis"/><line x1="${geometry.left}" y1="${geometry.top}" x2="${geometry.left}" y2="${geometry.height - geometry.bottom}" class="plot-axis"/><path d="${geometry.path}" class="plot-function"/>${markers}<text x="${geometry.width / 2}" y="${geometry.height - 12}" class="plot-label">x</text><text x="18" y="${geometry.height / 2}" transform="rotate(-90 18 ${geometry.height / 2})" class="plot-label">f(x)</text><text x="${geometry.left}" y="${geometry.height - 30}" class="plot-tick">${formatNumber(geometry.xMin)}</text><text x="${geometry.width - geometry.right}" y="${geometry.height - 30}" text-anchor="end" class="plot-tick">${formatNumber(geometry.xMax)}</text></svg>`;
+  return `<svg viewBox="0 0 ${geometry.width} ${geometry.height}" role="img" aria-labelledby="export-plot-title export-plot-desc" xmlns="${SVG_NS}"><title id="export-plot-title">${title}</title><desc id="export-plot-desc">${escapeHtml(description)}</desc><rect width="100%" height="100%" class="plot-background"/><line x1="${geometry.left}" y1="${zeroY}" x2="${geometry.width - geometry.right}" y2="${zeroY}" class="plot-axis"/><line x1="${geometry.left}" y1="${geometry.top}" x2="${geometry.left}" y2="${geometry.height - geometry.bottom}" class="plot-axis"/>${brackets}${markers}<text x="${geometry.width / 2}" y="${geometry.height - 12}" class="plot-label">x</text><text x="18" y="${geometry.height / 2}" transform="rotate(-90 18 ${geometry.height / 2})" class="plot-label">retained value</text><text x="${geometry.left}" y="${geometry.height - 30}" class="plot-tick">${formatNumber(geometry.xMin)}</text><text x="${geometry.width - geometry.right}" y="${geometry.height - 30}" text-anchor="end" class="plot-tick">${formatNumber(geometry.xMax)}</text></svg>`;
 }
 
 function traceTableMarkup(result) {
@@ -282,7 +294,7 @@ export function buildAccessibleExportHtml(story, frameIndex = 0) {
   const frames = story.visualization.plot_spec_animation.frames;
   const boundedIndex = Math.max(0, Math.min(frames.length - 1, frameIndex));
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(story.title)} — static export</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#17241f;max-width:70rem;margin:2rem auto;padding:0 1rem}svg{width:100%;height:auto;border:1px solid #bbc8c2}.plot-background{fill:#fbfaf5}.plot-axis{stroke:#66736e;stroke-width:1}.plot-function{fill:none;stroke:#275d89;stroke-width:3}.plot-bracket{fill:#fff;stroke:#a33b20;stroke-width:3}.plot-candidate{fill:#1d704f;stroke:#fff;stroke-width:2}.plot-label,.plot-tick{font-family:system-ui,sans-serif;fill:#24332d;font-size:14px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:.5rem;border:1px solid #ccd6d1;text-align:left}caption{text-align:left;font-weight:700;margin:.75rem 0}@media(prefers-color-scheme:dark){body{color:#e7eee9;background:#16201c}.plot-background{fill:#1d2924}.plot-axis,.plot-label,.plot-tick{stroke:#9dafaa;fill:#dce7e1}th,td{border-color:#506159}}</style></head><body><main><h1>${escapeHtml(story.title)}</h1><p>${escapeHtml(successCase.static_description)}</p><figure>${svgMarkup(frames[boundedIndex], story.accessibility.static_plot_description)}<figcaption>${escapeHtml(story.accessibility.static_plot_description)}</figcaption></figure>${traceTableMarkup(successCase.result)}<h2>Validation</h2><pre>${escapeHtml(JSON.stringify(successCase.result.validation, null, 2))}</pre></main></body></html>`;
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(story.title)} — static export</title><style>body{font:16px/1.55 system-ui,sans-serif;color:#17241f;max-width:70rem;margin:2rem auto;padding:0 1rem}svg{width:100%;height:auto;border:1px solid #bbc8c2}.plot-background{fill:#fbfaf5}.plot-axis{stroke:#66736e;stroke-width:1}.plot-bracket-line{stroke:#a33b20;stroke-width:5}.plot-bracket{fill:#fff;stroke:#a33b20;stroke-width:3}.plot-evaluation{fill:#275d89;stroke:#fff;stroke-width:1.5}.plot-candidate{fill:#1d704f;stroke:#fff;stroke-width:2}.plot-label,.plot-tick{font-family:system-ui,sans-serif;fill:#24332d;font-size:14px}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:.5rem;border:1px solid #ccd6d1;text-align:left}caption{text-align:left;font-weight:700;margin:.75rem 0}@media(prefers-color-scheme:dark){body{color:#e7eee9;background:#16201c}.plot-background{fill:#1d2924}.plot-axis,.plot-label,.plot-tick{stroke:#9dafaa;fill:#dce7e1}th,td{border-color:#506159}}</style></head><body><main><h1>${escapeHtml(story.title)}</h1><p>${escapeHtml(successCase.static_description)}</p><figure>${svgMarkup(frames[boundedIndex], story.accessibility.static_plot_description)}<figcaption>${escapeHtml(story.accessibility.static_plot_description)}</figcaption></figure>${traceTableMarkup(successCase.result)}<h2>Validation</h2><pre>${escapeHtml(JSON.stringify(successCase.result.validation, null, 2))}</pre></main></body></html>`;
 }
 
 export function buildPlotlyExport(story) {
@@ -303,7 +315,7 @@ function svgElement(tag, attributes = {}, text) {
 }
 
 function renderSvg(svg, frame, description) {
-  const geometry = lineGeometry(frame);
+  const geometry = plotGeometry(frame);
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${geometry.width} ${geometry.height}`);
   svg.setAttribute("role", "img");
@@ -326,9 +338,32 @@ function renderSvg(svg, frame, description) {
       y2: geometry.height - geometry.bottom,
       class: "plot-axis",
     }),
-    svgElement("path", { d: geometry.path, class: "plot-function" }),
   );
-  for (const layer of geometry.layers.filter((entry) => entry.kind === "point")) {
+  for (const layer of geometry.layers.filter(
+    (entry) => entry.source_intent?.role === "bracket",
+  )) {
+    const points = layer.data.x.map((x, index) => [x, layer.data.y[index]])
+      .filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+    if (points.length < 2) continue;
+    const [[x0, y0], [x1, y1]] = points;
+    svg.append(svgElement("line", {
+      x1: geometry.sx(x0),
+      y1: geometry.sy(y0),
+      x2: geometry.sx(x1),
+      y2: geometry.sy(y1),
+      class: "plot-bracket-line",
+    }));
+    for (const [x, y] of points.slice(0, 2)) {
+      const marker = svgElement("circle", {
+        cx: geometry.sx(x), cy: geometry.sy(y), r: 6, class: "plot-bracket",
+      });
+      marker.append(svgElement("title", {}, `retained bracket endpoint x=${formatNumber(x)}`));
+      svg.append(marker);
+    }
+  }
+  for (const layer of geometry.layers.filter(
+    (entry) => entry.kind === "point" && entry.source_intent?.role !== "bracket",
+  )) {
     layer.data.x.forEach((x, index) => {
       const y = layer.data.y[index];
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -340,7 +375,7 @@ function renderSvg(svg, frame, description) {
           points: `${cx},${cy - 7} ${cx + 7},${cy} ${cx},${cy + 7} ${cx - 7},${cy}`,
           class: "plot-candidate",
         })
-        : svgElement("circle", { cx, cy, r: 6, class: "plot-bracket" });
+        : svgElement("circle", { cx, cy, r: 5, class: "plot-evaluation" });
       marker.append(svgElement(
         "title",
         {},

@@ -44,6 +44,19 @@ For an embedded gallery panel:
    and script-free HTML); and
 6. dispose the Plotly graph when the panel closes.
 
+Root presentations are safe to create after computation: public `plot()` and
+`animate()` replay retained trace evidence and do not invoke the user's
+callback. Prefer `trace="evaluations"` when a signed point cloud is useful;
+an iteration-only trace is still honest but can show only retained residual
+magnitudes. Do not add an app-side callback sampler to make either view look
+like a smooth function curve.
+
+Domain PlotSpecs now use canonical `Axes2DSettings` records and should lower
+through `sagejs.plotting.lower_plot_spec`/`lower_plot_animation`. Treat a
+blocked shared-lowering receipt as an integration regression. The gallery's
+bounded fallback exists for diagnosis and old evidence, not as the app's
+preferred renderer.
+
 The full documentation page renders seventeen figures for qualification. The
 app should lazy-render the selected story rather than mounting all stories in
 an editor session.
