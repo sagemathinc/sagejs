@@ -423,6 +423,55 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p6-multilingual-catalog-roundtrip",
+      "description": "Every foundational numerical operation emits exactly its reviewed language targets and round-trips without semantic drift; the 66 envelope-bound emitters reject changed bodies while four scalar-root parsers accept semantically equivalent source syntax.",
+      "program_phase": "P6",
+      "layer": "metamorphic",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "metamorphic", "seed": null, "trials": 88, "evidence_check_ids": ["frontend-catalog-target-matrix"]},
+      "input": {
+        "operation": "multilingual-catalog-roundtrip",
+        "targets": [
+          {"operation": "roots:scalar_root:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "linear_algebra:linear_solve:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "linear_algebra:least_squares:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "spectral:symmetric_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "spectral:general_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "spectral:singular_value_decomposition:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "spectral:fourier_transform:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "spectral:convolution:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "approximation:interpolation:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
+          {"operation": "approximation:cubic_spline:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "integration:definite_integral:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "optimization:scalar_minimum:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
+          {"operation": "optimization:minimize:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "nonlinear_systems:nonlinear_system:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "least_squares:nonlinear_least_squares:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "fitting:linear_fit:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "ode:initial_value_problem:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "statistics:descriptive_statistics:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "statistics:one_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "statistics:two_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "statistics:linear_regression:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "sweeps:parameter_sweep:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]}
+        ]
+      },
+      "required_capabilities": ["numerics.frontend.catalog"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "frontend-catalog-operations", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/operation_keys_match", "expected": {"literal": true}},
+        {"id": "frontend-catalog-target-matrix", "evidence": "validation", "kind": "deep-equal", "actual": "/values/target_matrix_matches", "expected": {"literal": true}},
+        {"id": "frontend-catalog-supported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/supported_targets", "expected": {"literal": 70}},
+        {"id": "frontend-catalog-unsupported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/unsupported_targets", "expected": {"literal": 18}},
+        {"id": "frontend-catalog-roundtrip-digests", "evidence": "validation", "kind": "deep-equal", "actual": "/values/digest_mismatches", "expected": {"literal": 0}},
+        {"id": "frontend-catalog-tamper-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/tamper_rejections", "expected": {"literal": 66}},
+        {"id": "frontend-catalog-structured-diagnostics", "evidence": "validation", "kind": "deep-equal", "actual": "/values/unexpected_diagnostics", "expected": {"literal": 0}},
+        {"id": "frontend-catalog-equivalent-digests", "evidence": "validation", "kind": "deep-equal", "actual": "/values/equivalent_digests", "expected": {"literal": true}},
+        {"id": "frontend-catalog-linear-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_linear_residual", "expected": {"literal": 1e-12}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
       "id": "p7-root-teaching-artifacts",
       "description": "A traced root computation produces bounded renderer-neutral plot and animation records.",
       "program_phase": "P7",
@@ -435,26 +484,28 @@
       "checks": [
         {"id": "plot-has-layers", "evidence": "correctness", "kind": "greater-than-or-equal", "actual": "/values/plot_layers", "expected": {"literal": 1}},
         {"id": "animation-has-frames", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/animation_frames", "expected": {"literal": 2}},
-        {"id": "trace-bounded", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/trace_events", "expected": {"literal": 32}}
+        {"id": "trace-bounded", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/trace_events", "expected": {"literal": 32}},
+        {"id": "root-view-retained-evidence", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_replays", "expected": {"literal": 0}}
       ],
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
       "id": "p7-cross-domain-teaching-artifacts",
-      "description": "Approximation, integration, linear algebra, optimization, spectral, and statistics results all emit bounded renderer-neutral plots and animations.",
+      "description": "Approximation, integration, linear algebra, ODE, optimization, spectral, and statistics results all emit bounded renderer-neutral plots and animations without replaying numerical callbacks.",
       "program_phase": "P7",
       "layer": "definition-identity",
       "workload_tier": "instant-classroom",
-      "campaign": {"kind": "fixed", "seed": null, "trials": 6, "evidence_check_ids": []},
-      "input": {"operation": "cross-domain-teaching-artifacts", "domains": ["approximation", "integration", "linear-algebra", "optimization", "spectral", "statistics"]},
+      "campaign": {"kind": "fixed", "seed": null, "trials": 7, "evidence_check_ids": []},
+      "input": {"operation": "cross-domain-teaching-artifacts", "domains": ["approximation", "integration", "linear-algebra", "ode", "optimization", "spectral", "statistics"]},
       "required_capabilities": ["numerics.teaching.cross_domain"],
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
-        {"id": "teaching-domain-count", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/domain_count", "expected": {"literal": 6}},
+        {"id": "teaching-domain-count", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/domain_count", "expected": {"literal": 7}},
         {"id": "teaching-plot-layers", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/min_plot_layers", "expected": {"literal": 1}},
         {"id": "teaching-animation-frames", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/min_animation_frames", "expected": {"literal": 2}},
         {"id": "teaching-animation-bound", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_animation_frames", "expected": {"literal": 128}},
-        {"id": "teaching-plot-valid", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_issues", "expected": {"literal": 0}}
+        {"id": "teaching-plot-valid", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_errors", "expected": {"literal": 0}},
+        {"id": "teaching-retained-evidence", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_replays", "expected": {"literal": 0}}
       ],
       "measurement": {"warmup": 0, "samples": 2}
     },
