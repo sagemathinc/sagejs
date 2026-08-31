@@ -1,0 +1,31 @@
+{
+  "schema": "sagejs.vendored-source/v1",
+  "name": "msolve",
+  "upstream": "https://github.com/algebraic-solving/msolve",
+  "version": "0.10.1-14-g1e3af01",
+  "commit": "1e3af01f3864f6c848814b02a450f384c108adea",
+  "retrieved": "2026-08-30",
+  "license": "GPL-2.0-or-later",
+  "licenseFile": "COPYING",
+  "sourceDirectories": [
+    "src/crt",
+    "src/fglm",
+    "src/msolve",
+    "src/neogb",
+    "src/upolmat",
+    "src/usolve"
+  ],
+  "upstreamCAndHeaderAggregateSha256": "04620da216c298ec9594db65c7e0050e3a63a9736bfccec5ddf23430098e3227",
+  "vendoredAggregateAlgorithm": "sha256(path\\0length\\0bytes\\0) over sorted relative .c/.h paths",
+  "vendoredCAndHeaderAggregateSha256": "b6e083ff4838345d80e9e78753baaa3e7aa4b1579f7e4e36fff2fd1fccf96cb6",
+  "localPortabilityPatches": [
+    "Do not include POSIX getopt.h from the library-only Windows build.",
+    "Define ssize_t and SSIZE_MAX for the bundled getdelim implementation under the native Windows SDK.",
+    "Redirect upstream process exits through the Sage.js native/Wasm containment boundary.",
+    "Namespace msolve's private prime helpers to avoid whole-addon symbol collisions.",
+    "Hash the committed LF-normalized forms of upstream headers so clean checkouts verify identically on every host.",
+    "Make the scalar row-conversion degree-fall check defined for empty matrices and independent of OpenMP loop scheduling.",
+    "Release modular Groebner metadata through its complete upstream destructor instead of leaking pair, hash, and conversion workspaces."
+  ],
+  "scope": "Packed F4 over prime fields and modular Groebner bases over QQ; no CLI, root solver, or public msolve ABI is exposed."
+}

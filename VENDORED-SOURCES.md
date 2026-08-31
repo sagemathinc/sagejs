@@ -43,6 +43,21 @@ Changing an archive requires a normal reviewed source commit updating its
 version and checksum. Do not replace a release asset under an existing name
 without also changing the recorded digest and explaining why.
 
+## msolve Gröbner source slice
+
+`packages/flint/vendor/msolve` contains the reviewed C source closure for
+msolve's packed prime-field F4 and modular rational Gröbner-basis exports. It
+is pinned to msolve 0.10.1-14-g1e3af01 at commit
+`1e3af01f3864f6c848814b02a450f384c108adea` under GPL-2.0-or-later. The
+source receipt records the selected directories, aggregate source hash,
+license file, and complete Sage.js portability/safety patch ledger;
+`packages/flint/scripts/verify-msolve-source.cjs` verifies that receipt.
+
+The CLI, root-solving interface, and unrelated msolve surface are not exposed.
+Both the Node addon and production Wasm compile this one source closure against
+Sage.js's existing FLINT/GMP prefix. Any vendored source change invalidates the
+native addon build identity and must update the receipt and its patch ledger.
+
 The FLINT addon additionally downloads an immutable GitHub archive of eclib
 commit `8dca7f18acedf7c2283a5d0e689c269f8258c981`, verifies its SHA-256 digest,
 and applies the tracked FLINT-only rank patch. GitHub's commit-addressed source

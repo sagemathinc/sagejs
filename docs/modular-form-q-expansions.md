@@ -171,8 +171,8 @@ sage: A = CuspForms(2, 12).q_expansion_algorithm_receipt("auto", prec=8)
 sage: A.selected_algorithm(), A.formula_subspace().is_full_ambient()
 ('formulas', True)
 sage: B = CuspForms(2, 24).q_expansion_algorithm_receipt("auto", prec=8)
-sage: B.selected_algorithm(), B.formula_subspace().is_proper_subspace()
-('modular_symbols', True)
+sage: B.selected_algorithm(), B.formula_subspace().is_full_ambient()
+('formulas', True)
 ```
 
 If $T_n$ is the matrix of the $n$-th Hecke operator on a signed cuspidal
@@ -340,10 +340,89 @@ sage: T.level(), T.character().is_trivial(), T.certificate().verify()
 `character_eisenstein_series(chi, psi, k, prec, t=1)` supplies the same
 certified algebra interface for the general exact Eisenstein formula.
 
+### Certified eta products and eta quotients
+
+`eta_product(N, exponents, prec)` constructs the exact expansion
+
+$$
+\prod_{d\mid N}\eta(dz)^{r_d}
+=q^{\sum d r_d/24}
+ \prod_{d\mid N}\prod_{n\geq1}(1-q^{dn})^{r_d}.
+$$
+
+The exponent dictionary may contain negative integers. Sage.js publishes the
+result as a modular form only after an exact Newman--Ligozat certificate has
+checked
+
+$$
+\sum_{d\mid N}d r_d\equiv0\pmod {24},\qquad
+\sum_{d\mid N}\frac{N}{d}r_d\equiv0\pmod {24},
+$$
+
+integral nonnegative weight $k=\frac12\sum r_d$, the induced Kronecker
+character, and every cusp order
+
+$$
+\operatorname{ord}_{a/c}(f)=
+\frac{N}{24\gcd(c,N/c)c}
+\sum_{d\mid N}\frac{\gcd(c,d)^2r_d}{d}
+\quad(c\mid N).
+$$
+
+Thus the familiar two examples carry all their metadata and a replayable
+proof:
+
+```sage
+sage: D = eta_product(1, {1: 24}, prec=12)
+sage: D.q_expansion() == ModularForms(1, 12, prec=12).delta().q_expansion(12)
+True
+sage: D.weight(), D.level(), D.cusp_orders(), D.certificate().verify()
+(12, 1, ((1, 1),), True)
+sage: f = eta_product(11, {1: 2, 11: 2}, prec=12)
+sage: f
+Certified eta product eta(1*z)^2*eta(11*z)^2 of weight 2 and level 11
+sage: f.q_expansion()
+q - 2*q^2 - q^3 + 2*q^4 + q^5 + 2*q^6 - 2*q^7 - 2*q^9 - 2*q^10 + q^11 + O(q^12)
+sage: f.character().is_trivial(), f.cusp_orders()
+(True, ((1, 1), (11, 1)))
+```
+
+Nontrivial characters and holomorphic negative-exponent quotients use the
+same API:
+
+```sage
+sage: g = eta_product(4, {1: 4, 2: 2, 4: 4}, prec=12)
+sage: g.weight(), g.certificate().character_discriminant(), \
+....: [g.character()(n) for n in range(1, 5)]
+(5, -4, [1, 0, -1, 0])
+sage: h = eta_product(4, {1: 4, 2: -2, 4: 12}, prec=12)
+sage: h.cusp_orders(), h.certificate().verify()
+(((1, 1), (2, 1/2), (4, 2)), True)
+```
+
+Failed conditions remain inspectable without publishing a false modular form:
+
+```sage
+sage: C = eta_product_certificate(4, {1: -12, 2: 10, 4: 4})
+sage: C.verify(), C.failure_reason(), C.cusp_orders()
+(False, 'the eta product has a pole at a cusp', ((1, -1), (2, 1/2), (4, 1)))
+```
+
+`eta_product_candidates()` exposes deterministic bounds for an explicit
+search. By default it enumerates nonnegative exponent vectors of fixed weight;
+callers may set signed `min_exponent` and `max_exponent` bounds. `strict=True`
+raises if `candidate_limit` or `vector_limit` truncates the requested search.
+The automatic formula registry uses a deliberately smaller fail-closed slice:
+$N\leq128$, $k\leq24$, at most four divisors, nonnegative exponents, trivial
+character, and at most $25000$ vectors or $256$ certified cusp forms. A
+truncated registry search still defines an exact contained span; it can never
+turn partial enumeration into a claim of completeness.
+
 ### Honest formula-generated subspaces
 
-For a cusp space, `formula_subspace()` constructs level-one formula forms and
-all $V_d$ images with $d\mid N$, then proves their rank beyond the Sturm bound.
+For a cusp space, `formula_subspace()` constructs level-one formula forms,
+all $V_d$ images with $d\mid N$, and the bounded certified eta-product family,
+then proves their rank beyond the Sturm bound.
 The result is an explicit contained subspace. It does not infer containment or
 equality from dimensions: it reconstructs an independent modular-symbol basis
 through the proof precision and solves the formula rows exactly in that basis.
@@ -351,18 +430,29 @@ It claims to be the ambient space only when the combined exact comparison has
 full rank:
 
 ```sage
-sage: F = CuspForms(2, 24).formula_subspace(prec=8)
+sage: F = CuspForms(37, 2).formula_subspace(prec=8)
 sage: F
-Certified formula-generated proper subspace of dimension 4 of Cuspidal subspace of dimension 5 of Modular Forms space of dimension 7 for Congruence Subgroup Gamma0(2) of weight 24 over Rational Field
+Certified formula-generated proper subspace of dimension 0 of Cuspidal subspace of dimension 2 of Modular Forms space of dimension 3 for Congruence Subgroup Gamma0(37) of weight 2 over Rational Field
 sage: F.dimension(), F.ambient_dimension(), F.is_proper_subspace(), F.verify()
-(4, 5, True, True)
+(0, 2, True, True)
 sage: C = F.ambient_comparison()
 sage: C
-Verified formula/modular-symbol comparison through q^7: 1 missing direction
+Verified formula/modular-symbol comparison through q^7: 2 missing directions
 sage: C.formula_coordinates_in_ambient().nrows(), C.missing_dimension()
-(4, 1)
+(0, 2)
 sage: C.missing_q_expansion_basis()
-[q - 3036624*q^6 + 30261560*q^7 + O(q^8)]
+[q + q^3 - 2*q^4 - q^7 + O(q^8),
+ q^2 + 2*q^3 - 2*q^4 + q^5 - 3*q^6 + O(q^8)]
+```
+
+Conversely, the new eta candidate $\Delta(z)\Delta(2z)$ supplies the fifth
+direction which the level-one degeneracy family previously missed in
+$S_{24}(\Gamma_0(2))$:
+
+```sage
+sage: G = CuspForms(2, 24).formula_subspace(prec=8)
+sage: G.dimension(), G.ambient_dimension(), G.is_full_ambient(), G.verify()
+(5, 5, True, True)
 ```
 
 The missing basis is a deterministic subset of the modular-symbol row basis
@@ -397,10 +487,13 @@ own certified candidate list to `formula_subspace(candidates, prec)`.
 
 `bench/modular/qexp-correctness/pinned-corpus.json` records canonical exact
 row-space hashes and invariants independently reproduced by SageMath and
-Magma. It includes level $1$, levels $2$ and $6$, a nontrivial quadratic
+Magma. It includes level $1$, levels $2$, $6$, and $37$, a nontrivial quadratic
 character modulo $7$, an entirely old space at level $22$, and the quadratic
 coefficient field of a level-$23$ newform. Both full and proper formula spans
-are covered. The corpus also checks coefficients beyond the Sturm bound using
+are covered. The level-$2$ and level-$6$ rows independently reconstruct the
+eta-product directions with SageMath's Euler product, while Magma supplies the
+ambient cusp spaces. The corpus also checks coefficients beyond the Sturm
+bound using
 
 $$
 a_{p^2}=a_p^2-\chi(p)p^{k-1}

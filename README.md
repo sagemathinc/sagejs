@@ -789,19 +789,20 @@ and FLINT word-characteristic extension fields use the corresponding native
 FLINT `fq_nmod_mpoly`; coefficients and the polynomial context retain the same
 opaque finite-field context rather than translating through strings.
 
-The initial ideal layer over `QQ[x_1,...,x_n]` uses FLINT's bounded
-Buchberger implementation. Rational generators are represented by primitive
-integer polynomials during the computation and normalized to a reduced monic
-basis on return. Ideal membership reduces against that basis. Explicit
-resource limits prevent an unexpectedly difficult basis from monopolizing an
-embedded evaluator.
+Polynomial ideals over prime `GF(p)` fields use a portable scalar msolve F4
+backend for global degree-reverse-lexicographic order and `p < 2^31`. It
+returns full reduced bases and supports normal forms, leading ideals, and
+membership on Linux, macOS, native Windows, Node WebAssembly, and browsers.
+Over `QQ`, FLINT's bounded exact Buchberger implementation remains the default;
+msolve's faster modular rational path is available explicitly as a
+probabilistic `proof=False` computation. Backend choice and proof status are
+inspectable through `groebner_basis_metadata()`.
 
-This is deliberately not presented as a substitute for Singular. FLINT
-provides the compact, high-quality foundation for arithmetic and useful small
-Gröbner computations. Primary decomposition, associated primes, comprehensive
-coefficient-domain support, and the broader algebraic-geometry layer remain
-the boundary at which Sage.js should evaluate a Singular integration instead
-of growing an ad hoc computer-algebra system.
+See [Gröbner bases](docs/groebner-bases.md) for examples, exact capability and
+resource limits, and the operations that remain future work. Primary
+decomposition, associated primes, modules, local orders, comprehensive
+coefficient-domain support, and the broader algebraic-geometry layer are not
+silently presented as msolve capabilities.
 
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs

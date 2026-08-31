@@ -9,18 +9,37 @@ from sage.all import DirichletGroup
 from sage.all import Gamma0
 from sage.all import ModularSymbols
 from sage.all import Newforms
+from sage.all import PowerSeriesRing
 from sage.all import QQ
+from sage.all import ZZ
 from sage.all import divisors
 from sage.all import matrix
 from sage.env import SAGE_VERSION
+from sage.modular.etaproducts import qexp_eta
 
 
 TRIVIAL_CASES = (
     ("level1-weight24", 1, 24, 12),
     ("level2-weight12", 2, 12, 12),
-    ("level2-weight24-proper", 2, 24, 12),
-    ("level6-weight12-composite", 6, 12, 20),
+    ("level2-weight24-eta-complete", 2, 24, 12),
+    ("level6-weight12-eta-complete", 6, 12, 20),
+    ("level37-weight2-proper", 37, 2, 12),
 )
+
+
+# Fixed theorem-certified eta products which enlarge the level-one oldform
+# family in the public formula registry.  SageMath supplies the independent
+# Euler product below; Magma independently supplies the ambient cusp space.
+ETA_PRODUCTS = {
+    "level2-weight24-eta-complete": (((1, 24), (2, 24)),),
+    "level6-weight12-eta-complete": (
+        ((2, 12), (6, 12)),
+        ((1, 1), (2, 7), (3, 5), (6, 11)),
+        ((1, 2), (2, 2), (3, 10), (6, 10)),
+        ((1, 5), (2, 11), (3, 1), (6, 7)),
+        ((1, 10), (2, 10), (3, 2), (6, 2)),
+    ),
+}
 
 
 def coefficient_rows(forms, precision):
@@ -43,7 +62,18 @@ def ambient_matrix(level, weight, precision):
     return rational_echelon(coefficient_rows(basis, precision), precision)
 
 
-def formula_matrix(level, weight, precision):
+def eta_product_coefficients(exponents, precision):
+    ring = PowerSeriesRing(ZZ, "q", default_prec=precision)
+    q = ring.gen()
+    eta_unit = qexp_eta(ring, precision)
+    shift = sum(divisor * exponent for divisor, exponent in exponents) // 24
+    value = q**shift
+    for divisor, exponent in exponents:
+        value *= eta_unit(q**divisor) ** exponent
+    return list(value.add_bigoh(precision).padded_list(precision))
+
+
+def formula_matrix(case_id, level, weight, precision):
     source = CuspForms(Gamma0(1), weight).q_expansion_basis(precision)
     rows = []
     for factor in divisors(level):
@@ -54,13 +84,15 @@ def formula_matrix(level, weight, precision):
                     for index in range(precision)
                 ]
             )
+    for exponents in ETA_PRODUCTS.get(case_id, ()):
+        rows.append(eta_product_coefficients(exponents, precision))
     return rational_echelon(rows, precision)
 
 
 def trivial_case(case_id, level, weight, precision):
     space = CuspForms(Gamma0(level), weight)
     ambient = ambient_matrix(level, weight, precision)
-    formulas = formula_matrix(level, weight, precision)
+    formulas = formula_matrix(case_id, level, weight, precision)
     return {
         "id": case_id,
         "level": level,

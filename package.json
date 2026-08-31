@@ -199,6 +199,7 @@
     "test:matrix:rational-performance": "node scripts/check-rational-matrix-budget.cjs",
     "test:polynomial:performance": "node scripts/check-polynomial-budget.cjs",
     "bench:matrix:sparse-random": "node bench/public-sparse-random.cjs",
+    "bench:groebner": "node bench/groebner/benchmark.cjs",
     "bench:matrix:word-prime-resource": "node bench/word-prime-matrix-public.cjs",
     "bench:hyperelliptic-genus3-candidates": "node bin/sagejs --python src/lib/sagejs/hyperelliptic_curves/_benchmark_genus3_candidates.py",
     "bench:hyperelliptic-genus3-certified": "node bench/rforest/benchmark-genus3-certified.cjs",
