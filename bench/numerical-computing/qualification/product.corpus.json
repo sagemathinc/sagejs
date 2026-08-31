@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v8",
-  "version": 8,
+  "id": "sagejs-numerical-product-v9",
+  "version": 9,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -479,6 +479,42 @@
       "measurement": {"warmup": 0, "samples": 1}
     },
     {
+      "id": "p3-nlopt-nelder-mead-active-bound",
+      "description": "The advertised Nelder-Mead box-bound envelope validates the legitimate active-bound minimum instead of treating a one-sided optimum as indeterminate.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-nelder-mead-active-bound", "lower": 0, "upper": 2, "expected": 2},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-active-bound-location", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/parameter_error", "expected": {"literal": 1e-7}},
+        {"id": "nlopt-active-bound-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-active-bound-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "nlopt-active-bound-feasible", "evidence": "validation", "kind": "deep-equal", "actual": "/values/bounds_satisfied", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-nelder-mead-dimension-33",
+      "description": "The first dimension above the validated 32-variable Nelder-Mead envelope is rejected during planning instead of entering native code without an independent local-minimum diagnostic.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-nelder-mead-dimension-33", "dimension": 33, "validated_maximum": 32},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "failure", "failure_code": "optimization.dimension-envelope"},
+      "checks": [
+        {"id": "nlopt-dimension-33-rejected", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/rejected", "expected": {"literal": true}},
+        {"id": "nlopt-dimension-33-error-type", "evidence": "validation", "kind": "deep-equal", "actual": "/values/error_name", "expected": {"literal": "ValueError"}},
+        {"id": "nlopt-dimension-33-error-message", "evidence": "validation", "kind": "deep-equal", "actual": "/values/message_matches", "expected": {"literal": true}},
+        {"id": "nlopt-dimension-33-no-native-entry", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_entered", "expected": {"literal": false}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
       "id": "p3-nlopt-cobyla-circle",
       "description": "The explicit NLopt COBYLA public route reaches the active unit-circle boundary and is checked independently for point, objective, feasibility, and derivative-free execution.",
       "program_phase": "P3",
@@ -518,6 +554,24 @@
         {"id": "nlopt-infeasible-execution-status-retained", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_status", "expected": {"literal": "converged"}},
         {"id": "nlopt-infeasible-independent-violation", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_constraint_violation", "expected": {"literal": 0.49}},
         {"id": "nlopt-infeasible-reported-residual", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/reported_validation_residual", "expected": {"literal": 0.49}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-nonlinear-equality",
+      "description": "The advertised COBYLA scalar-equality envelope validates a legitimate unit-circle minimum using an independent feasibility and location oracle.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-cobyla-nonlinear-equality", "expected": [0.8, 0.6]},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-nonlinear-equality-location", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_parameter_error", "expected": {"literal": 2e-5}},
+        {"id": "nlopt-nonlinear-equality-feasibility", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/equality_residual", "expected": {"literal": 2e-6}},
+        {"id": "nlopt-nonlinear-equality-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-nonlinear-equality-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
       ],
       "measurement": {"warmup": 0, "samples": 1}
     },

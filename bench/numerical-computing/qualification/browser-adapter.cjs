@@ -139,47 +139,6 @@ async function runRuntimeRecovery(sample) {
   return evaluated;
 }
 
-async function runCminpack(sample) {
-  const started = performance.now();
-  const raw = await page.evaluate(async ({ id, input }) => {
-    if (!globalThis.__sagejsQualificationCminpack) {
-      const [{ createCminpackBackend }, response] = await Promise.all([
-        import("/numerical/index.mjs"),
-        fetch("/dist/cminpack.wasm", { cache: "no-store" }),
-      ]);
-      if (!response.ok) throw new Error(`cannot load cminpack.wasm: HTTP ${response.status}`);
-      globalThis.__sagejsQualificationCminpack = await createCminpackBackend(
-        new Uint8Array(await response.arrayBuffer()),
-      );
-    }
-    const backend = globalThis.__sagejsQualificationCminpack;
-    let cancelChecks = 0;
-    const options = {
-      method: input.method,
-      initial: input.initial,
-      residualCount: 2,
-      residual: ([x, y]) => [10 * (y - x * x), 1 - x],
-      maximumEvaluations: 1000,
-      maximumCallbackEvaluations: 2000,
-      functionTolerance: 1e-13,
-      stepTolerance: 1e-13,
-      gradientTolerance: 1e-13,
-    };
-    if (input.method === "cminpack-lmder") {
-      options.jacobian = ([x]) => [[-20 * x, 10], [-1, 0]];
-    }
-    if (id === "p8-cminpack-cancelled") {
-      options.cancelled = () => {
-        cancelChecks += 1;
-        return true;
-      };
-    }
-    const result = backend.leastSquares(options);
-    return { ...result, value: Array.from(result.value), cancelChecks, backendState: backend.inspect() };
-  }, { id: sample.id, input: sample.input });
-  return { raw, kernelMs: performance.now() - started };
-}
-
 async function runParserGuards() {
   const started = performance.now();
   const raw = await page.evaluate(async () => {

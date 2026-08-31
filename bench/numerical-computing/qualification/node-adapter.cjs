@@ -508,6 +508,69 @@ output_record = {
     "implementation_kind": record["provenance"]["implementation_kind"],
     "source_transparent": record["provenance"]["source_transparent"],
 }`,
+    "p3-nlopt-nelder-mead-active-bound": String.raw`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: (point[0]-3.0)**2,
+    [1.0],
+    bounds=[[input_record["lower"], input_record["upper"]]],
+    method="nlopt-nelder-mead",
+    maxiter=2000,
+    max_evaluations=2000,
+)
+output_record = {
+    "value": answer.value,
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
+}`,
+    "p3-nlopt-nelder-mead-dimension-33": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import minimize
+dimension = input_record["dimension"]
+
+class EntryWitness:
+    def __init__(self):
+        self.entered = False
+    def solve(self, options):
+        self.entered = True
+        raise RuntimeError("out-of-envelope call entered NLopt backend")
+
+backend_state = runtime._nlopt_backend_state
+original_backend = backend_state["backend"]
+witness = EntryWitness()
+backend_state["backend"] = witness
+try:
+    answer = minimize(
+        lambda point: sum(value*value for value in point),
+        [0.0]*dimension,
+        method="nlopt-nelder-mead",
+        maxiter=4000,
+        max_evaluations=4000,
+    )
+    output_record = {
+        "rejected": False,
+        "value": answer.value,
+        "success": answer.success,
+        "validation_passed": answer.validation.passed,
+    }
+except ValueError as error:
+    output_record = {
+        "rejected": True,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+except Exception as error:
+    output_record = {
+        "rejected": False,
+        "error_name": error.__class__.__name__,
+        "error_message": str(error),
+    }
+finally:
+    output_record["backend_entered"] = witness.entered
+    backend_state["backend"] = original_backend`,
     "p3-nlopt-cobyla-circle": String.raw`
 from sagejs.numerics.optimization import minimize
 answer = minimize(
@@ -555,6 +618,29 @@ output_record = {
     "validation_residual": answer.validation.residual,
     "backend_status": answer.domain_payload["backend_status"],
     "backend_status_code": answer.domain_payload["backend_status_code"],
+}`,
+    "p3-nlopt-cobyla-nonlinear-equality": String.raw`
+from sagejs.numerics.optimization import minimize
+answer = minimize(
+    lambda point: (point[0]-0.8)**2 + (point[1]-0.6)**2,
+    [0.7, 0.7],
+    constraints=[{
+        "type": "eq",
+        "fun": lambda point: point[0]*point[0]+point[1]*point[1]-1.0,
+        "tolerance": 2.0e-7,
+    }],
+    method="nlopt-cobyla",
+    initial_step=[0.2, 0.2],
+    maxiter=2000,
+    max_evaluations=2000,
+)
+output_record = {
+    "value": answer.value,
+    "success": answer.success,
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "method": answer.method,
+    "backend": answer.backend,
 }`,
     "p3-nlopt-cobyla-nonminimum-rejected": String.raw`
 from sagejs.numerics.optimization import minimize
@@ -1938,6 +2024,40 @@ async function normalizeEvaluated(sample, evaluated) {
       }, kernelMs);
       break;
     }
+    case "p3-nlopt-nelder-mead-active-bound": {
+      const point = Array.isArray(raw.value) ? raw.value : [];
+      const value = typeof point[0] === "number" ? point[0] : null;
+      const parameterError = value === null ? Number.MAX_VALUE :
+        Math.abs(value - sample.input.expected);
+      const boundsSatisfied = value !== null &&
+        value >= sample.input.lower && value <= sample.input.upper;
+      observation = success({
+        parameter_error: parameterError,
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        bounds_satisfied: boundsSatisfied,
+        method: raw.method,
+        backend: raw.backend,
+      }, kernelMs);
+      break;
+    }
+    case "p3-nlopt-nelder-mead-dimension-33": {
+      const values = {
+        rejected: raw.rejected,
+        error_name: raw.error_name ?? null,
+        message_matches: typeof raw.error_message === "string" &&
+          raw.error_message.includes("validated dimension envelope"),
+        backend_entered: raw.backend_entered,
+      };
+      observation = raw.rejected ?
+        failure("optimization.dimension-envelope", values, kernelMs, {
+          rejected_dimension: sample.input.dimension,
+          validated_maximum: sample.input.validated_maximum,
+        }) :
+        success(values, kernelMs, { rejected_dimension: sample.input.dimension });
+      break;
+    }
     case "p3-nlopt-cobyla-circle": {
       const [x, y] = raw.value;
       const expected = Math.SQRT1_2;
@@ -1967,6 +2087,27 @@ async function normalizeEvaluated(sample, evaluated) {
         independent_constraint_violation: violation,
         backend_status: raw.backend_status,
         backend_status_positive: raw.backend_status_code > 0,
+      }, kernelMs);
+      break;
+    }
+    case "p3-nlopt-cobyla-nonlinear-equality": {
+      const point = Array.isArray(raw.value) ? raw.value : [];
+      const [x, y] = point.length === 2 ? point : [null, null];
+      const maxParameterError = x === null || y === null ? Number.MAX_VALUE :
+        Math.max(
+          Math.abs(x - sample.input.expected[0]),
+          Math.abs(y - sample.input.expected[1]),
+        );
+      const equalityResidual = x === null || y === null ? Number.MAX_VALUE :
+        Math.abs(x * x + y * y - 1);
+      observation = success({
+        max_parameter_error: maxParameterError,
+        equality_residual: equalityResidual,
+        public_success: raw.success,
+        public_status: raw.status,
+        validation_passed: raw.validation_passed,
+        method: raw.method,
+        backend: raw.backend,
       }, kernelMs);
       break;
     }

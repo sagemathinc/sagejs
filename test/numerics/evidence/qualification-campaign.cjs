@@ -123,6 +123,16 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
     assert.match(source, /liveAllocations/);
     assert.match(source, /__SAGEJS_NUMERICAL_QUALIFICATION__/);
   }
+  for (const id of [
+    "p3-nlopt-nelder-mead-active-bound",
+    "p3-nlopt-nelder-mead-dimension-33",
+    "p3-nlopt-cobyla-nonlinear-equality",
+  ]) {
+    const item = corpus.cases.find((entry) => entry.id === id);
+    const source = nodeAdapter.qualificationInternals.sourceFor(id, item.input);
+    assert.match(source, /method="nlopt-(?:nelder-mead|cobyla)"/);
+    assert.match(source, /__SAGEJS_NUMERICAL_QUALIFICATION__/);
+  }
   assert.equal(typeof browserAdapter._testing.launchBrowser, "function");
 });
 
