@@ -552,6 +552,8 @@ async function loadCapabilities() {
     ["Plot limit", `${DEFAULT_LIMITS.plotBytes.toLocaleString()} bytes per display`],
     ["Widget model limit", `${DEFAULT_WIDGET_LIMITS.liveModels.toLocaleString()} per session`],
     ["Widget view limit", `${DEFAULT_WIDGET_LIMITS.liveViews.toLocaleString()} per session`],
+    ["Widget event queue", `${DEFAULT_WIDGET_LIMITS.queuedEvents.toLocaleString()} pending callbacks`],
+    ["Widget callback limit", `${DEFAULT_WIDGET_LIMITS.callbackTimeoutMs / 1000} seconds`],
   ];
   try {
     const response = await fetch("./runtime-version.json", { cache: "no-store", credentials: fetchCredentials });

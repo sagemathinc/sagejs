@@ -6,6 +6,8 @@ import { createSage } from "../node-kernel.mjs";
 
 test("every live dropdown example executes verbatim in production Node-Wasm", async (t) => {
   const expected = new Set([
+    "interactive-symbolic-plot",
+    "interactive-function-explorer",
     "number-field",
     "elliptic-lseries",
     "complex-plot",

@@ -61,6 +61,8 @@ export interface SageRequestHandlers {
   onOutput?: (text: string) => void;
   onEvent?: (event: SageOutputEvent) => void;
   onComm?: (event: SageCommEvent) => void;
+  /** Replace the worker if this request does not finish within this many milliseconds. */
+  timeout?: number;
 }
 
 export interface SageSessionOptions {
@@ -72,7 +74,7 @@ export interface SageLanguageOptions {
 }
 
 interface PendingRequest {
-  kind: "evaluate" | "request";
+  kind: "evaluate" | "comm" | "request";
   output: string;
   onOutput?: (text: string) => void;
   onEvent?: (event: SageOutputEvent) => void;
@@ -364,6 +366,12 @@ export class SageSession extends EventEmitter {
     if (typeof source !== "string") {
       throw new TypeError("Sage.js source must be a string");
     }
+    if (
+      handlers.timeout !== undefined &&
+      (!Number.isFinite(handlers.timeout) || handlers.timeout <= 0)
+    ) {
+      throw new TypeError("Sage.js request timeout must be a positive number");
+    }
     await this.ready();
     const worker = this.worker;
     if (!worker) throw new SageSessionClosedError();
@@ -374,7 +382,7 @@ export class SageSession extends EventEmitter {
         settle = done;
       });
       this.pending.set(id, {
-        kind: "request",
+        kind: type === "comm" ? "comm" : "request",
         output: "",
         onOutput: handlers.onOutput,
         onEvent: handlers.onEvent,
@@ -384,6 +392,17 @@ export class SageSession extends EventEmitter {
         settled,
         settle,
       });
+      const pending = this.pending.get(id)!;
+      if (handlers.timeout !== undefined) {
+        pending.timer = setTimeout(() => {
+          if (!this.pending.has(id)) return;
+          void this.replaceWorker(
+            new SageSessionTimeoutError(
+              `Sage.js ${type} request timed out after ${handlers.timeout} ms`,
+            ),
+          );
+        }, handlers.timeout);
+      }
       worker.postMessage({ type, id, source, ...extra });
     });
   }
@@ -506,7 +525,7 @@ export class SageSession extends EventEmitter {
     if (this.closed) throw new SageSessionClosedError();
     await this.ready();
     const active = [...this.pending.entries()].filter(
-      ([, pending]) => pending.kind === "evaluate",
+      ([, pending]) => pending.kind === "evaluate" || pending.kind === "comm",
     );
     const state = this.interruptState;
     if (!state || active.length === 0) {

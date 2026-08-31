@@ -125,3 +125,27 @@ test("comm host boundary rejects invalid and oversized input", async (t) => {
     /exceeds 64 buffers/,
   );
 });
+
+test("comm callbacks have a worker-replacing timeout", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  await session.evaluate(
+    [
+      "from IPython import get_ipython",
+      "import comm",
+      "channel = comm.create_comm(target_name='sagejs.timeout', comm_id='timeout-one')",
+      "def never_returns(message):",
+      "    while True:",
+      "        pass",
+      "channel.on_msg(never_returns)",
+    ].join("\n"),
+  );
+  await assert.rejects(
+    session.comm(
+      event("message", { commId: "timeout-one", data: {} }),
+      { timeout: 50 },
+    ),
+    (error) => error.name === "SageSessionTimeoutError" && /comm request timed out/.test(error.message),
+  );
+  assert.equal((await session.evaluate("2 + 2")).repr, "4");
+});

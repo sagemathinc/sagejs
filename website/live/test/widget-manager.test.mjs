@@ -9,6 +9,7 @@ import {
 class TestSession {
   listeners = new Map();
   sent = [];
+  handlers = [];
 
   on(type, listener) {
     this.listeners.set(type, listener);
@@ -18,8 +19,9 @@ class TestSession {
     if (this.listeners.get(type) === listener) this.listeners.delete(type);
   }
 
-  async comm(event) {
+  async comm(event, handlers) {
     this.sent.push(event);
+    this.handlers.push(handlers);
   }
 
   emit(event) {
@@ -107,6 +109,7 @@ test("widget host stores model state, buffers, and routes both comm directions",
   assert.equal(session.sent[0].commId, "model-1");
   assert.equal(session.sent[0].parentId, messageId);
   assert.equal(session.sent[0].data.state.value, 8);
+  assert.equal(session.handlers[0].timeout, 15_000);
 
   host.reset();
   assert.equal(await environment.getSerializedModelState("model-1"), undefined);
@@ -239,7 +242,12 @@ test("widget host bounds live models and closes rejected kernel comms", async ()
   const violations = [];
   const host = createWidgetHost({
     session,
-    limits: { liveModels: 1, liveViews: 2 },
+    limits: {
+      callbackTimeoutMs: 50,
+      liveModels: 1,
+      liveViews: 2,
+      queuedEvents: 2,
+    },
     onViolation(error) {
       violations.push(error);
     },
@@ -264,7 +272,13 @@ test("widget host bounds live models and closes rejected kernel comms", async ()
     rejectedModels: 1,
     comms: 0,
     views: 0,
-    limits: { liveModels: 1, liveViews: 2 },
+    queuedEvents: 0,
+    limits: {
+      callbackTimeoutMs: 50,
+      liveModels: 1,
+      liveViews: 2,
+      queuedEvents: 2,
+    },
   });
   await assert.rejects(
     host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-2" } }, {}),
@@ -292,7 +306,12 @@ test("widget reset removes live views and leaves a rerun notice", async () => {
   const destination = { children: [] };
   const host = createWidgetHost({
     session,
-    limits: { liveModels: 2, liveViews: 1 },
+    limits: {
+      callbackTimeoutMs: 50,
+      liveModels: 2,
+      liveViews: 1,
+      queuedEvents: 2,
+    },
     async loadManager() {
       return {
         createWidgetManager() {
@@ -319,5 +338,62 @@ test("widget reset removes live views and leaves a rerun notice", async () => {
   assert.equal(removed, 1);
   assert.match(element.replacement.textContent, /Run its input again/);
   assert.equal(host.stats().views, 0);
+  host.close();
+});
+
+test("widget host bounds queued frontend events", async () => {
+  let resolveRequest;
+  const session = new TestSession();
+  session.comm = function comm(event, handlers) {
+    this.sent.push(event);
+    this.handlers.push(handlers);
+    return new Promise((resolve) => {
+      resolveRequest = resolve;
+    });
+  };
+  const violations = [];
+  let environment;
+  const host = createWidgetHost({
+    session,
+    limits: {
+      callbackTimeoutMs: 50,
+      liveModels: 2,
+      liveViews: 2,
+      queuedEvents: 1,
+    },
+    onViolation(error) {
+      violations.push(error);
+    },
+    async loadManager() {
+      return {
+        createWidgetManager(value) {
+          environment = value;
+          return { async render() {} };
+        },
+      };
+    },
+    async renderOutput() {},
+  });
+  session.emit(event("open", {
+    data: { state: { _model_name: "IntModel" }, buffer_paths: [] },
+  }));
+  await host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-1" } }, {});
+  const comm = await environment.openCommChannel({
+    comm_id: "model-1",
+    target_name: "jupyter.widget",
+  });
+  comm.send({ method: "custom", content: { value: 1 } });
+  const replies = [];
+  comm.send(
+    { method: "custom", content: { value: 2 } },
+    { shell: { reply: (message) => replies.push(message) } },
+  );
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.match(violations[0].message, /1 queued-event limit/);
+  assert.equal(replies[0].content.status, "error");
+  assert.equal(host.stats().queuedEvents, 1);
+  resolveRequest();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(host.stats().queuedEvents, 0);
   host.close();
 });

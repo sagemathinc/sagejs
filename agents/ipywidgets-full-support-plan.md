@@ -13,8 +13,11 @@ Implementation is active. As of 2026-08-31:
   offline assets, bidirectional state updates, reset behavior, and browser
   acceptance coverage. Live models and views have explicit per-session limits;
   clear/reset deterministically removes rendered views, and reset replaces
-  stale controls with a rerun notice. Extracting the reusable P6A Cell remains
-  open.
+  stale controls with a rerun notice. Frontend events have a bounded queue and
+  widget callbacks have a worker-replacing timeout; a regression deliberately
+  runs a nonreturning Python callback and verifies that the clean replacement
+  kernel immediately evaluates new code. Extracting the reusable P6A Cell
+  remains open.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,

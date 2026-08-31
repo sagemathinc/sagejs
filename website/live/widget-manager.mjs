@@ -1,13 +1,20 @@
 const WIDGET_VIEW_MIME = "application/vnd.jupyter.widget-view+json";
 
 export const DEFAULT_WIDGET_LIMITS = Object.freeze({
+  callbackTimeoutMs: 15_000,
   liveModels: 512,
   liveViews: 512,
+  queuedEvents: 128,
 });
 
 function normalizedLimits(limits = DEFAULT_WIDGET_LIMITS) {
   const answer = {};
-  for (const name of ["liveModels", "liveViews"]) {
+  for (const name of [
+    "callbackTimeoutMs",
+    "liveModels",
+    "liveViews",
+    "queuedEvents",
+  ]) {
     const value = limits[name] ?? DEFAULT_WIDGET_LIMITS[name];
     if (!Number.isSafeInteger(value) || value <= 0) {
       throw new TypeError(`widget ${name} limit must be a positive safe integer`);
@@ -93,6 +100,7 @@ export function createWidgetHost({
   const views = new Set();
   let managerPromise;
   let closed = false;
+  let queuedEvents = 0;
 
   function modelLimitError() {
     return new RangeError(
@@ -291,6 +299,21 @@ export function createWidgetHost({
     const closeHandlers = new Set();
     const send = (type, data = {}, callbacks, metadata = {}, buffers = []) => {
       const msgId = uuid();
+      if (queuedEvents >= limits.queuedEvents) {
+        const error = new RangeError(
+          `widget session exceeds the ${limits.queuedEvents} queued-event limit`,
+        );
+        onViolation(error, { type, commId });
+        queueMicrotask(() => callbacks?.shell?.reply?.({
+          content: {
+            status: "error",
+            ename: error.name,
+            evalue: error.message,
+          },
+        }));
+        return msgId;
+      }
+      queuedEvents += 1;
       void session.comm({
         schema: "sagejs.comm-event/v1",
         type,
@@ -302,12 +325,23 @@ export function createWidgetHost({
         buffers: normalizedBuffers(buffers),
       }, {
         onEvent: captureOutput,
+        timeout: limits.callbackTimeoutMs,
       }).then(
         () => callbacks?.shell?.reply?.({ content: { status: "ok" } }),
-        (error) => callbacks?.shell?.reply?.({
-          content: { status: "error", ename: error.name, evalue: error.message },
-        }),
-      );
+        (error) => {
+          if (
+            error?.name === "SageSessionTimeoutError" ||
+            error?.name === "SageSessionInterruptedError"
+          ) {
+            resetHost();
+          }
+          callbacks?.shell?.reply?.({
+            content: { status: "error", ename: error.name, evalue: error.message },
+          });
+        },
+      ).finally(() => {
+        queuedEvents -= 1;
+      });
       return msgId;
     };
     return {
@@ -417,6 +451,27 @@ export function createWidgetHost({
     destroyViews((view) => view.element.isConnected === false);
   }
 
+  function resetHost() {
+    destroyViews(
+      () => true,
+      "This widget belonged to a stopped kernel. Run its input again to restore it.",
+    );
+    for (const [commId, comm] of comms) {
+      comm._close({
+        schema: "sagejs.comm-event/v1",
+        type: "close",
+        commId,
+        data: {},
+        metadata: {},
+        buffers: [],
+      });
+    }
+    records.clear();
+    comms.clear();
+    rejected.clear();
+    managerPromise = undefined;
+  }
+
   return Object.freeze({
     handleComm,
     isWidgetDisplay(data) {
@@ -449,28 +504,12 @@ export function createWidgetHost({
         rejectedModels: rejected.size,
         comms: comms.size,
         views: views.size,
+        queuedEvents,
         limits,
       });
     },
     reset() {
-      destroyViews(
-        () => true,
-        "This widget belonged to a stopped kernel. Run its input again to restore it.",
-      );
-      for (const [commId, comm] of comms) {
-        comm._close({
-          schema: "sagejs.comm-event/v1",
-          type: "close",
-          commId,
-          data: {},
-          metadata: {},
-          buffers: [],
-        });
-      }
-      records.clear();
-      comms.clear();
-      rejected.clear();
-      managerPromise = undefined;
+      resetHost();
     },
     close() {
       if (closed) return;
