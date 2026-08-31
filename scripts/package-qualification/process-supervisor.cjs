@@ -127,4 +127,3 @@ try {
   spawnError = error;
   finish();
 }
-
