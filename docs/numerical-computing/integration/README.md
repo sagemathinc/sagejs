@@ -23,6 +23,8 @@ result.stop_reason
 result.validation.to_dict()
 result.explain()
 result.plot()
+result.plot(view="convergence")
+result.animate()
 ```
 
 The default globally adaptive method applies an embedded Gauss 10/Kronrod 21
@@ -95,12 +97,39 @@ the value remains available and `solver_stop_reason`, `solver_converged`, and
 Iteration events state which largest-error interval was bisected, both child
 records, the global estimate, global error estimate, target, depth, active
 interval count, and roundoff counter. The shared trace policy bounds events and
-bytes with deterministic retention. `result.plot()` consumes only final
-partition records and never reevaluates the callback. It shows local error
-allocation in physical `x` for finite intervals and transformed `t` for
-infinite intervals. The PlotSpec contains explicit semantic alternative text
-with the retained interval count, stop reason, global error evidence, and
-requested target.
+bytes with deterministic retention. `result.explain()` narrates the atomic
+initial partition, largest-error bisections, resource use, independent-rule
+agreement, and the exact reason a failed result stopped. If trace retention
+omitted intermediate subdivisions, the explanation says so rather than
+reconstructing or interpolating them.
+
+All visual views are canonical renderer-neutral `PlotSpec` or `PlotAnimation`
+documents:
+
+- `result.plot()` (or `result.to_plot_spec()`) shows the final local-error
+  allocation in physical `x` for finite intervals and transformed `t` by
+  component for infinite intervals.
+- `result.plot(view="convergence")` and `result.convergence_plot()` show the
+  retained global error estimates against the requested stopping target.
+- `result.animate()` (or `result.to_animation()`) replays the retained
+  largest-error parent and its two computed children. Frames are computed
+  states only: transition duration is zero and no intermediate mathematical
+  states are invented. The animation is deliberately a local refinement view,
+  not a reconstructed full-partition history; use the static partition view
+  for every retained final leaf.
+
+Visualization never reevaluates the callback. It consumes the final partition
+and bounded semantic trace, retains stable layer/frame identifiers, uses fixed
+axes across animation frames, and caps one animation at 128 frames, 8,192 data
+scalars, and 8 MB of semantic JSON. Longer retained histories are
+deterministically decimated while preserving their endpoints. Animation
+metadata reports trace truncation and visualizer decimation separately.
+
+Every static view and every animation frame has explicit alternative text. A
+failure before the first complete interval rule yields an accessible textual
+`PlotSpec` instead of an empty chart or a fabricated partition. Static
+partition, convergence, and explanation views remain useful when an animation
+renderer is unavailable.
 
 The current scope intentionally rejects complex, multidimensional,
 principal-value, and specialized oscillatory/weighted integration. In

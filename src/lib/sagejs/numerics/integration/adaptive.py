@@ -289,6 +289,14 @@ def integration_capabilities() -> dict[str, Any]:
     return {"schema_version": 1, "operation": "definite_integral", "capability": answer}
 
 
+def supports(problem: NumericalProblem, method: str | None = None) -> bool:
+    """Classify a problem without inspecting or evaluating its callback."""
+    if problem.operation != "definite_integral":
+        return False
+    selected = problem.method if method is None else method
+    return selected in ("auto", "adaptive_gauss_kronrod")
+
+
 def integration_problem(
     function: Callable[[float], Any],
     lower: float,

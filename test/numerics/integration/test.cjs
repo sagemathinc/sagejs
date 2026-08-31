@@ -56,6 +56,7 @@ from sagejs.numerics.integration import (
     integration_capabilities,
     integration_problem,
     plan_integration,
+    supports,
 )
 
 def endpoint(value):
@@ -103,6 +104,11 @@ def counted_for_plan(x):
     planning_calls[0] += 1
     return x*x
 problem = integration_problem(counted_for_plan, 0.0, 1.0, expression="x*x")
+assert supports(problem)
+assert supports(problem, "auto")
+assert supports(problem, "adaptive_gauss_kronrod")
+assert not supports(problem, "unknown_method")
+assert planning_calls[0] == 0
 selected_plan = plan_integration(problem)
 assert selected_plan.method == "adaptive_gauss_kronrod"
 assert planning_calls[0] == 0
@@ -193,9 +199,36 @@ def counted(x):
     return math.cos(x)
 plotted = integrate(counted, 0.0, math.pi/2.0)
 before_plot = calls[0]
-assert len(plotted.plot().layers) == 3
+partition_plot = plotted.plot()
+convergence_plot = plotted.plot(view="convergence")
+assert plotted.to_plot_spec().to_dict() == partition_plot.to_dict()
+assert plotted.convergence_plot().to_dict() == convergence_plot.to_dict()
+assert len(partition_plot.layers) == 3
+assert len(convergence_plot.layers) == 3
+assert len(partition_plot.validate()) == 0
+assert len(convergence_plot.validate()) == 0
+assert "local-error allocation" in partition_plot.alt_text()
+assert "convergence history" in convergence_plot.alt_text()
+animation = plotted.animate()
+assert plotted.to_animation().to_dict() == animation.to_dict()
+animation_record = animation.to_dict()
+assert 2 <= len(animation.frames) <= 128
+assert animation_record["limits"]["max_frames"] == 128
+assert animation_record["limits"]["max_total_samples"] == 8192
+assert animation_record["metadata"]["callback_reevaluated"] is False
+assert animation_record["metadata"]["frame_semantics"] == "computed_states_only"
+assert animation_record["metadata"]["interpolation"] == "none"
+first_layer_ids = animation.frames[0].layer_ids
+for index, frame in enumerate(animation.frames):
+    assert frame.id == "frame-" + str(index)
+    assert frame.layer_ids == first_layer_ids
+    assert len(frame.state.validate()) == 0, frame.state.validate()
+    assert "Adaptive quadrature" in frame.state.alt_text()
 assert calls[0] == before_plot
 assert "independent check" in plotted.explain()
+assert "initial partition" in plotted.explain()
+assert "refinement:" in plotted.explain()
+assert calls[0] == before_plot
 serialized = json.loads(plotted.to_json())
 assert serialized["domain_payload"]["integration_status"] == "converged"
 assert serialized["measurements"]["validation_evaluations"] > 0
@@ -245,6 +278,18 @@ partial_callback_payload = partial_callback.to_dict()["domain_payload"]
 assert not partial_callback.success and partial_callback.stop_reason == "callback_error"
 assert partial_callback.value is None and len(partial_callback.final_intervals) == 0
 assert partial_callback_payload["failure_details"]["phase"] == "integrand_callback"
+empty_partition_view = partial_callback.plot()
+empty_convergence_view = partial_callback.convergence_plot()
+empty_animation = partial_callback.animate()
+assert len(empty_partition_view.layers) == 1
+assert len(empty_convergence_view.layers) == 1
+assert len(empty_partition_view.validate()) == 0
+assert len(empty_convergence_view.validate()) == 0
+assert "No complete adaptive partition" in empty_partition_view.alt_text()
+assert "No global convergence series" in empty_convergence_view.alt_text()
+assert len(empty_animation.frames) == 2
+assert all(len(frame.state.validate()) == 0 for frame in empty_animation.frames)
+assert "why this failed" in partial_callback.explain()
 
 validation_limited = integrate(
     lambda x: 1.0, 0.0, 1.0, max_evaluations=30,
@@ -267,6 +312,10 @@ validation_disagrees = integrate(
 assert not validation_disagrees.success
 assert validation_disagrees.stop_reason == "validation_failed"
 assert validation_disagrees.error_estimate > validation_disagrees.requested_tolerance
+assert "solver met its embedded-error target" in validation_disagrees.explain()
+assert "stopped" in validation_disagrees.convergence_plot().alt_text() or (
+    "solver converged" in validation_disagrees.convergence_plot().alt_text()
+)
 
 final_cancel_state = {"calls": 0, "cancelled": False}
 def cancelled_on_final_validation(x):
@@ -325,6 +374,33 @@ truncated = integrate(
 )
 assert truncated.trace.truncated
 assert len(truncated.trace.events) <= 4
+truncated_animation = truncated.animate()
+truncated_animation_record = truncated_animation.to_dict()
+assert 2 <= len(truncated_animation.frames) <= 128
+assert truncated_animation_record["metadata"]["trace_truncated"] is True
+assert truncated_animation_record["metadata"]["visualizer_decimated"] is False
+assert "omitted rather than interpolated" in truncated.explain()
+
+decimated = integrate(
+    lambda x: abs(math.sin(1000.0*x)), 0.0, 1.0,
+    absolute_tolerance=1e-15, relative_tolerance=0.0,
+    max_intervals=130, max_evaluations=8000, max_trace_events=256,
+)
+assert not decimated.success and decimated.stop_reason == "maximum_intervals"
+decimated_animation = decimated.animate()
+decimated_record = decimated_animation.to_dict()
+assert len(decimated_animation.frames) == 128
+assert decimated_record["metadata"]["retained_refinement_events"] == 129
+assert decimated_record["metadata"]["rendered_refinement_events"] == 127
+assert decimated_record["metadata"]["visualizer_decimated"] is True
+assert decimated_animation.frames[0].metadata["interpolated"] is False
+assert decimated_animation.frames[-1].metadata["interpolated"] is False
+
+try:
+    plotted.plot(view="unknown")
+    raise AssertionError("unknown integration plot view accepted")
+except ValueError:
+    pass
 
 try:
     integration_problem(lambda x: x, 0.0, 1.0, absolute_tolerance=0.0, relative_tolerance=0.0)
