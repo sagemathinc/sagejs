@@ -208,7 +208,7 @@ test("trace, frame, sample, story, and animation payload ceilings fail closed", 
     /max_animation_frames/,
   );
   const tooFewSamples = structuredClone(manifest);
-  tooFewSamples.budgets.max_samples_per_frame = 100;
+  tooFewSamples.budgets.max_samples_per_frame = 1;
   assert.throws(
     () => galleryModule.assertStoryBudgets(tooFewSamples, story, serialized),
     /max_samples_per_frame/,
@@ -244,17 +244,37 @@ test("PlotSpec and Plotly records preserve stable topology and explicit controls
   assert.equal(semantic.controls.slider, true);
   assert.equal(semantic.frames.length, 6);
   assert.deepEqual(semantic.topology.layers, [
-    { id: "layer-0", kind: "line" },
-    { id: "layer-1", kind: "point" },
+    { id: "layer-0", kind: "point" },
+    { id: "layer-1", kind: "line" },
     { id: "layer-2", kind: "point" },
   ]);
+  assert.equal(semantic.metadata.computed_evidence_only, true);
+  assert.equal(semantic.metadata.callback_reevaluated, false);
   for (const frame of semantic.frames) {
     assert.deepEqual(frame.layer_ids, ["layer-0", "layer-1", "layer-2"]);
     assert.deepEqual(
       frame.state.value.layers.map(({ id, kind }) => ({ id, kind })),
       semantic.topology.layers,
     );
+    assert.equal(frame.metadata.interpolated, false);
+    assert.equal(
+      frame.state.value.provenance.metadata.callback_reevaluated,
+      false,
+    );
+    assert.equal(
+      frame.state.value.provenance.metadata.computed_evidence_only,
+      true,
+    );
   }
+  assert.equal(
+    semantic.frames[0].state.value.layers[0].source_intent.role,
+    "evaluations",
+  );
+  assert.equal(
+    semantic.frames[0].state.value.layers[0].data.x.length,
+    3,
+    "the first frame contains only the three evaluations already retained",
+  );
   assert.equal(plotly.schema, "plotly-compatible/v1");
   assert.equal(plotly.figure.frames.length, semantic.frames.length);
   assert.deepEqual(plotly.figure.layout.meta.stable_layer_ids, [
@@ -273,6 +293,8 @@ test("PlotSpec and Plotly records preserve stable topology and explicit controls
   assert.equal(plotly.shared_lowering.status, "available");
   assert.deepEqual(plotly.shared_lowering.diagnostics, []);
   assert.match(plotly.source, /lower_plot_animation/);
+  assert.equal(plotly.figure.data[0].mode, "markers");
+  assert.equal(plotly.figure.data[1].mode, "lines");
 });
 
 test("all language examples are exact frontend syntax and Python executes", () => {
@@ -284,6 +306,7 @@ test("all language examples are exact frontend syntax and Python executes", () =
   ]);
   assert.match(story.language_examples.sage.source, /cos\(x\) - x/);
   assert.match(story.language_examples.python.source, /import math/);
+  assert.match(story.language_examples.python.source, /trace="evaluations"/);
   assert.equal(
     story.language_examples.matlab.source,
     "result = fzero(@(x) cos(x) - x, [0 1]);",
@@ -317,6 +340,10 @@ test("static HTML remains a complete, accessible no-animation lesson", () => {
   assert.match(html, /<main id="root-finding">/);
   assert.match(html, /<svg id="root-plot"[^>]+role="img"[^>]+aria-labelledby=/);
   assert.match(html, /<desc id="root-plot-description">[^<]{100,}<\/desc>/);
+  assert.equal((html.match(/class="plot-evaluation"/g) || []).length, 3);
+  assert.equal((html.match(/class="plot-bracket"/g) || []).length, 2);
+  assert.equal((html.match(/class="plot-bracket-line"/g) || []).length, 1);
+  assert.doesNotMatch(html, /class="plot-function"/);
   assert.match(html, /<caption>Every retained Brent iteration/);
   assert.equal((html.match(/<tr><th scope="row">[1-6]<\/th>/g) || []).length, 6);
   assert.match(html, /<noscript>/);
@@ -348,6 +375,8 @@ test("exports remain quantitative, static, and portable", () => {
   assert.equal(plotly.layout.updatemenus[0].buttons[0].label, "Play");
   assert.equal(plotly.layout.updatemenus[0].buttons[1].label, "Pause");
   assert.equal(plotly.layout.sliders[0].steps.length, 6);
+  assert.equal(plotSpec.metadata.callback_reevaluated, false);
+  assert.match(html, /not a newly sampled or interpolated curve/);
 });
 
 function discoverChromium() {
@@ -411,7 +440,9 @@ test(
       page.on("pageerror", (error) => errors.push(error.message));
       await page.goto(host.url, { waitUntil: "networkidle" });
       await page.waitForSelector("html[data-gallery='ready']");
-      assert.equal(await page.locator("#root-plot path.plot-function").count(), 1);
+      assert.equal(await page.locator("#root-plot path.plot-function").count(), 0);
+      assert.equal(await page.locator("#root-plot circle.plot-evaluation").count(), 3);
+      assert.equal(await page.locator("#root-plot line.plot-bracket-line").count(), 1);
       assert.equal(await page.locator("#root-plot circle.plot-bracket").count(), 2);
       assert.equal(await page.locator("#root-plot polygon.plot-candidate").count(), 1);
       await page.locator("#iteration-slider").fill("5");

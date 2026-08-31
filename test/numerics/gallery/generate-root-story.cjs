@@ -61,7 +61,7 @@ success = find_root(
     1.0,
     method="brent",
     expression="math.cos(x) - x",
-    trace="iterations",
+    trace="evaluations",
     max_trace_events=64,
     max_trace_bytes=131072,
 )
@@ -392,13 +392,13 @@ function buildStory() {
     language_examples: {
       sage: {
         label: "Sage",
-        source: "from sagejs.numerics import find_root as numerical_find_root\nresult = numerical_find_root(lambda x: cos(x) - x, 0.0, 1.0,\n    method=\"brent\", trace=\"iterations\")",
+        source: "from sagejs.numerics import find_root as numerical_find_root\nresult = numerical_find_root(lambda x: cos(x) - x, 0.0, 1.0,\n    method=\"brent\", trace=\"evaluations\")",
         classification: "faithful",
         result_shape: "Rich NumericalResult; use the Sage expression method find_root for the scalar compatibility view.",
       },
       python: {
         label: "Python",
-        source: "import math\nfrom sagejs.numerics import find_root\nresult = find_root(lambda x: math.cos(x) - x, 0.0, 1.0,\n    method=\"brent\", trace=\"iterations\")",
+        source: "import math\nfrom sagejs.numerics import find_root\nresult = find_root(lambda x: math.cos(x) - x, 0.0, 1.0,\n    method=\"brent\", trace=\"evaluations\")",
         classification: "canonical",
         result_shape: "Rich NumericalResult with result, validation, diagnostics, and trace.",
       },
@@ -498,14 +498,14 @@ function buildStory() {
       },
     },
     accessibility: {
-      static_plot_description: "The graph of f(x) = cos(x) - x decreases across [0, 1], from 1 to about -0.46, and crosses the x-axis once near x = 0.739085. Orange circles mark the current sign-changing bracket and a green diamond marks the candidate. The trace table gives every retained numerical value without relying on position or color.",
+      static_plot_description: "Blue circles are only function values retained by Brent's bounded evaluation trace; they are not a newly sampled or interpolated curve. The orange segment and endpoint circles show the current sign-changing bracket on y = 0, and the green diamond marks the retained candidate. The trace table gives every retained iteration without relying on position or color.",
       animation_policy: "Manual play only; pause and an iteration slider are always present, and reduced-motion preference disables timed playback without disabling direct frame selection.",
       table_policy: "Every retained iteration is presented in a captioned table, with dash text for fields that do not apply.",
       color_policy: "Bracket and candidate use both distinct shapes and explicit labels; color is supplementary.",
     },
     provenance: {
       implementation: "sagejs.numerics.roots ordinary Python",
-      visualization: "sagejs.numerics.visualization PlotAnimation",
+      visualization: "sagejs.numerics.visualization PlotAnimation over retained evaluations; presentation never invokes the callback",
       generation: "test/numerics/gallery/generate-root-story.cjs",
       elapsed_policy: "Runtime durations normalized to zero; operation counts and payload bytes are deterministic evidence.",
       placeholders: [],
