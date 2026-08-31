@@ -148,7 +148,12 @@ test("primitive render plans are CPython/Sage.js differential", () => {
 
 test("invalid or unrepresentable options fail instead of disappearing", () => {
   const source = String.raw`
-from sagejs.plotting.sage_primitives2d import *
+from sagejs.plotting.sage_primitives2d import (
+    arrow_render_plan,
+    line_render_plan,
+    point_render_plan,
+    text_render_plan,
+)
 
 cases = [
     lambda: line_render_plan({"mystery": 1}),
