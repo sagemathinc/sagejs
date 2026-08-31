@@ -12,7 +12,7 @@ const corpusPath = path.join(root, "bench/numerical-computing/qualification/prod
 const specPath = path.join(root, "bench/numerical-computing/qualification/capabilities/node-capability-spec.json");
 const matrixDirectory = path.join(root, "bench/numerical-computing/qualification/matrix");
 
-function validateTemplate(template, expectedRows) {
+function validateTemplate(template, expectedRows, requiredCapabilities = null) {
   if (template.schema !== "sagejs.numerical-qualification-matrix-template/v1") {
     throw new Error("unexpected matrix template schema");
   }
@@ -21,6 +21,13 @@ function validateTemplate(template, expectedRows) {
   if (rowIds.size !== template.rows.length) throw new Error("duplicate matrix template row");
   for (const phase of ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]) {
     if (!template.required_program_phases.includes(phase)) throw new Error(`matrix omits ${phase}`);
+  }
+  if (requiredCapabilities !== null) {
+    const actual = [...template.required_capabilities].sort();
+    const expected = [...requiredCapabilities].sort();
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error("matrix required capabilities do not equal the available campaign surface");
+    }
   }
 }
 
@@ -36,9 +43,8 @@ function main() {
     if (!covered.has(item.id)) throw new Error(`case ${item.id} lacks an available capability`);
   }
   for (const id of [
-    "numerics.approximation.polynomial_roots",
-    "numerics.ode.stiff_ivp",
-    "numerics.optimization.cminpack",
+    "numerics.optimization.polynomial_least_squares",
+    "numerics.ode.stiff_sparse",
   ]) {
     const capability = unavailable.get(id);
     if (capability === undefined || capability.case_ids.length !== 0 || !capability.reason) {
@@ -48,8 +54,17 @@ function main() {
   const phases = new Set(corpus.cases.map((item) => item.program_phase));
   const layers = new Set(corpus.cases.map((item) => item.layer));
   if (phases.size !== 9 || layers.size !== 7) throw new Error("campaign lacks complete phase/layer coverage");
-  validateTemplate(readJson(path.join(matrixDirectory, "node-four-platform.template.json")), 4);
-  validateTemplate(readJson(path.join(matrixDirectory, "full-runtime.template.json")), 12);
+  const requiredCapabilities = available.map((item) => item.id);
+  validateTemplate(
+    readJson(path.join(matrixDirectory, "node-four-platform.template.json")),
+    4,
+    requiredCapabilities,
+  );
+  validateTemplate(
+    readJson(path.join(matrixDirectory, "full-runtime.template.json")),
+    12,
+    requiredCapabilities,
+  );
   process.stdout.write(
     `Numerical qualification campaign valid: ${corpus.cases.length} cases, ` +
     `${available.length} available capabilities, ${unavailable.size} future fail-closed capabilities.\n`,

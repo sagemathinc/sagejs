@@ -1,11 +1,19 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v1",
-  "version": 1,
+  "id": "sagejs-numerical-product-v2",
+  "version": 2,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
-  "source_paths": ["src/lib/sagejs/numerics"],
+  "source_paths": [
+    "src/lib/sagejs/numerics",
+    "packages/flint-wasm/numerical/index.mjs",
+    "packages/flint-wasm/numerical/licenses",
+    "packages/flint-wasm/numerical/scripts/build.cjs",
+    "packages/flint-wasm/numerical/src",
+    "packages/flint-wasm/numerical/sources",
+    "packages/flint-wasm/numerical/release"
+  ],
   "cases": [
     {
       "id": "p0-result-contract",
@@ -91,6 +99,40 @@
       "measurement": {"warmup": 1, "samples": 2}
     },
     {
+      "id": "p2-polynomial-roots-known",
+      "description": "Aberth-Ehrlich recovers three known roots; the host rematches roots and evaluates the polynomial independently.",
+      "program_phase": "P2",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "polynomial-roots", "coefficients": [1, -6, 11, -6], "expected_roots": [1, 2, 3]},
+      "required_capabilities": ["numerics.approximation.polynomial_roots"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "polynomial-root-matching", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-10}},
+        {"id": "polynomial-independent-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_normalized_residual", "expected": {"literal": 2e-12}},
+        {"id": "polynomial-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-polynomial-roots-clustered",
+      "description": "A tightly clustered real polynomial remains backward validated while explicitly reporting ill conditioning.",
+      "program_phase": "P2",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "polynomial-roots", "coefficients": [1, -0.00001, -3.00001, 2.00002], "expected_roots": [-2, 1, 1.00001]},
+      "required_capabilities": ["numerics.approximation.polynomial_roots"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "clustered-root-matching", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_root_error", "expected": {"literal": 2e-7}},
+        {"id": "clustered-backward-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_normalized_residual", "expected": {"literal": 1e-10}},
+        {"id": "clustered-condition-diagnostic", "evidence": "validation", "kind": "deep-equal", "actual": "/values/ill_conditioned_reported", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
       "id": "p2-quadrature-sine",
       "description": "Adaptive Gauss-Kronrod integrates sin on [0,pi] with an external exact oracle.",
       "program_phase": "P2",
@@ -174,6 +216,42 @@
       "measurement": {"warmup": 1, "samples": 2}
     },
     {
+      "id": "p3-cminpack-rosenbrock-lmdif",
+      "description": "The separately lazy cminpack Wasm reactor solves Rosenbrock least squares with finite differences; the adapter recomputes residual and stationarity.",
+      "program_phase": "P3",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "cminpack-rosenbrock", "method": "cminpack-lmdif", "initial": [-1.2, 1]},
+      "required_capabilities": ["numerics.optimization.cminpack"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "cminpack-lmdif-solution", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_parameter_error", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmdif-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual_norm", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmdif-stationarity", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_stationarity", "expected": {"literal": 1e-7}},
+        {"id": "cminpack-lmdif-no-leak", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p3-cminpack-rosenbrock-lmder",
+      "description": "The analytic-Jacobian cminpack path solves the same least-squares problem and is independently checked rather than trusting its status.",
+      "program_phase": "P3",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "cminpack-rosenbrock", "method": "cminpack-lmder", "initial": [-1.2, 1]},
+      "required_capabilities": ["numerics.optimization.cminpack"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "cminpack-lmder-solution", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_parameter_error", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmder-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual_norm", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmder-jacobian-used", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/jacobian_evaluations", "expected": {"literal": 1}},
+        {"id": "cminpack-lmder-no-leak", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p3-optimization-cancelled",
       "description": "Optimization cancellation is a structured non-success, not an adapter exception.",
       "program_phase": "P3",
@@ -205,6 +283,41 @@
         {"id": "ode-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p4-ode-stiff-decay",
+      "description": "Rosenbrock4 integrates one stiff decay timescale with an exact exponential flow and an explicit Jacobian.",
+      "program_phase": "P4",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "ode-stiff-decay", "t0": 0, "t1": 0.001, "y0": 1, "rate": 1000},
+      "required_capabilities": ["numerics.ode.stiff_ivp"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "stiff-exact-flow", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 0.36787944117144233}, "absolute_tolerance": 2e-6, "relative_tolerance": 2e-6},
+        {"id": "stiff-independent-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 2e-6}},
+        {"id": "stiff-mass-finite", "evidence": "validation", "kind": "deep-equal", "actual": "/values/finite", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p4-ode-decay-sweep",
+      "description": "The ODE-specific bounded sweep preserves item order and solves a family with independently known exponential flows.",
+      "program_phase": "P4",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "metamorphic", "seed": "17", "trials": 3, "evidence_check_ids": ["ode-sweep-items-ran"]},
+      "input": {"operation": "ode-decay-sweep", "rates": [0.5, 1, 2], "seed": 17, "concurrency": 3},
+      "required_capabilities": ["numerics.ode.sweeps"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "ode-sweep-exact-flows", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_error", "expected": {"literal": 2e-6}},
+        {"id": "ode-sweep-stable-order", "evidence": "validation", "kind": "deep-equal", "actual": "/values/stable_order", "expected": {"literal": true}},
+        {"id": "ode-sweep-items-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/items", "expected": {"literal": 3}},
+        {"id": "ode-sweep-bounded-concurrency", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/effective_concurrency", "expected": {"literal": 3}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
     },
     {
       "id": "p4-ode-cancelled",
@@ -325,6 +438,25 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p7-cross-domain-teaching-artifacts",
+      "description": "Approximation, integration, linear algebra, spectral, and statistics results all emit bounded renderer-neutral plots and animations.",
+      "program_phase": "P7",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 5, "evidence_check_ids": []},
+      "input": {"operation": "cross-domain-teaching-artifacts", "domains": ["approximation", "integration", "linear-algebra", "spectral", "statistics"]},
+      "required_capabilities": ["numerics.teaching.cross_domain"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "teaching-domain-count", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/domain_count", "expected": {"literal": 5}},
+        {"id": "teaching-plot-layers", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/min_plot_layers", "expected": {"literal": 1}},
+        {"id": "teaching-animation-frames", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/min_animation_frames", "expected": {"literal": 2}},
+        {"id": "teaching-animation-bound", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_animation_frames", "expected": {"literal": 128}},
+        {"id": "teaching-plot-valid", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_issues", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
       "id": "p8-statistics-deterministic-fuzz",
       "description": "Seeded descriptive-statistics trials agree with independently regenerated host means.",
       "program_phase": "P8",
@@ -370,6 +502,23 @@
       "checks": [
         {"id": "callback-error-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/solver_status", "expected": {"literal": "callback_error"}},
         {"id": "callback-was-invoked", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/evaluations", "expected": {"literal": 1}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p8-cminpack-cancelled",
+      "description": "The cminpack callback boundary observes cooperative cancellation and releases every Wasm allocation.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["cminpack-cancel-callback-called"]},
+      "input": {"operation": "cminpack-cancelled", "method": "cminpack-lmdif", "initial": [-1.2, 1]},
+      "required_capabilities": ["numerics.optimization.cminpack"],
+      "expected": {"outcome": "failure", "failure_code": "optimization.cancelled"},
+      "checks": [
+        {"id": "cminpack-cancel-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/backend_status", "expected": {"literal": "cancelled"}},
+        {"id": "cminpack-cancel-callback-called", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 1}},
+        {"id": "cminpack-cancel-no-leak", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}}
       ],
       "measurement": {"warmup": 0, "samples": 2}
     },

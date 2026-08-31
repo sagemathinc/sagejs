@@ -1,26 +1,30 @@
 {
   "schema": "sagejs.numerical-node-capability-spec/v1",
   "backend": {
-    "id": "sagejs-python-artifact",
-    "version": "numerical-product-v1"
+    "id": "sagejs-node-numerical-artifacts",
+    "version": "numerical-product-v2"
   },
   "capabilities": [
     {"id": "numerics.contracts", "case_ids": ["p0-result-contract"], "envelope": {"schema_version": 1, "numeric_type": "binary64"}},
     {"id": "numerics.root.scalar", "case_ids": ["p1-root-cosine", "p1-root-invalid-bracket", "p1-root-translation", "p8-root-resource-budget", "p8-callback-exception", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["bisection", "brent", "newton", "secant"], "callbacks": true, "bounded": true}},
     {"id": "numerics.approximation.interpolation", "case_ids": ["p2-interpolation-quadratic"], "envelope": {"methods": ["barycentric"], "numeric_type": "binary64"}},
+    {"id": "numerics.approximation.polynomial_roots", "case_ids": ["p2-polynomial-roots-known", "p2-polynomial-roots-clustered"], "envelope": {"methods": ["aberth-ehrlich"], "maximum_degree": 64, "numeric_type": "complex-binary64", "multiplicity_policy": "numerical-clusters-only-never-certified"}},
     {"id": "numerics.integration.quadrature", "case_ids": ["p2-quadrature-sine", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["adaptive-gauss-kronrod"], "dimension": 1, "callbacks": true}},
     {"id": "numerics.linear.solve", "case_ids": ["p2-linear-solve", "p2-linear-scale-stress", "p2-linear-singular", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["lu", "qr", "cholesky"], "numeric_type": "binary64"}},
     {"id": "numerics.optimization.scalar", "case_ids": ["p3-scalar-minimum", "p3-optimization-cancelled"], "envelope": {"methods": ["bounded-brent"], "callbacks": true, "bounded": true}},
+    {"id": "numerics.optimization.cminpack", "case_ids": ["p3-cminpack-rosenbrock-lmdif", "p3-cminpack-rosenbrock-lmder", "p8-cminpack-cancelled"], "envelope": {"backend": "cminpack-wasm", "methods": ["cminpack-lmdif", "cminpack-lmder"], "maximum_variables": 256, "maximum_residuals": 16384, "callbacks": "synchronous-packed-linear-memory", "independent_validation_required": true}},
     {"id": "numerics.ode.explicit_ivp", "case_ids": ["p4-ode-exponential", "p4-ode-cancelled"], "envelope": {"methods": ["dormand-prince-54", "rk4"], "dense_output": true, "events": true}},
+    {"id": "numerics.ode.stiff_ivp", "case_ids": ["p4-ode-stiff-decay"], "envelope": {"methods": ["rosenbrock4"], "algorithm_family": "kaps-rentrop-rosenbrock-4-3", "automatic_selection": false, "dense_jacobian": true}},
+    {"id": "numerics.ode.sweeps", "case_ids": ["p4-ode-decay-sweep"], "envelope": {"scheduler": "bounded-batch-v1", "stable_order": true, "deterministic_seeds": true, "fallback_concurrency": 1}},
     {"id": "numerics.spectral.dense", "case_ids": ["p5-symmetric-eigen"], "envelope": {"methods": ["cyclic-jacobi"], "numeric_type": "binary64"}},
     {"id": "numerics.spectral.fft", "case_ids": ["p5-fft-direct-oracle", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["radix2-cooley-tukey", "bluestein-radix2"], "numeric_type": "complex-binary64"}},
     {"id": "numerics.statistics.descriptive", "case_ids": ["p5-statistics-summary", "p8-statistics-deterministic-fuzz", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["corrected-two-pass"], "reproducible": true}},
     {"id": "numerics.sweeps.bounded", "case_ids": ["p5-bounded-sweep"], "envelope": {"stable_order": true, "deterministic_seeds": true, "bounded_concurrency": true}},
     {"id": "numerics.frontend.scalar_root", "case_ids": ["p6-multilingual-root-roundtrip"], "envelope": {"languages": ["sage", "python-scipy", "matlab", "wolfram"], "classification": "translated"}},
     {"id": "numerics.teaching.root", "case_ids": ["p7-root-teaching-artifacts"], "envelope": {"plot_spec": true, "animation": true, "bounded_trace": true}},
+    {"id": "numerics.teaching.cross_domain", "case_ids": ["p7-cross-domain-teaching-artifacts"], "envelope": {"domains": ["approximation", "integration", "linear-algebra", "spectral", "statistics"], "plot_spec": true, "animation": true, "renderer_neutral": true, "bounded": true}},
     {"id": "numerics.lifecycle.repeated", "case_ids": ["p8-cross-domain-repeated-stability"], "envelope": {"same_session": true, "deterministic_observations": true, "trials": 8}},
-    {"id": "numerics.approximation.polynomial_roots", "status": "unavailable", "reason": "reserved for the polynomial-roots slice after integration and qualification", "case_ids": [], "envelope": null},
-    {"id": "numerics.ode.stiff_ivp", "status": "unavailable", "reason": "reserved for the stiff IVP slice after integration and qualification", "case_ids": [], "envelope": null},
-    {"id": "numerics.optimization.cminpack", "status": "unavailable", "reason": "reserved for the callback-capable cminpack backend after integration and qualification", "case_ids": [], "envelope": null}
+    {"id": "numerics.optimization.polynomial_least_squares", "status": "unavailable", "reason": "reserved for a future least-squares frontend over the qualified cminpack core", "case_ids": [], "envelope": null},
+    {"id": "numerics.ode.stiff_sparse", "status": "unavailable", "reason": "reserved for a future sparse-Jacobian stiff ODE backend", "case_ids": [], "envelope": null}
   ]
 }

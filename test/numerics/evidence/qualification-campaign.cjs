@@ -36,8 +36,10 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
   );
   const required = [
     "numerics.root.scalar", "numerics.approximation.interpolation",
+    "numerics.approximation.polynomial_roots",
     "numerics.integration.quadrature", "numerics.linear.solve",
-    "numerics.optimization.scalar", "numerics.ode.explicit_ivp",
+    "numerics.optimization.scalar", "numerics.optimization.cminpack",
+    "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
     "numerics.statistics.descriptive", "numerics.sweeps.bounded",
   ];
@@ -51,9 +53,8 @@ test("capability specification exactly covers cases and future slices fail close
   const covered = new Set(available.flatMap((item) => item.case_ids));
   assert.deepEqual([...covered].sort(), corpus.cases.map((item) => item.id).sort());
   for (const id of [
-    "numerics.approximation.polynomial_roots",
-    "numerics.ode.stiff_ivp",
-    "numerics.optimization.cminpack",
+    "numerics.optimization.polynomial_least_squares",
+    "numerics.ode.stiff_sparse",
   ]) {
     const item = draft.capabilities.find((entry) => entry.id === id);
     assert.equal(item.status, "unavailable");
@@ -73,6 +74,12 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
     [...new Set(fullTemplate.rows.map((item) => item.subject.kind))].sort(),
     ["browser", "node", "sea", "worker"],
   );
+  const available = spec.capabilities
+    .filter((item) => (item.status ?? "available") === "available")
+    .map((item) => item.id)
+    .sort();
+  assert.deepEqual(nodeTemplate.required_capabilities.slice().sort(), available);
+  assert.deepEqual(fullTemplate.required_capabilities.slice().sort(), available);
   assert.throws(
     () => renderMatrix(nodeTemplate, corpus, new Map()),
     /missing bound capability manifest for linux-x64-node/,
@@ -80,7 +87,11 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
 });
 
 const dist = path.join(root, "dist");
-const built = fs.existsSync(path.join(dist, "tools", "kernel.js"));
+const cminpackWasm = path.join(
+  root, "packages", "flint-wasm", "numerical", "build", "cminpack.wasm",
+);
+const built = fs.existsSync(path.join(dist, "tools", "kernel.js")) &&
+  fs.existsSync(cminpackWasm);
 
 test("first-party adapter executes Sage.js and independently checks representative domains", {
   skip: built ? false : "run pnpm build to exercise the artifact adapter",
@@ -94,14 +105,21 @@ test("first-party adapter executes Sage.js and independently checks representati
     root,
     backend: draft.backend,
     subject: draft.subject,
-    artifacts: [{ name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 }],
+    artifacts: [
+      { name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 },
+      { name: "cminpack-wasm", path: cminpackWasm, sha256: "test-only", bytes: 0 },
+    ],
     capabilities: draft.capabilities,
   });
   try {
     assert.equal(initialized.subject.version, process.version);
     for (const id of [
-      "p1-root-cosine", "p2-linear-solve", "p3-scalar-minimum",
-      "p4-ode-exponential", "p5-fft-direct-oracle", "p5-statistics-summary",
+      "p1-root-cosine", "p2-linear-solve", "p2-polynomial-roots-known",
+      "p3-scalar-minimum", "p3-cminpack-rosenbrock-lmdif",
+      "p3-cminpack-rosenbrock-lmder", "p4-ode-exponential",
+      "p4-ode-stiff-decay", "p4-ode-decay-sweep",
+      "p5-fft-direct-oracle", "p5-statistics-summary",
+      "p7-cross-domain-teaching-artifacts",
     ]) {
       const item = corpus.cases.find((entry) => entry.id === id);
       const observed = await adapter.runCase({

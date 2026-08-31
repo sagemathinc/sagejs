@@ -4,12 +4,13 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 23
+- `bench/numerical-computing/qualification/product.corpus.json` — 31
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
-  Sage.js session, runs each operation in that artifact, and computes its
-  independent residual/oracle evidence in the host adapter;
+  Sage.js session, instantiates the exact separately built cminpack Wasm
+  reactor, runs each operation in those artifacts, and computes its independent
+  residual/oracle evidence in the host adapter;
 - `bench/numerical-computing/qualification/capabilities/node-capability-spec.json`
   — authored claims and exact case allowlists; and
 - the reviewed four-platform and full-runtime matrix templates under
@@ -22,18 +23,21 @@ candidate host.
 
 ## Evidence coverage
 
-The campaign executes the integrated root, approximation, quadrature, dense
-linear algebra, optimization, explicit ODE, dense spectral, FFT, statistics,
-bounded-sweep, multilingual-root, and teaching-artifact surfaces. It contains:
+The campaign executes the integrated root, interpolation, polynomial-root,
+quadrature, dense-linear-algebra, scalar and cminpack optimization, explicit
+and stiff ODE, ODE-sweep, dense-spectral, FFT, statistics, bounded-sweep,
+multilingual-root, and cross-domain teaching-artifact surfaces. It contains:
 
 - definition and identity examples;
 - exact or mature-reference differential oracles;
 - residuals recomputed outside the Sage.js result validator;
-- extreme finite scaling and singular/failure cases;
+- extreme finite scaling, clustered polynomial roots, stiff flow, and
+  singular/failure cases;
 - deterministic fuzz whose input stream is regenerated independently in
   JavaScript;
 - root-translation and four-language round-trip metamorphisms;
-- cancellation, callback-exception, and evaluation-budget fault injection;
+- cancellation, callback-exception, evaluation-budget, and Wasm-allocation
+  lifecycle fault injection;
 - a same-session repeated cross-domain campaign; and
 - collector-level cold initialization, wall time, RSS, process high-water RSS,
   source/artifact bytes, and repeated-observation determinism.
@@ -49,15 +53,19 @@ Build the exact candidate once, then use a fresh output directory:
 
 ```sh
 pnpm build
+node packages/flint-wasm/numerical/scripts/build.cjs
 node scripts/numerical-computing/qualification/prepare-node.cjs \
   --artifact dist \
+  --cminpack-artifact packages/flint-wasm/numerical/build/cminpack.wasm \
   --output build/numerical-qualification/linux-x64-node
 ```
 
 The prepare command derives the actual Node version, binds the corpus, complete
 numerical source directory, adapter, and `dist` artifact closure, writes an
-immutable capability manifest, and prints the exact collection command. Run
-that command in a cold process, for example:
+immutable capability manifest, and prints the exact collection command. The
+manifest binds `dist` and the exact cminpack Wasm bytes separately, so neither
+artifact can be rebuilt or substituted after preparation. Run that command in
+a cold process, for example:
 
 ```sh
 node scripts/numerical-computing/qualify.cjs run \
@@ -65,6 +73,7 @@ node scripts/numerical-computing/qualify.cjs run \
   --adapter bench/numerical-computing/qualification/node-adapter.cjs \
   --capabilities build/numerical-qualification/linux-x64-node/capabilities.json \
   --artifact sagejs-dist=dist \
+  --artifact cminpack-wasm=packages/flint-wasm/numerical/build/cminpack.wasm \
   --output build/numerical-qualification/linux-x64-node/node.receipt.json
 
 node scripts/numerical-computing/qualify.cjs verify \
@@ -107,14 +116,18 @@ cannot impersonate them.
 
 ## Extending the corpus
 
-Polynomial roots, a stiff IVP method, and cminpack are already listed in the
-Node capability specification as unavailable with empty case allowlists. When
-each implementation lands:
+Polynomial roots, Rosenbrock4, bounded ODE sweeps, and cminpack's `lmdif` and
+`lmder` methods are now executable required capabilities. Future slices such
+as a public least-squares frontend, sparse stiff methods, additional native or
+Wasm backends, and new product domains follow the same procedure:
 
 1. add backend-neutral cases with independent evidence;
-2. add the exact cases to the formerly empty capability;
-3. remove `status: unavailable` only after the adapter executes the integrated
-   implementation;
+2. add the exact cases to an unavailable capability draft;
+3. remove `status: unavailable` only after a first-party adapter executes the
+   integrated artifact;
 4. increment the corpus version if its semantic case contract changes; and
 5. bind and collect new receipts. Never reuse an older capability manifest or
    receipt after source, corpus, adapter, or artifact bytes change.
+
+The checked-in `polynomial_least_squares` and `stiff_sparse` entries illustrate
+that fail-closed state. Empty allowlists are not evidence of support.

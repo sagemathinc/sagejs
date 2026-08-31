@@ -2,12 +2,14 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 
 const PROTOCOL = "sagejs.numerical-qualification-adapter/v1";
 const MARKER = "__SAGEJS_NUMERICAL_QUALIFICATION__";
 
 let session = null;
 let artifactRoot = null;
+let cminpackBackend = null;
 let initializedCapabilities = [];
 
 function milliseconds(started) {
@@ -79,6 +81,24 @@ output_record = {
     "success": answer.success,
     "validation_passed": answer.validation.passed,
 }`,
+    "p2-polynomial-roots-known": String.raw`
+from sagejs.numerics.approximation import polynomial_roots
+answer = polynomial_roots(input_record["coefficients"], trace="iterations")
+output_record = {
+    "roots": [[root.real, root.imag] for root in answer.roots],
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "diagnostic_codes": [item.code for item in answer.diagnostics],
+}`,
+    "p2-polynomial-roots-clustered": String.raw`
+from sagejs.numerics.approximation import polynomial_roots
+answer = polynomial_roots(input_record["coefficients"], trace="iterations")
+output_record = {
+    "roots": [[root.real, root.imag] for root in answer.roots],
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "diagnostic_codes": [item.code for item in answer.diagnostics],
+}`,
     "p2-quadrature-sine": String.raw`
 from sagejs.numerics.integration import integrate
 answer = integrate(math.sin, input_record["lower"], input_record["upper"])
@@ -144,6 +164,74 @@ output_record = {
     "status": answer.status,
     "validation_passed": answer.validation.passed,
     "evaluations": answer.evaluations,
+}`,
+    "p4-ode-stiff-decay": String.raw`
+from sagejs.numerics.ode import solve_ivp
+rate = input_record["rate"]
+def rhs(t, y):
+    return [-rate*y[0]]
+def jacobian(t, y):
+    return [[-rate]]
+answer = solve_ivp(
+    rhs,
+    (input_record["t0"], input_record["t1"]),
+    [input_record["y0"]],
+    method="rosenbrock4",
+    jacobian=jacobian,
+    rtol=1e-6,
+    atol=1e-9,
+    max_validation_evaluations=8,
+    max_elapsed_ms=60000,
+)
+output_record = {
+    "value": answer.value[0],
+    "status": answer.status,
+    "validation_passed": answer.validation.passed,
+    "evaluations": answer.evaluations,
+}`,
+    "p4-ode-decay-sweep": String.raw`
+from sagejs.numerics.ode import ode_problem, run_ode_parameter_sweep
+from sagejs.numerics.sweeps import SweepBudget
+parameters = [{"rate": rate} for rate in input_record["rates"]]
+budget = SweepBudget(
+    max_items=8,
+    max_concurrency=input_record["concurrency"],
+    max_evaluations=2000,
+    max_elapsed_ms=10000,
+    max_memory_bytes=20000000,
+    max_input_bytes=100000,
+    max_result_bytes=4000000,
+    max_trace_events=100,
+    max_trace_bytes=100000,
+)
+def factory(parameter, limits):
+    rate = float(parameter["rate"])
+    return ode_problem(
+        lambda t, y: [-rate*y[0]],
+        (0.0, 1.0),
+        [1.0],
+        rtol=1e-7,
+        atol=1e-10,
+        max_evaluations=limits.max_evaluations,
+        max_elapsed_ms=limits.max_elapsed_ms,
+        max_output_points=128,
+        max_validation_evaluations=16,
+        max_trace_bytes=4096,
+        function_record={"kind": "parameterized_decay", "rate": rate, "replayable": True},
+    )
+answer = run_ode_parameter_sweep(
+    parameters,
+    factory,
+    budget=budget,
+    seed=input_record["seed"],
+    concurrency=input_record["concurrency"],
+)
+output_record = {
+    "success": answer.success,
+    "status": answer.status,
+    "values": [item.value["value"][0] for item in answer.items],
+    "indices": [item.index for item in answer.items],
+    "effective_concurrency": answer.plan.effective_concurrency,
 }`,
     "p4-ode-cancelled": String.raw`
 from sagejs.numerics.ode import solve_ivp
@@ -229,6 +317,31 @@ output_record = {
     "trace_events": len(answer.trace.events),
     "success": answer.success,
 }`,
+    "p7-cross-domain-teaching-artifacts": String.raw`
+from sagejs.numerics.approximation import interpolate
+from sagejs.numerics.integration import integrate
+from sagejs.numerics.linear_algebra import lu
+from sagejs.numerics.spectral import fft
+from sagejs.numerics.statistics import describe
+
+approximation = interpolate([-1.0, 0.0, 1.0], [1.0, 0.0, 1.0], trace="iterations")
+integration = integrate(math.sin, 0.0, math.pi)
+linear = lu([[0.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]], trace="iterations")
+spectral = fft([1.0, 0.0, -1.0, 0.0, 0.5, 0.0, -0.5], trace="iterations")
+statistics = describe([1.0, 2.0, 3.0, 4.0])
+artifacts = [
+    ("approximation", approximation.to_plot_spec(33), approximation.to_animation(samples=17, max_frames=3)),
+    ("integration", integration.to_plot_spec(), integration.to_animation()),
+    ("linear-algebra", linear.plot("factorization"), linear.animate(max_frames=3)),
+    ("spectral", spectral.plot(), spectral.animate("result")),
+    ("statistics", statistics.to_plot_spec(), statistics.animate()),
+]
+output_record = {
+    "domains": [name for name, plot, animation in artifacts],
+    "plot_layers": [len(plot.layers) for name, plot, animation in artifacts],
+    "animation_frames": [len(animation.frames) for name, plot, animation in artifacts],
+    "validation_issues": [len(plot.validate()) for name, plot, animation in artifacts],
+}`,
     "p8-statistics-deterministic-fuzz": String.raw`
 from sagejs.numerics.statistics import describe
 state = input_record["seed"]
@@ -299,6 +412,37 @@ async function evaluate(id, input) {
   return { raw: parseEvaluation(result), kernelMs: milliseconds(started) };
 }
 
+async function evaluateCminpack(id, input) {
+  if (cminpackBackend === null) throw new Error("cminpack qualification backend is not initialized");
+  const started = process.hrtime.bigint();
+  let cancelChecks = 0;
+  const options = {
+    method: input.method,
+    initial: input.initial,
+    residualCount: 2,
+    residual: ([x, y]) => [10 * (y - x * x), 1 - x],
+    maximumEvaluations: 1000,
+    maximumCallbackEvaluations: 2000,
+    functionTolerance: 1e-13,
+    stepTolerance: 1e-13,
+    gradientTolerance: 1e-13,
+  };
+  if (input.method === "cminpack-lmder") {
+    options.jacobian = ([x]) => [[-20 * x, 10], [-1, 0]];
+  }
+  if (id === "p8-cminpack-cancelled") {
+    options.cancelled = () => {
+      cancelChecks += 1;
+      return true;
+    };
+  }
+  const result = cminpackBackend.leastSquares(options);
+  return {
+    raw: { ...result, cancelChecks, backendState: cminpackBackend.inspect() },
+    kernelMs: milliseconds(started),
+  };
+}
+
 function success(values, kernelMs, counters = {}) {
   return {
     outcome: { kind: "success", code: null },
@@ -328,7 +472,12 @@ function lagrange(nodes, values, point) {
 }
 
 function complex(value) {
-  return Array.isArray(value) ? { re: value[0], im: value[1] } : { re: value, im: 0 };
+  if (Array.isArray(value)) return { re: value[0], im: value[1] };
+  if (value !== null && typeof value === "object" &&
+      Number.isFinite(value.re) && Number.isFinite(value.im)) {
+    return { re: value.re, im: value.im };
+  }
+  return { re: value, im: 0 };
 }
 
 function dft(samples) {
@@ -342,6 +491,53 @@ function dft(samples) {
     }
     return { re, im };
   });
+}
+
+function evaluatePolynomial(coefficients, root) {
+  let value = { re: 0, im: 0 };
+  let scale = 0;
+  const magnitude = Math.hypot(root.re, root.im);
+  for (const coefficient of coefficients) {
+    value = {
+      re: value.re * root.re - value.im * root.im + coefficient,
+      im: value.re * root.im + value.im * root.re,
+    };
+    scale = scale * magnitude + Math.abs(coefficient);
+  }
+  return Math.hypot(value.re, value.im) / Math.max(scale, Number.MIN_VALUE);
+}
+
+function matchRealRoots(observed, expected) {
+  const remaining = observed.map(complex);
+  let maximum = 0;
+  for (const target of expected) {
+    let nearest = 0;
+    let distance = Infinity;
+    for (let index = 0; index < remaining.length; index += 1) {
+      const candidate = Math.hypot(remaining[index].re - target, remaining[index].im);
+      if (candidate < distance) {
+        distance = candidate;
+        nearest = index;
+      }
+    }
+    maximum = Math.max(maximum, distance);
+    remaining.splice(nearest, 1);
+  }
+  return maximum;
+}
+
+function cminpackEvidence(value) {
+  const [x, y] = value;
+  const residual = [10 * (y - x * x), 1 - x];
+  const gradient = [
+    -20 * x * residual[0] - residual[1],
+    10 * residual[0],
+  ];
+  return {
+    maxParameterError: Math.max(Math.abs(x - 1), Math.abs(y - 1)),
+    residualNorm: Math.hypot(...residual),
+    stationarity: Math.hypot(...gradient),
+  };
 }
 
 function maxEigenResidual(matrix, values, vectors) {
@@ -394,7 +590,10 @@ function repeatedEvidence(records) {
 
 async function normalize(sample) {
   const validationStarted = process.hrtime.bigint();
-  const { raw, kernelMs } = await evaluate(sample.id, sample.input);
+  const { raw, kernelMs } = sample.id.startsWith("p3-cminpack-") ||
+    sample.id === "p8-cminpack-cancelled"
+    ? await evaluateCminpack(sample.id, sample.input)
+    : await evaluate(sample.id, sample.input);
   const input = sample.input;
   let observation;
   switch (sample.id) {
@@ -432,6 +631,19 @@ async function normalize(sample) {
         result: raw.value,
         independent_error: Math.abs(raw.value - oracle),
       }, kernelMs);
+      break;
+    }
+    case "p2-polynomial-roots-known":
+    case "p2-polynomial-roots-clustered": {
+      const roots = raw.roots.map(complex);
+      observation = success({
+        max_root_error: matchRealRoots(roots, input.expected_roots),
+        max_normalized_residual: Math.max(
+          ...roots.map((root) => evaluatePolynomial(input.coefficients, root)),
+        ),
+        validation_passed: raw.validation_passed,
+        ill_conditioned_reported: raw.diagnostic_codes.includes("ill_conditioned"),
+      }, kernelMs, { roots: roots.length });
       break;
     }
     case "p2-quadrature-sine":
@@ -472,6 +684,23 @@ async function normalize(sample) {
         validation_passed: raw.validation_passed,
       }, kernelMs, { evaluations: raw.evaluations });
       break;
+    case "p3-cminpack-rosenbrock-lmdif":
+    case "p3-cminpack-rosenbrock-lmder": {
+      const evidence = cminpackEvidence(raw.value);
+      observation = success({
+        max_parameter_error: evidence.maxParameterError,
+        independent_residual_norm: evidence.residualNorm,
+        independent_stationarity: evidence.stationarity,
+        backend_status: raw.status,
+        independent_validation_required: raw.independentValidationRequired,
+        jacobian_evaluations: raw.jacobianEvaluations,
+        live_allocations: raw.backendState.liveAllocations,
+      }, kernelMs, {
+        residual_evaluations: raw.residualEvaluations,
+        jacobian_evaluations: raw.jacobianEvaluations,
+      });
+      break;
+    }
     case "p3-optimization-cancelled":
       observation = failure("optimization.cancelled", {
         solver_status: raw.status,
@@ -485,6 +714,27 @@ async function normalize(sample) {
         validation_passed: raw.validation_passed,
       }, kernelMs, { evaluations: raw.evaluations });
       break;
+    case "p4-ode-stiff-decay": {
+      const oracle = input.y0 * Math.exp(-input.rate * (input.t1 - input.t0));
+      observation = success({
+        result: raw.value,
+        independent_error: Math.abs(raw.value - oracle),
+        finite: Number.isFinite(raw.value),
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { evaluations: raw.evaluations });
+      break;
+    }
+    case "p4-ode-decay-sweep": {
+      const errors = raw.values.map((value, index) =>
+        Math.abs(value - Math.exp(-input.rates[index])));
+      observation = success({
+        max_independent_error: Math.max(...errors),
+        stable_order: raw.indices.every((value, index) => value === index),
+        items: raw.values.length,
+        effective_concurrency: raw.effective_concurrency,
+      }, kernelMs, { items: raw.values.length });
+      break;
+    }
     case "p4-ode-cancelled":
       observation = failure("ode.cancelled", {
         solver_status: raw.status,
@@ -547,6 +797,18 @@ async function normalize(sample) {
         trace_events: raw.trace_events,
       }, kernelMs, { trace_events: raw.trace_events, animation_frames: raw.animation_frames });
       break;
+    case "p7-cross-domain-teaching-artifacts":
+      observation = success({
+        domain_count: raw.domains.length,
+        min_plot_layers: Math.min(...raw.plot_layers),
+        min_animation_frames: Math.min(...raw.animation_frames),
+        max_animation_frames: Math.max(...raw.animation_frames),
+        validation_issues: raw.validation_issues.reduce((left, right) => left + right, 0),
+      }, kernelMs, {
+        domains: raw.domains.length,
+        animation_frames: raw.animation_frames.reduce((left, right) => left + right, 0),
+      });
+      break;
     case "p8-statistics-deterministic-fuzz": {
       const oracle = regenerateFuzz(input);
       const errors = raw.means.map((value, index) => Math.abs(value - oracle.means[index]));
@@ -569,6 +831,13 @@ async function normalize(sample) {
         evaluations: raw.evaluations,
       }, kernelMs, { evaluations: raw.evaluations });
       break;
+    case "p8-cminpack-cancelled":
+      observation = failure("optimization.cancelled", {
+        backend_status: raw.status,
+        cancel_checks: raw.cancelChecks,
+        live_allocations: raw.backendState.liveAllocations,
+      }, kernelMs, { cancellation_checks: raw.cancelChecks });
+      break;
     case "p8-cross-domain-repeated-stability": {
       const evidence = repeatedEvidence(raw.records);
       observation = success({
@@ -589,6 +858,9 @@ module.exports = {
   protocol: PROTOCOL,
 
   async initialize(context) {
+    if (session !== null || cminpackBackend !== null) {
+      throw new Error("the qualification adapter is already initialized");
+    }
     const artifact = context.artifacts.find((item) => item.name === "sagejs-dist");
     if (artifact === undefined || !fs.statSync(artifact.path).isDirectory()) {
       throw new Error("the sagejs-dist artifact must be a built dist directory");
@@ -596,10 +868,20 @@ module.exports = {
     artifactRoot = artifact.path;
     const kernelPath = path.join(artifactRoot, "tools", "kernel.js");
     if (!fs.statSync(kernelPath).isFile()) throw new Error("sagejs-dist lacks tools/kernel.js");
-    const { createSage } = require(kernelPath);
-    session = await createSage({ mode: "python" });
+    const cminpackArtifact = context.artifacts.find((item) => item.name === "cminpack-wasm");
+    if (cminpackArtifact === undefined || !fs.statSync(cminpackArtifact.path).isFile()) {
+      throw new Error("the cminpack-wasm artifact must be the built cminpack.wasm file");
+    }
+    const cminpackModulePath = path.resolve(
+      __dirname, "..", "..", "..", "packages", "flint-wasm", "numerical", "index.mjs",
+    );
+    const { createCminpackBackend } = await import(pathToFileURL(cminpackModulePath).href);
+    cminpackBackend = await createCminpackBackend(fs.readFileSync(cminpackArtifact.path));
+    try {
+      const { createSage } = require(kernelPath);
+      session = await createSage({ mode: "python" });
 
-    const probe = await session.evaluate(String.raw`
+      const probe = await session.evaluate(String.raw`
 import json
 modules = [
     "sagejs.numerics",
@@ -622,31 +904,46 @@ for module in modules:
         pass
 print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys=True))
 `);
-    const present = new Set(parseEvaluation(probe).available);
-    const requirements = {
+      const present = new Set(parseEvaluation(probe).available);
+      const requirements = {
       "numerics.contracts": "sagejs.numerics",
       "numerics.root.scalar": "sagejs.numerics",
       "numerics.approximation.interpolation": "sagejs.numerics.approximation",
+      "numerics.approximation.polynomial_roots": "sagejs.numerics.approximation",
       "numerics.integration.quadrature": "sagejs.numerics.integration",
       "numerics.linear.solve": "sagejs.numerics.linear_algebra",
       "numerics.optimization.scalar": "sagejs.numerics.optimization",
+      "numerics.optimization.cminpack": "external:cminpack-wasm",
       "numerics.ode.explicit_ivp": "sagejs.numerics.ode",
+      "numerics.ode.stiff_ivp": "sagejs.numerics.ode",
+      "numerics.ode.sweeps": "sagejs.numerics.ode",
       "numerics.spectral.dense": "sagejs.numerics.spectral",
       "numerics.spectral.fft": "sagejs.numerics.spectral",
       "numerics.statistics.descriptive": "sagejs.numerics.statistics",
       "numerics.sweeps.bounded": "sagejs.numerics.sweeps",
       "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
       "numerics.teaching.root": "sagejs.numerics",
+      "numerics.teaching.cross_domain": "sagejs.numerics",
       "numerics.lifecycle.repeated": "sagejs.numerics",
-    };
-    initializedCapabilities = context.capabilities
-      .filter((item) => item.status === "available" && present.has(requirements[item.id]))
-      .map((item) => item.id)
-      .sort();
-    return {
-      subject: { kind: "node", name: "node", version: process.version, engine: null },
-      capability_ids: initializedCapabilities,
-    };
+      };
+      initializedCapabilities = context.capabilities
+        .filter((item) => item.status === "available" && (
+          requirements[item.id] === "external:cminpack-wasm" || present.has(requirements[item.id])
+        ))
+        .map((item) => item.id)
+        .sort();
+      return {
+        subject: { kind: "node", name: "node", version: process.version, engine: null },
+        capability_ids: initializedCapabilities,
+      };
+    } catch (error) {
+      if (session !== null) await session.close();
+      session = null;
+      artifactRoot = null;
+      cminpackBackend = null;
+      initializedCapabilities = [];
+      throw error;
+    }
   },
 
   async runCase(sample) {
@@ -657,6 +954,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
     if (session !== null) await session.close();
     session = null;
     artifactRoot = null;
+    cminpackBackend = null;
     initializedCapabilities = [];
   },
 
@@ -664,6 +962,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
     return {
       initialized: session !== null,
       artifact_root: artifactRoot,
+      cminpack_initialized: cminpackBackend !== null,
       capability_ids: [...initializedCapabilities],
     };
   },
