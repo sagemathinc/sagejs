@@ -8,12 +8,9 @@ from typing import Any
 import numpy as np
 import sagejs.runtime as runtime
 from sagejs.numerics.frontends import (
+    create_frontend_registry as _create_numerical_registry,
     emit_code as _emit_numerical_code,
-)
-from sagejs.numerics.frontends import (
     execute_scalar_root_intent as _execute_numerical_intent,
-)
-from sagejs.numerics.frontends import (
     matlab_fzero_intent,
 )
 
@@ -107,7 +104,9 @@ def rdivide(left: Any, right: Any) -> Any:
 
 
 def mldivide(left: Any, right: Any) -> Any:
-    raise NotImplementedError("MATLAB matrix left division is not implemented")
+    """Execute MATLAB left division through the validated dense solver."""
+
+    return numerical_value("mldivide", left, right)
 
 
 def ldivide(left: Any, right: Any) -> Any:
@@ -182,6 +181,176 @@ def numerical_code(intent: Any, language: str) -> str:
     """Emit canonical numerical intent as Sage, SciPy, MATLAB, or Wolfram."""
 
     return _emit_numerical_code(intent, language)
+
+
+def numerical_intent(name: str, *arguments: Any, **options: Any) -> Any:
+    """Lower a supported MATLAB numerical call to canonical intent."""
+
+    return _create_numerical_registry().lower("matlab", name, *arguments, **options)
+
+
+def numerical_result(name: str, *arguments: Any, **options: Any) -> Any:
+    """Execute a MATLAB numerical call and retain all structured evidence."""
+
+    registry = _create_numerical_registry()
+    return registry.execute(registry.lower("matlab", name, *arguments, **options))
+
+
+def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
+    """Return the conventional MATLAB value view of a structured result."""
+
+    result = numerical_result(name, *arguments, **options)
+    return result.value if hasattr(result, "value") else result
+
+
+def linsolve(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("linsolve", matrix, right, **options)
+
+
+def lsqminnorm(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("lsqminnorm", matrix, right, **options)
+
+
+def eig_result(matrix: Any, **options: Any) -> Any:
+    return numerical_result("eig", matrix, **options)
+
+
+def eig(matrix: Any, **options: Any) -> Any:
+    """Return MATLAB's one-output eigenvalue view."""
+
+    value = eig_result(matrix, **options).value
+    return value["eigenvalues"]
+
+
+def svd_result(matrix: Any, **options: Any) -> Any:
+    return numerical_result("svd", matrix, **options)
+
+
+def svd(matrix: Any, **options: Any) -> Any:
+    """Return MATLAB's one-output singular-value view."""
+
+    value = svd_result(matrix, **options).value
+    return value["singular_values"]
+
+
+def fft_result(samples: Any, **options: Any) -> Any:
+    return numerical_result("fft", samples, **options)
+
+
+def fft(samples: Any, **options: Any) -> Any:
+    return fft_result(samples, **options).value
+
+
+def conv_result(left: Any, right: Any, **options: Any) -> Any:
+    return numerical_result("conv", left, right, **options)
+
+
+def conv(left: Any, right: Any, **options: Any) -> Any:
+    return conv_result(left, right, **options).value
+
+
+class MatlabInterpolant:
+    """Callable MATLAB-style view over a validated approximation result."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.evaluate(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def gridded_interpolant(nodes: Any, values: Any, **options: Any) -> Any:
+    return MatlabInterpolant(
+        numerical_result("griddedInterpolant", nodes, values, **options)
+    )
+
+
+def spline(nodes: Any, values: Any, **options: Any) -> Any:
+    return MatlabInterpolant(numerical_result("spline", nodes, values, **options))
+
+
+def integral_result(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    return numerical_result("integral", function, lower, upper, **options)
+
+
+def integral(function: Any, lower: Any, upper: Any, **options: Any) -> float:
+    result = integral_result(function, lower, upper, **options)
+    if not result.success:
+        raise RuntimeError("integral failed: " + result.status)
+    return float(result.value)
+
+
+def fminbnd(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    return numerical_value("fminbnd", function, lower, upper, **options)
+
+
+def fminsearch(function: Any, initial: Any, **options: Any) -> Any:
+    return numerical_value("fminsearch", function, initial, **options)
+
+
+def fsolve(function: Any, initial: Any, **options: Any) -> Any:
+    return numerical_value("fsolve", function, initial, **options)
+
+
+def lsqnonlin(residuals: Any, initial: Any, **options: Any) -> Any:
+    return numerical_value("lsqnonlin", residuals, initial, **options)
+
+
+def polyfit(xdata: Any, ydata: Any, degree: int = 1, **options: Any) -> Any:
+    if degree != 1:
+        raise NotImplementedError(
+            "the validated MATLAB polyfit frontend currently supports degree 1"
+        )
+    return numerical_value("polyfit", xdata, ydata, **options)
+
+
+class MatlabOdeSolution:
+    """MATLAB-style solution structure retaining canonical ODE evidence."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+        self.x = list(numerical_result.trajectory.times)
+        states = numerical_result.trajectory.states
+        self.y = [
+            [state[index] for state in states]
+            for index in range(len(states[0]) if states else 0)
+        ]
+
+    def to_dict(self) -> Any:
+        return {
+            "x": list(self.x),
+            "y": [list(row) for row in self.y],
+            "numerical_result": self.numerical_result.to_dict(),
+        }
+
+
+def ode45(function: Any, t_span: Any, y0: Any, **options: Any) -> MatlabOdeSolution:
+    return MatlabOdeSolution(numerical_result("ode45", function, t_span, y0, **options))
+
+
+def sagejs_describe(data: Any, **options: Any) -> Any:
+    return numerical_value("sagejs_describe", data, **options)
+
+
+def ttest(data: Any, population_mean: Any = 0, **options: Any) -> Any:
+    return numerical_value("ttest", data, population_mean, **options)
+
+
+def ttest2(first: Any, second: Any, **options: Any) -> Any:
+    return numerical_value("ttest2", first, second, **options)
+
+
+def fitlm(x: Any, y: Any, **options: Any) -> Any:
+    return numerical_value("fitlm", x, y, **options)
+
+
+def arrayfun(function: Any, parameters: Any, **options: Any) -> Any:
+    """Apply one callback through the deterministic bounded sweep contract."""
+
+    return numerical_value("arrayfun", function, parameters, **options)
 
 
 def _integer_index(value: Any) -> int:

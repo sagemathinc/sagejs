@@ -804,16 +804,18 @@ def scalar_root_adapter() -> OperationAdapter:
 def create_frontend_registry(
     adapters: Sequence[OperationAdapter] = (),
 ) -> FrontendRegistry:
-    """Create the built-in registry and register optional domain adapters."""
+    """Create the complete lazy built-in registry plus optional adapters."""
 
-    registry = FrontendRegistry((scalar_root_adapter(),))
+    from .operations import operation_adapters
+
+    registry = FrontendRegistry((scalar_root_adapter(),) + operation_adapters())
     for adapter in adapters:
         registry.register(adapter)
     return registry
 
 
 def emit_code(intent: NumericalFrontendIntent, language: str) -> str:
-    """Emit outward source through the built-in scalar-root adapter."""
+    """Emit outward source through the complete built-in registry."""
 
     return create_frontend_registry().emit(intent, language)
 
