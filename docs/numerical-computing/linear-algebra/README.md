@@ -71,6 +71,78 @@ guard is evaluated within factorization, Jacobi, factor application,
 refinement, and independent-validation loops, rather than only between whole
 cubic phases. Cancellation callback exceptions are classified results.
 
+## Package-local capability discovery
+
+The package owns a detached, side-effect-free discovery surface for later use
+by the central lazy facade:
+
+```python
+from sagejs.numerics.linear_algebra import capabilities, plan, supports
+
+capabilities()                       # all nine operation records
+capabilities("linear_solve")         # one filtered detached record
+supports(problem, method="qr")       # structural metadata check only
+plan(problem)                        # NumericalPlan; no matrix kernel runs
+```
+
+Discovery covers `lu_factorization`, `qr_factorization`,
+`cholesky_factorization`, `linear_solve`, `least_squares`, `matrix_rank`,
+`condition_number`, `determinant`, and `matrix_inverse`. The planner reads only
+the immutable problem domain, operation, numeric type, coefficient shape,
+method request, explicit assumptions, and resource budgets. It never examines
+matrix entries, evaluates a callback, factors a matrix, or estimates rank.
+Consequently `supports()` means that a structurally valid plan exists; dynamic
+requirements such as full numerical rank and positive definiteness remain
+checked execution-time contracts. Returned capability and plan records are
+detached, so caller mutation cannot alter later discovery.
+
+## Explanations and visual evidence
+
+Every `LinearAlgebraResult` has domain-owned explanation and visualization
+methods. They use result evidence already present in the structured envelope;
+they do not rerun a solver, sample a hidden callback, or require a renderer.
+
+```python
+factor = lu([[0, 2, 3], [4, 5, 6], [7, 8, 10]], trace="iterations")
+factor.explanation()                 # JSON-safe method, validation, rank, and guidance record
+factor.explain()                     # concise accessible natural-language form
+factor.plot("factorization")         # static PlotSpec
+factor.plot("validation")            # independent error/threshold evidence
+factor.animate(max_frames=16)        # bounded PlotAnimation from retained trace events
+```
+
+Static `PlotSpec` views always carry explicit semantic alt text and provenance:
+
+| View | Evidence shown | Typical use |
+|---|---|---|
+| `factorization` | normalized triangular-factor diagonal and recorded usable-pivot/rank threshold | pivot decay, factorization structure, and the final reconstruction claim |
+| `conditioning` | relative Jacobi singular-value estimates and numerical-rank threshold | Hilbert-like ill-conditioning, rank loss, and finite versus infinite condition estimates |
+| `convergence` | retained refinement error or Jacobi column-correlation history | why an iterative diagnostic improved, converged, or exhausted its sweep budget |
+| `validation` | each independent error divided by its threshold, or a structural pass indicator | success/failure inspection when no spectral or factor artifact is available |
+
+`plot()` selects conditioning, then factorization, then validation evidence in
+that order. Callers can request a view explicitly. `animate()` selects retained
+factorization progress first, then convergence history. Factorization kernels
+emit semantic pivot, reflector, or positive-pivot events while they run, but
+the existing trace event/byte budgets remain authoritative. Animation frames
+are capped by both `max_frames` and the trace policy, use stable layer IDs, and
+record whether the source trace was truncated. A result without applicable
+iteration evidence raises an actionable request to rerun with
+`trace="iterations"` instead of inventing motion.
+
+Failure results remain explainable and statically visualizable:
+
+```python
+failed = cholesky([[2, 1], [0, 2]], trace="iterations")
+assert failed.explanation()["outcome"]["failure_code"] == "not_symmetric"
+failed.plot("validation")            # accessible failed-check PlotSpec
+```
+
+The executable
+[`visualization-examples.json`](visualization-examples.json) covers pivoted LU
+success, Hilbert-five conditioning and Jacobi convergence, and a classified
+nonsymmetric-Cholesky failure in both CPython and Sage.js.
+
 ## Numerical truth and refinement
 
 For a direct solution, the independent validator computes

@@ -75,6 +75,30 @@ class LinearAlgebraResult(NumericalResult):
             raise AttributeError("this result does not contain a factorization")
         return self._factorization
 
+    def explanation(self) -> dict[str, Any]:
+        """Return the domain-owned structured pedagogical explanation."""
+        from .visualization import linear_algebra_explanation
+
+        return linear_algebra_explanation(self)
+
+    def explain(self) -> str:
+        """Return an accessible natural-language linear-algebra explanation."""
+        from .visualization import describe_linear_algebra
+
+        return describe_linear_algebra(self)
+
+    def plot(self, view: str = "auto") -> Any:
+        """Return an accessible static PlotSpec of retained result evidence."""
+        from .visualization import linear_algebra_plot
+
+        return linear_algebra_plot(self, view=view)
+
+    def animate(self, view: str = "auto", *, max_frames: int = 64) -> Any:
+        """Return a bounded PlotAnimation of retained semantic trace events."""
+        from .visualization import linear_algebra_animation
+
+        return linear_algebra_animation(self, view=view, max_frames=max_frames)
+
 
 class _Cancelled(Exception):
     pass
@@ -200,6 +224,31 @@ def _start_trace(problem: NumericalProblem, method: str) -> NumericalTrace:
         force=True,
     )
     return trace
+
+
+def _factor_step_recorder(
+    trace: NumericalTrace,
+) -> Callable[[dict[str, Any]], None]:
+    def record(data: dict[str, Any]) -> None:
+        step = data.get("step")
+        iteration = (
+            step if isinstance(step, int) and not isinstance(step, bool) else None
+        )
+        accepted = bool(
+            data.get(
+                "usable_pivot",
+                data.get("reflector_applied", data.get("positive_pivot", True)),
+            )
+        )
+        trace.append(
+            "iteration",
+            iteration=iteration,
+            accepted=accepted,
+            data=data,
+            important=iteration == 1,
+        )
+
+    return record
 
 
 def _check_execution(
@@ -393,7 +442,10 @@ def lu(
 
     try:
         factorization = lu_factorize(
-            dense, pivot_threshold=pivot_threshold, check=check
+            dense,
+            pivot_threshold=pivot_threshold,
+            check=check,
+            on_step=_factor_step_recorder(record),
         )
         validation = validate_lu(dense, factorization, check=check)
     except _Cancelled:
@@ -456,6 +508,7 @@ def qr(
             pivoted=pivoted,
             rank_tolerance=rank_tolerance,
             check=check,
+            on_step=_factor_step_recorder(record),
         )
         validation = validate_qr(dense, factorization, check=check)
     except _Cancelled:
@@ -511,7 +564,10 @@ def cholesky(
 
     try:
         factorization = cholesky_factorize(
-            dense, symmetry_tolerance=symmetry_tolerance, check=check
+            dense,
+            symmetry_tolerance=symmetry_tolerance,
+            check=check,
+            on_step=_factor_step_recorder(record),
         )
         validation = validate_cholesky(dense, factorization, check=check)
     except _Cancelled:
@@ -586,17 +642,18 @@ def _select_solver(
     matrix: DenseMatrix,
     method: str,
     check: Callable[[], None],
+    on_step: Callable[[dict[str, Any]], None],
 ) -> tuple[Any, Callable[[DenseMatrix], DenseMatrix]]:
     if method == "partial_pivot_lu":
-        factorization = lu_factorize(matrix, check=check)
+        factorization = lu_factorize(matrix, check=check, on_step=on_step)
         return factorization, lambda right: factorization.solve(right, check=check)
     if method == "column_pivoted_householder_qr":
-        factorization = qr_factorize(matrix, pivoted=True, check=check)
+        factorization = qr_factorize(matrix, pivoted=True, check=check, on_step=on_step)
         return factorization, lambda right: factorization.solve_square(
             right, check=check
         )
     if method == "cholesky":
-        factorization = cholesky_factorize(matrix, check=check)
+        factorization = cholesky_factorize(matrix, check=check, on_step=on_step)
         return factorization, lambda right: factorization.solve(right, check=check)
     raise LinearAlgebraError("unsupported_method", "unsupported direct-solve method")
 
@@ -745,7 +802,9 @@ def solve(
 
     try:
         check()
-        factorization, solve_correction = _select_solver(dense, selected, check)
+        factorization, solve_correction = _select_solver(
+            dense, selected, check, _factor_step_recorder(record)
+        )
         record.append(
             "phase", data={"kind": "factorization", "method": selected}, important=True
         )
@@ -1048,7 +1107,12 @@ def least_squares(
                 },
             )
         if dense.nrows >= dense.ncols:
-            factorization = qr_factorize(dense, pivoted=True, check=check)
+            factorization = qr_factorize(
+                dense,
+                pivoted=True,
+                check=check,
+                on_step=_factor_step_recorder(record),
+            )
             solution = _overdetermined_solution(factorization, dense_right, check=check)
             solution_kind = "full_column_rank_least_squares"
             factorized_operand = "A"
@@ -1058,6 +1122,7 @@ def least_squares(
                 pivoted=True,
                 check=check,
                 source_expression="A.T",
+                on_step=_factor_step_recorder(record),
             )
             solution = _underdetermined_solution(
                 dense, factorization, dense_right, check=check
@@ -1307,7 +1372,9 @@ def determinant(
         _check_execution(problem, started, cancel)
 
     try:
-        factorization = lu_factorize(dense, check=check)
+        factorization = lu_factorize(
+            dense, check=check, on_step=_factor_step_recorder(record)
+        )
         validation = validate_lu(dense, factorization, check=check)
         sign, log_absolute = factorization.slogdet()
         factorization_record = factorization.to_dict(check=check)
@@ -1429,7 +1496,9 @@ def inverse(
         _check_execution(problem, started, cancel)
 
     try:
-        factorization = lu_factorize(dense, check=check)
+        factorization = lu_factorize(
+            dense, check=check, on_step=_factor_step_recorder(record)
+        )
         spectral = _spectral_diagnostics(
             dense, record, max_sweeps=max_sweeps, check=check
         )

@@ -1,5 +1,6 @@
 """Validated dense binary64 numerical linear algebra."""
 
+from .capabilities import capabilities, plan, supports
 from .diagnostics import SingularValueDiagnostics, singular_value_diagnostics
 from .factorizations import (
     CholeskyFactorization,
@@ -44,6 +45,7 @@ __all__ = [
     "SingularValueDiagnostics",
     "as_matrix",
     "as_vector",
+    "capabilities",
     "cholesky",
     "condition_number",
     "determinant",
@@ -55,9 +57,11 @@ __all__ = [
     "matrix_rank",
     "minimum_norm_row_space_error",
     "normwise_backward_error",
+    "plan",
     "qr",
     "singular_value_diagnostics",
     "solve",
+    "supports",
     "validate_cholesky",
     "validate_inverse",
     "validate_least_squares",

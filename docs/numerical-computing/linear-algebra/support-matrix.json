@@ -14,6 +14,10 @@
     {"id": "determinant", "status": "implemented", "envelope": "explicit request, finite real square, sign/log evidence retained"},
     {"id": "matrix_inverse", "status": "implemented", "envelope": "explicit request, finite real square, full numerical rank"},
     {"id": "iterative_refinement", "status": "implemented", "envelope": "accepted-step refinement with retained direct factors"},
+    {"id": "structured_explanation", "status": "implemented", "envelope": "JSON-safe method, outcome, independent validation, conditioning, factor summary, trace coverage, and repair guidance"},
+    {"id": "plotspec_visualization", "status": "implemented", "envelope": "accessible static factorization, conditioning, convergence, and validation evidence"},
+    {"id": "trace_animation", "status": "implemented", "envelope": "topology-stable factorization or convergence animation derived only from retained bounded semantic trace events"},
+    {"id": "package_local_planning", "status": "implemented", "envelope": "detached capabilities/supports/plan dispatch for every operation using immutable metadata only and no numerical computation"},
     {"id": "complex_hermitian", "status": "unsupported", "reason": "real storage and transpose-only inner-product contract"},
     {"id": "rank_deficient_least_squares", "status": "unsupported", "reason": "requires SVD or complete orthogonal decomposition for an honest minimum-norm contract"},
     {"id": "nullspace", "status": "unsupported", "reason": "deferred with spectral completion"},
@@ -30,6 +34,7 @@
   "target_platforms_pending_receipts": ["browser", "linux-arm64", "macos-arm64", "windows-x64"],
   "evidence": {
     "corpus": "test/numerics/linear_algebra/corpus.json",
+    "visualization_examples": "docs/numerical-computing/linear-algebra/visualization-examples.json",
     "development_oracle": "test/numerics/linear_algebra/numpy-oracle.py",
     "differential_oracle": "executable fixed NumPy references, closed-form identities, and independent residual/row-space checks",
     "runtime_differential": ["cpython-linux-x64", "sagejs-linux-x64"],

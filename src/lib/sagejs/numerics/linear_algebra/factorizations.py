@@ -235,6 +235,7 @@ def lu_factorize(
     *,
     pivot_threshold: float | None = None,
     check: Callable[[], None] | None = None,
+    on_step: Callable[[dict[str, Any]], None] | None = None,
 ) -> LUFactorization:
     """Compute a partial-pivot LU factorization without mutating the input."""
     if pivot_threshold is None:
@@ -259,7 +260,20 @@ def lu_factorize(
                 pivot_size = candidate
                 pivot_row = row
         if pivot_size == 0.0:
+            if on_step is not None:
+                on_step(
+                    {
+                        "phase": "partial_pivot_lu",
+                        "step": index + 1,
+                        "pivot_index": index,
+                        "pivot_row": pivot_row,
+                        "pivot_magnitude": 0.0,
+                        "row_swapped": False,
+                        "usable_pivot": False,
+                    }
+                )
             continue
+        row_swapped = pivot_row != index
         if pivot_row != index:
             for column in range(columns):
                 upper = index * columns + column
@@ -289,6 +303,18 @@ def lu_factorize(
                         details={"row": row, "column": column},
                     )
                 working[target] = update
+        if on_step is not None:
+            on_step(
+                {
+                    "phase": "partial_pivot_lu",
+                    "step": index + 1,
+                    "pivot_index": index,
+                    "pivot_row": pivot_row,
+                    "pivot_magnitude": abs(pivot),
+                    "row_swapped": row_swapped,
+                    "usable_pivot": abs(pivot) > threshold,
+                }
+            )
     return LUFactorization(
         matrix,
         DenseMatrix(rows, columns, working),
@@ -514,6 +540,7 @@ def qr_factorize(
     rank_tolerance: float | None = None,
     check: Callable[[], None] | None = None,
     source_expression: str = "A",
+    on_step: Callable[[dict[str, Any]], None] | None = None,
 ) -> QRFactorization:
     """Compute a stable Householder QR factorization."""
     rows = matrix.nrows
@@ -524,8 +551,8 @@ def qr_factorize(
     for index in range(min(rows, columns)):
         if check is not None:
             check()
+        pivot_column = index
         if pivoted:
-            pivot_column = index
             pivot_norm = -1.0
             for column in range(index, columns):
                 if check is not None:
@@ -552,6 +579,18 @@ def qr_factorize(
             transformed[row * columns + index] for row in range(index, rows)
         )
         if norm == 0.0:
+            if on_step is not None:
+                on_step(
+                    {
+                        "phase": "householder_qr",
+                        "step": index + 1,
+                        "reflector_index": index,
+                        "pivot_column": pivot_column,
+                        "diagonal_magnitude": 0.0,
+                        "reflector_applied": False,
+                        "column_permutation": list(permutation),
+                    }
+                )
             continue
         leading = transformed[index * columns + index]
         alpha = -norm if leading >= 0.0 else norm
@@ -597,6 +636,18 @@ def qr_factorize(
         for row in range(index + 1, rows):
             transformed[row * columns + index] = 0.0
         reflectors.append((index, tuple(vector)))
+        if on_step is not None:
+            on_step(
+                {
+                    "phase": "householder_qr",
+                    "step": index + 1,
+                    "reflector_index": index,
+                    "pivot_column": pivot_column,
+                    "diagonal_magnitude": abs(alpha),
+                    "reflector_applied": True,
+                    "column_permutation": list(permutation),
+                }
+            )
     diagonal_maximum = 0.0
     for index in range(min(rows, columns)):
         diagonal_maximum = max(
@@ -715,6 +766,7 @@ def cholesky_factorize(
     *,
     symmetry_tolerance: float | None = None,
     check: Callable[[], None] | None = None,
+    on_step: Callable[[dict[str, Any]], None] | None = None,
 ) -> CholeskyFactorization:
     """Factor a finite real symmetric positive-definite matrix."""
     if matrix.nrows != matrix.ncols:
@@ -786,4 +838,14 @@ def cholesky_factorize(
                     "the Cholesky factor is not representable in binary64",
                     details=details,
                 )
+        if on_step is not None:
+            on_step(
+                {
+                    "phase": "cholesky_factorization",
+                    "step": row + 1,
+                    "row": row,
+                    "diagonal_magnitude": lower[row * size + row],
+                    "positive_pivot": True,
+                }
+            )
     return CholeskyFactorization(matrix, DenseMatrix(size, size, lower))

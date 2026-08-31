@@ -6,7 +6,7 @@
   "lane": "numerical-linear-algebra",
   "status": "active",
   "owner": "user",
-  "objective": "Implement the validated dense binary64 numerical linear algebra reference slice with independent residual and minimum-norm validation, bounded execution, and representative correctness and performance evidence",
+  "objective": "Implement the validated dense binary64 numerical linear algebra reference slice with independent validation, bounded execution, package-local no-computation planning, and accessible structured explanations and visualizations",
   "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
   "claims": [
     "src/lib/sagejs/numerics/linear_algebra/",
@@ -109,17 +109,158 @@
       "commit": "e7057f66aa654dbe146b6350145259115af159c4",
       "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/linear_algebra/linear-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.625,
+      "started_at": "2026-08-31T16:09:22.350Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/linear_algebra",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.274,
+      "started_at": "2026-08-31T16:09:43.041Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/linear_algebra/numpy-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.815,
+      "started_at": "2026-08-31T16:09:46.116Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.606,
+      "started_at": "2026-08-31T16:09:47.730Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.215,
+      "started_at": "2026-08-31T16:09:54.621Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 410.878,
+      "started_at": "2026-08-31T16:10:51.690Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.934,
+      "started_at": "2026-08-31T16:17:50.877Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "74b321bc7b301e160f15625a1dab14202fc919ddcc06eb20eb0d5c30f0b2fc98",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/linear_algebra/linear-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 9.583,
+      "started_at": "2026-08-31T16:25:15.629Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/linear_algebra",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.253,
+      "started_at": "2026-08-31T16:25:25.923Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/linear_algebra/numpy-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.836,
+      "started_at": "2026-08-31T16:25:28.896Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.556,
+      "started_at": "2026-08-31T16:25:30.442Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.293,
+      "started_at": "2026-08-31T16:25:37.730Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 401.479,
+      "started_at": "2026-08-31T16:26:30.657Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.015,
+      "started_at": "2026-08-31T16:33:18.331Z",
+      "commit": "febc18089f960cab356a96898a94bf7ec2ec2f54",
+      "workspace_fingerprint": "e86e8ab602d83d6aad205efd398f15c1dc521c757ea0e1f5b3c92499bcc945fe",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented and audited the source-portable dense binary64 linear algebra slice: scale-safe norms, Jacobi diagnostics, and Householder QR; structured LU/QR/Cholesky and dimension failures; exact elapsed/cancellation guard plumbing; JSON-safe determinant overflow; correct strictly-positive Cholesky pivots; transpose-provenance minimum-norm solves with an independent row-space validator; and executable CPython/Sage.js, NumPy/SciPy, metamorphic, and benchmark evidence.",
+    "summary": "Implemented and audited the source-portable dense binary64 linear algebra slice, then added domain-owned detached capability discovery and no-computation planning for every operation. Results now provide bounded structured explanations, accessible static PlotSpec views for factorization, conditioning, convergence, and validation, plus bounded PlotAnimation traces for pedagogically useful factorization and iterative progress. Executable examples cover success, Hilbert conditioning, and structured failure in CPython and Sage.js.",
     "risks": [
       "Only Linux x64 CPython and Sage.js have a recorded runtime receipt; browser, Linux arm64, macOS arm64, and Windows x64 remain explicit target work.",
       "The lane intentionally leaves shared exports, diagnostic/status registries other than its consumption of maximum_elapsed_time, package graphs, Pyright registration, and test-script discovery to integration.",
-      "This is an O(m*n*min(m,n)) ordinary-Python reference implementation, not an accelerated large-problem backend."
+      "This is an O(m*n*min(m,n)) ordinary-Python reference implementation, not an accelerated large-problem backend.",
+      "Animations require an iterations-or-more-detailed trace; retained semantic frames remain subject to the caller's trace event and byte budgets."
     ],
     "next_steps": [
-      "Integration should apply docs/numerical-computing/linear-algebra/integration-requests.md, including shared exports and the remaining domain diagnostic/status identities.",
+      "Integration should apply docs/numerical-computing/linear-algebra/integration-requests.md, including the central lazy facade over the package-local capabilities, supports, and plan functions.",
       "Qualify the identical corpus on browser and the three pending native host classes before adding those platforms to validated_platforms.",
       "Use the reference slice as the differential fallback for later accelerated, sparse, and spectral work."
     ]
