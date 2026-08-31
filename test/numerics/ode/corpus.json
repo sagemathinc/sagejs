@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "exponential-growth",
+      "classification": "analytic",
+      "equation": "y' = y, y(0) = 1",
+      "interval": [0.0, 1.0],
+      "evidence": ["analytic solution exp(t)", "SciPy RK45 differential oracle", "dense-output defect"],
+      "sagejs": {"method": "rk45", "expected": "validated-approximate"}
+    },
+    {
+      "id": "harmonic-oscillator",
+      "classification": "conserved",
+      "equation": "q' = p, p' = -q",
+      "interval": [0.0, 6.283185307179586],
+      "evidence": ["analytic sine/cosine solution", "q^2+p^2 drift", "SciPy RK45 differential oracle"],
+      "sagejs": {"method": "rk45", "expected": "validated-approximate"}
+    },
+    {
+      "id": "projectile-ground",
+      "classification": "event",
+      "equation": "h' = v, v' = -9.81, h(0) = 10",
+      "interval": [0.0, 3.0],
+      "evidence": ["analytic impact time", "event residual", "SciPy terminal-event differential oracle"],
+      "sagejs": {"method": "rk45", "expected": "terminal-event"}
+    },
+    {
+      "id": "stiff-tracking",
+      "classification": "stiff",
+      "equation": "y' = -1000(y-cos(t))-sin(t), y(0)=1",
+      "interval": [0.0, 1.0],
+      "evidence": ["analytic solution cos(t)", "SciPy Radau oracle", "explicit-evaluation exhaustion"],
+      "sagejs": {"method": "radau", "expected": "unsupported-implicit-method"}
+    },
+    {
+      "id": "callback-nonfinite",
+      "classification": "failure",
+      "equation": "right-hand side returns infinity",
+      "interval": [0.0, 1.0],
+      "evidence": ["structured nonfinite_evaluation termination"],
+      "sagejs": {"method": "rk45", "expected": "nonfinite_evaluation"}
+    },
+    {
+      "id": "callback-exception",
+      "classification": "failure",
+      "equation": "right-hand side raises",
+      "interval": [0.0, 1.0],
+      "evidence": ["structured callback_error termination"],
+      "sagejs": {"method": "rk45", "expected": "callback_error"}
+    },
+    {
+      "id": "evaluation-budget",
+      "classification": "failure",
+      "equation": "y' = y with three callback evaluations allowed",
+      "interval": [0.0, 1.0],
+      "evidence": ["hard maximum_evaluations termination"],
+      "sagejs": {"method": "rk45", "expected": "maximum_evaluations"}
+    },
+    {
+      "id": "cooperative-cancellation",
+      "classification": "failure",
+      "equation": "y' = 1 with cancellation requested",
+      "interval": [0.0, 1.0],
+      "evidence": ["hard cancelled termination before the first callback"],
+      "sagejs": {"method": "rk45", "expected": "cancelled"}
+    }
+  ]
+}

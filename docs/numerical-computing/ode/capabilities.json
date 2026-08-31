@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "operation": "initial_value_problem",
+  "numeric_type": "real-binary64-vector",
+  "methods": [
+    {
+      "id": "rk4",
+      "classification": "extension",
+      "status": "implemented",
+      "family": "classical-fixed-step-runge-kutta",
+      "solution_order": 4,
+      "error_control": "none",
+      "dense_output": "cubic-hermite",
+      "stiff": false
+    },
+    {
+      "id": "rk45",
+      "classification": "translated",
+      "status": "implemented",
+      "family": "dormand-prince-5-4",
+      "solution_order": 5,
+      "error_estimator_order": 4,
+      "error_control": "component-scaled-weighted-rms",
+      "dense_output": "shampine-quartic",
+      "stiff": false
+    },
+    {
+      "id": "radau",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified Jacobian, linear-solve, and collocation-iteration path"
+    },
+    {
+      "id": "bdf",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified implicit multistep state and nonlinear-solve path"
+    },
+    {
+      "id": "lsoda",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "no qualified ODEPACK runtime or stiffness-switching path"
+    },
+    {
+      "id": "sundials",
+      "classification": "unsupported",
+      "status": "unsupported",
+      "reason": "native/Wasm callback, payload, and four-platform qualification remain outstanding"
+    }
+  ],
+  "features": {
+    "backward_integration": "implemented",
+    "component_absolute_tolerance": "implemented",
+    "dense_output": "implemented",
+    "event_direction": "implemented",
+    "terminal_events": "implemented",
+    "bounded_semantic_trace": "implemented",
+    "cooperative_cancellation": "implemented",
+    "step_callback_elapsed_output_event_validation_budgets": "implemented",
+    "independent_dense_defect": "implemented",
+    "invariant_drift": "implemented",
+    "analytic_reference_error": "implemented",
+    "trajectory_plotspec": "implemented",
+    "phase_plotspec": "implemented",
+    "step_error_plotspec": "implemented",
+    "bounded_animation": "implemented",
+    "complex_state": "unsupported",
+    "mass_matrix": "unsupported",
+    "dae": "unsupported",
+    "parameter_sweep": "unsupported",
+    "stiff_solver": "unsupported"
+  },
+  "platform_policy": [
+    "browser",
+    "node",
+    "sea",
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64"
+  ]
+}

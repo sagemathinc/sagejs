@@ -1,0 +1,45 @@
+{
+  "cases": {
+    "exponential-growth": {
+      "dense_mid_state": [1.648721273052936],
+      "final_state": [2.718281833541765],
+      "final_time": 1.0,
+      "method": "RK45",
+      "nfev": 74,
+      "status": 0,
+      "success": true
+    },
+    "harmonic-oscillator": {
+      "dense_mid_state": [-0.9999999961612615, 7.139868522798576e-10],
+      "final_state": [0.9999999922868672, -1.1772557789724303e-09],
+      "final_time": 6.283185307179586,
+      "method": "RK45",
+      "nfev": 524,
+      "status": 0,
+      "success": true
+    },
+    "projectile-ground": {
+      "event_state": [1.7763568394002505e-15, -14.007141035914502],
+      "event_time": 1.427843122927064,
+      "final_state": [1.7763568394002505e-15, -14.007141035914502],
+      "final_time": 1.427843122927064,
+      "method": "RK45",
+      "nfev": 38,
+      "status": 1,
+      "success": true
+    },
+    "stiff-tracking": {
+      "final_state": [0.5403023072928389],
+      "final_time": 1.0,
+      "method": "Radau",
+      "nfev": 113,
+      "njev": 2,
+      "nlu": 10,
+      "status": 0,
+      "success": true
+    }
+  },
+  "oracle": "scipy.integrate.solve_ivp",
+  "schema_version": 1,
+  "scipy_version": "1.18.0"
+}
