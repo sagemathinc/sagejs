@@ -19,6 +19,7 @@ from ..model import (
     ResourceBudget,
 )
 from ..trace import NumericalTrace, TracePolicy
+from .result import SpectralResult
 
 _EPSILON = 2.220446049250313e-16
 _MAX_FLOAT = 1.7976931348623157e308
@@ -562,7 +563,7 @@ def _finish_result(
     ):
         raise TypeError("spectral plan has no classification")
     payload["classification"] = capability["classification"]
-    return NumericalResult(
+    return SpectralResult(
         problem,
         plan,
         success=success,

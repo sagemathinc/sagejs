@@ -17,8 +17,11 @@ rejected unless `nan_policy="omit"`; paired omission removes the entire pair.
 The constructors are `Normal(mean=0, standard_deviation=1)`,
 `StudentT(degrees_of_freedom)`, `ChiSquare(degrees_of_freedom)`,
 `Binomial(trials, probability)`, and `Poisson(rate)`. Each provides `pdf` or
-`pmf`, `logpdf` or `logpmf`, `cdf`, `sf`, `quantile` (also `ppf`), `to_dict`,
-and a bounded `plot`.
+`pmf`, `logpdf` or `logpmf`, `cdf`, `sf`, `quantile` (also `ppf`), and
+`to_dict`. `curve(...)` returns the canonical `StatisticsResult`; `plot(...)`
+returns its accessible `PlotSpec`, and `animate(...)` returns a bounded
+`PlotAnimation`. CDF/SF views identify the numerically important tail without
+changing the qualified evaluation or quantile envelope.
 
 Separate `sf` formulas preserve upper-tail information that `1 - cdf` can
 lose. Continuous quantiles return infinite endpoints when mathematically
@@ -108,7 +111,32 @@ checks. The scale is not changed between the initial and final objective.
 a parallel result schema. Its `problem`, `plan_record`, `validation`, and
 `diagnostics` are canonical `NumericalProblem`, `NumericalPlan`,
 `NumericalValidation`, and `NumericalDiagnostic` records. It adds detached
-statistical `value` views, `assumptions`, `explain`, and `to_plot_spec` (also
-`plot`). `to_dict` uses the common numerical schema and records the actual
-resource budget, binary64 precision, provenance, trace, replay problem/plan,
-and statistics domain payload.
+statistical `value` views and `assumptions`. `explanation()` (also
+`structured_explanation`) returns a detached record containing outcome,
+interpretation, validation evidence, assumptions, limitations, and diagnostics;
+`explain()` formats that evidence as readable text.
+
+`to_plot_spec()` (also `plot`) returns an accessible canonical `PlotSpec` with
+explicit alternative text. `to_plot_animation()` (also `animate`) returns a
+topology-stable canonical `PlotAnimation` with at most 12 frames, 100,000
+materialized coordinate scalars, an 8 MB payload ceiling, and no autoplay or
+loop promise. Views cover bounded distribution curves and tails, sample order,
+empirical ranks and quartiles, finite or one-sided confidence sets and nulls,
+regression lines, Huber-downweighted observations, and structured failures.
+Large descriptive, sampling, and regression inputs are deterministically
+reduced to at most 257, 512, and 512 display observations respectively; the
+statistical result value is not reduced.
+
+`to_dict` uses the common numerical schema and records the actual resource
+budget, binary64 precision, provenance, bounded trace, replay problem/plan, and
+statistics domain payload.
+
+## Package-local planning
+
+`capabilities(operation=None)` returns detached records for the package's
+planned statistics computations: result operations, scalar summaries, and
+robust losses. `supports(problem, method=None)` and
+`plan(problem, method=None)` accept canonical `NumericalProblem` records in the
+`statistics` domain. Planning reads only detached metadata: it makes zero random
+draws and never evaluates `problem.function`. Capability records therefore make
+implementation and validation claims but no unqualified host-platform claim.

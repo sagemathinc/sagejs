@@ -6,9 +6,10 @@ scripts. Integration may make the following narrow changes after review:
 
 1. Export the selected statistics names from `sagejs.numerics` while retaining
    `sagejs.numerics.statistics` as the canonical implementation module.
-2. Add statistics operations to `docs/numerical-computing/surface.json` and the
-   capability planner: descriptive summary, distribution evaluation, random
-   sample, mean interval, one/two-sample t test, OLS, Theil-Sen, and Huber fit.
+2. Delegate statistics entries in `docs/numerical-computing/surface.json` and
+   the shared lazy facade to package-local `capabilities`, `supports`, and
+   `plan`. The package planner covers result operations, quantile/covariance/
+   correlation, and robust losses without callback evaluation or random draws.
 3. Include `test/numerics/statistics/test.cjs` in `pnpm test:numerics`; the nested
    test metadata already makes it visible to the general integration manifest.
 4. Add `src/lib/sagejs/numerics/statistics/` to strict Pyright coverage after

@@ -30,6 +30,7 @@ _OLS_ASSUMPTIONS = (
     "finite-sample t inference assumes normally distributed residuals",
 )
 _MIN_INFERENCE_TAIL_PROBABILITY = 1.0e-14
+_MAX_VISUAL_PAIRS = 512
 
 
 def huber_loss(residual: float, tuning: float = 1.345) -> float:
@@ -87,7 +88,12 @@ def _scaled_huber_objective(
 
 
 def _line_payload(
-    xs: Sequence[float], ys: Sequence[float], intercept: float, slope: float
+    xs: Sequence[float],
+    ys: Sequence[float],
+    intercept: float,
+    slope: float,
+    *,
+    weights: Sequence[float] | None = None,
 ) -> dict[str, Any]:
     lower = min(xs)
     upper = max(xs)
@@ -96,15 +102,28 @@ def _line_payload(
         raise StatisticsNumericalError(
             "the fitted line exceeds the finite binary64 plotting envelope"
         )
-    return {
-        "plot": {
-            "kind": "regression",
-            "x": list(xs),
-            "y": list(ys),
-            "line_x": [lower, upper],
-            "line_y": line_y,
-        }
+    if len(xs) <= _MAX_VISUAL_PAIRS:
+        indices = list(range(len(xs)))
+    else:
+        last = len(xs) - 1
+        indices = [
+            (index * last) // (_MAX_VISUAL_PAIRS - 1)
+            for index in range(_MAX_VISUAL_PAIRS)
+        ]
+    plot: dict[str, Any] = {
+        "kind": "regression",
+        "x": [xs[index] for index in indices],
+        "y": [ys[index] for index in indices],
+        "line_x": [lower, upper],
+        "line_y": line_y,
+        "source_count": len(xs),
     }
+    if weights is not None:
+        plot["weights"] = [weights[index] for index in indices]
+        plot["downweighted_source_count"] = sum(
+            float(weight) < 0.8 for weight in weights
+        )
+    return {"plot": plot}
 
 
 def _stopped_result(
@@ -396,6 +415,16 @@ def linear_regression(
             "fitted_values": fitted,
             "residuals": residuals,
         }
+        guard.trace.append(
+            "phase",
+            data={
+                "intercept": intercept,
+                "slope": slope,
+                "r_squared": r_squared,
+                "residual_degrees_of_freedom": degrees,
+                "visual_sample_count": min(len(xs), _MAX_VISUAL_PAIRS),
+            },
+        )
         guard.trace.append("validation", data=validation, important=True, force=True)
         guard.trace.append(
             "finish" if passed else "failure",
@@ -849,7 +878,7 @@ def huber_regression(
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
             resource_budget=guard.budget,
-            domain_payload=_line_payload(xs, ys, intercept, slope),
+            domain_payload=_line_payload(xs, ys, intercept, slope, weights=weights),
         )
     except StatisticsStopped as stopped:
         return _stopped_result(

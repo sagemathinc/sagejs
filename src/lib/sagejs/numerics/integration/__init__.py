@@ -12,17 +12,25 @@ from .adaptive import (
     integration_problem,
     plan_integration,
     solve_integration_problem,
+    supports,
 )
 from .result import IntegrationResult
-from .visualization import integration_plot
+from .visualization import (
+    integration_animation,
+    integration_convergence_plot,
+    integration_plot,
+)
 
 __all__ = [
     "INTEGRATION_CAPABILITY",
     "IntegrationResult",
     "integrate",
+    "integration_animation",
     "integration_capabilities",
+    "integration_convergence_plot",
     "integration_plot",
     "integration_problem",
     "plan_integration",
     "solve_integration_problem",
+    "supports",
 ]

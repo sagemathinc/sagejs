@@ -64,9 +64,11 @@ from sagejs.numerics.ode import (
 )
 
 capabilities = ode_capabilities()
-assert set(capabilities["implemented_methods"]) == {"rk4", "rk45"}
+assert set(capabilities["implemented_methods"]) == {"rk4", "rk45", "rosenbrock4"}
 assert capabilities["unsupported_methods"]["radau"]["classification"] == "unsupported"
 assert capabilities["implemented_methods"]["rk45"]["stiff"] is False
+assert capabilities["implemented_methods"]["rosenbrock4"]["stiff"] is True
+assert capabilities["implemented_methods"]["rosenbrock4"]["automatic_selection"] is False
 assert capabilities["portability_evidence"]["qualified_runtimes"] == [
     "cpython-linux-x64",
     "sagejs-node-linux-x64",
@@ -114,6 +116,7 @@ assert len(answer.animate("event").frames) >= 2
 assert "global error bound" in answer.explain()
 record = json.loads(answer.to_json())
 assert record["domain_payload"]["limitations"]["stiff_methods_supported"] is False
+assert record["domain_payload"]["limitations"]["stiffness_detection_supported"] is False
 assert record["domain_payload"]["trajectory"]["dense_output"] is True
 
 def oscillator(t, y):
@@ -434,8 +437,8 @@ test("the ODE corpus classifies analytic, stiff, event, and failure cases", () =
   const classes = new Set(corpus.cases.map(({ classification }) => classification));
   assert.deepEqual(classes, new Set(["analytic", "conserved", "event", "stiff", "failure"]));
   assert.equal(
-    corpus.cases.find(({ id }) => id === "stiff-tracking").sagejs.expected,
-    "unsupported-implicit-method",
+    corpus.cases.find(({ id }) => id === "robertson").sagejs.expected,
+    "validated-approximate",
   );
   assert.equal(
     corpus.cases.find(({ id }) => id === "dense-stage-alias").sagejs.expected,

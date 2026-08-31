@@ -9,7 +9,8 @@
 | Inference | mean CI, one-sample t, Welch/pooled two-sample t | SciPy fixture, R source, test/interval identities | assumptions are reported, not tested from data |
 | Regression | centered OLS with diagnostics and inference | SciPy fixture and three normal-equation identities | one predictor only |
 | Robust fitting | Theil-Sen, Huber IRLS; Huber/soft-L1/Cauchy losses | SciPy Theil-Sen fixture; median and estimating-equation identities | no robust covariance or robust p-values |
-| Explanation | canonical numerical problem/plan/validation/diagnostics, assumptions, `explain`, PlotSpec | contract-parity and detached-value tests in CPython/Sage.js | shared top-level dispatch awaits integration |
+| Explanation and visualization | detached structured explanation plus readable text; accessible PlotSpec and bounded PlotAnimation for every result operation | contract parity, alt-text, topology/resource, tail/outlier/overfit/failure tests in CPython/Sage.js | views explain recorded evidence; they do not validate study design or widen numerical envelopes |
+| Package-local planning | detached `capabilities`, `supports`, and `plan` for all result operations | callback counter and unchanged RNG-state witnesses in CPython/Sage.js | shared top-level dispatch awaits integration; no host-platform qualification claim |
 | Budgets | cancellation, elapsed, evaluations, iterations, trace events/bytes | failure corpus and forced-stop tests | synchronous cancellation callback |
 | Platforms | ordinary Python, no native dependency | CPython and Sage.js on Linux x64; platform-neutral source | four-host qualification belongs to integration/release |
 

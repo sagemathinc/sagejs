@@ -5,6 +5,7 @@ from __future__ import annotations
 from .._json import JSONValue
 from ..model import NumericalPlan
 from .model import OdeProblem, OdeUnsupportedError
+from .rosenbrock import rosenbrock4_workspace_bytes
 
 ODE_CAPABILITY_SCHEMA_VERSION = 1
 
@@ -46,6 +47,23 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "dense_output": "shampine_quartic",
         "events": "sign_changes_on_accepted_steps",
         "stiff": False,
+        "qualified_runtimes": _QUALIFIED_RUNTIMES,
+    },
+    "rosenbrock4": {
+        "classification": "translated",
+        "status": "implemented",
+        "backend": "ordinary-python",
+        "family": "kaps_rentrop_rosenbrock_4_3",
+        "orders": {"solution": 4, "error_estimator": 3},
+        "numeric_types": ["binary64-real"],
+        "error_control": "weighted_rms_embedded_estimate",
+        "dense_output": "endpoint_derivative_cubic_hermite",
+        "events": "sign_changes_on_accepted_dense_steps",
+        "jacobian": ["supplied_dense", "forward_finite_difference_dense"],
+        "linear_solver": "partial_pivoting_dense_lu_with_residual_check",
+        "nonlinear_solver": "not_applicable_linearly_implicit_no_newton_iterations",
+        "stiff": True,
+        "automatic_selection": False,
         "qualified_runtimes": _QUALIFIED_RUNTIMES,
     },
 }
@@ -111,11 +129,21 @@ def ode_capabilities() -> dict[str, JSONValue]:
             "qualified_runtimes": list(_QUALIFIED_RUNTIMES),
             "pending_targets": list(_PENDING_TARGETS),
         },
+        "parameter_sweeps": {
+            "status": "implemented",
+            "scheduler": "bounded-batch-v1",
+            "ordering": "stable_input_order",
+            "seeds": "deterministic_per_item",
+            "default_executor": "portable_sequential",
+            "concurrency": "explicit_host_batch_executor",
+            "nested_accounting": "ode_result_evaluations_logical_memory_and_serialized_result",
+        },
         "limitations": [
-            "explicit methods are unsuitable for many stiff systems",
+            "auto selects explicit RK45 and performs no stiffness detection",
+            "rosenbrock4 uses dense Jacobians and cubic workspace",
             "events without a sampled sign change can be missed",
             "local error control is not a global error bound",
-            "parameter sweeps are not implemented in this lane",
+            "browser worker concurrency requires a separately qualified host executor",
         ],
     }
 
@@ -148,7 +176,7 @@ def plan_ode(problem: OdeProblem, method: str | None = None) -> NumericalPlan:
         raise OdeUnsupportedError(
             selected,
             "the method is not classified in the ODE capability surface",
-            ["rk45", "rk4"],
+            ["rk45", "rk4", "rosenbrock4"],
         )
     rejected: list[dict[str, JSONValue]] = []
     for name in sorted(_METHODS):
@@ -176,6 +204,9 @@ def plan_ode(problem: OdeProblem, method: str | None = None) -> NumericalPlan:
             "max_elapsed_ms": budget.max_elapsed_ms,
             "max_output_points": budget.max_output_points,
             "state_dimension": len(problem.y0),
+            "estimated_workspace_bytes": rosenbrock4_workspace_bytes(len(problem.y0))
+            if selected == "rosenbrock4"
+            else 0,
         },
         rejected_alternatives=rejected,
     )

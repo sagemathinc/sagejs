@@ -66,3 +66,16 @@ reports median and p90 timing, tracemalloc deltas, result size, steps, and RHS
 evaluations. The Sage.js harness constructs one session, performs one warmup per
 workload, reports warm medians, and records Node memory snapshots before
 startup, after startup, and after evaluation.
+
+The separate stiff observation harness runs the complete Robertson, HIRES, and
+`mu=1000` Van der Pol Rosenbrock4 cases once and reports steps, callbacks,
+Jacobians, linear residuals, dense-validation metrics, and wall time:
+
+```sh
+python bench/numerics/ode/stiff.py
+```
+
+Its measurements are not mixed with the older explicit-workload result files;
+doing so would imply those records covered the new method. The numerical
+qualification and SciPy differential values are documented in
+[the stiff evidence record](stiff-evidence.md).

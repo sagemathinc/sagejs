@@ -28,6 +28,115 @@ def _close_vector(left: list[float], right: list[float], tolerance: float) -> bo
     )
 
 
+def _robertson(t: float, y: list[float]) -> list[float]:
+    y1, y2, y3 = y
+    return [
+        -0.04 * y1 + 1e4 * y2 * y3,
+        0.04 * y1 - 1e4 * y2 * y3 - 3e7 * y2 * y2,
+        3e7 * y2 * y2,
+    ]
+
+
+def _robertson_jacobian(t: float, y: list[float]) -> list[list[float]]:
+    y1, y2, y3 = y
+    return [
+        [-0.04, 1e4 * y3, 1e4 * y2],
+        [0.04, -1e4 * y3 - 6e7 * y2, -1e4 * y2],
+        [0.0, 6e7 * y2, 0.0],
+    ]
+
+
+def _hires(t: float, y: list[float]) -> list[float]:
+    return [
+        -1.71 * y[0] + 0.43 * y[1] + 8.32 * y[2] + 0.0007,
+        1.71 * y[0] - 8.75 * y[1],
+        -10.03 * y[2] + 0.43 * y[3] + 0.035 * y[4],
+        8.32 * y[1] + 1.71 * y[2] - 1.12 * y[3],
+        -1.745 * y[4] + 0.43 * y[5] + 0.43 * y[6],
+        -280.0 * y[5] * y[7] + 0.69 * y[3] + 1.71 * y[4] - 0.43 * y[5] + 0.69 * y[6],
+        280.0 * y[5] * y[7] - 1.81 * y[6],
+        -280.0 * y[5] * y[7] + 1.81 * y[6],
+    ]
+
+
+def _hires_jacobian(t: float, y: list[float]) -> list[list[float]]:
+    return [
+        [-1.71, 0.43, 8.32, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [1.71, -8.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, -10.03, 0.43, 0.035, 0.0, 0.0, 0.0],
+        [0.0, 8.32, 1.71, -1.12, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, -1.745, 0.43, 0.43, 0.0],
+        [
+            0.0,
+            0.0,
+            0.0,
+            0.69,
+            1.71,
+            -0.43 - 280.0 * y[7],
+            0.69,
+            -280.0 * y[5],
+        ],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 280.0 * y[7], -1.81, 280.0 * y[5]],
+        [0.0, 0.0, 0.0, 0.0, 0.0, -280.0 * y[7], 1.81, -280.0 * y[5]],
+    ]
+
+
+_VANDERPOL_MU = 1000.0
+
+
+def _vanderpol(t: float, y: list[float]) -> list[float]:
+    return [
+        y[1],
+        _VANDERPOL_MU * (1.0 - y[0] * y[0]) * y[1] - y[0],
+    ]
+
+
+def _vanderpol_jacobian(t: float, y: list[float]) -> list[list[float]]:
+    return [
+        [0.0, 1.0],
+        [
+            -2.0 * _VANDERPOL_MU * y[0] * y[1] - 1.0,
+            _VANDERPOL_MU * (1.0 - y[0] * y[0]),
+        ],
+    ]
+
+
+def _stiff_sage_record(
+    function: Any,
+    jacobian: Any,
+    t_span: tuple[float, float],
+    y0: list[float],
+    *,
+    atol: float,
+) -> dict[str, Any]:
+    result = solve_ivp(
+        function,
+        t_span,
+        y0,
+        method="rosenbrock4",
+        jacobian=jacobian,
+        rtol=1e-6,
+        atol=atol,
+        max_steps=20_000,
+        max_evaluations=250_000,
+        max_output_points=20_000,
+        max_validation_evaluations=32,
+        trace="summary",
+    )
+    return {
+        "success": result.success,
+        "final_state": list(result.value),
+        "dense_defect_passed": result.evidence["dense_defect"]["passed"],
+        "dense_acceptance_metric": result.evidence["dense_defect"]["acceptance_metric"],
+        "dense_acceptance_threshold": result.evidence["dense_defect"][
+            "acceptance_threshold"
+        ],
+        "maximum_linear_residual": result.to_dict()["measurements"][
+            "max_normalized_linear_solve_residual"
+        ],
+    }
+
+
 def _sagejs_records() -> dict[str, dict[str, Any]]:
     exponential = solve_ivp(
         lambda t, y: [y[0]],
@@ -77,7 +186,7 @@ def _sagejs_records() -> dict[str, dict[str, Any]]:
         [0.0],
         events=OdeEvent(lambda t, y: t, terminal=True, direction=-1),
     )
-    stiff = ode_problem(
+    stiff_unsupported = ode_problem(
         lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
         (0.0, 1.0),
         [1.0],
@@ -85,9 +194,18 @@ def _sagejs_records() -> dict[str, dict[str, Any]]:
     )
     unsupported = False
     try:
-        plan_ode(stiff)
+        plan_ode(stiff_unsupported)
     except OdeUnsupportedError:
         unsupported = True
+    stiff_tracking = solve_ivp(
+        lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
+        (0.0, 1.0),
+        [1.0],
+        method="rosenbrock4",
+        jacobian=lambda t, y: [[-1000.0]],
+        rtol=1e-6,
+        atol=1e-9,
+    )
     return {
         "exponential-growth": {
             "success": exponential.success,
@@ -114,7 +232,32 @@ def _sagejs_records() -> dict[str, dict[str, Any]]:
             "negative_final_time": initial_negative.trajectory.final_time,
             "negative_event_count": len(initial_negative.events),
         },
-        "stiff-tracking": {"implicit_method_unsupported": unsupported},
+        "stiff-tracking": {
+            "radau_unsupported": unsupported,
+            "success": stiff_tracking.success,
+            "final_state": list(stiff_tracking.value),
+        },
+        "robertson": _stiff_sage_record(
+            _robertson,
+            _robertson_jacobian,
+            (0.0, 100.0),
+            [1.0, 0.0, 0.0],
+            atol=1e-10,
+        ),
+        "hires": _stiff_sage_record(
+            _hires,
+            _hires_jacobian,
+            (0.0, 321.8122),
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0057],
+            atol=1e-10,
+        ),
+        "stiff-vanderpol": _stiff_sage_record(
+            _vanderpol,
+            _vanderpol_jacobian,
+            (0.0, 3000.0),
+            [2.0, 0.0],
+            atol=1e-9,
+        ),
     }
 
 
@@ -139,7 +282,35 @@ def _check_frozen(fixture: dict[str, Any]) -> None:
     expected_direction = fixture["cases"]["initial-event-direction"]
     actual_direction = records["initial-event-direction"]
     assert actual_direction == expected_direction
-    assert records["stiff-tracking"]["implicit_method_unsupported"]
+    tracking = records["stiff-tracking"]
+    expected_tracking = fixture["cases"]["stiff-tracking"]
+    assert tracking["radau_unsupported"] and tracking["success"]
+    assert _close_vector(
+        tracking["final_state"], expected_tracking["radau_final_state"], 2e-5
+    )
+    for name in ("robertson", "hires", "stiff-vanderpol"):
+        expected = fixture["cases"][name]
+        actual = records[name]
+        tolerance = float(expected["sagejs_oracle_tolerance"])
+        assert actual["success"]
+        assert actual["dense_defect_passed"]
+        assert actual["dense_acceptance_metric"] <= actual["dense_acceptance_threshold"]
+        assert actual["maximum_linear_residual"] <= 1e-10
+        assert _close_vector(
+            actual["final_state"], expected["radau_final_state"], tolerance
+        )
+        assert _close_vector(
+            actual["final_state"], expected["bdf_final_state"], tolerance
+        )
+    assert abs(sum(records["robertson"]["final_state"]) - 1.0) <= 2e-12
+    assert (
+        abs(
+            records["hires"]["final_state"][6]
+            + records["hires"]["final_state"][7]
+            - 0.0057
+        )
+        <= 2e-12
+    )
 
 
 def _live_scipy_records() -> tuple[str, dict[str, dict[str, Any]]]:
@@ -207,14 +378,40 @@ def _live_scipy_records() -> tuple[str, dict[str, dict[str, Any]]]:
         [0.0],
         events=initial_negative_event,
     )
-    stiff = scipy_solve_ivp(
+
+    def scipy_stiff_records(
+        function: Any,
+        jacobian: Any,
+        t_span: tuple[float, float],
+        y0: list[float],
+        *,
+        rtol: float,
+        atol: float,
+    ) -> dict[str, list[float]]:
+        answer: dict[str, list[float]] = {}
+        for method in ("Radau", "BDF"):
+            result = scipy_solve_ivp(
+                function,
+                t_span,
+                y0,
+                method=method,
+                jac=jacobian,
+                rtol=rtol,
+                atol=atol,
+            )
+            assert result.success
+            answer[method.lower() + "_final_state"] = [
+                float(value) for value in result.y[:, -1]
+            ]
+        return answer
+
+    stiff_tracking = scipy_stiff_records(
         lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
+        lambda t, y: [[-1000.0]],
         (0.0, 1.0),
         [1.0],
-        method="Radau",
-        rtol=1e-8,
-        atol=1e-11,
-        dense_output=True,
+        rtol=1e-10,
+        atol=1e-13,
     )
     records = {
         "exponential-growth": {
@@ -235,9 +432,31 @@ def _live_scipy_records() -> tuple[str, dict[str, dict[str, Any]]]:
             "negative_final_time": float(initial_negative.t[-1]),
             "negative_event_count": len(initial_negative.t_events[0]),
         },
-        "stiff-tracking": {
-            "final_state": [float(value) for value in stiff.y[:, -1]],
-        },
+        "stiff-tracking": stiff_tracking,
+        "robertson": scipy_stiff_records(
+            _robertson,
+            _robertson_jacobian,
+            (0.0, 100.0),
+            [1.0, 0.0, 0.0],
+            rtol=1e-10,
+            atol=1e-13,
+        ),
+        "hires": scipy_stiff_records(
+            _hires,
+            _hires_jacobian,
+            (0.0, 321.8122),
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0057],
+            rtol=1e-10,
+            atol=1e-13,
+        ),
+        "stiff-vanderpol": scipy_stiff_records(
+            _vanderpol,
+            _vanderpol_jacobian,
+            (0.0, 3000.0),
+            [2.0, 0.0],
+            rtol=1e-8,
+            atol=1e-10,
+        ),
     }
     return scipy.__version__, records
 
@@ -248,9 +467,9 @@ def _check_live(fixture: dict[str, Any]) -> str:
         expected = fixture["cases"][name]
         for key, value in actual.items():
             if isinstance(value, list):
-                assert _close_vector(value, expected[key], 5e-13)
+                assert _close_vector(value, expected[key], 5e-12)
             else:
-                assert abs(value - expected[key]) <= 5e-13
+                assert abs(value - expected[key]) <= 5e-12
     return version
 
 

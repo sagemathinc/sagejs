@@ -1,0 +1,109 @@
+{
+  "schema": "sagejs.numerical-p3-backend-evidence/v2",
+  "subject": {
+    "branch_base": "94d2e86ad",
+    "date": "2026-08-31",
+    "classification": "qualified explicit-only cminpack production candidate"
+  },
+  "source": {
+    "name": "cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license": "MINPACK permissive notice"
+  },
+  "artifact": {
+    "sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+    "bytes": 72149,
+    "gzip_bytes": 28936,
+    "brotli_bytes": 23904,
+    "initial_memory_bytes": 2097152,
+    "maximum_memory_bytes": 134217728,
+    "toolchain_identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off",
+    "imports": [
+      {
+        "module": "sagejs_p3",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "methods": [
+      "cminpack-lmdif",
+      "cminpack-lmder"
+    ]
+  },
+  "final_artifact_qualification": {
+    "mgh_cases_per_method": 53,
+    "total_solves_per_runtime": 106,
+    "results_sha256": "594f138289f78ee057e7f1de90a7ea2a81c9909cb732fcb38a1afbd47c09f285",
+    "node_linux_x64": "pass",
+    "chromium_linux_x64": "pass",
+    "independent_oracle_sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
+    "independent_final_residual_recomputation": true,
+    "live_allocations_after": 0,
+    "live_bytes_after": 0
+  },
+  "focused_validation": {
+    "deterministic_random_linear_oracles": 200,
+    "corrupt_abi_regions": 500,
+    "allocation_failure_positions": 9,
+    "repeated_reuse_solves": 250,
+    "worker_shared_memory_cancel_and_reuse": "pass",
+    "hard_stuck_worker_terminate_and_recreate": "pass",
+    "callback_exception_and_invalid_output_cleanup": "pass",
+    "cooperative_shared_memory_evaluation_and_elapsed_budgets": "pass"
+  },
+  "portable_smoke": [
+    {
+      "host": "local integration host (not persistent bench-1)",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.7.0",
+      "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.7.0",
+      "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+      "residual_norm": 0,
+      "live_allocations_after": 0
+    }
+  ],
+  "exploratory_linux_x64_timing": {
+    "samples": 50,
+    "linear_30_lmdif_median_ms": 0.05143,
+    "rosenbrock_2_lmder_median_ms": 0.10542,
+    "callback_probe_median_ns_per_call": 12.027309,
+    "warning": "Development-host evidence only; not a release performance receipt"
+  },
+  "remaining_integration_gates": [
+    "register the lazy resource in browser, Node, and SEA evaluators",
+    "independently validate and construct the public NumericalResult in ordinary Python",
+    "classify native adapters and reconcile base-owned architecture/package manifests",
+    "relocated npm and SEA artifact tests",
+    "persistent Linux x64 receipt after bench-1 authentication is restored"
+  ]
+}

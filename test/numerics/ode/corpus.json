@@ -30,8 +30,56 @@
       "classification": "stiff",
       "equation": "y' = -1000(y-cos(t))-sin(t), y(0)=1",
       "interval": [0.0, 1.0],
-      "evidence": ["analytic solution cos(t)", "SciPy Radau oracle", "explicit-evaluation exhaustion"],
-      "sagejs": {"method": "radau", "expected": "unsupported-implicit-method"}
+      "evidence": ["analytic solution cos(t)", "SciPy Radau and BDF oracles", "linearized dense-defect correction"],
+      "sagejs": {"method": "rosenbrock4", "expected": "validated-approximate"}
+    },
+    {
+      "id": "robertson",
+      "classification": "stiff",
+      "equation": "Robertson autocatalytic kinetics",
+      "interval": [0.0, 100.0],
+      "evidence": ["SciPy Radau oracle", "SciPy BDF oracle", "mass conservation", "supplied and finite-difference Jacobian agreement", "checked linear-solve residual", "linearized dense-defect correction"],
+      "sagejs": {"method": "rosenbrock4", "expected": "validated-approximate"}
+    },
+    {
+      "id": "hires",
+      "classification": "stiff",
+      "equation": "HIRES eight-component chemical kinetics",
+      "interval": [0.0, 321.8122],
+      "evidence": ["SciPy Radau oracle", "SciPy BDF oracle", "y7+y8 conservation", "checked linear-solve residual", "linearized dense-defect correction"],
+      "sagejs": {"method": "rosenbrock4", "expected": "validated-approximate"}
+    },
+    {
+      "id": "stiff-vanderpol",
+      "classification": "stiff",
+      "equation": "Van der Pol oscillator with mu=1000",
+      "interval": [0.0, 3000.0],
+      "evidence": ["SciPy Radau oracle", "SciPy BDF oracle", "relaxation-transition dense-defect gate", "checked linear-solve residual"],
+      "sagejs": {"method": "rosenbrock4", "expected": "validated-approximate"}
+    },
+    {
+      "id": "stiff-singular-linear-solve",
+      "classification": "failure",
+      "equation": "linearly implicit stage matrix I/(gamma*h)-J is singular",
+      "interval": [0.0, 1.0],
+      "evidence": ["partial-pivot threshold", "bounded linear-solve rejection count", "structured singular_linear_system termination"],
+      "sagejs": {"method": "rosenbrock4", "expected": "singular_linear_system"}
+    },
+    {
+      "id": "stiff-workspace-budget",
+      "classification": "failure",
+      "equation": "ten-component Rosenbrock solve under a one-byte workspace bound",
+      "interval": [0.0, 1.0],
+      "evidence": ["logical dense-Jacobian/LU workspace estimate", "preflight failure before callbacks"],
+      "sagejs": {"method": "rosenbrock4", "expected": "maximum_workspace_bytes"}
+    },
+    {
+      "id": "stiff-jacobian-cancellation",
+      "classification": "failure",
+      "equation": "supplied Jacobian requests cancellation before returning",
+      "interval": [0.0, 1.0],
+      "evidence": ["post-Jacobian callback cancellation check"],
+      "sagejs": {"method": "rosenbrock4", "expected": "cancelled"}
     },
     {
       "id": "callback-nonfinite",
@@ -120,6 +168,30 @@
       "interval": [0.0, 1.0],
       "evidence": ["exact vector summary keeps the retained trace within budget"],
       "sagejs": {"method": "rk4", "expected": "bounded_trace"}
+    },
+    {
+      "id": "ode-parameter-sweep-order",
+      "classification": "analytic",
+      "equation": "three independently parameterized exponential decays",
+      "interval": [0.0, 1.0],
+      "evidence": ["analytic exp(-rate) endpoints", "stable input order under reversed batch completion", "deterministic per-item seeds", "exact nested OdeResult evaluation accounting"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "ordered-completed-items"}
+    },
+    {
+      "id": "ode-parameter-sweep-fail-fast",
+      "classification": "failure",
+      "equation": "middle decay item exhausts its nested ODE callback budget",
+      "interval": [0.0, 1.0],
+      "evidence": ["collect continues after OdeSweepSolveError", "fail_fast deterministically skips later batches"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "structured-failure-and-skip"}
+    },
+    {
+      "id": "ode-parameter-sweep-memory",
+      "classification": "failure",
+      "equation": "one ODE item under a 100-byte cooperative memory credit",
+      "interval": [0.0, 1.0],
+      "evidence": ["logical ODE reservation rejected before the first RHS callback"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "memory_budget_exceeded"}
     }
   ]
 }

@@ -23,6 +23,14 @@ from .interpolation import (
     plan_interpolation,
     solve_interpolation_problem,
 )
+from .polynomial_roots import (
+    MAX_POLYNOMIAL_ROOT_DEGREE,
+    PolynomialRootsResult,
+    plan_polynomial_roots,
+    polynomial_roots,
+    polynomial_roots_problem,
+    solve_polynomial_roots_problem,
+)
 from .splines import (
     cubic_spline,
     evaluate_spline,
@@ -33,6 +41,8 @@ from .splines import (
 
 __all__ = [
     "ApproximationResult",
+    "MAX_POLYNOMIAL_ROOT_DEGREE",
+    "PolynomialRootsResult",
     "capabilities",
     "chebyshev_approximation",
     "cubic_spline",
@@ -48,11 +58,15 @@ __all__ = [
     "plan_finite_difference",
     "plan_interpolation",
     "plan_polynomial_approximation",
+    "plan_polynomial_roots",
     "plan_spline",
     "polynomial_approximation_problem",
+    "polynomial_roots",
+    "polynomial_roots_problem",
     "solve_finite_difference_problem",
     "solve_interpolation_problem",
     "solve_polynomial_approximation_problem",
+    "solve_polynomial_roots_problem",
     "solve_spline_problem",
     "spline_problem",
     "supports",

@@ -8,7 +8,10 @@
     "numeric_types": ["binary64", "complex_binary64"],
     "budgets": ["iterations", "evaluations_where_applicable", "elapsed_time", "allocation_or_nonzeros", "trace_events", "trace_bytes"],
     "cancellation": "cooperative bounded polling",
-    "trace": "semantic and deterministically bounded"
+    "trace": "semantic and deterministically bounded",
+    "planning": "package-local side-effect-free supports/plan dispatch from detached problem records",
+    "explanations": "versioned JSON-safe structured records plus accessible static text",
+    "visualization": "renderer-neutral PlotSpec and PlotAnimation; at most 1024 retained plot samples and 32 topology-stable frames; no new evaluations"
   },
   "implemented": [
     {
@@ -34,6 +37,13 @@
     },
     {
       "operation": "fourier_transform",
+      "classification": "translated",
+      "method": "radix2_cooley_tukey_or_bluestein",
+      "envelope": "finite nonempty one-dimensional sequences under max_points",
+      "validation": ["independent_direct_reconstruction", "parseval_energy", "orthogonality_scaling"]
+    },
+    {
+      "operation": "inverse_fourier_transform",
       "classification": "translated",
       "method": "radix2_cooley_tukey_or_bluestein",
       "envelope": "finite nonempty one-dimensional sequences under max_points",
