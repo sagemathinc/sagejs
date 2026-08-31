@@ -2,11 +2,11 @@
   "schema": "sagejs.numerical-node-capability-spec/v1",
   "backend": {
     "id": "sagejs-numerical-product-artifacts",
-    "version": "numerical-product-v7"
+    "version": "numerical-product-v8"
   },
   "capabilities": [
     {"id": "numerics.contracts", "case_ids": ["p0-result-contract"], "envelope": {"schema_version": 1, "numeric_type": "binary64"}},
-    {"id": "numerics.root.scalar", "case_ids": ["p1-root-cosine", "p1-root-invalid-bracket", "p1-root-translation", "p8-root-resource-budget", "p8-callback-exception", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["bisection", "brent", "newton", "secant"], "callbacks": true, "bounded": true}},
+    {"id": "numerics.root.scalar", "case_ids": ["p1-root-cosine", "p1-root-invalid-bracket", "p1-root-translation", "p8-root-resource-budget", "p8-callback-exception", "p8-cross-domain-repeated-stability", "p8-runtime-recovery"], "envelope": {"methods": ["bisection", "brent", "newton", "secant"], "callbacks": true, "bounded": true}},
     {"id": "numerics.approximation.interpolation", "case_ids": ["p2-interpolation-quadratic"], "envelope": {"methods": ["barycentric"], "numeric_type": "binary64"}},
     {"id": "numerics.approximation.splines", "case_ids": ["p2-cubic-spline-polynomial"], "envelope": {"methods": ["cubic-spline"], "boundaries": ["not-a-knot", "natural", "clamped", "periodic"], "numeric_type": "binary64"}},
     {"id": "numerics.approximation.finite_difference", "case_ids": ["p2-finite-difference-sine"], "envelope": {"methods": ["fornberg-central", "fornberg-forward", "fornberg-backward"], "maximum_derivative_order": 32, "numeric_type": "binary64"}},
@@ -28,7 +28,7 @@
     {"id": "numerics.spectral.fft", "case_ids": ["p5-fft-direct-oracle", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["radix2-cooley-tukey", "bluestein-radix2"], "numeric_type": "complex-binary64"}},
     {"id": "numerics.spectral.convolution", "case_ids": ["p5-convolution-direct-oracle"], "envelope": {"methods": ["direct", "fft"], "modes": ["full", "same", "valid"], "numeric_type": "complex-binary64"}},
     {"id": "numerics.spectral.sparse", "case_ids": ["p5-sparse-linear-solve", "p5-sparse-dominant-eigen"], "envelope": {"formats": ["csr"], "solve_methods": ["cg", "bicgstab"], "eigen_methods": ["dominant-power"], "numeric_type": "complex-binary64"}},
-    {"id": "numerics.statistics.descriptive", "case_ids": ["p5-statistics-summary", "p8-statistics-deterministic-fuzz", "p8-cross-domain-repeated-stability"], "envelope": {"methods": ["corrected-two-pass"], "reproducible": true}},
+    {"id": "numerics.statistics.descriptive", "case_ids": ["p5-statistics-summary", "p8-statistics-deterministic-fuzz", "p8-cross-domain-repeated-stability", "p8-memory-pressure-statistics"], "envelope": {"methods": ["corrected-two-pass"], "reproducible": true}},
     {"id": "numerics.statistics.inference", "case_ids": ["p5-statistics-inference"], "envelope": {"methods": ["one-sample-t", "welch-two-sample-t"], "independent_oracle": "definition-plus-pinned-mature-reference"}},
     {"id": "numerics.statistics.rng", "case_ids": ["p5-statistics-rng-replay"], "envelope": {"algorithm": "pcg32-xsh-rr-v1", "contract_version": 2, "json_safe_state": true, "deterministic_replay": true}},
     {"id": "numerics.statistics.regression", "case_ids": ["p5-statistics-linear-regression"], "envelope": {"methods": ["ordinary-least-squares", "theil-sen", "huber"], "independent_validation": ["centered-sums", "residuals"]}},
@@ -42,7 +42,9 @@
     {"id": "numerics.teaching.root", "case_ids": ["p7-root-teaching-artifacts"], "envelope": {"plot_spec": true, "animation": true, "bounded_trace": true}},
     {"id": "numerics.teaching.cross_domain", "case_ids": ["p7-cross-domain-teaching-artifacts"], "envelope": {"domains": ["approximation", "integration", "linear-algebra", "ode", "optimization", "spectral", "statistics"], "plot_spec": true, "animation": true, "renderer_neutral": true, "bounded": true, "retained_evidence_without_callback_replay": true, "cross_platform_comparison": "semantic-with-explicit-numeric-tolerances-not-byte-identity"}},
     {"id": "numerics.teaching.scalar_optimization", "case_ids": ["p7-scalar-optimization-retained-view"], "envelope": {"operation": "scalar_minimum", "plot_spec": true, "animation": true, "repeated_views": true, "callback_replay": false, "maximum_frames": 128}},
-    {"id": "numerics.lifecycle.repeated", "case_ids": ["p8-cross-domain-repeated-stability"], "envelope": {"same_session": true, "deterministic_observations": true, "trials": 8}},
+    {"id": "numerics.lifecycle.repeated", "case_ids": ["p8-cross-domain-repeated-stability"], "envelope": {"same_session": true, "deterministic_observations": true, "trials": 64}},
+    {"id": "numerics.lifecycle.recovery", "case_ids": ["p8-runtime-recovery"], "envelope": {"contained_callback_failure": true, "post_failure_execution": true, "browser_worker_replacement": true}},
+    {"id": "numerics.lifecycle.memory", "case_ids": ["p8-memory-pressure-statistics"], "envelope": {"bounded_samples": 131072, "collector_metrics": ["rss_peak_sampled_bytes", "process_max_rss_bytes", "artifact_installed_bytes"]}},
     {"id": "numerics.optimization.polynomial_least_squares", "status": "unavailable", "reason": "reserved for a future least-squares frontend over the qualified cminpack core", "case_ids": [], "envelope": null},
     {"id": "numerics.ode.stiff_sparse", "status": "unavailable", "reason": "reserved for a future sparse-Jacobian stiff ODE backend", "case_ids": [], "envelope": null}
   ]

@@ -125,6 +125,93 @@ test("runtime adapters are executable and cminpack evidence uses portable Sage.j
   assert.equal(typeof browserAdapter._testing.launchBrowser, "function");
 });
 
+const browserArtifact = path.join(root, "packages", "flint-wasm");
+const browserCminpack = path.join(browserArtifact, "dist", "cminpack.wasm");
+const browserNlopt = path.join(browserArtifact, "dist", "nlopt-methods.wasm");
+const browserAdapterPath = path.join(campaign, "browser-adapter.cjs");
+const browserAdapterForProbe = require(browserAdapterPath);
+const chromium = browserAdapterForProbe._testing.browserExecutable(
+  require("playwright-core").chromium,
+  "chromium",
+);
+const browserBuilt = chromium !== null &&
+  fs.existsSync(path.join(browserArtifact, "kernel.mjs")) &&
+  fs.existsSync(browserCminpack) && fs.existsSync(browserNlopt);
+
+test("browser-worker adapter interrupts, replaces, and reuses the real worker", {
+  skip: browserBuilt ? false : "build packages/flint-wasm and install Chromium for worker qualification",
+  timeout: 60_000,
+}, async () => {
+  delete require.cache[require.resolve(browserAdapterPath)];
+  const adapter = require(browserAdapterPath);
+  const draft = capabilityDraft(spec, corpus, {
+    kind: "worker", name: "sagejs-browser-worker", version: "probe", engine: null,
+  });
+  const initialized = await adapter.initialize({
+    root,
+    backend: draft.backend,
+    subject: draft.subject,
+    artifacts: [
+      { name: "sagejs-browser", path: browserArtifact, sha256: "test-only", bytes: 0 },
+      { name: "cminpack-wasm", path: browserCminpack, sha256: "test-only", bytes: 0 },
+      { name: "nlopt-wasm", path: browserNlopt, sha256: "test-only", bytes: 0 },
+    ],
+    capabilities: draft.capabilities,
+  });
+  try {
+    assert.equal(initialized.subject.kind, "worker");
+    assert(initialized.capability_ids.includes("numerics.lifecycle.recovery"));
+    const item = corpus.cases.find((entry) => entry.id === "p8-runtime-recovery");
+    const observed = await adapter.runCase(item);
+    assert.equal(observed.outcome.kind, "success");
+    assert.equal(observed.values.contained_status, "callback_error");
+    assert.equal(observed.values.recovered, true);
+    assert.equal(observed.values.runtime_interrupt_observed, true);
+    assert(observed.values.independent_residual <= 1e-12);
+  } finally {
+    await adapter.close();
+  }
+});
+
+const npmRootArchive = process.env.SAGEJS_QUALIFICATION_NPM_ROOT_TGZ;
+const npmPlatformArchive = process.env.SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ;
+const npmArtifactsPresent = Boolean(npmRootArchive && npmPlatformArchive &&
+  fs.existsSync(npmRootArchive) && fs.existsSync(npmPlatformArchive));
+
+test("fresh npm adapter executes installed source and lazy cminpack bytes", {
+  skip: npmArtifactsPresent ? false :
+    "set SAGEJS_QUALIFICATION_NPM_ROOT_TGZ and SAGEJS_QUALIFICATION_NPM_PLATFORM_TGZ",
+  timeout: 240_000,
+}, async () => {
+  const adapterPath = path.join(campaign, "package-adapter.cjs");
+  delete require.cache[require.resolve(adapterPath)];
+  const adapter = require(adapterPath);
+  const draft = capabilityDraft(spec, corpus, {
+    kind: "npm", name: "@sagemath/sagejs", version: "probe", engine: null,
+  });
+  const initialized = await adapter.initialize({
+    root,
+    backend: draft.backend,
+    subject: draft.subject,
+    artifacts: [
+      { name: "npm-root-tarball", path: npmRootArchive, sha256: "test-only", bytes: 0 },
+      { name: "npm-platform-tarball", path: npmPlatformArchive, sha256: "test-only", bytes: 0 },
+    ],
+    capabilities: draft.capabilities,
+  });
+  try {
+    assert.equal(initialized.subject.kind, "npm");
+    for (const id of ["p1-root-cosine", "p3-cminpack-rosenbrock-lmdif"] ) {
+      const item = corpus.cases.find((entry) => entry.id === id);
+      const observed = await adapter.runCase(item);
+      assert.equal(observed.outcome.kind, "success", id);
+      assert(Object.values(observed.values).every((value) => value !== undefined), id);
+    }
+  } finally {
+    await adapter.close();
+  }
+});
+
 const dist = path.join(root, "dist");
 const cminpackWasm = path.join(
   root, "packages", "flint-wasm", "numerical", "build", "cminpack.wasm",

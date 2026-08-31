@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 61
+- `bench/numerical-computing/qualification/product.corpus.json` — 63
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
@@ -85,7 +85,9 @@ seven-domain teaching-artifact surfaces. It contains:
   callback replay forbidden and cross-platform semantics checked by structure
   plus explicit numeric tolerances rather than byte identity, including a
   repeated scalar-minimization view witness that checks callback counters;
-- a same-session repeated cross-domain campaign; and
+- a 64-cycle same-session repeated cross-domain campaign, an explicit
+  post-failure recovery witness, real browser-worker interruption/replacement,
+  and a bounded 131072-sample memory-pressure workload; and
 - collector-level cold initialization, wall time, RSS, process high-water RSS,
   source/artifact bytes, and repeated-observation determinism.
 

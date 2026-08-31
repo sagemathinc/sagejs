@@ -116,6 +116,29 @@ async function runPython(sample) {
   return { raw: internals.parseEvaluation(result), kernelMs: performance.now() - started };
 }
 
+async function runRuntimeRecovery(sample) {
+  const pending = page.evaluate(async () => {
+    try {
+      await globalThis.__sagejsQualificationSession.evaluate(
+        "while True:\n    pass",
+        { timeout: 180_000 },
+      );
+      return { interrupted: false, name: null };
+    } catch (error) {
+      return { interrupted: true, name: error?.name ?? null };
+    }
+  });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await page.evaluate(async () => globalThis.__sagejsQualificationSession.interrupt());
+  const interruption = await pending;
+  if (!interruption.interrupted || interruption.name !== "SageSessionInterruptedError") {
+    throw new Error(`worker interruption was not observed: ${JSON.stringify(interruption)}`);
+  }
+  const evaluated = await runPython(sample);
+  evaluated.raw.runtime_interrupt_observed = true;
+  return evaluated;
+}
+
 async function runCminpack(sample) {
   const started = performance.now();
   const raw = await page.evaluate(async ({ id, input }) => {
@@ -236,11 +259,7 @@ async function runMatlabShapes() {
 }
 
 async function evaluateSample(sample) {
-  if ([
-    "p3-cminpack-rosenbrock-lmdif",
-    "p3-cminpack-rosenbrock-lmder",
-    "p8-cminpack-cancelled",
-  ].includes(sample.id)) return runCminpack(sample);
+  if (sample.id === "p8-runtime-recovery") return runRuntimeRecovery(sample);
   if (sample.id === "p6-multilingual-parser-fail-closed") return runParserGuards();
   if (sample.id === "p6-matlab-vector-shapes") return runMatlabShapes();
   return runPython(sample);

@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v7",
-  "version": 7,
+  "id": "sagejs-numerical-product-v8",
+  "version": 8,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -1165,16 +1165,50 @@
       "program_phase": "P8",
       "layer": "conditioned-stress",
       "workload_tier": "substantial-local",
-      "campaign": {"kind": "long-duration", "seed": "fixed-product-cycle-v1", "trials": 8, "evidence_check_ids": ["all-product-repeats-ran"]},
-      "input": {"operation": "cross-domain-repeated-stability", "trials": 8},
+      "campaign": {"kind": "long-duration", "seed": "fixed-product-cycle-v1", "trials": 64, "evidence_check_ids": ["all-product-repeats-ran"]},
+      "input": {"operation": "cross-domain-repeated-stability", "trials": 64},
       "required_capabilities": ["numerics.lifecycle.repeated", "numerics.root.scalar", "numerics.integration.quadrature", "numerics.linear.solve", "numerics.spectral.fft", "numerics.statistics.descriptive"],
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "repeated-value-error", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_independent_error", "expected": {"literal": 2e-10}},
-        {"id": "all-product-repeats-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 8}},
+        {"id": "all-product-repeats-ran", "evidence": "validation", "kind": "deep-equal", "actual": "/values/trials", "expected": {"literal": 64}},
         {"id": "repeated-domain-failures", "evidence": "validation", "kind": "deep-equal", "actual": "/values/failures", "expected": {"literal": 0}}
       ],
-      "measurement": {"warmup": 0, "samples": 2}
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p8-runtime-recovery",
+      "description": "The runtime remains usable after a contained callback failure; browser subjects additionally terminate and replace the real worker before this witness runs.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 1, "evidence_check_ids": ["runtime-recovered-after-failure"]},
+      "input": {"operation": "runtime-recovery"},
+      "required_capabilities": ["numerics.lifecycle.recovery", "numerics.root.scalar"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "failure-contained-before-recovery", "evidence": "validation", "kind": "deep-equal", "actual": "/values/contained_status", "expected": {"literal": "callback_error"}},
+        {"id": "runtime-recovered-after-failure", "evidence": "validation", "kind": "deep-equal", "actual": "/values/recovered", "expected": {"literal": true}},
+        {"id": "recovery-root-residual", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/independent_residual", "expected": {"literal": 1e-12}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p8-memory-pressure-statistics",
+      "description": "A bounded 131072-sample summary exercises a material allocation while the generic collector records wall time, sampled RSS, process high-water RSS, and artifact payload.",
+      "program_phase": "P8",
+      "layer": "conditioned-stress",
+      "workload_tier": "substantial-local",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["memory-workload-size"]},
+      "input": {"operation": "memory-pressure-statistics", "samples": 131072},
+      "required_capabilities": ["numerics.lifecycle.memory", "numerics.statistics.descriptive"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "memory-workload-size", "evidence": "validation", "kind": "deep-equal", "actual": "/values/samples", "expected": {"literal": 131072}},
+        {"id": "memory-summary-mean", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/independent_mean_error", "expected": {"literal": 1e-14}},
+        {"id": "memory-summary-public-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
     }
   ]
 }

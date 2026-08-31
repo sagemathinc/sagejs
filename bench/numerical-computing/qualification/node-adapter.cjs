@@ -47,6 +47,8 @@ const CAPABILITY_MODULE_REQUIREMENTS = Object.freeze({
   "numerics.teaching.cross_domain": "sagejs.numerics",
   "numerics.teaching.scalar_optimization": "sagejs.numerics.optimization",
   "numerics.lifecycle.repeated": "sagejs.numerics",
+  "numerics.lifecycle.recovery": "sagejs.numerics",
+  "numerics.lifecycle.memory": "sagejs.numerics.statistics",
 });
 
 let session = null;
@@ -1251,6 +1253,37 @@ output_record = {
     "cancel_checks": cancel_checks[0],
     "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
 }`,
+    "p8-runtime-recovery": String.raw`
+from sagejs.numerics import find_root
+
+def fails(x):
+    raise ValueError("intentional recovery witness")
+
+contained = find_root(fails, 0.0, 2.0, method="brent")
+recovered = find_root(lambda x: x*x - 2.0, 0.0, 2.0, method="brent")
+output_record = {
+    "contained_status": contained.status,
+    "recovered_success": recovered.success,
+    "recovered_value": recovered.value,
+    "runtime_interrupt_observed": False,
+}`,
+    "p8-memory-pressure-statistics": String.raw`
+from sagejs.numerics import ResourceBudget
+from sagejs.numerics.statistics import describe
+count = input_record["samples"]
+samples = [float((index % 257) - 128) / 128.0 for index in range(count)]
+answer = describe(samples, budget=ResourceBudget(
+    max_iterations=100,
+    max_evaluations=1000000,
+    max_elapsed_ms=60000,
+    max_trace_events=256,
+    max_trace_bytes=1000000,
+))
+output_record = {
+    "samples": count,
+    "mean": answer.value["mean"],
+    "validation_passed": answer.validation.passed,
+}`,
     "p8-cross-domain-repeated-stability": String.raw`
 from sagejs.numerics import find_root
 from sagejs.numerics.integration import integrate
@@ -2394,6 +2427,26 @@ async function normalizeEvaluated(sample, evaluated) {
         live_allocations: raw.live_allocations,
       }, kernelMs, { cancellation_checks: raw.cancel_checks });
       break;
+    case "p8-runtime-recovery":
+      observation = success({
+        contained_status: raw.contained_status,
+        recovered: raw.recovered_success,
+        independent_residual: Math.abs(raw.recovered_value ** 2 - 2),
+        runtime_interrupt_observed: raw.runtime_interrupt_observed,
+      }, kernelMs, { runtime_interrupts: raw.runtime_interrupt_observed ? 1 : 0 });
+      break;
+    case "p8-memory-pressure-statistics": {
+      let total = 0;
+      for (let index = 0; index < input.samples; index += 1) {
+        total += ((index % 257) - 128) / 128;
+      }
+      observation = success({
+        samples: raw.samples,
+        independent_mean_error: Math.abs(raw.mean - total / input.samples),
+        validation_passed: raw.validation_passed,
+      }, kernelMs, { samples: raw.samples });
+      break;
+    }
     case "p8-cross-domain-repeated-stability": {
       const evidence = repeatedEvidence(raw.records);
       observation = success({
