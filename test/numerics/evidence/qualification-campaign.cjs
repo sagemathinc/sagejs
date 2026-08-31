@@ -16,6 +16,7 @@ const {
 const {
   renderMatrix,
 } = require("../../../scripts/numerical-computing/qualification/render-matrix.cjs");
+const { ADAPTER_PROTOCOL } = require("../../../scripts/numerical-computing/contracts.cjs");
 
 const root = path.resolve(__dirname, "..", "..", "..");
 const campaign = path.join(root, "bench", "numerical-computing", "qualification");
@@ -36,13 +37,22 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
   );
   const required = [
     "numerics.root.scalar", "numerics.approximation.interpolation",
+    "numerics.approximation.splines", "numerics.approximation.finite_difference",
+    "numerics.approximation.chebyshev",
     "numerics.approximation.polynomial_roots",
     "numerics.integration.quadrature", "numerics.linear.solve",
+    "numerics.linear.factorizations",
     "numerics.optimization.scalar", "numerics.optimization.cminpack",
     "numerics.optimization.cminpack_optional_resource",
+    "numerics.optimization.nlopt_nelder_mead",
+    "numerics.optimization.nlopt_cobyla",
+    "numerics.optimization.nlopt_optional_resource",
     "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
-    "numerics.statistics.descriptive", "numerics.sweeps.bounded",
+    "numerics.spectral.convolution", "numerics.spectral.sparse",
+    "numerics.statistics.descriptive", "numerics.statistics.inference",
+    "numerics.statistics.rng", "numerics.statistics.regression",
+    "numerics.sweeps.bounded",
     "numerics.frontend.catalog", "numerics.frontend.parser_guards",
     "numerics.frontend.matlab_shapes",
     "numerics.frontend.scipy_execution", "numerics.frontend.guardrails",
@@ -74,10 +84,10 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
   assert.deepEqual(nodeTemplate.rows.map((item) => item.platform).sort(), [
     "linux-arm64", "linux-x64", "macos-arm64", "windows-x64",
   ]);
-  assert.equal(fullTemplate.rows.length, 12);
+  assert.equal(fullTemplate.rows.length, 16);
   assert.deepEqual(
     [...new Set(fullTemplate.rows.map((item) => item.subject.kind))].sort(),
-    ["browser", "node", "sea", "worker"],
+    ["browser", "node", "npm", "sea", "worker"],
   );
   const available = spec.capabilities
     .filter((item) => (item.status ?? "available") === "available")
@@ -91,12 +101,37 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
   );
 });
 
+test("runtime adapters are executable and cminpack evidence uses portable Sage.js source", () => {
+  const nodeAdapter = require(path.join(campaign, "node-adapter.cjs"));
+  const browserAdapter = require(path.join(campaign, "browser-adapter.cjs"));
+  const packageAdapter = require(path.join(campaign, "package-adapter.cjs"));
+  for (const adapter of [nodeAdapter, browserAdapter, packageAdapter]) {
+    assert.equal(adapter.protocol, ADAPTER_PROTOCOL);
+    assert.equal(typeof adapter.initialize, "function");
+    assert.equal(typeof adapter.runCase, "function");
+    assert.equal(typeof adapter.close, "function");
+  }
+  for (const id of [
+    "p3-cminpack-rosenbrock-lmdif",
+    "p3-cminpack-rosenbrock-lmder",
+    "p8-cminpack-cancelled",
+  ]) {
+    const item = corpus.cases.find((entry) => entry.id === id);
+    const source = nodeAdapter.qualificationInternals.sourceFor(id, item.input);
+    assert.match(source, /runtime\.numerical_backend\(\)/);
+    assert.match(source, /liveAllocations/);
+    assert.match(source, /__SAGEJS_NUMERICAL_QUALIFICATION__/);
+  }
+  assert.equal(typeof browserAdapter._testing.launchBrowser, "function");
+});
+
 const dist = path.join(root, "dist");
 const cminpackWasm = path.join(
   root, "packages", "flint-wasm", "numerical", "build", "cminpack.wasm",
 );
+const nloptWasm = path.join(dist, "numerical", "nlopt-methods.wasm");
 const built = fs.existsSync(path.join(dist, "tools", "kernel.js")) &&
-  fs.existsSync(cminpackWasm);
+  fs.existsSync(cminpackWasm) && fs.existsSync(nloptWasm);
 
 test("first-party adapter executes Sage.js and independently checks representative domains", {
   skip: built ? false : "run pnpm build to exercise the artifact adapter",
@@ -113,6 +148,7 @@ test("first-party adapter executes Sage.js and independently checks representati
     artifacts: [
       { name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 },
       { name: "cminpack-wasm", path: cminpackWasm, sha256: "test-only", bytes: 0 },
+      { name: "nlopt-wasm", path: nloptWasm, sha256: "test-only", bytes: 0 },
     ],
     capabilities: draft.capabilities,
   });
@@ -120,11 +156,27 @@ test("first-party adapter executes Sage.js and independently checks representati
     assert.equal(initialized.subject.version, process.version);
     for (const id of [
       "p1-root-cosine", "p2-linear-solve", "p2-polynomial-roots-known",
+      "p2-cubic-spline-polynomial", "p2-finite-difference-sine",
+      "p2-chebyshev-exponential", "p2-linear-qr-factorization",
+      "p2-linear-cholesky-factorization",
       "p3-scalar-minimum", "p3-cminpack-rosenbrock-lmdif",
       "p3-cminpack-rosenbrock-lmder", "p4-ode-exponential",
       "p3-cminpack-optional-resource-fail-closed",
+      "p3-nlopt-nelder-mead-rosenbrock",
+      "p3-nlopt-nelder-mead-one-dimensional",
+      "p3-nlopt-nelder-mead-zero-scale",
+      "p3-nlopt-nelder-mead-saddle-rejected",
+      "p3-nlopt-cobyla-circle",
+      "p3-nlopt-cobyla-infeasible-rejected",
+      "p3-nlopt-cobyla-nonminimum-rejected",
+      "p3-nlopt-failure-provenance",
+      "p3-nlopt-optional-resource-fail-closed",
       "p4-ode-stiff-decay", "p4-ode-decay-sweep",
-      "p5-fft-direct-oracle", "p5-statistics-summary",
+      "p5-general-eigen", "p5-singular-value-decomposition",
+      "p5-fft-direct-oracle", "p5-convolution-direct-oracle",
+      "p5-sparse-linear-solve", "p5-sparse-dominant-eigen",
+      "p5-statistics-summary", "p5-statistics-inference",
+      "p5-statistics-rng-replay", "p5-statistics-linear-regression",
       "p6-multilingual-catalog-roundtrip",
       "p6-multilingual-parser-fail-closed",
       "p6-matlab-vector-shapes",
@@ -158,6 +210,40 @@ test("first-party adapter executes Sage.js and independently checks representati
       if (id === "p6-matlab-vector-shapes") {
         assert.equal(observed.values.witnesses, 11);
         assert.deepEqual(observed.values.mismatches, []);
+      }
+      if (id === "p3-nlopt-nelder-mead-rosenbrock") {
+        assert.equal(observed.values.method, "nlopt-nelder-mead");
+        assert.equal(observed.values.backend, "nlopt-mit-wasm");
+        assert.equal(observed.values.cache_reused, true);
+        assert.equal(observed.values.automatic_backend, "ordinary-python");
+      }
+      if (id === "p3-nlopt-cobyla-infeasible-rejected") {
+        assert.equal(observed.values.public_success, false);
+        assert.equal(observed.values.validation_passed, false);
+        assert.equal(observed.values.backend_status_positive, true);
+      }
+      if (id === "p3-nlopt-nelder-mead-zero-scale") {
+        assert.equal(observed.values.public_success, true);
+        assert(Math.abs(observed.values.result) <= 1e-8);
+        assert(observed.values.evaluations < 1000);
+      }
+      if (id === "p3-nlopt-nelder-mead-saddle-rejected" ||
+          id === "p3-nlopt-cobyla-nonminimum-rejected") {
+        assert.equal(observed.values.public_success, false);
+        assert.equal(observed.values.validation_passed, false);
+        assert.equal(observed.values.validation_kind, "indeterminate");
+      }
+      if (id === "p3-nlopt-failure-provenance") {
+        assert.deepEqual(observed.values.statuses, ["callback_error", "cancelled"]);
+        assert.deepEqual(observed.values.implementation_kinds, [
+          "external_library_wasm", "external_library_wasm",
+        ]);
+        assert.deepEqual(observed.values.source_transparent, [false, false]);
+      }
+      if (id === "p3-nlopt-optional-resource-fail-closed") {
+        assert.equal(observed.values.automatic_successes, 2);
+        assert.equal(observed.values.explicit_failures, 4);
+        assert.equal(observed.values.private_details_leaked, 0);
       }
     }
   } finally {

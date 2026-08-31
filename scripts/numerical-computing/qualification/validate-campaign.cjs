@@ -62,7 +62,7 @@ function main() {
   );
   validateTemplate(
     readJson(path.join(matrixDirectory, "full-runtime.template.json")),
-    12,
+    16,
     requiredCapabilities,
   );
   process.stdout.write(

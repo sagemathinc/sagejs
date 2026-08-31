@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v5",
-  "version": 5,
+  "id": "sagejs-numerical-product-v7",
+  "version": 7,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -95,6 +95,59 @@
       "checks": [
         {"id": "interpolation-definition", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 3.25}, "absolute_tolerance": 1e-13, "relative_tolerance": 1e-13},
         {"id": "lagrange-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 1e-13}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-cubic-spline-polynomial",
+      "description": "A clamped cubic spline reproduces a cubic and its derivative at independent off-grid points.",
+      "program_phase": "P2",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "cubic-spline", "nodes": [0, 0.5, 1, 1.5, 2], "points": [0.25, 0.75, 1.25, 1.75]},
+      "required_capabilities": ["numerics.approximation.splines"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "spline-cubic-value", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_value_error", "expected": {"literal": 5e-12}},
+        {"id": "spline-cubic-derivative", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_derivative_error", "expected": {"literal": 5e-11}},
+        {"id": "spline-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "spline-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-finite-difference-sine",
+      "description": "A planned fourth-order finite difference agrees with the analytic derivative of sine.",
+      "program_phase": "P2",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "finite-difference", "point": 0.3},
+      "required_capabilities": ["numerics.approximation.finite_difference"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "finite-difference-cosine", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 0.955336489125606}, "absolute_tolerance": 3e-10, "relative_tolerance": 3e-10},
+        {"id": "finite-difference-independent-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_error", "expected": {"literal": 3e-10}},
+        {"id": "finite-difference-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-chebyshev-exponential",
+      "description": "A degree-14 Chebyshev series approximates exp and its derivative at independent points while retaining its honest heuristic classification.",
+      "program_phase": "P2",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "chebyshev-approximation", "degree": 14, "points": [-1, -0.3, 0.2, 1]},
+      "required_capabilities": ["numerics.approximation.chebyshev"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "chebyshev-exponential-value", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_value_error", "expected": {"literal": 3e-12}},
+        {"id": "chebyshev-exponential-derivative", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_derivative_error", "expected": {"literal": 3e-10}},
+        {"id": "chebyshev-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "chebyshev-honest-truth-level", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "heuristic"}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
@@ -199,6 +252,42 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p2-linear-qr-factorization",
+      "description": "Householder QR is checked independently for reconstruction and column orthogonality.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "qr-factorization", "matrix": [[1, 2], [3, 4], [1, 1]]},
+      "required_capabilities": ["numerics.linear.factorizations"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "qr-reconstruction", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_reconstruction_error", "expected": {"literal": 1e-12}},
+        {"id": "qr-orthogonality", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_orthogonality_error", "expected": {"literal": 1e-12}},
+        {"id": "qr-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "qr-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p2-linear-cholesky-factorization",
+      "description": "Cholesky is independently checked against A=L L-transpose and for a strictly lower representation.",
+      "program_phase": "P2",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "cholesky-factorization", "matrix": [[4, 2], [2, 3]]},
+      "required_capabilities": ["numerics.linear.factorizations"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "cholesky-reconstruction", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_reconstruction_error", "expected": {"literal": 1e-12}},
+        {"id": "cholesky-lower-shape", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_upper_triangle_leak", "expected": {"literal": 0}},
+        {"id": "cholesky-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "cholesky-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p3-scalar-minimum",
       "description": "Bounded Brent minimizes a convex quadratic with independent stationarity evidence.",
       "program_phase": "P3",
@@ -293,6 +382,215 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p3-nlopt-nelder-mead-rosenbrock",
+      "description": "The explicit NLopt Nelder-Mead public route solves Rosenbrock, retains exact execution provenance, reuses only its own lazy cache, and does not enter automatic selection.",
+      "program_phase": "P3",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-nelder-mead-rosenbrock", "method": "nlopt-nelder-mead", "initial": [-1.2, 1]},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-nelder-exact-method", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-nelder-mead"}},
+        {"id": "nlopt-nelder-parameter-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_parameter_error", "expected": {"literal": 2e-5}},
+        {"id": "nlopt-nelder-objective-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_objective", "expected": {"literal": 1e-10}},
+        {"id": "nlopt-nelder-objective-recomputed", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/reported_objective_error", "expected": {"literal": 1e-14}},
+        {"id": "nlopt-nelder-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-public-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-nelder-method-identity", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method_identity", "expected": {"literal": "nlopt-nelder-mead"}},
+        {"id": "nlopt-nelder-backend-identity", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_identity", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-nelder-execution-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kind", "expected": {"literal": "external_library_wasm"}},
+        {"id": "nlopt-nelder-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": false}},
+        {"id": "nlopt-nelder-cache-reused", "evidence": "validation", "kind": "deep-equal", "actual": "/values/cache_reused", "expected": {"literal": true}},
+        {"id": "nlopt-cache-state-isolated", "evidence": "validation", "kind": "deep-equal", "actual": "/values/cache_state_isolated", "expected": {"literal": true}},
+        {"id": "nlopt-repeat-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/repeat_success", "expected": {"literal": true}},
+        {"id": "nlopt-explicit-only-auto-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_method", "expected": {"literal": "nelder-mead"}},
+        {"id": "nlopt-explicit-only-auto-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_backend", "expected": {"literal": "ordinary-python"}},
+        {"id": "nlopt-auto-source-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_source_transparent", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-nelder-mead-one-dimensional",
+      "description": "The explicit one-dimensional NLopt simplex route does not accept equal opposite-vertex objective values before independent stationarity can pass.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-nelder-mead-one-dimensional", "method": "nlopt-nelder-mead", "initial": [0]},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-nelder-1d-root", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 3}, "absolute_tolerance": 1e-6, "relative_tolerance": 1e-6},
+        {"id": "nlopt-nelder-1d-objective", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_objective", "expected": {"literal": 1e-12}},
+        {"id": "nlopt-nelder-1d-objective-recomputed", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/reported_objective_error", "expected": {"literal": 1e-14}},
+        {"id": "nlopt-nelder-1d-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-1d-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-1d-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-nelder-mead"}},
+        {"id": "nlopt-nelder-1d-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-nelder-1d-backend-stop", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_status", "expected": {"literal": "parameter_tolerance_reached"}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-nelder-mead-zero-scale",
+      "description": "The one-dimensional NLopt simplex route converges at a zero-scale optimum without exhausting its evaluation budget.",
+      "program_phase": "P3",
+      "layer": "conditioned-stress",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-nelder-mead-zero-scale", "method": "nlopt-nelder-mead", "initial": [1]},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-nelder-zero-result", "evidence": "correctness", "kind": "approximate", "actual": "/values/result", "expected": {"literal": 0}, "absolute_tolerance": 1e-8, "relative_tolerance": 0},
+        {"id": "nlopt-nelder-zero-objective", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_objective", "expected": {"literal": 1e-16}},
+        {"id": "nlopt-nelder-zero-objective-recomputed", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/reported_objective_error", "expected": {"literal": 1e-16}},
+        {"id": "nlopt-nelder-zero-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-zero-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "nlopt-nelder-zero-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-nelder-mead"}},
+        {"id": "nlopt-nelder-zero-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-nelder-zero-bounded", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/evaluations", "expected": {"literal": 999}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-nelder-mead-saddle-rejected",
+      "description": "An NLopt positive stop at a mixed-curvature saddle is independently shown to admit diagonal descent and cannot become public mathematical success.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-saddle-independent-descent"]},
+      "input": {"operation": "nlopt-nelder-mead-saddle-rejected", "method": "nlopt-nelder-mead", "initial": [1, 1]},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-saddle-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_diagonal_descent", "expected": {"literal": 5e-5}},
+        {"id": "nlopt-saddle-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
+        {"id": "nlopt-saddle-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-saddle-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}},
+        {"id": "nlopt-saddle-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-nelder-mead"}},
+        {"id": "nlopt-saddle-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-saddle-execution-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kind", "expected": {"literal": "external_library_wasm"}},
+        {"id": "nlopt-saddle-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": false}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-circle",
+      "description": "The explicit NLopt COBYLA public route reaches the active unit-circle boundary and is checked independently for point, objective, feasibility, and derivative-free execution.",
+      "program_phase": "P3",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-cobyla-circle", "method": "nlopt-cobyla", "initial": [0.25, 0.25]},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-cobyla-exact-method", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-cobyla"}},
+        {"id": "nlopt-cobyla-parameter-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_parameter_error", "expected": {"literal": 3e-4}},
+        {"id": "nlopt-cobyla-objective-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_objective", "expected": {"literal": 0.171573}},
+        {"id": "nlopt-cobyla-objective-recomputed", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/reported_objective_error", "expected": {"literal": 1e-14}},
+        {"id": "nlopt-cobyla-feasibility", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_constraint_violation", "expected": {"literal": 2e-7}},
+        {"id": "nlopt-cobyla-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-public-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}},
+        {"id": "nlopt-cobyla-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-cobyla-no-derivative-callbacks", "evidence": "validation", "kind": "deep-equal", "actual": "/values/derivative_callbacks", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-infeasible-rejected",
+      "description": "A positive NLopt COBYLA termination code for incompatible constraints is retained only as execution evidence and independently rejected as a public mathematical result.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "nlopt-cobyla-infeasible-rejected", "method": "nlopt-cobyla", "initial": [0.5]},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-infeasible-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
+        {"id": "nlopt-infeasible-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-infeasible-positive-backend-status", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_status_positive", "expected": {"literal": true}},
+        {"id": "nlopt-infeasible-execution-status-retained", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_status", "expected": {"literal": "converged"}},
+        {"id": "nlopt-infeasible-independent-violation", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_constraint_violation", "expected": {"literal": 0.49}},
+        {"id": "nlopt-infeasible-reported-residual", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/reported_validation_residual", "expected": {"literal": 0.49}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-cobyla-nonminimum-rejected",
+      "description": "A feasible NLopt COBYLA candidate that admits a feasible descent direction is independently classified as indeterminate rather than certified as a constrained minimum.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": ["nlopt-nonminimum-independent-descent"]},
+      "input": {"operation": "nlopt-cobyla-nonminimum-rejected", "method": "nlopt-cobyla", "initial": [0, 0, 0]},
+      "required_capabilities": ["numerics.optimization.nlopt_cobyla"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-nonminimum-independent-descent", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/independent_feasible_descent", "expected": {"literal": 0.00019}},
+        {"id": "nlopt-nonminimum-witness-feasible", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_witness_violation", "expected": {"literal": 1e-12}},
+        {"id": "nlopt-nonminimum-public-rejection", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": false}},
+        {"id": "nlopt-nonminimum-validation-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": false}},
+        {"id": "nlopt-nonminimum-indeterminate", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_kind", "expected": {"literal": "indeterminate"}},
+        {"id": "nlopt-nonminimum-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "nlopt-cobyla"}},
+        {"id": "nlopt-nonminimum-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend", "expected": {"literal": "nlopt-mit-wasm"}},
+        {"id": "nlopt-nonminimum-execution-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kind", "expected": {"literal": "external_library_wasm"}},
+        {"id": "nlopt-nonminimum-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": false}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-failure-provenance",
+      "description": "Callback failure and cancellation after entering NLopt retain exact external-Wasm execution provenance without leaking private callback details.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 2, "evidence_check_ids": ["nlopt-failure-statuses"]},
+      "input": {"operation": "nlopt-failure-provenance", "method": "nlopt-nelder-mead"},
+      "required_capabilities": ["numerics.optimization.nlopt_nelder_mead"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-failure-no-success", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/public_successes", "expected": {"literal": 0}},
+        {"id": "nlopt-failure-statuses", "evidence": "validation", "kind": "deep-equal", "actual": "/values/statuses", "expected": {"literal": ["callback_error", "cancelled"]}},
+        {"id": "nlopt-failure-method-identities", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method_identities", "expected": {"literal": ["nlopt-nelder-mead", "nlopt-nelder-mead"]}},
+        {"id": "nlopt-failure-backend-identities", "evidence": "validation", "kind": "deep-equal", "actual": "/values/backend_identities", "expected": {"literal": ["nlopt-mit-wasm", "nlopt-mit-wasm"]}},
+        {"id": "nlopt-failure-implementation-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kinds", "expected": {"literal": ["external_library_wasm", "external_library_wasm"]}},
+        {"id": "nlopt-failure-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": [false, false]}},
+        {"id": "nlopt-failure-private-details-hidden", "evidence": "validation", "kind": "deep-equal", "actual": "/values/private_details_leaked", "expected": {"literal": 0}},
+        {"id": "nlopt-failure-cancel-polled", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 3}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p3-nlopt-optional-resource-fail-closed",
+      "description": "Missing and corrupt optional NLopt boundaries leave automatic minimization on ordinary Python while both exact explicit methods return stable, nonleaking backend failures.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 2, "evidence_check_ids": ["nlopt-resource-failures-injected"]},
+      "input": {"operation": "nlopt-optional-resource-fail-closed", "resource_failures": ["missing", "corrupt"]},
+      "required_capabilities": ["numerics.optimization.nlopt_optional_resource"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "nlopt-resource-failures-injected", "evidence": "validation", "kind": "deep-equal", "actual": "/values/resource_failures", "expected": {"literal": ["missing", "corrupt"]}},
+        {"id": "nlopt-resource-auto-success", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/automatic_successes", "expected": {"literal": 2}},
+        {"id": "nlopt-resource-auto-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_methods", "expected": {"literal": ["nelder-mead", "nelder-mead"]}},
+        {"id": "nlopt-resource-auto-backend", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_backends", "expected": {"literal": ["ordinary-python", "ordinary-python"]}},
+        {"id": "nlopt-resource-auto-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_automatic_error", "expected": {"literal": 1e-6}},
+        {"id": "nlopt-resource-explicit-identities", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_methods", "expected": {"literal": ["nlopt-nelder-mead", "nlopt-cobyla", "nlopt-nelder-mead", "nlopt-cobyla"]}},
+        {"id": "nlopt-resource-explicit-failures", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_failures", "expected": {"literal": 4}},
+        {"id": "nlopt-resource-explicit-statuses", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_statuses", "expected": {"literal": ["backend_failure", "backend_failure", "backend_failure", "backend_failure"]}},
+        {"id": "nlopt-resource-explicit-reasons", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_reasons", "expected": {"literal": ["nlopt_backend_error", "nlopt_backend_error", "nlopt_backend_error", "nlopt_backend_error"]}},
+        {"id": "nlopt-resource-private-details-hidden", "evidence": "validation", "kind": "deep-equal", "actual": "/values/private_details_leaked", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
       "id": "p4-ode-exponential",
       "description": "Dormand-Prince solves y'=y and is compared with the exact exponential flow.",
       "program_phase": "P4",
@@ -378,6 +676,95 @@
       "measurement": {"warmup": 1, "samples": 2}
     },
     {
+      "id": "p5-general-eigen",
+      "description": "The general dense eigensolver recovers an independently known upper-triangular spectrum.",
+      "program_phase": "P5",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "general-eigen", "matrix": [[1, 2], [0, 3]], "expected_eigenvalues": [1, 3]},
+      "required_capabilities": ["numerics.spectral.dense"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "general-eigen-spectrum", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_eigenvalue_error", "expected": {"literal": 1e-10}},
+        {"id": "general-eigen-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "general-eigen-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-singular-value-decomposition",
+      "description": "Dense SVD recovers a diagonal matrix's singular values and satisfies the Frobenius norm identity.",
+      "program_phase": "P5",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "svd", "matrix": [[3, 0], [0, 4]], "expected_singular_values": [4, 3]},
+      "required_capabilities": ["numerics.spectral.dense"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "svd-singular-values", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_singular_value_error", "expected": {"literal": 1e-12}},
+        {"id": "svd-frobenius-identity", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/frobenius_identity_error", "expected": {"literal": 1e-11}},
+        {"id": "svd-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "svd-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-convolution-direct-oracle",
+      "description": "FFT convolution agrees with an independent definition-level direct convolution.",
+      "program_phase": "P5",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "convolution", "left": [1, -2, 3, 0.5], "right": [2, 1, -1]},
+      "required_capabilities": ["numerics.spectral.convolution"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "convolution-output-length", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/result_length", "expected": {"literal": 6}},
+        {"id": "convolution-direct-error", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_direct_error", "expected": {"literal": 1e-10}},
+        {"id": "convolution-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "convolution-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-sparse-linear-solve",
+      "description": "The sparse CG path solves an SPD system and is independently checked by a dense residual.",
+      "program_phase": "P5",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "sparse-solve", "matrix": [[4, 1], [1, 3]], "rhs": [6, 7], "expected": [1, 2]},
+      "required_capabilities": ["numerics.spectral.sparse"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "sparse-solve-result", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_solution_error", "expected": {"literal": 1e-9}},
+        {"id": "sparse-solve-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_independent_residual", "expected": {"literal": 1e-9}},
+        {"id": "sparse-solve-method", "evidence": "validation", "kind": "deep-equal", "actual": "/values/method", "expected": {"literal": "cg"}},
+        {"id": "sparse-solve-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-sparse-dominant-eigen",
+      "description": "The sparse power path returns the independently known dominant eigenpair of an SPD matrix.",
+      "program_phase": "P5",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "sparse-eigen", "matrix": [[6, 1], [1, 2]], "initial": [1, 2], "expected_eigenvalue": 6.23606797749979},
+      "required_capabilities": ["numerics.spectral.sparse"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "sparse-eigen-value", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/eigenvalue_error", "expected": {"literal": 1e-7}},
+        {"id": "sparse-eigen-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_eigen_residual", "expected": {"literal": 1e-7}},
+        {"id": "sparse-eigen-public-success", "evidence": "validation", "kind": "deep-equal", "actual": "/values/public_success", "expected": {"literal": true}},
+        {"id": "sparse-eigen-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
       "id": "p5-fft-direct-oracle",
       "description": "The FFT is compared with an independent O(n^2) host DFT.",
       "program_phase": "P5",
@@ -408,6 +795,59 @@
         {"id": "statistics-mean", "evidence": "correctness", "kind": "approximate", "actual": "/values/mean", "expected": {"literal": 2.5}, "absolute_tolerance": 0, "relative_tolerance": 0},
         {"id": "statistics-variance", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_variance_error", "expected": {"literal": 1e-15}},
         {"id": "statistics-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-statistics-inference",
+      "description": "A one-sample t test agrees with definition-level statistic arithmetic and a pinned mature-reference p-value.",
+      "program_phase": "P5",
+      "layer": "differential-oracle",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "one-sample-t-test", "samples": [1.2, 2.4, 3.1, 4.9, 5, 7.3], "null": 3, "expected_p_value": 0.3208546351075598},
+      "required_capabilities": ["numerics.statistics.inference"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "t-test-statistic", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/statistic_error", "expected": {"literal": 1e-12}},
+        {"id": "t-test-p-value", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/p_value_error", "expected": {"literal": 1e-12}},
+        {"id": "t-test-df", "evidence": "validation", "kind": "deep-equal", "actual": "/values/degrees_of_freedom", "expected": {"literal": 5}},
+        {"id": "t-test-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 1, "samples": 2}
+    },
+    {
+      "id": "p5-statistics-rng-replay",
+      "description": "The versioned PCG stream matches a pinned prefix and replays exactly from its JSON-safe state.",
+      "program_phase": "P5",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": "42", "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "rng-replay", "seed": 42, "prefix": 6, "continuation": 4, "expected_prefix": [2407118424, 709687639, 1786268354, 2856568764, 678584461, 1666930401]},
+      "required_capabilities": ["numerics.statistics.rng"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "rng-prefix", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/prefix_matches", "expected": {"literal": true}},
+        {"id": "rng-replay", "evidence": "validation", "kind": "deep-equal", "actual": "/values/continuation_replayed", "expected": {"literal": true}},
+        {"id": "rng-json-state", "evidence": "validation", "kind": "deep-equal", "actual": "/values/state_string_encoded", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p5-statistics-linear-regression",
+      "description": "Ordinary least squares agrees with independent centered-sum coefficients and retains bounded residual evidence.",
+      "program_phase": "P5",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": []},
+      "input": {"operation": "linear-regression", "x": [0, 1, 2, 3, 4, 5], "y": [1.1, 2.9, 5.2, 6.8, 9.1, 10.9]},
+      "required_capabilities": ["numerics.statistics.regression"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "regression-slope", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/slope_error", "expected": {"literal": 1e-14}},
+        {"id": "regression-intercept", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/intercept_error", "expected": {"literal": 1e-14}},
+        {"id": "regression-residual-finite", "evidence": "validation", "kind": "finite", "actual": "/values/maximum_data_residual"},
+        {"id": "regression-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_passed", "expected": {"literal": true}}
       ],
       "measurement": {"warmup": 1, "samples": 2}
     },
