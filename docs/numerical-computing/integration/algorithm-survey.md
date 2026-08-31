@@ -72,6 +72,9 @@ the Kronrod rule. Severe cancellation emits `loss_of_significance`; a small
 absolute residual is not silently described as high relative accuracy.
 Whole-line problems adapt and accumulate their negative and positive halves
 separately so opposite signs cannot erase this evidence before validation.
+Any whole-line or finite solver failure suppresses the primary result value.
+A scalar from a complete but nonconverged partition is retained only as an
+explicitly unvalidated solver estimate in the integration domain payload.
 
 ## Deferred methods
 

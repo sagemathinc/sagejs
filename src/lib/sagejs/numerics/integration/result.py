@@ -46,6 +46,9 @@ class IntegrationResult(NumericalResult):
         provenance: Mapping[str, Any] | None = None,
         domain_payload: Mapping[str, Any] | None = None,
     ) -> None:
+        integration_payload = materialize_object(
+            domain_payload, "$.integration_result.domain_payload"
+        )
         super().__init__(
             problem,
             plan,
@@ -60,7 +63,7 @@ class IntegrationResult(NumericalResult):
             trace=trace,
             measurements=measurements,
             provenance=provenance,
-            domain_payload=domain_payload,
+            domain_payload=integration_payload,
         )
         self._integration_stop_reason = str(stop_reason)
         self._integration_estimated_error = estimated_error
@@ -70,6 +73,7 @@ class IntegrationResult(NumericalResult):
             for value in final_intervals
         )
         self._integration_elapsed_ms = float(elapsed_ms)
+        self._integration_domain_payload = integration_payload
 
     @property
     def stop_reason(self) -> str:
@@ -78,7 +82,7 @@ class IntegrationResult(NumericalResult):
 
     @property
     def error_estimate(self) -> float | None:
-        """Return the reported non-rigorous absolute-error evidence."""
+        """Return error evidence for the value or retained solver estimate."""
         return self._integration_estimated_error
 
     @property
@@ -109,6 +113,20 @@ class IntegrationResult(NumericalResult):
             "method: " + self.method + "; " + transform,
             "estimate: " + ("unavailable" if self.value is None else str(self.value)),
         ]
+        solver_estimate = self._integration_domain_payload.get("solver_estimate")
+        solver_estimate_semantics = self._integration_domain_payload.get(
+            "solver_estimate_semantics"
+        )
+        if (
+            self.value is None
+            and solver_estimate is not None
+            and solver_estimate_semantics == "unvalidated_best_complete_partition"
+        ):
+            lines.append(
+                "unvalidated best-complete-partition estimate: "
+                + str(solver_estimate)
+                + "; suppressed as the result value"
+            )
         if self.error_estimate is not None:
             lines.append(
                 "reported absolute-error evidence: " + str(self.error_estimate)

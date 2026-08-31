@@ -79,10 +79,16 @@ domain state:
 - `roundoff_detected`, `cancelled`, `callback_error`;
 - `nonfinite_evaluation`, `validation_failed`, or `invalid_problem`.
 
-The best complete partition and estimate are retained on budget or stagnation
-failures. A partial quadrature-rule evaluation is never published as a complete
-interval, and an initial multi-component partition is published only after
-every component has a complete first rule.
+On a nonconverged solver stop, the primary `value` is `None`. If every active
+leaf has a complete quadrature rule, the best complete-partition scalar remains
+available only as `domain_payload.solver_estimate`, labeled
+`unvalidated_best_complete_partition`; it is evidence about solver progress,
+not a reported integral. A partial quadrature-rule evaluation is never
+published as a complete interval, and an initial multi-component partition is
+published only after every component has a complete first rule. If the solver
+converged but independent validation later fails or exhausts a resource budget,
+the value remains available and `solver_stop_reason`, `solver_converged`, and
+`public_value_semantics` preserve that distinction.
 
 ## Trace and explanation semantics
 
