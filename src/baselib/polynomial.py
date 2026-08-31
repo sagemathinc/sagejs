@@ -23,6 +23,7 @@ _generated_fmpq_polynomial_resources_available_cache = runtime.undefined
 _POLYNOMIAL_RESOURCE_CACHE_LIMIT = 64
 _polynomial_resource_cache = []
 _STANDARD_MONOMIAL_LIMIT = 1000000
+_FGLM_DIMENSION_LIMIT = 256
 
 
 def _monomial_precedes(
@@ -143,6 +144,128 @@ def _inverse_permutation(permutation: list[int]) -> list[int]:
     answer = [0] * len(permutation)
     for target_index, source_index in enumerate(permutation):
         answer[source_index] = target_index
+    return answer
+
+
+def _field_vector_dependence(
+    columns: list[Any],
+    target: list[Any],
+    field: Any,
+) -> Any:
+    """Express `target` in independent `columns`, or report independence."""
+    zero = field(0)
+    column_count = len(columns)
+    if column_count == 0:
+        return runtime.math_tuple(
+            [all(value == zero for value in target), runtime.math_tuple([])]
+        )
+    rows = []
+    for row_index in range(len(target)):
+        row = []
+        for column in columns:
+            row.append(field(column[row_index]))
+        row.append(field(target[row_index]))
+        rows.append(row)
+    pivot_row = 0
+    pivots = []
+    for column_index in range(column_count):
+        selected = -1
+        for row_index in range(pivot_row, len(rows)):
+            if rows[row_index][column_index] != zero:
+                selected = row_index
+                break
+        if selected == -1:
+            raise ArithmeticError("FGLM quotient vectors lost independence")
+        if selected != pivot_row:
+            rows[pivot_row], rows[selected] = rows[selected], rows[pivot_row]
+        scale = field(1) / rows[pivot_row][column_index]
+        for index in range(column_index, column_count + 1):
+            rows[pivot_row][index] *= scale
+        for row_index in range(len(rows)):
+            if row_index == pivot_row:
+                continue
+            scale = rows[row_index][column_index]
+            if scale == zero:
+                continue
+            for index in range(column_index, column_count + 1):
+                rows[row_index][index] -= scale * rows[pivot_row][index]
+        pivots.append(pivot_row)
+        pivot_row += 1
+    for row_index in range(len(rows)):
+        if all(rows[row_index][index] == zero for index in range(column_count)):
+            if rows[row_index][column_count] != zero:
+                return runtime.math_tuple([False, runtime.math_tuple([])])
+    coefficients = [zero] * column_count
+    for column_index, row_index in enumerate(pivots):
+        coefficients[column_index] = rows[row_index][column_count]
+    return runtime.math_tuple([True, runtime.math_tuple(coefficients)])
+
+
+def _evaluate_sparse_polynomial(polynomial: Any, values: list[Any]) -> Any:
+    base = polynomial.parent().base_ring()
+    result = base(0)
+    for coefficient, exponents in polynomial.terms():
+        term = coefficient
+        for index in range(len(exponents)):
+            if exponents[index]:
+                term *= values[index] ** exponents[index]
+        result += term
+    return result
+
+
+def _specialize_univariate(
+    polynomial: Any,
+    variable: int,
+    assignments: list[Any],
+) -> Any:
+    """Specialize later variables, or return `None` if earlier ones occur."""
+    base = polynomial.parent().base_ring()
+    degree = polynomial.degree(polynomial.parent().gen(variable))
+    if degree < 0:
+        return PolynomialRing(base, "_solve")(0)
+    coefficients = [base(0) for _index in range(degree + 1)]
+    for coefficient, exponents in polynomial.terms():
+        for index in range(variable):
+            if exponents[index]:
+                return None
+        scalar = coefficient
+        for index in range(variable + 1, len(exponents)):
+            if exponents[index]:
+                if assignments[index] is None:
+                    return None
+                scalar *= assignments[index] ** exponents[index]
+        coefficients[exponents[variable]] += scalar
+    return PolynomialRing(base, "_solve")(coefficients)
+
+
+def _base_field_roots(polynomial: Any, field: Any) -> list[Any]:
+    """Return roots in the prime field or rational base field."""
+    if polynomial.is_zero():
+        raise ArithmeticError("the zero polynomial does not constrain a variable")
+    if polynomial.degree() <= 0:
+        return []
+    if field._kind == "GF":
+        return polynomial.roots(False)
+    roots = []
+    for factor, _multiplicity in polynomial.factor():
+        if factor.degree() == 1:
+            coefficients = factor.coefficients()
+            root = -coefficients[0] / coefficients[1]
+            if root not in roots:
+                roots.append(root)
+    return roots
+
+
+def _descending_polynomials(polynomials: list[Any], order: str) -> list[Any]:
+    answer = []
+    for polynomial in polynomials:
+        leading = polynomial.terms()[0][1]
+        position = 0
+        while position < len(answer) and _monomial_precedes(
+            leading, answer[position].terms()[0][1], order
+        ):
+            position += 1
+        answer.insert(position, polynomial)
     return answer
 
 
@@ -5488,6 +5611,218 @@ class PolynomialIdeal:
             ],
             self._ring,
         )
+
+    quotient_basis = normal_basis
+
+    def quotient_coordinates(
+        self,
+        value: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return coordinates in the finite standard-monomial basis."""
+        exponents = self._standard_monomial_exponents(algorithm, proof)
+        base = self._ring.base_ring()
+        coordinates = [base(0) for _index in exponents]
+        remainder = self.normal_form(value, algorithm=algorithm, proof=proof)
+        for coefficient, monomial in remainder.terms():
+            if monomial not in exponents:
+                raise ArithmeticError("normal form contains a nonstandard monomial")
+            index = exponents.index(monomial)
+            coordinates[index] = coefficient
+        return runtime.math_tuple(coordinates)
+
+    def multiplication_matrix(
+        self,
+        variable: Any,
+        algorithm: str = "auto",
+        proof: Any = None,
+    ) -> Any:
+        """Return multiplication by `variable` on the finite quotient."""
+        variable = self._ring(variable)
+        basis = self.normal_basis(algorithm=algorithm, proof=proof)
+        columns = []
+        for monomial in basis:
+            columns.append(
+                self.quotient_coordinates(
+                    variable * monomial, algorithm=algorithm, proof=proof
+                )
+            )
+        rows = []
+        for row_index in range(len(basis)):
+            rows.append([column[row_index] for column in columns])
+        matrix_module = __import__("sagejs._baselib.matrix", fromlist=["matrix"])
+        return matrix_module.matrix(self._ring.base_ring(), rows)
+
+    def fglm(
+        self,
+        order: str = "lex",
+        algorithm: str = "auto",
+        proof: Any = None,
+        other_ring: Any = None,
+    ) -> PolynomialSequence:
+        """Convert a zero-dimensional ideal to another monomial order.
+
+        This exact FGLM implementation works over `QQ` and prime fields. It
+        derives target relations from linear dependence among quotient normal
+        forms and has an explicit quotient-dimension limit of 256.
+        """
+        if other_ring is None:
+            target = PolynomialRing(
+                self._ring.base_ring(),
+                names=self._ring.variable_names(),
+                order=order,
+            )
+        else:
+            target = other_ring
+            if not isinstance(target, MultivariatePolynomialRingParent):
+                raise TypeError("FGLM target must be a multivariate polynomial ring")
+            if target._order != order:
+                raise ValueError("FGLM target ring has a different monomial order")
+            if (
+                target.base_ring() is not self._ring.base_ring()
+                or target.variable_names() != self._ring.variable_names()
+            ):
+                raise TypeError("FGLM target must have the same field and variables")
+        if self.is_one(algorithm=algorithm, proof=proof):
+            return PolynomialSequence([target(1)], target)
+        if not self.is_zero_dimensional(algorithm=algorithm, proof=proof):
+            raise ValueError("FGLM requires a zero-dimensional ideal")
+        dimension = self.vector_space_dimension(algorithm=algorithm, proof=proof)
+        if dimension > _FGLM_DIMENSION_LIMIT:
+            raise OverflowError("FGLM quotient dimension exceeds the 256 limit")
+        field = self._ring.base_ring()
+        zero_exponents = tuple(0 for _index in range(self._ring.ngens()))
+        candidates = [zero_exponents]
+        processed = []
+        standard = []
+        vectors = []
+        leading = []
+        relations = []
+        while candidates:
+            monomial = candidates.pop(0)
+            if monomial in processed or any(
+                _monomial_divides(divisor, monomial) for divisor in leading
+            ):
+                continue
+            processed.append(monomial)
+            vector = list(
+                self.quotient_coordinates(
+                    self._monomial(monomial), algorithm=algorithm, proof=proof
+                )
+            )
+            dependent, coefficients = _field_vector_dependence(vectors, vector, field)
+            if dependent:
+                relation = target._from_sparse_terms([(field(1), monomial)])
+                for index in range(len(coefficients)):
+                    if coefficients[index] != field(0):
+                        relation -= coefficients[index] * target._from_sparse_terms(
+                            [(field(1), standard[index])]
+                        )
+                relations.append(relation)
+                leading.append(monomial)
+                continue
+            standard.append(monomial)
+            vectors.append(vector)
+            if len(standard) > dimension:
+                raise ArithmeticError("FGLM exceeded the quotient dimension")
+            for variable in range(self._ring.ngens()):
+                successor = list(monomial)
+                successor[variable] += 1
+                successor_tuple = tuple(successor)
+                if (
+                    successor_tuple not in processed
+                    and successor_tuple not in candidates
+                ):
+                    candidates.append(successor_tuple)
+            candidates = _sort_monomial_exponents(candidates, target._order)
+        if len(standard) != dimension:
+            raise ArithmeticError("FGLM did not recover the quotient basis")
+        ordered = _descending_polynomials(relations, target._order)
+        contract = _groebner_contract()
+        contract_ring = _groebner_contract_ring(target)
+        packed = tuple(_pack_groebner_polynomial(value) for value in ordered)
+        for right in range(len(packed)):
+            for left in range(right):
+                pair = contract.s_polynomial(packed[left], packed[right], contract_ring)
+                if contract.normal_form(pair, packed, contract_ring):
+                    raise ArithmeticError("FGLM result failed Buchberger's criterion")
+        return PolynomialSequence(ordered, target)
+
+    def transformed_basis(
+        self,
+        other_ring: Any = None,
+        algorithm: str = "fglm",
+        proof: Any = None,
+    ) -> PolynomialSequence:
+        """Return the zero-dimensional basis transformed by exact FGLM."""
+        if algorithm != "fglm":
+            raise ValueError("only algorithm='fglm' is currently supported")
+        order = "lex" if other_ring is None else other_ring._order
+        return self.fglm(order=order, proof=proof, other_ring=other_ring)
+
+    def variety(
+        self,
+        ring: Any = None,
+        algorithm: str = "fglm",
+        proof: Any = None,
+    ) -> list[Any]:
+        """Return base-field solutions of a zero-dimensional ideal.
+
+        Prime-field ideals return every point over their base field. Rational
+        ideals return all rational solutions; algebraic-closure solving is a
+        distinct future capability rather than an implicit approximation.
+        """
+        field = self._ring.base_ring()
+        if ring is not None and ring is not field:
+            raise NotImplementedError(
+                "variety currently solves only over the ideal's base field"
+            )
+        if algorithm != "fglm":
+            raise ValueError("only algorithm='fglm' is currently supported")
+        basis = self.fglm(order="lex", proof=proof)
+        target = basis.universe()
+        assignments = [None] * target.ngens()
+        solutions = []
+
+        def descend(variable: int) -> None:
+            if variable < 0:
+                values = list(assignments)
+                if all(
+                    _evaluate_sparse_polynomial(generator, values) == field(0)
+                    for generator in self._generators
+                ):
+                    solution = {}
+                    for index in range(self._ring.ngens()):
+                        solution[self._ring.gen(index)] = values[index]
+                    solutions.append(solution)
+                return
+            equations = []
+            for polynomial in basis:
+                specialized = _specialize_univariate(polynomial, variable, assignments)
+                if specialized is None or specialized.is_zero():
+                    continue
+                if specialized.degree() == 0:
+                    return
+                equations.append(specialized)
+            if len(equations) == 0:
+                raise ArithmeticError(
+                    "lexicographic basis did not constrain every variable"
+                )
+            selected = equations[0]
+            for equation in equations[1:]:
+                if equation.degree() < selected.degree():
+                    selected = equation
+            for root in _base_field_roots(selected, field):
+                if all(equation(root) == field(0) for equation in equations):
+                    assignments[variable] = root
+                    descend(variable - 1)
+            assignments[variable] = None
+
+        descend(target.ngens() - 1)
+        return solutions
+
+    rational_points = variety
 
     def vector_space_dimension(
         self,
