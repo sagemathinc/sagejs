@@ -9,8 +9,14 @@ import numpy as np
 import sagejs.runtime as runtime
 from sagejs.numerics.frontends import (
     create_frontend_registry as _create_numerical_registry,
+)
+from sagejs.numerics.frontends import (
     emit_code as _emit_numerical_code,
+)
+from sagejs.numerics.frontends import (
     execute_scalar_root_intent as _execute_numerical_intent,
+)
+from sagejs.numerics.frontends import (
     matlab_fzero_intent,
 )
 

@@ -7,8 +7,14 @@ import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.numerics.frontends import (
     create_frontend_registry as _create_numerical_registry,
+)
+from sagejs.numerics.frontends import (
     emit_code as _emit_numerical_code,
+)
+from sagejs.numerics.frontends import (
     execute_scalar_root_intent as _execute_numerical_intent,
+)
+from sagejs.numerics.frontends import (
     wolfram_find_root_intent,
 )
 
@@ -575,7 +581,9 @@ def _translate_options(
                 "severity": "warning",
                 "phase": "options",
                 "layer_ids": [],
-                "message": "A frontend option could not be represented and was ignored.",
+                "message": (
+                    "A frontend option could not be represented and was ignored."
+                ),
                 "suggested_repairs": [
                     "Use the suggested Plotly-native alternative when available."
                 ],
