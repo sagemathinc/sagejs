@@ -1154,8 +1154,9 @@ EXPORT uint32_t sagejs_numeric_matrix_eigensystem(
 {
     uint32_t *input = (uint32_t *) numeric_input;
     uint32_t *output = (uint32_t *) numeric_output;
-    size_t matrix_count = (size_t) size * (size_t) size;
-    size_t output_count = (size_t) size + 2 * matrix_count;
+    const size_t capacity_count = NUMERIC_CAPACITY / sizeof(uint32_t);
+    size_t matrix_count;
+    size_t output_count;
     size_t written = 0;
     acb_mat_t source;
     acb_mat_t left;
@@ -1169,9 +1170,14 @@ EXPORT uint32_t sagejs_numeric_matrix_eigensystem(
     int initialized = 0;
 
     numeric_status = NUMERIC_INVALID_INPUT;
+    if ((size_t) size > capacity_count ||
+        (size != 0 && (size_t) size > capacity_count / (size_t) size))
+        return 0;
+    matrix_count = (size_t) size * (size_t) size;
+    if (matrix_count > (capacity_count - (size_t) size) / 2)
+        return 0;
+    output_count = (size_t) size + 2 * matrix_count;
     if (!valid_precision(precision) ||
-        matrix_count > NUMERIC_CAPACITY / sizeof(uint32_t) ||
-        output_count > NUMERIC_CAPACITY / sizeof(uint32_t) ||
         output_count > NUMERIC_MAX_LIVE_RESOURCES - numeric_live_count)
         return 0;
     memset(output, 0, output_count * sizeof(uint32_t));

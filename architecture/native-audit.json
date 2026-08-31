@@ -413,8 +413,8 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1702,
-      "bytes": 53575,
+      "lines": 1708,
+      "bytes": 53768,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [

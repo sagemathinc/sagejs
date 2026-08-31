@@ -9352,11 +9352,12 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
 
 def matrix(*args: Any, **options: Any) -> Matrix:
     r"""
-    Construct a dense matrix, optionally over an explicit base ring.
+    Construct a matrix, optionally over an explicit base ring.
 
     Sage's common row-list, flat-list, dimension, and entry-function forms are
-    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
-    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
+    supported. Pass `sparse=True` to construct a sparse matrix parent. Exact
+    matrices use FLINT on native hosts; `RDF`/`CDF` and arbitrary-precision
+    real/complex matrices use FLINT, Arb, and ACB.
 
     ### Examples
 
