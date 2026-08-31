@@ -137,6 +137,85 @@ delattr(DynamicNamespace, "answer")
 assert "answer" not in dynamic_namespace
 
 
+class AttributeFactoryProduct:
+    def __init__(self, value=0):
+        self.value = value
+
+
+class AttributeFactoryOwner:
+    def __init__(self):
+        self.factory = AttributeFactoryProduct
+
+    def construct(self):
+        return self.factory(*(), **{"value": 17})
+
+
+# A class stored on an instance is a callable value, not a descriptor which
+# binds the owning instance. This must agree for simple and expanded calls.
+assert AttributeFactoryOwner().construct().value == 17
+
+
+class CallableDescriptorBase:
+    inherited = property(lambda self: self._value)
+
+
+class CallableDescriptorInstance(CallableDescriptorBase):
+    def __init__(self):
+        self._value = 23
+
+    def __call__(self):
+        return self._value
+
+
+callable_descriptor_instance = CallableDescriptorInstance()
+assert callable_descriptor_instance.inherited == 23
+assert callable_descriptor_instance() == 23
+assert callable_descriptor_instance.__dict__["_value"] == 23
+
+
+class CallableCustomAllocator:
+    def __new__(cls, *args, **kwargs):
+        instance = object.__new__(cls)
+        instance.allocated_with = (args, kwargs)
+        return instance
+
+    def __init__(self, value=0, **kwargs):
+        self.value = value
+
+    def __call__(self):
+        return self.value
+
+
+callable_custom_allocator = CallableCustomAllocator(29, label=31)
+assert callable_custom_allocator.allocated_with == ((29,), {"label": 31})
+assert callable_custom_allocator() == 29
+assert type(callable_custom_allocator) is CallableCustomAllocator
+
+
+class ExplicitBaseInitializer:
+    def __init__(self, **kwargs):
+        self.explicit_value = kwargs["value"]
+
+
+class ExplicitChildInitializer(ExplicitBaseInitializer):
+    def __init__(self, **kwargs):
+        ExplicitBaseInitializer.__init__(self, **kwargs)
+
+
+assert ExplicitChildInitializer(value=37).explicit_value == 37
+
+
+class KeywordClassMethod:
+    @classmethod
+    def create(cls, **kwargs):
+        instance = cls()
+        instance.class_value = kwargs["value"]
+        return instance
+
+
+assert KeywordClassMethod.create(value=41).class_value == 41
+
+
 class DecoratedProperty:
     def __init__(self):
         self.entered = False

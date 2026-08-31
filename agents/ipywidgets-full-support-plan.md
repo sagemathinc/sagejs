@@ -2,7 +2,24 @@
 
 ## Status and outcome
 
-Planning document, 2026-08-30. No implementation in this document.
+Implementation is active. As of 2026-08-31:
+
+- P0 is complete: upstream versions, licenses, protocol fixtures, test
+  inventory, and the normalized CPython corpus are pinned.
+- P1–P5 are complete for the primary path: upstream traitlets, comm, and
+  ipywidgets run as compiled Python; rich display and binary comm transport
+  work in the evaluator and standard Jupyter kernel.
+- The app portion of P6B is complete for core widgets and `Output`, including
+  offline assets, bidirectional state updates, reset behavior, and browser
+  acceptance coverage. Extracting the reusable P6A Cell remains open.
+- P7's core product is implemented: Sage-global `@interact`, `input_box`,
+  `slider`, `range_slider`, `checkbox`, `selector`, `color_selector`,
+  `input_grid`, and `text_control` use standard ipywidgets models. The app's
+  primary interactive symbolic-plot preset now exercises Sage `@interact`
+  offline and verifies a live frontend update. Broader PREP and
+  `sage.interacts.library` qualification remains open.
+- P8–P10 and the remaining lifecycle, embedding, documentation, budget, and
+  four-platform gates remain open. Custom widgets remain deliberately last.
 
 The outcome is first-class support for the standard ipywidgets protocol and
 core widget API in Sage.js, followed by Sage-compatible `@interact` and the

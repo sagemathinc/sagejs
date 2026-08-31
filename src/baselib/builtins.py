@@ -19,6 +19,13 @@ _Float = float
 _Int = int
 _Str = str
 
+_builtins_symbol_class = runtime.reflect.get(runtime.global_object, "Symbol")
+_BUILTINS_CALLABLE_ALLOCATION_KEY = runtime.reflect.apply(
+    runtime.reflect.get(_builtins_symbol_class, "for"),
+    runtime.undefined,
+    ["sagejs.python.callable-instance-allocation"],
+)
+
 
 def _sagejs_version(json: _Bool = False) -> Any:
     """Return the Sage.js release string or its machine-readable record.
@@ -3237,7 +3244,10 @@ def _builtins_namespace_dict(value: Any) -> Any:
         )
         return runtime.reflect.apply(live_scope_dict, runtime.undefined, [value])
 
-    if runtime.strict_equal(runtime.jstype(value), "object"):
+    if runtime.strict_equal(runtime.jstype(value), "object") or (
+        runtime.strict_equal(runtime.jstype(value), "function")
+        and runtime.native_get(value, "__sagejs_callable_instance__") is True
+    ):
         # Instance ``__dict__`` is a writable live namespace.  A detached
         # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
         # Python object-model operations.
@@ -4836,6 +4846,11 @@ def ρσ_getattr_internal(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), "string"):
         raise TypeError("attribute name must be string")
+    value_type = runtime.jstype(value)
+    value_is_callable_instance = (
+        runtime.strict_equal(value_type, "function")
+        and runtime.native_get(value, "__sagejs_callable_instance__") is True
+    )
     if runtime.instance_of(value, runtime.error):
         # Native TypeError/ReferenceError/SyntaxError objects are part of the
         # Python exception hierarchy but do not pass through BaseException's
@@ -4909,8 +4924,10 @@ def ρσ_getattr_internal(
         # operation.  In particular, JavaScript primitives and our native
         # list/tuple representations must not leak their host constructors.
         return ρσ_type(value)
-    if runtime.strict_equal(name, "__get__") and runtime.strict_equal(
-        runtime.jstype(value), "function"
+    if (
+        runtime.strict_equal(name, "__get__")
+        and runtime.strict_equal(value_type, "function")
+        and not value_is_callable_instance
     ):
         # Python function objects implement the descriptor protocol.  This is
         # observable when libraries retain an unbound method such as
@@ -4931,7 +4948,7 @@ def ρσ_getattr_internal(
     descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
     owner = runtime.undefined
     if (
-        not runtime.strict_equal(runtime.jstype(value), "function")
+        (not runtime.strict_equal(value_type, "function") or value_is_callable_instance)
         and value is not None
         and value is not runtime.undefined
     ):
@@ -5012,7 +5029,7 @@ def ρσ_getattr_internal(
             _BUILTINS_DESCRIPTOR_DIRECT,
         ):
             return descriptor
-    if runtime.strict_equal(runtime.jstype(value), "function"):
+    if runtime.strict_equal(value_type, "function") and not value_is_callable_instance:
         if _builtins_is_baselib_function(value) and (
             runtime.strict_equal(name, "__globals__")
             or runtime.strict_equal(name, "__code__")
@@ -5089,9 +5106,11 @@ def ρσ_getattr_internal(
             value,
             [name],
         )
-        if runtime.strict_equal(
-            runtime.jstype(value), "function"
-        ) and _builtins_has_member(member, "__classmethod__"):
+        if (
+            runtime.strict_equal(value_type, "function")
+            and not value_is_callable_instance
+            and _builtins_has_member(member, "__classmethod__")
+        ):
             class_target = _builtins_get_member(member, "__func__")
             if runtime.strict_equal(runtime.jstype(class_target), "function"):
                 member = class_target
@@ -8874,6 +8893,20 @@ class SageObject:
 def _builtins_object_new(cls: Any) -> Any:
     if not _builtins_is_python_class(cls):
         raise TypeError("object.__new__() argument 1 must be a type")
+    callable_allocation = runtime.reflect.get(
+        cls,
+        _BUILTINS_CALLABLE_ALLOCATION_KEY,
+    )
+    if callable_allocation is not runtime.undefined:
+        # Consume the prepared host function.  A custom ``__new__`` can call
+        # object.__new__ at most once for the allocation it returns; deleting
+        # here also makes a second explicit call allocate a distinct object,
+        # as it does in CPython.
+        runtime.reflect.deleteProperty(
+            cls,
+            _BUILTINS_CALLABLE_ALLOCATION_KEY,
+        )
+        return callable_allocation
     return runtime.object.create(runtime.reflect.get(cls, "prototype"))
 
 

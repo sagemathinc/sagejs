@@ -9,6 +9,7 @@
     "sagejs_elliptic_advanced",
     "sagejs_elliptic_descent",
     "sagejs.compiler",
+    "sagejs.interacts",
     "sagejs.widgets.comm_backend",
     "sagejs.elliptic_curves.analytic_rank",
     "sagejs.elliptic_curves.lseries",

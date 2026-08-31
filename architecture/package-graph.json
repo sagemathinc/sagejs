@@ -43,7 +43,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 815000,
+      "max_source_bytes": 825000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -54,6 +54,7 @@
         "src/baselib/containers.py",
         "src/baselib/errors.py",
         "src/baselib/internal.py",
+        "src/baselib/interacts.py",
         "src/baselib/itertools.py",
         "src/baselib/runtime_primitives.py",
         "src/baselib/sagejs_bootstrap.py",
@@ -673,7 +674,7 @@
       "depends_on": ["core-runtime", "python-stdlib", "numeric-compat"],
       "modules": ["IPython", "comm", "ipywidgets", "traitlets"],
       "files": [],
-      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
+      "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/ipywidgets/", "src/lib/sagejs/interacts/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
       "id": "numeric-compat",

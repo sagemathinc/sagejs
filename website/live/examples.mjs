@@ -3,22 +3,14 @@ export const EXAMPLES = Object.freeze([
     id: "interactive-symbolic-plot",
     title: "Interactive symbolic plot",
     description: "Move a standard ipywidgets slider to update symbolic mathematics and a plot, entirely in your browser.",
-    source: `import ipywidgets as widgets
-from IPython.display import display, clear_output
+    source: `from IPython.display import display
 
-power = widgets.IntSlider(value=2, min=1, max=8, description='power')
-output = widgets.Output()
-
-def update(change=None):
-    with output:
-        clear_output(wait=True)
-        f = x^power.value
-        display(f.derivative(x))
-        display(plot(f, (x, -2, 2), ymin=-4, ymax=4))
-
-power.observe(update, names='value')
-display(widgets.VBox([power, output]))
-update()`,
+@interact
+def symbolic_plot(power=slider(1, 8, 1, 2, label='power')):
+    f = x^power
+    display(f.derivative(x))
+    display(plot(f, (x, -2, 2), ymin=-4, ymax=4))
+`,
   },
   {
     id: "number-field",
