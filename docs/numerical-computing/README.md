@@ -17,4 +17,5 @@ Current production vertical slice:
 - Sage/Python, MATLAB `fzero`, and Wolfram `FindRoot` frontends.
 
 See `surface.json` for the exhaustive classification ledger and
-`evidence-policy.json` for routine and release claims.
+`evidence-policy.json` for routine and release claims. The source and oracle
+baseline is recorded in `inventory.md`.

@@ -11,6 +11,10 @@ const surface = JSON.parse(
 const diagnostics = JSON.parse(
   readFileSync(join(root, "docs/numerical-computing/diagnostics.json"), "utf8"),
 );
+const inventory = readFileSync(
+  join(root, "docs/numerical-computing/inventory.md"),
+  "utf8",
+);
 
 if (surface.schema_version !== 1) throw new Error("unsupported numerical surface schema");
 const classifications = new Set(surface.classifications);
@@ -30,5 +34,15 @@ for (const operation of surface.operations) {
 if (!ids.has("scalar_root")) throw new Error("scalar_root is missing from the surface");
 if (new Set(diagnostics.codes).size !== diagnostics.codes.length) {
   throw new Error("duplicate numerical diagnostic code");
+}
+for (const required of [
+  "Existing Sage.js runtime",
+  "Language frontends",
+  "External reference systems",
+  "Compatibility meaning",
+]) {
+  if (!inventory.includes(`## ${required}`)) {
+    throw new Error(`numerical inventory is missing ${required}`);
+  }
 }
 console.log(`Numerical surface is exhaustive (${ids.size} operations, ${diagnostics.codes.length} diagnostics).`);

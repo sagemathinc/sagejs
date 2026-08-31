@@ -330,6 +330,12 @@ print(
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1.0");
     await runSource(
+      "r = numerical_root(cos(x) - x, 0, 1)\n" +
+        "(r.success, r.status, r.method, r.validation.truth_level, " +
+        "abs(r.value - 0.7390851332151607) < 1e-14)",
+      "(True, 'converged', 'brent', 'validated_approximate', True)",
+    );
+    await runSource(
       "%%magma\nn := 2026;\nFactorization(n);\nIsPrime(101);",
       "2 * 1013\nTrue",
     );

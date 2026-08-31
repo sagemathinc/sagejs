@@ -71,6 +71,7 @@
     "dist/tree-sitter-matlab.wasm",
     "dist/tree-sitter-wolfram.wasm",
     "dist/baselib.js",
+    "dist/katex/",
     "dist/plotly.min.js",
     "dist/stdlib.json",
     "dist/symbolic-backend.mjs",
