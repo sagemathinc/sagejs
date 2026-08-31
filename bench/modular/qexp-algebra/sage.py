@@ -4,6 +4,12 @@ import json
 import sys
 import time
 
+# This benchmark file is named ``sage.py`` for historical reasons.  Remove its
+# directory before importing Sage's package so it cannot shadow top-level
+# ``sage`` during an ordinary ``sage path/to/sage.py`` invocation.
+sys.path.pop(0)
+from sage.modular.etaproducts import qexp_eta
+
 
 PRECISION = int(sys.argv[1])
 REPEATS = int(sys.argv[2])
@@ -32,6 +38,12 @@ def timed(operation):
             elif operation == "twist":
                 result = D.twist(PSI).q_expansion(PRECISION)
                 factor = 1
+            elif operation == "eta":
+                ring = PowerSeriesRing(ZZ, "q", default_prec=PRECISION)
+                q = ring.gen()
+                euler = qexp_eta(ring, PRECISION)
+                result = (q * euler(q) ** 2 * euler(q**11) ** 2).add_bigoh(PRECISION)
+                factor = 1
             else:
                 raise ValueError(operation)
             for offset in range(1, 9):
@@ -46,6 +58,10 @@ def timed(operation):
 (D * E4).q_expansion(16)
 V2(D).q_expansion(16)
 D.twist(PSI).q_expansion(16)
+warm_ring = PowerSeriesRing(ZZ, "q", default_prec=16)
+warm_q = warm_ring.gen()
+warm_euler = qexp_eta(warm_ring, 16)
+(warm_q * warm_euler(warm_q) ** 2 * warm_euler(warm_q**11) ** 2).add_bigoh(16)
 
 print(
     json.dumps(
@@ -55,7 +71,8 @@ print(
             "repeats": REPEATS,
             "samples": SAMPLES,
             "operations": {
-                operation: timed(operation) for operation in ["product", "V2", "twist"]
+                operation: timed(operation)
+                for operation in ["product", "V2", "twist", "eta"]
             },
         },
         sort_keys=True,

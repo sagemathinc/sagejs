@@ -117,33 +117,30 @@ def _integral_rational(value: Any, label: str) -> int:
     return _integer(value.numerator(), label)
 
 
-def _multiply_euler_factor(
-    coefficients: list[Any],
-    step: int,
-    exponent: int,
-) -> list[Any]:
-    length = len(coefficients)
-    max_power = (length - 1) // step
-    binomial = _global("binomial")
-    factor = []
-    if exponent >= 0:
-        for index in range(min(exponent, max_power) + 1):
-            value = sage.QQ(binomial(exponent, index))
-            factor.append(-value if index % 2 else value)
-    else:
-        positive = -exponent
-        for index in range(max_power + 1):
-            factor.append(sage.QQ(binomial(positive + index - 1, index)))
-    answer = [sage.QQ(0) for _ in range(length)]
-    for left_index, left in enumerate(coefficients):
-        if left == 0:
-            continue
-        for right_index, right in enumerate(factor):
-            target = left_index + right_index * step
-            if target >= length:
-                break
-            answer[target] += left * right
-    return answer
+def _euler_product_series(ring: Any, precision: int) -> Any:
+    r"""Return $\prod_{n\geq 1}(1-q^n)$ through $O(q^{\rm precision})$.
+
+    Euler's pentagonal identity makes the input polynomial sparse: only
+    $O(\sqrt{\rm precision})$ coefficients are nonzero.  Subsequent powering,
+    inflation, inversion, and multiplication stay in the FLINT-backed exact
+    power-series representation.
+    """
+    coefficients = [0 for _index in range(precision)]
+    if precision:
+        coefficients[0] = 1
+    index = 1
+    sign = -1
+    while True:
+        lower = index * (3 * index - 1) // 2
+        if lower >= precision:
+            break
+        coefficients[lower] = sign
+        upper = index * (3 * index + 1) // 2
+        if upper < precision:
+            coefficients[upper] = sign
+        sign = -sign
+        index += 1
+    return ring(coefficients).add_bigoh(precision)
 
 
 def _eta_product_series(
@@ -152,27 +149,30 @@ def _eta_product_series(
     precision: int,
     variable: str = "q",
 ) -> Any:
-    ring = _global("PowerSeriesRing")(
+    power_series_ring = _global("PowerSeriesRing")
+    ring = power_series_ring(
+        sage.ZZ,
+        variable,
+        default_prec=max(1, precision),
+    )
+    rational_ring = power_series_ring(
         sage.QQ,
         variable,
         default_prec=max(1, precision),
     )
     if shift >= precision:
-        return ring([sage.QQ(0) for _ in range(precision)]).add_bigoh(precision)
+        return rational_ring(0).add_bigoh(precision)
     unit_precision = precision - shift
-    coefficients = [sage.QQ(1)] + [
-        sage.QQ(0) for _ in range(max(0, unit_precision - 1))
-    ]
+    unit = ring(1).add_bigoh(unit_precision)
     for divisor, exponent in exponents:
-        last_index = (unit_precision - 1) // divisor
-        for index in range(1, last_index + 1):
-            coefficients = _multiply_euler_factor(
-                coefficients,
-                divisor * index,
-                exponent,
-            )
-    padded = [sage.QQ(0) for _ in range(shift)] + coefficients
-    return ring(padded[:precision]).add_bigoh(precision)
+        source_precision = (unit_precision + divisor - 1) // divisor
+        euler = _euler_product_series(ring, source_precision)._inflate(
+            divisor,
+            unit_precision,
+        )
+        unit = (unit * (euler**exponent)).add_bigoh(unit_precision)
+    shifted = ((ring.gen() ** shift) * unit).add_bigoh(precision)
+    return rational_ring(shifted.padded_list(precision)).add_bigoh(precision)
 
 
 @runtime.lightweight_math_class
