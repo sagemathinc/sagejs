@@ -1,0 +1,163 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerical-p3-backends",
+  "title": "Qualify callback-capable P3 optimization backends",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Determine and evidence the smallest defensible production backend path for callback-capable P3 optimization, nonlinear systems, and fitting across browser, Node, SEA, and four supported platforms; implement an isolated validated adapter prototype if feasible",
+  "base_commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+  "claims": [
+    "bench/numerical-p3-backends/",
+    "packages/flint-wasm/experimental/numerical-p3-backends/",
+    "test/numerical-p3-backends/"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://github.com/devernay/cminpack",
+    "https://github.com/stevengj/nlopt",
+    "https://www.libprima.net/"
+  ],
+  "architecture": {
+    "strategy": "external-library",
+    "fallback": "tested-capability",
+    "oracles": [
+      "scipy.optimize",
+      "native-upstream"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict",
+    "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
+    "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+    "node test/numerical-p3-backends/browser-lm.mjs"
+  ],
+  "runs": [
+    {
+      "command": "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.253,
+      "started_at": "2026-08-31T15:42:13.977Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.133,
+      "started_at": "2026-08-31T15:42:15.938Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.877,
+      "started_at": "2026-08-31T15:42:16.764Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm parallel:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 0.788,
+      "started_at": "2026-08-31T15:42:18.389Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 48.974,
+      "started_at": "2026-08-31T15:42:43.170Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.821,
+      "started_at": "2026-08-31T15:43:38.091Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:portable",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 29.915,
+      "started_at": "2026-08-31T15:43:47.144Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "c17abbfa0c61fc9ea6a40c2d07bb0f2e8d20e7b70f4d26ef8c405cf254c0d49e",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.286,
+      "started_at": "2026-08-31T15:45:54.744Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.15,
+      "started_at": "2026-08-31T15:45:56.763Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.905,
+      "started_at": "2026-08-31T15:45:57.662Z",
+      "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
+      "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Produced a decision-ready P3 backend survey and an isolated, content-locked cminpack lmdif/lmder Wasm feasibility prototype. The one-import packed callback ABI preserves method identity, callback exception identity, deterministic cleanup, non-reentrancy, cooperative/Atomics/evaluation/elapsed cancellation, finite-output checks, and explicit memory/dimension envelopes. Seven focused Node tests and a real Chromium smoke pass. The identical 69,419-byte artifact solved the analytic Rosenbrock residual on local Linux x64 plus persistent Linux arm64, macOS arm64, and Windows x64 hosts with zero live allocations. No automatic or public production capability is enabled.",
+    "risks": [
+      "The persistent Linux x64 host bench-1 rejected the available SSH identity, so local Linux x64 is only a substitute smoke and no four-persistent-host receipt is claimed.",
+      "Production promotion still requires the full cminpack intensive/reference cross-check, an expanded More-Garbow-Hillstrom corpus, ABI fuzzing and allocation-failure/sanitizer evidence, authenticated receipts, npm/SEA relocation tests, and worker-owned browser cancellation/recovery.",
+      "The branch base contains numerical-computing integration work not yet present on origin/main. Repository-wide architecture and portable gates currently stop on base-owned package-graph and lane-policy mismatches before reaching this prototype; this lane does not edit those shared manifests.",
+      "The experimental adapter exports raw allocation functions for feasibility. Production must expose an allowlisted worker/package boundary, prevent direct arbitrary frees, and retain the 128 MiB memory ceiling.",
+      "An explicit cminpack method request cannot silently fall back to the existing damped-gauss-newton method; automatic fallback must create a new plan and diagnostic recording the method change. The same method-identity rule applies to NLopt variants."
+    ],
+    "next_steps": [
+      "Create a dedicated packages/numerical-wasm package with the pinned cminpack core, verbatim license, hardened adapter, worker host, ABI allowlist, and artifact/source receipts; do not publish this experiment from flint-wasm.",
+      "Add the lazy numerical_backend runtime/compiler/evaluator boundary in an integration-owned change, then route exact cminpack-lmdif and cminpack-lmder identities below the ordinary-Python optimization API.",
+      "Run the complete upstream MINPACK/cminpack cross-check and expanded nonlinear least-squares corpus from the exact production Wasm digest on Chromium, persistent four-platform Node, relocated npm, and SEA before enabling capability selection.",
+      "Add the MIT-only NLopt core with NLOPT_LUKSAN=OFF only after source/object/symbol allowlists prove Luksan absent; qualify NLOPT_LN_NELDERMEAD and NLOPT_LN_COBYLA independently, retaining PRIMA/SciPy as oracles."
+    ]
+  }
+}
