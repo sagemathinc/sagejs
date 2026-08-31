@@ -464,11 +464,12 @@
       "id": "class-group-resident-hnf-production",
       "source": "src/lib/sagejs/kernels/matrix/class_group_hnf.py",
       "functions": [
+        "cubic_reduced_shell_relation_hnf_v1",
         "resident_exact_relation_hnf_select",
         "resident_exact_relation_hnf_select_v2",
         "stable_exact_relation_hnf_select_v1"
       ],
-      "semantic_domain": "resident bounded exact relation HNF support, stable candidate deletion, retained rank, exact transform replay, and a separate basis-only four-matrix stable selector through arena-owned declared FLINT resource graphs",
+      "semantic_domain": "resident bounded exact relation HNF support, cubic reduced-ideal shell generation and exact prime-power containment, stable candidate deletion, retained rank, exact transform replay, and basis-only selectors through arena-owned declared FLINT resource graphs",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint"],

@@ -707,6 +707,11 @@ def packed_cubic_factor_records(
             )
         if local is None:
             return None
+        # Keep the packed producer mathematically identical to the generic
+        # factor-base stream: a unique unramified degree-three factor is the
+        # principal ideal `p O_K`, hence contributes no class-group generator.
+        if len(local) == 1 and int(local[0]["e"]) == 1 and int(local[0]["f"]) == 3:
+            continue
         for record in local:
             record["dedekind_kummer"] = p_maximal
         occurrences: dict[int, int] = {}
@@ -1681,6 +1686,463 @@ def _packed_cubic_reduced_ideal_relation_candidates(
         power_factor_base=power_factor_base,
         cancelled=cancelled,
     )
+
+
+def _packed_cubic_reduced_ideal_shell_candidates(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    reduced_order_batches: Iterable[Iterable[Iterable[int]]],
+    *,
+    maximum_candidates: int,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+) -> tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...] | None:
+    """Propose the four shortest deterministic directions in reduced ideals.
+
+    For each reduced cubic ideal basis `(b0,b1,b2)`, this bounded prefix chooses
+    one of the three unordered basis-vector pairs and tests `u`, `v`, `u+v`,
+    and `-u+v`.  The chosen pair maximizes the number of rationally smooth
+    exact norms, with stable pair order breaking ties.  This makes the shell
+    invariant under the noncanonical row order returned by different LLL
+    backends.  The four resulting directions are precisely the primitive,
+    nonscalar factor attempts reached by PARI's Fincke--Pohst search on the
+    small complex-cubic regime before its four-relation per-ideal target is
+    met.  Multiple ideals remain one valuation batch, and repeated elements
+    are retained: the relation cache/selector, not candidate discovery, owns
+    exact duplicate policy.
+
+    The shell is only a proposal schedule.  Exact norm-form evaluation and the
+    packed prime-power valuation pass run here, while the independent ordinary
+    admission boundary still proves every retained principal-ideal identity.
+    """
+    capacity = min(_CUBIC_RELATION_SIEVE_MAX_CANDIDATES, int(maximum_candidates))
+    try:
+        batches = tuple(
+            tuple(tuple(int(value) for value in row) for row in rows)
+            for rows in reduced_order_batches
+        )
+    except (TypeError, ValueError):
+        return None
+    if (
+        not factor_base
+        or len(factor_base) > 16
+        or not batches
+        or len(batches) > 8
+        or any(len(rows) != 3 for rows in batches)
+        or any(len(row) != 3 for rows in batches for row in rows)
+        or capacity < 1
+    ):
+        return None
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    rational_primes = tuple(
+        sorted({int(prime_ideal.rational_prime()) for prime_ideal in factor_base})
+    )
+    shell = ((1, 0), (0, 1), (1, 1), (-1, 1))
+    pairs = ((0, 1), (0, 2), (1, 2))
+    coordinates: list[int] = []
+    norms: list[int] = []
+    for rows in batches:
+        best: tuple[tuple[tuple[int, int, int], int], ...] = ()
+        best_score = -1
+        for first, second in pairs:
+            trial: list[tuple[tuple[int, int, int], int]] = []
+            score = 0
+            for left, middle in shell:
+                _check_cubic_cancelled(cancelled)
+                candidate = (
+                    left * rows[first][0] + middle * rows[second][0],
+                    left * rows[first][1] + middle * rows[second][1],
+                    left * rows[first][2] + middle * rows[second][2],
+                )
+                norm = abs(_cubic_norm_form_value(norm_form, *candidate))
+                trial.append((candidate, norm))
+                remaining = norm
+                for prime in rational_primes:
+                    while remaining > 1 and remaining % prime == 0:
+                        remaining //= prime
+                if norm > 1 and remaining == 1:
+                    score += 1
+            if score > best_score:
+                best = tuple(trial)
+                best_score = score
+        for candidate, norm in best:
+            if norm <= 1:
+                continue
+            if len(norms) >= capacity:
+                return None
+            coordinates.extend(candidate)
+            norms.append(norm)
+    if not norms:
+        return ()
+    return _packed_cubic_relation_rows_from_coordinates(
+        order,
+        factor_base,
+        tuple(coordinates),
+        tuple(norms),
+        power_factor_base=power_factor_base,
+        cancelled=cancelled,
+    )
+
+
+def _resident_cubic_reduced_shell_relation_selection(
+    order: Any,
+    factor_base: tuple[Any, ...],
+    reduced_order_batches: Iterable[Iterable[Iterable[int]]],
+    initial_rows: Iterable[Iterable[int]],
+    *,
+    maximum_candidates: int,
+    power_factor_base: tuple[Any, ...] | None = None,
+    cancelled: Callable[[], bool] | None,
+    selection_receipt: dict[str, Any] | None = None,
+) -> (
+    tuple[
+        tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        tuple[tuple[tuple[int, ...], tuple[int, ...], int], ...],
+        int,
+    ]
+    | None
+):
+    """Run the compact reduced-shell valuation and HNF slice resident.
+
+    Reduced ideal rows and authenticated factor-base power lattices cross one
+    boundary.  Candidate selection, exact norm evaluation, all prime-power
+    containments, relation rows, and stable FLINT HNF deletion remain inside
+    one `NativeExactArena`.  Published rows are still untrusted proposals and
+    must pass ordinary exact relation admission before affecting a result.
+    """
+    _check_cubic_cancelled(cancelled)
+    try:
+        batches = tuple(
+            tuple(tuple(int(value) for value in row) for row in rows)
+            for rows in reduced_order_batches
+        )
+        checked_initial = tuple(
+            tuple(int(value) for value in row) for row in initial_rows
+        )
+    except (TypeError, ValueError):
+        return None
+    capacity = 4 * len(batches)
+    width = len(factor_base)
+    if (
+        not batches
+        or len(batches) > 8
+        or any(len(rows) != 3 for rows in batches)
+        or any(len(row) != 3 for rows in batches for row in rows)
+        or width < 1
+        or width > 16
+        or any(len(row) != width for row in checked_initial)
+        or capacity < 1
+        or capacity > int(maximum_candidates)
+        or capacity > _CUBIC_RELATION_SIEVE_MAX_CANDIDATES
+    ):
+        return None
+
+    power_factors = factor_base
+    if power_factor_base is not None:
+        power_factors = tuple(power_factor_base)
+        if len(power_factors) != width:
+            return None
+        for factor, retained in zip(factor_base, power_factors, strict=True):
+            if (
+                not isinstance(retained, PackedCubicFactorRecord)
+                or retained.order is not order
+                or retained.rational_prime() != int(factor.rational_prime())
+                or retained.norm_value
+                != _integer_rational(factor.norm(), "a factor-base norm")
+            ):
+                return None
+
+    norm_form = _order_cubic_norm_form_coefficients(order)
+    shell = ((1, 0), (0, 1), (1, 1), (-1, 1))
+    pairs = ((0, 1), (0, 2), (1, 2))
+    planning_values = [value for rows in batches for row in rows for value in row]
+    planning_norms: list[int] = []
+    for rows in batches:
+        for first, second in pairs:
+            for left, middle in shell:
+                coordinates = tuple(
+                    left * rows[first][index] + middle * rows[second][index]
+                    for index in range(3)
+                )
+                planning_values.extend(coordinates)
+                norm = abs(_cubic_norm_form_value(norm_form, *coordinates))
+                planning_values.append(norm)
+                if norm > 1:
+                    planning_norms.append(norm)
+    if not planning_norms:
+        return None
+
+    try:
+        kernel_module = __import__(
+            "sagejs.kernels.matrix.class_group_hnf",
+            fromlist=["class_group_hnf"],
+        )
+        native_module = __import__("sagejs.native", fromlist=["native"])
+        kernel = getattr(
+            kernel_module,
+            "cubic_reduced_shell_relation_hnf_v1",
+            None,
+        )
+        if not callable(kernel) or not native_module.is_compiled(kernel):
+            return None
+        ideal_module = __import__(
+            "sagejs.number_fields.ideal_arithmetic", fromlist=["ideal_arithmetic"]
+        )
+        factor_norms = tuple(
+            _integer_rational(prime_ideal.norm(), "a factor-base norm")
+            for prime_ideal in factor_base
+        )
+        maxima: list[int] = []
+        for factor_norm in factor_norms:
+            maximum = 0
+            for norm in planning_norms:
+                current = norm
+                valuation = 0
+                while current % factor_norm == 0:
+                    current //= factor_norm
+                    valuation += 1
+                maximum = max(maximum, valuation)
+            maxima.append(maximum)
+        if sum(maxima) < 1 or sum(maxima) > _CUBIC_RELATION_SIEVE_MAX_PRIME_POWERS:
+            return None
+        pending_packed_factors = tuple(
+            (prime_ideal, maximum)
+            for prime_ideal, maximum in zip(power_factors, maxima, strict=True)
+            if isinstance(prime_ideal, PackedCubicFactorRecord)
+            and maximum > len(prime_ideal._power_cache)
+        )
+        if pending_packed_factors:
+            packed_chains = ideal_module.packed_ideal_power_basis_chains_from_bases(
+                order.number_field(),
+                tuple(
+                    (
+                        factor.basis_numerators,
+                        factor.basis_denominator,
+                        maximum,
+                    )
+                    for factor, maximum in pending_packed_factors
+                ),
+            )
+            if packed_chains is not None:
+                for (factor, _maximum), powers in zip(
+                    pending_packed_factors, packed_chains, strict=True
+                ):
+                    factor._power_cache = powers
+        offsets = [0]
+        prime_power_numerators: list[int] = []
+        prime_power_denominators: list[int] = []
+        for prime_ideal, maximum in zip(power_factors, maxima, strict=True):
+            packed_power_method = getattr(prime_ideal, "packed_power_bases", None)
+            packed_powers: Any = (
+                packed_power_method(maximum)
+                if callable(packed_power_method)
+                else ideal_module.packed_valuation_power_bases(prime_ideal, maximum)
+            )
+            for packed_basis, denominator in packed_powers:
+                prime_power_numerators.extend(packed_basis)
+                prime_power_denominators.append(int(denominator))
+            offsets.append(len(prime_power_denominators))
+        if not prime_power_denominators:
+            return None
+        prime_module = __import__(
+            "sagejs.number_fields.prime_ideals", fromlist=["prime_ideals"]
+        )
+        packed_order_basis = prime_module._packed_candidate_order_basis(order)
+        if packed_order_basis is None:
+            unit_numerators, unit_denominator = ideal_module._packed_ideal_basis(
+                order.ideal(1)
+            )
+        else:
+            unit_numerators, unit_denominator = packed_order_basis
+
+        maximum_input_bits = max(
+            (abs(int(value)).bit_length() for value in planning_values),
+            default=1,
+        )
+        maximum_bits = max(64, maximum_input_bits + 16)
+        coordinate_words = max(8, (maximum_bits + 63) // 64 + 2)
+        largest_dimension = max(len(checked_initial) + capacity, width)
+        relation_bits = max(
+            (int(value).bit_length() for value in maxima),
+            default=1,
+        )
+        hnf_bits = largest_dimension * (
+            relation_bits + largest_dimension.bit_length() + 2
+        )
+        hnf_words = max(8, (hnf_bits + 63) // 64 + 2)
+        metadata_buffer = native_module.kernel_integer_zeros(kernel, 9, 2)
+        coordinate_output = native_module.kernel_integer_zeros(
+            kernel, capacity * 3, coordinate_words
+        )
+        norm_output = native_module.kernel_integer_zeros(
+            kernel, capacity, coordinate_words
+        )
+        row_output = native_module.kernel_integer_zeros(kernel, capacity * width, 4)
+        selected_output = native_module.kernel_integer_zeros(kernel, capacity, 2)
+        basis_output = native_module.kernel_integer_zeros(
+            kernel,
+            (len(checked_initial) + capacity) * width,
+            hnf_words,
+        )
+        maximum_trials = capacity
+        work_limit = max(
+            100_000,
+            4 * (len(checked_initial) + capacity) * width * (capacity + 1),
+        )
+        resident_entries = capacity * (3 + width + 2)
+        resident_memory_limit = max(
+            1_048_576,
+            65_536 + resident_entries * (32 + 8 * coordinate_words),
+        )
+        temporary_limit = max(1_048_576, 1_048_576 + work_limit * 64)
+        status = kernel(
+            metadata_buffer,
+            coordinate_output,
+            norm_output,
+            row_output,
+            selected_output,
+            basis_output,
+            native_module.kernel_integer_buffer(kernel, norm_form),
+            native_module.kernel_integer_buffer(
+                kernel,
+                sorted(
+                    {int(prime_ideal.rational_prime()) for prime_ideal in factor_base}
+                ),
+            ),
+            native_module.kernel_integer_buffer(
+                kernel,
+                [value for rows in batches for row in rows for value in row],
+            ),
+            native_module.kernel_integer_buffer(
+                kernel,
+                [value for row in checked_initial for value in row],
+            ),
+            native_module.kernel_integer_buffer(kernel, unit_numerators),
+            native_module.kernel_integer_buffer(kernel, prime_power_numerators),
+            native_module.kernel_integer_buffer(kernel, prime_power_denominators),
+            native_module.kernel_integer_buffer(kernel, offsets),
+            native_module.kernel_integer_buffer(kernel, factor_norms),
+            unit_denominator,
+            len(batches),
+            len(checked_initial),
+            width,
+            len(prime_power_denominators),
+            maximum_bits,
+            maximum_trials,
+            work_limit,
+            resident_memory_limit,
+            temporary_limit,
+        )
+        if status != 1:
+            return None
+        metadata = tuple(
+            int(value) for value in native_module.integer_buffer_values(metadata_buffer)
+        )
+        coordinate_values = tuple(
+            int(value)
+            for value in native_module.integer_buffer_values(coordinate_output)
+        )
+        norm_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(norm_output)
+        )
+        row_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(row_output)
+        )
+        selected_values = tuple(
+            int(value) for value in native_module.integer_buffer_values(selected_output)
+        )
+    except (ImportError, OverflowError, RuntimeError, TypeError, ValueError):
+        return None
+
+    if len(metadata) != 9:
+        raise ArithmeticError("resident cubic shell metadata has the wrong size")
+    (
+        generated_count,
+        smooth_count,
+        rank,
+        selected_count,
+        deletion_trials,
+        hnf_calls,
+        complete,
+        work,
+        total_rows,
+    ) = metadata
+    if (
+        generated_count < smooth_count
+        or generated_count > capacity
+        or smooth_count < selected_count
+        or smooth_count > capacity
+        or rank < 1
+        or rank > width
+        or deletion_trials < 0
+        or deletion_trials > maximum_trials
+        or hnf_calls != deletion_trials + 1
+        or complete != 1
+        or work < 0
+        or work > work_limit
+        or total_rows != len(checked_initial) + smooth_count
+        or any(value not in (0, 1) for value in selected_values[:smooth_count])
+        or sum(selected_values[:smooth_count]) != selected_count
+        or any(selected_values[smooth_count:])
+    ):
+        raise ArithmeticError("resident cubic shell metadata failed authentication")
+    proposals: list[tuple[tuple[int, ...], tuple[int, ...], int]] = []
+    for candidate_index in range(smooth_count):
+        coordinates = tuple(
+            coordinate_values[3 * candidate_index : 3 * candidate_index + 3]
+        )
+        norm = norm_values[candidate_index]
+        row = tuple(row_values[candidate_index * width : (candidate_index + 1) * width])
+        if norm <= 1 or abs(_cubic_norm_form_value(norm_form, *coordinates)) != norm:
+            raise ArithmeticError("resident cubic shell norm failed exact replay")
+        row_norm = 1
+        for factor_norm, exponent in zip(factor_norms, row, strict=True):
+            if exponent < 0:
+                raise ArithmeticError(
+                    "resident cubic shell published a negative valuation"
+                )
+            row_norm *= factor_norm**exponent
+        if row_norm != norm:
+            raise ArithmeticError("resident cubic shell row norm failed exact replay")
+        proposals.append((row, coordinates, norm))
+    candidates = tuple(proposals)
+    selected = tuple(
+        candidate
+        for candidate, retained in zip(candidates, selected_values, strict=False)
+        if retained == 1
+    )
+    if len(selected) != selected_count:
+        raise ArithmeticError("resident cubic shell selection mask failed replay")
+    if selection_receipt is not None:
+        source_rows = checked_initial + tuple(candidate[0] for candidate in candidates)
+        selection_receipt.update(
+            {
+                "initial_rows": len(checked_initial),
+                "candidate_rows": len(candidates),
+                "total_rows": len(source_rows),
+                "columns": width,
+                "maximum_entry_bits": max(
+                    (
+                        abs(int(value)).bit_length()
+                        for row in source_rows
+                        for value in row
+                    ),
+                    default=1,
+                ),
+                "completed": 1,
+                "rank": rank,
+                "deletion_trials": deletion_trials,
+                "hnf_calls": hnf_calls,
+                "native_boundary_calls": 1,
+                "library_boundary_calls": 0,
+                "flint_basis_deletions": 0,
+                "resident_shell": 1,
+                "resident_generated_candidates": generated_count,
+                "resident_smooth_candidates": smooth_count,
+                "resident_work": work,
+            }
+        )
+    return candidates, selected, rank
 
 
 def _packed_cubic_relation_candidates(
@@ -5514,5 +5976,7 @@ __all__ = [
     "packed_cubic_factor_records",
     "_cyclic_cubic_targeted_relation_candidates",
     "_packed_cubic_reduced_ideal_relation_candidates",
+    "_packed_cubic_reduced_ideal_shell_candidates",
+    "_resident_cubic_reduced_shell_relation_selection",
     "_select_cubic_postrank_dependency_candidates",
 ]

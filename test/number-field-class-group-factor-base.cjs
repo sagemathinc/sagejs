@@ -348,8 +348,9 @@ assert stream_plan.progress()["eligible_prime_ideals"] == 2
 
 # The alternate x^2-5 presentation has equation-order index two.  Its
 # splitting scan performs the required full finite-algebra decomposition only
-# at p=2; construction then reuses that cached certificate while p=5 remains
-# selective Dedekind--Kummer work.
+# at p=2, proves its unique unramified degree-two ideal is principal 2*O, and
+# omits that column.  The ramified p=5 factor remains selective
+# Dedekind--Kummer work.
 index_plan = factor_base_plan(
     fields["real-quadratic-index-two"],
     proof=False,
@@ -362,7 +363,7 @@ try:
     index_records = build_factor_base(index_plan)
 finally:
     factor_bases._prime_ideals.factor_rational_prime = original_factor
-assert [record.norm for record in index_records] == [4, 5]
+assert [record.norm for record in index_records] == [5]
 assert factor_calls == [2]
 
 # Preflight caps reject work before allocating any ideal record.

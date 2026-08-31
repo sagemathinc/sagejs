@@ -174,12 +174,12 @@ factor_base = tuple(
     record.prime_ideal for record in factor_bases.build_factor_base(plan)
 )
 assert [int(prime.norm()._numerator) for prime in factor_base] == [
-    3, 3, 3, 5, 5, 5, 7, 8, 13, 19
+    3, 3, 3, 5, 5, 5, 7, 13, 19
 ]
 reduced = engine._reduced_cubic_relation_order_rows(relations, factor_base)
 assert reduced == (
     ((19, 0, 0), (-32, 2, -1), (6, 15, -8)),
-    9,
+    8,
     19,
 )
 candidates = cubic._packed_cubic_reduced_ideal_relation_candidates(
@@ -190,13 +190,13 @@ candidates = cubic._packed_cubic_reduced_ideal_relation_candidates(
     coefficient_bound=3,
     cancelled=None,
 )
-assert candidates is not None and len(candidates) == 46
+assert candidates is not None and len(candidates) == 37
 
 # Independently construct a sparse sample of public field elements and cross
 # the ordinary exact containment boundary.  The packed row producer remains
 # only a proposal mechanism.
 basis = tuple(engine.order.basis())
-for candidate_index in (0, 7, 23, 45):
+for candidate_index in (0, 7, 23, 36):
     row, coordinates, expected_norm = candidates[candidate_index]
     element = K.zero()
     for coefficient, basis_element in zip(coordinates, basis, strict=True):
@@ -213,7 +213,7 @@ for candidate_index in (0, 7, 23, 45):
 trial = relations.ExactRelationCollector(engine.order, factor_base)
 initial = relations.initial_rational_prime_relation_proposals(trial)
 initial_rows = tuple(row for _coordinates, row, _provenance in initial)
-assert len(initial_rows) + len(candidates) == 52
+assert len(initial_rows) + len(candidates) == 42
 
 # The cyclic-cubic targeted planner treats these 46 rows as untrusted
 # discovery candidates.  Four improving parent orbits give the provisional
@@ -233,7 +233,7 @@ targeted = cubic._cyclic_cubic_targeted_relation_candidates(
 assert targeted is not None and len(targeted) == 19
 assert target_receipt == {
     "available": 1,
-    "parents_examined": 9,
+    "parents_examined": 7,
     "retained_parents": 4,
     "orbit_candidates": 12,
     "provisional_order": 27,
@@ -281,7 +281,7 @@ try:
 finally:
     matrix._resident_hnf_kernel_override = saved_hnf_override
 assert safe_selector_native_calls == [0]
-assert selected is not None and rank == 10 and len(selected) == 5
+assert selected is not None and rank == 9 and len(selected) == 5
 dependencies = cubic._select_cubic_postrank_dependency_candidates(
     selected,
     candidates,
@@ -310,7 +310,7 @@ admissions = trial._admit_validated_integral_order_basis_rows(
     proposals,
     _validated_token=relations._VALIDATED_INTEGRAL_RELATION_BATCH_TOKEN,
 )
-assert len(admissions) == 19
+assert len(admissions) == 18
 maximum_relation_entry_bits = max(
     abs(int(value)).bit_length()
     for record in trial.records
@@ -322,7 +322,7 @@ presentation = matrix.extract_relation_presentation(
     len(factor_base),
     require_full_rank=False,
 )
-assert presentation.rank == 10
+assert presentation.rank == 9
 assert presentation.order == 9
 assert presentation.invariants == (3, 3)
 assert len(presentation.dependency_transforms) == 9
@@ -390,19 +390,19 @@ resources = result.diagnostics["resources"]
 assert result.proof_status == "exact-relations-conditional-grh"
 assert result.class_group().invariants() == (3, 3)
 assert resources["cubic_reduced_ideal_sieve_uses"] == 1
-assert resources["cubic_reduced_ideal_sieve_candidates"] == 46
+assert resources["cubic_reduced_ideal_sieve_candidates"] == 37
 assert resources["cubic_reduced_ideal_sieve_relations"] == 4
 assert resources["cubic_reduced_ideal_sieve_dependency_relations"] == 8
 assert resources["cubic_reduced_ideal_sieve_source_norm"] == 19
 assert resources["cubic_packed_factor_base_uses"] == 1
 assert resources["cubic_relation_selector_calls"] == 1
-assert resources["cubic_relation_selector_initial_rows"] == 6
-assert resources["cubic_relation_selector_candidate_rows"] == 48
-assert resources["cubic_relation_selector_total_rows"] == 54
-assert resources["cubic_relation_selector_columns"] == 10
+assert resources["cubic_relation_selector_initial_rows"] == 5
+assert resources["cubic_relation_selector_candidate_rows"] == 38
+assert resources["cubic_relation_selector_total_rows"] == 43
+assert resources["cubic_relation_selector_columns"] == 9
 assert resources["cubic_relation_selector_maximum_entry_bits"] == 3
-assert resources["cubic_relation_selector_deletion_trials"] == 48
-assert resources["cubic_relation_selector_hnf_calls"] == 49
+assert resources["cubic_relation_selector_deletion_trials"] == 38
+assert resources["cubic_relation_selector_hnf_calls"] == 39
 assert resources["cubic_relation_selector_native_boundary_calls"] == 1
 assert resources["cubic_relation_selector_library_boundary_calls"] == 0
 assert resources["cubic_relation_selector_flint_basis_deletion_uses"] == 0
@@ -423,9 +423,11 @@ assert resources["dependency_lattice_lll_requests"] == 0
 assert resources["dependency_lattice_lll_reductions"] == 0
 assert result.context.live_diagnostics()["authenticated_dependency_units"] == 2
 
-# This public cubic produces the exact 37-by-8 relation workspace that crashed
-# the older transform-based resident HNF kernel.  The separately qualified
-# basis-only route must execute all 31 HNFs and retain the exact public answer.
+# This public cubic formerly produced the exact 37-by-8 relation workspace
+# that crashed the older transform-based resident HNF kernel.  The compact
+# PARI-shaped schedule now closes the same exact class and unit lattices with a
+# bounded 15-by-8 resident workspace.  The direct 37-by-8 regression remains
+# in number-field-class-group-resident-hnf.cjs.
 crash_field = NumberField(x**3 - x**2 - 9*x - 16, "a_stable_hnf_public")
 crash_result = crash_field.class_unit_group(proof=False)
 crash_group = crash_result.class_group()
@@ -433,13 +435,202 @@ crash_resources = crash_result.diagnostics["resources"]
 assert int(crash_field.class_number(proof=False)) == 4
 assert crash_group.invariants() == (2, 2)
 assert crash_result.proof_status == "exact-relations-conditional-grh"
-assert crash_resources["cubic_relation_selector_total_rows"] == 37
+assert crash_resources["cubic_reduced_ideal_resident_uses"] == 1
+assert crash_resources["cubic_reduced_ideal_resident_generated_candidates"] == 12
+assert crash_resources["cubic_reduced_ideal_resident_smooth_candidates"] == 12
+assert crash_resources["cubic_relation_selector_total_rows"] == 15
 assert crash_resources["cubic_relation_selector_columns"] == 8
-assert crash_resources["cubic_relation_selector_maximum_entry_bits"] == 4
-assert crash_resources["cubic_relation_selector_hnf_calls"] == 31
+assert crash_resources["cubic_relation_selector_maximum_entry_bits"] == 2
+assert crash_resources["cubic_relation_selector_hnf_calls"] == 11
 assert crash_resources["cubic_relation_selector_native_boundary_calls"] == 1
 assert crash_resources["cubic_relation_selector_library_boundary_calls"] == 0
 print("cubic-reduced-ideal-relation-batch-ok")
+`;
+
+const pariAdjacentResidentSlice = String.raw`
+import sagejs.number_fields.class_group_factor_base as factor_bases
+import sagejs.number_fields.class_group_matrix as matrix
+import sagejs.number_fields.class_group_relations as relations
+import sagejs.number_fields.class_unit_groups as class_unit
+import sagejs.number_fields.cubic_class_number as cubic
+from sagejs.kernels.matrix.class_group_hnf import cubic_reduced_shell_relation_hnf_v1
+from sagejs.native import is_compiled
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+K = NumberField(x**3 + 9*x - 55, "a_pari_adjacent")
+engine = class_unit.ClassUnitGroupEngine(K, proof=False)
+plan = factor_bases.factor_base_plan(engine.order, proof=False)
+records = factor_bases.build_factor_base(plan)
+factor_base = tuple(record.prime_ideal for record in records)
+packed_factor_base = cubic.packed_cubic_factor_records(plan)
+
+# PARI's GRH/BDF prefix has bound 13 and deliberately omits the principal
+# inert ideals above 2 and 7.  What remains is the same ordered eight-column
+# factor base in both compact and ordinary exact representations.
+assert plan.bound == 13
+assert tuple(
+    (
+        int(record.rational_prime),
+        int(record.norm),
+        int(record.ramification_index),
+        int(record.residue_degree),
+    )
+    for record in records
+) == (
+    (3, 3, 2, 1),
+    (3, 3, 1, 1),
+    (5, 5, 1, 1),
+    (5, 5, 1, 1),
+    (5, 5, 1, 1),
+    (11, 11, 1, 1),
+    (13, 13, 2, 1),
+    (13, 13, 1, 1),
+)
+assert packed_factor_base is not None and len(packed_factor_base) == 8
+assert is_compiled(cubic_reduced_shell_relation_hnf_v1)
+
+trial = relations.ExactRelationCollector(engine.order, factor_base)
+initial = relations.initial_rational_prime_relation_proposals(trial)
+initial_rows = tuple(proposal[1] for proposal in initial)
+assert initial_rows == (
+    (2, 1, 0, 0, 0, 0, 0, 0),
+    (0, 0, 1, 1, 1, 0, 0, 0),
+    (0, 0, 0, 0, 0, 0, 2, 1),
+)
+
+# These are PARI's three reverse-order reduced-ideal searches, expressed in
+# Sage.js's integral basis.  The bases differ from PARI's by an exact unimodular
+# change of coordinates, but describe the same three ideal lattices.
+reduced_sources = engine._reduced_cubic_relation_order_batches(
+    relations, factor_base, 3
+)
+assert reduced_sources == (
+    (((-3, 0, 1), (13, -4, -4), (-23, 9, 8)), 7, 13),
+    (((4, -2, -1), (-1, -1, 0), (-18, 5, 6)), 6, 13),
+    (((0, 1, 0), (-22, 7, 7), (-11, 4, 4)), 5, 11),
+)
+reduced_batches = tuple(source[0] for source in reduced_sources)
+
+# The ordinary packed implementation is an independent readable oracle for
+# the fused resident function.  It must expose all twelve candidates, including
+# PARI's one duplicate, in the same deterministic order.
+ordinary = cubic._packed_cubic_reduced_ideal_shell_candidates(
+    engine.order,
+    factor_base,
+    reduced_batches,
+    maximum_candidates=64,
+    power_factor_base=packed_factor_base,
+    cancelled=None,
+)
+expected = (
+    ((0, 0, 1, 0, 0, 0, 0, 1), (-3, 0, 1), 65),
+    ((0, 0, 0, 1, 0, 0, 0, 1), (13, -4, -4), 65),
+    ((0, 1, 0, 0, 1, 0, 0, 1), (10, -4, -3), 195),
+    ((1, 0, 0, 0, 0, 0, 0, 1), (16, -4, -5), 39),
+    ((2, 0, 0, 0, 0, 0, 1, 0), (4, -2, -1), 117),
+    ((0, 0, 2, 0, 0, 0, 1, 0), (-18, 5, 6), 325),
+    ((0, 4, 0, 0, 0, 0, 1, 0), (-14, 3, 5), 1053),
+    ((0, 0, 0, 0, 0, 1, 1, 0), (-22, 7, 7), 143),
+    ((0, 0, 0, 0, 1, 1, 0, 0), (0, 1, 0), 55),
+    ((0, 0, 0, 0, 0, 1, 1, 0), (-22, 7, 7), 143),
+    ((2, 0, 1, 0, 0, 1, 0, 0), (-22, 8, 7), 495),
+    ((0, 1, 0, 0, 0, 1, 0, 0), (-22, 6, 7), 33),
+)
+assert ordinary == expected
+
+receipt = {}
+resident = cubic._resident_cubic_reduced_shell_relation_selection(
+    engine.order,
+    factor_base,
+    reduced_batches,
+    initial_rows,
+    maximum_candidates=64,
+    power_factor_base=packed_factor_base,
+    cancelled=None,
+    selection_receipt=receipt,
+)
+assert resident is not None
+resident_candidates, resident_selected, resident_rank = resident
+assert resident_candidates == ordinary
+assert resident_rank == 8
+assert resident_selected == (
+    expected[3],
+    expected[8],
+    expected[7],
+    expected[10],
+    expected[11],
+)
+assert receipt == {
+    "initial_rows": 3,
+    "candidate_rows": 12,
+    "total_rows": 15,
+    "columns": 8,
+    "maximum_entry_bits": 3,
+    "completed": 1,
+    "rank": 8,
+    "deletion_trials": 8,
+    "hnf_calls": 9,
+    "native_boundary_calls": 1,
+    "library_boundary_calls": 0,
+    "flint_basis_deletions": 0,
+    "resident_shell": 1,
+    "resident_generated_candidates": 12,
+    "resident_smooth_candidates": 12,
+    "resident_work": 1152,
+}
+
+# Independently authenticate every published norm and ideal valuation row.
+# The compiled region discovers and selects; it is not a correctness authority.
+basis = tuple(engine.order.basis())
+for row, coordinates, expected_norm in resident_candidates:
+    element = K.zero()
+    for coefficient, basis_element in zip(coordinates, basis, strict=True):
+        element += coefficient * basis_element
+    assert abs(int(element.norm()._numerator)) == expected_norm
+    replay = relations.ExactRelationCollector(engine.order, factor_base)
+    admission = replay.admit_integral_order_basis_row(
+        coordinates,
+        row,
+        provenance={"algorithm": "pari-adjacent-resident-differential"},
+    )
+    assert admission.record.row == row
+
+# A too-small publication capacity declines before native entry.  Public
+# dispatch remains fail closed if the compiled export is unavailable.
+assert cubic._resident_cubic_reduced_shell_relation_selection(
+    engine.order,
+    factor_base,
+    reduced_batches,
+    initial_rows,
+    maximum_candidates=11,
+    power_factor_base=packed_factor_base,
+    cancelled=None,
+) is None
+
+public_field = NumberField(x**3 + 9*x - 55, "a_pari_adjacent_public")
+public_result = public_field.class_unit_group(proof=False)
+public_resources = public_result.diagnostics["resources"]
+assert public_result.class_group().invariants() == (5,)
+assert public_result.proof_status == "exact-relations-conditional-grh"
+assert public_result.diagnostics["factor_base_size"] == 8
+assert public_resources["cubic_reduced_ideal_resident_uses"] == 1
+assert public_resources["cubic_reduced_ideal_resident_generated_candidates"] == 12
+assert public_resources["cubic_reduced_ideal_resident_smooth_candidates"] == 12
+assert public_resources["cubic_integral_sieve_candidates"] == 12
+assert public_resources["cubic_integral_sieve_relations"] == 5
+assert public_resources["cubic_integral_sieve_dependency_relations"] == 6
+assert public_resources["cubic_relation_selector_initial_rows"] == 3
+assert public_resources["cubic_relation_selector_candidate_rows"] == 12
+assert public_resources["cubic_relation_selector_total_rows"] == 15
+assert public_resources["cubic_relation_selector_columns"] == 8
+assert public_resources["cubic_relation_selector_deletion_trials"] == 8
+assert public_resources["cubic_relation_selector_hnf_calls"] == 9
+assert public_resources["cubic_relation_selector_native_boundary_calls"] == 1
+assert public_resources["cubic_relation_selector_library_boundary_calls"] == 0
+assert public_resources["relation_attempts"] == 0
+assert public_resources["relation_candidates"] == 0
+print("pari-adjacent-resident-slice-ok")
 `;
 
 const cubicFactorDifferential = String.raw`
@@ -492,6 +683,13 @@ test("packed cubic integral relation sieve matches ordinary Python", () => {
 test("reduced cubic ideal batches close class and unit relation lattices", () => {
   assert.equal(runSagejs(reducedIdealRelationBatch, 180_000),
     "cubic-reduced-ideal-relation-batch-ok");
+});
+
+test("PARI's eight-ideal cubic slice executes as one resident region", () => {
+  assert.equal(
+    runSagejs(pariAdjacentResidentSlice, 180_000),
+    "pari-adjacent-resident-slice-ok",
+  );
 });
 
 test("cubic dependency sieve widens an incomplete unit prefix", () => {
@@ -913,11 +1111,16 @@ assert all(record._second_generator_cache is None for record in direct_packed_fa
 assert direct_packed_factors[0].second_generator is not None
 assert direct_packed_factors[0]._second_generator_cache is not None
 assert [record.to_dict() for record in direct_packed_factors] == direct_payloads
-# The p=2 index-prime factor requires the complete finite-algebra replay and
-# therefore deliberately declines the selective live materializer.
-assert cubic.materialize_verified_packed_cubic_factor_records(
+# The retained p=2 index-prime factors now have complete finite-algebra
+# evidence, while the unselected inert p=7 factor is absent.  The selective
+# live materializer can therefore authenticate the whole retained base.
+direct_materialization = cubic.materialize_verified_packed_cubic_factor_records(
     direct_packed_factors
-) is None
+)
+assert direct_materialization is not None
+assert [record.to_dict() for record in direct_materialization[0]] == [
+    record.to_dict() for record in factor_bases.build_factor_base(packed_plan)
+]
 
 # An all-Dedekind--Kummer BDF base can be materialized with the same exact
 # containment, norm, and quotient-field checks as the ordinary constructor.
@@ -1074,9 +1277,10 @@ try:
 finally:
     verified_packed[0].presentation = saved_verified_presentation
 
-# The direct power-basis constructor also covers an inert cubic factor.  Its
-# zero second generator represents (2, 0) = 2*O; the independent modular
-# materializer must recover the same norm-eight prime as the generic oracle.
+# A unique unramified inert factor is the principal ideal p*O, hence cannot
+# generate a nontrivial ideal class.  Both packed and generic factor-base
+# streams omit it before materialization rather than carrying a useless
+# norm-eight column through every relation matrix.
 inert_field = NumberField(x**3 - x - 1, "i")
 class InertPlan:
     pass
@@ -1087,25 +1291,21 @@ inert_plan.max_rational_primes = 64
 inert_plan.max_prime_ideals = 64
 inert_packed = cubic.packed_cubic_factor_records(inert_plan)
 assert inert_packed is not None
-inert_record = next(
-    record
+assert all(
+    not (record.prime == 2 and record.residue_degree == 3)
     for record in inert_packed
-    if record.prime == 2 and record.residue_degree == 3
 )
-assert inert_record._second_generator_payload == ((0, 1), (0, 1), (0, 1))
 inert_materialization = cubic.materialize_verified_packed_cubic_factor_records(
     inert_packed
 )
 assert inert_materialization is not None
-inert_prime = next(
-    prime
+assert all(
+    not (
+        int(prime.rational_prime()) == 2
+        and int(prime.residue_class_degree()) == 3
+    )
     for prime in inert_materialization[1]
-    if int(prime.rational_prime()) == 2
 )
-assert inert_prime.norm() == 8
-assert inert_prime == prime_ideals.factor_rational_prime(
-    inert_plan.order, 2
-).prime_ideals()[0]
 
 packed = cubic.bounded_cubic_minkowski_class_number(packed_field)
 assert packed.complete and packed.order() == 3 and packed.certificate.verify()

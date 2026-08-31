@@ -123,11 +123,36 @@ const fixtures = [
 
 test("the cubic HNF region owns one resident exact resource graph", async () => {
   const ir = await lowerSource(readFileSync(kernelSource, "utf8"), kernelSource);
+  const cubicShell = ir.functions.find(
+    (candidate) =>
+      candidate.name === "cubic_reduced_shell_relation_hnf_v1",
+  );
   const stable = ir.functions.find(
     (candidate) => candidate.name === "stable_exact_relation_hnf_select_v1",
   );
   const fn = ir.functions.find(
     (candidate) => candidate.name === "resident_exact_relation_hnf_select_v2",
+  );
+  assert.ok(cubicShell);
+  assert.equal(cubicShell.analysis.backend.kind, "gmp");
+  assert.equal(cubicShell.analysis.liveExactWorkspace.count, 1);
+  assert.deepEqual(
+    cubicShell.analysis.liveExactWorkspace.scopes[0].children.map((child) => ({
+      owner: child.owner,
+      storage: child.storage,
+    })),
+    [
+      ["coordinates", "row-major-mpz-matrix"],
+      ["norms", "mpz-vector"],
+      ["relations", "row-major-mpz-matrix"],
+      ["exact_coordinates", "mpz-vector"],
+      ["containment", "mpz-vector"],
+      ["candidates", "fixed-schema-record-vector"],
+      ["source_matrix", "declared-owned-ffi-resource"],
+      ["basis_matrix", "declared-owned-ffi-resource"],
+      ["trial_source_matrix", "declared-owned-ffi-resource"],
+      ["trial_hnf_matrix", "declared-owned-ffi-resource"],
+    ].map(([owner, storage]) => ({ owner, storage })),
   );
   assert.ok(stable);
   assert.equal(stable.analysis.backend.kind, "gmp");
@@ -660,10 +685,13 @@ finally:
     matrix._stable_hnf_kernel_override = saved_stable_override
 
 from sagejs.kernels.matrix.class_group_hnf import (
+    cubic_reduced_shell_relation_hnf_v1,
     resident_exact_relation_hnf_select,
     resident_exact_relation_hnf_select_v2,
     stable_exact_relation_hnf_select_v1,
 )
+assert is_compiled(cubic_reduced_shell_relation_hnf_v1)
+assert cubic_reduced_shell_relation_hnf_v1.nativeAvailable
 assert is_compiled(resident_exact_relation_hnf_select)
 assert resident_exact_relation_hnf_select.nativeAvailable
 assert is_compiled(resident_exact_relation_hnf_select_v2)

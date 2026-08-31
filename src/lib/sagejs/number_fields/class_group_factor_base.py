@@ -1737,8 +1737,21 @@ def _eligible_descriptors(plan: FactorBasePlan) -> list[tuple[int, int, int, int
     descriptors: list[tuple[int, int, int, int]] = []
     for splitting in _prime_ideals.splitting_records(plan.order, 2, plan.bound + 1):
         prime = int(splitting["prime"])
+        factors = tuple(splitting["factors"])
+        # If `p` is inert and unramified, its unique prime ideal is exactly
+        # `p O_K`: a principal ideal whose class is zero.  It cannot enlarge
+        # the generated subgroup, and retaining it only adds a trivial column
+        # and rational-prime pivot to every downstream relation lattice.  PARI
+        # omits these ideals for the same mathematical reason.  Ramified
+        # singleton decompositions are not principal in general and remain.
+        if (
+            len(factors) == 1
+            and int(factors[0]["e"]) == 1
+            and int(factors[0]["f"]) == plan.degree
+        ):
+            continue
         occurrences: dict[int, int] = {}
-        for factor in splitting["factors"]:
+        for factor in factors:
             residue_degree = int(factor["f"])
             occurrence = occurrences.get(residue_degree, 0)
             occurrences[residue_degree] = occurrence + 1

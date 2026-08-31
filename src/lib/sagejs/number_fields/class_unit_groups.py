@@ -1835,6 +1835,10 @@ class ClassUnitGroupEngine:
             "cubic_reduced_ideal_sieve_relations": 0,
             "cubic_reduced_ideal_sieve_dependency_relations": 0,
             "cubic_reduced_ideal_sieve_source_norm": 0,
+            "cubic_reduced_ideal_resident_uses": 0,
+            "cubic_reduced_ideal_resident_generated_candidates": 0,
+            "cubic_reduced_ideal_resident_smooth_candidates": 0,
+            "cubic_reduced_ideal_resident_work": 0,
             "cubic_relation_selector_calls": 0,
             "cubic_relation_selector_initial_rows": 0,
             "cubic_relation_selector_candidate_rows": 0,
@@ -2531,11 +2535,17 @@ class ClassUnitGroupEngine:
                 packed_records = ()
             else:
                 self._checkpoint_capture({"factor_base": primes})
+        retain_packed_evidence = bool(
+            packed_factor_base_verified
+            and getattr(
+                getattr(self.context, "_live_artifacts", None), "reusable", False
+            )
+        )
         self._bind_context_factor_base(
             primes,
-            validated=packed_factor_base_verified,
-            producer_records=packed_records,
-            canonical_records=(records if packed_factor_base_verified else ()),
+            validated=retain_packed_evidence,
+            producer_records=(packed_records if retain_packed_evidence else ()),
+            canonical_records=(records if retain_packed_evidence else ()),
         )
         if record_stage:
             self._phase_finish("factor-base", started)
@@ -2921,6 +2931,76 @@ class ClassUnitGroupEngine:
         except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
             return None
 
+    def _reduced_cubic_relation_order_batches(
+        self,
+        relations: Any,
+        factor_base: tuple[Any, ...],
+        maximum_sources: int,
+    ) -> tuple[tuple[tuple[tuple[int, ...], ...], int, int], ...]:
+        """Return reduced order rows for the largest factor-base ideals.
+
+        PARI's deterministic `small_norm` prefix scans useful ideals backward
+        from the largest norm.  Non-Galois cubics have no automorphism orbit to
+        collapse, so the first three distinct source ideals are the exact
+        compact schedule exercised by the discriminant `-9399` witness.  This
+        helper only chooses and converts lattices; every eventual relation is
+        authenticated independently.
+        """
+        limit = max(0, int(maximum_sources))
+        if limit == 0:
+            return ()
+        sources = tuple(
+            sorted(
+                range(len(factor_base)),
+                key=lambda index: (
+                    int(factor_base[index].norm()._numerator),
+                    index,
+                ),
+                reverse=True,
+            )[:limit]
+        )
+        answer: list[tuple[tuple[tuple[int, ...], ...], int, int]] = []
+        try:
+            inverse = self.order._basis_inverse_matrix().rows()
+            for source_index in sources:
+                source = factor_base[source_index]
+                lattice = relations.minkowski_lll_lattice(source)
+                denominator = int(lattice.denominator)
+                exact_rows = tuple(
+                    tuple(int(value) for value in row) for row in lattice.exact_rows
+                )
+                if (
+                    denominator <= 0
+                    or len(exact_rows) != 3
+                    or any(len(row) != 3 for row in exact_rows)
+                ):
+                    return ()
+                rows: list[tuple[int, ...]] = []
+                for row in exact_rows:
+                    coordinates: list[int] = []
+                    for target in range(3):
+                        value = sage.QQ(0)
+                        for source_coordinate in range(3):
+                            value += (
+                                sage.QQ(row[source_coordinate])
+                                / sage.QQ(denominator)
+                                * inverse[source_coordinate][target]
+                            )
+                        if value.denominator() != 1:
+                            return ()
+                        coordinates.append(int(value.numerator()))
+                    rows.append(tuple(coordinates))
+                answer.append(
+                    (
+                        tuple(rows),
+                        source_index,
+                        int(source.norm()._numerator),
+                    )
+                )
+        except (AttributeError, ArithmeticError, ImportError, TypeError, ValueError):
+            return ()
+        return tuple(answer)
+
     def _default_cubic_integral_relation_prefix(
         self,
         collector: Any,
@@ -2952,6 +3032,14 @@ class ClassUnitGroupEngine:
             propose = getattr(cubic, "_packed_cubic_relation_candidates", None)
             propose_reduced = getattr(
                 cubic, "_packed_cubic_reduced_ideal_relation_candidates", None
+            )
+            propose_reduced_shell = getattr(
+                cubic, "_packed_cubic_reduced_ideal_shell_candidates", None
+            )
+            resident_reduced_shell = getattr(
+                cubic,
+                "_resident_cubic_reduced_shell_relation_selection",
+                None,
             )
             select = getattr(cubic, "_select_cubic_relation_candidates", None)
             select_dependencies = getattr(
@@ -2997,43 +3085,181 @@ class ClassUnitGroupEngine:
             if remaining <= 0:
                 return collector
             packed_factor_base = self._context_packed_factor_base(factor_base)
-            candidates: Any = propose(
-                self.order,
-                factor_base,
-                maximum_candidates=remaining,
-                coefficient_bound=coefficient_bound,
-                power_factor_base=packed_factor_base,
-                cancelled=self.cancelled,
-            )
-            if candidates is None:
-                return collector
-            candidates = tuple(candidates)
+            initial_rows = tuple(proposal[1] for proposal in initial_proposals)
+
+            def record_selection_receipt(selection_receipt: dict[str, Any]) -> None:
+                self._resource_usage["cubic_relation_selector_calls"] += 1
+                for resource_name, receipt_name in (
+                    ("cubic_relation_selector_initial_rows", "initial_rows"),
+                    ("cubic_relation_selector_candidate_rows", "candidate_rows"),
+                    ("cubic_relation_selector_total_rows", "total_rows"),
+                    ("cubic_relation_selector_deletion_trials", "deletion_trials"),
+                    ("cubic_relation_selector_hnf_calls", "hnf_calls"),
+                    (
+                        "cubic_relation_selector_native_boundary_calls",
+                        "native_boundary_calls",
+                    ),
+                    (
+                        "cubic_relation_selector_library_boundary_calls",
+                        "library_boundary_calls",
+                    ),
+                    (
+                        "cubic_relation_selector_flint_basis_deletion_uses",
+                        "flint_basis_deletions",
+                    ),
+                ):
+                    self._resource_usage[resource_name] += int(
+                        selection_receipt.get(receipt_name, 0)
+                    )
+                for resource_name, receipt_name in (
+                    ("cubic_relation_selector_columns", "columns"),
+                    (
+                        "cubic_relation_selector_maximum_entry_bits",
+                        "maximum_entry_bits",
+                    ),
+                ):
+                    self._resource_usage[resource_name] = max(
+                        int(self._resource_usage[resource_name]),
+                        int(selection_receipt.get(receipt_name, 0)),
+                    )
+                if int(selection_receipt.get("resident_shell", 0)):
+                    self._resource_usage["cubic_reduced_ideal_resident_uses"] += 1
+                    self._resource_usage[
+                        "cubic_reduced_ideal_resident_generated_candidates"
+                    ] += int(selection_receipt.get("resident_generated_candidates", 0))
+                    self._resource_usage[
+                        "cubic_reduced_ideal_resident_smooth_candidates"
+                    ] += int(selection_receipt.get("resident_smooth_candidates", 0))
+                    self._resource_usage["cubic_reduced_ideal_resident_work"] += int(
+                        selection_receipt.get("resident_work", 0)
+                    )
+
+            def select_candidates(values: tuple[Any, ...]) -> Any:
+                selection_receipt: dict[str, Any] = {}
+                result = select(
+                    matrix,
+                    initial_rows,
+                    values,
+                    len(factor_base),
+                    selection_receipt,
+                )
+                record_selection_receipt(selection_receipt)
+                return result
+
             reduced_candidates: tuple[Any, ...] = ()
             reduced_source_index = -1
             reduced_source_norm = 0
-            reduced_bound = int(
-                getattr(cubic, "_CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND", 3)
-            )
-            if unit_rank >= 2 and len(factor_base) >= 8:
-                reduced_source = self._reduced_cubic_relation_order_rows(
-                    relations, factor_base
+            selected_result: Any = None
+            # A complex cubic has only one unit direction, but that does not
+            # make its ideal-class relation search one-dimensional.  In
+            # particular, a tiny non-Galois cubic can need precisely one
+            # relation found in a reduced factor-base ideal before the
+            # provisional quotient has the correct order.  Start those fields
+            # with four primitive directions from each of three high-norm
+            # reduced ideals; real cubics retain the wider coefficient box
+            # needed by their two unit directions.  Either batch remains an
+            # untrusted proposal and the ordinary exact admission boundary
+            # below proves every principal-ideal identity.
+            reduced_bound = (
+                1
+                if unit_rank == 1
+                else int(
+                    getattr(
+                        cubic,
+                        "_CUBIC_REDUCED_IDEAL_RELATION_SIEVE_BOUND",
+                        3,
+                    )
                 )
-                if reduced_source is not None:
-                    reduced_rows, reduced_source_index, reduced_source_norm = (
-                        reduced_source
-                    )
-                    reduced_result: Any = propose_reduced(
-                        self.order,
-                        factor_base,
-                        reduced_rows,
-                        maximum_candidates=remaining,
-                        coefficient_bound=reduced_bound,
-                        power_factor_base=packed_factor_base,
-                        cancelled=self.cancelled,
-                    )
-                    if reduced_result is not None:
-                        reduced_candidates = tuple(reduced_result)
-            if reduced_candidates:
+            )
+            if unit_rank >= 1 and len(factor_base) >= 8:
+                reduced_sources = self._reduced_cubic_relation_order_batches(
+                    relations, factor_base, 3 if unit_rank == 1 else 1
+                )
+                if reduced_sources:
+                    _rows, reduced_source_index, reduced_source_norm = reduced_sources[
+                        0
+                    ]
+                    if unit_rank == 1 and callable(resident_reduced_shell):
+                        resident_receipt: dict[str, Any] = {}
+                        resident_result: Any = resident_reduced_shell(
+                            self.order,
+                            factor_base,
+                            tuple(source[0] for source in reduced_sources),
+                            initial_rows,
+                            maximum_candidates=remaining,
+                            power_factor_base=packed_factor_base,
+                            cancelled=self.cancelled,
+                            selection_receipt=resident_receipt,
+                        )
+                        if (
+                            isinstance(resident_result, tuple)
+                            and len(resident_result) == 3
+                        ):
+                            reduced_candidates = tuple(resident_result[0])
+                            resident_rank = int(resident_result[2])
+                            if resident_rank == len(factor_base):
+                                selected_result = (
+                                    tuple(resident_result[1]),
+                                    resident_rank,
+                                )
+                            record_selection_receipt(resident_receipt)
+                    if not reduced_candidates:
+                        if unit_rank == 1 and callable(propose_reduced_shell):
+                            reduced_result: Any = propose_reduced_shell(
+                                self.order,
+                                factor_base,
+                                tuple(source[0] for source in reduced_sources),
+                                maximum_candidates=remaining,
+                                power_factor_base=packed_factor_base,
+                                cancelled=self.cancelled,
+                            )
+                        else:
+                            reduced_result = propose_reduced(
+                                self.order,
+                                factor_base,
+                                reduced_sources[0][0],
+                                maximum_candidates=remaining,
+                                coefficient_bound=reduced_bound,
+                                power_factor_base=packed_factor_base,
+                                cancelled=self.cancelled,
+                            )
+                        if reduced_result is not None:
+                            reduced_candidates = tuple(reduced_result)
+
+            # For rank-one cubics, first ask whether the tiny reduced-ideal
+            # batch already spans the factor-base lattice.  This is PARI's
+            # successful small-field regime: avoid constructing and valuating
+            # the unrelated global coefficient box when the exact selector can
+            # finish from one reduced ideal.  A deficient or declined batch
+            # falls through to the unchanged combined prefix.
+            candidates: tuple[Any, ...] = ()
+            if unit_rank == 1 and reduced_candidates:
+                reduced_selected = (
+                    selected_result
+                    if selected_result is not None
+                    else select_candidates(reduced_candidates)
+                )
+                if (
+                    isinstance(reduced_selected, tuple)
+                    and len(reduced_selected) == 2
+                    and isinstance(reduced_selected[0], (list, tuple))
+                    and int(reduced_selected[1]) == len(factor_base)
+                ):
+                    candidates = reduced_candidates
+                    selected_result = reduced_selected
+            if selected_result is None:
+                global_candidates: Any = propose(
+                    self.order,
+                    factor_base,
+                    maximum_candidates=remaining,
+                    coefficient_bound=coefficient_bound,
+                    power_factor_base=packed_factor_base,
+                    cancelled=self.cancelled,
+                )
+                if global_candidates is None:
+                    return collector
+                candidates = tuple(global_candidates)
+            if reduced_candidates and selected_result is None:
                 combined: list[Any] = []
                 for candidate in reduced_candidates + candidates:
                     row, coordinates, _norm = candidate
@@ -3046,48 +3272,8 @@ class ClassUnitGroupEngine:
                 candidates = tuple(combined)
             if packed_factor_base is not None:
                 self._resource_usage["cubic_relation_packed_factor_base_uses"] += 1
-            selection_receipt: dict[str, Any] = {}
-            selected_result: Any = select(
-                matrix,
-                tuple(proposal[1] for proposal in initial_proposals),
-                candidates,
-                len(factor_base),
-                selection_receipt,
-            )
-            self._resource_usage["cubic_relation_selector_calls"] += 1
-            for resource_name, receipt_name in (
-                ("cubic_relation_selector_initial_rows", "initial_rows"),
-                ("cubic_relation_selector_candidate_rows", "candidate_rows"),
-                ("cubic_relation_selector_total_rows", "total_rows"),
-                ("cubic_relation_selector_deletion_trials", "deletion_trials"),
-                ("cubic_relation_selector_hnf_calls", "hnf_calls"),
-                (
-                    "cubic_relation_selector_native_boundary_calls",
-                    "native_boundary_calls",
-                ),
-                (
-                    "cubic_relation_selector_library_boundary_calls",
-                    "library_boundary_calls",
-                ),
-                (
-                    "cubic_relation_selector_flint_basis_deletion_uses",
-                    "flint_basis_deletions",
-                ),
-            ):
-                self._resource_usage[resource_name] += int(
-                    selection_receipt.get(receipt_name, 0)
-                )
-            for resource_name, receipt_name in (
-                ("cubic_relation_selector_columns", "columns"),
-                (
-                    "cubic_relation_selector_maximum_entry_bits",
-                    "maximum_entry_bits",
-                ),
-            ):
-                self._resource_usage[resource_name] = max(
-                    int(self._resource_usage[resource_name]),
-                    int(selection_receipt.get(receipt_name, 0)),
-                )
+            if selected_result is None:
+                selected_result = select_candidates(candidates)
             if not isinstance(selected_result, tuple) or len(selected_result) != 2:
                 return collector
             raw_selected = selected_result[0]

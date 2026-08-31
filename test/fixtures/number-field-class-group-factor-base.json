@@ -204,7 +204,6 @@
       "discriminant": 5,
       "bounds": {"minkowski": 1, "bach": 16, "bdf": 7},
       "bdf_factor_base": [
-        {"p": 2, "norm": 4, "e": 1, "f": 2},
         {"p": 5, "norm": 5, "e": 2, "f": 1}
       ],
       "class_group": []
@@ -216,7 +215,6 @@
       "discriminant": 5,
       "bounds": {"minkowski": 1, "bach": 16, "bdf": 7},
       "bdf_factor_base": [
-        {"p": 2, "norm": 4, "e": 1, "f": 2},
         {"p": 5, "norm": 5, "e": 2, "f": 1}
       ],
       "class_group": []

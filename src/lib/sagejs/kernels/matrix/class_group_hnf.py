@@ -1,11 +1,10 @@
-"""Resident exact HNF support and bounded row selection.
+"""Resident exact relation discovery, HNF support, and bounded row selection.
 
-The complete source matrix stays in one packed `IntegerBuffer` for the whole
-kernel call.  FLINT supplies canonical row HNF, while this ordinary typed
-Python body owns support extraction, exact replay, and the stable bounded
-deletion schedule.  Replay output may alias the later trial-source workspace;
-those lifetimes do not overlap.  The same body supplies the generated
-JavaScript target.
+The general selectors keep a complete source matrix resident while FLINT
+supplies canonical row HNF.  The cubic slice additionally retains reduced
+ideal shell candidates, exact norms, prime-power containment, and relation
+rows in one arena before applying the same stable deletion schedule.  These
+ordinary typed Python bodies also supply the generated JavaScript targets.
 """
 
 from __future__ import annotations
@@ -22,7 +21,573 @@ from sagejs.ffi.flint import (
     fmpz_matrix_hnf_transform,
     fmpz_matrix_set_entry,
 )
-from sagejs.native import IntegerBuffer, NativeExactArena, native, uint64
+from sagejs.native import (
+    IntegerBuffer,
+    NativeExactArena,
+    NativeRecord,
+    native,
+    uint64,
+)
+
+
+class CubicShellCandidate(NativeRecord):
+    """Private lifecycle metadata for one reduced-ideal shell candidate."""
+
+    source_index: uint64
+    relation_row: uint64
+    smooth: uint64
+    selected: uint64
+
+
+@native
+def cubic_reduced_shell_relation_hnf_v1(
+    metadata: IntegerBuffer,
+    candidate_coordinates: IntegerBuffer,
+    candidate_norms: IntegerBuffer,
+    candidate_rows: IntegerBuffer,
+    selected_candidates: IntegerBuffer,
+    hnf_basis: IntegerBuffer,
+    norm_coefficients: IntegerBuffer,
+    rational_primes: IntegerBuffer,
+    reduced_order_rows: IntegerBuffer,
+    initial_relation_rows: IntegerBuffer,
+    order_basis_numerators: IntegerBuffer,
+    prime_power_numerators: IntegerBuffer,
+    prime_power_denominators: IntegerBuffer,
+    factor_offsets: IntegerBuffer,
+    factor_norms: IntegerBuffer,
+    order_basis_denominator: int,
+    source_count: uint64,
+    initial_count: uint64,
+    factor_count: uint64,
+    prime_power_count: uint64,
+    maximum_bits: uint64,
+    maximum_trials: uint64,
+    work_limit: uint64,
+    memory_limit: uint64,
+    temporary_limit: uint64,
+) -> int:
+    """Discover and select a compact cubic relation slice in one exact arena.
+
+    Each source contributes four candidates from the most productive pair of
+    its three reduced basis rows.  Exact cubic norms, prime-power containment,
+    smooth relation rows, canonical FLINT HNF, and stable source-order deletion
+    all remain resident until the final transactional publication.  The caller
+    independently replays every published norm and principal-ideal relation;
+    this kernel is a bounded proposal mechanism, never proof authority.
+    """
+    degree: uint64 = 3
+    shell_size: uint64 = 4
+    maximum_candidates = source_count * shell_size
+    maximum_rows = initial_count + maximum_candidates
+    square: uint64 = 9
+    valid = (
+        source_count > 0
+        and source_count <= 8
+        and factor_count > 0
+        and factor_count <= 16
+        and len(rational_primes) > 0
+        and len(rational_primes) <= factor_count
+        and prime_power_count > 0
+        and prime_power_count <= 4096
+        and order_basis_denominator > 0
+        and maximum_bits > 0
+        and maximum_bits <= 65536
+        and maximum_trials <= maximum_candidates
+        and len(metadata) == 9
+        and len(candidate_coordinates) == maximum_candidates * degree
+        and len(candidate_norms) == maximum_candidates
+        and len(candidate_rows) == maximum_candidates * factor_count
+        and len(selected_candidates) == maximum_candidates
+        and len(hnf_basis) == maximum_rows * factor_count
+        and len(norm_coefficients) == 10
+        and len(reduced_order_rows) == source_count * square
+        and len(initial_relation_rows) == initial_count * factor_count
+        and len(order_basis_numerators) == square
+        and len(prime_power_numerators) == prime_power_count * square
+        and len(prime_power_denominators) == prime_power_count
+        and len(factor_offsets) == factor_count + 1
+        and len(factor_norms) == factor_count
+        and factor_offsets[0] == 0
+        and factor_offsets[factor_count] == prime_power_count
+    )
+    previous_prime = 1
+    prime_index: uint64 = 0
+    while valid and prime_index < len(rational_primes):
+        prime = rational_primes[prime_index]
+        if prime <= previous_prime:
+            valid = False
+        previous_prime = prime
+        prime_index = prime_index + 1
+    factor_index: uint64 = 0
+    while valid and factor_index < factor_count:
+        if (
+            factor_offsets[factor_index] > factor_offsets[factor_index + 1]
+            or factor_norms[factor_index] <= 1
+        ):
+            valid = False
+        factor_index = factor_index + 1
+    power_index: uint64 = 0
+    while valid and power_index < prime_power_count:
+        if prime_power_denominators[power_index] <= 0:
+            valid = False
+        row: uint64 = 0
+        while valid and row < degree:
+            column: uint64 = 0
+            while column < row:
+                if (
+                    prime_power_numerators[power_index * square + row * degree + column]
+                    != 0
+                ):
+                    valid = False
+                column = column + 1
+            if prime_power_numerators[power_index * square + row * degree + row] == 0:
+                valid = False
+            row = row + 1
+        power_index = power_index + 1
+    if not valid:
+        return -1
+
+    with NativeExactArena(memory_limit, temporary_limit) as arena:
+        coordinates = arena.integer_matrix(maximum_candidates, degree, maximum_bits)
+        norms = arena.integer_vector(maximum_candidates, maximum_bits)
+        relations = arena.integer_matrix(
+            maximum_candidates,
+            factor_count,
+            maximum_bits,
+        )
+        exact_coordinates = arena.integer_vector(degree, maximum_bits)
+        containment = arena.integer_vector(degree, maximum_bits)
+        candidates = arena.records(CubicShellCandidate, maximum_candidates)
+
+        candidate_count: uint64 = 0
+        source_index: uint64 = 0
+        while source_index < source_count:
+            best_score: uint64 = 0
+            best_pair: uint64 = 0
+            pair_index: uint64 = 0
+            while pair_index < degree:
+                first: uint64 = 0
+                second: uint64 = 1
+                if pair_index == 1:
+                    first = 0
+                    second = 2
+                elif pair_index == 2:
+                    first = 1
+                    second = 2
+                score: uint64 = 0
+                shell_index: uint64 = 0
+                while shell_index < shell_size:
+                    left = 1
+                    middle = 0
+                    if shell_index == 1:
+                        left = 0
+                        middle = 1
+                    elif shell_index == 2:
+                        left = 1
+                        middle = 1
+                    elif shell_index == 3:
+                        left = -1
+                        middle = 1
+                    source_offset = source_index * square
+                    x = (
+                        left * reduced_order_rows[source_offset + first * degree]
+                        + middle * reduced_order_rows[source_offset + second * degree]
+                    )
+                    y = (
+                        left * reduced_order_rows[source_offset + first * degree + 1]
+                        + middle
+                        * reduced_order_rows[source_offset + second * degree + 1]
+                    )
+                    z = (
+                        left * reduced_order_rows[source_offset + first * degree + 2]
+                        + middle
+                        * reduced_order_rows[source_offset + second * degree + 2]
+                    )
+                    norm = (
+                        norm_coefficients[0] * x * x * x
+                        + norm_coefficients[1] * y * y * y
+                        + norm_coefficients[2] * z * z * z
+                        + norm_coefficients[3] * x * x * y
+                        + norm_coefficients[4] * x * x * z
+                        + norm_coefficients[5] * x * y * y
+                        + norm_coefficients[6] * y * y * z
+                        + norm_coefficients[7] * x * z * z
+                        + norm_coefficients[8] * y * z * z
+                        + norm_coefficients[9] * x * y * z
+                    )
+                    if norm < 0:
+                        norm = -norm
+                    remaining = norm
+                    prime_index = 0
+                    while prime_index < len(rational_primes):
+                        prime = rational_primes[prime_index]
+                        while remaining > 1 and remaining % prime == 0:
+                            remaining = remaining // prime
+                        prime_index = prime_index + 1
+                    if norm > 1 and remaining == 1:
+                        score = score + 1
+                    shell_index = shell_index + 1
+                if pair_index == 0 or score > best_score:
+                    best_score = score
+                    best_pair = pair_index
+                pair_index = pair_index + 1
+
+            best_first: uint64 = 0
+            best_second: uint64 = 1
+            if best_pair == 1:
+                best_first = 0
+                best_second = 2
+            elif best_pair == 2:
+                best_first = 1
+                best_second = 2
+            shell_index = 0
+            while shell_index < shell_size:
+                left = 1
+                middle = 0
+                if shell_index == 1:
+                    left = 0
+                    middle = 1
+                elif shell_index == 2:
+                    left = 1
+                    middle = 1
+                elif shell_index == 3:
+                    left = -1
+                    middle = 1
+                source_offset = source_index * square
+                x = (
+                    left * reduced_order_rows[source_offset + best_first * degree]
+                    + middle * reduced_order_rows[source_offset + best_second * degree]
+                )
+                y = (
+                    left * reduced_order_rows[source_offset + best_first * degree + 1]
+                    + middle
+                    * reduced_order_rows[source_offset + best_second * degree + 1]
+                )
+                z = (
+                    left * reduced_order_rows[source_offset + best_first * degree + 2]
+                    + middle
+                    * reduced_order_rows[source_offset + best_second * degree + 2]
+                )
+                norm = (
+                    norm_coefficients[0] * x * x * x
+                    + norm_coefficients[1] * y * y * y
+                    + norm_coefficients[2] * z * z * z
+                    + norm_coefficients[3] * x * x * y
+                    + norm_coefficients[4] * x * x * z
+                    + norm_coefficients[5] * x * y * y
+                    + norm_coefficients[6] * y * y * z
+                    + norm_coefficients[7] * x * z * z
+                    + norm_coefficients[8] * y * z * z
+                    + norm_coefficients[9] * x * y * z
+                )
+                if norm < 0:
+                    norm = -norm
+                if norm > 1:
+                    coordinates[candidate_count, 0] = x
+                    coordinates[candidate_count, 1] = y
+                    coordinates[candidate_count, 2] = z
+                    norms[candidate_count] = norm
+                    candidates[candidate_count] = CubicShellCandidate(
+                        source_index,
+                        0,
+                        0,
+                        0,
+                    )
+                    candidate_count = candidate_count + 1
+                shell_index = shell_index + 1
+            source_index = source_index + 1
+
+        smooth_count: uint64 = 0
+        candidate_index: uint64 = 0
+        while candidate_index < candidate_count:
+            coordinate: uint64 = 0
+            while coordinate < degree:
+                exact_coordinates[coordinate] = 0
+                basis_index: uint64 = 0
+                while basis_index < degree:
+                    exact_coordinates.addmul(
+                        coordinate,
+                        coordinates[candidate_index, basis_index],
+                        order_basis_numerators[basis_index * degree + coordinate],
+                    )
+                    basis_index = basis_index + 1
+                coordinate = coordinate + 1
+
+            row_norm = 1
+            any_valuation = False
+            factor_index = 0
+            while factor_index < factor_count:
+                valuation: uint64 = 0
+                candidate_power_index = factor_offsets[factor_index]
+                stop = factor_offsets[factor_index + 1]
+                member = True
+                while member and candidate_power_index < stop:
+                    coordinate = 0
+                    while member and coordinate < degree:
+                        value = (
+                            prime_power_denominators[candidate_power_index]
+                            * exact_coordinates[coordinate]
+                        )
+                        prior: uint64 = 0
+                        while prior < coordinate:
+                            value = (
+                                value
+                                - containment[prior]
+                                * prime_power_numerators[
+                                    candidate_power_index * square
+                                    + prior * degree
+                                    + coordinate
+                                ]
+                            )
+                            prior = prior + 1
+                        diagonal = prime_power_numerators[
+                            candidate_power_index * square
+                            + coordinate * degree
+                            + coordinate
+                        ]
+                        if diagonal == 0 or value % diagonal != 0:
+                            member = False
+                        else:
+                            quotient = value // diagonal
+                            containment[coordinate] = quotient
+                            if quotient % order_basis_denominator != 0:
+                                member = False
+                        coordinate = coordinate + 1
+                    if member:
+                        valuation = valuation + 1
+                        any_valuation = True
+                    candidate_power_index = candidate_power_index + 1
+                relations[candidate_index, factor_index] = valuation
+                exponent: uint64 = 0
+                while exponent < valuation:
+                    row_norm = row_norm * factor_norms[factor_index]
+                    exponent = exponent + 1
+                factor_index = factor_index + 1
+            if any_valuation and row_norm == norms[candidate_index]:
+                candidates[candidate_index] = CubicShellCandidate(
+                    candidates[candidate_index].source_index,  # type: ignore[attr-defined]
+                    initial_count + smooth_count,
+                    1,
+                    1,
+                )
+                smooth_count = smooth_count + 1
+            candidate_index = candidate_index + 1
+        if smooth_count == 0:
+            return 0
+
+        total_rows = initial_count + smooth_count
+        source_matrix = arena.foreign_resource(fmpz_matrix, total_rows, factor_count)
+        basis_matrix = arena.foreign_resource(fmpz_matrix, total_rows, factor_count)
+        trial_source_matrix = arena.foreign_resource(
+            fmpz_matrix,
+            total_rows,
+            factor_count,
+        )
+        trial_hnf_matrix = arena.foreign_resource(
+            fmpz_matrix,
+            total_rows,
+            factor_count,
+        )
+        source_row: uint64 = 0
+        while source_row < initial_count:
+            column = 0
+            while column < factor_count:
+                value = initial_relation_rows[source_row * factor_count + column]
+                if not fmpz_matrix_set_entry(
+                    source_matrix,
+                    source_row,
+                    column,
+                    value,
+                ) or not fmpz_matrix_set_entry(
+                    trial_source_matrix,
+                    source_row,
+                    column,
+                    value,
+                ):
+                    return -1
+                column = column + 1
+            source_row = source_row + 1
+        candidate_index = 0
+        while candidate_index < candidate_count:
+            candidate = candidates[candidate_index]
+            if candidate.smooth == 1:  # type: ignore[attr-defined]
+                source_row = candidate.relation_row  # type: ignore[attr-defined]
+                column = 0
+                while column < factor_count:
+                    value = relations[candidate_index, column]
+                    if not fmpz_matrix_set_entry(
+                        source_matrix,
+                        source_row,
+                        column,
+                        value,
+                    ) or not fmpz_matrix_set_entry(
+                        trial_source_matrix,
+                        source_row,
+                        column,
+                        value,
+                    ):
+                        return -1
+                    column = column + 1
+            candidate_index = candidate_index + 1
+        if not fmpz_matrix_hnf_into(basis_matrix, source_matrix):
+            return -1
+        hnf_calls: uint64 = 1
+        work: uint64 = 0
+        rank: uint64 = 0
+        source_row = 0
+        while source_row < total_rows:
+            nonzero = False
+            column = 0
+            while column < factor_count:
+                work = work + 1
+                if work > work_limit:
+                    return -1
+                if fmpz_matrix_entry(basis_matrix, source_row, column) != 0:
+                    nonzero = True
+                column = column + 1
+            if nonzero:
+                rank = rank + 1
+            source_row = source_row + 1
+
+        selected_count = smooth_count
+        trials: uint64 = 0
+        deletion_complete = True
+        candidate_index = 0
+        while candidate_index < candidate_count:
+            candidate = candidates[candidate_index]
+            if candidate.smooth == 1:  # type: ignore[attr-defined]
+                if trials >= maximum_trials:
+                    deletion_complete = False
+                    candidate_index = candidate_count
+                elif initial_count + selected_count - 1 >= rank:
+                    source_row = candidate.relation_row  # type: ignore[attr-defined]
+                    column = 0
+                    while column < factor_count:
+                        work = work + 1
+                        if work > work_limit:
+                            return -1
+                        if not fmpz_matrix_set_entry(
+                            trial_source_matrix,
+                            source_row,
+                            column,
+                            0,
+                        ):
+                            return -1
+                        column = column + 1
+                    if not fmpz_matrix_hnf_into(trial_hnf_matrix, trial_source_matrix):
+                        return -1
+                    hnf_calls = hnf_calls + 1
+                    trials = trials + 1
+                    same_lattice = True
+                    trial_row: uint64 = 0
+                    while trial_row < total_rows:
+                        column = 0
+                        while column < factor_count:
+                            work = work + 1
+                            if work > work_limit:
+                                return -1
+                            if fmpz_matrix_entry(
+                                trial_hnf_matrix,
+                                trial_row,
+                                column,
+                            ) != fmpz_matrix_entry(
+                                basis_matrix,
+                                trial_row,
+                                column,
+                            ):
+                                same_lattice = False
+                            column = column + 1
+                        trial_row = trial_row + 1
+                    if same_lattice:
+                        selected_count = selected_count - 1
+                        candidates[candidate_index] = CubicShellCandidate(
+                            candidate.source_index,  # type: ignore[attr-defined]
+                            source_row,
+                            1,
+                            0,
+                        )
+                    else:
+                        column = 0
+                        while column < factor_count:
+                            work = work + 1
+                            if work > work_limit:
+                                return -1
+                            if not fmpz_matrix_set_entry(
+                                trial_source_matrix,
+                                source_row,
+                                column,
+                                relations[candidate_index, column],
+                            ):
+                                return -1
+                            column = column + 1
+            candidate_index = candidate_index + 1
+
+        # No caller-owned buffer changes before the complete exact transaction
+        # has succeeded.  Publish smooth candidates densely in source order.
+        output_index: uint64 = 0
+        while output_index < len(candidate_coordinates):
+            candidate_coordinates[output_index] = 0
+            output_index = output_index + 1
+        output_index = 0
+        while output_index < len(candidate_norms):
+            candidate_norms[output_index] = 0
+            selected_candidates[output_index] = 0
+            output_index = output_index + 1
+        output_index = 0
+        while output_index < len(candidate_rows):
+            candidate_rows[output_index] = 0
+            output_index = output_index + 1
+        output_index = 0
+        while output_index < len(hnf_basis):
+            hnf_basis[output_index] = 0
+            output_index = output_index + 1
+        published: uint64 = 0
+        candidate_index = 0
+        while candidate_index < candidate_count:
+            candidate = candidates[candidate_index]
+            if candidate.smooth == 1:  # type: ignore[attr-defined]
+                coordinate = 0
+                while coordinate < degree:
+                    candidate_coordinates[published * degree + coordinate] = (
+                        coordinates[candidate_index, coordinate]
+                    )
+                    coordinate = coordinate + 1
+                candidate_norms[published] = norms[candidate_index]
+                selected_candidates[published] = candidate.selected  # type: ignore[attr-defined]
+                column = 0
+                while column < factor_count:
+                    candidate_rows[published * factor_count + column] = relations[
+                        candidate_index, column
+                    ]
+                    column = column + 1
+                published = published + 1
+            candidate_index = candidate_index + 1
+        source_row = 0
+        while source_row < total_rows:
+            column = 0
+            while column < factor_count:
+                hnf_basis[source_row * factor_count + column] = fmpz_matrix_entry(
+                    basis_matrix,
+                    source_row,
+                    column,
+                )
+                column = column + 1
+            source_row = source_row + 1
+        metadata[0] = candidate_count
+        metadata[1] = smooth_count
+        metadata[2] = rank
+        metadata[3] = selected_count
+        metadata[4] = trials
+        metadata[5] = hnf_calls
+        if deletion_complete:
+            metadata[6] = 1
+        else:
+            metadata[6] = 0
+        metadata[7] = work
+        metadata[8] = total_rows
+        return 1
+    return -1
 
 
 @native
@@ -558,6 +1123,7 @@ def resident_exact_relation_hnf_select(
 
 
 __all__ = [
+    "cubic_reduced_shell_relation_hnf_v1",
     "resident_exact_relation_hnf_select",
     "resident_exact_relation_hnf_select_v2",
     "stable_exact_relation_hnf_select_v1",
