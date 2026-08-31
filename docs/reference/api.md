@@ -1333,6 +1333,94 @@ sage: 10 * E([0,0])
 
 - `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
 
+## `eta_product`
+
+```sage
+eta_product(level: Any, exponents: Any, prec: Any=10, variable: str='q') -> Any
+```
+
+Return a certified exact product $\prod_{d\mid N}\eta(dz)^{r_d}$.
+
+```sage
+sage: D = eta_product(1, {1: 24}, prec=8)
+sage: D.q_expansion()
+q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 - 16744*q^7 + O(q^8)
+sage: D.certificate().verify()
+True
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
+## `eta_product_candidates`
+
+```sage
+eta_product_candidates(level: Any, weight: Any, prec: Any=10, **options: Any) -> Any
+```
+
+Enumerate a deterministic bounded family of certified eta products.
+
+```sage
+sage: [f.exponents() for f in eta_product_candidates(11, 2, prec=8)]
+[((1, 2), (11, 2))]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
+## `eta_product_certificate`
+
+```sage
+eta_product_certificate(level: Any, exponents: Any) -> Any
+```
+
+Return all exact Newman--Ligozat conditions for an eta product.
+
+```sage
+sage: C = eta_product_certificate(4, {1: -12, 2: 10, 4: 4})
+sage: C.verify(), C.failure_reason()
+(False, 'the eta product has a pole at a cusp')
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sagejs.modular_forms.eta_products`
+- Tags: modular forms, q-expansions, eta products, eta quotients, Newman congruences, Ligozat cusp orders, Dirichlet characters
+- Backends: ordinary Python exact Euler products, FLINT exact rational power series, Sage.js modular-symbol ambient certificates
+- Sage compatibility: extension — SageMath's uppercase EtaProduct is a weight-zero meromorphic modular-function API. Sage.js uses lowercase eta_product for Newman--Ligozat-certified holomorphic modular forms of any supported integral weight, including valid negative exponents.
+- Limitations: Publication requires integral nonnegative weight and the sufficient Newman--Ligozat conditions. The bounded automatic registry currently searches only trivial-character cusp forms with nonnegative exponents. The automatic registry is limited to level at most 128, weight at most 24, and levels with at most four divisors.
+
+### Provenance
+
+- `literature-implemented` — Newman's eta-quotient congruences and Ligozat's cusp-order criterion
+- `sagejs-original` — Replayable modular-form certificate, exact character metadata, bounded candidate enumeration, and honest formula-registry integration
+- `sage-derived` — [SageMath eta-product Euler expansion used as an independent oracle](https://doc.sagemath.org/html/en/reference/modfrm/sage/modular/etaproducts.html); license GPL-2.0-or-later
+
 ## `exit`
 
 ```sage

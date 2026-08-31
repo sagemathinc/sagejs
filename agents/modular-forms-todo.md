@@ -61,6 +61,9 @@ classical API.
 - [x] Full modular-Jacobian component groups in the implemented Brandt domain.
 - [x] Specialized Hilbert modular-form slices over $\QQ(\sqrt5)$ and
   $\QQ(\sqrt3)$.
+- [x] Exact Newman--Ligozat-certified eta products and holomorphic eta
+  quotients, including cusp orders, Kronecker characters, and bounded formula
+  registry enumeration.
 
 ## P0: general $q$-expansion bases by two engines
 
@@ -80,6 +83,8 @@ classical API.
   half-integral-weight spaces.
 - [x] Slice 7: exact Kohnen-plus coefficient kernels and certified cuspidal
   Shimura lifts in the initial trivial-character target domain.
+- [x] Slice 8: certified eta products and eta quotients with a bounded
+  constructive-formula registry.
 
 ### Outcome
 
@@ -220,7 +225,7 @@ many coefficients and an independently known dimension.
 - [x] Full level-$1$ integral-weight spaces from $E_4$ and $E_6$.
 - [ ] Eisenstein spaces for general implemented $\Gamma_0(N)$ and Dirichlet
   characters.
-- [ ] A composite-level integral-weight corpus where Eisenstein series,
+- [x] A composite-level integral-weight corpus where Eisenstein series,
   degeneracy, products, eta forms, or theta series produce a complete space.
 - [x] A corpus where formulas prove only a proper subspace, exercising honest
   partial-span behavior.
@@ -292,8 +297,10 @@ many coefficients and an independently known dimension.
   primes or additional operators.
 - [x] Cover exact Eisenstein series with nontrivial characters and compare
   generalized Bernoulli constant terms.
-- [ ] Cover eta-product and quadratic-theta-series bases with independently
-  verified cusp behavior and dimensions.
+- [x] Cover eta-product bases with independently verified Newman congruences,
+  cusp behavior, character, exact expansions, and ambient dimensions.
+- [ ] Cover quadratic-theta-series bases with independently verified cusp
+  behavior and dimensions.
 - [x] Cover at least one half-integral-weight space, Kohnen-relevant example,
   and formula-derived Hecke comparison without pretending modular symbols are
   the construction engine.
