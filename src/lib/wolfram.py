@@ -6,6 +6,9 @@ from typing import Any, Callable
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.numerics.frontends import (
+    create_frontend_registry as _create_numerical_registry,
+)
+from sagejs.numerics.frontends import (
     emit_code as _emit_numerical_code,
 )
 from sagejs.numerics.frontends import (
@@ -194,6 +197,191 @@ def numerical_code(intent: Any, language: str) -> str:
     """Emit canonical numerical intent as Sage, SciPy, MATLAB, or Wolfram."""
 
     return _emit_numerical_code(intent, language)
+
+
+def numerical_intent(name: str, *arguments: Any, **options: Any) -> Any:
+    """Lower a supported Wolfram numerical call to canonical intent."""
+
+    return _create_numerical_registry().lower("wolfram", name, *arguments, **options)
+
+
+def numerical_result(name: str, *arguments: Any, **options: Any) -> Any:
+    """Execute a Wolfram numerical call and retain all structured evidence."""
+
+    registry = _create_numerical_registry()
+    return registry.execute(registry.lower("wolfram", name, *arguments, **options))
+
+
+def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
+    """Return the conventional Wolfram value view of a structured result."""
+
+    result = numerical_result(name, *arguments, **options)
+    _require_numerical_success(name, result)
+    return result.value if hasattr(result, "value") else result
+
+
+def _require_numerical_success(name: str, result: Any) -> None:
+    """Reject failed iterates before projecting a Wolfram-style short result."""
+
+    if hasattr(result, "success") and not result.success:
+        status = result.status if hasattr(result, "status") else "failed"
+        raise RuntimeError(name + " failed: " + str(status))
+
+
+def linear_solve(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("LinearSolve", matrix, right, **options)
+
+
+def least_squares(matrix: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("LeastSquares", matrix, right, **options)
+
+
+def eigensystem(matrix: Any, **options: Any) -> Any:
+    result = numerical_result("Eigensystem", matrix, **options)
+    _require_numerical_success("Eigensystem", result)
+    value = result.value
+    return [value["eigenvalues"], value["eigenvectors"]]
+
+
+def general_eigensystem(matrix: Any, **options: Any) -> Any:
+    result = numerical_result("GeneralEigensystem", matrix, **options)
+    _require_numerical_success("GeneralEigensystem", result)
+    value = result.value
+    return [value["eigenvalues"], value["eigenvectors"]]
+
+
+def singular_value_decomposition(matrix: Any, **options: Any) -> Any:
+    result = numerical_result("SingularValueDecomposition", matrix, **options)
+    _require_numerical_success("SingularValueDecomposition", result)
+    value = result.value
+    return [value["u"], value["singular_values"], value["vh"]]
+
+
+def fourier(samples: Any, **options: Any) -> Any:
+    return numerical_value("Fourier", samples, **options)
+
+
+def list_convolve(left: Any, right: Any, **options: Any) -> Any:
+    return numerical_value("ListConvolve", left, right, **options)
+
+
+class WolframInterpolatingFunction:
+    """Callable Wolfram-style view over a validated approximation result."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.evaluate(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def interpolation(nodes: Any, values: Any, **options: Any) -> Any:
+    result = numerical_result("Interpolation", nodes, values, **options)
+    _require_numerical_success("Interpolation", result)
+    return WolframInterpolatingFunction(result)
+
+
+def cubic_spline_interpolation(nodes: Any, values: Any, **options: Any) -> Any:
+    result = numerical_result("CubicSplineInterpolation", nodes, values, **options)
+    _require_numerical_success("CubicSplineInterpolation", result)
+    return WolframInterpolatingFunction(result)
+
+
+def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    result = numerical_result("NIntegrate", function, lower, upper, **options)
+    if not result.success:
+        raise RuntimeError("NIntegrate failed: " + result.status)
+    return result.value
+
+
+def n_minimize_scalar(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
+    result = numerical_result("NMinimizeScalar", function, lower, upper, **options)
+    _require_numerical_success("NMinimizeScalar", result)
+    return [result.objective, {"x": result.value}]
+
+
+def find_minimum(function: Any, initial: Any, **options: Any) -> Any:
+    result = numerical_result("FindMinimum", function, initial, **options)
+    _require_numerical_success("FindMinimum", result)
+    return [result.objective, {"x": result.value}]
+
+
+def find_root_system(function: Any, initial: Any, **options: Any) -> Any:
+    result = numerical_result("FindRootSystem", function, initial, **options)
+    _require_numerical_success("FindRootSystem", result)
+    return {"x": result.value}
+
+
+def nonlinear_least_squares(residuals: Any, initial: Any, **options: Any) -> Any:
+    result = numerical_result("NonlinearLeastSquares", residuals, initial, **options)
+    _require_numerical_success("NonlinearLeastSquares", result)
+    return {"parameters": result.value, "objective": result.objective}
+
+
+def linear_model_fit(x: Any, y: Any, **options: Any) -> Any:
+    return numerical_value("LinearModelFitData", x, y, **options)
+
+
+class WolframNDSolveValue:
+    """Callable trajectory view retaining canonical ODE evidence."""
+
+    def __init__(self, numerical_result: Any) -> None:
+        self.numerical_result = numerical_result
+
+    def __call__(self, value: Any) -> Any:
+        return self.numerical_result.trajectory(value)
+
+    def to_dict(self) -> Any:
+        return self.numerical_result.to_dict()
+
+
+def nd_solve_value(function: Any, t_span: Any, y0: Any, **options: Any) -> Any:
+    result = numerical_result("NDSolveValue", function, t_span, y0, **options)
+    _require_numerical_success("NDSolveValue", result)
+    return WolframNDSolveValue(result)
+
+
+def sagejs_describe(data: Any, **options: Any) -> Any:
+    return numerical_value("SageJSDescribe", data, **options)
+
+
+def one_sample_t_test(data: Any, population_mean: Any = 0, **options: Any) -> Any:
+    return numerical_value("OneSampleTTest", data, population_mean, **options)
+
+
+def two_sample_t_test(first: Any, second: Any, **options: Any) -> Any:
+    return numerical_value("TwoSampleTTest", first, second, **options)
+
+
+def map_numerical(function: Any, parameters: Any, **options: Any) -> Any:
+    """Map a callback through the deterministic bounded sweep contract."""
+
+    return numerical_value("Map", function, parameters, **options)
+
+
+LinearSolve = linear_solve
+LeastSquares = least_squares
+Eigensystem = eigensystem
+GeneralEigensystem = general_eigensystem
+SingularValueDecomposition = singular_value_decomposition
+Fourier = fourier
+ListConvolve = list_convolve
+Interpolation = interpolation
+CubicSplineInterpolation = cubic_spline_interpolation
+NIntegrate = n_integrate
+NMinimizeScalar = n_minimize_scalar
+FindMinimum = find_minimum
+FindRootSystem = find_root_system
+NonlinearLeastSquares = nonlinear_least_squares
+LinearModelFitData = linear_model_fit
+NDSolveValue = nd_solve_value
+SageJSDescribe = sagejs_describe
+OneSampleTTest = one_sample_t_test
+TwoSampleTTest = two_sample_t_test
+Map = map_numerical
 
 
 class _GraphicsDirective:
@@ -412,7 +600,9 @@ def _translate_options(
                 "severity": "warning",
                 "phase": "options",
                 "layer_ids": [],
-                "message": "A frontend option could not be represented and was ignored.",
+                "message": (
+                    "A frontend option could not be represented and was ignored."
+                ),
                 "suggested_repairs": [
                     "Use the suggested Plotly-native alternative when available."
                 ],

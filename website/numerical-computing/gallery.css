@@ -434,8 +434,9 @@ h3 { line-height: 1.2; }
 
 .plot-background { fill: #fffdf8; }
 .plot-axis { stroke: #68766f; stroke-width: 1; }
-.plot-function { fill: none; stroke: var(--blue); stroke-width: 3; }
+.plot-bracket-line { stroke: var(--orange); stroke-width: 5; }
 .plot-bracket { fill: #fffdf8; stroke: var(--orange); stroke-width: 3; }
+.plot-evaluation { fill: var(--blue); stroke: #fffdf8; stroke-width: 1.5; }
 .plot-candidate { fill: var(--green); stroke: #fffdf8; stroke-width: 2; }
 .plot-label, .plot-tick { fill: #314139; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; }
 

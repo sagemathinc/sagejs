@@ -465,7 +465,13 @@ def _polynomial_roots_plot_spec(
     show_failure: bool = True,
     constructor: str = "PolynomialRootsResult.to_plot_spec",
 ) -> PlotSpec:
-    from sagejs.plotting import PlotSpec, Provenance, make_layer
+    from sagejs.plotting import (
+        Axes2DSettings,
+        AxisSettings,
+        PlotSpec,
+        Provenance,
+        make_layer,
+    )
 
     roots = result.roots
     count = len(roots) if visible_roots is None else visible_roots
@@ -503,7 +509,7 @@ def _polynomial_roots_plot_spec(
             source_intent={"operation": "polynomial_roots", "role": "failure"},
             style={"color": "#a23b3b", "font_size": 16},
         )
-        axes = {"x": {"label": ""}, "y": {"label": ""}}
+        axes = Axes2DSettings(AxisSettings(label=""), AxisSettings(label="")).to_dict()
     else:
         visible = roots[:count]
         layer = make_layer(
@@ -518,10 +524,11 @@ def _polynomial_roots_plot_spec(
             style={"color": "#3366cc", "size": 9, "symbol": "circle"},
             legend={"label": "validated roots", "show": True},
         )
-        axes = {
-            "x": {"label": "real part", "scale": "linear"},
-            "y": {"label": "imaginary part", "scale": "linear"},
-        }
+        axes = Axes2DSettings(
+            AxisSettings(label="real part"),
+            AxisSettings(label="imaginary part"),
+            equal_aspect=True,
+        ).to_dict()
     return PlotSpec(
         2,
         [layer],

@@ -169,7 +169,7 @@
       "category": "external-library-bridge",
       "review_status": "audited",
       "lane": "integration",
-      "rationale": "Bounded callback, allocation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source and all adapter allocations are operation-scoped."
+      "rationale": "Bounded callback, total evaluation-budget, allocation, cancellation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source, allocations are operation-scoped, and Sage.js independently validates returned residuals."
     },
     {
       "path": "packages/flint-wasm/src/factor.c",

@@ -35,6 +35,41 @@ def _cminpack_record(method: str) -> dict[str, Any]:
         "runtimes": _CMINPACK_RUNTIMES,
     }
 
+def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
+    primary = {
+        "scalar_minimum": "retained_objective_and_incumbent_path",
+        "minimize": "parameter_path_or_convergence_history",
+        "nonlinear_system": "parameter_path_or_residual_history",
+        "nonlinear_least_squares": "parameter_path_or_cost_history",
+        "curve_fit": "observations_model_and_residual_sticks",
+        "linear_fit": "observations_model_and_residual_sticks",
+    }[operation]
+    return {
+        "explanation": {
+            "structured": "optimization-explanation/v1",
+            "text": True,
+            "failure_narrative": True,
+            "callback_replay": False,
+            "identifiability": operation
+            in ("nonlinear_least_squares", "curve_fit", "linear_fit"),
+        },
+        "static": {
+            "kind": "plot-spec",
+            "primary_view": primary,
+            "accessible_description": True,
+            "canonical_axes": True,
+            "callback_replay": False,
+        },
+        "animation": {
+            "kind": "plot-animation",
+            "requires_retained_trace": True,
+            "max_frames": 128,
+            "controls": ["play", "pause", "iteration_slider"],
+            "static_fallback": True,
+            "callback_replay": False,
+        },
+        "constraints": constraints,
+    }
 
 _METHODS: dict[str, dict[str, dict[str, Any]]] = {
     "scalar_minimum": {
@@ -44,6 +79,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["finite_interval"],
             "derivatives": ["none"],
             "validation": ["feasibility", "projected_stationarity"],
+            "views": _view_contract("scalar_minimum", "finite_interval"),
             "platforms": _PLATFORMS,
         }
     },
@@ -54,6 +90,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["none"],
             "derivatives": ["none"],
             "validation": ["finite_difference_stationarity"],
+            "views": _view_contract("minimize", "none"),
             "max_dimension": 64,
             "platforms": _PLATFORMS,
         },
@@ -63,6 +100,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["none"],
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["independent_finite_difference_stationarity"],
+            "views": _view_contract("minimize", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -72,6 +110,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["box_bounds"],
             "derivatives": ["analytic", "bound_aware_finite_difference"],
             "validation": ["feasibility", "projected_gradient_kkt"],
+            "views": _view_contract("minimize", "two_dimensional_box_projection"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -82,6 +121,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["independent_residual"],
+            "views": _view_contract("nonlinear_system", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         }
@@ -94,6 +134,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["residual_norm", "independent_stationarity"],
+            "views": _view_contract("nonlinear_least_squares", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -106,6 +147,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["residual_norm", "independent_stationarity"],
+            "views": _view_contract("curve_fit", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -116,11 +158,20 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic"],
             "validation": ["normal_equations", "residual_norm"],
+            "views": _view_contract("linear_fit", "none"),
             "max_dimension": 2,
             "platforms": _PLATFORMS,
         }
     },
 }
+
+
+def _detached(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _detached(value[key]) for key in value}
+    if isinstance(value, list):
+        return [_detached(item) for item in value]
+    return value
 
 
 def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
@@ -130,7 +181,7 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
         if operation is None or operation == operation_name:
             operations[operation_name] = {
                 "methods": {
-                    name: dict(_METHODS[operation_name][name])
+                    name: _detached(_METHODS[operation_name][name])
                     for name in sorted(_METHODS[operation_name])
                 }
             }

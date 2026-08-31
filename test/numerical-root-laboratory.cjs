@@ -61,7 +61,8 @@ from sagejs.numerics import (
     root_problem,
 )
 
-assert capabilities()["schema_version"] == 1
+assert capabilities()["schema_version"] == 2
+assert capabilities("roots")["schema_version"] == 1
 assert {item["code"] for item in diagnostic_registry()} >= {
     "invalid_bracket", "validation_failed", "trace_truncated"
 }
@@ -88,8 +89,12 @@ assert answer.residual is not None and answer.residual < 1e-12
 assert answer.validation.truth_level == "validated_approximate"
 assert answer.trace.events[0].kind == "start"
 assert answer.trace.events[-1].kind == "finish"
+presentation_calls = calls[0]
 assert len(answer.plot().layers) == 3
 assert len(answer.animate().frames) >= 2
+assert calls[0] == presentation_calls
+assert answer.plot().provenance["metadata"]["callback_reevaluated"] is False
+assert answer.animate().to_dict()["metadata"]["computed_evidence_only"] is True
 assert "fzero" in answer.code("matlab")
 assert "FindRoot" in answer.code("wolfram")
 assert answer.to_plot_spec().to_dict() == answer.plot().to_dict()

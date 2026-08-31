@@ -19,6 +19,13 @@ from sagejs.plotting import (
 from .model import NumericalResult
 
 
+def _finite_float(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    converted = float(value)
+    return converted if math.isfinite(converted) else None
+
+
 def _root_domain(result: NumericalResult) -> tuple[float, float]:
     bracket = result.problem.bounds.get("bracket")
     if isinstance(bracket, list) and len(bracket) == 2:
@@ -36,24 +43,54 @@ def _root_domain(result: NumericalResult) -> tuple[float, float]:
     return center - 1.25 * radius, center + 1.25 * radius
 
 
-def _sample_root_function(
-    result: NumericalResult, count: int = 129
-) -> tuple[list[float], list[float | None]]:
-    lower, upper = _root_domain(result)
-    function = result.problem.function
-    if function is None:
-        raise ValueError("root visualization requires a live callback")
+def _retained_root_points(
+    result: NumericalResult, through_sequence: int | None = None
+) -> tuple[list[float], list[float], bool]:
+    """Return only values already retained by the solver trace.
+
+    Visualization is a pure result operation: callbacks may be expensive,
+    stateful, unavailable after serialization, or already at their resource
+    limit.  Evaluation traces retain signed function values.  Less detailed
+    traces retain candidate/residual pairs, which are plotted explicitly as
+    residual magnitudes rather than being presented as new evaluations.
+    """
     x_values: list[float] = []
-    y_values: list[float | None] = []
-    for index in range(count):
-        x = lower + (upper - lower) * index / (count - 1)
-        x_values.append(x)
-        try:
-            value = float(function(x))
-            y_values.append(value if math.isfinite(value) else None)
-        except Exception:
-            y_values.append(None)
-    return x_values, y_values
+    y_values: list[float] = []
+    for event in result.trace.events:
+        if through_sequence is not None and event.sequence > through_sequence:
+            continue
+        if event.kind != "evaluation":
+            continue
+        data = event.data
+        if "x" not in data or "value" not in data:
+            continue
+        x = _finite_float(data["x"])
+        value = _finite_float(data["value"])
+        if x is not None and value is not None:
+            x_values.append(x)
+            y_values.append(value)
+    if x_values:
+        return x_values, y_values, True
+    for event in result.trace.events:
+        if through_sequence is not None and event.sequence > through_sequence:
+            continue
+        if event.kind != "iteration":
+            continue
+        data = event.data
+        if "candidate" not in data or "residual" not in data:
+            continue
+        candidate = _finite_float(data["candidate"])
+        residual = _finite_float(data["residual"])
+        if candidate is not None and residual is not None:
+            x_values.append(candidate)
+            y_values.append(abs(residual))
+    if x_values:
+        return x_values, y_values, False
+    candidate = _candidate_value(result)
+    residual = result.validation.residual
+    if residual is not None and math.isfinite(float(residual)):
+        return [candidate], [abs(float(residual))], False
+    return [candidate], [0.0], False
 
 
 def _candidate_value(
@@ -88,43 +125,46 @@ def _bracket_value(
 def _root_spec(
     result: NumericalResult,
     x_values: list[float],
-    y_values: list[float | None],
+    y_values: list[float],
+    signed_evaluations: bool,
     event_data: dict[str, Any] | None = None,
 ) -> PlotSpec:
-    function = result.problem.function
-    if function is None:
-        raise ValueError("root visualization requires a live callback")
     bracket = _bracket_value(result, event_data)
     candidate = _candidate_value(result, event_data)
-    bracket_y: list[float | None] = []
-    for x in bracket:
-        try:
-            value = float(function(x))
-            bracket_y.append(value if math.isfinite(value) else None)
-        except Exception:
-            bracket_y.append(None)
-    try:
-        candidate_y_value = float(function(candidate))
-        candidate_y: float | None = (
-            candidate_y_value if math.isfinite(candidate_y_value) else None
-        )
-    except Exception:
-        candidate_y = None
+    candidate_y: float | None = None
+    for index in range(len(x_values) - 1, -1, -1):
+        if x_values[index] == candidate:
+            candidate_y = y_values[index]
+            break
+    if candidate_y is None and event_data is not None:
+        residual = event_data.get("residual")
+        if isinstance(residual, (int, float)) and math.isfinite(float(residual)):
+            candidate_y = abs(float(residual))
     layers = [
         make_layer(
-            "line",
+            "point",
             {"x": x_values, "y": y_values},
             ordinal=0,
-            source_intent={"operation": "scalar_root", "role": "function"},
-            style={"color": "#3366cc", "width": 2},
-            legend={"label": "f(x)", "show": True},
+            source_intent={
+                "operation": "scalar_root",
+                "role": "evaluations" if signed_evaluations else "residual-progress",
+            },
+            style={"color": "#3366cc", "size": 6},
+            legend={
+                "label": (
+                    "retained f(x) evaluations"
+                    if signed_evaluations
+                    else "retained residual magnitudes"
+                ),
+                "show": True,
+            },
         ),
         make_layer(
-            "point",
-            {"x": bracket, "y": bracket_y},
+            "line",
+            {"x": bracket, "y": [0.0, 0.0]},
             ordinal=1,
             source_intent={"operation": "scalar_root", "role": "bracket"},
-            style={"color": "#dd8452", "size": 9},
+            style={"color": "#dd8452", "width": 5},
             legend={"label": "bracket", "show": True},
         ),
         make_layer(
@@ -152,43 +192,52 @@ def _root_spec(
                 "problem_digest": result.problem.digest,
                 "method": result.method,
                 "truth_level": result.validation.truth_level,
+                "computed_evidence_only": True,
+                "callback_reevaluated": False,
             },
         ),
     )
 
 
 def root_plot(result: NumericalResult) -> PlotSpec:
-    """Return a static semantic function/bracket/candidate PlotSpec."""
-    x_values, y_values = _sample_root_function(result)
-    return _root_spec(result, x_values, y_values)
+    """Return a static PlotSpec containing only retained solver evidence."""
+    x_values, y_values, signed = _retained_root_points(result)
+    records = [event.data for event in result.trace.events if event.kind == "iteration"]
+    return _root_spec(
+        result, x_values, y_values, signed, records[-1] if records else None
+    )
 
 
 def root_animation(result: NumericalResult) -> PlotAnimation:
     """Replay retained root iterations as a bounded PlotSpec animation."""
-    x_values, y_values = _sample_root_function(result)
-    data_records: list[dict[str, Any]] = []
+    data_records: list[tuple[int | None, dict[str, Any]]] = []
     for event in result.trace.events:
         if event.kind == "iteration":
-            data_records.append(event.data)
+            data_records.append((event.sequence, event.data))
     if len(data_records) == 0:
-        data_records = [{}, {}]
+        data_records = [(None, {}), (None, {})]
     elif len(data_records) == 1:
-        data_records = [{}, data_records[0]]
+        data_records = [(None, {}), data_records[0]]
+    if len(data_records) > 64:
+        indices = [(index * (len(data_records) - 1)) // 63 for index in range(64)]
+        data_records = [data_records[index] for index in dict.fromkeys(indices)]
     frames: list[AnimationFrame] = []
     for index in range(len(data_records)):
+        sequence, data = data_records[index]
+        x_values, y_values, signed = _retained_root_points(result, sequence)
         frames.append(
             AnimationFrame(
                 stable_frame_id(index),
-                _root_spec(result, x_values, y_values, data_records[index]),
+                _root_spec(result, x_values, y_values, signed, data),
                 label="iteration " + str(index),
-                metadata={"trace_data": data_records[index]},
+                metadata={"trace_data": data, "interpolated": False},
             )
         )
     return PlotAnimation(
         frames,
         timing=AnimationTiming(frame_duration_ms=350, transition_duration_ms=0),
         limits=AnimationResourceLimits(
-            max_frames=result.problem.trace_policy.max_events,
+            max_frames=min(64, result.problem.trace_policy.max_events),
             max_total_samples=max(1024, len(frames) * 400),
             max_payload_bytes=max(1_000_000, result.problem.trace_policy.max_bytes * 4),
         ),
@@ -196,5 +245,7 @@ def root_animation(result: NumericalResult) -> PlotAnimation:
             "operation": "scalar_root",
             "problem_digest": result.problem.digest,
             "trace_truncated": result.trace.truncated,
+            "computed_evidence_only": True,
+            "callback_reevaluated": False,
         },
     )
