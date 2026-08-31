@@ -64,7 +64,7 @@ test("empty startup has a distinct stricter regression budget", () => {
 test("startup budgets can account for a measured platform-architecture cost", () => {
   assert.equal(startupDefaults(false, false, "linux", "arm64").budgetMs, 475);
   assert.equal(startupDefaults(false, false, "linux", "x64").budgetMs, 400);
-  assert.equal(startupDefaults(true, false, "linux", "arm64").budgetMs, 350);
+  assert.equal(startupDefaults(true, false, "linux", "arm64").budgetMs, 425);
   assert.equal(startupDefaults(true, false, "darwin", "arm64").budgetMs, 300);
   assert.equal(startupDefaults(true, false, "linux", "x64").budgetMs, 350);
 });
