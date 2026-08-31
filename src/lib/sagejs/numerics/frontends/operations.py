@@ -7,7 +7,7 @@ remain owned by their domain packages and are imported lazily by execution.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, NoReturn
 
 from .._json import JSONValue
@@ -26,6 +26,7 @@ from .portable import (
     render_callback,
     render_value,
     runtime_value,
+    validated_callback,
 )
 from .registry import OperationAdapter
 
@@ -606,11 +607,15 @@ def _lower(
                 "atol": "absolute_tolerance",
                 "rtol": "relative_tolerance",
             }.get(canonical, canonical)
-        if definition.operation.name in (
-            "symmetric_eigen",
-            "general_eigen",
-            "singular_value_decomposition",
-        ) and canonical == "maxiter":
+        if (
+            definition.operation.name
+            in (
+                "symmetric_eigen",
+                "general_eigen",
+                "singular_value_decomposition",
+            )
+            and canonical == "maxiter"
+        ):
             canonical = "max_iterations"
         if canonical not in definition.options:
             _unsupported(
@@ -646,13 +651,17 @@ def _lower(
             )
             operand_values[name] = record
             if "callback" in live:
-                callback = live["callback"]
+                callback = validated_callback(record, live["callback"])
                 if definition.operation.name == "parameter_sweep" and source in (
                     "matlab",
                     "wolfram",
                 ):
 
-                    def evaluator(parameter: Any, context: Any) -> Any:
+                    def evaluator(
+                        parameter: Any,
+                        context: Any,
+                        callback: Callable[..., Any] = callback,
+                    ) -> Any:
                         del context
                         return callback(parameter)
 
@@ -684,10 +693,22 @@ def _callback_parameters(
     parameters: Any,
     arguments: Sequence[Any],
 ) -> tuple[str, ...]:
+    expected = _default_callback_parameters(definition, arguments)
     if parameters is not None:
         if isinstance(parameters, str) or not isinstance(parameters, Sequence):
             raise TypeError("callback parameters must be a sequence of names")
-        return tuple(str(item) for item in parameters)
+        provided = tuple(str(item) for item in parameters)
+        if len(provided) != len(expected):
+            raise ValueError(
+                "callback parameter count does not match the canonical operation"
+            )
+        return provided
+    return expected
+
+
+def _default_callback_parameters(
+    definition: _Definition, arguments: Sequence[Any]
+) -> tuple[str, ...]:
     name = definition.operation.name
     if name in ("definite_integral", "scalar_minimum"):
         return ("x",)
@@ -834,6 +855,12 @@ def _callback_source(record: Any, language: str, shape: str) -> str:
     parameters = [str(item) for item in parameters_value]
     bodies = rendered if isinstance(rendered, list) else [rendered]
     vector_output = isinstance(rendered, list)
+    if shape in ("scalar", "sweep") and len(parameters) != 1:
+        raise ValueError(shape + " callback expressions require one parameter")
+    if shape == "ode" and len(parameters) < 2:
+        raise ValueError("ODE callback expressions require t and state parameters")
+    if shape == "vector" and not parameters:
+        raise ValueError("vector callback expressions require at least one parameter")
     if shape == "scalar":
         parameter = parameters[0]
         body = bodies[0]
@@ -851,8 +878,6 @@ def _callback_source(record: Any, language: str, shape: str) -> str:
             return "@(" + parameter + ") " + body
         return "lambda " + parameter + ", context: " + body
     if shape == "ode":
-        if len(parameters) < 2:
-            raise ValueError("ODE callback expressions require t and state parameters")
         state_names = parameters[1:]
         if language in ("sage", "python-scipy"):
             value = "[" + ", ".join(bodies) + "]" if vector_output else bodies[0]
@@ -945,7 +970,9 @@ def _emit_python_like(
             "linear_regression": "from scipy import stats",
             "parameter_sweep": "from sagejs.numerics.sweeps import run_parameter_sweep",
         }
-        lines.append(imports[name])
+        lines.append("import numpy as np")
+        if imports[name] != "import numpy as np":
+            lines.append(imports[name])
         call_name = ""
     for operand in definition.operands:
         if operand != definition.callback:

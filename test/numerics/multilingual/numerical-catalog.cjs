@@ -26,7 +26,8 @@ function run(executable, args) {
 
 const catalogWitness = String.raw`
 import collections.abc, hashlib, json, math, re, sys, typing
-sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
+local_source_root = ${JSON.stringify(join(root, "src/lib"))}
+sys.path.insert(0, local_source_root)
 
 from sagejs.numerics.frontends import (
     FRONTEND_LANGUAGES,
@@ -112,6 +113,28 @@ for name, arguments, options, normalized_name in option_cases:
     assert normalized_name in intent.options
     assert registry.execute(intent).success
 
+# Replayable callbacks are executable claims, not decorative source strings.
+mismatched = registry.lower(
+    "matlab", "integral", lambda x: x, 0, 1, expression="x^2"
+)
+mismatched_result = registry.execute(mismatched)
+assert not mismatched_result.success
+assert mismatched_result.status == "callback_error"
+
+try:
+    registry.lower(
+        "matlab",
+        "integral",
+        lambda x: x,
+        0,
+        1,
+        expression="x",
+        parameters=("x", "unused"),
+    )
+    raise AssertionError("mismatched callback parameter count unexpectedly lowered")
+except ValueError:
+    pass
+
 # Every claimed target has a checked, edit-detecting emitted-source round trip.
 # Targets whose result/normalization conventions are not yet qualified fail
 # with one structured unsupported_target diagnostic.
@@ -169,6 +192,31 @@ try:
 except UnsupportedFrontendError as error:
     assert error.diagnostic.code == "unsupported_option"
 
+# Python/SciPy output is a standalone executable program, including NumPy
+# when a portable expression renders np.exp/np.sin/etc.
+replayable_integral = registry.lower(
+    "python-scipy",
+    "scipy.integrate.quad",
+    lambda x: math.exp(-x),
+    0,
+    1,
+    expression="exp(-x)",
+)
+python_source = registry.emit(replayable_integral, "python-scipy")
+assert "import numpy as np" in python_source
+sys.path.remove(local_source_root)
+try:
+    scope = {}
+    exec(python_source, scope)
+    assert abs(scope["result"] - (1.0 - math.exp(-1.0))) < 1e-10
+
+    solve_source = registry.emit(equivalent[1], "python-scipy")
+    solve_scope = {}
+    exec(solve_source, solve_scope)
+    assert max(abs(float(a) - b) for a, b in zip(solve_scope["result"], [2, 3])) < 1e-12
+finally:
+    sys.path.insert(0, local_source_root)
+
 print("foundational numerical catalog witness passed")
 `;
 
@@ -197,6 +245,14 @@ regression = wolfram.LinearModelFitData([0, 1, 2], [1, 3, 5])
 assert abs(regression["slope"] - 2) < 1e-12
 assert matlab.arrayfun(lambda value: value*value, [1, 2, 3]) == [1, 4, 9]
 assert wolfram.Map(lambda value: value+1, [1, 2, 3]) == [2, 3, 4]
+for module, name in ((matlab, "linsolve"), (wolfram, "LinearSolve")):
+    rich = module.numerical_result(name, [[1, 1], [2, 2]], [1, 2])
+    assert not rich.success
+    try:
+        module.numerical_value(name, [[1, 1], [2, 2]], [1, 2])
+        raise AssertionError("failed short numerical result unexpectedly escaped")
+    except RuntimeError as error:
+        assert "failed:" in str(error)
 try:
     matlab.polyfit([0, 1], [1, 2], 2)
     raise AssertionError("unqualified polynomial fit unexpectedly executed")

@@ -29,13 +29,9 @@ ordinary arguments into the forms consumed by these functions.
 ```ts
 arrayfun: "_matlab.arrayfun",
 conv: "_matlab.conv",
-eig: "_matlab.eig",
-fft: "_matlab.fft",
-fitlm: "_matlab.fitlm",
 fminbnd: "_matlab.fminbnd",
 fminsearch: "_matlab.fminsearch",
 fsolve: "_matlab.fsolve",
-griddedInterpolant: "_matlab.gridded_interpolant",
 integral: "_matlab.integral",
 linsolve: "_matlab.linsolve",
 lsqminnorm: "_matlab.lsqminnorm",
@@ -43,16 +39,13 @@ lsqnonlin: "_matlab.lsqnonlin",
 ode45: "_matlab.ode45",
 polyfit: "_matlab.polyfit",
 sagejs_describe: "_matlab.sagejs_describe",
-spline: "_matlab.spline",
 svd: "_matlab.svd",
-ttest: "_matlab.ttest",
-ttest2: "_matlab.ttest2",
 ```
 
-Do not add an `eig_symmetric` parser spelling: it is a Sage.js semantic alias,
-not natural MATLAB syntax. MATLAB `eig` deliberately selects the general
-eigenproblem contract unless the caller explicitly uses the generic intent API.
 The existing backslash lowering to `_matlab.mldivide` remains unchanged.
+`eig`, `fft`, `fitlm`, `griddedInterpolant`, `spline`, `ttest`, and `ttest2`
+fail closed until their defaults, orientations, complex values, and one-output
+conventions have qualified language-specific adapters.
 
 Add parser/runtime tests beside the existing `fzero` frontend tests, including:
 
@@ -81,11 +74,6 @@ form:
 ```ts
 LinearSolve: "_wolfram.LinearSolve",
 LeastSquares: "_wolfram.LeastSquares",
-Eigensystem: "_wolfram.Eigensystem",
-GeneralEigensystem: "_wolfram.GeneralEigensystem",
-SingularValueDecomposition: "_wolfram.SingularValueDecomposition",
-Fourier: "_wolfram.Fourier",
-ListConvolve: "_wolfram.ListConvolve",
 SageJSDescribe: "_wolfram.SageJSDescribe",
 OneSampleTTest: "_wolfram.OneSampleTTest",
 TwoSampleTTest: "_wolfram.TwoSampleTTest",
@@ -97,33 +85,29 @@ Add checked parser/runtime cases for:
 
 ```text
 LinearSolve[{{3,1},{1,2}},{9,8}]
-Fourier[{1,2,3}]
 SageJSDescribe[{1,2,3,4}]
 ```
 
-The first must evaluate to `[2, 3]`; the other two should be compared against
-the canonical runtime results, including complex-number normalization for the
-Fourier result.
+The first must evaluate to `[2, 3]`; the descriptive result should be compared
+against the canonical runtime result.
 
 Do **not** direct-map `NIntegrate`, `FindMinimum`, `NDSolveValue`, or
 `Interpolation`. Natural Wolfram syntax binds variables and equations and is
-not the positional callback API exposed by the Python runtime. Implement these
-as syntax-aware lowerers, following the existing `findRoot` pattern. The first
-safe slices are:
+not the positional callback API exposed by the Python runtime. `NIntegrate`
+has one syntax-aware finite scalar slice following the existing `findRoot`
+pattern:
 
 ```text
 NIntegrate[expr, {x, a, b}]
   -> _wolfram.NIntegrate(lambda x: <lower expr>, a, b)
-
-FindMinimum[expr, {x, x0}]
-  -> _wolfram.FindMinimum(lambda point: (lambda x: <lower expr>)(point[0]), [x0])
 ```
 
-Reject nonnumeric bounds, multiple/infinite regions, constrained minima,
-symbolic parameters, differential-algebraic equations, events, and unpreserved
-interpolation options with a parser diagnostic. Never fall through to an
-unqualified Python function name: that turns an intentionally unsupported
-translation into a misleading `NameError`.
+Reject nonnumeric bounds, free symbols, nonunary functions, multiple/infinite
+regions, minima, differential-algebraic equations, events, and unpreserved
+interpolation options with a parser diagnostic. Spectral Wolfram heads also
+fail closed until their normalization, orientation, and result forms are
+qualified. Never fall through to an unqualified Python function name: that
+turns an intentionally unsupported translation into a misleading `NameError`.
 
 For known numerical heads outside the qualified subset, the parser should
 raise `WolframSyntaxError` with a message of the form:

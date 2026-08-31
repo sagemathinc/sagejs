@@ -18,6 +18,7 @@ from .model import (
     canonical_language,
     opaque_callback_record,
 )
+from .portable import validated_callback
 from .registry import FrontendRegistry, OperationAdapter
 
 SCALAR_ROOT = OperationRef("roots", "scalar_root", 1)
@@ -255,7 +256,11 @@ def scalar_root_intent(
         else []
     )
     points = values if not bracket else list(bracket)
-    bindings = {"function": function} if callable(function) else {}
+    bindings = (
+        {"function": validated_callback(function_value, function)}
+        if callable(function)
+        else {}
+    )
     return NumericalFrontendIntent(
         SCALAR_ROOT,
         operands={

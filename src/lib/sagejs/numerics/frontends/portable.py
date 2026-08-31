@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, NoReturn
 
 from .._json import JSONValue, canonical_json
-from .expressions import expression_record, render_expression
+from .expressions import evaluate_expression, expression_record, render_expression
 from .model import (
     FrontendDiagnostic,
     NumericalFrontendIntent,
@@ -22,11 +22,24 @@ from .model import (
 )
 
 _MARKER = "sagejs-intent-v1:"
+_MAX_PORTABLE_DEPTH = 64
+_MAX_PORTABLE_NODES = 100000
+_MAX_EMITTED_SOURCE_BYTES = 2000000
+_MAX_ENVELOPE_BYTES = 1000000
 
 
 def portable_value(value: Any) -> JSONValue:
     """Detach a finite numerical value into the frontend JSON vocabulary."""
 
+    return _portable_value(value, 0, [0])
+
+
+def _portable_value(value: Any, depth: int, nodes: list[int]) -> JSONValue:
+    if depth > _MAX_PORTABLE_DEPTH:
+        raise ValueError("frontend numerical operands exceed the maximum nesting depth")
+    nodes[0] += 1
+    if nodes[0] > _MAX_PORTABLE_NODES:
+        raise ValueError("frontend numerical operands exceed the maximum node count")
     if hasattr(value, "tolist"):
         value = value.tolist()
     if value is None or isinstance(value, (bool, str)):
@@ -48,10 +61,10 @@ def portable_value(value: Any) -> JSONValue:
         for key in value:
             if not isinstance(key, str):
                 raise TypeError("frontend mapping keys must be strings")
-            answer[key] = portable_value(value[key])
+            answer[key] = _portable_value(value[key], depth + 1, nodes)
         return answer
     if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray)):
-        return [portable_value(item) for item in value]
+        return [_portable_value(item, depth + 1, nodes) for item in value]
     raise TypeError(
         "frontend operand is not a portable numerical value: " + type(value).__name__
     )
@@ -60,6 +73,15 @@ def portable_value(value: Any) -> JSONValue:
 def runtime_value(value: Any) -> Any:
     """Restore complex leaves while keeping detached containers mutable."""
 
+    return _runtime_value(value, 0, [0])
+
+
+def _runtime_value(value: Any, depth: int, nodes: list[int]) -> Any:
+    if depth > _MAX_PORTABLE_DEPTH:
+        raise ValueError("frontend runtime values exceed the maximum nesting depth")
+    nodes[0] += 1
+    if nodes[0] > _MAX_PORTABLE_NODES:
+        raise ValueError("frontend runtime values exceed the maximum node count")
     if isinstance(value, Mapping):
         if value.get("kind") == "complex" and set(value) == {
             "kind",
@@ -67,10 +89,126 @@ def runtime_value(value: Any) -> Any:
             "imaginary",
         }:
             return complex(float(value["real"]), float(value["imaginary"]))
-        return {str(key): runtime_value(value[key]) for key in value}
+        return {str(key): _runtime_value(value[key], depth + 1, nodes) for key in value}
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        return [runtime_value(item) for item in value]
+        return [_runtime_value(item, depth + 1, nodes) for item in value]
     return value
+
+
+def validated_callback(record: Mapping[str, Any], callback: Any) -> Any:
+    """Check a live callback against its claimed expression on every invocation."""
+
+    if not callable(callback) or record.get("kind") == "opaque_callback":
+        return callback
+    parameters_value = record.get("parameters", [])
+    if not isinstance(parameters_value, Sequence) or isinstance(parameters_value, str):
+        raise TypeError("canonical callback parameters must be a sequence")
+    parameters = [str(item) for item in parameters_value]
+
+    def checked(
+        *arguments: Any,
+        callback: Any = callback,
+        parameters: list[str] = parameters,
+        record: Mapping[str, Any] = record,
+    ) -> Any:
+        values = _callback_bindings(parameters, arguments)
+        expected = _evaluate_callback_record(record, values)
+        actual = callback(*arguments)
+        if not _numerically_equivalent(actual, expected):
+            raise ValueError(
+                "live numerical callback disagrees with its claimed expression"
+            )
+        return actual
+
+    return checked
+
+
+def _callback_bindings(
+    parameters: Sequence[str], arguments: Sequence[Any]
+) -> dict[str, Any]:
+    values = list(arguments)
+    if len(values) == 1:
+        candidate = values[0]
+        if isinstance(candidate, Sequence) and not isinstance(
+            candidate, (str, bytes, bytearray)
+        ):
+            values = list(candidate)
+    elif len(values) == 2 and len(parameters) == 1:
+        values = values[:1]
+    elif len(values) == 2:
+        state = values[1]
+        if (
+            isinstance(state, Sequence)
+            and not isinstance(state, (str, bytes, bytearray))
+            and 1 + len(state) == len(parameters)
+        ):
+            values = [values[0], *list(state)]
+    if len(values) != len(parameters):
+        raise ValueError(
+            "live numerical callback arguments do not match expression parameters"
+        )
+    return {parameters[index]: values[index] for index in range(len(parameters))}
+
+
+def _evaluate_callback_record(
+    record: Mapping[str, Any], values: Mapping[str, Any]
+) -> Any:
+    if record.get("kind") == "expression":
+        return evaluate_expression(record, values)
+    if record.get("kind") == "expression_vector":
+        items = record.get("items")
+        if not isinstance(items, Sequence) or isinstance(items, str):
+            raise TypeError("expression vector items must be a sequence")
+        answer = []
+        for item in items:
+            if not isinstance(item, Mapping):
+                raise TypeError("expression vector item must be a mapping")
+            answer.append(evaluate_expression(item, values))
+        return answer
+    raise TypeError("validated callbacks require an expression record")
+
+
+def _numerically_equivalent(actual: Any, expected: Any) -> bool:
+    if hasattr(actual, "tolist"):
+        actual = actual.tolist()
+    if hasattr(expected, "tolist"):
+        expected = expected.tolist()
+    if isinstance(actual, bool) or isinstance(expected, bool):
+        return actual == expected
+    if isinstance(actual, (int, float, complex)) and isinstance(
+        expected, (int, float, complex)
+    ):
+        left = complex(actual)
+        right = complex(expected)
+        if not all(
+            math.isfinite(value)
+            for value in (left.real, left.imag, right.real, right.imag)
+        ):
+            return False
+        return _close_component(left.real, right.real) and _close_component(
+            left.imag, right.imag
+        )
+    if isinstance(actual, Mapping) and isinstance(expected, Mapping):
+        return set(actual) == set(expected) and all(
+            _numerically_equivalent(actual[key], expected[key]) for key in actual
+        )
+    if (
+        isinstance(actual, Sequence)
+        and not isinstance(actual, (str, bytes, bytearray))
+        and isinstance(expected, Sequence)
+        and not isinstance(expected, (str, bytes, bytearray))
+    ):
+        return len(actual) == len(expected) and all(
+            _numerically_equivalent(actual[index], expected[index])
+            for index in range(len(actual))
+        )
+    return actual == expected
+
+
+def _close_component(left: float, right: float) -> bool:
+    """Portable binary64 closeness without relying on `math.isclose`."""
+
+    return abs(left - right) <= max(1e-12, 1e-12 * max(abs(left), abs(right)))
 
 
 def callback_record(
@@ -228,13 +366,17 @@ def attach_intent(body: str, intent: NumericalFrontendIntent, language: str) -> 
     """Attach a canonical, checksummed round-trip envelope to executable code."""
 
     target = canonical_language(language)
+    if len(body.encode("utf-8")) > _MAX_EMITTED_SOURCE_BYTES:
+        raise ValueError("emitted numerical source exceeds the byte budget")
     record = {
         "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
         "semantic": intent.semantic_dict(),
     }
-    payload = base64.urlsafe_b64encode(canonical_json(record).encode("utf-8")).decode(
-        "ascii"
-    )
+    portable_value(record)
+    encoded_record = canonical_json(record).encode("utf-8")
+    if len(encoded_record) > _MAX_ENVELOPE_BYTES:
+        raise ValueError("numerical intent envelope exceeds the byte budget")
+    payload = base64.urlsafe_b64encode(encoded_record).decode("ascii")
     if target == "wolfram":
         return body + "\n(* " + _MARKER + payload + " *)"
     prefix = "% " if target == "matlab" else "# "
@@ -247,6 +389,11 @@ def parse_attached_intent(
     """Validate an emitted body and reconstruct its canonical semantic intent."""
 
     target = canonical_language(language)
+    if (
+        len(source.encode("utf-8"))
+        > _MAX_EMITTED_SOURCE_BYTES + 2 * _MAX_ENVELOPE_BYTES
+    ):
+        _parse_error(target, "emitted numerical source exceeds the byte budget")
     if target == "wolfram":
         pattern = re.compile(r"\n\(\*\s*" + _MARKER + r"([A-Za-z0-9_=-]+)\s*\*\)\s*$")
     elif target == "matlab":
@@ -258,11 +405,18 @@ def parse_attached_intent(
         _parse_error(target, "source is not checked Sage.js-generated numerical code")
     assert match is not None
     body = source[: match.start()]
+    if len(body.encode("utf-8")) > _MAX_EMITTED_SOURCE_BYTES:
+        _parse_error(target, "emitted numerical source body exceeds the byte budget")
+    if len(match.group(1)) > 2 * _MAX_ENVELOPE_BYTES:
+        _parse_error(target, "numerical intent envelope exceeds the byte budget")
     try:
         decoded = base64.urlsafe_b64decode(match.group(1).encode("ascii"))
+        if len(decoded) > _MAX_ENVELOPE_BYTES:
+            _parse_error(target, "numerical intent envelope exceeds the byte budget")
         envelope = json.loads(decoded.decode("utf-8"))
     except Exception:
         _parse_error(target, "invalid numerical intent envelope")
+    _validate_tree_budget(envelope, target)
     if not isinstance(envelope, Mapping):
         _parse_error(target, "numerical intent envelope must be an object")
     digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
@@ -318,6 +472,26 @@ def _mapping(value: Any, name: str) -> Mapping[str, Any]:
     return value
 
 
+def _validate_tree_budget(value: Any, language: str) -> None:
+    stack = [(value, 0)]
+    nodes = 0
+    while stack:
+        item, depth = stack.pop()
+        nodes += 1
+        if nodes > _MAX_PORTABLE_NODES:
+            _parse_error(language, "numerical intent envelope exceeds the node budget")
+        if depth > _MAX_PORTABLE_DEPTH:
+            _parse_error(language, "numerical intent envelope exceeds the depth budget")
+        if isinstance(item, float) and not math.isfinite(item):
+            _parse_error(
+                language, "numerical intent envelope contains a non-finite value"
+            )
+        if isinstance(item, Mapping):
+            stack.extend((item[key], depth + 1) for key in item)
+        elif isinstance(item, list):
+            stack.extend((child, depth + 1) for child in item)
+
+
 def _parse_error(language: str, message: str) -> NoReturn:
     raise UnsupportedFrontendError(
         FrontendDiagnostic("parse_failure", message, language=language)
@@ -341,4 +515,5 @@ __all__ = [
     "render_callback",
     "render_value",
     "runtime_value",
+    "validated_callback",
 ]

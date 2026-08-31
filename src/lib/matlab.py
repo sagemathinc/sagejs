@@ -206,7 +206,16 @@ def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
     """Return the conventional MATLAB value view of a structured result."""
 
     result = numerical_result(name, *arguments, **options)
+    _require_numerical_success(name, result)
     return result.value if hasattr(result, "value") else result
+
+
+def _require_numerical_success(name: str, result: Any) -> None:
+    """Reject failed iterates before projecting a MATLAB-style short result."""
+
+    if hasattr(result, "success") and not result.success:
+        status = result.status if hasattr(result, "status") else "failed"
+        raise RuntimeError(name + " failed: " + str(status))
 
 
 def linsolve(matrix: Any, right: Any, **options: Any) -> Any:
@@ -224,7 +233,9 @@ def eig_result(matrix: Any, **options: Any) -> Any:
 def eig(matrix: Any, **options: Any) -> Any:
     """Return MATLAB's one-output eigenvalue view."""
 
-    value = eig_result(matrix, **options).value
+    result = eig_result(matrix, **options)
+    _require_numerical_success("eig", result)
+    value = result.value
     return value["eigenvalues"]
 
 
@@ -235,7 +246,9 @@ def svd_result(matrix: Any, **options: Any) -> Any:
 def svd(matrix: Any, **options: Any) -> Any:
     """Return MATLAB's one-output singular-value view."""
 
-    value = svd_result(matrix, **options).value
+    result = svd_result(matrix, **options)
+    _require_numerical_success("svd", result)
+    value = result.value
     return value["singular_values"]
 
 
@@ -244,7 +257,9 @@ def fft_result(samples: Any, **options: Any) -> Any:
 
 
 def fft(samples: Any, **options: Any) -> Any:
-    return fft_result(samples, **options).value
+    result = fft_result(samples, **options)
+    _require_numerical_success("fft", result)
+    return result.value
 
 
 def conv_result(left: Any, right: Any, **options: Any) -> Any:
@@ -252,7 +267,9 @@ def conv_result(left: Any, right: Any, **options: Any) -> Any:
 
 
 def conv(left: Any, right: Any, **options: Any) -> Any:
-    return conv_result(left, right, **options).value
+    result = conv_result(left, right, **options)
+    _require_numerical_success("conv", result)
+    return result.value
 
 
 class MatlabInterpolant:
@@ -269,13 +286,15 @@ class MatlabInterpolant:
 
 
 def gridded_interpolant(nodes: Any, values: Any, **options: Any) -> Any:
-    return MatlabInterpolant(
-        numerical_result("griddedInterpolant", nodes, values, **options)
-    )
+    result = numerical_result("griddedInterpolant", nodes, values, **options)
+    _require_numerical_success("griddedInterpolant", result)
+    return MatlabInterpolant(result)
 
 
 def spline(nodes: Any, values: Any, **options: Any) -> Any:
-    return MatlabInterpolant(numerical_result("spline", nodes, values, **options))
+    result = numerical_result("spline", nodes, values, **options)
+    _require_numerical_success("spline", result)
+    return MatlabInterpolant(result)
 
 
 def integral_result(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
@@ -334,7 +353,9 @@ class MatlabOdeSolution:
 
 
 def ode45(function: Any, t_span: Any, y0: Any, **options: Any) -> MatlabOdeSolution:
-    return MatlabOdeSolution(numerical_result("ode45", function, t_span, y0, **options))
+    result = numerical_result("ode45", function, t_span, y0, **options)
+    _require_numerical_success("ode45", result)
+    return MatlabOdeSolution(result)
 
 
 def sagejs_describe(data: Any, **options: Any) -> Any:

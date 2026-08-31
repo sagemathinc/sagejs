@@ -81,6 +81,21 @@ tree = expression_record("Exp[-x] + Sin[x]^2", language="wolfram")
 assert render_expression(tree, "python-scipy") == "np.exp(-x) + np.sin(x) ** 2"
 assert render_expression(tree, "matlab") == "exp(-x) + sin(x) ^ 2"
 assert render_expression(expression_record("e^x", language="sage"), "matlab") == "exp(1) ^ x"
+assert render_expression(
+    expression_record("x != 0", language="python", parameters=("x",)),
+    "matlab",
+) == "x ~= 0"
+
+for source, parameters in (
+    ("x + unbound", ("x",)),
+    ("sin(x, 1)", ("x",)),
+    ("1e9999 * x", ("x",)),
+):
+    try:
+        expression_record(source, language="sage", parameters=parameters)
+        raise AssertionError("invalid numerical expression unexpectedly parsed")
+    except UnsupportedFrontendError as error:
+        assert error.diagnostic.code == "parse_failure"
 
 opaque = matlab_fzero_intent(lambda x: x, [0])
 try:
@@ -141,6 +156,77 @@ test("canonical intent and code generation run in Sage.js", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+const adversarialWitness = String.raw`
+import base64, hashlib, json, sys
+sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
+
+from sagejs.numerics.frontends import (
+    NumericalFrontendIntent,
+    OperationRef,
+    UnsupportedFrontendError,
+)
+from sagejs.numerics.frontends.portable import (
+    attach_intent,
+    parse_attached_intent,
+    portable_value,
+)
+
+deep = 0
+for _ in range(70):
+    deep = [deep]
+try:
+    portable_value(deep)
+    raise AssertionError("deep portable operand unexpectedly accepted")
+except ValueError as error:
+    assert "nesting depth" in str(error)
+
+try:
+    portable_value([0] * 100001)
+    raise AssertionError("oversized portable operand unexpectedly accepted")
+except ValueError as error:
+    assert "node count" in str(error)
+
+operation = OperationRef("test", "budget", 1)
+intent = NumericalFrontendIntent(
+    operation,
+    operands={"value": 1},
+    source_language="sage",
+    source_name="budget",
+)
+try:
+    attach_intent("x" * 2000001, intent, "sage")
+    raise AssertionError("oversized emitted body unexpectedly accepted")
+except ValueError as error:
+    assert "byte budget" in str(error)
+
+body = "result = 1"
+semantic = intent.semantic_dict()
+semantic["operands"] = {"value": deep}
+envelope = {
+    "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+    "semantic": semantic,
+}
+payload = base64.urlsafe_b64encode(
+    json.dumps(envelope, separators=(",", ":"), sort_keys=True).encode("utf-8")
+).decode("ascii")
+try:
+    parse_attached_intent(body + "\n# sagejs-intent-v1:" + payload, "sage", operation)
+    raise AssertionError("deep numerical envelope unexpectedly parsed")
+except UnsupportedFrontendError as error:
+    assert error.diagnostic.code == "parse_failure"
+
+print("multilingual frontend budgets passed")
+`;
+
+test("portable operands and emitted envelopes enforce resource budgets", () => {
+  const executable = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
+  assert.equal(
+    run(executable, ["-I", "-c", adversarialWitness]),
+    "multilingual frontend budgets passed",
+  );
 });
 
 test("offline reference fixtures are provenance-complete and non-executable", () => {
