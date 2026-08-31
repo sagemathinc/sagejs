@@ -362,9 +362,15 @@ in the broader future P1 domain.
 - [x] The `ModularForms` cusp/newform API returns exact bases and normalized
   newforms for every declared initial-domain case.
 - [x] Every acceptance row has an independent Sturm-bound certificate.
-- [ ] The implementation is source-frozen with exact cross-platform receipts.
+- [x] The implementation is source-frozen with exact cross-platform receipts.
 - [x] Documentation includes a guided example from space construction through
   decomposition, newforms, $q$-expansions, and an attached $L$-series input.
+
+The frozen bundle has SHA-256
+`4008ac76d02eeac6fbf8b081466d5219562ee1042f244f7203f7a4879b55a9f2`.
+At commit `a9ae669f5a111398ed7a03b5592d8064d0afe87a`, the required checks on
+[#93](https://github.com/sagemathinc/sagejs/pull/93) passed on Linux x64,
+Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
 
