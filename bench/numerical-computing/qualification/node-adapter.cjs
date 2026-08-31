@@ -321,18 +321,21 @@ output_record = {
 from sagejs.numerics.approximation import interpolate
 from sagejs.numerics.integration import integrate
 from sagejs.numerics.linear_algebra import lu
+from sagejs.numerics.optimization import minimize_scalar
 from sagejs.numerics.spectral import fft
 from sagejs.numerics.statistics import describe
 
 approximation = interpolate([-1.0, 0.0, 1.0], [1.0, 0.0, 1.0], trace="iterations")
 integration = integrate(math.sin, 0.0, math.pi)
 linear = lu([[0.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]], trace="iterations")
+optimization = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)
 spectral = fft([1.0, 0.0, -1.0, 0.0, 0.5, 0.0, -0.5], trace="iterations")
 statistics = describe([1.0, 2.0, 3.0, 4.0])
 artifacts = [
     ("approximation", approximation.to_plot_spec(33), approximation.to_animation(samples=17, max_frames=3)),
     ("integration", integration.to_plot_spec(), integration.to_animation()),
     ("linear-algebra", linear.plot("factorization"), linear.animate(max_frames=3)),
+    ("optimization", optimization.plot(), optimization.animate()),
     ("spectral", spectral.plot(), spectral.animate("result")),
     ("statistics", statistics.to_plot_spec(), statistics.animate()),
 ]
