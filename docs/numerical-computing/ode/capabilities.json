@@ -86,7 +86,7 @@
     "complex_state": "unsupported",
     "mass_matrix": "unsupported",
     "dae": "unsupported",
-    "parameter_sweep": "unsupported",
+    "parameter_sweep": "shared-bounded-batch-v1-adapter",
     "automatic_stiffness_detection": "unsupported",
     "stiff_solver": "rosenbrock4-dense-jacobian-qualified"
   },

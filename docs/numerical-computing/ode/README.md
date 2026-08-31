@@ -223,8 +223,67 @@ qualified envelope.
 
 Automatic stiffness detection is also unsupported. `method="auto"` always
 selects nonstiff RK45 and never implies stiffness handling. Complex states,
-higher-order reduction, browser/Wasm and four-platform receipts, and
-deterministic bounded-concurrency parameter sweeps remain separate P4 gaps.
+higher-order reduction, and browser/Wasm and four-platform receipts remain
+separate gaps.
+
+## Deterministic bounded parameter sweeps
+
+`run_ode_parameter_sweep` is a thin adapter over the shared
+`bounded-batch-v1` numerical scheduler. A problem factory receives one detached
+parameter and `OdeSweepLimits`; it must construct an `OdeProblem` within the
+fixed per-item evaluation and remaining-time credits.
+
+```python
+from sagejs.numerics.ode import ode_problem, run_ode_parameter_sweep
+from sagejs.numerics.sweeps import SweepBudget
+
+def decay_problem(parameter, limits):
+    rate = float(parameter["rate"])
+    return ode_problem(
+        lambda t, y: [-rate * y[0]],
+        (0.0, 1.0),
+        [1.0],
+        max_evaluations=limits.max_evaluations,
+        max_elapsed_ms=limits.max_elapsed_ms,
+        max_output_points=128,
+        max_trace_bytes=4096,
+    )
+
+sweep = run_ode_parameter_sweep(
+    [{"rate": 0.5}, {"rate": 1.0}, {"rate": 2.0}],
+    decay_problem,
+    seed=17,
+    concurrency=3,
+    budget=SweepBudget(
+        max_evaluations=2000,
+        max_memory_bytes=20_000_000,
+        max_result_bytes=4_000_000,
+    ),
+)
+```
+
+Planning is callback-free. Inputs, output order, seed indices, and fixed
+per-item credits do not depend on completion order. Without a host batch
+executor, requested concurrency falls back to one and the plan records that
+choice. A supplied synchronous batch executor may run at most the planned batch
+concurrently; the scheduler validates item identities and restores input order.
+
+Before each solve, the adapter reserves a conservative logical bound derived
+from dimension and the ODE output, validation, trace, dense-linear-algebra
+limits. A completed nested result's exact callback count is charged to its
+fixed evaluation share; its serialized result size is then measured directly
+by the shared scheduler. Successful item values are complete detached
+`OdeResult.to_dict()` records. An unsuccessful nested solve becomes an
+`OdeSweepSolveError` item, so `collect` continues and `fail_fast` skips later
+batches deterministically. The item trace retains its ODE status and resource
+summary before that conversion.
+
+The same cancellation callback is passed to the scheduler and each ODE solve.
+Cancellation and elapsed time therefore stop cooperative solver work and mark
+unscheduled items explicitly. A host callback that never returns cannot be
+forcibly preempted by this portable synchronous contract. Deterministic seeds
+are provided to the problem factory, but the adapter does not invent stochastic
+forcing or claim replayability for an opaque factory.
 
 ## Visual explanations
 
@@ -257,5 +316,6 @@ persistent-host receipts exist.
 - [Corpus](../../../test/numerics/ode/corpus.json)
 - [Frozen SciPy oracle](../../../test/numerics/ode/scipy-oracles.json)
 - [Rosenbrock4 stiff qualification record](stiff-evidence.md)
+- [Shared bounded-sweep contract](../bounded-sweeps.md)
 - [Benchmark method and evidence](performance.md)
 - [Integration requests](integration-requests.md)

@@ -8,13 +8,22 @@ integration lane should make these exact changes after review.
 
 1. Re-export `OdeEvent`, `OdeInvariant`, `OdeProblem`, `OdeResourceBudget`,
    `OdeResult`, `OdeTrajectory`, `OdeUnsupportedError`, `ode_capabilities`,
-   `ode_problem`, `plan_ode`, `solve_ivp`, `solve_ode_problem`, `StateJacobian`, and
-   `supports_ode` from `src/lib/sagejs/numerics/__init__.py`.
+   `ode_problem`, `plan_ode`, `solve_ivp`, `solve_ode_problem`, `StateJacobian`,
+   `OdeProblemFactory`, `OdeSweepLimits`, `OdeSweepSolveError`,
+   `plan_ode_parameter_sweep`, `run_ode_parameter_sweep`, and `supports_ode`
+   from `src/lib/sagejs/numerics/__init__.py`.
 2. Add every `src/lib/sagejs/numerics/ode/*.py` file to `pyrightconfig.json`
    after strict checking at zero errors.
 3. Add `test/numerics/ode/ode-laboratory.cjs` and
-   `test/numerics/ode/stiff-laboratory.cjs` to `pnpm test:numerics`, or change
+   `test/numerics/ode/stiff-laboratory.cjs`, and
+   `test/numerics/ode/ode-sweeps.cjs` to `pnpm test:numerics`, or change
    that command to discover numerical domain tests by metadata.
+4. Register the integrated `src/lib/sagejs/numerics/sweeps.py` scheduler and
+   ODE-local `sweeps.py` adapter in the package graph and strict-Python
+   inventory. The ODE adapter depends on shared scheduler commit `e0fbdaf01`.
+5. Regenerate the shared reference documentation after those registrations;
+   the lane's full build passes, while `pnpm docs:check` correctly reports the
+   generated reference output stale before central export integration.
 
 ## Capability and evidence registries
 
@@ -59,7 +68,8 @@ JSON schemas, and exhaustive numerical surface in one integration change.
   payload, startup, and lifecycle cost.
 - Automatic stiffness detection remains unqualified; `auto` intentionally stays
   on RK45.
-- Parameter sweeps require a shared bounded-concurrency and cancellation
-  contract; this lane does not invent a private executor.
+- Browser-worker concurrency for the shared sweep scheduler requires a real
+  host executor, transferable callback protocol, and browser receipt. The
+  portable ODE adapter correctly records a sequential fallback in its absence.
 - MATLAB, Wolfram, and Sage compatibility frontends require their own ledgers
   and shared parser/public API claims.

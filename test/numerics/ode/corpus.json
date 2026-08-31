@@ -168,6 +168,30 @@
       "interval": [0.0, 1.0],
       "evidence": ["exact vector summary keeps the retained trace within budget"],
       "sagejs": {"method": "rk4", "expected": "bounded_trace"}
+    },
+    {
+      "id": "ode-parameter-sweep-order",
+      "classification": "analytic",
+      "equation": "three independently parameterized exponential decays",
+      "interval": [0.0, 1.0],
+      "evidence": ["analytic exp(-rate) endpoints", "stable input order under reversed batch completion", "deterministic per-item seeds", "exact nested OdeResult evaluation accounting"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "ordered-completed-items"}
+    },
+    {
+      "id": "ode-parameter-sweep-fail-fast",
+      "classification": "failure",
+      "equation": "middle decay item exhausts its nested ODE callback budget",
+      "interval": [0.0, 1.0],
+      "evidence": ["collect continues after OdeSweepSolveError", "fail_fast deterministically skips later batches"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "structured-failure-and-skip"}
+    },
+    {
+      "id": "ode-parameter-sweep-memory",
+      "classification": "failure",
+      "equation": "one ODE item under a 100-byte cooperative memory credit",
+      "interval": [0.0, 1.0],
+      "evidence": ["logical ODE reservation rejected before the first RHS callback"],
+      "sagejs": {"method": "bounded-batch-v1 plus rk45", "expected": "memory_budget_exceeded"}
     }
   ]
 }
