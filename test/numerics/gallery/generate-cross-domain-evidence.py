@@ -84,10 +84,9 @@ def _bounded_indices(count: int, maximum: int) -> list[int]:
 def _root_trace_animation(result: Any) -> PlotAnimation:
     """Replay retained root evidence without invoking the live callback.
 
-    The public root visualizer currently samples the function again.  That is
-    useful interactively, but it is not a valid durable gallery artifact.  The
-    gallery therefore plots only points the solver actually evaluated and the
-    brackets/candidates it retained.
+    The public root visualizer now enforces this same durable-evidence contract.
+    This compatibility helper preserves older fixture generation without ever
+    sampling a callback or inventing intermediate states.
     """
 
     evaluations: list[dict[str, float]] = []
@@ -434,10 +433,9 @@ def _presentation(
         plotly_figure = lower_plot_animation(animation)
         plotly_source = "sagejs.plotting.lower_plot_animation"
     except Exception as error:
-        # Several new domain visualizers still spell axes as {x: {label: ...}}
-        # while the shared lowering contract expects Plotly-shaped xaxis/yaxis.
-        # Preserve that integration failure and use the deliberately tiny,
-        # tested gallery lowering for point/line/text evidence only.
+        # Preserve an unexpected integration failure explicitly.  The tiny
+        # fallback is deliberately limited to bounded point/line/text evidence
+        # and is never treated as equivalent to the shared lowering contract.
         shared_lowering = {
             "status": "blocked",
             "error_type": type(error).__name__,
@@ -450,7 +448,11 @@ def _presentation(
     return {
         "source": source,
         "computed_evidence_only": True,
-        "callback_reevaluated": callback_before == callback_after,
+        "callback_reevaluated": (
+            callback_before is not None
+            and callback_after is not None
+            and callback_before != callback_after
+        ),
         "callback_count_before": callback_before,
         "callback_count_after": callback_after,
         "public_surface_gap": gap,
@@ -483,7 +485,7 @@ def _static_presentation(result: Any, spec: PlotSpec, *, source: str) -> dict[st
     return {
         "source": source,
         "computed_evidence_only": True,
-        "callback_reevaluated": True,
+        "callback_reevaluated": False,
         "callback_count_before": None,
         "callback_count_after": None,
         "public_surface_gap": None,
@@ -566,17 +568,13 @@ def root_story() -> dict[str, Any]:
         max_trace_bytes=131_072,
     )
     before = callback.calls
-    animation = _root_trace_animation(success)
+    animation = success.animate()
     presentation = _presentation(
         success,
         animation,
         callback_before=before,
         callback_after=callback.calls,
-        source="gallery trace adapter over NumericalResult.trace",
-        gap=(
-            "NumericalResult.animate() samples the live callback; durable gallery "
-            "replay therefore uses the retained evaluation trace instead."
-        ),
+        source="NumericalResult.animate() retained-evidence view",
     )
     jump_callback = Counted(lambda x: -1.0 if x < 0.0 else 1.0)
     jump = find_root(
@@ -590,14 +588,10 @@ def root_story() -> dict[str, Any]:
     jump_before = jump_callback.calls
     jump_presentation = _presentation(
         jump,
-        _root_trace_animation(jump),
+        jump.animate(),
         callback_before=jump_before,
         callback_after=jump_callback.calls,
-        source="gallery trace adapter over failed NumericalResult.trace",
-        gap=(
-            "NumericalResult.animate() samples the live callback; durable gallery "
-            "replay therefore uses the retained iteration trace instead."
-        ),
+        source="NumericalResult.animate() retained-evidence failure view",
     )
     return _story(
         "root-brent",
