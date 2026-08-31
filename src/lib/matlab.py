@@ -7,7 +7,15 @@ from typing import Any
 
 import numpy as np
 import sagejs.runtime as runtime
-from sagejs.numerics import find_root as _numerical_find_root
+from sagejs.numerics.frontends import (
+    emit_code as _emit_numerical_code,
+)
+from sagejs.numerics.frontends import (
+    execute_scalar_root_intent as _execute_numerical_intent,
+)
+from sagejs.numerics.frontends import (
+    matlab_fzero_intent,
+)
 
 ALL = object()
 
@@ -129,37 +137,37 @@ def power(left: Any, right: Any) -> Any:
     return left**right
 
 
+def fzero_intent(
+    function: Any,
+    initial: Any,
+    options: Any = None,
+    *,
+    expression: str | None = None,
+    variable: str = "x",
+    source_text: str | None = None,
+) -> Any:
+    """Return canonical intent for a natural MATLAB `fzero` request.
+
+    The regular parser calls this path without `expression`, retaining the live
+    callback as an intentionally non-replayable binding. Tooling can provide
+    the original anonymous-function body to enable outward code generation.
+    """
+
+    settings = {} if options is None else dict(options)
+    return matlab_fzero_intent(
+        function,
+        initial,
+        settings,
+        expression=expression,
+        variable=variable,
+        source_text=source_text,
+    )
+
+
 def fzero_result(function: Any, initial: Any, options: Any = None) -> Any:
     """Return the structured result underlying MATLAB-compatible `fzero`."""
-    if hasattr(initial, "tolist"):
-        initial = initial.tolist()
-    if (
-        isinstance(initial, (list, tuple))
-        and len(initial) == 1
-        and isinstance(initial[0], (list, tuple))
-    ):
-        initial = initial[0]
-    values = list(initial) if isinstance(initial, (list, tuple)) else [initial]
-    settings = {} if options is None else dict(options)
-    trace = str(settings.get("Trace", "iterations"))
-    if len(values) == 2:
-        return _numerical_find_root(
-            function,
-            float(values[0]),
-            float(values[1]),
-            method=str(settings.get("Method", "brent")),
-            trace=trace,
-            source_language="matlab",
-        )
-    if len(values) == 1:
-        return _numerical_find_root(
-            function,
-            x0=float(values[0]),
-            method=str(settings.get("Method", "newton")),
-            trace=trace,
-            source_language="matlab",
-        )
-    raise ValueError("fzero initial data must be a scalar or two-endpoint bracket")
+
+    return _execute_numerical_intent(fzero_intent(function, initial, options))
 
 
 def fzero(function: Any, initial: Any, options: Any = None) -> float:
@@ -168,6 +176,12 @@ def fzero(function: Any, initial: Any, options: Any = None) -> float:
     if not result.success:
         raise RuntimeError("fzero failed: " + result.status)
     return float(result.value)
+
+
+def numerical_code(intent: Any, language: str) -> str:
+    """Emit canonical numerical intent as Sage, SciPy, MATLAB, or Wolfram."""
+
+    return _emit_numerical_code(intent, language)
 
 
 def _integer_index(value: Any) -> int:
