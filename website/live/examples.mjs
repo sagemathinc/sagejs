@@ -13,6 +13,19 @@ def symbolic_plot(power=slider(1, 8, 1, 2, label='power')):
 `,
   },
   {
+    id: "interactive-function-explorer",
+    title: "Interactive function explorer",
+    description: "Edit a Sage expression to update its derivative and plot locally, using the standard ipywidgets text protocol.",
+    source: `from IPython.display import display
+
+@interact
+def function_explorer(f=input_box('x^3 - 2*x', label='f(x)=')):
+    display(f)
+    display(f.derivative(x))
+    display(plot(f, (x, -2, 2), ymin=-10, ymax=10))
+`,
+  },
+  {
     id: "number-field",
     title: "Number field arithmetic",
     description: "A maximal order, prime decomposition, and the first Dedekind zeta coefficients.",

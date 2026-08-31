@@ -3,6 +3,18 @@ import test from "node:test";
 
 import { EXAMPLES } from "../examples.mjs";
 
+test("live interact examples cover sliders and editable Sage expressions", () => {
+  const slider = EXAMPLES.find(
+    (entry) => entry.id === "interactive-symbolic-plot",
+  );
+  const expression = EXAMPLES.find(
+    (entry) => entry.id === "interactive-function-explorer",
+  );
+  assert.match(slider?.source ?? "", /power=slider/);
+  assert.match(expression?.source ?? "", /input_box\('x\^3 - 2\*x'/);
+  assert.match(expression?.source ?? "", /f\.derivative\(x\)/);
+});
+
 test("live elliptic examples exercise the production smalljac coefficient path", () => {
   for (const id of ["elliptic-lseries", "complex-plot"]) {
     const example = EXAMPLES.find((entry) => entry.id === id);

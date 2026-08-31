@@ -297,6 +297,36 @@ try {
       "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1",
     30_000,
   );
+  const expressionExample = EXAMPLES.find(
+    (example) => example.id === "interactive-function-explorer",
+  );
+  assert.ok(expressionExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    expressionExample.source,
+    "document.querySelector('#output input[type=text]')?.value === 'x^3 - 2*x' && " +
+      "document.querySelector('#output .js-plotly-plot') !== null",
+    30_000,
+  );
+  assert.ok(
+    await evaluate("Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) < -1"),
+    "the initial expression widget should display a cubic with negative values",
+  );
+  await evaluate(`(() => {
+    const input = document.querySelector('#output input[type=text]');
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'value',
+    ).set;
+    setValue.call(input, 'x^4');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await waitFor(
+    "document.querySelector('#output input[type=text]')?.value === 'x^4' && " +
+      "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0",
+    30_000,
+  );
   await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();
   await evaluate("navigator.serviceWorker.ready.then(() => true)");
