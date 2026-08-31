@@ -139,7 +139,10 @@ def _root_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": "x"}, "y": {"label": "f(x)"}},
+        axes_or_scene={
+            "xaxis": {"title": {"text": "x"}},
+            "yaxis": {"title": {"text": "f(x)"}},
+        },
         viewport={"responsive": True},
         provenance=Provenance(
             "sagejs.numerics",

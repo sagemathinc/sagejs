@@ -100,18 +100,16 @@ divergence = find_root(
 
 animation = success.animate()
 shared_lowering = {"status": "available", "diagnostics": []}
+shared_figure = None
 try:
     from sagejs.plotting import lower_plot_animation
-    lower_plot_animation(animation)
+    shared_figure = lower_plot_animation(animation)
 except Exception as error:
     shared_lowering = {
         "status": "blocked",
         "error_type": type(error).__name__,
         "message": str(error),
-        "integration_request": (
-            "Use PlotSpec xaxis/yaxis keys in sagejs.numerics.visualization "
-            "so lower_plot_animation accepts root animations."
-        ),
+        "integration_request": "Repair the canonical PlotAnimation lowering boundary.",
     }
 
 print(json.dumps({
@@ -124,6 +122,7 @@ print(json.dumps({
     "verification": normalized(verification),
     "animation": animation.to_dict(),
     "shared_lowering": shared_lowering,
+    "shared_figure": shared_figure,
 }, allow_nan=False, separators=(",", ":"), sort_keys=True))
 `;
   const executable = process.env.PYTHON ||
@@ -265,7 +264,13 @@ function resultCase(id, title, kind, question, description, result, expected) {
 function buildStory() {
   const evidence = pythonEvidence();
   const semantic = evidence.animation;
-  const plotly = plotlyFigure(semantic);
+  const plotly = evidence.shared_figure || plotlyFigure(semantic);
+  plotly.layout.meta = {
+    ...(plotly.layout.meta || {}),
+    semantic_source: "PlotAnimation",
+    stable_layer_ids: semantic.topology.layers.map((layer) => layer.id),
+    trace_truncated: semantic.metadata.trace_truncated,
+  };
   const maxSamples = Math.max(...semantic.frames.map((frame) =>
     frame.state.value.layers.reduce(
       (total, layer) => total + scalarCount(layer.data),
@@ -478,7 +483,9 @@ function buildStory() {
       plot_spec_animation: semantic,
       plotly: {
         schema: "plotly-compatible/v1",
-        source: "Deterministic gallery adapter over the checked PlotAnimation record.",
+        source: evidence.shared_figure
+          ? "sagejs.plotting.lower_plot_animation over the checked PlotAnimation record."
+          : "Deterministic gallery adapter over the checked PlotAnimation record.",
         shared_lowering: evidence.shared_lowering,
         figure: plotly,
       },

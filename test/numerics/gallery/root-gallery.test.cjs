@@ -270,9 +270,9 @@ test("PlotSpec and Plotly records preserve stable topology and explicit controls
     plotly.figure.frames[0].data.map((trace) => trace.uid),
     ["layer-0", "layer-1", "layer-2"],
   );
-  assert.equal(plotly.shared_lowering.status, "blocked");
-  assert.match(plotly.shared_lowering.message, /axes field='x'/);
-  assert.match(plotly.shared_lowering.integration_request, /xaxis\/yaxis/);
+  assert.equal(plotly.shared_lowering.status, "available");
+  assert.deepEqual(plotly.shared_lowering.diagnostics, []);
+  assert.match(plotly.source, /lower_plot_animation/);
 });
 
 test("all language examples are exact frontend syntax and Python executes", () => {
