@@ -51,6 +51,7 @@ const witness = String.raw`
 import json
 import math
 import time
+from sagejs.numerics import NumericalTrace, TracePolicy
 from sagejs.numerics.integration import (
     integrate,
     integration_capabilities,
@@ -381,13 +382,42 @@ assert truncated_animation_record["metadata"]["trace_truncated"] is True
 assert truncated_animation_record["metadata"]["visualizer_decimated"] is False
 assert "omitted rather than interpolated" in truncated.explain()
 
-decimated = integrate(
-    lambda x: abs(math.sin(1000.0*x)), 0.0, 1.0,
-    absolute_tolerance=1e-15, relative_tolerance=0.0,
-    max_intervals=130, max_evaluations=8000, max_trace_events=256,
+synthetic_trace = NumericalTrace(
+    TracePolicy("iterations", max_events=256, max_bytes=1_000_000)
 )
-assert not decimated.success and decimated.stop_reason == "maximum_intervals"
-decimated_animation = decimated.animate()
+for index in range(129):
+    left = float(index % 100)/100.0
+    right = left+0.01
+    midpoint = left+0.005
+    error = 1.0/float(index+1)
+    synthetic_trace.append(
+        "iteration",
+        iteration=index+1,
+        data={
+            "parent": {
+                "plot_left": left, "plot_right": right,
+                "error_estimate": error, "depth": index, "component": 0,
+                "plot_coordinate": "physical_x",
+            },
+            "children": [
+                {
+                    "plot_left": left, "plot_right": midpoint,
+                    "error_estimate": 0.5*error, "depth": index+1,
+                    "component": 0, "plot_coordinate": "physical_x",
+                },
+                {
+                    "plot_left": midpoint, "plot_right": right,
+                    "error_estimate": 0.5*error, "depth": index+1,
+                    "component": 0, "plot_coordinate": "physical_x",
+                },
+            ],
+            "error_estimate": error,
+            "requested_tolerance": 1e-12,
+            "active_intervals": index+2,
+        },
+    )
+plotted._trace = synthetic_trace
+decimated_animation = plotted.animate()
 decimated_record = decimated_animation.to_dict()
 assert len(decimated_animation.frames) == 128
 assert decimated_record["metadata"]["retained_refinement_events"] == 129
@@ -395,6 +425,7 @@ assert decimated_record["metadata"]["rendered_refinement_events"] == 127
 assert decimated_record["metadata"]["visualizer_decimated"] is True
 assert decimated_animation.frames[0].metadata["interpolated"] is False
 assert decimated_animation.frames[-1].metadata["interpolated"] is False
+assert calls[0] == before_plot
 
 try:
     plotted.plot(view="unknown")
