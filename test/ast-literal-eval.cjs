@@ -6,6 +6,8 @@ const { spawn } = require("node:child_process");
 const { join } = require("node:path");
 const test = require("node:test");
 
+const { pythonExecutable } = require("../tools/python-executable.cjs");
+
 const root = join(__dirname, "..");
 
 function run(command, args, source) {
@@ -122,7 +124,7 @@ for source in rejected:
 
 test("ast.literal_eval agrees with CPython on literal source", async () => {
   const [cpython, sagejs] = await Promise.all([
-    run("python3", ["-"], differentialSource),
+    run(pythonExecutable(), ["-"], differentialSource),
     run(process.execPath, [join(root, "bin", "sagejs-source.cjs"), "--python"], differentialSource),
   ]);
   assert.equal(cpython.status, 0, cpython.stderr);
