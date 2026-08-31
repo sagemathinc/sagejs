@@ -8970,6 +8970,7 @@ def _builtins_tuple_new(
 
 runtime.reflect.set(_builtins_tuple_new, "__staticmethod__", True)
 runtime.reflect.set(tuple, "__new__", _builtins_tuple_new)
+runtime.reflect.set(_tuple_prototype, "__new__", _builtins_tuple_new)
 runtime.reflect.set(
     _tuple_prototype, "__init__", runtime.native_method(_builtins_tuple_subclass_init)
 )
