@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "source_revision": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+  "corpus_sha256": "255ddb3bdf9380e72f23c75a692d7283915821de9de0b1e4bbafeff43bcd525d",
+  "platform": "linux-x64",
+  "node": "v26.7.0",
+  "policy": {
+    "warmup_runs": 1,
+    "measured_samples": 3,
+    "timer": "time.perf_counter around complete solve including callbacks and validation",
+    "cold_process_reported_separately": true,
+    "native_disabled": true
+  },
+  "runtimes": {
+    "cpython": {
+      "cold_process_ms": 1019.830098,
+      "samples": 3,
+      "workloads": [
+        {
+          "durations_ms": [
+            0.8931399788707495,
+            0.812469981610775,
+            0.8233800763264298
+          ],
+          "evaluations": 11,
+          "id": "bounded-brent-quadratic",
+          "iterations": 6,
+          "median_ms": 0.8233800763264298,
+          "method": "bounded-brent",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 2.2204478561861154e-16
+        },
+        {
+          "durations_ms": [
+            5.241338978521526,
+            5.142519949004054,
+            5.097019951790571
+          ],
+          "evaluations": 311,
+          "id": "nelder-mead-rosenbrock-2",
+          "iterations": 157,
+          "median_ms": 5.142519949004054,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        },
+        {
+          "durations_ms": [
+            28.142168070189655,
+            28.188347932882607,
+            28.08446704875678
+          ],
+          "evaluations": 617,
+          "id": "bfgs-rosenbrock-20",
+          "iterations": 148,
+          "median_ms": 28.142168070189655,
+          "method": "bfgs",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 3.06627276458471e-7
+        },
+        {
+          "durations_ms": [
+            1.211020047776401,
+            1.1753400322049856,
+            1.1827499838545918
+          ],
+          "evaluations": 38,
+          "id": "least-squares-exponential",
+          "iterations": 5,
+          "median_ms": 1.1827499838545918,
+          "method": "damped-gauss-newton",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 3.207519581407802e-11
+        },
+        {
+          "durations_ms": [
+            4.996139090508223
+          ],
+          "evaluations": 311,
+          "id": "trace-summary-nelder-mead",
+          "iterations": 157,
+          "median_ms": 4.996139090508223,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        },
+        {
+          "durations_ms": [
+            404.50723201502115
+          ],
+          "evaluations": 311,
+          "id": "trace-iterations-nelder-mead",
+          "iterations": 157,
+          "median_ms": 404.50723201502115,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        }
+      ]
+    },
+    "sagejs_dynamic": {
+      "cold_process_ms": 76429.891676,
+      "samples": 3,
+      "workloads": [
+        {
+          "durations_ms": [
+            112.52045631408691,
+            91.23587608337402,
+            90.75570106506348
+          ],
+          "evaluations": 11,
+          "id": "bounded-brent-quadratic",
+          "iterations": 6,
+          "median_ms": 91.23587608337402,
+          "method": "bounded-brent",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 2.2204478561861154e-16
+        },
+        {
+          "durations_ms": [
+            423.1276512145996,
+            430.79161643981934,
+            430.7076930999756
+          ],
+          "evaluations": 311,
+          "id": "nelder-mead-rosenbrock-2",
+          "iterations": 157,
+          "median_ms": 430.7076930999756,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        },
+        {
+          "durations_ms": [
+            1374.0205764770508,
+            1333.7817192077637,
+            1346.2412357330322
+          ],
+          "evaluations": 617,
+          "id": "bfgs-rosenbrock-20",
+          "iterations": 148,
+          "median_ms": 1346.2412357330322,
+          "method": "bfgs",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 3.06627276458471e-7
+        },
+        {
+          "durations_ms": [
+            110.32557487487793,
+            113.42763900756836,
+            107.35774040222168
+          ],
+          "evaluations": 38,
+          "id": "least-squares-exponential",
+          "iterations": 5,
+          "median_ms": 110.32557487487793,
+          "method": "damped-gauss-newton",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 3.207543350264104e-11
+        },
+        {
+          "durations_ms": [
+            397.54700660705566
+          ],
+          "evaluations": 311,
+          "id": "trace-summary-nelder-mead",
+          "iterations": 157,
+          "median_ms": 397.54700660705566,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        },
+        {
+          "durations_ms": [
+            32906.9344997406
+          ],
+          "evaluations": 311,
+          "id": "trace-iterations-nelder-mead",
+          "iterations": 157,
+          "median_ms": 32906.9344997406,
+          "method": "nelder-mead",
+          "status": "converged",
+          "success": true,
+          "validation_residual": 1.23814170027714e-9
+        }
+      ]
+    }
+  }
+}

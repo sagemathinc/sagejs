@@ -1,0 +1,272 @@
+{
+  "$schema": "./corpus.schema.json",
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "scalar-quadratic-interior",
+      "operation": "scalar-minimum",
+      "formula": "quadratic-2",
+      "method": "bounded-brent",
+      "bounds": [-1.0, 5.0],
+      "benchmark": true,
+      "expect": { "success": true, "value": 2.0, "distance_max": 1e-8, "objective_max": 1e-14 }
+    },
+    {
+      "id": "scalar-linear-boundary",
+      "operation": "scalar-minimum",
+      "formula": "identity",
+      "method": "bounded-brent",
+      "bounds": [0.0, 3.0],
+      "expect": { "success": true, "value": 0.0, "distance_max": 0.0 }
+    },
+    {
+      "id": "scalar-tiny-interval",
+      "operation": "scalar-minimum",
+      "formula": "tiny-quadratic",
+      "method": "bounded-brent",
+      "bounds": [0.0, 1e-12],
+      "expect": { "success": true, "value": 5e-13, "distance_max": 1e-15, "objective_max": 1e-28 }
+    },
+    {
+      "id": "scalar-nonfinite",
+      "operation": "scalar-minimum",
+      "formula": "positive-infinity",
+      "method": "bounded-brent",
+      "bounds": [-1.0, 1.0],
+      "expect": { "success": false, "status": "nonfinite_evaluation" }
+    },
+    {
+      "id": "nelder-mead-rosenbrock-2",
+      "operation": "minimize",
+      "formula": "rosenbrock",
+      "method": "nelder-mead",
+      "dimension": 2,
+      "initial": [-1.2, 1.0],
+      "benchmark": true,
+      "expect": { "success": true, "value": [1.0, 1.0], "distance_max": 2e-5, "objective_max": 1e-12 }
+    },
+    {
+      "id": "nelder-mead-nonsmooth",
+      "operation": "minimize",
+      "formula": "absolute-bowl",
+      "method": "nelder-mead",
+      "dimension": 2,
+      "initial": [3.0, -4.0],
+      "expect": { "success": true, "value": [0.0, 0.0], "distance_max": 2e-5, "objective_max": 2e-5 }
+    },
+    {
+      "id": "bfgs-rosenbrock-2",
+      "operation": "minimize",
+      "formula": "rosenbrock-gradient",
+      "method": "bfgs",
+      "dimension": 2,
+      "initial": [-1.2, 1.0],
+      "expect": { "success": true, "value": [1.0, 1.0], "distance_max": 2e-6, "objective_max": 1e-12 }
+    },
+    {
+      "id": "bfgs-rosenbrock-20",
+      "operation": "minimize",
+      "formula": "rosenbrock-gradient",
+      "method": "bfgs",
+      "dimension": 20,
+      "initial": [-1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0, -1.2, 1.0],
+      "benchmark": true,
+      "expect": { "success": true, "value": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], "distance_max": 2e-5, "objective_max": 1e-10 }
+    },
+    {
+      "id": "projected-bfgs-active-box",
+      "operation": "minimize",
+      "formula": "active-box",
+      "method": "projected-bfgs",
+      "dimension": 2,
+      "initial": [0.0, 0.0],
+      "bounds": [[null, 1.0], [0.0, 2.0]],
+      "expect": { "success": true, "value": [1.0, 0.0], "distance_max": 1e-12, "objective_max": 5.000000000001 }
+    },
+    {
+      "id": "projected-bfgs-fixed-coordinate",
+      "operation": "minimize",
+      "formula": "fixed-coordinate",
+      "method": "projected-bfgs",
+      "dimension": 3,
+      "initial": [0.0, 4.0, 0.0],
+      "bounds": [[null, null], [2.0, 2.0], [-1.0, 1.0]],
+      "expect": { "success": true, "value": [1.0, 2.0, -1.0], "distance_max": 2e-6, "objective_max": 4.00000000001 }
+    },
+    {
+      "id": "bfgs-false-gradient-validation",
+      "operation": "minimize",
+      "formula": "false-gradient",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
+    },
+    {
+      "id": "bfgs-shallow-false-gradient-validation",
+      "operation": "minimize",
+      "formula": "shallow-false-gradient",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
+    },
+    {
+      "id": "bounded-bfgs-envelope",
+      "operation": "minimize",
+      "formula": "bounded-method-envelope",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [1.0],
+      "bounds": [[0.0, 2.0]],
+      "expect": { "exception": "ValueError" }
+    },
+    {
+      "id": "system-circle-line",
+      "operation": "nonlinear-system",
+      "formula": "circle-line",
+      "dimension": 2,
+      "initial": [0.8, 0.6],
+      "benchmark": true,
+      "expect": { "success": true, "value": [0.7071067811865476, 0.7071067811865476], "distance_max": 1e-9, "validation_residual_max": 1e-9 }
+    },
+    {
+      "id": "least-squares-linear-30",
+      "operation": "least-squares",
+      "formula": "linear-residual-30",
+      "dimension": 2,
+      "initial": [0.0, 0.0],
+      "expect": { "success": true, "value": [2.5, -0.75], "distance_max": 1e-8, "objective_max": 1e-14 }
+    },
+    {
+      "id": "least-squares-rosenbrock",
+      "operation": "least-squares",
+      "formula": "rosenbrock-residual",
+      "dimension": 2,
+      "initial": [-1.2, 1.0],
+      "expect": { "success": true, "value": [1.0, 1.0], "distance_max": 2e-6, "objective_max": 1e-12 }
+    },
+    {
+      "id": "least-squares-rank-deficient",
+      "operation": "least-squares",
+      "formula": "rank-deficient",
+      "dimension": 2,
+      "initial": [0.0, 0.0],
+      "expect": { "success": true, "objective_max": 1e-14, "validation_residual_max": 1e-6 }
+    },
+    {
+      "id": "least-squares-stationary-maximum",
+      "operation": "least-squares",
+      "formula": "stationary-maximum",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
+    },
+    {
+      "id": "least-squares-ill-conditioned",
+      "operation": "least-squares",
+      "formula": "ill-conditioned",
+      "dimension": 2,
+      "initial": [0.0, 0.0],
+      "expect": { "success": true, "diagnostics": ["ill_conditioned"], "validation_residual_max": 1e-6 }
+    },
+    {
+      "id": "least-squares-exponential-decay",
+      "operation": "least-squares",
+      "formula": "exponential-decay",
+      "dimension": 2,
+      "initial": [1.5, 0.4],
+      "benchmark": true,
+      "expect": { "success": true, "value": [2.0, 0.5], "distance_max": 2e-6, "objective_max": 1e-14 }
+    },
+    {
+      "id": "linear-fit-affine",
+      "operation": "linear-fit",
+      "formula": "affine-data",
+      "dimension": 2,
+      "expect": { "success": true, "value": [2.0, 1.0], "distance_max": 1e-14, "objective_max": 1e-14 }
+    },
+    {
+      "id": "curve-fit-exponential",
+      "operation": "curve-fit",
+      "formula": "exponential-data",
+      "dimension": 2,
+      "initial": [1.5, 0.4],
+      "expect": { "success": true, "value": [2.0, 0.5], "distance_max": 2e-6, "objective_max": 1e-14 }
+    },
+    {
+      "id": "scalar-cancellation",
+      "operation": "scalar-minimum",
+      "formula": "cancelled-quadratic",
+      "method": "bounded-brent",
+      "bounds": [-1.0, 1.0],
+      "expect": { "success": false, "status": "cancelled" }
+    },
+    {
+      "id": "scalar-evaluation-budget",
+      "operation": "scalar-minimum",
+      "formula": "budget-quadratic",
+      "method": "bounded-brent",
+      "bounds": [-1.0, 1.0],
+      "expect": { "success": false, "status": "maximum_evaluations" }
+    },
+    {
+      "id": "invalid-scalar-callback-result",
+      "operation": "scalar-minimum",
+      "formula": "invalid-scalar-result",
+      "method": "bounded-brent",
+      "bounds": [0.0, 1.0],
+      "expect": { "success": false, "status": "invalid_problem" }
+    },
+    {
+      "id": "invalid-gradient-callback-result",
+      "operation": "minimize",
+      "formula": "invalid-gradient-result",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [1.0],
+      "expect": { "success": false, "status": "invalid_problem" }
+    },
+    {
+      "id": "oversized-residual-output",
+      "operation": "least-squares",
+      "formula": "oversized-residual",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "invalid_problem" }
+    },
+    {
+      "id": "oversized-fit-input",
+      "operation": "linear-fit",
+      "formula": "oversized-fit",
+      "dimension": 2,
+      "expect": { "exception": "ValueError" }
+    },
+    {
+      "id": "validation-callback-failure",
+      "operation": "minimize",
+      "formula": "validation-callback-failure",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [1.0],
+      "expect": { "success": false, "status": "callback_error", "diagnostics": ["callback_error", "validation_failed"] }
+    },
+    {
+      "id": "validation-evaluation-budget",
+      "operation": "minimize",
+      "formula": "validation-budget",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [1.0],
+      "expect": { "success": false, "status": "maximum_evaluations", "diagnostics": ["maximum_evaluations", "validation_failed"] }
+    },
+    {
+      "id": "nonlinear-constraints-fail-closed",
+      "operation": "minimize",
+      "formula": "unsupported-constraint",
+      "dimension": 1,
+      "initial": [1.0],
+      "expect": { "exception": "NotImplementedError" }
+    }
+  ]
+}
