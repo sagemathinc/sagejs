@@ -1,0 +1,257 @@
+{
+  "$schema": "./corpus.schema.json",
+  "schema": "sagejs.numerical-optimization-corpus/v1",
+  "description": "Backend-neutral correctness and warm-performance workloads for candidate Sage.js numerical optimization engines.",
+  "cases": [
+    {
+      "id": "root.cos-minus-x",
+      "operation": "root",
+      "method": "brentq",
+      "problem": "cos-minus-x",
+      "input": { "bracket": [0.0, 2.0] },
+      "oracle": { "points": [[0.7390851332151607]], "fun": 0.0 },
+      "acceptance": { "x_linf": 5e-11, "residual_linf": 1e-12 },
+      "benchmark": true
+    },
+    {
+      "id": "root.flat-cubic",
+      "operation": "root",
+      "method": "brentq",
+      "problem": "flat-cubic",
+      "input": { "bracket": [0.0, 2.5] },
+      "oracle": { "points": [[1.0]], "fun": 0.0 },
+      "acceptance": { "x_linf": 2e-7, "residual_linf": 1e-18 },
+      "benchmark": false
+    },
+    {
+      "id": "root.endpoint",
+      "operation": "root",
+      "method": "brentq",
+      "problem": "endpoint-root",
+      "input": { "bracket": [2.0, 5.0] },
+      "oracle": { "points": [[2.0]], "fun": 0.0 },
+      "acceptance": { "x_linf": 0.0, "residual_linf": 0.0, "max_function_calls": 2 },
+      "benchmark": false
+    },
+    {
+      "id": "root.scaled-exponential",
+      "operation": "root",
+      "method": "brentq",
+      "problem": "scaled-exponential",
+      "input": { "bracket": [0.0, 2.0] },
+      "oracle": { "points": [[1.0986122886681098]], "fun": 0.0 },
+      "acceptance": { "x_linf": 5e-11, "residual_linf": 5e-12 },
+      "benchmark": false
+    },
+    {
+      "id": "root.invalid-bracket",
+      "operation": "root",
+      "method": "brentq",
+      "problem": "no-real-root",
+      "input": { "bracket": [-1.0, 1.0] },
+      "oracle": { "exception": "ValueError" },
+      "acceptance": {},
+      "benchmark": false
+    },
+    {
+      "id": "scalar.smooth-interior",
+      "operation": "scalar-minimize",
+      "method": "bounded",
+      "problem": "smooth-quartic",
+      "input": { "bounds": [-2.0, 3.0] },
+      "oracle": { "points": [[0.25]], "fun": 0.0 },
+      "acceptance": { "x_linf": 5e-7, "objective_gap": 1e-12 },
+      "benchmark": true
+    },
+    {
+      "id": "scalar.boundary",
+      "operation": "scalar-minimize",
+      "method": "bounded",
+      "problem": "monotone-exponential",
+      "input": { "bounds": [-2.0, 3.0] },
+      "oracle": { "points": [[-2.0]], "fun": 0.1353352832366127 },
+      "acceptance": { "x_linf": 2e-6, "objective_gap": 3e-7 },
+      "benchmark": false
+    },
+    {
+      "id": "nelder-mead.rosenbrock-2",
+      "operation": "minimize",
+      "method": "nelder-mead",
+      "problem": "rosenbrock",
+      "input": { "dimension": 2, "x0": [-1.2, 1.0] },
+      "oracle": { "points": [[1.0, 1.0]], "fun": 0.0 },
+      "acceptance": { "x_linf": 2e-3, "objective_gap": 1e-7 },
+      "benchmark": true
+    },
+    {
+      "id": "nelder-mead.beale",
+      "operation": "minimize",
+      "method": "nelder-mead",
+      "problem": "beale",
+      "input": { "x0": [1.0, 1.0] },
+      "oracle": { "points": [[3.0, 0.5]], "fun": 0.0 },
+      "acceptance": { "x_linf": 3e-3, "objective_gap": 1e-7 },
+      "benchmark": false
+    },
+    {
+      "id": "nelder-mead.nonsmooth",
+      "operation": "minimize",
+      "method": "nelder-mead",
+      "problem": "weighted-absolute",
+      "input": { "x0": [3.0, -4.0] },
+      "oracle": { "points": [[0.5, -0.25]], "fun": 0.0 },
+      "acceptance": { "x_linf": 3e-3, "objective_gap": 1e-4 },
+      "benchmark": false
+    },
+    {
+      "id": "bfgs.rosenbrock-2",
+      "operation": "minimize",
+      "method": "bfgs",
+      "problem": "rosenbrock",
+      "input": { "dimension": 2, "x0": [-1.2, 1.0], "analytic_gradient": true },
+      "oracle": { "points": [[1.0, 1.0]], "fun": 0.0 },
+      "acceptance": { "x_linf": 3e-5, "objective_gap": 1e-10, "gradient_linf": 1e-5 },
+      "benchmark": false
+    },
+    {
+      "id": "bfgs.rosenbrock-20",
+      "operation": "minimize",
+      "method": "bfgs",
+      "problem": "rosenbrock",
+      "input": { "dimension": 20, "x0_pattern": "alternating-rosenbrock", "analytic_gradient": true },
+      "oracle": { "points": [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]], "fun": 0.0 },
+      "acceptance": { "x_linf": 3e-4, "objective_gap": 1e-9, "gradient_linf": 2e-5 },
+      "benchmark": true
+    },
+    {
+      "id": "bfgs.ill-conditioned-20",
+      "operation": "minimize",
+      "method": "bfgs",
+      "problem": "diagonal-quadratic",
+      "input": { "dimension": 20, "condition": 1000000.0, "x0_pattern": "opposite-target", "analytic_gradient": true },
+      "oracle": { "fun": 0.0 },
+      "acceptance": { "x_linf": 5e-5, "objective_gap": 1e-8, "gradient_linf": 2e-4 },
+      "benchmark": false
+    },
+    {
+      "id": "lbfgsb.active-box-50",
+      "operation": "minimize",
+      "method": "lbfgsb",
+      "problem": "active-box-quadratic",
+      "input": { "dimension": 50, "x0_pattern": "zeros", "bounds_pattern": "unit-box", "analytic_gradient": true },
+      "oracle": { "fun": 50.0 },
+      "acceptance": { "x_linf": 2e-5, "objective_gap": 1e-7, "projected_gradient_linf": 1e-5 },
+      "benchmark": true
+    },
+    {
+      "id": "lbfgsb.fixed-coordinate",
+      "operation": "minimize",
+      "method": "lbfgsb",
+      "problem": "fixed-coordinate-quadratic",
+      "input": { "dimension": 5, "x0": [3.0, 3.0, 3.0, 3.0, 3.0], "bounds": [[0.0, 0.0], [-1.0, 2.0], [-2.0, 2.0], [-2.0, 2.0], [-2.0, 2.0]], "analytic_gradient": true },
+      "oracle": { "points": [[0.0, -1.0, 0.5, 1.0, -0.5]], "fun": 5.0 },
+      "acceptance": { "x_linf": 3e-5, "objective_gap": 1e-8, "projected_gradient_linf": 2e-5 },
+      "benchmark": false
+    },
+    {
+      "id": "leastsq.linear-30",
+      "operation": "least-squares",
+      "method": "levenberg-marquardt",
+      "problem": "linear-fit",
+      "input": { "observations": 30, "x0": [0.0, 0.0] },
+      "oracle": { "points": [[2.5, -0.75]], "cost": 0.0 },
+      "acceptance": { "x_linf": 2e-7, "cost_gap": 1e-18, "residual_l2": 2e-8 },
+      "benchmark": true
+    },
+    {
+      "id": "leastsq.rosenbrock-residual",
+      "operation": "least-squares",
+      "method": "levenberg-marquardt",
+      "problem": "rosenbrock-residual",
+      "input": { "x0": [-1.2, 1.0] },
+      "oracle": { "points": [[1.0, 1.0]], "cost": 0.0 },
+      "acceptance": { "x_linf": 2e-6, "cost_gap": 1e-16, "residual_l2": 2e-8 },
+      "benchmark": false
+    },
+    {
+      "id": "leastsq.rank-deficient",
+      "operation": "least-squares",
+      "method": "levenberg-marquardt",
+      "problem": "rank-deficient-linear",
+      "input": { "observations": 20, "x0": [4.0, -5.0] },
+      "oracle": { "cost": 0.0 },
+      "acceptance": { "cost_gap": 1e-16, "residual_l2": 2e-8 },
+      "benchmark": false
+    },
+    {
+      "id": "leastsq.exponential-decay",
+      "operation": "least-squares",
+      "method": "levenberg-marquardt",
+      "problem": "exponential-decay",
+      "input": { "observations": 25, "x0": [1.0, 0.2, 0.0] },
+      "oracle": { "points": [[2.0, 1.5, 0.25]], "cost": 0.0 },
+      "acceptance": { "x_linf": 2e-5, "cost_gap": 1e-14, "residual_l2": 2e-7 },
+      "benchmark": false
+    },
+    {
+      "id": "cobyla.linear-boundary",
+      "operation": "constrained-minimize",
+      "method": "cobyla",
+      "problem": "linear-boundary",
+      "input": { "x0": [2.0, 3.0] },
+      "oracle": { "points": [[0.25, 1.75]], "fun": 1.125 },
+      "acceptance": { "x_linf": 2e-3, "objective_gap": 3e-4, "max_constraint_violation": 2e-4 },
+      "benchmark": false
+    },
+    {
+      "id": "cobyla.circle-boundary",
+      "operation": "constrained-minimize",
+      "method": "cobyla",
+      "problem": "circle-boundary",
+      "input": { "x0": [0.0, 0.0] },
+      "oracle": { "points": [[0.7071067811865476, 0.7071067811865476]], "fun": 0.1715728752538099 },
+      "acceptance": { "x_linf": 3e-3, "objective_gap": 5e-5, "max_constraint_violation": 2e-4 },
+      "benchmark": true
+    },
+    {
+      "id": "cobyla.infeasible",
+      "operation": "constrained-minimize",
+      "method": "cobyla",
+      "problem": "infeasible-interval",
+      "input": { "x0": [0.5] },
+      "oracle": { "minimum_constraint_violation": 0.5 },
+      "acceptance": { "expected_failure": true, "minimum_constraint_violation": 0.49 },
+      "benchmark": false
+    },
+    {
+      "id": "global.six-hump-camel",
+      "operation": "global-minimize",
+      "method": "differential-evolution",
+      "problem": "six-hump-camel",
+      "input": { "bounds": [[-3.0, 3.0], [-2.0, 2.0]], "seed": 1729, "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "population_multiplier": 15, "max_iterations": 200 },
+      "oracle": { "points": [[0.08984201368301331, -0.7126564032704135], [-0.08984201368301331, 0.7126564032704135]], "fun": -1.0316284534898772 },
+      "acceptance": { "x_linf": 2e-2, "objective_gap": 2e-4, "minimum_success_rate": 0.9 },
+      "benchmark": false
+    },
+    {
+      "id": "global.rastrigin-5",
+      "operation": "global-minimize",
+      "method": "differential-evolution",
+      "problem": "rastrigin",
+      "input": { "dimension": 5, "bounds_pattern": "rastrigin", "seed": 314159, "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], "population_multiplier": 20, "max_iterations": 500 },
+      "oracle": { "fun": 0.0 },
+      "acceptance": { "x_linf": 2e-2, "objective_gap": 5e-3, "minimum_success_rate": 0.8 },
+      "benchmark": true
+    },
+    {
+      "id": "global.ackley-5",
+      "operation": "global-minimize",
+      "method": "differential-evolution",
+      "problem": "ackley",
+      "input": { "dimension": 5, "bounds_pattern": "ackley", "seed": 271828, "seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19], "population_multiplier": 20, "max_iterations": 500 },
+      "oracle": { "fun": 0.0 },
+      "acceptance": { "x_linf": 3e-2, "objective_gap": 5e-2, "minimum_success_rate": 0.8 },
+      "benchmark": false
+    }
+  ]
+}

@@ -88,6 +88,13 @@
       "rationale": "Standalone C-to-Wasm feasibility target for the reviewed bounded modular character scan; compiled only by the optimizer evidence harness, not linked into Sage.js or selected as a production mathematical implementation."
     },
     {
+      "path": "bench/numerical-optimization/callback-probe.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Standalone no-allocation C-to-Wasm microbenchmark that separates internal arithmetic from synchronous Wasm-to-JavaScript objective callback cost; it is not linked into Sage.js or used as a mathematical implementation."
+    },
+    {
       "path": "bench/rforest/portable_trace_harness.c",
       "category": "benchmark-reference",
       "review_status": "accepted",
