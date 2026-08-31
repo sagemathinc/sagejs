@@ -5596,7 +5596,7 @@ relations `x + R*x + R^2*x`, stored in native compressed-row form.
 ## `matrix`
 
 ```sage
-matrix(*args: Any) -> Matrix
+matrix(*args: Any, **options: Any) -> Matrix
 ```
 
 Construct a dense matrix, optionally over an explicit base ring.
