@@ -369,7 +369,7 @@ in the broader future P1 domain.
 The frozen bundle has SHA-256
 `4008ac76d02eeac6fbf8b081466d5219562ee1042f244f7203f7a4879b55a9f2`.
 At commit `a9ae669f5a111398ed7a03b5592d8064d0afe87a`, the required checks on
-[#93](https://github.com/sagemathinc/sagejs/pull/93) passed on Linux x64,
+[\#93](https://github.com/sagemathinc/sagejs/pull/93) passed on Linux x64,
 Linux arm64, macOS arm64, native Windows x64, and real-browser Chromium.
 
 ## P1: complete the classical modular-form object layer
