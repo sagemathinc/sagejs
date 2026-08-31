@@ -1,6 +1,13 @@
 {
   "schema": "sagejs.wasm-production-capabilities/v1",
   "modules": {
+    "cminpack": {
+      "artifact": "cminpack.wasm",
+      "capabilities": [],
+      "additionalCapabilities": [
+        "wasm-library:cminpack:least-squares-explicit"
+      ]
+    },
     "flint": {
       "artifact": "flint-factor.wasm",
       "additionalCapabilities": [

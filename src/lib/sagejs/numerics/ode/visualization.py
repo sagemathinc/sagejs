@@ -8,6 +8,8 @@ from sagejs.plotting import (
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -18,6 +20,20 @@ from sagejs.plotting import (
 from .model import OdeResult
 
 _COLORS = ("#3366cc", "#dd8452", "#55a868", "#c44e52", "#8172b3", "#937860")
+
+
+def _axes(
+    x_label: str,
+    y_label: str,
+    *,
+    y_scale: str = "linear",
+    equal_aspect: bool = False,
+) -> dict[str, Any]:
+    return Axes2DSettings(
+        AxisSettings(label=x_label),
+        AxisSettings(label=y_label, scale=y_scale),
+        equal_aspect=equal_aspect,
+    ).to_dict()
 
 
 def _provenance(result: OdeResult, constructor: str, kind: str) -> Provenance:
@@ -106,7 +122,7 @@ def _trajectory_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": "t"}, "y": {"label": "state"}},
+        axes_or_scene=_axes("t", "state"),
         viewport={"responsive": True},
         provenance=_provenance(result, "ode_plot", "trajectory"),
     )
@@ -151,7 +167,7 @@ def _phase_spec(result: OdeResult, count: int | None = None) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": "y[0]"}, "y": {"label": "y[1]"}},
+        axes_or_scene=_axes("y[0]", "y[1]", equal_aspect=True),
         viewport={"responsive": True, "equal_aspect": True},
         provenance=_provenance(result, "ode_plot", "phase"),
     )
@@ -213,10 +229,7 @@ def _step_spec(result: OdeResult, count: int | None = None) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "t"},
-            "y": {"label": "|step size|", "scale": "log"},
-        },
+        axes_or_scene=_axes("t", "|step size|", y_scale="log"),
         viewport={"responsive": True},
         provenance=_provenance(result, "ode_plot", "step_size"),
     )
@@ -264,10 +277,7 @@ def _error_spec(result: OdeResult, count: int | None = None) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "t"},
-            "y": {"label": "local error norm", "scale": "log"},
-        },
+        axes_or_scene=_axes("t", "local error norm", y_scale="log"),
         viewport={"responsive": True},
         provenance=_provenance(result, "ode_plot", "local_error"),
     )

@@ -169,6 +169,7 @@ assert sorted(capability_record["operations"]) == [
     "piecewise_interpolation",
     "polynomial_approximation",
     "polynomial_interpolation",
+    "polynomial_roots",
 ]
 assert list(approximation_capabilities("cubic_spline")["operations"]) == [
     "cubic_spline"

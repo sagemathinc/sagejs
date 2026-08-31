@@ -158,6 +158,20 @@
       "rationale": "Host-neutral generated owned-resource ABI over M4RI dense GF(2) matrices, with checked dimensions and empty shapes, canonical logical row-word and SagePack transfer, deterministic lifecycle accounting, and direct resource-to-resource linear algebra."
     },
     {
+      "path": "packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "integration",
+      "rationale": "Qualification-only host-neutral adapter over cminpack's upstream MINPACK-2 MGH functions; it is compiled into an independent oracle reactor and is never shipped as the production solver."
+    },
+    {
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "integration",
+      "rationale": "Bounded callback, total evaluation-budget, allocation, cancellation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source, allocations are operation-scoped, and Sage.js independently validates returned residuals."
+    },
+    {
       "path": "packages/flint-wasm/src/factor.c",
       "category": "external-library-bridge",
       "review_status": "accepted",

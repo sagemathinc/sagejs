@@ -19,6 +19,8 @@ current Linux x64 CPython and Sage.js Node evidence covers:
 | box-bounded minimum | `projected-bfgs` | at least one finite box bound, dimension at most 128 |
 | nonlinear system | `damped-newton` | square dense system, dimension at most 128 |
 | nonlinear least squares / curve fit | `damped-gauss-newton` | dense Jacobian envelope below |
+| nonlinear least squares / curve fit | `cminpack-lmdif` | explicit-only cminpack finite-difference Levenberg-Marquardt; `1 <= n <= 128`, `n <= m <= 16384` |
+| nonlinear least squares / curve fit | `cminpack-lmder` | explicit-only cminpack analytic-Jacobian Levenberg-Marquardt; same envelope |
 | affine fit | `centered-linear-fit` | two parameters |
 
 `auto` respects these envelopes. In particular, derivative-free problems above
@@ -29,6 +31,30 @@ raises before callback evaluation.
 These names do not imply a different library algorithm. `projected-bfgs` is
 not TNC or L-BFGS-B, `damped-gauss-newton` is not MINPACK `lmdif`/`lmder`, and
 `damped-newton` is not MINPACK `hybr`.
+
+The two `cminpack-*` identities are the exception: they execute the pinned
+cminpack implementation in a 72,155-byte, separately lazy universal Wasm
+reactor. They are available in Sage.js Node, browser, and SEA runtimes on the
+four release platforms, but remain explicit-only:
+
+```python
+from sagejs.numerics.optimization import least_squares
+
+fit = least_squares(
+    lambda p: [10.0 * (p[1] - p[0] * p[0]), 1.0 - p[0]],
+    [-1.2, 1.0],
+    method="cminpack-lmdif",
+)
+assert fit.method == "cminpack-lmdif"
+assert fit.backend == "cminpack-wasm"
+assert fit.success and fit.validation.passed
+```
+
+Use `cminpack-lmder` only with `jacobian=...`. An exact method request either
+executes that implementation or fails; it never silently substitutes
+`damped-gauss-newton`. `auto` intentionally continues to select the
+ordinary-Python implementation until an automatic-selection policy has its
+own public correctness and performance receipts.
 
 ## Validation and failures
 
@@ -93,6 +119,60 @@ fit animations replay retained fitted values; neither substitutes the final
 answer for earlier frames. `trace="none"` cannot be animated because no history
 was retained. Static plots may still show the final result.
 
+Every result provides three domain-owned views:
+
+- `result.explanation()` returns the detached
+  `optimization-explanation/v1` record. It keeps solver status separate from
+  validation truth, identifies active bounds, reports returned-point parameter
+  identifiability, preserves scale-safe least-squares evidence, and gives a
+  structured failure narrative with failed independent checks and suggested
+  actions. `result.explain()` is a compact text rendering of that same record.
+- `result.plot()` (also `result.to_plot_spec()`) returns a canonical `PlotSpec`
+  with `Axes2DSettings`, stable semantic layer roles, outcome provenance, and an
+  explicit accessible description available through `spec.alt_text()`.
+- `result.animate()` returns a topology-stable `PlotAnimation` with play,
+  pause, and iteration-slider controls plus a described final-frame static
+  fallback. It replays retained numerical evidence and never reruns the solver.
+
+The static view is operation-specific:
+
+| Operation or method | Semantic layers |
+| --- | --- |
+| bounded scalar minimum | retained objective path, interval reference and endpoints, retained incumbents, returned candidate |
+| two-parameter BFGS / nonlinear system / least squares | parameter path, retained iterates, returned point |
+| two-parameter Nelder-Mead | parameter path plus the current retained simplex |
+| two-parameter projected BFGS | parameter path, finite box-bound lines, active returned bound |
+| higher- or lower-dimensional solve | iteration against objective, cost, or residual norm |
+| linear and nonlinear curve fit | observations, fitted model, residual sticks |
+
+Only finite intervals and box bounds are visualized because those are the only
+qualified constraint classes. The package does not fabricate nonlinear
+feasible regions. A failed stationary least-squares point is labeled as solver
+convergence rejected by validation; an ill-conditioned fit is labeled as
+rank-deficient or ill-conditioned. If a squared cost is outside binary64, the
+explanation says so and the convergence view uses the representable residual
+norm instead of inserting a non-finite objective.
+
+View construction never invokes a result's user callbacks. Scalar views show
+only objective values already present in the retained solver trace and final
+result; with `trace="none"`, the static view shows only the returned state and
+the finite interval reference. Static fit plots display at most 2,048
+deterministically selected retained observations. Fit animation requires at
+most 256 retained observations. Every animation contains at most 128 frames,
+retains the first and last progress states when decimating, fixes representable
+axis ranges from the complete retained story across every frame, and declares
+hard sample, layer, payload, and duration limits. The cross-runtime semantic
+oracle is
+[`visualization-fixtures.json`](visualization-fixtures.json); it fixes the
+accessible descriptions, layer roles, canonical lowering, constraint and
+identifiability records, failure checks, controls, and animation topology for
+representative CPython and Sage.js results.
+
+`capabilities()` advertises this explanation/static/animation contract on every
+qualified method record. Its result is recursively detached, and `supports()`
+and `plan()` inspect problem metadata without invoking user callbacks, so the
+central lazy facade can query the package without causing numerical work.
+
 ## Evidence and current limits
 
 The production corpus, SciPy development oracle, benchmark runner, schemas, and
@@ -103,14 +183,17 @@ mathematical oracles rather than interchangeable methods.
 
 This slice is not yet the complete P3 backend portfolio. It does **not** claim:
 
-- cminpack Wasm `lmdif`/`lmder` or Sage `find_fit` compatibility;
+- Sage `find_fit` compatibility or automatic cminpack selection;
 - NLopt/PRIMA Nelder-Mead or feasibility-aware COBYLA;
 - Powell, CG, Newton-CG, TNC, or L-BFGS-B;
 - nonlinear constraints, global optimization, or arbitrary precision;
-- browser, SEA, Linux ARM64, macOS ARM64, or Windows x64 qualification; or
-- four-platform release qualification.
+- general nonlinear-optimization qualification outside the exact envelopes
+  above; or
+- cminpack qualification on a platform/runtime not listed by `capabilities()`.
 
 Those capabilities remain absent until their exact-method corpus, independent
 feasibility checks, Wasm upstream tests, browser run, payload evidence, and
-four-host receipts are checked in. The central integration lane owns the shared
-package graph, public registries, and top-level numerical surface.
+four-host receipts are checked in. cminpack's source, license, artifact, MGH
+oracle corpus, browser receipt, resource limits, and lifecycle evidence live in
+`packages/flint-wasm/numerical/`; its low-level success code is never accepted
+as the public validation result.

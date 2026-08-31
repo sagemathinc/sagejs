@@ -302,6 +302,10 @@ test("portable harness self-test executes failure, deterministic fuzz, and metam
   assert.equal(metamorphic.samples[0].observation.metrics.counters.trials, 4);
   assert.equal(failure.samples[0].evidence.failure.status, "passed");
   assert(receipt.metrics.startup.process_entry_to_ready_ms >= 0);
+  assert(
+    receipt.metrics.startup.process_entry_to_ready_ms < receipt.metrics.total_wall_ms,
+    "startup must stop at adapter readiness rather than include the case campaign",
+  );
   assert(receipt.metrics.payload.artifact_installed_bytes > 0);
   assert.equal(verifyReceipt(receipt, {
     root: workspace.root,

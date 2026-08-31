@@ -81,6 +81,21 @@ tree = expression_record("Exp[-x] + Sin[x]^2", language="wolfram")
 assert render_expression(tree, "python-scipy") == "np.exp(-x) + np.sin(x) ** 2"
 assert render_expression(tree, "matlab") == "exp(-x) + sin(x) ^ 2"
 assert render_expression(expression_record("e^x", language="sage"), "matlab") == "exp(1) ^ x"
+assert render_expression(
+    expression_record("x != 0", language="python", parameters=("x",)),
+    "matlab",
+) == "x ~= 0"
+
+for source, parameters in (
+    ("x + unbound", ("x",)),
+    ("sin(x, 1)", ("x",)),
+    ("1e9999 * x", ("x",)),
+):
+    try:
+        expression_record(source, language="sage", parameters=parameters)
+        raise AssertionError("invalid numerical expression unexpectedly parsed")
+    except UnsupportedFrontendError as error:
+        assert error.diagnostic.code == "parse_failure"
 
 opaque = matlab_fzero_intent(lambda x: x, [0])
 try:
@@ -90,8 +105,8 @@ except UnsupportedFrontendError as error:
     assert error.diagnostic.code == "non_replayable_intent"
 
 try:
-    registry.lower("matlab", "ode45", lambda x: x, [0, 1])
-    raise AssertionError("unregistered operation unexpectedly lowered")
+    registry.lower("matlab", "definitely_not_numerical", 1)
+    raise AssertionError("unknown operation unexpectedly lowered")
 except UnsupportedFrontendError as error:
     assert error.diagnostic.code == "unsupported_operation"
     assert error.diagnostic.to_dict()["language"] == "matlab"
@@ -114,7 +129,7 @@ adapter = OperationAdapter(
 local = FrontendRegistry((adapter,))
 sample = local.lower("matlab", "sample", 7)
 assert local.emit(sample, "sage") == "sample(7)"
-assert len(create_frontend_registry().operations()) == 1
+assert len(create_frontend_registry().operations()) == 22
 
 print("multilingual numerical frontend witness passed")
 `;
@@ -143,6 +158,77 @@ test("canonical intent and code generation run in Sage.js", () => {
   }
 });
 
+const adversarialWitness = String.raw`
+import base64, hashlib, json, sys
+sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
+
+from sagejs.numerics.frontends import (
+    NumericalFrontendIntent,
+    OperationRef,
+    UnsupportedFrontendError,
+)
+from sagejs.numerics.frontends.portable import (
+    attach_intent,
+    parse_attached_intent,
+    portable_value,
+)
+
+deep = 0
+for _ in range(70):
+    deep = [deep]
+try:
+    portable_value(deep)
+    raise AssertionError("deep portable operand unexpectedly accepted")
+except ValueError as error:
+    assert "nesting depth" in str(error)
+
+try:
+    portable_value([0] * 100001)
+    raise AssertionError("oversized portable operand unexpectedly accepted")
+except ValueError as error:
+    assert "node count" in str(error)
+
+operation = OperationRef("test", "budget", 1)
+intent = NumericalFrontendIntent(
+    operation,
+    operands={"value": 1},
+    source_language="sage",
+    source_name="budget",
+)
+try:
+    attach_intent("x" * 2000001, intent, "sage")
+    raise AssertionError("oversized emitted body unexpectedly accepted")
+except ValueError as error:
+    assert "byte budget" in str(error)
+
+body = "result = 1"
+semantic = intent.semantic_dict()
+semantic["operands"] = {"value": deep}
+envelope = {
+    "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+    "semantic": semantic,
+}
+payload = base64.urlsafe_b64encode(
+    json.dumps(envelope, separators=(",", ":"), sort_keys=True).encode("utf-8")
+).decode("ascii")
+try:
+    parse_attached_intent(body + "\n# sagejs-intent-v1:" + payload, "sage", operation)
+    raise AssertionError("deep numerical envelope unexpectedly parsed")
+except UnsupportedFrontendError as error:
+    assert error.diagnostic.code == "parse_failure"
+
+print("multilingual frontend budgets passed")
+`;
+
+test("portable operands and emitted envelopes enforce resource budgets", () => {
+  const executable = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
+  assert.equal(
+    run(executable, ["-I", "-c", adversarialWitness]),
+    "multilingual frontend budgets passed",
+  );
+});
+
 test("offline reference fixtures are provenance-complete and non-executable", () => {
   const fixture = JSON.parse(
     readFileSync(
@@ -161,6 +247,58 @@ test("offline reference fixtures are provenance-complete and non-executable", ()
     assert.equal(reference.vendor_output_included, false);
   }
   assert.equal(fixture.cases.length, 3);
+
+  const catalog = JSON.parse(
+    readFileSync(
+      join(__dirname, "fixtures", "catalog-references.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(catalog.schema_version, 1);
+  assert.ok(catalog.references.length >= 12);
+  assert.deepEqual(
+    [...new Set(catalog.references.map(({ system }) => system))].sort(),
+    ["matlab", "python-scipy", "sage", "wolfram"],
+  );
+  for (const reference of catalog.references) {
+    assert.match(reference.source_url, /^https:\/\//);
+    assert.equal(reference.accessed, "2026-08-31");
+    assert.equal(reference.redistribution, "facts-and-original-fixtures-only");
+    assert.equal(reference.vendor_output_included, false);
+  }
+  assert.equal(catalog.original_cases.length, 3);
+});
+
+test("the support ledger classifies every foundational operation", () => {
+  const ledger = JSON.parse(
+    readFileSync(
+      join(
+        root,
+        "docs",
+        "numerical-computing",
+        "multilingual",
+        "support-matrix.json",
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(ledger.schema_version, 1);
+  assert.deepEqual(
+    ledger.runtime_languages,
+    ["sage", "python-scipy", "matlab", "wolfram"],
+  );
+  assert.equal(ledger.operations.length, 22);
+  for (const operation of ledger.operations) {
+    const classified = new Set([
+      ...operation.emit,
+      ...(operation.unsupported || []),
+    ]);
+    assert.deepEqual(
+      [...classified].sort(),
+      [...ledger.runtime_languages].sort(),
+      operation.operation,
+    );
+  }
 });
 
 test("the documented intent schema accepts the checked fixture shape", () => {

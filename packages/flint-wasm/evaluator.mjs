@@ -366,29 +366,86 @@ function createGlobalInstaller(target) {
 export function createBrowserRuntimeModules({
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   importNumpy = (url) => import(String(url)),
+  numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
+  fetchNumerical = globalThis.fetch,
+  importNumerical = (url) => import(String(url)),
+  instantiateNumerical,
+  recordCapability = () => {},
 } = {}) {
   const modules = new Map();
   let numpyPromise;
+  let numericalPromise;
   const requiresNumpy = (imports) => imports.some(
     (name) => name === "numpy" || name.startsWith("numpy."),
   );
+  const requiresNumerical = (imports) => imports.some(
+    (name) =>
+      name === "sagejs.numerics.optimization" ||
+      name.startsWith("sagejs.numerics.optimization."),
+  );
   return Object.freeze({
     async prepare(imports) {
-      if (!requiresNumpy(imports)) return [];
-      numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
-        if (module === null || typeof module !== "object" ||
-            typeof module.array !== "function" ||
-            typeof module.NDArray !== "function") {
-          throw new TypeError("browser numpy-ts specialist is invalid");
-        }
-        modules.set("numpy-ts", module);
-        return module;
-      });
-      await numpyPromise;
-      return ["specialist:numpy-ts"];
+      const capabilities = [];
+      const pending = [];
+      if (requiresNumpy(imports)) {
+        numpyPromise ??= Promise.resolve(importNumpy(numpy)).then((module) => {
+          if (module === null || typeof module !== "object" ||
+              typeof module.array !== "function" ||
+              typeof module.NDArray !== "function") {
+            throw new TypeError("browser numpy-ts specialist is invalid");
+          }
+          modules.set("numpy-ts", module);
+          return module;
+        });
+        pending.push(numpyPromise);
+        capabilities.push("specialist:numpy-ts");
+      }
+      if (requiresNumerical(imports)) {
+        numericalPromise ??= Promise.resolve(fetchNumerical(String(numerical)))
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `unable to load cminpack numerical backend (${response.status})`,
+              );
+            }
+            return response.arrayBuffer();
+          })
+          .then(async (bytes) => {
+            let instantiate = instantiateNumerical;
+            if (instantiate === undefined) {
+              const adapter = await importNumerical(numericalAdapter);
+              instantiate = adapter?.createCminpackBackend;
+            }
+            if (typeof instantiate !== "function") {
+              throw new TypeError("browser cminpack numerical adapter is invalid");
+            }
+            return instantiate(bytes);
+          })
+          .then((backend) => {
+            if (backend === null || typeof backend !== "object" ||
+                typeof backend.leastSquares !== "function" ||
+                backend.capability?.backend !== "cminpack-wasm") {
+              throw new TypeError("browser cminpack numerical backend is invalid");
+            }
+            modules.set("@sagemath/sagejs-numerical", backend);
+            return backend;
+        });
+        pending.push(numericalPromise);
+      }
+      await Promise.all(pending);
+      return capabilities;
     },
     get(name) {
-      return modules.get(name);
+      const module = modules.get(name);
+      if (name === "@sagemath/sagejs-numerical" && module !== undefined) {
+        recordCapability(
+          "wasm-library:cminpack:least-squares-explicit",
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      }
+      return module;
     },
   });
 }
@@ -411,6 +468,8 @@ export async function instantiateSageEvaluator({
   algebraic = undefined,
   nativeKernels = undefined,
   m4ri,
+  numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
@@ -436,6 +495,9 @@ export async function instantiateSageEvaluator({
   instantiateM4riBackend = instantiateM4ri,
   importSymbolic = (url) => import(String(url)),
   importNumpy = (url) => import(String(url)),
+  fetchNumerical = globalThis.fetch,
+  importNumerical = (url) => import(String(url)),
+  instantiateNumerical,
   fetchLazyModules = fetchLazyModuleBundle,
   createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
@@ -454,7 +516,17 @@ export async function instantiateSageEvaluator({
   const language = new CompilerWorker(compilerWorker, WorkerConstructor);
   const globals = createGlobalInstaller(globalThis);
   const capabilityDispatchTrace = createCapabilityDispatchTrace();
-  const runtimeModules = createBrowserRuntimeModules({ numpy, importNumpy });
+  const runtimeModules = createBrowserRuntimeModules({
+    numpy,
+    importNumpy,
+    numerical,
+    numericalAdapter,
+    fetchNumerical,
+    importNumerical,
+    instantiateNumerical,
+    recordCapability: (id, route, options) =>
+      capabilityDispatchTrace.record(id, route, options),
+  });
   const abort = (error) => {
     try {
       conwayDataResource?.close();
@@ -679,6 +751,13 @@ export async function instantiateSageEvaluator({
     }
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;
+    }
+    if (name === "@sagemath/sagejs-numerical") {
+      const backend = runtimeModules.get(name);
+      if (backend !== undefined) return backend;
+      throw new Error(
+        "cminpack was not prepared for this browser optimization program",
+      );
     }
     const runtimeModule = runtimeModules.get(name);
     if (runtimeModule !== undefined) return runtimeModule;

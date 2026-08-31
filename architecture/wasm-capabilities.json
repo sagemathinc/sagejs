@@ -33,6 +33,17 @@
           "packages/flint-wasm/test/resource-browser-smoke.mjs"
         ]
       },
+      "cminpack-public-differential": {
+        "differential": true,
+        "paths": [
+          "test/numerical-p3-backends/browser-lm.mjs",
+          "test/numerical-p3-backends/lm-wasm.test.mjs",
+          "test/numerical-p3-backends/public-browser.mjs",
+          "test/numerical-p3-backends/public-integration.cjs",
+          "test/numerical-p3-backends/public-relocation.cjs",
+          "test/numerical-p3-backends/public-sea.cjs"
+        ]
+      },
       "finite-field-boundary-benchmark": {
         "differential": true,
         "paths": [
@@ -481,6 +492,11 @@
         "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
         "family": "multivariate-polynomials",
         "source": "packages/flint/src/multivariate_wasm_core.c"
+      },
+      {
+        "id": "wasm-library:cminpack:least-squares-explicit",
+        "family": "numerical",
+        "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c"
       }
     ],
     "production_manifests": [
@@ -21578,6 +21594,36 @@
       },
       "public_explanation": "Bounded genus-2 local-polynomial batches use portable smalljac and ffpoly inside the authenticated FLINT Wasm artifact; genus 3 remains unavailable.",
       "shared_core": "packages/flint-wasm/src/curves/smalljac-coefficients.c"
+    },
+    {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "tests": [
+        "cminpack-public-differential"
+      ],
+      "review_note": "The separately lazy 72,149-byte reactor executes exact cminpack lmdif/lmder identities through one packed synchronous callback and recomputes public validation independently.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "packages/flint-wasm/numerical/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "shared_core": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     },
     {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",

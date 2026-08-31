@@ -17,6 +17,15 @@ from .model import (
     canonical_language,
     opaque_callback_record,
 )
+from .operations import (
+    FrontendExecutionResult,
+    execute_operation_intent,
+    lower_operation,
+    natural_value,
+    operation_adapters,
+    operation_ref,
+    operation_refs,
+)
 from .registry import FrontendRegistry, OperationAdapter
 from .scalar_root import (
     SCALAR_ROOT,
@@ -38,6 +47,7 @@ __all__ = [
     "FRONTEND_SCHEMA_VERSION",
     "SCALAR_ROOT",
     "FrontendDiagnostic",
+    "FrontendExecutionResult",
     "FrontendRegistry",
     "NumericalFrontendIntent",
     "OperationAdapter",
@@ -47,10 +57,16 @@ __all__ = [
     "create_frontend_registry",
     "emit_code",
     "execute_scalar_root_intent",
+    "execute_operation_intent",
     "expression_record",
     "expression_semantically_equal",
     "intent_from_root_problem",
     "matlab_fzero_intent",
+    "lower_operation",
+    "natural_value",
+    "operation_adapters",
+    "operation_ref",
+    "operation_refs",
     "opaque_callback_record",
     "parse_code",
     "render_expression",

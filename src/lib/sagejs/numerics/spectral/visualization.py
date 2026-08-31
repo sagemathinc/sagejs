@@ -9,6 +9,8 @@ from sagejs.plotting import (
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -22,6 +24,20 @@ _MAX_PLOT_SAMPLES = 1024
 _MAX_ANIMATION_FRAMES = 32
 _MAX_FLOAT = 1.7976931348623157e308
 _COLORS = ("#3366cc", "#dd8452", "#55a868", "#c44e52")
+
+
+def _axes(
+    x_label: str,
+    y_label: str,
+    *,
+    y_scale: str = "linear",
+    equal_aspect: bool = False,
+) -> dict[str, Any]:
+    return Axes2DSettings(
+        AxisSettings(label=x_label),
+        AxisSettings(label=y_label, scale=y_scale),
+        equal_aspect=equal_aspect,
+    ).to_dict()
 
 
 def _complex_value(value: Any) -> complex:
@@ -174,10 +190,7 @@ def _eigenvalue_spec(result: SpectralResult, count: int | None = None) -> PlotSp
     return PlotSpec(
         2,
         [layer],
-        axes_or_scene={
-            "x": {"label": "real part"},
-            "y": {"label": "imaginary part"},
-        },
+        axes_or_scene=_axes("real part", "imaginary part", equal_aspect=True),
         viewport={"responsive": True, "equal_aspect": True},
         annotations=_alt_annotation(
             "Complex-plane eigensystem view with "
@@ -242,13 +255,11 @@ def _singular_value_spec(result: SpectralResult, count: int | None = None) -> Pl
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "singular-value index"},
-            "y": {
-                "label": "singular value",
-                "scale": "log" if all(value > 0.0 for value in selected) else "linear",
-            },
-        },
+        axes_or_scene=_axes(
+            "singular-value index",
+            "singular value",
+            y_scale="log" if all(value > 0.0 for value in selected) else "linear",
+        ),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Reduced SVD singular spectrum with "
@@ -319,16 +330,14 @@ def _spectrum_spec(result: SpectralResult, count: int | None = None) -> PlotSpec
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "frequency (cycles per sample)"},
-            "y": {
-                "label": (
-                    "coefficient magnitude divided by scale"
-                    if magnitude_scaled
-                    else "coefficient magnitude"
-                )
-            },
-        },
+        axes_or_scene=_axes(
+            "frequency (cycles per sample)",
+            (
+                "coefficient magnitude divided by scale"
+                if magnitude_scaled
+                else "coefficient magnitude"
+            ),
+        ),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Discrete Fourier magnitude spectrum with "
@@ -402,16 +411,14 @@ def _fft_aliasing_spec(result: SpectralResult) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "frequency (cycles per sample)"},
-            "y": {
-                "label": (
-                    "shared DFT magnitude divided by scale"
-                    if magnitude_scaled
-                    else "shared DFT magnitude"
-                )
-            },
-        },
+        axes_or_scene=_axes(
+            "frequency (cycles per sample)",
+            (
+                "shared DFT magnitude divided by scale"
+                if magnitude_scaled
+                else "shared DFT magnitude"
+            ),
+        ),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Aliasing explanation for "
@@ -497,16 +504,14 @@ def _convolution_spec(result: SpectralResult, count: int | None = None) -> PlotS
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "linear output index"},
-            "y": {
-                "label": (
-                    "coefficient magnitude divided by scale"
-                    if magnitude_scaled
-                    else "coefficient magnitude"
-                )
-            },
-        },
+        axes_or_scene=_axes(
+            "linear output index",
+            (
+                "coefficient magnitude divided by scale"
+                if magnitude_scaled
+                else "coefficient magnitude"
+            ),
+        ),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Linear-convolution output with "
@@ -594,10 +599,7 @@ def _convolution_aliasing_spec(result: SpectralResult) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "linear-convolution index"},
-            "y": {"label": "index after circular wrap"},
-        },
+        axes_or_scene=_axes("linear-convolution index", "index after circular wrap"),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Circular-convolution aliasing map for period "
@@ -667,10 +669,7 @@ def _conditioning_spec(result: SpectralResult) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "eigenvector basis"},
-            "y": {"label": "reciprocal condition", "scale": "log"},
-        },
+        axes_or_scene=_axes("eigenvector basis", "reciprocal condition", y_scale="log"),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Eigenbasis conditioning witness. Reciprocal condition "
@@ -803,13 +802,11 @@ def _convergence_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "retained semantic event"},
-            "y": {
-                "label": "progress metric",
-                "scale": "log" if positive else "linear",
-            },
-        },
+        axes_or_scene=_axes(
+            "retained semantic event",
+            "progress metric",
+            y_scale="log" if positive else "linear",
+        ),
         viewport={"responsive": True},
         annotations=_alt_annotation(
             "Convergence evidence from "

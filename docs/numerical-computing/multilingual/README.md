@@ -1,86 +1,145 @@
 # Multilingual numerical intent
 
-`sagejs.numerics.frontends` translates language-specific requests into a
-versioned operation record before a numerical domain plans or executes the
-request. The record is the interoperability boundary; MATLAB, Wolfram, Sage,
-and SciPy spellings are presentation details.
+`sagejs.numerics.frontends` is the language boundary of the numerical
+laboratory. Sage, Python/SciPy, MATLAB, and Wolfram spellings lower to one
+versioned, source-independent request before a numerical package selects an
+algorithm or backend. Frontends never contain a second solver.
 
-The P6 vertical slice covers scalar roots end to end:
+The foundational catalog contains 22 operations:
 
-- natural MATLAB `fzero` and Wolfram `FindRoot` runtime calls create the same
-  `roots:scalar_root:v1` intent;
-- Sage, Python/SciPy, MATLAB, and Wolfram emitters target that intent;
-- the four emitted forms parse back to the same semantic digest; and
-- opaque live callbacks execute normally but code emission diagnoses
-  `non_replayable_intent` instead of fabricating source.
+- scalar roots;
+- dense solve and minimum-norm least squares;
+- symmetric and general eigensystems, reduced SVD, one-dimensional FFT, and
+  convolution;
+- interpolation, cubic splines, and definite quadrature;
+- bounded scalar and unconstrained multivariate minimization, nonlinear
+  systems, nonlinear least squares, and linear fitting;
+- explicit nonstiff initial-value problems;
+- descriptive statistics, one- and two-sample t inference, and linear
+  regression; and
+- deterministic parameter sweeps.
 
-## Record boundary
+Every registered source alias can execute through its package's structured
+result. Emitted code is deliberately narrower: it is available only where the
+target's default convention is qualified. An unavailable target raises
+`UnsupportedFrontendError` with `unsupported_target`; it never prints
+plausible-looking code with changed normalization, orientation, resource, or
+callback semantics.
 
-An intent records the canonical operation, detached operands, normalized
-options, requested outputs, and source provenance. Live callback bindings are
-held separately and never appear in JSON. `digest` hashes only the semantic
-fields, so changing source spelling does not change operation identity.
-
-```python
-from sagejs.numerics.frontends import matlab_fzero_intent, emit_code
-
-intent = matlab_fzero_intent(
-    lambda x: x*x - 2,
-    [1, 2],
-    expression="x^2 - 2",
-)
-print(emit_code(intent, "python-scipy"))
-```
-
-The accepted scalar-expression subset contains real literals, symbols,
-parentheses, comparisons, arithmetic, powers, and common elementary
-functions. It is deliberately smaller than every source language. Unsupported
-tokens and functions produce `parse_failure`; they are never passed through as
-unchecked source.
-
-## Domain adapter integration
-
-There is no import-time global registry. A domain package publishes one
-`OperationAdapter`, and the integration layer composes it explicitly:
+## One canonical request
 
 ```python
 from sagejs.numerics.frontends import create_frontend_registry
-from sagejs.numerics.integration_adapter import integration_adapter
 
-registry = create_frontend_registry([integration_adapter()])
+frontends = create_frontend_registry()
+matlab = frontends.lower("matlab", "linsolve", [[3, 1], [1, 2]], [9, 8])
+wolfram = frontends.lower("wolfram", "LinearSolve", [[3, 1], [1, 2]], [9, 8])
+
+assert matlab.digest == wolfram.digest
+answer = frontends.execute(matlab)
+assert answer.value == [2.0, 3.0]
+assert answer.numerical_result.validation.passed
 ```
 
-Each adapter owns its aliases, natural lowerers, target emitters, optional
-round-trip parsers, and optional executor. Duplicate operations or aliases are
-rejected. This lets linear algebra, optimization, differential equations,
-spectral methods, and statistics land independently without editing a shared
-registry from their worktrees.
+`FrontendExecutionResult` retains both the canonical frontend intent and the
+complete domain result. `.value` is only the natural short view; validation,
+diagnostics, provenance, trace, and resource measurements remain on
+`.numerical_result`.
 
-## Compatibility and unsupported behavior
+Callbacks execute as live bindings. Tooling may additionally record a checked
+scalar-expression subset so the request is replayable:
+
+```python
+intent = frontends.lower(
+    "matlab",
+    "fminbnd",
+    lambda x: (x - 2) ** 2,
+    0,
+    4,
+    expression="(x-2)^2",
+)
+python_source = frontends.emit(intent, "python-scipy")
+assert frontends.parse(
+    python_source, "python-scipy", intent.operation_ref
+).digest == intent.digest
+```
+
+The expression subset contains finite real literals, symbols, parentheses,
+comparisons, arithmetic, powers, and common elementary functions. Vector
+callbacks use a list of expressions. Opaque callbacks execute but emission
+returns `non_replayable_intent`.
+
+## Support ledger
+
+The machine-readable ledger is
+[`support-matrix.json`](support-matrix.json). "runtime" means a source alias
+lowers and executes the canonical Sage.js operation. "emit" means the adapter
+also emits target-native source and accepts an exact checked round trip.
+
+Important boundaries:
+
+- general eigensystems and reduced SVD do not emit Wolfram code until
+  eigenvector orientation and near-defective behavior are qualified;
+- interpolation emits only Sage and SciPy; MATLAB and Wolfram interpolant
+  defaults do not preserve the current method-selection contract;
+- convolution does not emit Wolfram code until padding and origin conventions
+  have a differential fixture;
+- nonstiff IVP code does not emit Wolfram code until state/event conventions
+  are qualified; and
+- sweeps emit only Sage and Python because MATLAB `arrayfun` and Wolfram `Map`
+  do not preserve deterministic seed, quota, cancellation, and item-evidence
+  contracts.
+
+Code generation currently rejects nondefault options. Runtime calls accept the
+documented package options, but target option dictionaries have not all been
+proven equivalent. This is an intentional `unsupported_option`, not a partial
+translation.
+
+## Natural runtime surfaces
+
+`matlab.py` and `wolfram.py` provide runtime views used by their parsers and by
+explicit Python embedding. Parser entrypoints are a narrower qualified subset:
+they are enabled only when natural defaults, orientations, complex values, and
+one-output conventions are preserved. MATLAB currently includes dense solve,
+least squares, convolution, integration, bounded/unconstrained optimization,
+nonlinear solve/least squares, degree-one `polyfit`, `ode45`, `svd`'s
+one-output singular-value view, deterministic `arrayfun`, and the explicitly
+named `sagejs_describe`. Wolfram currently includes dense solve, least squares,
+one finite scalar `NIntegrate` form, deterministic `Map`, and explicitly
+Sage.js-named statistics helpers. Other recognized numerical heads fail with a
+source-located unsupported diagnostic rather than an unqualified runtime call.
+
+Natural short return values do not erase evidence. Functions with meaningful
+structured state have a `*_result` helper or retain the result in a wrapper.
+MATLAB `polyfit` explicitly rejects degrees other than one because only the
+validated linear-fit operation exists.
+
+## Checked emitted source
+
+Generated code contains executable target-native source plus a canonical
+semantic envelope and a SHA-256 of the exact body. Parsing verifies the body,
+operation, operands, options, and outputs. Editing the body produces
+`semantic_mismatch`; source without a valid envelope produces `parse_failure`.
+This parser recognizes Sage.js-generated source. It is not a claim to parse
+arbitrary SciPy, MATLAB, or Wolfram programs.
 
 Frontend diagnostics have stable codes:
 
-- `unsupported_operation`: no adapter or source alias is registered;
-- `unsupported_target`: an operation has no emitter or parser for that target;
-- `unsupported_option`: the target cannot preserve an option or method;
-- `invalid_frontend_arguments`: natural syntax cannot form a valid operation;
-- `non_replayable_intent`: a live value has no serializable expression;
-- `parse_failure`: source is outside the checked subset; and
-- `semantic_mismatch`: a claimed round trip changed canonical semantics.
+- `unsupported_operation`: no source alias is registered;
+- `unsupported_target`: a target convention is not qualified;
+- `unsupported_option`: an option cannot be preserved by outward code;
+- `invalid_frontend_arguments`: natural syntax cannot form a valid request;
+- `non_replayable_intent`: a live value lacks portable expression provenance;
+- `parse_failure`: source is outside the checked generated subset; and
+- `semantic_mismatch`: a claimed generated round trip changed semantics.
 
-MATLAB `fzero` is emitted only for canonical Brent/bracket or Newton/point
-requests. Other method requests fail explicitly because native MATLAB `fzero`
-does not expose those algorithm identities. Wolfram decimal goal emission is
-restricted to exact powers of ten for the same reason.
+## Evidence
 
-## Offline references and benchmarks
+The corpus under `test/numerics/multilingual/` executes every catalog domain,
+checks equivalent aliases, verifies every claimed emitted-source round trip,
+exercises unsupported boundaries, and invokes representative MATLAB and
+Wolfram runtime entrypoints. Offline fixtures record the public API facts used
+without copying or executing proprietary vendor output.
 
-The test fixture in
-`test/numerics/multilingual/fixtures/scalar-root-references.json` records source
-URLs, access dates, the API fact used, and the redistribution policy. Tests use
-only original inputs and independently known constants; they do not copy or
-invoke proprietary vendor output.
-
-`bench/numerics/multilingual/intent-codegen.cjs` reports canonical-record and
-four-target translation throughput. It is a representation-overhead benchmark,
-not a solver-performance claim.
+`bench/numerics/multilingual/intent-codegen.cjs` measures representation and
+checked-round-trip overhead. It is not a solver-performance claim.

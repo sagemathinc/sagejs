@@ -18,6 +18,7 @@ from .model import (
     canonical_language,
     opaque_callback_record,
 )
+from .portable import validated_callback
 from .registry import FrontendRegistry, OperationAdapter
 
 SCALAR_ROOT = OperationRef("roots", "scalar_root", 1)
@@ -255,7 +256,11 @@ def scalar_root_intent(
         else []
     )
     points = values if not bracket else list(bracket)
-    bindings = {"function": function} if callable(function) else {}
+    bindings = (
+        {"function": validated_callback(function_value, function)}
+        if callable(function)
+        else {}
+    )
     return NumericalFrontendIntent(
         SCALAR_ROOT,
         operands={
@@ -804,16 +809,18 @@ def scalar_root_adapter() -> OperationAdapter:
 def create_frontend_registry(
     adapters: Sequence[OperationAdapter] = (),
 ) -> FrontendRegistry:
-    """Create the built-in registry and register optional domain adapters."""
+    """Create the complete lazy built-in registry plus optional adapters."""
 
-    registry = FrontendRegistry((scalar_root_adapter(),))
+    from .operations import operation_adapters
+
+    registry = FrontendRegistry((scalar_root_adapter(),) + operation_adapters())
     for adapter in adapters:
         registry.register(adapter)
     return registry
 
 
 def emit_code(intent: NumericalFrontendIntent, language: str) -> str:
-    """Emit outward source through the built-in scalar-root adapter."""
+    """Emit outward source through the complete built-in registry."""
 
     return create_frontend_registry().emit(intent, language)
 

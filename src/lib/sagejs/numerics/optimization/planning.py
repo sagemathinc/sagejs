@@ -11,6 +11,68 @@ from ._core import MAX_DENSE_DIMENSION
 
 _PLATFORMS = ["linux-x64"]
 _QUALIFIED_RUNTIMES = ["cpython", "sagejs-node"]
+_CMINPACK_PLATFORMS = [
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+]
+_CMINPACK_RUNTIMES = ["sagejs-node", "sagejs-browser", "sagejs-sea"]
+
+
+def _cminpack_record(method: str) -> dict[str, Any]:
+    return {
+        "classification": "extension",
+        "backend": "cminpack-wasm",
+        "selection": "explicit-only",
+        "derivatives": ["analytic"]
+        if method == "cminpack-lmder"
+        else ["forward_finite_difference"],
+        "validation": ["independent_residual", "independent_stationarity"],
+        "max_dimension": MAX_DENSE_DIMENSION,
+        "max_residual_dimension": 16_384,
+        "platforms": _CMINPACK_PLATFORMS,
+        "runtimes": _CMINPACK_RUNTIMES,
+    }
+
+
+
+def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
+    primary = {
+        "scalar_minimum": "retained_objective_and_incumbent_path",
+        "minimize": "parameter_path_or_convergence_history",
+        "nonlinear_system": "parameter_path_or_residual_history",
+        "nonlinear_least_squares": "parameter_path_or_cost_history",
+        "curve_fit": "observations_model_and_residual_sticks",
+        "linear_fit": "observations_model_and_residual_sticks",
+    }[operation]
+    return {
+        "explanation": {
+            "structured": "optimization-explanation/v1",
+            "text": True,
+            "failure_narrative": True,
+            "callback_replay": False,
+            "identifiability": operation
+            in ("nonlinear_least_squares", "curve_fit", "linear_fit"),
+        },
+        "static": {
+            "kind": "plot-spec",
+            "primary_view": primary,
+            "accessible_description": True,
+            "canonical_axes": True,
+            "callback_replay": False,
+        },
+        "animation": {
+            "kind": "plot-animation",
+            "requires_retained_trace": True,
+            "max_frames": 128,
+            "controls": ["play", "pause", "iteration_slider"],
+            "static_fallback": True,
+            "callback_replay": False,
+        },
+        "constraints": constraints,
+    }
+
 
 _METHODS: dict[str, dict[str, dict[str, Any]]] = {
     "scalar_minimum": {
@@ -20,6 +82,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["finite_interval"],
             "derivatives": ["none"],
             "validation": ["feasibility", "projected_stationarity"],
+            "views": _view_contract("scalar_minimum", "finite_interval"),
             "platforms": _PLATFORMS,
         }
     },
@@ -30,6 +93,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["none"],
             "derivatives": ["none"],
             "validation": ["finite_difference_stationarity"],
+            "views": _view_contract("minimize", "none"),
             "max_dimension": 64,
             "platforms": _PLATFORMS,
         },
@@ -39,6 +103,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["none"],
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["independent_finite_difference_stationarity"],
+            "views": _view_contract("minimize", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -48,6 +113,7 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "constraints": ["box_bounds"],
             "derivatives": ["analytic", "bound_aware_finite_difference"],
             "validation": ["feasibility", "projected_gradient_kkt"],
+            "views": _view_contract("minimize", "two_dimensional_box_projection"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         },
@@ -58,29 +124,36 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["independent_residual"],
+            "views": _view_contract("nonlinear_system", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
         }
     },
     "nonlinear_least_squares": {
+        "cminpack-lmdif": _cminpack_record("cminpack-lmdif"),
+        "cminpack-lmder": _cminpack_record("cminpack-lmder"),
         "damped-gauss-newton": {
             "classification": "extension",
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["residual_norm", "independent_stationarity"],
+            "views": _view_contract("nonlinear_least_squares", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
-        }
+        },
     },
     "curve_fit": {
+        "cminpack-lmdif": _cminpack_record("cminpack-lmdif"),
+        "cminpack-lmder": _cminpack_record("cminpack-lmder"),
         "damped-gauss-newton": {
             "classification": "extension",
             "backend": "ordinary-python",
             "derivatives": ["analytic", "central_finite_difference"],
             "validation": ["residual_norm", "independent_stationarity"],
+            "views": _view_contract("curve_fit", "none"),
             "max_dimension": MAX_DENSE_DIMENSION,
             "platforms": _PLATFORMS,
-        }
+        },
     },
     "linear_fit": {
         "centered-linear-fit": {
@@ -88,11 +161,20 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
             "backend": "ordinary-python",
             "derivatives": ["analytic"],
             "validation": ["normal_equations", "residual_norm"],
+            "views": _view_contract("linear_fit", "none"),
             "max_dimension": 2,
             "platforms": _PLATFORMS,
         }
     },
 }
+
+
+def _detached(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _detached(value[key]) for key in value}
+    if isinstance(value, list):
+        return [_detached(item) for item in value]
+    return value
 
 
 def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
@@ -102,7 +184,7 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
         if operation is None or operation == operation_name:
             operations[operation_name] = {
                 "methods": {
-                    name: dict(_METHODS[operation_name][name])
+                    name: _detached(_METHODS[operation_name][name])
                     for name in sorted(_METHODS[operation_name])
                 }
             }
@@ -115,6 +197,12 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
             "browser": False,
             "sea": False,
             "four_platform_release": False,
+            "cminpack": {
+                "platforms": list(_CMINPACK_PLATFORMS),
+                "runtimes": list(_CMINPACK_RUNTIMES),
+                "selection": "explicit-only",
+                "automatic_selection": False,
+            },
         },
         "operations": operations,
         "explicitly_unsupported": {
@@ -125,10 +213,6 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
             "sage_bounded_methods": {
                 "methods": ["tnc", "l-bfgs-b"],
                 "reason": "no exact qualified portable backend is integrated",
-            },
-            "sage_find_fit": {
-                "methods": ["minpack-lmdif", "minpack-lmder"],
-                "reason": "cminpack Wasm cross-platform qualification is still required",
             },
         },
     }
@@ -178,6 +262,8 @@ def _method_envelope_error(problem: NumericalProblem, selected: str) -> str | No
             return selected + " does not support box bounds"
         if selected == "projected-bfgs" and not bounded:
             return "projected-bfgs requires at least one finite box bound"
+    if selected == "cminpack-lmder" and problem.derivative is None:
+        return "cminpack-lmder requires an explicit Jacobian callback"
     return None
 
 
@@ -233,11 +319,15 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
     if envelope_error is not None:
         raise ValueError(envelope_error)
     diagnostics: list[NumericalDiagnostic] = []
-    if problem.derivative is None and selected in (
-        "bfgs",
-        "projected-bfgs",
-        "damped-newton",
-        "damped-gauss-newton",
+    if selected == "cminpack-lmdif" or (
+        problem.derivative is None
+        and selected
+        in (
+            "bfgs",
+            "projected-bfgs",
+            "damped-newton",
+            "damped-gauss-newton",
+        )
     ):
         diagnostics.append(NumericalDiagnostic("finite_difference_derivative"))
     rejected: list[dict[str, Any]] = []
@@ -249,14 +339,21 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
     return NumericalPlan(
         problem,
         method=selected,
-        backend="ordinary-python",
+        backend=str(records[selected]["backend"]),
         reason=reason,
         capability=records[selected],
-        fallback={
-            "kind": "same-source",
-            "backend": "ordinary-python",
-            "method": selected,
-        },
+        fallback=(
+            {
+                "kind": "none",
+                "reason": "an explicit cminpack method cannot be substituted",
+            }
+            if selected.startswith("cminpack-")
+            else {
+                "kind": "same-source",
+                "backend": "ordinary-python",
+                "method": selected,
+            }
+        ),
         expected_resources={
             "max_iterations": problem.resource_budget.max_iterations,
             "max_evaluations": problem.resource_budget.max_evaluations,
