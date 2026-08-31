@@ -165,10 +165,30 @@
       "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
       "workspace_fingerprint": "3858cdea20b90693676b89ef437091997e0a8660a9d875ce3f3eedb955955ea9",
       "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/integration/adaptive.py src/lib/sagejs/numerics/integration/result.py src/lib/sagejs/numerics/integration/visualization.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.665,
+      "started_at": "2026-08-31T15:00:25.340Z",
+      "commit": "0c8f69ba1b7fba5b7bf82c623f55bf2b0b274ac7",
+      "workspace_fingerprint": "ce28d7f0e2fa548e99a9af6a04912a534fda9ef5d45c1634ae12a8eae97f0c17",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/integration/scipy-mpmath-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.471,
+      "started_at": "2026-08-31T15:00:32.201Z",
+      "commit": "0c8f69ba1b7fba5b7bf82c623f55bf2b0b274ac7",
+      "workspace_fingerprint": "ce28d7f0e2fa548e99a9af6a04912a534fda9ef5d45c1634ae12a8eae97f0c17",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Hardened the adaptive integrator against principal-value false success, partial initial partitions, affine overflow and endpoint-coordinate collapse, callback-side budget overruns, and permissive independent validation. Whole-line halves now adapt separately; validation preserves the solver termination record; exact elapsed-time status/diagnostics align with the shared contract; the manifest-discovered CPython/Sage.js laboratory and SciPy/mpmath oracle now cover adversarial odd divergence, cancellation, budgets, callback failures, huge and adjacent finite intervals, reversed and oscillatory cases, and deterministic narrow-feature blind spots. Documentation and capability metadata now state the qualified numerical and platform envelope without unearned release claims.",
+    "summary": "Hardened the adaptive integrator against principal-value false success, partial initial partitions, affine overflow and endpoint-coordinate collapse, callback-side budget overruns, and permissive independent validation. Whole-line halves now adapt separately; every nonconverged solver stop suppresses the primary value while preserving any complete-partition scalar only as an explicitly unvalidated solver estimate; validation preserves the solver termination record; exact elapsed-time status/diagnostics align with the shared contract. The manifest-discovered CPython/Sage.js laboratory and SciPy/mpmath oracle cover adversarial odd divergence, cancellation, budgets, callback failures, huge and adjacent finite intervals, reversed and oscillatory cases, and deterministic narrow-feature blind spots. Documentation and capability metadata state the qualified numerical and platform envelope without unearned release claims.",
     "risks": [
       "The exact maximum_elapsed_time result depends on central shared-contract commit 52d91d862 (status and diagnostic registry); this lane intentionally does not edit shared registries.",
       "Binary64 cannot resolve arbitrarily translated endpoint-singularity coordinates; the implementation now fails explicitly with interval_too_small instead of sampling an endpoint or claiming success.",

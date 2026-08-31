@@ -1050,7 +1050,7 @@ def _diagnostic_for_stop(
 ) -> NumericalDiagnostic | None:
     if reason in ("converged", "zero_interval"):
         return None
-    if reason in ("maximum_intervals", "maximum_depth", "maximum_memory"):
+    if reason in ("maximum_intervals", "maximum_depth"):
         return NumericalDiagnostic(
             "maximum_iterations", details={"integration_stop_reason": reason, **details}
         )
@@ -1064,7 +1064,7 @@ def _diagnostic_for_stop(
             "maximum_elapsed_time",
             details={"integration_stop_reason": reason, **details},
         )
-    if reason in ("roundoff_detected", "interval_too_small"):
+    if reason in ("roundoff_detected", "interval_too_small", "maximum_memory"):
         return NumericalDiagnostic(
             "stagnation", details={"integration_stop_reason": reason, **details}
         )
@@ -1243,6 +1243,10 @@ def solve_integration_problem(
             domain_payload={
                 "integration_status": stop_reason,
                 "solver_stop_reason": stop_reason,
+                "solver_converged": True,
+                "solver_estimate": 0.0,
+                "solver_estimate_semantics": "exact_zero_interval",
+                "public_value_semantics": "exact_zero_interval",
                 "estimated_absolute_error": 0.0,
                 "requested_tolerance": requested_tolerance,
                 "final_intervals": [],
@@ -1426,6 +1430,18 @@ def solve_integration_problem(
         independent_value,
         absolute_integral,
     )
+    complete_partition_available = bool(intervals) and solver_value is not None
+    if not solver_converged:
+        stop_details = {
+            **stop_details,
+            "complete_partition_available": complete_partition_available,
+            "public_value_suppressed": complete_partition_available,
+            "solver_estimate_semantics": (
+                "unvalidated_best_complete_partition"
+                if complete_partition_available
+                else "unavailable_no_complete_partition"
+            ),
+        }
     if solver_converged and stop_reason == "converged" and not validation_passed:
         stop_reason = "validation_failed"
         stop_details = {
@@ -1455,6 +1471,24 @@ def solve_integration_problem(
         force=True,
     )
     success = stop_reason == "converged" and validation.passed
+    public_value = solver_value if solver_converged else None
+    if success:
+        public_value_semantics = "validated_solver_estimate"
+    elif solver_converged:
+        public_value_semantics = "unvalidated_solver_converged_estimate"
+    elif complete_partition_available:
+        public_value_semantics = "suppressed_nonconverged_solver_estimate"
+    else:
+        public_value_semantics = "unavailable_nonconverged_solver"
+    solver_estimate_semantics = (
+        "solver_converged_estimate"
+        if solver_converged
+        else (
+            "unvalidated_best_complete_partition"
+            if complete_partition_available
+            else "unavailable_no_complete_partition"
+        )
+    )
     trace.append(
         "finish" if success else "failure",
         iteration=iterations,
@@ -1462,7 +1496,9 @@ def solve_integration_problem(
         data={
             "status": stop_reason,
             "success": success,
-            "estimate": solver_value,
+            "value": public_value,
+            "solver_estimate": solver_value,
+            "solver_estimate_semantics": solver_estimate_semantics,
             "error_estimate": reported_error,
             "requested_tolerance": requested_tolerance,
             "active_intervals": len(intervals),
@@ -1477,6 +1513,10 @@ def solve_integration_problem(
     payload = {
         "integration_status": stop_reason,
         "solver_stop_reason": solver_stop_reason,
+        "solver_converged": solver_converged,
+        "solver_estimate": solver_value,
+        "solver_estimate_semantics": solver_estimate_semantics,
+        "public_value_semantics": public_value_semantics,
         "estimated_absolute_error": reported_error,
         "embedded_error_estimate": solver_error,
         "requested_tolerance": requested_tolerance,
@@ -1504,7 +1544,7 @@ def solve_integration_problem(
         success=success,
         status=_generic_status(stop_reason),
         stop_reason=stop_reason,
-        value=solver_value,
+        value=public_value,
         validation=validation,
         estimated_error=reported_error,
         requested_tolerance=requested_tolerance,

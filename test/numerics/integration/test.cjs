@@ -107,6 +107,7 @@ selected_plan = plan_integration(problem)
 assert selected_plan.method == "adaptive_gauss_kronrod"
 assert planning_calls[0] == 0
 
+failure_results = {}
 for case in corpus["cases"]:
     options = dict(case.get("options", {}))
     result = integrate(
@@ -120,6 +121,8 @@ for case in corpus["cases"]:
         assert result.stop_reason == case["expected_stop_reason"], (
             case["id"], result.stop_reason
         )
+        assert result.value is None, case["id"]
+        failure_results[case["id"]] = result
         continue
     assert result.success and result.stop_reason == "converged", (
         case["id"], result.stop_reason, result.explain()
@@ -136,6 +139,53 @@ for case in corpus["cases"]:
     expected_diagnostic = case.get("expected_diagnostic")
     if expected_diagnostic is not None:
         assert expected_diagnostic in {item.code for item in result.diagnostics}
+
+divergent_payload = failure_results["whole_line_divergent_odd"].to_dict()[
+    "domain_payload"
+]
+assert divergent_payload["solver_converged"] is False
+assert divergent_payload["solver_estimate_semantics"] == (
+    "unvalidated_best_complete_partition"
+)
+assert divergent_payload["public_value_semantics"] == (
+    "suppressed_nonconverged_solver_estimate"
+)
+
+depth_budget = failure_results["depth_budget"]
+depth_payload = depth_budget.to_dict()["domain_payload"]
+assert depth_budget.status == "maximum_iterations"
+assert "maximum_iterations" in {item.code for item in depth_budget.diagnostics}
+assert depth_payload["solver_estimate"] is not None
+assert depth_payload["solver_estimate_semantics"] == (
+    "unvalidated_best_complete_partition"
+)
+assert "suppressed as the result value" in depth_budget.explain()
+
+evaluation_budget = failure_results["evaluation_budget"]
+evaluation_payload = evaluation_budget.to_dict()["domain_payload"]
+assert evaluation_budget.status == "maximum_evaluations"
+assert "maximum_evaluations" in {
+    item.code for item in evaluation_budget.diagnostics
+}
+assert evaluation_payload["solver_estimate"] is None
+assert evaluation_payload["solver_estimate_semantics"] == (
+    "unavailable_no_complete_partition"
+)
+assert evaluation_payload["public_value_semantics"] == (
+    "unavailable_nonconverged_solver"
+)
+
+workspace_budget = failure_results["workspace_budget"]
+workspace_payload = workspace_budget.to_dict()["domain_payload"]
+assert workspace_budget.status == "stagnation"
+assert "stagnation" in {item.code for item in workspace_budget.diagnostics}
+assert workspace_payload["solver_estimate"] is None
+assert workspace_payload["solver_estimate_semantics"] == (
+    "unavailable_no_complete_partition"
+)
+assert workspace_payload["public_value_semantics"] == (
+    "unavailable_nonconverged_solver"
+)
 
 calls = [0]
 def counted(x):
@@ -170,6 +220,20 @@ partial = integrate(
 assert not partial.success and partial.stop_reason == "maximum_evaluations"
 assert partial.value is None and len(partial.final_intervals) == 0
 
+finite_evaluation_limited = integrate(
+    lambda x: abs(x-0.12345), 0.0, 1.0,
+    absolute_tolerance=1e-15, relative_tolerance=0.0,
+    max_evaluations=100,
+)
+finite_evaluation_payload = finite_evaluation_limited.to_dict()["domain_payload"]
+assert not finite_evaluation_limited.success
+assert finite_evaluation_limited.stop_reason == "maximum_evaluations"
+assert finite_evaluation_limited.value is None
+assert finite_evaluation_payload["solver_estimate"] is not None
+assert finite_evaluation_payload["solver_estimate_semantics"] == (
+    "unvalidated_best_complete_partition"
+)
+
 def fail_on_second_component(x):
     if x > 0.5:
         raise RuntimeError("intentional second-component failure")
@@ -188,7 +252,12 @@ validation_limited = integrate(
 validation_checks = validation_limited.validation.to_dict()["checks"]
 assert not validation_limited.success
 assert validation_limited.stop_reason == "maximum_evaluations"
-assert validation_limited.to_dict()["domain_payload"]["solver_stop_reason"] == "converged"
+validation_limited_payload = validation_limited.to_dict()["domain_payload"]
+assert validation_limited.value == 1.0
+assert validation_limited_payload["solver_stop_reason"] == "converged"
+assert validation_limited_payload["public_value_semantics"] == (
+    "unvalidated_solver_converged_estimate"
+)
 assert validation_checks[0] == {"kind": "solver_converged", "passed": True}
 
 validation_disagrees = integrate(

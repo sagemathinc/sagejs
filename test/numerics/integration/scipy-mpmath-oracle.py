@@ -145,6 +145,12 @@ def main() -> None:
     )
     assert not divergent_odd.success
     assert divergent_odd.stop_reason in ("maximum_depth", "roundoff_detected")
+    assert divergent_odd.value is None
+    divergent_payload = divergent_odd.to_dict()["domain_payload"]
+    assert (
+        divergent_payload["solver_estimate_semantics"]
+        == "unvalidated_best_complete_partition"
+    )
 
     partial = integrate(
         lambda x: x,
@@ -172,6 +178,10 @@ def main() -> None:
                 "cases": cases,
                 "adversarial": {
                     "divergent_odd_stop": divergent_odd.stop_reason,
+                    "divergent_odd_public_value": divergent_odd.value,
+                    "divergent_odd_solver_estimate_semantics": divergent_payload[
+                        "solver_estimate_semantics"
+                    ],
                     "partial_partition_atomic": partial.value is None,
                     "scaled_finite_value": scaled.value,
                     "unmarked_narrow_peak_demonstrates_finite_node_blind_spot": (
