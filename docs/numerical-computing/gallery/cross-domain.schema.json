@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-gallery-bundle-v1.json",
+  "title": "Sage.js cross-domain numerical teaching gallery",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generation_policy",
+    "budgets",
+    "story_order",
+    "stories",
+    "measurements"
+  ],
+  "properties": {
+    "schema": {"const": "sagejs.numerics.gallery.bundle/v1"},
+    "generation_policy": {"type": "string", "minLength": 1},
+    "budgets": {"$ref": "#/$defs/budgets"},
+    "story_order": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "stories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/story"}
+    },
+    "measurements": {"$ref": "#/$defs/bundle_measurements"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "positive": {"type": "integer", "minimum": 1},
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_bundle_bytes",
+        "max_story_bytes",
+        "max_trace_events_per_result",
+        "max_trace_bytes_per_result",
+        "max_animation_frames",
+        "max_scalars_per_frame",
+        "max_semantic_animation_bytes",
+        "max_plotly_bytes"
+      ],
+      "properties": {
+        "max_bundle_bytes": {"$ref": "#/$defs/positive"},
+        "max_story_bytes": {"$ref": "#/$defs/positive"},
+        "max_trace_events_per_result": {"$ref": "#/$defs/positive"},
+        "max_trace_bytes_per_result": {"$ref": "#/$defs/positive"},
+        "max_animation_frames": {"$ref": "#/$defs/positive"},
+        "max_scalars_per_frame": {"$ref": "#/$defs/positive"},
+        "max_semantic_animation_bytes": {"$ref": "#/$defs/positive"},
+        "max_plotly_bytes": {"$ref": "#/$defs/positive"}
+      }
+    },
+    "story": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "id",
+        "domain",
+        "operation",
+        "title",
+        "summary",
+        "learning_objectives",
+        "method_assumptions",
+        "canonical_python",
+        "cases",
+        "measurements"
+      ],
+      "properties": {
+        "schema": {"const": "sagejs.numerics.gallery.story/v1"},
+        "id": {"$ref": "#/$defs/id"},
+        "domain": {"type": "string", "minLength": 1},
+        "operation": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "learning_objectives": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "method_assumptions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "canonical_python": {"type": "string", "minLength": 1},
+        "cases": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/$defs/case"}
+        },
+        "measurements": {"type": "object"}
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "question",
+        "static_description",
+        "result",
+        "evidence",
+        "presentation"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["success", "failure"]},
+        "question": {"type": "string", "minLength": 1},
+        "static_description": {"type": "string", "minLength": 1},
+        "result": {"$ref": "../result.schema.json"},
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^/"}
+        },
+        "presentation": {
+          "anyOf": [{"type": "null"}, {"$ref": "#/$defs/presentation"}]
+        },
+        "teaching_metrics": {"type": "object"}
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "computed_evidence_only",
+        "callback_reevaluated",
+        "callback_count_before",
+        "callback_count_after",
+        "public_surface_gap",
+        "static_description",
+        "plot_spec",
+        "plot_animation",
+        "plotly"
+      ],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "computed_evidence_only": {"const": true},
+        "callback_reevaluated": {"const": true},
+        "callback_count_before": {"type": ["integer", "null"], "minimum": 0},
+        "callback_count_after": {"type": ["integer", "null"], "minimum": 0},
+        "public_surface_gap": {"type": ["string", "null"]},
+        "static_description": {"type": "string", "minLength": 1},
+        "plot_spec": {"type": "object"},
+        "plot_animation": {"type": ["object", "null"]},
+        "plotly": {
+          "type": "object",
+          "required": ["schema", "source", "shared_lowering", "figure"]
+        }
+      }
+    },
+    "bundle_measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundle_bytes",
+        "story_count",
+        "case_count",
+        "animated_case_count"
+      ],
+      "properties": {
+        "bundle_bytes": {"$ref": "#/$defs/positive"},
+        "story_count": {"$ref": "#/$defs/positive"},
+        "case_count": {"$ref": "#/$defs/positive"},
+        "animated_case_count": {"$ref": "#/$defs/positive"}
+      }
+    }
+  }
+}
