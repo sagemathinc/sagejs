@@ -1944,7 +1944,12 @@ test("ownerless native cache locks are recovered promptly", () => {
     });
     assert.equal(result.status, "built");
     assert.equal(counter.count, 1);
-    assert.ok(Date.now() - started < 1000);
+    // Windows verifies process identity by starting PowerShell.  Recovery is
+    // still immediate (there is no stale-lock wait), but that host boundary
+    // is materially slower when the test runner has several active files.
+    const recoveryBudgetMilliseconds =
+      process.platform === "win32" ? 5000 : 1000;
+    assert.ok(Date.now() - started < recoveryBudgetMilliseconds);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
