@@ -9,17 +9,10 @@ from ..diagnostics import NumericalDiagnostic
 from ..model import NumericalPlan, NumericalProblem
 from ._core import MAX_DENSE_DIMENSION
 
-_PLATFORMS = [
-    "browser",
-    "node",
-    "sea",
-    "linux-x64",
-    "linux-arm64",
-    "macos-arm64",
-    "windows-x64",
-]
+_PLATFORMS = ["linux-x64"]
+_QUALIFIED_RUNTIMES = ["cpython", "sagejs-node"]
 
-_METHODS: dict[str, dict[str, dict[str, JSONValue]]] = {
+_METHODS: dict[str, dict[str, dict[str, Any]]] = {
     "scalar_minimum": {
         "bounded-brent": {
             "classification": "translated",
@@ -116,6 +109,13 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
     return {
         "schema_version": 1,
         "backend_policy": "exact-method ordinary-Python fallback",
+        "qualification": {
+            "platforms": list(_PLATFORMS),
+            "runtimes": list(_QUALIFIED_RUNTIMES),
+            "browser": False,
+            "sea": False,
+            "four_platform_release": False,
+        },
         "operations": operations,
         "explicitly_unsupported": {
             "nonlinear_constraints": {
@@ -140,8 +140,45 @@ def supports(problem: NumericalProblem, method: str | None = None) -> bool:
         return False
     selected = problem.method if method is None else str(method)
     if selected == "auto":
-        return True
-    return selected in records
+        try:
+            selected, _ = _automatic_method(problem)
+        except (NotImplementedError, ValueError):
+            return False
+    return (
+        selected.lower() in records
+        and _method_envelope_error(problem, selected.lower()) is None
+    )
+
+
+def _has_box_bounds(problem: NumericalProblem) -> bool:
+    values = problem.bounds.get("variables")
+    return isinstance(values, list) and any(item != [None, None] for item in values)
+
+
+def _problem_dimension(problem: NumericalProblem) -> int | None:
+    point = problem.initial_data.get("point")
+    if isinstance(point, list):
+        return len(point)
+    if problem.operation == "scalar_minimum":
+        return 1
+    return None
+
+
+def _method_envelope_error(problem: NumericalProblem, selected: str) -> str | None:
+    record = _METHODS.get(problem.operation, {}).get(selected)
+    if record is None:
+        return "unsupported " + problem.operation + " method: " + selected
+    dimension = _problem_dimension(problem)
+    maximum = record.get("max_dimension")
+    if isinstance(dimension, int) and isinstance(maximum, int) and dimension > maximum:
+        return selected + " exceeds its validated dimension envelope"
+    bounded = _has_box_bounds(problem)
+    if problem.operation == "minimize":
+        if selected in ("nelder-mead", "bfgs") and bounded:
+            return selected + " does not support box bounds"
+        if selected == "projected-bfgs" and not bounded:
+            return "projected-bfgs requires at least one finite box bound"
+    return None
 
 
 def _automatic_method(problem: NumericalProblem) -> tuple[str, str]:
@@ -155,6 +192,12 @@ def _automatic_method(problem: NumericalProblem) -> tuple[str, str]:
             return "projected-bfgs", "box bounds select projected BFGS"
         if problem.derivative is not None:
             return "bfgs", "an explicit gradient selects BFGS"
+        dimension = _problem_dimension(problem)
+        if isinstance(dimension, int) and dimension > 64:
+            return (
+                "bfgs",
+                "the dimension exceeds the validated Nelder-Mead envelope",
+            )
         return (
             "nelder-mead",
             "an opaque objective without derivatives selects Nelder-Mead",
@@ -186,6 +229,9 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
         reason = "the caller explicitly requested " + selected
     if selected not in records:
         raise ValueError("unsupported " + problem.operation + " method: " + selected)
+    envelope_error = _method_envelope_error(problem, selected)
+    if envelope_error is not None:
+        raise ValueError(envelope_error)
     diagnostics: list[NumericalDiagnostic] = []
     if problem.derivative is None and selected in (
         "bfgs",

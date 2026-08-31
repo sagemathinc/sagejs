@@ -33,15 +33,17 @@ def _provenance(result: OptimizationResult, constructor: str) -> Provenance:
     )
 
 
-def _iteration_records(result: OptimizationResult) -> list[dict[str, Any]]:
+def _progress_records(result: OptimizationResult) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for event in result.trace.events:
-        if event.kind == "iteration":
+        if event.kind in ("iteration", "phase"):
             records.append(event.data)
     return records
 
 
-def _scalar_plot(result: OptimizationResult) -> PlotSpec:
+def _sample_scalar_objective(
+    result: OptimizationResult,
+) -> tuple[list[float], list[float | None]]:
     interval = result.problem.bounds.get("interval")
     function = result.problem.function
     if not isinstance(interval, list) or len(interval) != 2 or function is None:
@@ -58,15 +60,31 @@ def _scalar_plot(result: OptimizationResult) -> PlotSpec:
             y_values.append(y_value if math.isfinite(y_value) else None)
         except Exception:
             y_values.append(None)
+    return x_values, y_values
+
+
+def _scalar_plot(
+    result: OptimizationResult,
+    records: list[dict[str, Any]] | None = None,
+    sampled: tuple[list[float], list[float | None]] | None = None,
+) -> PlotSpec:
+    x_values, y_values = (
+        _sample_scalar_objective(result) if sampled is None else sampled
+    )
+    selected = _progress_records(result) if records is None else records
     path_x: list[float] = []
     path_y: list[float] = []
-    for record in _iteration_records(result):
+    for record in selected:
         if isinstance(record.get("candidate"), (int, float)) and isinstance(
             record.get("objective"), (int, float)
         ):
             path_x.append(float(record["candidate"]))
             path_y.append(float(record["objective"]))
-    if isinstance(result.value, (int, float)) and result.objective is not None:
+    if (
+        records is None
+        and isinstance(result.value, (int, float))
+        and result.objective is not None
+    ):
         path_x.append(float(result.value))
         path_y.append(float(result.objective))
     return PlotSpec(
@@ -95,11 +113,15 @@ def _scalar_plot(result: OptimizationResult) -> PlotSpec:
     )
 
 
-def _fit_plot(result: OptimizationResult) -> PlotSpec:
+def _fit_plot(
+    result: OptimizationResult, fitted_override: list[float] | None = None
+) -> PlotSpec:
     payload = result.domain_payload
     x_values = payload.get("fit_x")
     y_values = payload.get("fit_y")
-    fitted_values = payload.get("fitted_values")
+    fitted_values = (
+        payload.get("fitted_values") if fitted_override is None else fitted_override
+    )
     if not (
         isinstance(x_values, list)
         and isinstance(y_values, list)
@@ -163,7 +185,7 @@ def _fit_plot(result: OptimizationResult) -> PlotSpec:
 def _path_plot(
     result: OptimizationResult, records: list[dict[str, Any]] | None = None
 ) -> PlotSpec:
-    selected = _iteration_records(result) if records is None else records
+    selected = _progress_records(result) if records is None else records
     points: list[list[float]] = []
     values: list[float] = []
     for record in selected:
@@ -174,6 +196,10 @@ def _path_plot(
                 "objective", record.get("cost", record.get("residual_norm"))
             )
             values.append(float(measure) if isinstance(measure, (int, float)) else 0.0)
+        elif isinstance(record.get("candidate"), (int, float)) and isinstance(
+            record.get("objective"), (int, float)
+        ):
+            values.append(float(record["objective"]))
     if len(points) == 0 and isinstance(result.value, list):
         points.append([float(value) for value in result.value])
         values.append(float(result.objective or 0.0))
@@ -228,18 +254,59 @@ def optimization_plot(result: OptimizationResult) -> PlotSpec:
 
 def optimization_animation(result: OptimizationResult) -> PlotAnimation:
     """Replay retained accepted iterates with topology-stable path frames."""
-    records = _iteration_records(result)
+    records = _progress_records(result)
     if len(records) == 0:
-        records = [{}, {}]
-    elif len(records) == 1:
-        records = [{}, records[0]]
+        raise ValueError(
+            "optimization animation requires a retained summary or iteration trace"
+        )
+    final_record: dict[str, Any] = {"source": "final_result"}
+    if isinstance(result.value, list):
+        final_record["point"] = [float(value) for value in result.value]
+    elif isinstance(result.value, (int, float)):
+        final_record["candidate"] = float(result.value)
+    if result.objective is not None:
+        final_record["objective"] = result.objective
+        final_record["cost"] = result.objective
+    payload = result.domain_payload
+    if isinstance(payload.get("residual_norm"), (int, float)):
+        final_record["residual_norm"] = float(payload["residual_norm"])
+    if isinstance(payload.get("fitted_values"), list):
+        final_record["fitted_values"] = [
+            float(value) for value in payload["fitted_values"]
+        ]
+    records.append(final_record)
+    if len(records) == 1:
+        records.insert(0, dict(records[0], source="initial_equals_final"))
+    if result.problem.operation in ("linear_fit", "curve_fit"):
+        fit_x = payload.get("fit_x")
+        if isinstance(fit_x, list) and len(fit_x) > 256:
+            raise ValueError("fit animation is limited to 256 retained observations")
+        observation_count = len(fit_x) if isinstance(fit_x, list) else 0
+    else:
+        observation_count = 0
+    scalar_samples = (
+        _sample_scalar_objective(result)
+        if result.problem.operation == "scalar_minimum"
+        else None
+    )
     frames: list[AnimationFrame] = []
     for index in range(len(records)):
         prefix = records[: index + 1]
+        if result.problem.operation == "scalar_minimum":
+            state = _scalar_plot(result, prefix, scalar_samples)
+        elif result.problem.operation in ("linear_fit", "curve_fit"):
+            fitted = records[index].get("fitted_values")
+            if not isinstance(fitted, list):
+                raise ValueError(
+                    "fit animation requires fitted values retained in the numerical trace"
+                )
+            state = _fit_plot(result, [float(value) for value in fitted])
+        else:
+            state = _path_plot(result, prefix)
         frames.append(
             AnimationFrame(
                 stable_frame_id(index),
-                _path_plot(result, prefix),
+                state,
                 label="iteration " + str(index),
                 metadata={"trace_data": records[index]},
             )
@@ -248,8 +315,11 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
         frames,
         timing=AnimationTiming(frame_duration_ms=350, transition_duration_ms=0),
         limits=AnimationResourceLimits(
-            max_frames=result.problem.trace_policy.max_events,
-            max_total_samples=max(1024, len(frames) * 32),
+            max_frames=max(2, result.problem.trace_policy.max_events + 1),
+            max_total_samples=max(
+                4096,
+                len(frames) * (12 * observation_count + 640 + 8 * len(frames)),
+            ),
             max_payload_bytes=max(1_000_000, result.problem.trace_policy.max_bytes * 4),
         ),
         metadata={

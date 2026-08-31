@@ -12,14 +12,19 @@ from ..trace import NumericalTrace
 from ._core import (
     CallbackFailure,
     Execution,
+    MAX_DENSE_DIMENSION,
+    MAX_FIT_OBSERVATIONS,
     OptimizationResult,
     StopExecution,
-    dot,
     finite_difference_jacobian,
     infinity_norm,
+    inverse_matrix,
     matrix,
+    matrix_condition_1,
+    maximum_residual_dimension,
     normal_equations,
     problem_record,
+    record_progress,
     solve_linear_system,
     squared_norm,
     status_diagnostic,
@@ -58,9 +63,11 @@ def least_squares_problem(
         raise TypeError("residual function must be callable")
     if jacobian is not None and not callable(jacobian):
         raise TypeError("Jacobian must be callable")
+    if len(x0) == 0 or len(x0) > MAX_DENSE_DIMENSION:
+        raise ValueError(
+            "parameter dimension must be between 1 and " + str(MAX_DENSE_DIMENSION)
+        )
     point = [float(value) for value in x0]
-    if len(point) == 0:
-        raise ValueError("an initial parameter vector is required")
     if any(not math.isfinite(value) for value in point):
         raise ValueError("the initial parameter vector must be finite")
     if xtol <= 0.0 or ftol < 0.0 or gtol <= 0.0:
@@ -99,9 +106,11 @@ def _residual(
     function = execution.problem.function
     if function is None:
         raise StopExecution("invalid_problem", "missing_residual_callback")
+    maximum = maximum_residual_dimension(len(point))
     return vector(
         execution.call("residual", function, list(point), iteration=iteration),
         expected,
+        maximum=maximum,
     )
 
 
@@ -135,31 +144,29 @@ def _parameter_diagnostics(
 ) -> dict[str, Any]:
     normal, _ = normal_equations(jacobian, residual)
     dimension = len(normal)
-    inverse_columns: list[list[float]] = []
-    for column in range(dimension):
-        unit = [1.0 if index == column else 0.0 for index in range(dimension)]
-        solution = solve_linear_system(normal, unit)
-        if solution is None:
-            return {
-                "covariance_available": False,
-                "rank_deficient_or_ill_conditioned": True,
-                "standard_errors": [None for _ in range(dimension)],
-            }
-        inverse_columns.append(solution)
+    inverse = inverse_matrix(normal)
+    if inverse is None:
+        return {
+            "covariance_available": False,
+            "rank_deficient_or_ill_conditioned": True,
+            "standard_errors": [None for _ in range(dimension)],
+            "normal_matrix_condition_estimate": None,
+        }
+    condition_estimate = matrix_condition_1(normal, inverse)
+    ill_conditioned = not math.isfinite(
+        condition_estimate
+    ) or condition_estimate > 1.0 / math.sqrt(2.220446049250313e-16)
     degrees_of_freedom = max(1, len(residual) - dimension)
     variance = squared_norm(residual) / degrees_of_freedom
     standard_errors: list[float | None] = []
     for index in range(dimension):
-        diagonal = inverse_columns[index][index] * variance
+        diagonal = inverse[index][index] * variance
         standard_errors.append(math.sqrt(diagonal) if diagonal >= 0.0 else None)
-    diagonal_values = [abs(normal[index][index]) for index in range(dimension)]
-    positive = [value for value in diagonal_values if value > 0.0]
-    condition_proxy = max(positive) / min(positive) if positive else None
     return {
         "covariance_available": True,
-        "rank_deficient_or_ill_conditioned": False,
+        "rank_deficient_or_ill_conditioned": ill_conditioned,
         "standard_errors": standard_errors,
-        "normal_diagonal_condition_proxy": condition_proxy,
+        "normal_matrix_condition_estimate": condition_estimate,
     }
 
 
@@ -177,17 +184,42 @@ def _damped_gauss_newton(
             "invalid_problem", "least_squares_requires_at_least_as_many_residuals"
         )
     cost = 0.5 * squared_norm(residual)
+    initial_trace_data: dict[str, Any] = {
+        "point": list(point),
+        "cost": cost,
+        "residual_norm": math.sqrt(2.0 * cost),
+        "step_kind": "initial_point",
+    }
+    if problem.operation == "curve_fit" and len(residual) <= 256:
+        fit_y = problem.initial_data.get("fit_y")
+        if isinstance(fit_y, list) and len(fit_y) == len(residual):
+            initial_trace_data["fitted_values"] = [
+                float(fit_y[index]) + residual[index] for index in range(len(residual))
+            ]
+    record_progress(
+        execution,
+        0,
+        accepted=True,
+        data=initial_trace_data,
+        important=True,
+    )
     damping = 1.0e-3
     status = "maximum_iterations"
     iteration = 0
     gradient_norm = 0.0
     last_jacobian: list[list[float]] = []
+    jacobian_is_current = False
+    pending_cost_convergence = False
     for iteration in range(1, problem.resource_budget.max_iterations + 1):
         execution.check()
         jacobian = _jacobian(execution, point, len(residual), iteration)
         last_jacobian = jacobian
+        jacobian_is_current = True
         normal, gradient = normal_equations(jacobian, residual)
         gradient_norm = infinity_norm(gradient)
+        if pending_cost_convergence:
+            status = "converged"
+            break
         if gradient_norm <= float(problem.tolerances["gtol"]):
             status = "converged"
             iteration -= 1
@@ -225,41 +257,59 @@ def _damped_gauss_newton(
         point = candidate
         residual = candidate_residual
         cost = candidate_cost
+        jacobian_is_current = False
         damping = max(1.0e-15, trial_damping * 0.3)
         step_norm = infinity_norm(step)
-        execution.trace.append(
-            "iteration",
-            iteration=iteration,
+        trace_data: dict[str, Any] = {
+            "point": list(point),
+            "cost": cost,
+            "residual_norm": math.sqrt(2.0 * cost),
+            "linearized_gradient_norm_before_step": gradient_norm,
+            "step_norm": step_norm,
+            "damping": damping,
+            "objective_change": objective_change,
+        }
+        if problem.operation == "curve_fit" and len(residual) <= 256:
+            fit_y = problem.initial_data.get("fit_y")
+            if isinstance(fit_y, list) and len(fit_y) == len(residual):
+                trace_data["fitted_values"] = [
+                    float(fit_y[index]) + residual[index]
+                    for index in range(len(residual))
+                ]
+        record_progress(
+            execution,
+            iteration,
             accepted=True,
-            data={
-                "point": list(point),
-                "cost": cost,
-                "residual_norm": math.sqrt(2.0 * cost),
-                "gradient_norm": gradient_norm,
-                "step_norm": step_norm,
-                "damping": damping,
-                "objective_change": objective_change,
-            },
+            data=trace_data,
         )
-        if step_norm <= float(problem.tolerances["xtol"]) * max(
+        cost_converged = objective_change <= float(problem.tolerances["ftol"]) * max(
+            1.0, cost
+        )
+        step_converged = step_norm <= float(problem.tolerances["xtol"]) * max(
             1.0, infinity_norm(point)
-        ):
+        )
+        if cost_converged:
+            pending_cost_convergence = True
+            continue
+        if step_converged:
             status = "stagnation"
             break
     parameter_diagnostics = (
         _parameter_diagnostics(last_jacobian, residual)
-        if len(last_jacobian) > 0
+        if len(last_jacobian) > 0 and jacobian_is_current
         else {
             "covariance_available": False,
-            "rank_deficient_or_ill_conditioned": True,
+            "rank_deficient_or_ill_conditioned": None,
             "standard_errors": [None for _ in point],
+            "normal_matrix_condition_estimate": None,
+            "reason": "a Jacobian at the returned point is not available",
         }
     )
     payload: dict[str, Any] = {
         "objective": cost,
         "cost": cost,
         "residual_norm": math.sqrt(2.0 * cost),
-        "solver_stationarity": gradient_norm,
+        "solver_stationarity": gradient_norm if jacobian_is_current else None,
         "parameter_diagnostics": parameter_diagnostics,
     }
     return list(point), list(residual), iteration, status, payload
@@ -313,9 +363,16 @@ def _result_from_least_squares(
     ):
         diagnostics.append(NumericalDiagnostic("ill_conditioned"))
     validation: NumericalValidation
-    validation, validation_diagnostics = validate_with_execution(
+    validation, validation_diagnostics, validation_failure = validate_with_execution(
         problem, value, execution, status
     )
+    if status == "converged" and validation_failure is not None:
+        status, reason = validation_failure
+        validation_status_item = status_diagnostic(status, reason)
+        if validation_status_item is not None and not any(
+            item.code == validation_status_item.code for item in validation_diagnostics
+        ):
+            diagnostics.append(validation_status_item)
     diagnostics.extend(validation_diagnostics)
     success = status == "converged" and validation.passed
     if residual is not None:
@@ -406,10 +463,21 @@ def curve_fit(
         raise TypeError("model must be callable")
     if jacobian is not None and not callable(jacobian):
         raise TypeError("model Jacobian must be callable")
+    observation_count = len(xdata)
+    if observation_count != len(ydata) or observation_count == 0:
+        raise ValueError("xdata and ydata must have equal nonzero length")
+    if observation_count > MAX_FIT_OBSERVATIONS:
+        raise ValueError(
+            "curve fitting is limited to " + str(MAX_FIT_OBSERVATIONS) + " observations"
+        )
+    if len(p0) == 0 or len(p0) > MAX_DENSE_DIMENSION:
+        raise ValueError(
+            "parameter dimension must be between 1 and " + str(MAX_DENSE_DIMENSION)
+        )
+    if observation_count > maximum_residual_dimension(len(p0)):
+        raise ValueError("curve fit exceeds the dense Jacobian allocation limit")
     x_values = [float(value) for value in xdata]
     y_values = [float(value) for value in ydata]
-    if len(x_values) != len(y_values) or len(x_values) == 0:
-        raise ValueError("xdata and ydata must have equal nonzero length")
     if any(not math.isfinite(value) for value in x_values + y_values):
         raise ValueError("fit data must be finite")
 
@@ -453,10 +521,17 @@ def linear_fit_problem(
     source_language: str = "python",
 ) -> NumericalProblem:
     """Construct a centered affine least-squares fit problem."""
+    observation_count = len(xdata)
+    if observation_count != len(ydata) or observation_count < 2:
+        raise ValueError("linear fitting requires equally sized data with two points")
+    if observation_count > MAX_FIT_OBSERVATIONS:
+        raise ValueError(
+            "linear fitting is limited to "
+            + str(MAX_FIT_OBSERVATIONS)
+            + " observations"
+        )
     x_values = [float(value) for value in xdata]
     y_values = [float(value) for value in ydata]
-    if len(x_values) != len(y_values) or len(x_values) < 2:
-        raise ValueError("linear fitting requires equally sized data with two points")
     if any(not math.isfinite(value) for value in x_values + y_values):
         raise ValueError("fit data must be finite")
 
@@ -522,6 +597,20 @@ def solve_linear_fit_problem(
         if not isinstance(x_values, list) or not isinstance(y_values, list):
             raise StopExecution("invalid_problem", "missing_fit_data")
         count = len(x_values)
+        initial_residual = [-float(value) for value in y_values]
+        record_progress(
+            execution,
+            0,
+            accepted=True,
+            data={
+                "point": [0.0, 0.0],
+                "cost": 0.5 * squared_norm(initial_residual),
+                "residual_norm": math.sqrt(squared_norm(initial_residual)),
+                "fitted_values": [0.0 for _ in x_values],
+                "step_kind": "initial_point",
+            },
+            important=True,
+        )
         x_mean = sum(float(value) for value in x_values) / count
         y_mean = sum(float(value) for value in y_values) / count
         centered_square = 0.0
@@ -554,11 +643,18 @@ def solve_linear_fit_problem(
             ],
             "parameter_diagnostics": _parameter_diagnostics(jacobian, residual),
         }
-        trace.append(
-            "iteration",
-            iteration=1,
+        record_progress(
+            execution,
+            1,
             accepted=True,
-            data={"point": value, "cost": cost, "step_kind": "centered_sums"},
+            data={
+                "point": value,
+                "cost": cost,
+                "residual_norm": math.sqrt(2.0 * cost),
+                "fitted_values": list(payload["fitted_values"]),
+                "step_kind": "centered_sums",
+            },
+            important=True,
         )
     except StopExecution as stop:
         status = stop.status
@@ -570,9 +666,16 @@ def solve_linear_fit_problem(
     if status_item is not None:
         diagnostics.append(status_item)
     validation: NumericalValidation
-    validation, validation_diagnostics = validate_with_execution(
+    validation, validation_diagnostics, validation_failure = validate_with_execution(
         problem, value, execution, status
     )
+    if status == "converged" and validation_failure is not None:
+        status, reason = validation_failure
+        validation_status_item = status_diagnostic(status, reason)
+        if validation_status_item is not None and not any(
+            item.code == validation_status_item.code for item in validation_diagnostics
+        ):
+            diagnostics.append(validation_status_item)
     diagnostics.extend(validation_diagnostics)
     success = status == "converged" and validation.passed
     if reason is not None:

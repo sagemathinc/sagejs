@@ -1,6 +1,12 @@
 """Validated portable optimization, nonlinear systems, and fitting."""
 
-from ._core import MAX_DENSE_DIMENSION, OptimizationResult
+from ._core import (
+    MAX_DENSE_DIMENSION,
+    MAX_DENSE_JACOBIAN_ELEMENTS,
+    MAX_FIT_OBSERVATIONS,
+    MAX_RESIDUAL_DIMENSION,
+    OptimizationResult,
+)
 from .least_squares import (
     curve_fit,
     least_squares,
@@ -25,6 +31,9 @@ from .systems import (
 
 __all__ = [
     "MAX_DENSE_DIMENSION",
+    "MAX_DENSE_JACOBIAN_ELEMENTS",
+    "MAX_FIT_OBSERVATIONS",
+    "MAX_RESIDUAL_DIMENSION",
     "OptimizationResult",
     "capabilities",
     "curve_fit",

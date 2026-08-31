@@ -15,6 +15,7 @@ from ._core import (
     OptimizationResult,
     StopExecution,
     problem_record,
+    record_progress,
     scalar,
     status_diagnostic,
 )
@@ -23,6 +24,7 @@ from .validation import validate_with_execution
 
 _GOLDEN_SECTION = 0.3819660112501051
 _SQRT_EPSILON = 1.4901161193847656e-08
+_MACHINE_EPSILON = 2.220446049250313e-16
 
 
 def scalar_minimum_problem(
@@ -93,6 +95,19 @@ def _bounded_brent(
     fv = fx
     fa = scalar(execution.call("objective", function, a, iteration=0))
     fb = scalar(execution.call("objective", function, b, iteration=0))
+    record_progress(
+        execution,
+        0,
+        accepted=True,
+        data={
+            "candidate": x,
+            "objective": fx,
+            "interval": [a, b],
+            "interval_width": b - a,
+            "step_kind": "initial_golden_point",
+        },
+        important=True,
+    )
     d = 0.0
     e = 0.0
     status = "maximum_iterations"
@@ -100,10 +115,10 @@ def _bounded_brent(
     for iteration in range(1, problem.resource_budget.max_iterations + 1):
         execution.check()
         midpoint = 0.5 * (a + b)
-        tolerance = float(problem.tolerances["xtol"]) + float(
-            problem.tolerances["rtol"]
+        tolerance = float(problem.tolerances["xtol"]) / 3.0 + (
+            float(problem.tolerances["rtol"]) + _SQRT_EPSILON
         ) * abs(x)
-        tolerance = max(tolerance, _SQRT_EPSILON * max(1.0, abs(x)))
+        tolerance = max(tolerance, _MACHINE_EPSILON * max(1.0, abs(a), abs(b)))
         twice_tolerance = 2.0 * tolerance
         if abs(x - midpoint) <= twice_tolerance - 0.5 * (b - a):
             status = "converged"
@@ -167,9 +182,9 @@ def _bounded_brent(
             elif fcandidate <= fv or v == x or v == w:
                 v, fv = candidate, fcandidate
             accepted = False
-        execution.trace.append(
-            "iteration",
-            iteration=iteration,
+        record_progress(
+            execution,
+            iteration,
             accepted=accepted,
             data={
                 "candidate": x,
@@ -226,9 +241,16 @@ def solve_scalar_minimum_problem(
     if status_item is not None:
         diagnostics.append(status_item)
     validation: NumericalValidation
-    validation, validation_diagnostics = validate_with_execution(
+    validation, validation_diagnostics, validation_failure = validate_with_execution(
         problem, value, execution, status
     )
+    if status == "converged" and validation_failure is not None:
+        status, reason = validation_failure
+        validation_status_item = status_diagnostic(status, reason)
+        if validation_status_item is not None and not any(
+            item.code == validation_status_item.code for item in validation_diagnostics
+        ):
+            diagnostics.append(validation_status_item)
     diagnostics.extend(validation_diagnostics)
     success = status == "converged" and validation.passed
     trace.append(

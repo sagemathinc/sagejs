@@ -12,6 +12,7 @@ from ..trace import NumericalTrace
 from ._core import (
     CallbackFailure,
     Execution,
+    MAX_DENSE_DIMENSION,
     OptimizationResult,
     StopExecution,
     finite_difference_jacobian,
@@ -19,6 +20,7 @@ from ._core import (
     matrix,
     normal_equations,
     problem_record,
+    record_progress,
     solve_linear_system,
     status_diagnostic,
     vector,
@@ -49,9 +51,11 @@ def nonlinear_system_problem(
         raise TypeError("system function must be callable")
     if jacobian is not None and not callable(jacobian):
         raise TypeError("Jacobian must be callable")
+    if len(x0) == 0 or len(x0) > MAX_DENSE_DIMENSION:
+        raise ValueError(
+            "initial point dimension must be between 1 and " + str(MAX_DENSE_DIMENSION)
+        )
     point = [float(value) for value in x0]
-    if len(point) == 0:
-        raise ValueError("an initial point is required")
     if any(not math.isfinite(value) for value in point):
         raise ValueError("the initial point must be finite")
     if xtol <= 0.0 or ftol <= 0.0:
@@ -123,6 +127,18 @@ def _damped_newton(
     point = [float(value) for value in initial]
     residual = _residual(execution, point, 0)
     residual_norm = infinity_norm(residual)
+    record_progress(
+        execution,
+        0,
+        accepted=True,
+        data={
+            "point": list(point),
+            "residual": list(residual),
+            "residual_norm": residual_norm,
+            "step_kind": "initial_point",
+        },
+        important=True,
+    )
     status = "maximum_iterations"
     iteration = 0
     for iteration in range(1, problem.resource_budget.max_iterations + 1):
@@ -169,9 +185,9 @@ def _damped_newton(
         point = candidate
         residual = candidate_residual
         residual_norm = candidate_norm
-        execution.trace.append(
-            "iteration",
-            iteration=iteration,
+        record_progress(
+            execution,
+            iteration,
             accepted=True,
             data={
                 "point": list(point),
@@ -242,9 +258,16 @@ def solve_nonlinear_system_problem(
     if status_item is not None:
         diagnostics.append(status_item)
     validation: NumericalValidation
-    validation, validation_diagnostics = validate_with_execution(
+    validation, validation_diagnostics, validation_failure = validate_with_execution(
         problem, value, execution, status
     )
+    if status == "converged" and validation_failure is not None:
+        status, reason = validation_failure
+        validation_status_item = status_diagnostic(status, reason)
+        if validation_status_item is not None and not any(
+            item.code == validation_status_item.code for item in validation_diagnostics
+        ):
+            diagnostics.append(validation_status_item)
     diagnostics.extend(validation_diagnostics)
     success = status == "converged" and validation.passed
     trace.append(

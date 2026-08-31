@@ -12,6 +12,7 @@ from ..trace import NumericalTrace
 from ._core import (
     CallbackFailure,
     Execution,
+    MAX_DENSE_DIMENSION,
     OptimizationResult,
     StopExecution,
     dot,
@@ -22,6 +23,7 @@ from ._core import (
     problem_record,
     project,
     projected_gradient,
+    record_progress,
     scalar,
     status_diagnostic,
     vector,
@@ -66,9 +68,11 @@ def minimize_problem(
         raise NotImplementedError(
             "nonlinear constraints require a qualified COBYLA backend; only box bounds are supported"
         )
+    if len(x0) == 0 or len(x0) > MAX_DENSE_DIMENSION:
+        raise ValueError(
+            "initial point dimension must be between 1 and " + str(MAX_DENSE_DIMENSION)
+        )
     point = [float(value) for value in x0]
-    if len(point) == 0:
-        raise ValueError("an initial point is required")
     for value in point:
         if not math.isfinite(value):
             raise ValueError("the initial point must be finite")
@@ -84,8 +88,10 @@ def minimize_problem(
         raise ValueError(
             requested + " is unbounded; request projected-bfgs for box bounds"
         )
-    if requested == "projected-bfgs" and bounds is None:
-        raise ValueError("projected-bfgs requires explicit box bounds")
+    if requested == "projected-bfgs" and not any(
+        item != [None, None] for item in bound_record
+    ):
+        raise ValueError("projected-bfgs requires at least one finite box bound")
     if requested == "nelder-mead" and len(point) > 64:
         raise ValueError("Nelder-Mead is limited to dimension 64")
     return problem_record(
@@ -161,9 +167,28 @@ def _nelder_mead(
         vertex = list(point)
         vertex[index] += step * max(1.0, abs(vertex[index]))
         simplex.append(vertex)
-    values = [_objective(execution, vertex, 0) for vertex in simplex]
+    values: list[float] = [
+        float(_objective(execution, vertex, 0)) for vertex in simplex
+    ]
+    initial_order = sorted(range(dimension + 1), key=lambda index: values[index])
+    initial_best = initial_order[0]
+    initial_data: dict[str, Any] = {
+        "point": list(simplex[initial_best]),
+        "objective": values[initial_best],
+        "step_kind": "initial_simplex",
+    }
+    if dimension <= 8:
+        initial_data["simplex"] = [list(simplex[index]) for index in initial_order]
+    record_progress(
+        execution,
+        0,
+        accepted=True,
+        data=initial_data,
+        important=True,
+    )
     status = "maximum_iterations"
     iteration = 0
+    diameter = 0.0
     for iteration in range(1, problem.resource_budget.max_iterations + 1):
         execution.check()
         order = sorted(range(dimension + 1), key=lambda index: values[index])
@@ -246,9 +271,9 @@ def _nelder_mead(
         }
         if dimension <= 8:
             trace_data["simplex"] = [list(vertex) for vertex in simplex]
-        execution.trace.append(
-            "iteration",
-            iteration=iteration,
+        record_progress(
+            execution,
+            iteration,
             accepted=True,
             data=trace_data,
         )
@@ -312,6 +337,18 @@ def _bfgs(
     status = "maximum_iterations"
     iteration = 0
     gradient_residual = infinity_norm(projected_gradient(point, gradient, lower, upper))
+    record_progress(
+        execution,
+        0,
+        accepted=True,
+        data={
+            "point": list(point),
+            "objective": objective,
+            "projected_gradient_norm": gradient_residual,
+            "step_kind": "initial_point",
+        },
+        important=True,
+    )
     for iteration in range(1, problem.resource_budget.max_iterations + 1):
         execution.check()
         projected = projected_gradient(point, gradient, lower, upper)
@@ -378,9 +415,9 @@ def _bfgs(
         gradient_residual = infinity_norm(
             projected_gradient(point, gradient, lower, upper)
         )
-        execution.trace.append(
-            "iteration",
-            iteration=iteration,
+        record_progress(
+            execution,
+            iteration,
             accepted=True,
             data={
                 "point": list(point),
@@ -467,9 +504,16 @@ def solve_minimize_problem(
     if status_item is not None:
         diagnostics.append(status_item)
     validation: NumericalValidation
-    validation, validation_diagnostics = validate_with_execution(
+    validation, validation_diagnostics, validation_failure = validate_with_execution(
         problem, value, execution, status
     )
+    if status == "converged" and validation_failure is not None:
+        status, reason = validation_failure
+        validation_status_item = status_diagnostic(status, reason)
+        if validation_status_item is not None and not any(
+            item.code == validation_status_item.code for item in validation_diagnostics
+        ):
+            diagnostics.append(validation_status_item)
     diagnostics.extend(validation_diagnostics)
     success = status == "converged" and validation.passed
     trace.append(

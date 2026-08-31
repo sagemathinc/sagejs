@@ -20,6 +20,9 @@ from ..trace import NumericalTrace, TracePolicy
 _MACHINE_EPSILON = 2.220446049250313e-16
 _FINITE_DIFFERENCE_STEP = _MACHINE_EPSILON ** (1.0 / 3.0)
 MAX_DENSE_DIMENSION = 128
+MAX_RESIDUAL_DIMENSION = 16_384
+MAX_DENSE_JACOBIAN_ELEMENTS = 262_144
+MAX_FIT_OBSERVATIONS = 16_384
 
 
 class StopExecution(Exception):
@@ -71,7 +74,7 @@ class Execution:
             if cancelled:
                 raise StopExecution("cancelled", "explicit_cancellation")
         if self.elapsed_ms() > self.problem.resource_budget.max_elapsed_ms:
-            raise StopExecution("cancelled", "elapsed_time_budget")
+            raise StopExecution("maximum_elapsed_time", "elapsed_time_budget")
 
     def call(
         self,
@@ -113,13 +116,28 @@ class Execution:
         return value
 
 
-def vector(value: Any, expected: int | None = None) -> list[float]:
+def vector(
+    value: Any,
+    expected: int | None = None,
+    *,
+    maximum: int | None = None,
+) -> list[float]:
     """Convert a callback result to a finite binary64 vector."""
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
         raise StopExecution("invalid_problem", "callback_result_is_not_a_vector")
-    answer = [float(item) for item in value]
-    if expected is not None and len(answer) != expected:
+    length = len(value)
+    if expected is not None and length != expected:
         raise StopExecution("invalid_problem", "callback_result_dimension")
+    if maximum is not None and length > maximum:
+        raise StopExecution(
+            "invalid_problem", "callback_result_exceeds_dimension_limit"
+        )
+    try:
+        answer = [float(item) for item in value]
+    except (TypeError, ValueError, OverflowError):
+        raise StopExecution(
+            "invalid_problem", "callback_result_contains_non_numeric_value"
+        ) from None
     if len(answer) == 0:
         raise StopExecution("invalid_problem", "empty_callback_result")
     for item in answer:
@@ -130,6 +148,7 @@ def vector(value: Any, expected: int | None = None) -> list[float]:
 
 def matrix(value: Any, rows: int, columns: int) -> list[list[float]]:
     """Convert a callback result to a finite rectangular binary64 matrix."""
+    check_dense_jacobian_shape(rows, columns)
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
         raise StopExecution("invalid_problem", "callback_result_is_not_a_matrix")
     if len(value) != rows:
@@ -142,7 +161,12 @@ def matrix(value: Any, rows: int, columns: int) -> list[list[float]]:
 
 def scalar(value: Any) -> float:
     """Convert a callback result to a finite binary64 scalar."""
-    answer = float(value)
+    try:
+        answer = float(value)
+    except (TypeError, ValueError, OverflowError):
+        raise StopExecution(
+            "invalid_problem", "callback_result_is_not_a_scalar"
+        ) from None
     if not math.isfinite(answer):
         raise StopExecution("nonfinite_evaluation")
     return answer
@@ -170,6 +194,26 @@ def identity(size: int) -> list[list[float]]:
     return [
         [1.0 if row == column else 0.0 for column in range(size)] for row in range(size)
     ]
+
+
+def maximum_residual_dimension(parameter_dimension: int) -> int:
+    """Return the hard residual ceiling for a dense Jacobian workspace."""
+    if parameter_dimension <= 0:
+        raise ValueError("parameter dimension must be positive")
+    return min(
+        MAX_RESIDUAL_DIMENSION,
+        MAX_DENSE_JACOBIAN_ELEMENTS // parameter_dimension,
+    )
+
+
+def check_dense_jacobian_shape(rows: int, columns: int) -> None:
+    """Reject dense Jacobian shapes outside the portable allocation envelope."""
+    if rows <= 0 or columns <= 0:
+        raise StopExecution("invalid_problem", "empty_jacobian")
+    if rows > MAX_RESIDUAL_DIMENSION:
+        raise StopExecution("invalid_problem", "residual_dimension_limit")
+    if rows > MAX_DENSE_JACOBIAN_ELEMENTS // columns:
+        raise StopExecution("invalid_problem", "dense_jacobian_allocation_limit")
 
 
 def solve_linear_system(
@@ -200,7 +244,7 @@ def solve_linear_system(
                 pivot = row
                 pivot_ratio = ratio
         pivot_value = abs(augmented[pivot][column])
-        if pivot_value <= 64.0 * _MACHINE_EPSILON * max(1.0, scale[pivot]):
+        if scale[pivot] == 0.0 or pivot_value <= 64.0 * _MACHINE_EPSILON * scale[pivot]:
             return None
         if pivot != column:
             augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
@@ -220,6 +264,75 @@ def solve_linear_system(
         if not math.isfinite(answer[row]):
             return None
     return answer
+
+
+def inverse_matrix(
+    coefficients: Sequence[Sequence[float]],
+) -> list[list[float]] | None:
+    """Invert a dense square matrix by scaled, pivoted Gauss-Jordan elimination."""
+    size = len(coefficients)
+    if size == 0:
+        return None
+    augmented: list[list[float]] = []
+    scales: list[float] = []
+    for row_index in range(size):
+        if len(coefficients[row_index]) != size:
+            return None
+        row = [float(value) for value in coefficients[row_index]]
+        if any(not math.isfinite(value) for value in row):
+            return None
+        scale = max([abs(value) for value in row] + [0.0])
+        scales.append(scale)
+        row.extend(1.0 if row_index == column else 0.0 for column in range(size))
+        augmented.append(row)
+    for column in range(size):
+        pivot = column
+        pivot_ratio = -1.0
+        for row in range(column, size):
+            scale = scales[row]
+            ratio = abs(augmented[row][column]) / scale if scale > 0.0 else 0.0
+            if ratio > pivot_ratio:
+                pivot = row
+                pivot_ratio = ratio
+        pivot_value = abs(augmented[pivot][column])
+        pivot_scale = scales[pivot]
+        if pivot_scale == 0.0 or pivot_value <= 64.0 * _MACHINE_EPSILON * pivot_scale:
+            return None
+        if pivot != column:
+            augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
+            scales[column], scales[pivot] = scales[pivot], scales[column]
+        diagonal = augmented[column][column]
+        for entry in range(2 * size):
+            augmented[column][entry] /= diagonal
+        for row in range(size):
+            if row == column:
+                continue
+            factor = augmented[row][column]
+            if factor == 0.0:
+                continue
+            augmented[row][column] = 0.0
+            for entry in range(column + 1, 2 * size):
+                augmented[row][entry] -= factor * augmented[column][entry]
+    answer = [row[size:] for row in augmented]
+    if any(not math.isfinite(value) for row in answer for value in row):
+        return None
+    return answer
+
+
+def matrix_condition_1(
+    coefficients: Sequence[Sequence[float]], inverse: Sequence[Sequence[float]]
+) -> float:
+    """Return the induced one-norm condition estimate from an explicit inverse."""
+    size = len(coefficients)
+    coefficient_norm = max(
+        sum(abs(float(coefficients[row][column])) for row in range(size))
+        for column in range(size)
+    )
+    inverse_norm = max(
+        sum(abs(float(inverse[row][column])) for row in range(size))
+        for column in range(size)
+    )
+    return coefficient_norm * inverse_norm
 
 
 def normal_equations(
@@ -277,10 +390,12 @@ def project(
     answer: list[float] = []
     for index in range(len(point)):
         value = float(point[index])
-        if lower[index] is not None:
-            value = max(value, float(lower[index]))
-        if upper[index] is not None:
-            value = min(value, float(upper[index]))
+        lower_value = lower[index]
+        upper_value = upper[index]
+        if lower_value is not None:
+            value = max(value, float(lower_value))
+        if upper_value is not None:
+            value = min(value, float(upper_value))
         answer.append(value)
     return answer
 
@@ -315,8 +430,10 @@ def finite_difference_gradient(
         step = _FINITE_DIFFERENCE_STEP * max(1.0, abs(point[index]))
         left = list(point)
         right = list(point)
-        can_left = lower[index] is None or point[index] - step >= float(lower[index])
-        can_right = upper[index] is None or point[index] + step <= float(upper[index])
+        lower_value = lower[index]
+        upper_value = upper[index]
+        can_left = lower_value is None or point[index] - step >= float(lower_value)
+        can_right = upper_value is None or point[index] + step <= float(upper_value)
         if can_left and can_right:
             left[index] -= step
             right[index] += step
@@ -364,6 +481,7 @@ def finite_difference_jacobian(
     callback_kind: str = "residual",
 ) -> list[list[float]]:
     """Estimate a dense Jacobian with central finite differences."""
+    check_dense_jacobian_shape(output_dimension, len(point))
     columns: list[list[float]] = []
     for index in range(len(point)):
         step = _FINITE_DIFFERENCE_STEP * max(1.0, abs(point[index]))
@@ -539,7 +657,7 @@ class OptimizationResult(NumericalResult):
             lines.append("trace: truncated to its configured budget")
         return "\n".join(lines)
 
-    def verify(self, method: str = "independent") -> NumericalValidation:
+    def verify(self, method: str = "independent") -> Any:
         if method != "independent":
             raise ValueError("optimization verification method must be independent")
         from .validation import validate_result
@@ -566,6 +684,7 @@ def status_diagnostic(
     code = {
         "maximum_iterations": "maximum_iterations",
         "maximum_evaluations": "maximum_evaluations",
+        "maximum_elapsed_time": "maximum_elapsed_time",
         "cancelled": "cancelled",
         "callback_error": "callback_error",
         "nonfinite_evaluation": "nonfinite_evaluation",
@@ -578,3 +697,31 @@ def status_diagnostic(
     if reason is not None:
         details["reason"] = reason
     return NumericalDiagnostic(code, details=details)
+
+
+def record_progress(
+    execution: Execution,
+    iteration: int,
+    *,
+    accepted: bool,
+    data: Mapping[str, Any],
+    important: bool = False,
+) -> None:
+    """Record full iteration traces or logarithmically sampled summary progress."""
+    level = execution.trace.policy.level
+    if level == "none":
+        return
+    if level == "summary":
+        sampled = iteration <= 4 or (iteration > 0 and iteration & (iteration - 1) == 0)
+        if not sampled and not important:
+            return
+        kind = "phase"
+    else:
+        kind = "iteration"
+    execution.trace.append(
+        kind,
+        iteration=iteration,
+        accepted=accepted,
+        data=data,
+        important=important,
+    )

@@ -1,0 +1,51 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-optimization",
+  "title": "Validated optimization and fitting",
+  "lane": "numerical-optimization",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement and qualify the ordinary-Python fallback slice for scalar and multivariate optimization, nonlinear systems, least squares, and fitting",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "src/lib/sagejs/numerics/optimization/",
+    "test/numerics/optimization/",
+    "bench/numerics/optimization/",
+    "docs/numerical-computing/optimization/"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-optimization-backend-strategy.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SciPy differential corpus, first-order/KKT checks and independent residual validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "fallback",
+    "windows-x64": "fallback",
+    "macos-arm64": "fallback"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check",
+    "pnpm exec pyright src/lib/sagejs/numerics/optimization",
+    "pnpm exec ruff check src/lib/sagejs/numerics/optimization bench/numerics/optimization/*.py",
+    "node --test test/numerics/optimization/optimization-laboratory.cjs",
+    "python3 bench/numerics/optimization/run_portable.py --samples 1 --output /tmp/sagejs-optimization-portable.json",
+    "python3 bench/numerics/optimization/scipy_oracle.py --output /tmp/sagejs-optimization-scipy.json"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

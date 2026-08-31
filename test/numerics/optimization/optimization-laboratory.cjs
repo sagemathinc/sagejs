@@ -50,6 +50,8 @@ const successWitness = String.raw`
 import json
 import math
 from sagejs.numerics.optimization import (
+    MAX_FIT_OBSERVATIONS,
+    MAX_RESIDUAL_DIMENSION,
     capabilities,
     curve_fit,
     least_squares,
@@ -58,6 +60,7 @@ from sagejs.numerics.optimization import (
     minimize_problem,
     minimize_scalar,
     plan,
+    supports,
     solve_nonlinear_system,
 )
 
@@ -72,13 +75,23 @@ assert selected.method == "nelder-mead" and calls[0] == 0
 records = capabilities()
 assert records["schema_version"] == 1
 assert "cobyla" in records["explicitly_unsupported"]["nonlinear_constraints"]["methods"]
+assert records["qualification"]["platforms"] == ["linux-x64"]
+assert not records["qualification"]["browser"]
+assert not records["qualification"]["sea"]
+assert not records["qualification"]["four_platform_release"]
 
 interior = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)
 assert interior.success and abs(interior.value - 2.0) < 1.0e-8
 assert interior.method == "bounded-brent"
 assert interior.validation.passed and interior.verify().passed
 assert len(interior.plot().layers) == 2
-assert len(interior.animate().frames) >= 2
+interior_animation = interior.animate().to_dict()
+assert len(interior_animation["frames"]) >= 2
+first_path = interior_animation["frames"][0]["state"]["value"]["layers"][1]["data"]["x"]
+last_path = interior_animation["frames"][-1]["state"]["value"]["layers"][1]["data"]["x"]
+assert len(first_path) < len(last_path)
+assert abs(first_path[0] - interior.value) > 1.0e-2
+assert any(event.kind == "phase" for event in interior.trace.events)
 
 boundary = minimize_scalar(lambda x: x, 0.0, 3.0)
 assert boundary.success and boundary.value == 0.0
@@ -147,7 +160,27 @@ fit = curve_fit(
 assert fit.success and abs(fit.value[0] - 2.0) < 1.0e-7
 assert abs(fit.value[1] - 0.5) < 1.0e-7
 assert len(fit.plot().layers) == 3
+fit_animation = fit.animate().to_dict()
+first_fit = fit_animation["frames"][0]["state"]["value"]["layers"][1]["data"]["y"]
+last_fit = fit_animation["frames"][-1]["state"]["value"]["layers"][1]["data"]["y"]
+assert first_fit != last_fit
 assert json.loads(fit.to_json())["method"] == "damped-gauss-newton"
+
+bounded_problem = minimize_problem(
+    lambda point: point[0]*point[0],
+    [1.0],
+    bounds=[(0.0, 2.0)],
+)
+assert not supports(bounded_problem, "bfgs")
+try:
+    plan(bounded_problem, "bfgs")
+    raise AssertionError("method overrides must respect constraint envelopes")
+except ValueError:
+    pass
+
+large_problem = minimize_problem(lambda point: sum(value*value for value in point), [0.0]*65)
+large_plan = plan(large_problem)
+assert large_plan.method == "bfgs" and supports(large_problem)
 
 try:
     minimize(lambda point: point[0]*point[0], [1.0], constraints=[lambda point: point[0]])
@@ -159,7 +192,16 @@ print("optimization success laboratory passed")
 `;
 
 const failureWitness = String.raw`
-from sagejs.numerics.optimization import minimize, minimize_scalar
+from sagejs.numerics.optimization import (
+    MAX_FIT_OBSERVATIONS,
+    MAX_RESIDUAL_DIMENSION,
+    curve_fit,
+    least_squares,
+    linear_fit,
+    minimize,
+    minimize_scalar,
+    solve_nonlinear_system,
+)
 
 callback_error = minimize_scalar(lambda x: 1.0/0.0, -1.0, 1.0)
 assert not callback_error.success and callback_error.status == "callback_error"
@@ -183,6 +225,131 @@ false_gradient = minimize(
 assert false_gradient.status == "converged" and not false_gradient.success
 assert not false_gradient.validation.passed
 assert "validation_failed" in {item.code for item in false_gradient.diagnostics}
+
+shallow_false_gradient = minimize(
+    lambda point: 1.0e-4*point[0],
+    [0.0],
+    gradient=lambda point: [0.0],
+    method="bfgs",
+)
+assert shallow_false_gradient.status == "converged"
+assert not shallow_false_gradient.success
+assert shallow_false_gradient.validation.residual > 5.0e-5
+
+stationary_maximum = least_squares(
+    lambda point: [point[0]*point[0] - 1.0],
+    [0.0],
+)
+assert stationary_maximum.status == "converged"
+assert not stationary_maximum.success
+second_order = [
+    check for check in stationary_maximum.validation.to_dict()["checks"]
+    if check["kind"] == "coordinate_second_order_minimum"
+][0]
+assert not second_order["passed"] and second_order["minimum_sampled_curvature"] < 0.0
+
+tiny = minimize_scalar(
+    lambda x: (x - 5.0e-13)**2,
+    0.0,
+    1.0e-12,
+    xtol=1.0e-15,
+    rtol=0.0,
+)
+assert tiny.success and abs(tiny.value - 5.0e-13) <= 1.0e-15
+
+bad_scalar = minimize_scalar(lambda x: "not-a-number", 0.0, 1.0)
+assert bad_scalar.status == "invalid_problem" and not bad_scalar.success
+
+bad_vector = minimize(lambda point: "not-a-vector", [0.0], method="nelder-mead")
+assert bad_vector.status == "invalid_problem" and not bad_vector.success
+
+bad_gradient = minimize(
+    lambda point: point[0]*point[0],
+    [1.0],
+    gradient=lambda point: ["not-a-number"],
+    method="bfgs",
+)
+assert bad_gradient.status == "invalid_problem" and not bad_gradient.success
+
+bad_residual = least_squares(lambda point: "not-a-vector", [0.0])
+assert bad_residual.status == "invalid_problem" and not bad_residual.success
+
+bad_jacobian = least_squares(
+    lambda point: [point[0] - 1.0],
+    [0.0],
+    jacobian=lambda point: [["not-a-number"]],
+)
+assert bad_jacobian.status == "invalid_problem" and not bad_jacobian.success
+
+oversized_residual = least_squares(
+    lambda point: [0.0]*(MAX_RESIDUAL_DIMENSION + 1),
+    [0.0],
+)
+assert oversized_residual.status == "invalid_problem"
+
+try:
+    linear_fit(
+        list(range(MAX_FIT_OBSERVATIONS + 1)),
+        [0.0]*(MAX_FIT_OBSERVATIONS + 1),
+    )
+    raise AssertionError("fit input ceilings must fail before solving")
+except ValueError:
+    pass
+
+class ValidationFailure:
+    def __init__(self):
+        self.calls = 0
+
+    def __call__(self, point):
+        self.calls += 1
+        if self.calls > 1:
+            raise LookupError("validation-only failure")
+        return (point[0] - 1.0)**2
+
+validation_callback = minimize(
+    ValidationFailure(),
+    [1.0],
+    gradient=lambda point: [0.0],
+    method="bfgs",
+)
+assert validation_callback.status == "callback_error"
+assert not validation_callback.success
+callback_items = [
+    item.to_dict() for item in validation_callback.diagnostics
+    if item.code == "callback_error"
+]
+assert len(callback_items) == 1
+assert callback_items[0]["details"]["phase"] == "validation"
+
+validation_budget = minimize(
+    lambda point: (point[0] - 1.0)**2,
+    [1.0],
+    gradient=lambda point: [0.0],
+    method="bfgs",
+    max_evaluations=2,
+)
+assert validation_budget.status == "maximum_evaluations"
+assert not validation_budget.success
+
+ill_conditioned = least_squares(
+    lambda point: [
+        point[0] + point[1] - 1.0,
+        point[0] + (1.0 + 1.0e-6)*point[1] - 1.0,
+    ],
+    [0.0, 0.0],
+)
+assert ill_conditioned.success
+condition = ill_conditioned.domain_payload["parameter_diagnostics"]
+assert condition["covariance_available"]
+assert condition["rank_deficient_or_ill_conditioned"]
+assert condition["normal_matrix_condition_estimate"] > 1.0e12
+
+no_trace = minimize_scalar(lambda x: x*x, -1.0, 1.0, trace="none")
+try:
+    no_trace.animate()
+    raise AssertionError("animations must not fabricate unretained iterations")
+except ValueError:
+    pass
 
 truncated = minimize(
     lambda point: (1.0-point[0])**2 + 100.0*(point[1]-point[0]*point[0])**2,
