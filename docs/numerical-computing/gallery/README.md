@@ -1,5 +1,69 @@
 # Numerical teaching gallery
 
+The checked cross-domain laboratory in this directory is the P7 teaching and
+explanation layer for the current numerical product:
+
+- [`index.html`](index.html) is a complete static lesson and the progressively
+  enhanced gallery entry point;
+- [`evidence.json`](evidence.json) contains nine stories and eighteen success
+  or failure cases generated from current public numerical results;
+- [`gallery.mjs`](gallery.mjs) validates resource receipts, renders the
+  Plotly-compatible exports, and creates PlotSpec, Plotly JSON, and static HTML
+  downloads;
+- [`cross-domain.schema.json`](cross-domain.schema.json) defines the portable
+  bundle contract; and
+- [`integration.md`](integration.md) gives the app.sagejs.org and website
+  integration boundary. [`public-surface-gaps.md`](public-surface-gaps.md)
+  records the result/presentation gaps exposed without bypassing them.
+
+The gallery covers scalar roots, nonlinear fitting, ODE adaptivity, linear
+refinement, adaptive quadrature, polynomial approximation, eigensystems,
+local optimization, and robust regression. Every story contains both normal
+success and a mathematically instructive failure. The failure category is not
+synonymous with `result.success == false`: the Runge story is deliberately a
+successful, validated interpolation construction that is nevertheless a poor
+between-node approximation.
+
+Regenerate and test the complete laboratory with:
+
+```sh
+node test/numerics/gallery/generate-cross-domain-gallery.cjs --write
+node --test test/numerics/gallery/cross-domain-gallery.test.cjs
+node bench/numerical-gallery/measure.cjs
+```
+
+The checked bundle is capped at 8 MB, each story at 1.5 MB, and every
+animation at 32 retained frames. Current source is substantially below those
+ceilings. The benchmark separately reports solver/presentation generation,
+JSON validation, export generation, and a real Chromium render of all seventeen
+visual presentations.
+
+## Evidence and replay contract
+
+- The result record, semantic trace, PlotSpec/PlotAnimation, Plotly document,
+  and accessible prose stay together.
+- Visualizers may select or deterministically decimate retained states; they
+  may not interpolate an uncomputed iteration.
+- Callback counts are frozen before presentation and checked afterwards.
+  Result visualization must not evaluate a user's function again.
+- Static descriptions and result tables are present in the generated HTML
+  before JavaScript runs. Animation is an optional view and never autoplays.
+- Payload measurements are generated beside the evidence and checked
+  fail-closed. Python's source-side byte receipts are retained because JSON
+  distinguishes `1.0` there while JavaScript reserialization does not.
+- The gallery uses only the bounded 2-D `line`, `point`, and `text` subset when
+  a new domain PlotSpec has not yet converged on the shared axis vocabulary.
+  Such a fallback is recorded rather than hidden.
+
+One important public-surface gap remains explicit in the bundle: the root
+`NumericalResult.animate()` currently samples the live callback to draw a
+smooth curve. The durable story instead builds a point/bracket animation from
+retained `evaluation` and `iteration` trace events. This is not a fabricated
+curve and does not spend callback budget. A future root result can remove the
+gap by retaining an explicitly budgeted visualization sample set.
+
+## Original root vertical slice
+
 This directory defines the data contract for interactive numerical stories.
 The deployable, dependency-free gallery is in
 `website/numerical-computing/`. Its checked story records are generated from
