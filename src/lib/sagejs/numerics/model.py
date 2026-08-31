@@ -512,6 +512,37 @@ class NumericalResult:
             raise ValueError("unsupported output language: " + language)
         return records[key]
 
+    def to_code(self, language: str | None = None) -> str | dict[str, str]:
+        """Return equivalent source through the operation's language emitter."""
+        return self.code(language)
+
+    def to_markdown(self) -> str:
+        """Return a compact evidence-derived Markdown explanation."""
+        lines = [
+            "### " + self.method + " " + self._problem.operation.replace("_", " "),
+            "",
+            "- Status: `" + self._status + "`",
+            "- Success: `" + ("true" if self._success else "false") + "`",
+            "- Validation: `"
+            + self._validation.truth_level
+            + "` ("
+            + ("passed" if self._validation.passed else "not passed")
+            + ")",
+            "- Iterations/evaluations: `"
+            + str(self._iterations)
+            + "/"
+            + str(self._evaluations)
+            + "`",
+        ]
+        if self._validation.residual is not None:
+            lines.append("- Residual: `" + str(self._validation.residual) + "`")
+        if self._diagnostics:
+            lines.append(
+                "- Diagnostics: "
+                + ", ".join("`" + str(item["code"]) + "`" for item in self._diagnostics)
+            )
+        return "\n".join(lines)
+
     def plot(self) -> Any:
         if self._problem.operation != "scalar_root":
             raise NotImplementedError("plotting is not implemented for this operation")
@@ -519,12 +550,20 @@ class NumericalResult:
 
         return root_plot(self)
 
+    def to_plot_spec(self) -> Any:
+        """Return the renderer-neutral PlotSpec view for this result."""
+        return self.plot()
+
     def animate(self) -> Any:
         if self._problem.operation != "scalar_root":
             raise NotImplementedError("animation is not implemented for this operation")
         from .visualization import root_animation
 
         return root_animation(self)
+
+    def to_animation(self) -> Any:
+        """Return the bounded semantic animation for this result."""
+        return self.animate()
 
     def __repr__(self) -> str:
         if self._value is None:

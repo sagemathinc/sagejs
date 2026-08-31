@@ -92,6 +92,12 @@ assert len(answer.plot().layers) == 3
 assert len(answer.animate().frames) >= 2
 assert "fzero" in answer.code("matlab")
 assert "FindRoot" in answer.code("wolfram")
+assert answer.to_plot_spec().to_dict() == answer.plot().to_dict()
+assert answer.to_animation().to_dict() == answer.animate().to_dict()
+assert answer.to_code("matlab") == answer.code("matlab")
+assert "### brent scalar root" in answer.to_markdown()
+assert "validated_approximate" in answer.to_markdown()
+assert "(passed)" in answer.to_markdown()
 assert json.loads(answer.to_json())["problem_digest"] == problem.digest
 
 mutable_value = {"items": [1.0, 2.0]}
