@@ -55,16 +55,16 @@
     "cooperative_shared_memory_evaluation_and_elapsed_budgets": "pass"
   },
   "public_integration_source": {
-    "sha256": "85d1cc1c41235fc017a61e4ee529eeb6145664c413f4cfad0ad99180db217b29",
+    "sha256": "578bf0f6baecf89eff3bdd04d34b71b8e283bb4668beeacb668deb1c08c492b9",
     "definition": "sha256 of the JSON array of ordered path and file-sha256 records",
     "files": {
-      "packages/flint-wasm/evaluator.mjs": "fc79bd1efb7275525f44412c4633e1824a2ed22663fd960fc5f40651c85e9cca",
+      "packages/flint-wasm/evaluator.mjs": "97ac98a6fdde618a281e259f71b191339bd3288e7e90ce1a393fb9f89b23dbc3",
       "packages/flint-wasm/numerical/index.mjs": "17904a3eb812782836f1ffeb4c66eb0e030aca2a8e04356adaf9acdde0b77ec5",
       "packages/flint-wasm/numerical/src/cminpack-adapter.c": "a6841d13c46370a2520bf076008e87fb93ef9c0c96c6a98d7b86bb9cb3d46965",
       "src/baselib/sagejs/runtime.py": "c02af56733b15104675182634e99abcfa9bb39f43e7ef29a4b14850718824d39",
       "src/baselib/sagejs/runtime.pyi": "52651e7d8fbe9a545011127386c1110db7f7cb9737bf4e3eeb079de1d06596ec",
-      "src/lib/sagejs/numerics/optimization/least_squares.py": "c830eaadb10f39f9faec28df677804585f147c7816b7fa6719342977e69d0c9a",
-      "src/lib/sagejs/numerics/optimization/planning.py": "d0babccc99f0299042be53e88c08c85e96262201c153459db2899158348cc737",
+      "src/lib/sagejs/numerics/optimization/least_squares.py": "d7e93efb9d94a486b9f9cb00ed7877e41d2659c8f121d195b249422daa2399d1",
+      "src/lib/sagejs/numerics/optimization/planning.py": "c79dbe4487d8b586859ebb51778492051a2da86b5fd3de37341fe93c5a8aa8c7",
       "tools/python/contract.ts": "bd1530e45f999479db5bd865e30394ca5a8d9b6e37c157e8bd4d7fdf7c6e7f33",
       "tools/resources.ts": "65066819ec5f199b49a84d6bb31dde28140cbe0fe3f06dfcab433e608bb112ed",
       "scripts/build-sea.cjs": "a7c48f98ba044a759303adc1742f87f710c4a7dc5071243c59e7baec0b829679"
@@ -122,6 +122,7 @@
     "iteration_total_callback_elapsed_and_cancellation_budgets": "pass",
     "execution_specific_browser_provenance": "pass",
     "structured_missing_resource_failure": "pass",
+    "browser_missing_and_corrupt_resource_isolation": "pass",
     "relocated_npm": "pass",
     "relocated_python_sea": "pass",
     "content_lock_reverification": {

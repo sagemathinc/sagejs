@@ -282,22 +282,25 @@ test("the support ledger classifies every foundational operation", () => {
       "utf8",
     ),
   );
-  assert.equal(ledger.schema_version, 1);
+  assert.equal(ledger.schema_version, 2);
   assert.deepEqual(
-    ledger.runtime_languages,
+    ledger.languages,
     ["sage", "python-scipy", "matlab", "wolfram"],
   );
   assert.equal(ledger.operations.length, 22);
   for (const operation of ledger.operations) {
-    const classified = new Set([
+    const emitted = new Set([
       ...operation.emit,
-      ...(operation.unsupported || []),
+      ...operation.unsupported_emit,
     ]);
     assert.deepEqual(
-      [...classified].sort(),
-      [...ledger.runtime_languages].sort(),
+      [...emitted].sort(),
+      [...ledger.languages].sort(),
       operation.operation,
     );
+    assert.equal(emitted.size, operation.emit.length + operation.unsupported_emit.length);
+    assert.ok(operation.registry.every((language) => ledger.languages.includes(language)));
+    assert.ok(operation.natural_parser.every((language) => operation.registry.includes(language)));
   }
 });
 

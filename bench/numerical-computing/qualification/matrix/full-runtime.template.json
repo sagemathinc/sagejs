@@ -1,0 +1,23 @@
+{
+  "schema": "sagejs.numerical-qualification-matrix-template/v1",
+  "id": "sagejs-numerical-product-full-runtime",
+  "description": "P8 release matrix for native Node and SEA on four platforms plus three browser engines and browser-worker recovery on the Linux browser host.",
+  "require_clean": true,
+  "required_program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
+  "required_case_layers": ["definition-identity", "independent-residual", "differential-oracle", "conditioned-stress", "failure-semantics", "fuzz", "metamorphic"],
+  "required_capabilities": ["numerics.contracts", "numerics.root.scalar", "numerics.approximation.interpolation", "numerics.approximation.polynomial_roots", "numerics.integration.quadrature", "numerics.linear.solve", "numerics.optimization.scalar", "numerics.optimization.cminpack", "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps", "numerics.spectral.dense", "numerics.spectral.fft", "numerics.statistics.descriptive", "numerics.sweeps.bounded", "numerics.frontend.scalar_root", "numerics.frontend.catalog", "numerics.frontend.parser_guards", "numerics.frontend.scipy_execution", "numerics.frontend.guardrails", "numerics.teaching.root", "numerics.teaching.cross_domain", "numerics.teaching.scalar_optimization", "numerics.lifecycle.repeated"],
+  "rows": [
+    {"id": "linux-x64-node", "platform": "linux-x64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "linux-arm64-node", "platform": "linux-arm64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "macos-arm64-node", "platform": "macos-arm64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "windows-x64-node", "platform": "windows-x64", "subject": {"kind": "node", "name": "node", "engine": null}},
+    {"id": "linux-x64-sea", "platform": "linux-x64", "subject": {"kind": "sea", "name": "sagejs", "engine": null}},
+    {"id": "linux-arm64-sea", "platform": "linux-arm64", "subject": {"kind": "sea", "name": "sagejs", "engine": null}},
+    {"id": "macos-arm64-sea", "platform": "macos-arm64", "subject": {"kind": "sea", "name": "sagejs", "engine": null}},
+    {"id": "windows-x64-sea", "platform": "windows-x64", "subject": {"kind": "sea", "name": "sagejs", "engine": null}},
+    {"id": "linux-x64-browser-chromium", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "chromium"}},
+    {"id": "linux-x64-browser-firefox", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "firefox"}},
+    {"id": "linux-x64-browser-webkit", "platform": "linux-x64", "subject": {"kind": "browser", "name": "playwright-browser", "engine": "webkit"}},
+    {"id": "linux-x64-browser-worker", "platform": "linux-x64", "subject": {"kind": "worker", "name": "sagejs-browser-worker", "engine": null}}
+  ]
+}

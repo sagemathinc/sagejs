@@ -38,6 +38,20 @@ from sagejs.numerics.frontends import (
 registry = create_frontend_registry()
 keys = {operation.key for operation in registry.operations()}
 assert len(keys) == 22
+with open(
+    ${JSON.stringify(join(root, "docs/numerical-computing/multilingual/support-matrix.json"))},
+    encoding="utf-8",
+) as support_file:
+    support_ledger = json.load(support_file)
+support_by_operation = {
+    item["operation"]: item for item in support_ledger["operations"]
+}
+assert set(support_by_operation) == keys
+for operation in registry.operations():
+    adapter = registry.adapter(operation)
+    documented = support_by_operation[operation.key]
+    assert sorted(documented["registry"]) == sorted(adapter.aliases), operation.key
+    assert sorted(documented["emit"]) == sorted(adapter.emitters), operation.key
 for expected in (
     "linear_algebra:linear_solve:v1",
     "linear_algebra:least_squares:v1",
@@ -70,23 +84,23 @@ cases = [
     ("sage", "solve", (matrix, right), {}),
     ("matlab", "lsqminnorm", ([[1, 0], [0, 1], [1, 1]], [1, 2, 3]), {}),
     ("sage", "eigh", ([[2, 1], [1, 2]],), {}),
-    ("matlab", "eig", ([[0, -1], [1, 0]],), {}),
+    ("sage", "eig", ([[0, -1], [1, 0]],), {}),
     ("sage", "svd", ([[1, 2], [3, 4]],), {}),
-    ("wolfram", "Fourier", ([1, 2, 3],), {}),
+    ("sage", "fft", ([1, 2, 3],), {}),
     ("matlab", "conv", ([1, 2], [3, 4]), {}),
     ("sage", "interpolate", ([0, 1, 2], [1, 2, 5]), {}),
-    ("matlab", "spline", ([0, 1, 2], [1, 2, 5]), {}),
+    ("sage", "cubic_spline", ([0, 1, 2], [1, 2, 5]), {}),
     ("wolfram", "NIntegrate", (lambda x: x*x, 0, 1), {"expression": "x^2"}),
     ("matlab", "fminbnd", (lambda x: (x-2)**2, 0, 4), {"expression": "(x-2)^2"}),
-    ("wolfram", "FindMinimum", (lambda p: (p[0]-1)**2, [0]), {"expression": "(x0-1)^2"}),
+    ("sage", "minimize", (lambda p: (p[0]-1)**2, [0]), {"expression": "(x0-1)^2"}),
     ("matlab", "fsolve", (lambda p: [p[0]**2-2], [1]), {"expression": ["x0^2-2"]}),
     ("sage", "nonlinear_least_squares", (lambda p: [p[0]-2], [0]), {"expression": ["x0-2"]}),
     ("matlab", "polyfit", ([0, 1, 2], [1, 3, 5]), {}),
     ("matlab", "ode45", (lambda t, y: [y[0]], [0, 0.25], [1]), {"expression": ["y0"]}),
     ("wolfram", "SageJSDescribe", ([1, 2, 3, 4],), {}),
-    ("matlab", "ttest", ([1, 2, 4, 5], 2), {}),
+    ("sage", "one_sample_t_test", ([1, 2, 4, 5], 2), {}),
     ("wolfram", "TwoSampleTTest", ([1, 2, 4], [2, 3, 5]), {}),
-    ("matlab", "fitlm", ([0, 1, 2, 3], [1, 3, 5, 7]), {}),
+    ("sage", "linear_regression", ([0, 1, 2, 3], [1, 3, 5, 7]), {}),
     ("sage", "run_parameter_sweep", ([1, 2, 3], lambda p, c: p*p), {"expression": "parameter^2"}),
 ]
 
@@ -101,17 +115,36 @@ for language, name, arguments, options in cases:
 # Source option names normalize to real package keyword names rather than
 # becoming inert metadata. These execute through the same public functions.
 option_cases = [
-    ("lsqminnorm", ([[1, 0], [0, 1], [1, 1]], [1, 2, 3]), {"max_sweeps": 32}, "max_sweeps"),
-    ("eig_symmetric", ([[2, 1], [1, 2]],), {"MaxIterations": 40}, "max_iterations"),
-    ("svd", ([[1, 2], [3, 4]],), {"MaxIterations": 40}, "max_iterations"),
-    ("integral", (lambda x: x*x, 0, 1), {"AbsTol": 1e-9, "RelTol": 1e-9}, "absolute_tolerance"),
-    ("fminbnd", (lambda x: (x-2)**2, 0, 4), {"TolX": 1e-8}, "xtol"),
-    ("griddedInterpolant", ([0, 1], [0, 1]), {"method": "linear"}, "method"),
+    ("matlab", "lsqminnorm", ([[1, 0], [0, 1], [1, 1]], [1, 2, 3]), {"max_sweeps": 32}, "max_sweeps"),
+    ("matlab", "eig_symmetric", ([[2, 1], [1, 2]],), {"MaxIterations": 40}, "max_iterations"),
+    ("matlab", "svd", ([[1, 2], [3, 4]],), {"MaxIterations": 40}, "max_iterations"),
+    ("matlab", "integral", (lambda x: x*x, 0, 1), {"AbsTol": 1e-9, "RelTol": 1e-9}, "absolute_tolerance"),
+    ("matlab", "fminbnd", (lambda x: (x-2)**2, 0, 4), {"TolX": 1e-8}, "xtol"),
+    ("sage", "interpolate", ([0, 1], [0, 1]), {"method": "linear"}, "method"),
 ]
-for name, arguments, options, normalized_name in option_cases:
-    intent = registry.lower("matlab", name, *arguments, **options)
+for language, name, arguments, options, normalized_name in option_cases:
+    intent = registry.lower(language, name, *arguments, **options)
     assert normalized_name in intent.options
     assert registry.execute(intent).success
+
+# A recognized vendor name is not a license to execute a differently shaped
+# canonical operation. These aliases are absent until their language contract
+# has a qualified adapter.
+for language, name, arguments in (
+    ("matlab", "eig", ([[0, -1], [1, 0]],)),
+    ("matlab", "fft", ([1, 2, 3],)),
+    ("matlab", "griddedInterpolant", ([0, 1], [0, 1])),
+    ("matlab", "ttest", ([1, 2, 3], 2)),
+    ("matlab", "ttest2", ([1, 2], [2, 3])),
+    ("wolfram", "Eigensystem", ([[2, 1], [1, 2]],)),
+    ("wolfram", "Fourier", ([1, 2, 3],)),
+    ("wolfram", "ListConvolve", ([1, 2], [3, 4])),
+):
+    try:
+        registry.lower(language, name, *arguments)
+        raise AssertionError("unsafe vendor alias unexpectedly lowered: " + name)
+    except UnsupportedFrontendError as error:
+        assert error.diagnostic.code == "unsupported_operation"
 
 # Replayable callbacks are executable claims, not decorative source strings.
 mismatched = registry.lower(
@@ -139,21 +172,21 @@ except ValueError:
 # Targets whose result/normalization conventions are not yet qualified fail
 # with one structured unsupported_target diagnostic.
 unsupported_targets = {
-    "symmetric_eigen": {"wolfram"},
-    "general_eigen": {"wolfram"},
-    "singular_value_decomposition": {"wolfram"},
+    "symmetric_eigen": {"matlab", "wolfram"},
+    "general_eigen": {"matlab", "wolfram"},
+    "singular_value_decomposition": {"matlab", "wolfram"},
     "convolution": {"wolfram"},
     "interpolation": {"matlab", "wolfram"},
-    "cubic_spline": {"wolfram"},
+    "cubic_spline": {"matlab", "wolfram"},
     "minimize": {"wolfram"},
     "nonlinear_system": {"wolfram"},
     "nonlinear_least_squares": {"wolfram"},
     "linear_fit": {"wolfram"},
     "initial_value_problem": {"wolfram"},
     "descriptive_statistics": {"wolfram"},
-    "one_sample_t_test": {"wolfram"},
-    "two_sample_t_test": {"wolfram"},
-    "linear_regression": {"wolfram"},
+    "one_sample_t_test": {"matlab", "wolfram"},
+    "two_sample_t_test": {"matlab", "wolfram"},
+    "linear_regression": {"matlab", "wolfram"},
     "parameter_sweep": {"matlab", "wolfram"},
 }
 for language, name, arguments, options in cases:
@@ -244,6 +277,8 @@ assert summary["count"] == 4
 regression = wolfram.LinearModelFitData([0, 1, 2], [1, 3, 5])
 assert abs(regression["slope"] - 2) < 1e-12
 assert matlab.arrayfun(lambda value: value*value, [1, 2, 3]) == [1, 4, 9]
+matrix_sweep = matlab.arrayfun(lambda value: value*value, [[1, 2], [3, 4]])
+assert matrix_sweep.tolist() == [[1, 4], [9, 16]]
 assert wolfram.Map(lambda value: value+1, [1, 2, 3]) == [2, 3, 4]
 for module, name in ((matlab, "linsolve"), (wolfram, "LinearSolve")):
     rich = module.numerical_result(name, [[1, 1], [2, 2]], [1, 2])
@@ -258,6 +293,33 @@ try:
     raise AssertionError("unqualified polynomial fit unexpectedly executed")
 except NotImplementedError:
     pass
+for name, call in (
+    ("matlab.eig", lambda: matlab.eig([[0, -1], [1, 0]])),
+    ("matlab.fft", lambda: matlab.fft([1, 2, 3])),
+    ("matlab.gridded_interpolant", lambda: matlab.gridded_interpolant([0, 1], [0, 1])),
+    ("matlab.ttest", lambda: matlab.ttest([1, 2, 3], 2)),
+    ("matlab.ttest2", lambda: matlab.ttest2([1, 2], [2, 3])),
+    ("wolfram.Eigensystem", lambda: wolfram.Eigensystem([[2, 1], [1, 2]])),
+    ("wolfram.GeneralEigensystem", lambda: wolfram.GeneralEigensystem([[0, -1], [1, 0]])),
+    ("wolfram.SingularValueDecomposition", lambda: wolfram.SingularValueDecomposition([[1, 2], [3, 4]])),
+    ("wolfram.Fourier", lambda: wolfram.Fourier([1, 2, 3])),
+    ("wolfram.ListConvolve", lambda: wolfram.ListConvolve([1, 2], [3, 4])),
+):
+    try:
+        call()
+        raise AssertionError("unsafe public alias unexpectedly executed: " + name)
+    except NotImplementedError as error:
+        assert error.diagnostic.code == "unsupported_operation"
+try:
+    matlab.conv([[1, 2], [3, 4]], [1, 2])
+    raise AssertionError("matrix convolution unexpectedly flattened")
+except TypeError as error:
+    assert "vector, not a matrix" in str(error)
+try:
+    matlab.fminsearch(lambda point: point[0] ** 2, [[1, 2], [3, 4]])
+    raise AssertionError("matrix initial point unexpectedly flattened")
+except TypeError as error:
+    assert "vector, not a matrix" in str(error)
 print("multilingual runtime entrypoint witness passed")
 `;
 

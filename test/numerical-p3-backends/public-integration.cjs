@@ -25,6 +25,20 @@ function evaluate(source) {
   return result.stdout.trim();
 }
 
+function evaluateCpython(source) {
+  const executable = process.env.PYTHON ||
+    (process.platform === "win32" ? "python" : "python3");
+  const prefix = "import collections.abc, hashlib, json, math, sys, typing\n" +
+    `sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})\n`;
+  const result = spawnSync(executable, ["-I", "-c", prefix + source], {
+    cwd: root,
+    encoding: "utf8",
+    timeout: 180_000,
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+
 test("public least-squares routes exact cminpack identities and validates", () => {
   assert.equal(evaluate(String.raw`
 from sagejs.numerics.optimization import least_squares
@@ -158,4 +172,50 @@ assert recovered.success and recovered.validation.passed
 assert abs(recovered.value[0] - 2.0) < 1.0e-10
 print("public cminpack failures and recovery passed")
 `), "public cminpack failures and recovery passed");
+});
+
+test("public cminpack normalizes option-construction runtime failures", () => {
+  assert.equal(evaluateCpython(String.raw`
+import sys
+import types
+
+runtime = types.ModuleType("sagejs.runtime")
+
+class FakeReflect:
+    @staticmethod
+    def get(target, name):
+        return getattr(target, name)
+
+    @staticmethod
+    def set(target, name, value):
+        raise RuntimeError("synthetic private Reflect.set failure")
+
+class FakeObject:
+    @staticmethod
+    def create(prototype):
+        return {}
+
+class FakeBackend:
+    def leastSquares(self, options):
+        raise AssertionError("option construction should have failed first")
+
+runtime.numerical_backend = lambda: FakeBackend()
+runtime.reflect = FakeReflect()
+runtime.object = FakeObject()
+runtime.jstype = lambda value: "function" if callable(value) else type(value).__name__
+sys.modules["sagejs.runtime"] = runtime
+
+from sagejs.numerics.optimization import least_squares
+
+answer = least_squares(
+    lambda point: [point[0] - 2.0],
+    [20.0],
+    method="cminpack-lmdif",
+)
+assert not answer.success
+assert answer.status == "backend_failure"
+assert answer.domain_payload["stop_reason"] == "cminpack_backend_error"
+assert "synthetic private" not in str(answer.to_dict())
+print("public cminpack option failure normalization passed")
+`), "public cminpack option failure normalization passed");
 });

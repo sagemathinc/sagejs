@@ -1,0 +1,48 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p8-numerical-qualification",
+  "title": "P8 numerical qualification campaign",
+  "lane": "numerical-qualification",
+  "status": "active",
+  "owner": "user",
+  "objective": "Build backend-neutral P0-P8 corpora, real Sage.js Node adapters, capability binding drafts, fail-closed matrix policy templates, and qualification tests without fabricating platform evidence",
+  "base_commit": "7c791beaed004f021954e06a7a1e06809d524edc",
+  "claims": [
+    ".agents/lanes.json",
+    "bench/numerical-computing/qualification/",
+    "docs/numerical-computing/qualification/",
+    "scripts/numerical-computing/qualification/",
+    "test/numerics/evidence/qualification-campaign.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "docs/numerical-computing/qualification/README.md"
+  ],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "independent mathematical residuals and metamorphic identities computed outside solver status"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+    "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

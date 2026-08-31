@@ -68,12 +68,13 @@ def _aliases(
     matlab: Sequence[str],
     wolfram: Sequence[str],
 ) -> dict[str, Sequence[str]]:
-    return {
+    aliases = {
         "sage": sage,
         "python-scipy": python,
         "matlab": matlab,
         "wolfram": wolfram,
     }
+    return {language: names for language, names in aliases.items() if names}
 
 
 _DEFINITIONS = (
@@ -120,13 +121,13 @@ _DEFINITIONS = (
             ("eigh", "symmetric_eigen"),
             ("numpy.linalg.eigh", "scipy.linalg.eigh"),
             ("eig_symmetric",),
-            ("HermitianEigensystem",),
+            (),
         ),
         module="sagejs.numerics.spectral",
         function="eigh",
         options=("tolerance", "max_iterations", "max_elapsed_ms", "trace"),
         outputs=("eigenvalues", "eigenvectors", "evidence"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "spectral",
@@ -135,15 +136,15 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("eig", "general_eigen"),
             ("numpy.linalg.eig", "scipy.linalg.eig"),
-            ("eig", "eig_general"),
-            ("Eigensystem", "GeneralEigensystem"),
+            ("eig_general",),
+            (),
         ),
         module="sagejs.numerics.spectral",
         function="eig",
         options=("tolerance", "max_iterations", "max_elapsed_ms", "trace"),
         outputs=("eigenvalues", "eigenvectors", "evidence"),
         classification="extension",
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "spectral",
@@ -153,13 +154,13 @@ _DEFINITIONS = (
             ("svd",),
             ("numpy.linalg.svd", "scipy.linalg.svd"),
             ("svd",),
-            ("SingularValueDecomposition",),
+            (),
         ),
         module="sagejs.numerics.spectral",
         function="svd",
         options=("tolerance", "max_iterations", "max_elapsed_ms", "trace"),
         outputs=("u", "singular_values", "vh", "evidence"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "spectral",
@@ -168,8 +169,8 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("fft",),
             ("numpy.fft.fft", "scipy.fft.fft"),
-            ("fft",),
-            ("Fourier",),
+            (),
+            (),
         ),
         module="sagejs.numerics.spectral",
         function="fft",
@@ -183,7 +184,7 @@ _DEFINITIONS = (
             ("convolve",),
             ("numpy.convolve", "scipy.signal.convolve"),
             ("conv",),
-            ("ListConvolve",),
+            (),
         ),
         module="sagejs.numerics.spectral",
         function="convolve",
@@ -197,8 +198,8 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("interpolate",),
             ("scipy.interpolate.BarycentricInterpolator",),
-            ("griddedInterpolant",),
-            ("Interpolation",),
+            (),
+            (),
         ),
         module="sagejs.numerics.approximation",
         function="interpolate",
@@ -213,14 +214,14 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("cubic_spline",),
             ("scipy.interpolate.CubicSpline",),
-            ("spline",),
-            ("CubicSplineInterpolation",),
+            (),
+            (),
         ),
         module="sagejs.numerics.approximation",
         function="cubic_spline",
         options=("boundary", "extrapolate", "trace"),
         outputs=("spline", "evidence"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "integration",
@@ -252,7 +253,7 @@ _DEFINITIONS = (
             ("minimize_scalar",),
             ("scipy.optimize.minimize_scalar",),
             ("fminbnd",),
-            ("NMinimizeScalar",),
+            (),
         ),
         module="sagejs.numerics.optimization",
         function="minimize_scalar",
@@ -276,7 +277,7 @@ _DEFINITIONS = (
             ("minimize",),
             ("scipy.optimize.minimize",),
             ("fminsearch",),
-            ("FindMinimum",),
+            (),
         ),
         module="sagejs.numerics.optimization",
         function="minimize",
@@ -300,7 +301,7 @@ _DEFINITIONS = (
             ("solve_nonlinear_system",),
             ("scipy.optimize.root",),
             ("fsolve",),
-            ("FindRootSystem",),
+            (),
         ),
         module="sagejs.numerics.optimization",
         function="solve_nonlinear_system",
@@ -316,7 +317,7 @@ _DEFINITIONS = (
             ("nonlinear_least_squares",),
             ("scipy.optimize.least_squares",),
             ("lsqnonlin",),
-            ("NonlinearLeastSquares",),
+            (),
         ),
         module="sagejs.numerics.optimization",
         function="least_squares",
@@ -356,7 +357,7 @@ _DEFINITIONS = (
             ("solve_ivp",),
             ("scipy.integrate.solve_ivp",),
             ("ode45",),
-            ("NDSolveValue",),
+            (),
         ),
         module="sagejs.numerics.ode",
         function="solve_ivp",
@@ -395,13 +396,13 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("one_sample_t_test",),
             ("scipy.stats.ttest_1samp",),
-            ("ttest",),
+            (),
             ("OneSampleTTest",),
         ),
         module="sagejs.numerics.statistics",
         function="one_sample_t_test",
         options=("alternative", "confidence", "nan_policy", "trace"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "statistics",
@@ -410,13 +411,13 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("two_sample_t_test",),
             ("scipy.stats.ttest_ind",),
-            ("ttest2",),
+            (),
             ("TwoSampleTTest",),
         ),
         module="sagejs.numerics.statistics",
         function="two_sample_t_test",
         options=("equal_variance", "alternative", "confidence", "nan_policy", "trace"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "statistics",
@@ -425,14 +426,14 @@ _DEFINITIONS = (
         aliases=_aliases(
             ("linear_regression",),
             ("scipy.stats.linregress",),
-            ("fitlm",),
+            (),
             ("LinearModelFitData",),
         ),
         module="sagejs.numerics.statistics",
         function="linear_regression",
         options=("confidence", "alternative", "nan_policy", "trace"),
         outputs=("model", "inference", "evidence"),
-        targets=("sage", "python-scipy", "matlab"),
+        targets=("sage", "python-scipy"),
     ),
     _Definition(
         "sweeps",
@@ -768,8 +769,9 @@ def operation_adapters() -> tuple[OperationAdapter, ...]:
         emitters = {}
         parsers = {}
         for language in _LANGUAGES:
-            aliases = definition.aliases[language]
-            lowerers[language] = _make_lowerer(definition, language, aliases[0])
+            aliases = definition.aliases.get(language)
+            if aliases is not None:
+                lowerers[language] = _make_lowerer(definition, language, aliases[0])
             if language in definition.targets:
                 emitters[language] = _make_emitter(definition, language)
                 parsers[language] = _make_parser(definition, language)

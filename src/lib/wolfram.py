@@ -6,6 +6,11 @@ from typing import Any, Callable
 import sagejs as sage
 import sagejs.runtime as runtime
 from sagejs.numerics.frontends import (
+    FrontendDiagnostic,
+    UnsupportedFrontendError,
+    wolfram_find_root_intent,
+)
+from sagejs.numerics.frontends import (
     create_frontend_registry as _create_numerical_registry,
 )
 from sagejs.numerics.frontends import (
@@ -13,9 +18,6 @@ from sagejs.numerics.frontends import (
 )
 from sagejs.numerics.frontends import (
     execute_scalar_root_intent as _execute_numerical_intent,
-)
-from sagejs.numerics.frontends import (
-    wolfram_find_root_intent,
 )
 
 
@@ -228,6 +230,19 @@ def _require_numerical_success(name: str, result: Any) -> None:
         raise RuntimeError(name + " failed: " + str(status))
 
 
+def _unsupported_vendor_numerical(name: str, reason: str) -> Any:
+    """Fail closed when a Wolfram spelling does not preserve Wolfram semantics."""
+
+    raise UnsupportedFrontendError(
+        FrontendDiagnostic(
+            "unsupported_operation",
+            name + " is not yet qualified for the Sage.js Wolfram surface: " + reason,
+            language="wolfram",
+            details={"surface": "natural-vendor-alias", "source_name": name},
+        )
+    )
+
+
 def linear_solve(matrix: Any, right: Any, **options: Any) -> Any:
     return numerical_value("LinearSolve", matrix, right, **options)
 
@@ -237,32 +252,39 @@ def least_squares(matrix: Any, right: Any, **options: Any) -> Any:
 
 
 def eigensystem(matrix: Any, **options: Any) -> Any:
-    result = numerical_result("Eigensystem", matrix, **options)
-    _require_numerical_success("Eigensystem", result)
-    value = result.value
-    return [value["eigenvalues"], value["eigenvectors"]]
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "Eigensystem", "complex decoding, ordering, and vector orientation differ"
+    )
 
 
 def general_eigensystem(matrix: Any, **options: Any) -> Any:
-    result = numerical_result("GeneralEigensystem", matrix, **options)
-    _require_numerical_success("GeneralEigensystem", result)
-    value = result.value
-    return [value["eigenvalues"], value["eigenvectors"]]
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "GeneralEigensystem",
+        "complex decoding, ordering, and vector orientation differ",
+    )
 
 
 def singular_value_decomposition(matrix: Any, **options: Any) -> Any:
-    result = numerical_result("SingularValueDecomposition", matrix, **options)
-    _require_numerical_success("SingularValueDecomposition", result)
-    value = result.value
-    return [value["u"], value["singular_values"], value["vh"]]
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "SingularValueDecomposition", "factor orientation and result form differ"
+    )
 
 
 def fourier(samples: Any, **options: Any) -> Any:
-    return numerical_value("Fourier", samples, **options)
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "Fourier", "default normalization and complex projection differ"
+    )
 
 
 def list_convolve(left: Any, right: Any, **options: Any) -> Any:
-    return numerical_value("ListConvolve", left, right, **options)
+    del left, right, options
+    return _unsupported_vendor_numerical(
+        "ListConvolve", "padding and origin conventions are not preserved"
+    )
 
 
 class WolframInterpolatingFunction:
@@ -279,15 +301,17 @@ class WolframInterpolatingFunction:
 
 
 def interpolation(nodes: Any, values: Any, **options: Any) -> Any:
-    result = numerical_result("Interpolation", nodes, values, **options)
-    _require_numerical_success("Interpolation", result)
-    return WolframInterpolatingFunction(result)
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "Interpolation", "interpolation defaults and returned function semantics differ"
+    )
 
 
 def cubic_spline_interpolation(nodes: Any, values: Any, **options: Any) -> Any:
-    result = numerical_result("CubicSplineInterpolation", nodes, values, **options)
-    _require_numerical_success("CubicSplineInterpolation", result)
-    return WolframInterpolatingFunction(result)
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "CubicSplineInterpolation", "endpoint and returned function semantics differ"
+    )
 
 
 def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
@@ -298,27 +322,32 @@ def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
 
 
 def n_minimize_scalar(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
-    result = numerical_result("NMinimizeScalar", function, lower, upper, **options)
-    _require_numerical_success("NMinimizeScalar", result)
-    return [result.objective, {"x": result.value}]
+    del function, lower, upper, options
+    return _unsupported_vendor_numerical(
+        "NMinimizeScalar", "this is not a faithful natural Wolfram result convention"
+    )
 
 
 def find_minimum(function: Any, initial: Any, **options: Any) -> Any:
-    result = numerical_result("FindMinimum", function, initial, **options)
-    _require_numerical_success("FindMinimum", result)
-    return [result.objective, {"x": result.value}]
+    del function, initial, options
+    return _unsupported_vendor_numerical(
+        "FindMinimum",
+        "source variables, constraints, and rule results are not preserved",
+    )
 
 
 def find_root_system(function: Any, initial: Any, **options: Any) -> Any:
-    result = numerical_result("FindRootSystem", function, initial, **options)
-    _require_numerical_success("FindRootSystem", result)
-    return {"x": result.value}
+    del function, initial, options
+    return _unsupported_vendor_numerical(
+        "FindRootSystem", "equation and rule-result semantics are not preserved"
+    )
 
 
 def nonlinear_least_squares(residuals: Any, initial: Any, **options: Any) -> Any:
-    result = numerical_result("NonlinearLeastSquares", residuals, initial, **options)
-    _require_numerical_success("NonlinearLeastSquares", result)
-    return {"parameters": result.value, "objective": result.objective}
+    del residuals, initial, options
+    return _unsupported_vendor_numerical(
+        "NonlinearLeastSquares", "model and parameter-rule semantics are not preserved"
+    )
 
 
 def linear_model_fit(x: Any, y: Any, **options: Any) -> Any:
@@ -339,9 +368,10 @@ class WolframNDSolveValue:
 
 
 def nd_solve_value(function: Any, t_span: Any, y0: Any, **options: Any) -> Any:
-    result = numerical_result("NDSolveValue", function, t_span, y0, **options)
-    _require_numerical_success("NDSolveValue", result)
-    return WolframNDSolveValue(result)
+    del function, t_span, y0, options
+    return _unsupported_vendor_numerical(
+        "NDSolveValue", "equation, event, and interpolating-function semantics differ"
+    )
 
 
 def sagejs_describe(data: Any, **options: Any) -> Any:
