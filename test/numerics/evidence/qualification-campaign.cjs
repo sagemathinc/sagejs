@@ -39,10 +39,12 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
     "numerics.approximation.polynomial_roots",
     "numerics.integration.quadrature", "numerics.linear.solve",
     "numerics.optimization.scalar", "numerics.optimization.cminpack",
+    "numerics.optimization.cminpack_optional_resource",
     "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
     "numerics.statistics.descriptive", "numerics.sweeps.bounded",
     "numerics.frontend.catalog", "numerics.frontend.parser_guards",
+    "numerics.frontend.matlab_shapes",
     "numerics.frontend.scipy_execution", "numerics.frontend.guardrails",
     "numerics.teaching.scalar_optimization",
   ];
@@ -120,10 +122,12 @@ test("first-party adapter executes Sage.js and independently checks representati
       "p1-root-cosine", "p2-linear-solve", "p2-polynomial-roots-known",
       "p3-scalar-minimum", "p3-cminpack-rosenbrock-lmdif",
       "p3-cminpack-rosenbrock-lmder", "p4-ode-exponential",
+      "p3-cminpack-optional-resource-fail-closed",
       "p4-ode-stiff-decay", "p4-ode-decay-sweep",
       "p5-fft-direct-oracle", "p5-statistics-summary",
       "p6-multilingual-catalog-roundtrip",
       "p6-multilingual-parser-fail-closed",
+      "p6-matlab-vector-shapes",
       "p6-scipy-emitted-execution",
       "p6-frontend-failure-and-expression-guards",
       "p6-frontend-resource-guards",
@@ -144,6 +148,17 @@ test("first-party adapter executes Sage.js and independently checks representati
       assert.equal(observed.outcome.kind, "success", id);
       assert.equal(Object.hasOwn(observed, "passed"), false, id);
       assert(Object.values(observed.values).every((value) => value !== undefined), id);
+      if (id === "p3-cminpack-optional-resource-fail-closed") {
+        assert.equal(observed.values.automatic_successes, 2);
+        assert.equal(observed.values.explicit_failures, 2);
+        assert.deepEqual(observed.values.explicit_statuses, [
+          "backend_failure", "backend_failure",
+        ]);
+      }
+      if (id === "p6-matlab-vector-shapes") {
+        assert.equal(observed.values.witnesses, 11);
+        assert.deepEqual(observed.values.mismatches, []);
+      }
     }
   } finally {
     await adapter.close();

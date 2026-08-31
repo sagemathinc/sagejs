@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 37
+- `bench/numerical-computing/qualification/product.corpus.json` — 39
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
@@ -37,12 +37,19 @@ teaching-artifact surfaces. It contains:
 - deterministic fuzz whose input stream is regenerated independently in
   JavaScript;
 - root-translation, four-language scalar-root round trips, and the complete
-  reviewed 70-supported/18-unsupported frontend target matrix, including
-  checksummed-body rejection for 66 envelope-bound emitters, semantic parsing
+  reviewed 63-supported/25-unsupported frontend target matrix, including
+  checksummed-body rejection for 59 envelope-bound emitters, semantic parsing
   for four scalar-root emitters, and equivalent four-language execution;
 - direct built-parser evidence that six unsafe MATLAB/Wolfram mappings fail
   closed with typed, positioned diagnostics while qualified integral forms
   still lower to the shared runtime;
+- eleven programs executed through the built MATLAB parser proving one-output
+  column-vector shape, row/column callback-orientation preservation, and
+  container-shape preservation;
+- missing and corrupt cminpack optional-resource fault injection proving that
+  automatic least squares remains on the validated ordinary-Python method,
+  while explicit cminpack requests fail with stable structured diagnostics and
+  do not leak private resource details;
 - execution of four artifact-emitted Python/SciPy programs in an isolated
   CPython process, followed by independent Node-side residual/oracle checks;
 - failed-result projection, replayable-expression, callback-consistency, and

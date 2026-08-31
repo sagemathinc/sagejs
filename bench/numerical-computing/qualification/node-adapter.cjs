@@ -183,6 +183,45 @@ def cancelled():
     return True
 answer = minimize_scalar(lambda x: x*x, -1.0, 1.0, cancel=cancelled)
 output_record = {"status": answer.status, "cancel_checks": cancel_checks[0]}`,
+    "p3-cminpack-optional-resource-fail-closed": String.raw`
+import sagejs.runtime as runtime
+from sagejs.numerics.optimization import least_squares
+
+class UnavailableNumericalBackend:
+    def __init__(self, kind):
+        self.kind = kind
+    def leastSquares(self, options):
+        raise RuntimeError(self.kind + " private numerical-resource detail")
+
+def residual(point):
+    return [point[0] - 2.0]
+
+backend_state = runtime._numerical_backend_state
+original_backend = backend_state["backend"]
+records = []
+try:
+    for kind in input_record["resource_failures"]:
+        backend = UnavailableNumericalBackend(kind)
+        backend_state["backend"] = backend
+        automatic = least_squares(residual, [20.0], method="auto")
+        explicit = least_squares(
+            residual, [20.0], method="cminpack-lmdif"
+        )
+        serialized = json.dumps(explicit.to_dict(), sort_keys=True)
+        records.append({
+            "kind": kind,
+            "automatic_success": automatic.success,
+            "automatic_method": automatic.method,
+            "automatic_backend": automatic.backend,
+            "automatic_error": abs(automatic.value[0] - 2.0),
+            "explicit_success": explicit.success,
+            "explicit_status": explicit.status,
+            "explicit_reason": explicit.domain_payload.get("stop_reason"),
+            "private_detail_leaked": "private numerical-resource detail" in serialized,
+        })
+finally:
+    backend_state["backend"] = original_backend
+output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp
 answer = solve_ivp(
@@ -348,12 +387,12 @@ entries = [
     registry.lower("sage", "solve", [[3, 1], [1, 2]], [9, 8]),
     registry.lower("matlab", "lsqminnorm", [[1, 0], [0, 1], [1, 1]], [1, 2, 3]),
     registry.lower("sage", "eigh", [[2, 1], [1, 2]]),
-    registry.lower("matlab", "eig", [[0, -1], [1, 0]]),
+    registry.lower("sage", "eig", [[0, -1], [1, 0]]),
     registry.lower("sage", "svd", [[1, 2], [3, 4]]),
-    registry.lower("wolfram", "Fourier", [1, 2, 3]),
+    registry.lower("sage", "fft", [1, 2, 3]),
     registry.lower("matlab", "conv", [1, 2], [3, 4]),
     registry.lower("sage", "interpolate", [0, 1, 2], [1, 2, 5]),
-    registry.lower("matlab", "spline", [0, 1, 2], [1, 2, 5]),
+    registry.lower("sage", "cubic_spline", [0, 1, 2], [1, 2, 5]),
     registry.lower("wolfram", "NIntegrate", lambda x: x*x, 0, 1, expression="x^2"),
     registry.lower("matlab", "fminbnd", lambda x: (x-2)**2, 0, 4, expression="(x-2)^2"),
     registry.lower("sage", "minimize", lambda p: (p[0]-1)**2, [0], expression="(x0-1)^2"),
@@ -362,9 +401,9 @@ entries = [
     registry.lower("matlab", "polyfit", [0, 1, 2], [1, 3, 5]),
     registry.lower("matlab", "ode45", lambda t, y: [y[0]], [0, 0.25], [1], expression=["y0"]),
     registry.lower("wolfram", "SageJSDescribe", [1, 2, 3, 4]),
-    registry.lower("matlab", "ttest", [1, 2, 4, 5], 2),
+    registry.lower("sage", "one_sample_t_test", [1, 2, 4, 5], 2),
     registry.lower("wolfram", "TwoSampleTTest", [1, 2, 4], [2, 3, 5]),
-    registry.lower("matlab", "fitlm", [0, 1, 2, 3], [1, 3, 5, 7]),
+    registry.lower("sage", "linear_regression", [0, 1, 2, 3], [1, 3, 5, 7]),
     registry.lower("sage", "run_parameter_sweep", [1, 2, 3], lambda p, c: p*p, expression="parameter^2"),
 ]
 records = []
@@ -743,6 +782,30 @@ async function evaluateParserGuards() {
   return { raw: { records, safe }, kernelMs: milliseconds(started) };
 }
 
+async function evaluateMatlabShapes() {
+  if (session === null) throw new Error("Sage.js qualification session is not initialized");
+  const started = process.hrtime.bigint();
+  const programs = {
+    linsolve: "x=linsolve([3 1;1 2],[9;8]); size(x)",
+    least_squares: "x=lsqminnorm([1 0;0 1;1 1],[1;2;3]); size(x)",
+    singular_values: "x=svd([3 1;1 2]); size(x)",
+    fminsearch_row: "x=fminsearch(@(x) (x(1,1)-1)^2+(x(1,2)-2)^2,[1 2]); size(x)",
+    fminsearch_column: "x=fminsearch(@(x) (x(1,1)-1)^2+(x(2,1)-2)^2,[1;2]); size(x)",
+    fsolve_row: "x=fsolve(@(x) [x(1,1)-1 x(1,2)-2],[1 2]); size(x)",
+    fsolve_column: "x=fsolve(@(x) [x(1,1)-1;x(2,1)-2],[1;2]); size(x)",
+    lsqnonlin_row: "x=lsqnonlin(@(x) [x(1,1)-1 x(1,2)-2],[1 2]); size(x)",
+    lsqnonlin_column: "x=lsqnonlin(@(x) [x(1,1)-1;x(2,1)-2],[1;2]); size(x)",
+    convolution_row: "x=conv([1 2],[3 4]); size(x)",
+    arrayfun_matrix: "x=arrayfun(@(x) x^2,[1 2;3 4]); size(x)",
+  };
+  const shapes = {};
+  for (const [name, source] of Object.entries(programs)) {
+    const result = await session.evaluate(source, { language: "matlab" });
+    shapes[name] = result.repr;
+  }
+  return { raw: { shapes }, kernelMs: milliseconds(started) };
+}
+
 function executeScipyPrograms(sources) {
   return {
     linear_solve: runScipySource(sources.linear_solve, "result.tolist()"),
@@ -971,10 +1034,16 @@ function multilingualCatalogEvidence(raw, input) {
 async function normalize(sample) {
   const validationStarted = process.hrtime.bigint();
   let evaluated;
-  if (sample.id.startsWith("p3-cminpack-") || sample.id === "p8-cminpack-cancelled") {
+  if ([
+    "p3-cminpack-rosenbrock-lmdif",
+    "p3-cminpack-rosenbrock-lmder",
+    "p8-cminpack-cancelled",
+  ].includes(sample.id)) {
     evaluated = await evaluateCminpack(sample.id, sample.input);
   } else if (sample.id === "p6-multilingual-parser-fail-closed") {
     evaluated = await evaluateParserGuards();
+  } else if (sample.id === "p6-matlab-vector-shapes") {
+    evaluated = await evaluateMatlabShapes();
   } else {
     evaluated = await evaluate(sample.id, sample.input);
   }
@@ -1092,6 +1161,22 @@ async function normalize(sample) {
         cancel_checks: raw.cancel_checks,
       }, kernelMs, { cancellation_checks: raw.cancel_checks });
       break;
+    case "p3-cminpack-optional-resource-fail-closed": {
+      const maximumAutomaticError = Math.max(...raw.records.map((item) =>
+        item.automatic_error));
+      observation = success({
+        resource_failures: raw.records.map((item) => item.kind),
+        automatic_successes: raw.records.filter((item) => item.automatic_success).length,
+        automatic_methods: raw.records.map((item) => item.automatic_method),
+        automatic_backends: raw.records.map((item) => item.automatic_backend),
+        maximum_automatic_error: maximumAutomaticError,
+        explicit_failures: raw.records.filter((item) => !item.explicit_success).length,
+        explicit_statuses: raw.records.map((item) => item.explicit_status),
+        explicit_reasons: raw.records.map((item) => item.explicit_reason),
+        private_details_leaked: raw.records.filter((item) => item.private_detail_leaked).length,
+      }, kernelMs, { injected_optional_resource_failures: raw.records.length });
+      break;
+    }
     case "p4-ode-exponential":
       observation = success({
         result: raw.value,
@@ -1210,6 +1295,43 @@ async function normalize(sample) {
         safe_lowerings_reach_runtime: raw.safe.every((source) =>
           source.includes(".integral(") || source.includes(".NIntegrate(")),
       }, kernelMs, { parser_rejections: rejected, safe_lowerings: raw.safe.length });
+      break;
+    }
+    case "p6-matlab-vector-shapes": {
+      const expected = {
+        linsolve: "(2, 1)",
+        least_squares: "(2, 1)",
+        singular_values: "(2, 1)",
+        fminsearch_row: "(1, 2)",
+        fminsearch_column: "(2, 1)",
+        fsolve_row: "(1, 2)",
+        fsolve_column: "(2, 1)",
+        lsqnonlin_row: "(1, 2)",
+        lsqnonlin_column: "(2, 1)",
+        convolution_row: "(1, 3)",
+        arrayfun_matrix: "(2, 2)",
+      };
+      const mismatches = Object.keys(expected).filter((name) => raw.shapes[name] !== expected[name]);
+      observation = success({
+        witnesses: Object.keys(expected).length,
+        mismatches,
+        one_output_column_shapes: [
+          raw.shapes.linsolve,
+          raw.shapes.least_squares,
+          raw.shapes.singular_values,
+        ],
+        callback_row_shapes: [
+          raw.shapes.fminsearch_row,
+          raw.shapes.fsolve_row,
+          raw.shapes.lsqnonlin_row,
+        ],
+        callback_column_shapes: [
+          raw.shapes.fminsearch_column,
+          raw.shapes.fsolve_column,
+          raw.shapes.lsqnonlin_column,
+        ],
+        container_shapes: [raw.shapes.convolution_row, raw.shapes.arrayfun_matrix],
+      }, kernelMs, { matlab_programs: Object.keys(expected).length });
       break;
     }
     case "p6-scipy-emitted-execution": {
@@ -1409,6 +1531,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       "numerics.linear.solve": "sagejs.numerics.linear_algebra",
       "numerics.optimization.scalar": "sagejs.numerics.optimization",
       "numerics.optimization.cminpack": "external:cminpack-wasm",
+      "numerics.optimization.cminpack_optional_resource": "sagejs.numerics.optimization",
       "numerics.ode.explicit_ivp": "sagejs.numerics.ode",
       "numerics.ode.stiff_ivp": "sagejs.numerics.ode",
       "numerics.ode.sweeps": "sagejs.numerics.ode",
@@ -1419,6 +1542,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
       "numerics.frontend.catalog": "sagejs.numerics.frontends",
       "numerics.frontend.parser_guards": "sagejs.numerics.frontends",
+      "numerics.frontend.matlab_shapes": "sagejs.numerics.frontends",
       "numerics.frontend.scipy_execution": "external:scipy-python",
       "numerics.frontend.guardrails": "sagejs.numerics.frontends",
       "numerics.teaching.root": "sagejs.numerics",

@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Build backend-neutral P0-P8 corpora, real Sage.js Node adapters, capability binding drafts, fail-closed matrix policy templates, and qualification tests without fabricating platform evidence",
-  "base_commit": "7c791beaed004f021954e06a7a1e06809d524edc",
+  "base_commit": "ede33082cec2ce77401084dfc047d1676b144a3f",
   "claims": [
     ".agents/lanes.json",
     "bench/numerical-computing/qualification/",
@@ -39,10 +39,40 @@
     "node scripts/numerical-computing/qualification/validate-campaign.cjs",
     "pnpm architecture:check"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "node scripts/numerical-computing/qualification/validate-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.062,
+      "started_at": "2026-08-31T20:31:22.698Z",
+      "commit": "49ddadf2803fc7df3f379e7fbfc3ebff23640249",
+      "workspace_fingerprint": "a00282deddd416883469236a99416d0d46d68c519dd8ade3266808eb713c452c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/evidence/qualification.cjs test/numerics/evidence/qualification-campaign.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 26.495,
+      "started_at": "2026-08-31T20:32:29.161Z",
+      "commit": "49ddadf2803fc7df3f379e7fbfc3ebff23640249",
+      "workspace_fingerprint": "fa4bc6113fa3a67ab326f4f901aed39b16eff9dee4655af43d0e5dc26ded0ee4",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Advanced the source-bound P0-P8 Node qualification campaign to corpus v5: 39 backend-neutral cases and 26 available capabilities. Corrected the final multilingual catalog to 63 supported, 25 structured-unsupported, and 59 envelope-bound emitters; replaced stale unsafe MATLAB/Wolfram catalog witnesses; executed eleven built-MATLAB-parser programs for one-output and callback row/column shape; and fault-injected missing/corrupt cminpack optional resources through the real public least-squares artifact. Automatic least squares remains on independently checked ordinary Python while explicit cminpack returns stable nonleaking structured failure. A disposable dirty-lane full campaign passed all 39 cases; it is not a release receipt and no platform evidence was checked in.",
+    "risks": [
+      "No final Node, SEA, browser, or worker platform receipt has been collected. Both matrix templates intentionally remain evidence-free and fail closed until the exact clean candidate is measured on each required host/runtime.",
+      "The cminpack case injects missing/corrupt failures at the built runtime's lazy backend state and checks the public least-squares result; browser fetch and corrupt-byte isolation remain separate browser qualification evidence.",
+      "The merged source currently has a stale optimizer-opportunity generated manifest, so architecture:check stops at that shared integration-owned check after all earlier architecture gates pass.",
+      "NLopt central integration was not yet present at the source closure and therefore has no capability or campaign case in corpus v5."
+    ],
+    "next_steps": [
+      "After central NLopt integration lands, reactivate this lane, merge the new source closure, and add exact executable cases/capability envelopes for its public selection, fallback, cancellation, and resource semantics.",
+      "Refresh the shared optimizer-opportunity artifacts in the integration lane and rerun architecture:check.",
+      "Only after source freeze, bind fresh capability manifests and collect immutable clean receipts independently on every required Node, SEA, browser, and worker row."
+    ]
   }
 }
