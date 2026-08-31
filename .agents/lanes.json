@@ -194,6 +194,8 @@
         "agents/numerical-computing-product-plan.md",
         "scripts/check-numerical-surface.cjs",
         "src/lib/sagejs/numerics/capabilities.py",
+        "src/lib/sagejs/numerics/frontends/operations.py",
+        "src/lib/sagejs/numerics/frontends/registry.py",
         "src/lib/sagejs/numerics/model.py",
         "src/lib/sagejs/numerics/sweeps.py"
       ],
