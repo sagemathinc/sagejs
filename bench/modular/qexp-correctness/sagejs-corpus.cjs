@@ -119,43 +119,73 @@ async function verifySagejsCorpus() {
       `[${character.conrey_number}, ${character.dimension}]`,
     );
 
-    const oldNew = PINNED.old_new;
-    await session.evaluate(
-      [
-        `_qexp_oldnew_space=CuspForms(${oldNew.level},${oldNew.weight},prec=${oldNew.precision})`,
-        `_qexp_oldnew_old=_qexp_oldnew_space.old_subspace()`,
-        `_qexp_oldnew_ambient_matrix=_qexp_corpus_matrix(_qexp_oldnew_space.q_expansion_basis(${oldNew.precision},algorithm='modular_symbols'),${oldNew.precision})`,
-        `_qexp_oldnew_old_matrix=_qexp_corpus_matrix(_qexp_oldnew_old.q_expansion_basis(${oldNew.precision}),${oldNew.precision})`,
-      ].join("\n"),
-    );
-    const oldNewAmbient = await evaluateString(
-      session,
-      "_qexp_corpus_encode(_qexp_oldnew_ambient_matrix)",
-    );
-    const oldNewOld = await evaluateString(
-      session,
-      "_qexp_corpus_encode(_qexp_oldnew_old_matrix)",
-    );
-    observations.old_new = {
-      id: oldNew.id,
-      ambient_sha256: sha256(oldNewAmbient),
-      old_sha256: sha256(oldNewOld),
-      dimensions: (
-        await session.evaluate(
-          "[_qexp_oldnew_space.dimension(),_qexp_oldnew_old.dimension(),_qexp_oldnew_space.new_subspace().dimension()]",
-        )
-      ).repr,
-    };
-    assert.equal(observations.old_new.ambient_sha256, oldNew.ambient_sha256);
-    assert.equal(observations.old_new.old_sha256, oldNew.old_sha256);
-    assert.equal(
-      observations.old_new.dimensions,
-      `[${oldNew.ambient_dimension}, ${oldNew.old_dimension}, ${oldNew.new_dimension}]`,
-    );
+    observations.old_new = [];
+    for (const oldNew of PINNED.old_new) {
+      const prefix = `_qexp_oldnew_${oldNew.level}_${oldNew.weight}`;
+      await session.evaluate(
+        [
+          `${prefix}_space=CuspForms(${oldNew.level},${oldNew.weight},prec=${oldNew.precision})`,
+          `${prefix}_old=${prefix}_space.old_subspace()`,
+          `${prefix}_new=${prefix}_space.new_subspace()`,
+          `${prefix}_symbols=ModularSymbols(${oldNew.level},${oldNew.weight},sign=1).cuspidal_submodule()`,
+          `${prefix}_ambient_matrix=_qexp_corpus_matrix(${prefix}_space.q_expansion_basis(${oldNew.precision},algorithm='modular_symbols'),${oldNew.precision})`,
+          `${prefix}_old_matrix=_qexp_corpus_matrix(${prefix}_old.q_expansion_basis(${oldNew.precision}),${oldNew.precision})`,
+          `${prefix}_new_matrix=_qexp_corpus_matrix(${prefix}_new.q_expansion_basis(${oldNew.precision}),${oldNew.precision})`,
+        ].join("\n"),
+      );
+      const observation = {
+        id: oldNew.id,
+        ambient_sha256: sha256(
+          await evaluateString(
+            session,
+            `_qexp_corpus_encode(${prefix}_ambient_matrix)`,
+          ),
+        ),
+        old_sha256: sha256(
+          await evaluateString(
+            session,
+            `_qexp_corpus_encode(${prefix}_old_matrix)`,
+          ),
+        ),
+        new_sha256: sha256(
+          await evaluateString(
+            session,
+            `_qexp_corpus_encode(${prefix}_new_matrix)`,
+          ),
+        ),
+        dimensions: (
+          await session.evaluate(
+            `[${prefix}_space.dimension(),${prefix}_old.dimension(),${prefix}_new.dimension(),${oldNew.precision}>${prefix}_space.sturm_bound()]`,
+          )
+        ).repr,
+        hecke_characteristic_polynomials: {},
+      };
+      assert.equal(observation.ambient_sha256, oldNew.ambient_sha256);
+      assert.equal(observation.old_sha256, oldNew.old_sha256);
+      assert.equal(observation.new_sha256, oldNew.new_sha256);
+      assert.equal(
+        observation.dimensions,
+        `[${oldNew.ambient_dimension}, ${oldNew.old_dimension}, ${oldNew.new_dimension}, True]`,
+      );
+      for (const [index, polynomial] of Object.entries(
+        oldNew.hecke_characteristic_polynomials,
+      )) {
+        const actual = await evaluateString(
+          session,
+          `str(${prefix}_symbols.hecke_matrix(${index}).charpoly())`,
+        );
+        observation.hecke_characteristic_polynomials[index] = actual;
+        assert.equal(actual, polynomial);
+      }
+      observations.old_new.push(observation);
+    }
 
     const coefficientField = PINNED.coefficient_field;
     await session.evaluate(
-      `_qexp_newform=Newforms(${coefficientField.level},${coefficientField.weight},names='a',prec=16)[0]`,
+      [
+        `_qexp_newform=Newforms(${coefficientField.level},${coefficientField.weight},names='a',prec=${coefficientField.precision})[0]`,
+        `_qexp_newform_basis=_qexp_corpus_matrix(CuspForms(${coefficientField.level},${coefficientField.weight}).new_subspace().q_expansion_basis(${coefficientField.precision}),${coefficientField.precision})`,
+      ].join("\n"),
     );
     observations.coefficient_field = {
       id: coefficientField.id,
@@ -165,7 +195,17 @@ async function verifySagejsCorpus() {
         )
       ).repr,
       hecke_characteristic_polynomials: {},
+      basis_sha256: sha256(
+        await evaluateString(
+          session,
+          "_qexp_corpus_encode(_qexp_newform_basis)",
+        ),
+      ),
     };
+    assert.equal(
+      observations.coefficient_field.basis_sha256,
+      coefficientField.basis_sha256,
+    );
     assert.equal(
       observations.coefficient_field.invariants,
       `[${coefficientField.field_degree}, '${coefficientField.defining_polynomial}']`,
@@ -179,6 +219,46 @@ async function verifySagejsCorpus() {
       );
       observations.coefficient_field.hecke_characteristic_polynomials[prime] =
         actual;
+      assert.equal(actual, polynomial);
+    }
+
+    const higherField = PINNED.higher_coefficient_field;
+    await session.evaluate(
+      [
+        `_qexp_higher_newform=Newforms(${higherField.level},${higherField.weight},names='b',prec=${higherField.precision})[0]`,
+        `_qexp_higher_basis=_qexp_corpus_matrix(CuspForms(${higherField.level},${higherField.weight}).new_subspace().q_expansion_basis(${higherField.precision}),${higherField.precision})`,
+      ].join("\n"),
+    );
+    observations.higher_coefficient_field = {
+      id: higherField.id,
+      invariants: (
+        await session.evaluate(
+          "[_qexp_higher_newform.coefficient_field().degree(),str(_qexp_higher_newform.defining_polynomial())]",
+        )
+      ).repr,
+      hecke_characteristic_polynomials: {},
+      basis_sha256: sha256(
+        await evaluateString(session, "_qexp_corpus_encode(_qexp_higher_basis)"),
+      ),
+    };
+    assert.equal(
+      observations.higher_coefficient_field.basis_sha256,
+      higherField.basis_sha256,
+    );
+    assert.equal(
+      observations.higher_coefficient_field.invariants,
+      `[${higherField.field_degree}, '${higherField.defining_polynomial}']`,
+    );
+    for (const [prime, polynomial] of Object.entries(
+      higherField.hecke_characteristic_polynomials,
+    )) {
+      const actual = await evaluateString(
+        session,
+        `str(_qexp_higher_newform.hecke_constituent().hecke_matrix(${prime}).charpoly())`,
+      );
+      observations.higher_coefficient_field.hecke_characteristic_polynomials[
+        prime
+      ] = actual;
       assert.equal(actual, polynomial);
     }
 

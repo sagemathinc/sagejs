@@ -16427,8 +16427,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#957b693c349934d0-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -16442,8 +16443,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#96b86da201d30303-e7f6f82a048f2867",
+            "status": "pass",
+            "actual": "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 - 16744*q^7 + O(q^8)\n"
           }
         },
         {
@@ -16457,8 +16459,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#0c1cafa5d766a5a7-3cbc87c7681f34db",
+            "status": "pass",
+            "actual": "True\n"
           }
         }
       ]
@@ -16534,8 +16537,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#8df4654ed7387978-cefdabba6bf347c1",
+            "status": "pass",
+            "actual": "[((1, 2), (11, 2))]\n"
           }
         }
       ]
@@ -16611,8 +16615,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#fe85b20279a780b5-e3b0c44298fc1c14",
+            "status": "pass",
+            "actual": ""
           }
         },
         {
@@ -16626,8 +16631,9 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "status": "unverified",
-            "reason": "run pnpm docs:verify"
+            "id": "src/baselib/modular.py#a0e18d83ecc03c5c-cd589672dc7b7b8a",
+            "status": "pass",
+            "actual": "(False, 'the eta product has a pole at a cusp')\n"
           }
         }
       ]
@@ -37059,11 +37065,11 @@
       "entries_with_examples": 218,
       "entries_without_examples": 95,
       "documented": 222,
-      "verified": 210,
+      "verified": 216,
       "skipped": 4,
       "expected_failures": 2,
       "failing": 0,
-      "unverified": 6,
+      "unverified": 0,
       "random_seed": "sagejs-reference-0"
     }
   }

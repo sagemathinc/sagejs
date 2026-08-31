@@ -6,8 +6,10 @@ $q$-expansion engines. It covers:
 - formula/modular-symbol span equality at level $1$ and level $2$;
 - honest proper spans at level $2$ and composite level $6$;
 - a rational nontrivial-character modular-symbol space;
-- an entirely old weight-$2$ space at level $22$;
-- a quadratic coefficient field at level $23$; and
+- old/new decompositions at prime level, prime-square level, two-prime level,
+  and a level with several degeneracy sources;
+- a repeated anemic eigensystem at level $22$ which is separated by $U_2$;
+- quadratic and cubic coefficient fields at levels $23$ and $41$; and
 - prime-power Hecke recurrences beyond the relevant Sturm bounds.
 
 `pinned-corpus.json` stores dimensions, exact polynomial invariants, and
@@ -22,8 +24,13 @@ node bench/modular/qexp-correctness/run-oracles.cjs
 ```
 
 The defaults are `/home/user/sagelite/sage` and `/home/user/bin/magma`;
-override them with `SAGE` and `MAGMA`. The runner fails on any coefficient,
-dimension, character, old/new, or Hecke-polynomial disagreement.
+override them with `SAGE` and `MAGMA`. PARI is called through the independent
+`cypari2` shipped with the SageMath oracle environment. The runner fails on
+any coefficient, dimension, character, old/new, or Hecke-polynomial
+disagreement. In particular, the rational bases underlying both
+coefficient-field examples are compared at a precision strictly beyond their
+Sturm bounds; selected eigenvalue minimal polynomials are additional checks,
+not substitutes for coefficient comparison.
 
 Run Sage.js itself against the same pins with:
 
@@ -32,3 +39,5 @@ node bench/modular/qexp-correctness/sagejs-corpus.cjs
 ```
 
 The corresponding integration test is `test/qexp-p0-correctness.cjs`.
+`source-freeze.json` then hashes the exact implementation, corpus, oracle,
+test, and documentation sources exercised by the cross-platform freeze.

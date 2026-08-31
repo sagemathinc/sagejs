@@ -10,6 +10,12 @@ CertifiedEtaProduct: Any
 CertifiedModularForm: Any
 EtaProductCertificate: Any
 ExactNebentypus: Any
+FormulaAmbientComparisonCertificate: Any
+FormulaEigenpacket: Any
+FormulaEigenpacketCertificate: Any
+FormulaHeckeActionCertificate: Any
+FormulaHeckeObstruction: Any
+FormulaHeckeSubspace: Any
 LevelOneBasisCertificate: Any
 ModularSymbolsQExpansionCertificate: Any
 OldformMetadata: Any
@@ -17,6 +23,7 @@ QExpansionAlgebraCertificate: Any
 QExpansionAlgorithmReceipt: Any
 NewOldDecompositionCertificate: Any
 NewformCertificate: Any
+ModularFormLSeriesInput: Any
 NormalizedNewform: Any
 OldModularFormsSubspace: Any
 UnaryThetaSeriesCertificate: Any
@@ -118,6 +125,7 @@ _QEXP_EXPORTS = [
     "ModularSymbolsQExpansionCertificate",
     "NewOldDecompositionCertificate",
     "NewformCertificate",
+    "ModularFormLSeriesInput",
     "NormalizedNewform",
     "OldModularFormsSubspace",
     "delta_form",
@@ -130,6 +138,12 @@ _QEXP_ALGEBRA_EXPORTS = [
     "CertifiedFormulaSubspace",
     "CertifiedModularForm",
     "ExactNebentypus",
+    "FormulaAmbientComparisonCertificate",
+    "FormulaEigenpacket",
+    "FormulaEigenpacketCertificate",
+    "FormulaHeckeActionCertificate",
+    "FormulaHeckeObstruction",
+    "FormulaHeckeSubspace",
     "OldformMetadata",
     "QExpansionAlgebraCertificate",
     "QExpansionAlgorithmReceipt",
@@ -174,11 +188,18 @@ __all__ = [
     "CertifiedModularForm",
     "EtaProductCertificate",
     "ExactNebentypus",
+    "FormulaAmbientComparisonCertificate",
+    "FormulaEigenpacket",
+    "FormulaEigenpacketCertificate",
+    "FormulaHeckeActionCertificate",
+    "FormulaHeckeObstruction",
+    "FormulaHeckeSubspace",
     "ExactModularForm",
     "LevelOneBasisCertificate",
     "ModularSymbolsQExpansionCertificate",
     "NewOldDecompositionCertificate",
     "NewformCertificate",
+    "ModularFormLSeriesInput",
     "NormalizedNewform",
     "OldModularFormsSubspace",
     "OldformMetadata",
@@ -287,6 +308,7 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
     if name in [
         "NewOldDecompositionCertificate",
         "NewformCertificate",
+        "ModularFormLSeriesInput",
         "NormalizedNewform",
         "OldModularFormsSubspace",
     ]:
