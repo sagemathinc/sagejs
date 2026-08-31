@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "numeric_type": "binary64-real",
+  "dimension": 1,
+  "cases": [
+    {
+      "id": "polynomial_degree_four",
+      "class": "analytic",
+      "integrand": "x4",
+      "bounds": [0.0, 1.0],
+      "expected": 0.2,
+      "absolute_acceptance": 1e-13
+    },
+    {
+      "id": "sine_half_period",
+      "class": "analytic",
+      "integrand": "sin",
+      "bounds": [0.0, 3.141592653589793],
+      "expected": 2.0,
+      "absolute_acceptance": 1e-12
+    },
+    {
+      "id": "reversed_orientation",
+      "class": "metamorphic",
+      "integrand": "x2",
+      "bounds": [1.0, 0.0],
+      "expected": -0.3333333333333333,
+      "absolute_acceptance": 1e-13
+    },
+    {
+      "id": "known_cusp",
+      "class": "pathological",
+      "integrand": "cusp_03",
+      "bounds": [0.0, 1.0],
+      "expected": 0.29,
+      "absolute_acceptance": 1e-12,
+      "options": {"breakpoints": [0.3]}
+    },
+    {
+      "id": "known_jump",
+      "class": "pathological",
+      "integrand": "step_025",
+      "bounds": [0.0, 1.0],
+      "expected": 0.75,
+      "absolute_acceptance": 1e-12,
+      "options": {"breakpoints": [0.25]}
+    },
+    {
+      "id": "logarithmic_left_endpoint",
+      "class": "singular",
+      "integrand": "log",
+      "bounds": [0.0, 1.0],
+      "expected": -1.0,
+      "absolute_acceptance": 2e-10,
+      "options": {"endpoint_singularities": "left"}
+    },
+    {
+      "id": "inverse_square_root_left_endpoint",
+      "class": "singular",
+      "integrand": "inverse_sqrt",
+      "bounds": [0.0, 1.0],
+      "expected": 2.0,
+      "absolute_acceptance": 1e-11,
+      "options": {"endpoint_singularities": "left"}
+    },
+    {
+      "id": "beta_half_half",
+      "class": "singular",
+      "integrand": "beta_half",
+      "bounds": [0.0, 1.0],
+      "expected": 3.141592653589793,
+      "absolute_acceptance": 1e-10,
+      "options": {"endpoint_singularities": "both"}
+    },
+    {
+      "id": "positive_infinite_exponential",
+      "class": "infinite",
+      "integrand": "exp_negative",
+      "bounds": [0.0, "+infinity"],
+      "expected": 1.0,
+      "absolute_acceptance": 2e-10
+    },
+    {
+      "id": "negative_infinite_exponential",
+      "class": "infinite",
+      "integrand": "exp_positive",
+      "bounds": ["-infinity", 0.0],
+      "expected": 1.0,
+      "absolute_acceptance": 2e-10
+    },
+    {
+      "id": "whole_line_gaussian",
+      "class": "infinite",
+      "integrand": "gaussian",
+      "bounds": ["-infinity", "+infinity"],
+      "expected": 1.772453850905516,
+      "absolute_acceptance": 2e-10
+    },
+    {
+      "id": "whole_line_cauchy",
+      "class": "infinite",
+      "integrand": "cauchy",
+      "bounds": ["-infinity", "+infinity"],
+      "expected": 3.141592653589793,
+      "absolute_acceptance": 2e-10
+    },
+    {
+      "id": "finite_cancellation",
+      "class": "conditioned",
+      "integrand": "large_odd",
+      "bounds": [-1.0, 1.0],
+      "expected": 0.0,
+      "absolute_acceptance": 1e-10,
+      "expected_diagnostic": "loss_of_significance"
+    },
+    {
+      "id": "callback_exception",
+      "class": "failure",
+      "integrand": "raise_at_center",
+      "bounds": [0.0, 1.0],
+      "expected_stop_reason": "callback_error"
+    },
+    {
+      "id": "nonfinite_callback",
+      "class": "failure",
+      "integrand": "nonfinite_at_center",
+      "bounds": [0.0, 1.0],
+      "expected_stop_reason": "nonfinite_evaluation"
+    },
+    {
+      "id": "evaluation_budget",
+      "class": "failure",
+      "integrand": "x2",
+      "bounds": [0.0, 1.0],
+      "options": {"max_evaluations": 10},
+      "expected_stop_reason": "maximum_evaluations"
+    },
+    {
+      "id": "depth_budget",
+      "class": "failure",
+      "integrand": "cusp_012345",
+      "bounds": [0.0, 1.0],
+      "options": {
+        "absolute_tolerance": 1e-15,
+        "relative_tolerance": 1e-15,
+        "max_depth": 0
+      },
+      "expected_stop_reason": "maximum_depth"
+    },
+    {
+      "id": "workspace_budget",
+      "class": "failure",
+      "integrand": "x2",
+      "bounds": [0.0, 1.0],
+      "options": {"max_memory_bytes": 100},
+      "expected_stop_reason": "maximum_memory"
+    }
+  ]
+}

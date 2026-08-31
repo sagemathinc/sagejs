@@ -1,0 +1,44 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-integration",
+  "title": "Validated adaptive integration",
+  "lane": "numerical-integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement adaptive quadrature and integration with error evidence, resource budgets, traces, failure classification and P2 acceptance tests",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "src/lib/sagejs/numerics/integration/",
+    "test/numerics/integration/",
+    "bench/numerics/integration/",
+    "docs/numerical-computing/integration/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SciPy/mpmath and analytic-integral differential corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

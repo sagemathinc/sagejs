@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "operation": "definite_integral",
+  "implementation": "sagejs.numerics.integration",
+  "method": "adaptive_gauss_kronrod",
+  "numeric_type": "binary64-real",
+  "dimensions": {
+    "1": "implemented",
+    "2_or_more": "unsupported_global_error_and_resource_contract"
+  },
+  "domains": {
+    "finite": "implemented_gauss_10_kronrod_21",
+    "finite_reversed": "implemented_signed_orientation",
+    "positive_infinite": "implemented_rational_transform_gauss_7_kronrod_15",
+    "negative_infinite": "implemented_rational_transform_gauss_7_kronrod_15",
+    "whole_infinite": "implemented_paired_rational_transform_gauss_7_kronrod_15",
+    "known_interior_breakpoints": "implemented_finite_only",
+    "known_endpoint_singularities": "implemented_explicit_quadratic_transform",
+    "unknown_singularities": "not_detected_or_claimed",
+    "principal_value": "unsupported",
+    "weighted_oscillatory": "unsupported",
+    "complex": "unsupported"
+  },
+  "evidence": {
+    "embedded_error": "QUADPACK_style_resabs_resasc_estimate_not_enclosure",
+    "independent": "two_panel_gauss_legendre_8_on_each_final_leaf",
+    "truth_level_on_success": "validated_approximate",
+    "rigorous_enclosure": false
+  },
+  "hard_budgets": [
+    "callback_evaluations",
+    "active_intervals",
+    "subdivision_depth",
+    "elapsed_time",
+    "workspace_memory",
+    "trace_events",
+    "trace_bytes",
+    "cancellation"
+  ],
+  "platform_intent": [
+    "browser",
+    "node",
+    "sea",
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64"
+  ],
+  "qualification": {
+    "routine": "CPython_and_Sage.js_corpus_plus_SciPy_mpmath_differential",
+    "release": "pending_persistent_four_platform_browser_and_SEA_receipts"
+  }
+}
