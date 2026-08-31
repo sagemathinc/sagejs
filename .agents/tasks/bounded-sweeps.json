@@ -1,0 +1,104 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "bounded-sweeps",
+  "title": "Deterministic bounded parameter sweeps",
+  "lane": "numerical-sweeps",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement a deterministic, resource-bounded, cancellation-aware parameter-sweep contract with structured per-item outcomes and portable sequential fallback",
+  "base_commit": "3e1eef25e4a4f2e84734fa922c2f726b066bbde2",
+  "claims": [
+    "src/lib/sagejs/numerics/sweeps.py",
+    "test/numerics/sweeps/bounded-sweeps.cjs",
+    "test/cpython/numerical-sweeps.py",
+    "docs/numerical-computing/bounded-sweeps.md",
+    "bench/numerical-sweeps.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "agents/numerical-computing-product-plan.md",
+    "ARCHITECTURE.md"
+  ],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "CPython 3 ordinary-source execution",
+      "deterministic/metamorphic sweep invariants"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "fallback",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node --test test/numerics/sweeps/bounded-sweeps.cjs",
+    "pnpm exec pyright src/lib/sagejs/numerics/sweeps.py",
+    "pnpm test:baselib:strict",
+    "node bench/numerical-sweeps.cjs",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/sweeps/bounded-sweeps.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.725,
+      "started_at": "2026-08-31T15:53:06.622Z",
+      "commit": "3e1eef25e4a4f2e84734fa922c2f726b066bbde2",
+      "workspace_fingerprint": "e8d802f7c7f52eaafb11eae7d351cc987d1d41f971668c4799d27538dbc46650",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/sweeps.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.448,
+      "started_at": "2026-08-31T15:53:14.762Z",
+      "commit": "3e1eef25e4a4f2e84734fa922c2f726b066bbde2",
+      "workspace_fingerprint": "e8d802f7c7f52eaafb11eae7d351cc987d1d41f971668c4799d27538dbc46650",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.312,
+      "started_at": "2026-08-31T15:53:21.483Z",
+      "commit": "3e1eef25e4a4f2e84734fa922c2f726b066bbde2",
+      "workspace_fingerprint": "e8d802f7c7f52eaafb11eae7d351cc987d1d41f971668c4799d27538dbc46650",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/numerical-sweeps.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 15.787,
+      "started_at": "2026-08-31T15:54:17.232Z",
+      "commit": "3e1eef25e4a4f2e84734fa922c2f726b066bbde2",
+      "workspace_fingerprint": "e8d802f7c7f52eaafb11eae7d351cc987d1d41f971668c4799d27538dbc46650",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented an ordinary-Python deterministic bounded parameter-sweep contract with zero-callback planning, stable input ordering, reproducible 52-bit per-item seeds and shard offsets, fixed aggregate evaluation/memory/trace/result credits, measured input/result JSON, cooperative deadlines and cancellation, collect/fail-fast policies, bounded synchronous batch-executor backpressure, explicit sequential fallback, structured per-item outcomes, finite detached JSON, and reproducibility provenance. Focused CPython and Sage.js tests cover ODE-shaped use, adversarial failure/budget behavior, reversed completion order, and a real CPython threaded adapter whose active work never exceeds the requested bound.",
+    "risks": [
+      "Memory accounting and synchronous callback cancellation are necessarily cooperative; a host needing preemption must enforce it at its worker boundary.",
+      "Equal deterministic credit partitioning is conservative for heterogeneous jobs; unused item credits are intentionally not timing-dependently reassigned.",
+      "The recorded 256-item trivial-callback benchmark measured 23 microseconds/item in CPython and 1.31 milliseconds/item in Sage.js; canonical result serialization measured 33.5 microseconds/item and 4.98 milliseconds/item respectively. Real solver work amortizes this, but tiny jobs should be grouped and serialization remains a visible runtime cost.",
+      "Only CPython Linux x64, Sage.js/Node Linux x64, and a CPython threaded adapter have focused receipts in this lane; no browser-worker or release-platform support is claimed yet.",
+      "Repository-wide test:changed is blocked before this lane by the integration branch's currently unowned numerical approximation package in architecture/package-graph.json."
+    ],
+    "next_steps": [
+      "Integration must add src/lib/sagejs/numerics/sweeps.py to architecture/package-graph.json and pyrightconfig.json, then re-export the public API from sagejs.numerics and classify it in the numerical capability/surface ledgers.",
+      "Integration should retain test/numerics/sweeps/bounded-sweeps.cjs in the numerical test discovery and rerun complete numerics, architecture, and strict-Python gates after all domain package ownership is registered.",
+      "Add a thin public ODE adapter that charges the nested OdeResult evaluation count and returns its structured result; do not implement a second scheduler in the ODE package.",
+      "Qualify the integrated source and any replayable browser worker adapter on Linux ARM64, macOS ARM64, Windows x64, browser, SEA, and npm before publishing those capability claims."
+    ]
+  }
+}
