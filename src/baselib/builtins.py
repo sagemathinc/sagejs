@@ -3539,9 +3539,9 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
         text = _builtins_class_help(item, False)
     else:
         constructor = _builtins_get_member(item, "constructor")
-        if _builtins_is_python_class(constructor):
-            text = _builtins_class_help(item, True)
-        elif runtime.strict_equal(runtime.jstype(item), "function"):
+        # Bound methods are host functions whose Function constructor also
+        # carries Python class metadata, so classify the callable first.
+        if runtime.strict_equal(runtime.jstype(item), "function"):
             name = _builtins_callable_name(item)
             bound = _builtins_has_member(item, "__self__")
             kind = "method" if bound else "function"
@@ -3558,6 +3558,8 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
             if doc:
                 lines.extend(["", _builtins_indent_doc(doc, "    ")])
             text = str.join("\n", lines)
+        elif _builtins_is_python_class(constructor):
+            text = _builtins_class_help(item, True)
         else:
             type_name = _builtins_callable_name(constructor)
             text = "Help on " + type_name + " object."

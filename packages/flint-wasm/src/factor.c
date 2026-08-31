@@ -12,6 +12,7 @@
 #include <flint/fmpq_poly.h>
 
 #include "charpoly.h"
+#include "prime_count.h"
 
 #define SAGEJS_FACTOR_INPUT_CAPACITY 4096
 #define SAGEJS_FACTOR_OUTPUT_CAPACITY 65536
@@ -358,6 +359,22 @@ cleanup:
     fmpz_clear(value);
     fmpz_clear(answer);
     return status;
+}
+
+/*
+ * Count primes through x using the same host-neutral Lehmer implementation as
+ * the native addon.  The public Python boundary rejects values at or above
+ * 2^63 before reaching this adapter, so UINT64_MAX remains available as an
+ * allocation-failure sentinel.
+ */
+__attribute__((visibility("default")))
+uint64_t sagejs_wasm_prime_pi(uint64_t value)
+{
+    uint64_t result;
+
+    if (!sagejs_prime_pi(value, &result))
+        return UINT64_MAX;
+    return result;
 }
 
 /*

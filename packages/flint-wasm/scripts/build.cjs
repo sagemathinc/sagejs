@@ -460,6 +460,7 @@ const flintLinkedSources = [
   resourceAdapterSource,
   path.join(repositoryRoot, "packages", "flint", "src", "analytic_batch_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "charpoly.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "prime_count.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "number_field_zeta_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
   path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
@@ -495,8 +496,8 @@ const numericSource = path.join(packageRoot, "src", "numeric.c");
 const numericExports = [...fs.readFileSync(numericSource, "utf8")
   .matchAll(/EXPORT\s+[\w\s*]+\s+(sagejs_numeric_\w+)\s*\(/g)]
   .map((match) => match[1]);
-if (numericExports.length !== 34 || new Set(numericExports).size !== 34) {
-  throw new Error("the reviewed 34-function numeric Wasm export closure drifted");
+if (numericExports.length !== 35 || new Set(numericExports).size !== 35) {
+  throw new Error("the reviewed 35-function numeric Wasm export closure drifted");
 }
 const dirichletGroupHostSource = path.join(packageRoot, "dirichlet-group.mjs");
 const dirichletGroupExports = [...new Set(
@@ -620,6 +621,7 @@ const exportNames = [
   "sagejs_factor",
   "sagejs_is_prime",
   "sagejs_next_prime",
+  "sagejs_wasm_prime_pi",
   "sagejs_wasm_mpoly_input",
   "sagejs_wasm_mpoly_input_capacity",
   "sagejs_wasm_mpoly_output",
@@ -655,6 +657,7 @@ const exportNames = [
   "sagejs_p1_apply",
   "sagejs_p1_presentation_field",
   "sagejs_p1_hecke_matrix",
+  "sagejs_p1_degeneracy_matrix",
   "sagejs_p1_boundary_data",
   "sagejs_p1_cuspidal_basis",
   "sagejs_p1_star_matrix",

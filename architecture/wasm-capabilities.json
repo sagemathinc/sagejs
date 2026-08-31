@@ -240,6 +240,15 @@
           "test/baselib-boundaries.cjs"
         ]
       },
+      "wasm-public-fallback-differential": {
+        "differential": true,
+        "paths": [
+          "packages/flint-wasm/test/factor.test.mjs",
+          "packages/flint-wasm/test/public-fallback-inventory.test.mjs",
+          "packages/flint-wasm/test/public-fallbacks.test.mjs",
+          "test/browser-wasm-parity-corpus.json"
+        ]
+      },
       "numpy-ts-browser-differential": {
         "differential": true,
         "paths": [
@@ -477,6 +486,10 @@
       "analytic:complex-gamma",
       "analytic:riemann-xi"
     ],
+    "brandt-degeneracy-and-elliptic-scalar-fallback": [
+      "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+      "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix"
+    ],
     "capability-report-api": [
       "specialist:capability-report-api"
     ],
@@ -525,6 +538,11 @@
     "exact-integer-factorization": [
       "specialist:integer-factorization-wasm"
     ],
+    "exact-public-builtins": [
+      "napi:@sagemath/sagejs-flint:binomial",
+      "napi:@sagemath/sagejs-flint:factorial",
+      "napi:@sagemath/sagejs-flint:primePi"
+    ],
     "exact-matrices-and-finite-field-polynomials": [
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
@@ -560,6 +578,10 @@
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
+    ],
+    "portable-extension-and-complex-matrices": [
+      "napi:@sagemath/sagejs-flint:acbMatrix",
+      "napi:@sagemath/sagejs-flint:fqMatrix"
     ],
     "multivariate-resultant-packed": [
       "wasm-library:flint:fmpz-mpoly-resultant-packed-v1"
@@ -12162,7 +12184,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -12181,7 +12204,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -12200,7 +12224,8 @@
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13165,7 +13190,8 @@
         "src/baselib/elliptic_curves.py"
       ],
       "tests": [
-        "elliptic-lseries-differential"
+        "elliptic-lseries-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13225,7 +13251,8 @@
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13453,7 +13480,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13472,7 +13500,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13510,7 +13539,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13529,7 +13559,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13548,7 +13579,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13586,7 +13618,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13605,7 +13638,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13624,7 +13658,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13643,7 +13678,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13662,7 +13698,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13681,7 +13718,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13719,7 +13757,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -13738,7 +13777,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -14579,7 +14619,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -14712,7 +14753,8 @@
         "src/baselib/matrix.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
       "status": "fallback",
       "reviewed": true,
@@ -15944,19 +15986,21 @@
       "kind": "napi-export",
       "family": "modular-symbols",
       "source": "packages/flint/src/p1.c",
-      "disposition": "portable-fallback",
+      "disposition": "shared-core",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
       "tests": [
-        "modular-symbols-differential"
+        "modular-symbols-differential",
+        "wasm-public-fallback-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The host-neutral weight-2 degeneracy core executes in the receipt-authenticated FLINT WebAssembly artifact; only the typed host adapter differs.",
+      "public_explanation": "Weight-2 degeneracy matrices run in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback.",
+      "shared_core": "packages/flint/src/modsym_core.c"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
@@ -16598,19 +16642,21 @@
       "kind": "napi-export",
       "family": "exact-arithmetic",
       "source": "packages/flint/src/addon.c",
-      "disposition": "portable-fallback",
+      "disposition": "shared-core",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/builtins.py"
       ],
       "tests": [
-        "native-public-fallback-differential"
+        "native-public-fallback-differential",
+        "wasm-public-fallback-differential"
       ],
-      "status": "fallback",
+      "status": "available",
       "reviewed": true,
-      "review_note": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback.",
-      "public_explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "review_note": "The host-neutral exact prime-counting core executes in the receipt-authenticated FLINT WebAssembly artifact; only the typed host adapter differs.",
+      "public_explanation": "Exact prime counting through inputs below 2^63 runs in the receipt-authenticated FLINT WebAssembly artifact.",
+      "shared_core": "packages/flint/src/prime_count.c"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primorial",
