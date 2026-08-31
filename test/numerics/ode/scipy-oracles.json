@@ -28,6 +28,12 @@
       "status": 1,
       "success": true
     },
+    "initial-event-direction": {
+      "positive_final_time": 0.0,
+      "positive_event_count": 1,
+      "negative_final_time": 1.0,
+      "negative_event_count": 0
+    },
     "stiff-tracking": {
       "final_state": [0.5403023072928389],
       "final_time": 1.0,

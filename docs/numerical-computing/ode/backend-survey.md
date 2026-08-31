@@ -76,7 +76,11 @@ The adaptive controller uses a component-scaled weighted RMS error norm,
 acceptance at norm at most one, safety factor `0.9`, bounded growth/shrink, and
 the estimator-order exponent. Accepted steps retain the same method's quartic
 dense polynomial. Event location uses safeguarded bisection over that polynomial
-and rechecks the event residual.
+and rechecks the event residual. Independent midpoint checks scale the dense
+derivative defect by the accepted-step width and require it to remain within
+`64` requested state-tolerance units. That factor accommodates the quartic
+extension's defect constant while rejecting stage-aliasing cases by many orders
+of magnitude; it is not presented as a global forward-error bound.
 
 Stiff support is deliberately absent. The support record names `radau`, `bdf`,
 `lsoda`, `cvode`, and `sundials` as unsupported and points to mature external

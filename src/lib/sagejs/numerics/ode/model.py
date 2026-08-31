@@ -204,6 +204,8 @@ class OdeResourceBudget(ResourceBudget):
         for name, value in extras.items():
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(name + " must be a positive integer")
+        if max_output_points < 2:
+            raise ValueError("max_output_points must be an integer at least 2")
         self._ode_values = extras
 
     @property

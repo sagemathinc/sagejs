@@ -13,9 +13,10 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from .._json import canonical_json
 from ..diagnostics import NumericalDiagnostic
-from ..model import NumericalValidation
-from ..trace import NumericalTrace, TracePolicy
+from ..model import STATUS_CODES, NumericalValidation
+from ..trace import NumericalTrace, TraceEvent, TracePolicy
 from .capabilities import plan_ode
 from .model import (
     DenseOutputSegment,
@@ -35,6 +36,15 @@ _EPSILON = 2.220446049250313e-16
 _SAFETY = 0.9
 _MIN_FACTOR = 0.2
 _MAX_FACTOR = 10.0
+_DENSE_DEFECT_ACCEPTANCE_FACTOR = 64.0
+_TRACE_VECTOR_PREVIEW = 4
+_COMPACT_TRACE_BYTES = 4096
+_TRACE_FINISH_RESERVE = 1024
+
+
+def _shared_status_available(status: str) -> bool:
+    return any(str(code) == status for code in STATUS_CODES)
+
 
 # Dormand-Prince 5(4), with the endpoint derivative stored as stage seven.
 _RK45_C = (0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0)
@@ -107,6 +117,12 @@ class _StopOde(Exception):
         self.reason = reason
 
 
+class _OdeTrace(NumericalTrace):
+    def __init__(self, policy: TracePolicy) -> None:
+        super().__init__(policy)
+        self.omitted_details = 0
+
+
 class _OdeExecution:
     def __init__(
         self,
@@ -129,7 +145,12 @@ class _OdeExecution:
         if self.cancel is not None and self.cancel():
             raise _StopOde("cancelled", "cancelled")
         if self.elapsed_ms() > self.problem.ode_budget.max_elapsed_ms:
-            raise _StopOde("backend_failure", "maximum_elapsed")
+            status = (
+                "maximum_elapsed_time"
+                if _shared_status_available("maximum_elapsed_time")
+                else "backend_failure"
+            )
+            raise _StopOde(status, "maximum_elapsed_time")
 
     def _consume_callback(self) -> None:
         self.check()
@@ -154,53 +175,188 @@ class _OdeExecution:
         except _StopOde:
             raise
         except Exception as error:
-            self.trace.append(
-                "failure",
-                iteration=iteration,
-                evaluation=self.callback_evaluations,
-                data={"time": t, "error_type": type(error).__name__, "callback": "rhs"},
-                diagnostics=[NumericalDiagnostic("callback_error")],
-                important=True,
-                force=True,
-            )
+            if _retain_detailed_trace(self.trace):
+                _append_detailed_trace(
+                    self.trace,
+                    "failure",
+                    iteration=iteration,
+                    evaluation=self.callback_evaluations,
+                    data={
+                        "time": t,
+                        "error_type": type(error).__name__,
+                        "callback": "rhs",
+                    },
+                    diagnostics=[NumericalDiagnostic("callback_error")],
+                    important=True,
+                    force=True,
+                )
+            else:
+                _append_detailed_trace(self.trace, "failure", force=True)
             raise
+        self.check()
         try:
             value = coerce_state(raw, "ODE right-hand side")
         except ValueError as error:
             if "finite" in str(error):
-                self.trace.append(
-                    "failure",
-                    iteration=iteration,
-                    evaluation=self.callback_evaluations,
-                    data={"time": t, "callback": "rhs"},
-                    diagnostics=[NumericalDiagnostic("nonfinite_evaluation")],
-                    important=True,
-                    force=True,
-                )
+                if _retain_detailed_trace(self.trace):
+                    _append_detailed_trace(
+                        self.trace,
+                        "failure",
+                        iteration=iteration,
+                        evaluation=self.callback_evaluations,
+                        data={"time": t, "callback": "rhs"},
+                        diagnostics=[NumericalDiagnostic("nonfinite_evaluation")],
+                        important=True,
+                        force=True,
+                    )
+                else:
+                    _append_detailed_trace(self.trace, "failure", force=True)
                 raise _StopOde(
                     "nonfinite_evaluation", "nonfinite_right_hand_side"
                 ) from None
             raise
         if len(value) != len(self.problem.y0):
             raise ValueError("ODE right-hand side returned the wrong state dimension")
-        self.trace.append(
-            "evaluation",
-            iteration=iteration,
-            evaluation=self.callback_evaluations,
-            data={"time": t, "state": list(y), "derivative": value, "callback": "rhs"},
-        )
+        if _retain_detailed_trace(self.trace):
+            evaluation_data: dict[str, Any] = {"time": t, "callback": "rhs"}
+            evaluation_data.update(_trace_vector_fields("state", y))
+            evaluation_data.update(_trace_vector_fields("derivative", value))
+            _append_detailed_trace(
+                self.trace,
+                "evaluation",
+                iteration=iteration,
+                evaluation=self.callback_evaluations,
+                data=evaluation_data,
+            )
+        else:
+            _append_detailed_trace(self.trace, "evaluation")
         return value
 
     def event(self, event: OdeEvent, t: float, y: Sequence[float]) -> float:
         self._consume_callback()
         self.event_evaluations += 1
         try:
-            value = float(event.function(float(t), list(y)))
+            raw = event.function(float(t), list(y))
         except Exception:
             raise
+        self.check()
+        value = float(raw)
         if not math.isfinite(value):
             raise _StopOde("nonfinite_evaluation", "nonfinite_event")
         return value
+
+
+def _trace_vector_fields(
+    name: str, values: Sequence[float], *, compact: bool = False
+) -> dict[str, Any]:
+    """Return exact bounded trace fields for a state-sized vector."""
+    materialized = [float(value) for value in values]
+    if len(materialized) <= _TRACE_VECTOR_PREVIEW and not compact:
+        return {name: materialized}
+    if compact:
+        return {
+            name + "_summary": {
+                "dimension": len(materialized),
+                "minimum": min(materialized),
+                "maximum": max(materialized),
+                "max_abs": max(abs(value) for value in materialized),
+                "omitted_components": len(materialized),
+            }
+        }
+    head_count = _TRACE_VECTOR_PREVIEW // 2
+    tail_count = _TRACE_VECTOR_PREVIEW - head_count
+    indices = list(range(head_count)) + list(
+        range(len(materialized) - tail_count, len(materialized))
+    )
+    return {
+        name + "_summary": {
+            "dimension": len(materialized),
+            "preview_indices": indices,
+            "preview_values": [materialized[index] for index in indices],
+            "minimum": min(materialized),
+            "maximum": max(materialized),
+            "max_abs": max(abs(value) for value in materialized),
+            "omitted_components": len(materialized) - len(indices),
+        }
+    }
+
+
+def _retain_detailed_trace(trace: NumericalTrace) -> bool:
+    """Reserve very small byte budgets for the mandatory start/finish pair."""
+    return trace.policy.max_bytes >= _COMPACT_TRACE_BYTES
+
+
+def _append_detailed_trace(
+    trace: NumericalTrace,
+    kind: str,
+    *,
+    iteration: int | None = None,
+    evaluation: int | None = None,
+    accepted: bool | None = None,
+    data: Mapping[str, Any] | None = None,
+    diagnostics: Sequence[NumericalDiagnostic | Mapping[str, Any]] = (),
+    important: bool = False,
+    force: bool = False,
+) -> None:
+    """Append a detail record only when it leaves room for the final record."""
+    if not force and not trace.wants(kind):
+        return
+    if not _retain_detailed_trace(trace):
+        if isinstance(trace, _OdeTrace):
+            trace.omitted_details += 1
+        return
+    if len(trace.events) >= trace.policy.max_events - 1:
+        if isinstance(trace, _OdeTrace):
+            trace.omitted_details += 1
+        return
+    sequence = 0
+    if trace.events:
+        previous_sequence = trace.events[-1].to_dict().get("sequence")
+        if not isinstance(previous_sequence, int):
+            raise TypeError("trace event sequence must be an integer")
+        sequence = previous_sequence + 1
+    candidate = TraceEvent(
+        sequence,
+        kind,
+        iteration=iteration,
+        evaluation=evaluation,
+        accepted=accepted,
+        data=data,
+        diagnostics=diagnostics,
+        important=important,
+    )
+    projected = trace.to_dict()
+    projected_events = projected.get("events")
+    projected_observed = projected.get("observed_events")
+    if not isinstance(projected_events, list) or not isinstance(
+        projected_observed, int
+    ):
+        raise TypeError("trace projection has an invalid shape")
+    projected_events.append(candidate.to_dict())
+    projected["observed_events"] = projected_observed + 1
+    projected["retained_events"] = len(projected_events)
+    projected_size = len(canonical_json(projected).encode("utf-8"))
+    if projected_size + _TRACE_FINISH_RESERVE > trace.policy.max_bytes:
+        if isinstance(trace, _OdeTrace):
+            trace.omitted_details += 1
+        return
+    trace.append(
+        kind,
+        iteration=iteration,
+        evaluation=evaluation,
+        accepted=accepted,
+        data=data,
+        diagnostics=diagnostics,
+        important=important,
+        force=force,
+    )
+
+
+def _trace_event_record(occurrence: OdeEventOccurrence) -> dict[str, Any]:
+    record: dict[str, Any] = dict(occurrence.to_dict())
+    record.pop("state", None)
+    record.update(_trace_vector_fields("state", occurrence.state))
+    return record
 
 
 def _normalize_events(events: Any) -> list[OdeEvent]:
@@ -526,9 +682,7 @@ def _rk4_attempt(
 
 
 def _crosses(event: OdeEvent, old: float, new: float) -> bool:
-    if old == 0.0:
-        return False
-    crossing = new == 0.0 or old * new < 0.0
+    crossing = old == 0.0 or new == 0.0 or old * new < 0.0
     if not crossing:
         return False
     change = new - old
@@ -628,6 +782,7 @@ def _independent_validation(
     completed: bool,
     local_evidence: Mapping[str, Any],
 ) -> tuple[NumericalValidation, dict[str, Any], list[NumericalDiagnostic]]:
+    execution.check()
     checks: list[dict[str, Any]] = []
     diagnostics: list[NumericalDiagnostic] = []
     checks.append({"kind": "solver_completion", "passed": completed})
@@ -675,9 +830,12 @@ def _independent_validation(
     budget = _ValidationBudget(problem.ode_budget.max_validation_evaluations, execution)
     defect_samples: list[dict[str, Any]] = []
     function = problem.function
+    expected_defect_samples = 0
     if completed and function is not None and trajectory.segments:
         maximum = min(len(trajectory.segments), max(1, budget.maximum // 2))
-        for index in _sample_indices(len(trajectory.segments), maximum):
+        indices = _sample_indices(len(trajectory.segments), maximum)
+        expected_defect_samples = len(indices)
+        for index in indices:
             if not budget.consume():
                 break
             segment = trajectory.segments[index]
@@ -688,6 +846,7 @@ def _independent_validation(
                 rhs = coerce_state(
                     function(middle, state), "validation right-hand side"
                 )
+                execution.check()
                 if len(rhs) != len(state):
                     raise ValueError("validation right-hand side dimension mismatch")
                 difference = [derivative[i] - rhs[i] for i in range(len(state))]
@@ -695,34 +854,84 @@ def _independent_validation(
                     problem.atol[i] + problem.rtol * abs(state[i])
                     for i in range(len(state))
                 ]
+                step_width = abs(segment.t1 - segment.t0)
+                state_equivalent = [step_width * value for value in difference]
                 defect_samples.append(
                     {
                         "time": middle,
-                        "max_abs": max(abs(value) for value in difference),
-                        "weighted_rms": _weighted_norm(difference, scale),
+                        "step_width": step_width,
+                        "max_abs_derivative_defect": max(
+                            abs(value) for value in difference
+                        ),
+                        "max_abs_state_equivalent_defect": max(
+                            abs(value) for value in state_equivalent
+                        ),
+                        "derivative_weighted_rms": _weighted_norm(difference, scale),
+                        "scaled_state_equivalent_defect": _weighted_norm(
+                            state_equivalent, scale
+                        ),
                     }
                 )
+            except _StopOde:
+                raise
             except Exception as error:
                 defect_samples.append(
                     {"time": middle, "error_type": type(error).__name__}
                 )
-    defect_complete = all("max_abs" in sample for sample in defect_samples)
+    defect_available = expected_defect_samples > 0
+    defect_complete = len(defect_samples) == expected_defect_samples and all(
+        "scaled_state_equivalent_defect" in sample
+        and math.isfinite(float(sample["scaled_state_equivalent_defect"]))
+        and math.isfinite(float(sample["max_abs_derivative_defect"]))
+        for sample in defect_samples
+    )
+    maximum_scaled_state_defect = max(
+        [
+            float(sample.get("scaled_state_equivalent_defect", float("inf")))
+            for sample in defect_samples
+        ]
+        + [0.0]
+    )
+    defect_passed = (not defect_available) or (
+        defect_complete
+        and maximum_scaled_state_defect <= _DENSE_DEFECT_ACCEPTANCE_FACTOR
+    )
     dense_defect: dict[str, Any] = {
+        "available": defect_available,
         "sample_count": len(defect_samples),
+        "expected_sample_count": expected_defect_samples,
+        "sampled_times": [sample["time"] for sample in defect_samples],
         "max_abs_defect": max(
-            [float(sample.get("max_abs", 0.0)) for sample in defect_samples] + [0.0]
-        ),
-        "max_scaled_defect": max(
-            [float(sample.get("weighted_rms", 0.0)) for sample in defect_samples]
+            [
+                float(sample.get("max_abs_derivative_defect", 0.0))
+                for sample in defect_samples
+            ]
             + [0.0]
         ),
+        "max_abs_state_equivalent_defect": max(
+            [
+                float(sample.get("max_abs_state_equivalent_defect", 0.0))
+                for sample in defect_samples
+            ]
+            + [0.0]
+        ),
+        "max_derivative_weighted_rms": max(
+            [
+                float(sample.get("derivative_weighted_rms", 0.0))
+                for sample in defect_samples
+            ]
+            + [0.0]
+        ),
+        "max_scaled_state_equivalent_defect": maximum_scaled_state_defect,
+        "acceptance_threshold": _DENSE_DEFECT_ACCEPTANCE_FACTOR,
         "finite": defect_complete,
-        "interpretation": "sampled derivative defect of the dense polynomial; not a global error bound",
+        "passed": defect_passed,
+        "interpretation": "the sampled derivative defect is multiplied by its accepted-step width and compared with the requested state tolerance; this is not a global error bound",
     }
     checks.append(
         {
-            "kind": "sampled_dense_defect_finite",
-            "passed": defect_complete,
+            "kind": "sampled_dense_defect_accuracy",
+            "passed": defect_passed,
             **dense_defect,
         }
     )
@@ -730,8 +939,10 @@ def _independent_validation(
     for invariant in problem.invariants if completed else ():
         values: list[float] = []
         sample_count = min(len(trajectory.internal_times), 8)
+        indices = _sample_indices(len(trajectory.internal_times), sample_count)
+        sampled_times: list[float] = []
         complete = True
-        for index in _sample_indices(len(trajectory.internal_times), sample_count):
+        for index in indices:
             if not budget.consume():
                 complete = False
                 break
@@ -742,22 +953,32 @@ def _independent_validation(
                         trajectory.internal_states[index],
                     )
                 )
+                execution.check()
                 if not math.isfinite(value):
                     raise ValueError("nonfinite invariant")
                 values.append(value)
+                sampled_times.append(trajectory.internal_times[index])
+            except _StopOde:
+                raise
             except Exception:
                 complete = False
                 break
+        complete = complete and len(values) == len(indices)
         baseline = values[0] if values else 0.0
         drift = max([abs(value - baseline) for value in values] + [0.0])
         threshold = invariant.atol + invariant.rtol * abs(baseline)
-        passed = complete and len(values) >= 2 and drift <= threshold
+        passed = complete and bool(values) and drift <= threshold
         record = {
             "name": invariant.name,
             "passed": passed,
             "sample_count": len(values),
+            "expected_sample_count": len(indices),
+            "sampled_times": sampled_times,
+            "sampling_scope": "all_internal_knots"
+            if len(indices) == len(trajectory.internal_times)
+            else "deterministic_subset_of_internal_knots",
             "initial_value": baseline if values else None,
-            "max_abs_drift": drift,
+            "max_sampled_abs_drift": drift,
             "threshold": threshold,
         }
         invariant_records.append(record)
@@ -766,9 +987,11 @@ def _independent_validation(
     if completed and problem.reference is not None:
         errors: list[float] = []
         normalized: list[float] = []
+        sampled_times = []
         complete = True
         sample_count = min(len(trajectory.internal_times), 8)
-        for index in _sample_indices(len(trajectory.internal_times), sample_count):
+        indices = _sample_indices(len(trajectory.internal_times), sample_count)
+        for index in indices:
             if not budget.consume():
                 complete = False
                 break
@@ -777,6 +1000,7 @@ def _independent_validation(
                     problem.reference(trajectory.internal_times[index]),
                     "reference solution",
                 )
+                execution.check()
                 actual = trajectory.internal_states[index]
                 if len(expected) != len(actual):
                     raise ValueError("reference solution dimension mismatch")
@@ -787,16 +1011,25 @@ def _independent_validation(
                     )
                     errors.append(error)
                     normalized.append(error / scale)
+                sampled_times.append(trajectory.internal_times[index])
+            except _StopOde:
+                raise
             except Exception:
                 complete = False
                 break
+        complete = complete and len(sampled_times) == len(indices)
         reference_passed = complete and bool(errors) and max(normalized) <= 1.0
         reference_record = {
             "available": True,
             "passed": reference_passed,
-            "sample_count": sample_count if complete else len(errors),
-            "max_abs_error": max(errors + [0.0]),
-            "max_normalized_error": max(normalized + [0.0]),
+            "sample_count": len(sampled_times),
+            "expected_sample_count": len(indices),
+            "sampled_times": sampled_times,
+            "sampling_scope": "all_internal_knots"
+            if len(indices) == len(trajectory.internal_times)
+            else "deterministic_subset_of_internal_knots",
+            "max_sampled_abs_error": max(errors + [0.0]),
+            "max_sampled_normalized_error": max(normalized + [0.0]),
             "atol": problem.reference_atol,
             "rtol": problem.reference_rtol,
         }
@@ -807,7 +1040,7 @@ def _independent_validation(
         and endpoint_passed
         and event_passed
         and local_passed
-        and defect_complete
+        and defect_passed
     )
     required_passed = required_passed and all(
         bool(record["passed"]) for record in invariant_records
@@ -851,6 +1084,7 @@ def _status_diagnostic(status: str) -> NumericalDiagnostic | None:
         "cancelled": "cancelled",
         "callback_error": "callback_error",
         "maximum_evaluations": "maximum_evaluations",
+        "maximum_elapsed_time": "maximum_elapsed_time",
         "maximum_iterations": "maximum_iterations",
         "nonfinite_evaluation": "nonfinite_evaluation",
         "stagnation": "stagnation",
@@ -867,16 +1101,20 @@ def solve_ode_problem(
 ) -> OdeResult:
     """Plan, integrate, locate events, validate, and package an ODE result."""
     selected_plan = plan_ode(problem, method=method)
-    trace = NumericalTrace(problem.trace_policy)
+    trace = _OdeTrace(problem.trace_policy)
+    start_data = {
+        "operation": problem.operation,
+        "method": selected_plan.method,
+        "backend": selected_plan.backend,
+        "t_span": list(problem.t_span),
+    }
+    compact_trace = problem.trace_policy.max_bytes < _COMPACT_TRACE_BYTES
+    start_data.update(
+        _trace_vector_fields("initial_state", problem.y0, compact=compact_trace)
+    )
     trace.append(
         "start",
-        data={
-            "operation": problem.operation,
-            "method": selected_plan.method,
-            "backend": selected_plan.backend,
-            "t_span": list(problem.t_span),
-            "initial_state": list(problem.y0),
-        },
+        data=start_data,
         important=True,
         force=True,
     )
@@ -904,97 +1142,71 @@ def solve_ode_problem(
     completed = False
     derivative: list[float] | None = None
     event_values: list[float] = []
+    last_event_times: list[float | None] = [None for _ in problem.events]
     try:
         derivative = execution.rhs(t, y, iteration=0)
         for event in problem.events:
             value = execution.event(event, t, y)
             event_values.append(value)
-        for index, event in enumerate(problem.events):
-            if abs(event_values[index]) <= event.value_tolerance:
-                occurrence = OdeEventOccurrence(
-                    index,
-                    event,
-                    t,
-                    y,
-                    event_values[index],
-                    [t, t],
-                    0,
-                )
-                occurrences.append(occurrence)
-                trace.append(
-                    "event",
-                    iteration=0,
-                    data=occurrence.to_dict(),
-                    important=True,
-                    force=True,
-                )
-                if event.terminal:
-                    status = "converged"
-                    termination_reason = "terminal_event"
-                    completed = True
-                    break
-        if not completed:
+        if selected_plan.method == "rk45":
+            h_abs = _select_initial_step(execution, t, y, derivative, direction)
+        else:
+            h_abs = problem.first_step or min(problem.max_step, abs(bound - t) / 100.0)
+        while direction * (bound - t) > 0.0:
+            execution.check()
+            if attempts >= problem.ode_budget.max_steps:
+                raise _StopOde("maximum_iterations", "maximum_steps")
+            if len(internal_times) >= problem.ode_budget.max_output_points:
+                raise _StopOde("backend_failure", "maximum_output_points")
+            remaining = abs(bound - t)
+            minimum_representable = 10.0 * _EPSILON * max(1.0, abs(t))
+            effective_minimum = max(problem.min_step, minimum_representable)
+            h_abs = min(h_abs, problem.max_step, remaining)
+            if h_abs <= 0.0 or t + direction * h_abs == t:
+                raise _StopOde("stagnation", "step_underflow")
+            if h_abs < effective_minimum and remaining > effective_minimum:
+                raise _StopOde("stagnation", "minimum_step")
+            h = direction * h_abs
+            attempts += 1
             if selected_plan.method == "rk45":
-                h_abs = _select_initial_step(execution, t, y, derivative, direction)
-            else:
-                h_abs = problem.first_step or min(
-                    problem.max_step, abs(bound - t) / 100.0
+                y_new, derivative_new, error, error_norm, segment = _rk45_attempt(
+                    execution, t, y, derivative, h, attempts
                 )
-            while direction * (bound - t) > 0.0:
-                execution.check()
-                if attempts >= problem.ode_budget.max_steps:
-                    raise _StopOde("maximum_iterations", "maximum_steps")
-                remaining = abs(bound - t)
-                minimum_representable = 10.0 * _EPSILON * max(1.0, abs(t))
-                effective_minimum = max(problem.min_step, minimum_representable)
-                h_abs = min(h_abs, problem.max_step, remaining)
-                if h_abs <= 0.0 or t + direction * h_abs == t:
-                    raise _StopOde("stagnation", "step_underflow")
-                if h_abs < effective_minimum and remaining > effective_minimum:
-                    raise _StopOde("stagnation", "minimum_step")
-                h = direction * h_abs
-                attempts += 1
-                if selected_plan.method == "rk45":
-                    y_new, derivative_new, error, error_norm, segment = _rk45_attempt(
-                        execution, t, y, derivative, h, attempts
+                if not math.isfinite(error_norm):
+                    raise _StopOde("nonfinite_evaluation", "nonfinite_error_estimate")
+                accepted = error_norm <= 1.0
+                if accepted:
+                    factor = (
+                        _MAX_FACTOR
+                        if error_norm == 0.0
+                        else min(_MAX_FACTOR, _SAFETY * error_norm**-0.2)
                     )
-                    if not math.isfinite(error_norm):
-                        raise _StopOde(
-                            "nonfinite_evaluation", "nonfinite_error_estimate"
-                        )
-                    accepted = error_norm <= 1.0
-                    if accepted:
-                        factor = (
-                            _MAX_FACTOR
-                            if error_norm == 0.0
-                            else min(_MAX_FACTOR, _SAFETY * error_norm**-0.2)
-                        )
-                        if consecutive_rejections:
-                            factor = min(1.0, factor)
-                        proposed_step = h_abs * factor
-                    else:
-                        factor = max(_MIN_FACTOR, _SAFETY * error_norm**-0.2)
-                        proposed_step = h_abs * factor
+                    if consecutive_rejections:
+                        factor = min(1.0, factor)
+                    proposed_step = h_abs * factor
                 else:
-                    y_new, derivative_new, segment = _rk4_attempt(
-                        execution, t, y, derivative, h, attempts
-                    )
-                    error = []
-                    error_norm = None
-                    accepted = True
-                    proposed_step = h_abs
-                if not accepted:
-                    if error_norm is None:
-                        raise RuntimeError(
-                            "an adaptive rejection requires an error norm"
-                        )
-                    rejected_steps += 1
-                    consecutive_rejections += 1
-                    max_consecutive_rejections = max(
-                        max_consecutive_rejections, consecutive_rejections
-                    )
-                    rejected_error_norms.append(float(error_norm))
-                    trace.append(
+                    factor = max(_MIN_FACTOR, _SAFETY * error_norm**-0.2)
+                    proposed_step = h_abs * factor
+            else:
+                y_new, derivative_new, segment = _rk4_attempt(
+                    execution, t, y, derivative, h, attempts
+                )
+                error = []
+                error_norm = None
+                accepted = True
+                proposed_step = h_abs
+            if not accepted:
+                if error_norm is None:
+                    raise RuntimeError("an adaptive rejection requires an error norm")
+                rejected_steps += 1
+                consecutive_rejections += 1
+                max_consecutive_rejections = max(
+                    max_consecutive_rejections, consecutive_rejections
+                )
+                rejected_error_norms.append(float(error_norm))
+                if _retain_detailed_trace(trace):
+                    _append_detailed_trace(
+                        trace,
                         "step",
                         iteration=attempts,
                         evaluation=execution.callback_evaluations,
@@ -1006,91 +1218,118 @@ def solve_ode_problem(
                             "proposed_step": direction * proposed_step,
                         },
                     )
-                    h_abs = proposed_step
-                    continue
-                accepted_steps += 1
-                max_consecutive_rejections = max(
-                    max_consecutive_rejections, consecutive_rejections
+                else:
+                    _append_detailed_trace(trace, "step")
+                h_abs = proposed_step
+                continue
+            accepted_steps += 1
+            max_consecutive_rejections = max(
+                max_consecutive_rejections, consecutive_rejections
+            )
+            consecutive_rejections = 0
+            t_new = t + h
+            if error_norm is not None:
+                accepted_error_norms.append(float(error_norm))
+                accepted_abs_errors.append(max(abs(value) for value in error))
+            new_event_values: list[float] = []
+            found: list[OdeEventOccurrence] = []
+            for index, event in enumerate(problem.events):
+                value = execution.event(event, t_new, y_new)
+                new_event_values.append(value)
+                previous_was_recorded = (
+                    event_values[index] == 0.0
+                    and last_event_times[index] is not None
+                    and t == last_event_times[index]
                 )
-                consecutive_rejections = 0
-                t_new = t + h
-                if error_norm is not None:
-                    accepted_error_norms.append(float(error_norm))
-                    accepted_abs_errors.append(max(abs(value) for value in error))
-                new_event_values: list[float] = []
-                found: list[OdeEventOccurrence] = []
-                for index, event in enumerate(problem.events):
-                    value = execution.event(event, t_new, y_new)
-                    new_event_values.append(value)
-                    if _crosses(event, event_values[index], value):
-                        found.append(
-                            _locate_event(
-                                execution,
-                                index,
-                                event,
-                                segment,
-                                event_values[index],
-                                value,
-                            )
+                if not previous_was_recorded and _crosses(
+                    event, event_values[index], value
+                ):
+                    found.append(
+                        _locate_event(
+                            execution,
+                            index,
+                            event,
+                            segment,
+                            event_values[index],
+                            value,
                         )
-                found.sort(key=lambda item: direction * item.time)
-                terminal: OdeEventOccurrence | None = None
-                for item in found:
-                    if (
-                        terminal is not None
-                        and direction * (item.time - terminal.time) > 0
-                    ):
-                        continue
-                    occurrences.append(item)
-                    trace.append(
+                    )
+            found.sort(key=lambda item: direction * item.time)
+            terminal: OdeEventOccurrence | None = None
+            for item in found:
+                if terminal is not None and direction * (item.time - terminal.time) > 0:
+                    continue
+                if len(occurrences) >= problem.ode_budget.max_output_points:
+                    raise _StopOde("backend_failure", "maximum_event_records")
+                occurrences.append(item)
+                last_event_times[item.event_index] = item.time
+                if _retain_detailed_trace(trace):
+                    _append_detailed_trace(
+                        trace,
                         "event",
                         iteration=attempts,
                         evaluation=execution.callback_evaluations,
-                        data=item.to_dict(),
+                        data=_trace_event_record(item),
                         important=True,
                         force=True,
                     )
-                    if item.terminal and terminal is None:
-                        terminal = item
-                if terminal is not None:
-                    t_new = terminal.time
-                    y_new = list(terminal.state)
-                    segment = segment.restricted(t_new)
-                segments.append(segment)
-                internal_times.append(t_new)
-                internal_states.append(list(y_new))
-                trace.append(
-                    "step",
-                    iteration=attempts,
-                    evaluation=execution.callback_evaluations,
-                    accepted=True,
-                    data={
-                        "t_start": t,
-                        "t_end": t_new,
-                        "step_size": t_new - t,
-                        "state": list(y_new),
-                        "error_norm": error_norm,
-                        "max_abs_error_estimate": max(
-                            [abs(value) for value in error] + [0.0]
-                        ),
-                        "proposed_step": direction * proposed_step,
-                        "event_count": len(found),
-                    },
-                )
-                t = t_new
-                y = list(y_new)
-                derivative = derivative_new
-                event_values = new_event_values
-                h_abs = proposed_step
-                if terminal is not None:
+                else:
+                    _append_detailed_trace(trace, "event", force=True)
+                if item.terminal and terminal is None:
+                    terminal = item
+            if terminal is not None:
+                t_new = terminal.time
+                y_new = list(terminal.state)
+                if t_new == t:
+                    accepted_steps -= 1
+                    if error_norm is not None:
+                        accepted_error_norms.pop()
+                        accepted_abs_errors.pop()
                     status = "converged"
                     termination_reason = "terminal_event"
                     completed = True
                     break
-            if not completed and direction * (bound - t) <= 0.0:
+                segment = segment.restricted(t_new)
+            segments.append(segment)
+            internal_times.append(t_new)
+            internal_states.append(list(y_new))
+            if _retain_detailed_trace(trace):
+                step_data = {
+                    "t_start": t,
+                    "t_end": t_new,
+                    "step_size": t_new - t,
+                    "error_norm": error_norm,
+                    "max_abs_error_estimate": max(
+                        [abs(value) for value in error] + [0.0]
+                    ),
+                    "proposed_step": direction * proposed_step,
+                    "event_count": len(found),
+                }
+                step_data.update(_trace_vector_fields("state", y_new))
+                _append_detailed_trace(
+                    trace,
+                    "step",
+                    iteration=attempts,
+                    evaluation=execution.callback_evaluations,
+                    accepted=True,
+                    data=step_data,
+                )
+            else:
+                _append_detailed_trace(trace, "step")
+            t = t_new
+            y = list(y_new)
+            derivative = derivative_new
+            event_values = new_event_values
+            h_abs = proposed_step
+            if terminal is not None:
                 status = "converged"
-                termination_reason = "reached_t_bound"
+                termination_reason = "terminal_event"
                 completed = True
+                break
+        if not completed and direction * (bound - t) <= 0.0:
+            status = "converged"
+            termination_reason = "reached_t_bound"
+            completed = True
     except _StopOde as stop:
         status = stop.status
         termination_reason = stop.reason
@@ -1185,8 +1424,11 @@ def solve_ode_problem(
         evidence = {
             "local_error_control": local_evidence,
             "dense_defect": {
+                "available": False,
                 "sample_count": 0,
+                "expected_sample_count": 0,
                 "finite": False,
+                "passed": False,
                 "interpretation": "validation stopped by a hard resource or cancellation budget",
             },
             "invariants": [],
@@ -1199,7 +1441,8 @@ def solve_ode_problem(
         status = "validation_failed"
         termination_reason = "independent_validation_failed"
     success = completed and validation.passed
-    trace.append(
+    _append_detailed_trace(
+        trace,
         "validation",
         iteration=attempts,
         evaluation=execution.callback_evaluations,
@@ -1208,18 +1451,24 @@ def solve_ode_problem(
         important=True,
         force=True,
     )
+    finish_data = {
+        "status": status,
+        "termination_reason": termination_reason,
+        "success": success,
+        "final_time": trajectory.final_time,
+    }
+    if trace.omitted_details:
+        finish_data["omitted_trace_details"] = trace.omitted_details
+    finish_data.update(
+        _trace_vector_fields(
+            "final_state", trajectory.final_state, compact=compact_trace
+        )
+    )
     trace.append(
         "finish" if success else "failure",
         iteration=attempts,
         evaluation=execution.callback_evaluations,
-        data={
-            "status": status,
-            "termination_reason": termination_reason,
-            "success": success,
-            "final_time": trajectory.final_time,
-            "final_state": list(trajectory.final_state),
-        },
-        diagnostics=diagnostics,
+        data=finish_data,
         important=True,
         force=True,
     )
@@ -1231,7 +1480,9 @@ def solve_ode_problem(
         "accepted_steps": accepted_steps,
         "rejected_steps": rejected_steps,
         "stored_internal_points": len(internal_times),
+        "computed_dense_segments": len(segments),
         "stored_dense_segments": len(published_segments),
+        "retained_trace_bytes": len(trace.to_json().encode("utf-8")),
     }
     return OdeResult(
         problem,

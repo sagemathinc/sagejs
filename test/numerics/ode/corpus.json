@@ -64,6 +64,62 @@
       "interval": [0.0, 1.0],
       "evidence": ["hard cancelled termination before the first callback"],
       "sagejs": {"method": "rk45", "expected": "cancelled"}
+    },
+    {
+      "id": "dense-stage-alias",
+      "classification": "failure",
+      "equation": "smooth forcing vanishes at every Dormand-Prince stage but not between stages",
+      "interval": [0.0, 1.0],
+      "evidence": ["quantitative state-equivalent dense defect exceeds requested tolerance"],
+      "sagejs": {"method": "rk45", "expected": "validation_failed"}
+    },
+    {
+      "id": "initial-event-direction",
+      "classification": "event",
+      "equation": "g(t,y)=t begins at zero but departs in the positive direction",
+      "interval": [0.0, 1.0],
+      "evidence": ["direction +1 terminates at the initial root", "direction -1 reaches the time bound"],
+      "sagejs": {"method": "rk45", "expected": "direction-filtered"}
+    },
+    {
+      "id": "conserved-quantity-drift",
+      "classification": "conserved",
+      "equation": "coarse fixed-step RK4 harmonic oscillator",
+      "interval": [0.0, 6.0],
+      "evidence": ["sampled squared-norm drift exceeds its declared threshold"],
+      "sagejs": {"method": "rk4", "expected": "validation_failed"}
+    },
+    {
+      "id": "trajectory-output-budget",
+      "classification": "failure",
+      "equation": "fixed-step integration requests more retained knots than allowed",
+      "interval": [0.0, 1.0],
+      "evidence": ["internal points and dense segments remain inside max_output_points"],
+      "sagejs": {"method": "rk4", "expected": "maximum_output_points"}
+    },
+    {
+      "id": "post-callback-elapsed-budget",
+      "classification": "failure",
+      "equation": "an initial event callback returns after the elapsed-time budget",
+      "interval": [0.0, 1.0],
+      "evidence": ["post-callback budget check rejects terminal success"],
+      "sagejs": {"method": "rk45", "expected": "maximum_elapsed_time"}
+    },
+    {
+      "id": "post-event-cancellation",
+      "classification": "failure",
+      "equation": "an initial event callback requests cancellation before returning a terminal root",
+      "interval": [0.0, 1.0],
+      "evidence": ["post-callback cancellation check rejects terminal success"],
+      "sagejs": {"method": "rk45", "expected": "cancelled"}
+    },
+    {
+      "id": "wide-vector-trace-budget",
+      "classification": "failure",
+      "equation": "500-component constant system under a 1024-byte trace budget",
+      "interval": [0.0, 1.0],
+      "evidence": ["exact vector summary keeps the retained trace within budget"],
+      "sagejs": {"method": "rk4", "expected": "bounded_trace"}
     }
   ]
 }

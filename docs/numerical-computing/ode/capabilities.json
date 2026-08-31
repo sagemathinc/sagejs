@@ -57,27 +57,33 @@
     "terminal_events": "implemented",
     "bounded_semantic_trace": "implemented",
     "cooperative_cancellation": "implemented",
-    "step_callback_elapsed_output_event_validation_budgets": "implemented",
-    "independent_dense_defect": "implemented",
-    "invariant_drift": "implemented",
-    "analytic_reference_error": "implemented",
+    "step_callback_elapsed_output_event_validation_budgets": "implemented_and_post_callback_checked",
+    "bounded_vector_trace_payload": "implemented",
+    "independent_dense_defect": "quantitatively_gated_state_equivalent_residual",
+    "invariant_drift": "sample_scope_explicit",
+    "analytic_reference_error": "sample_scope_explicit",
     "trajectory_plotspec": "implemented",
     "phase_plotspec": "implemented",
     "step_error_plotspec": "implemented",
-    "bounded_animation": "implemented",
+    "trajectory_phase_event_animation": "implemented",
+    "step_size_local_error_animation": "implemented_from_retained_trace",
     "complex_state": "unsupported",
     "mass_matrix": "unsupported",
     "dae": "unsupported",
     "parameter_sweep": "unsupported",
     "stiff_solver": "unsupported"
   },
-  "platform_policy": [
-    "browser",
-    "node",
-    "sea",
-    "linux-x64",
+  "portability_evidence": {
+    "qualified_runtimes": [
+      "cpython-linux-x64",
+      "sagejs-node-linux-x64"
+    ],
+    "pending_targets": [
+      "browser-wasm",
+      "sagejs-sea",
     "linux-arm64",
     "macos-arm64",
     "windows-x64"
-  ]
+    ]
+  }
 }

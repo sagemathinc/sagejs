@@ -50,6 +50,8 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
 const witness = String.raw`
 import json
 import math
+import time
+from sagejs.numerics.model import STATUS_CODES
 from sagejs.numerics.ode import (
     OdeEvent,
     OdeInvariant,
@@ -65,6 +67,11 @@ capabilities = ode_capabilities()
 assert set(capabilities["implemented_methods"]) == {"rk4", "rk45"}
 assert capabilities["unsupported_methods"]["radau"]["classification"] == "unsupported"
 assert capabilities["implemented_methods"]["rk45"]["stiff"] is False
+assert capabilities["portability_evidence"]["qualified_runtimes"] == [
+    "cpython-linux-x64",
+    "sagejs-node-linux-x64",
+]
+assert "windows-x64" in capabilities["portability_evidence"]["pending_targets"]
 
 calls = [0]
 def counted(t, y):
@@ -101,6 +108,9 @@ assert len(answer.plot("trajectory").layers) == 2
 assert len(answer.plot("step_size").layers) == 2
 assert len(answer.plot("local_error").layers) == 2
 assert len(answer.animate().frames) >= 2
+assert len(answer.animate("step_size").frames) >= 2
+assert len(answer.animate("local_error").frames) >= 2
+assert len(answer.animate("event").frames) >= 2
 assert "global error bound" in answer.explain()
 record = json.loads(answer.to_json())
 assert record["domain_payload"]["limitations"]["stiff_methods_supported"] is False
@@ -129,7 +139,12 @@ oscillation = solve_ivp(
 )
 assert oscillation.success
 assert oscillation.evidence["invariants"][0]["passed"]
+assert oscillation.evidence["invariants"][0]["max_sampled_abs_drift"] >= 0.0
+assert oscillation.evidence["invariants"][0]["sample_count"] == len(
+    oscillation.evidence["invariants"][0]["sampled_times"]
+)
 assert oscillation.evidence["reference_solution"]["passed"]
+assert oscillation.evidence["reference_solution"]["max_sampled_abs_error"] >= 0.0
 assert abs(oscillation.value[0] - 1.0) < 2e-8
 assert len(oscillation.plot("phase").layers) == 2
 assert len(oscillation.animate("phase").frames) >= 2
@@ -165,6 +180,26 @@ backward = solve_ivp(
 assert backward.success and abs(backward.value[0] - 1.0) < 1e-6
 assert abs(backward.trajectory(0.5)[0] - math.sqrt(math.e)) < 1e-6
 
+wrong_direction = solve_ivp(
+    lambda t, y: [1.0],
+    (0.0, 1.0),
+    [0.0],
+    events=OdeEvent(lambda t, y: t, terminal=True, direction=-1),
+)
+assert wrong_direction.success
+assert wrong_direction.termination_reason == "reached_t_bound"
+assert len(wrong_direction.events) == 0
+
+right_direction = solve_ivp(
+    lambda t, y: [1.0],
+    (0.0, 1.0),
+    [0.0],
+    events=OdeEvent(lambda t, y: t, terminal=True, direction=1),
+)
+assert right_direction.success
+assert right_direction.termination_reason == "terminal_event"
+assert right_direction.trajectory.final_time == 0.0
+
 rk4_errors = []
 for step in (0.1, 0.05):
     baseline = solve_ivp(
@@ -193,6 +228,24 @@ rejections = solve_ivp(
 assert rejections.success
 assert rejections.evidence["local_error_control"]["rejected_steps"] > 0
 
+nodes = (0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0)
+def hidden_between_stages(t, y):
+    value = 1.0
+    for node in nodes:
+        value *= (t - node) * (t - node)
+    return [1e12 * value]
+
+aliased = solve_ivp(
+    hidden_between_stages,
+    (0.0, 1.0),
+    [0.0],
+    first_step=1.0,
+    max_step=1.0,
+)
+assert not aliased.success and aliased.status == "validation_failed"
+assert not aliased.evidence["dense_defect"]["passed"]
+assert aliased.evidence["dense_defect"]["max_scaled_state_equivalent_defect"] > 1e12
+
 cancelled = solve_ivp(lambda t, y: [1.0], (0.0, 1.0), [0.0], cancel=lambda: True)
 assert not cancelled.success and cancelled.status == "cancelled"
 
@@ -204,6 +257,53 @@ limited = solve_ivp(
     max_evaluations=3,
 )
 assert not limited.success and limited.status == "maximum_evaluations"
+
+output_limited = solve_ivp(
+    lambda t, y: [1.0],
+    (0.0, 1.0),
+    [0.0],
+    method="rk4",
+    first_step=0.01,
+    max_step=0.01,
+    max_output_points=2,
+)
+assert not output_limited.success
+assert output_limited.termination_reason == "maximum_output_points"
+assert len(output_limited.trajectory.internal_times) == 2
+assert len(output_limited.trajectory.segments) == 1
+
+def slow_initial_event(t, y):
+    time.sleep(0.02)
+    return 0.0
+
+elapsed = solve_ivp(
+    lambda t, y: [0.0],
+    (0.0, 1.0),
+    [0.0],
+    events=OdeEvent(slow_initial_event, terminal=True),
+    max_elapsed_ms=1,
+)
+expected_elapsed_status = (
+    "maximum_elapsed_time"
+    if "maximum_elapsed_time" in STATUS_CODES
+    else "backend_failure"
+)
+assert not elapsed.success and elapsed.status == expected_elapsed_status
+assert elapsed.termination_reason == "maximum_elapsed_time"
+
+cancel_after_event = [False]
+def cancelling_initial_event(t, y):
+    cancel_after_event[0] = True
+    return 0.0
+
+post_event_cancelled = solve_ivp(
+    lambda t, y: [0.0],
+    (0.0, 1.0),
+    [0.0],
+    events=OdeEvent(cancelling_initial_event, terminal=True),
+    cancel=lambda: cancel_after_event[0],
+)
+assert not post_event_cancelled.success and post_event_cancelled.status == "cancelled"
 
 nonfinite = solve_ivp(
     lambda t, y: [float("inf")],
@@ -227,8 +327,47 @@ truncated = solve_ivp(
     max_step=0.01,
     max_trace_events=4,
 )
-assert truncated.trace.truncated and len(truncated.trace.events) <= 4
+assert not truncated.trace.truncated and len(truncated.trace.events) <= 4
+assert truncated.trace.events[-1].data["omitted_trace_details"] > 0
 assert len(truncated.animate().frames) <= 4
+
+wide_dimension = 500
+wide = solve_ivp(
+    lambda t, y: [0.0 for _ in range(wide_dimension)],
+    (0.0, 1.0),
+    [0.0 for _ in range(wide_dimension)],
+    method="rk4",
+    first_step=1.0,
+    max_step=1.0,
+    trace="evaluations",
+    max_trace_events=2,
+    max_trace_bytes=1024,
+)
+assert wide.success
+assert len(wide.trace.to_json().encode("utf-8")) <= 1024
+assert "initial_state_summary" in wide.trace.events[0].data
+
+drifting = solve_ivp(
+    oscillator,
+    (0.0, 6.0),
+    [1.0, 0.0],
+    method="rk4",
+    first_step=0.5,
+    max_step=0.5,
+    rtol=0.1,
+    atol=0.1,
+    invariants=[
+        OdeInvariant(
+            lambda t, y: y[0] * y[0] + y[1] * y[1],
+            name="squared_norm",
+            atol=1e-12,
+            rtol=0.0,
+        )
+    ],
+)
+assert not drifting.success and drifting.status == "validation_failed"
+assert not drifting.evidence["invariants"][0]["passed"]
+assert drifting.evidence["invariants"][0]["max_sampled_abs_drift"] > 1e-4
 
 stiff_problem = ode_problem(
     lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
@@ -297,5 +436,13 @@ test("the ODE corpus classifies analytic, stiff, event, and failure cases", () =
   assert.equal(
     corpus.cases.find(({ id }) => id === "stiff-tracking").sagejs.expected,
     "unsupported-implicit-method",
+  );
+  assert.equal(
+    corpus.cases.find(({ id }) => id === "dense-stage-alias").sagejs.expected,
+    "validation_failed",
+  );
+  assert.equal(
+    corpus.cases.find(({ id }) => id === "initial-event-direction").sagejs.expected,
+    "direction-filtered",
   );
 });

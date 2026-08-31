@@ -174,8 +174,10 @@ def _step_records(result: OdeResult) -> list[dict[str, Any]]:
     return records
 
 
-def _step_spec(result: OdeResult) -> PlotSpec:
+def _step_spec(result: OdeResult, count: int | None = None) -> PlotSpec:
     records = _step_records(result)
+    if count is not None:
+        records = records[:count]
     accepted = [record for record in records if record["accepted"]]
     rejected = [record for record in records if not record["accepted"]]
     layers = [
@@ -220,10 +222,12 @@ def _step_spec(result: OdeResult) -> PlotSpec:
     )
 
 
-def _error_spec(result: OdeResult) -> PlotSpec:
+def _error_spec(result: OdeResult, count: int | None = None) -> PlotSpec:
     records = [
         record for record in _step_records(result) if record["error_norm"] is not None
     ]
+    if count is not None:
+        records = records[:count]
     layers = [
         make_layer(
             "point",
@@ -301,35 +305,61 @@ def _frame_indices(count: int, maximum: int = 64) -> list[int]:
 
 
 def ode_animation(result: OdeResult, *, kind: str = "trajectory") -> PlotAnimation:
-    """Replay computed knots as a bounded, topology-stable PlotSpec animation."""
+    """Replay computed knots or trace records in a bounded PlotSpec animation."""
     selected = str(kind).lower()
-    if selected not in ("trajectory", "phase", "phase_portrait"):
-        raise ValueError("ODE animations support trajectory or phase views")
+    if selected not in (
+        "trajectory",
+        "phase",
+        "phase_portrait",
+        "step",
+        "step_size",
+        "error",
+        "local_error",
+        "event",
+        "events",
+    ):
+        raise ValueError(
+            "ODE animations support trajectory, phase, step_size, local_error, or event views"
+        )
     maximum_frames = max(2, min(64, result.problem.trace_policy.max_events))
-    indices = _frame_indices(
-        len(result.trajectory.internal_times), maximum=maximum_frames
+    trace_view = selected in ("step", "step_size", "error", "local_error")
+    if selected in ("error", "local_error"):
+        source_records = [
+            record
+            for record in _step_records(result)
+            if record["error_norm"] is not None
+        ]
+    elif trace_view:
+        source_records = _step_records(result)
+    else:
+        source_records = []
+    source_count = (
+        len(source_records) if trace_view else len(result.trajectory.internal_times)
     )
+    indices = _frame_indices(source_count, maximum=maximum_frames)
     frames: list[AnimationFrame] = []
     for ordinal, count in enumerate(indices):
-        spec = (
-            _trajectory_spec(result, count=count)
-            if selected == "trajectory"
-            else _phase_spec(result, count=count)
-        )
+        if selected in ("trajectory", "event", "events"):
+            spec = _trajectory_spec(result, count=count)
+        elif selected in ("phase", "phase_portrait"):
+            spec = _phase_spec(result, count=count)
+        elif selected in ("step", "step_size"):
+            spec = _step_spec(result, count=count)
+        else:
+            spec = _error_spec(result, count=count)
+        if trace_view and source_records:
+            label_time = source_records[min(count, len(source_records)) - 1]["time"]
+        else:
+            label_time = result.trajectory.internal_times[
+                min(count, len(result.trajectory.internal_times)) - 1
+            ]
         frames.append(
             AnimationFrame(
                 stable_frame_id(ordinal),
                 spec,
-                label="t = "
-                + str(
-                    result.trajectory.internal_times[
-                        min(count, len(result.trajectory.internal_times)) - 1
-                    ]
-                ),
+                label="t = " + str(label_time),
                 metadata={
-                    "computed_knot_count": min(
-                        count, len(result.trajectory.internal_times)
-                    ),
+                    "computed_record_count": min(count, source_count),
                     "interpolated": False,
                 },
             )
@@ -346,16 +376,19 @@ def ode_animation(result: OdeResult, *, kind: str = "trajectory") -> PlotAnimati
         ),
         metadata={
             "operation": "initial_value_problem",
-            "view": "phase" if selected != "trajectory" else "trajectory",
+            "view": selected,
             "problem_digest": result.problem.digest,
-            "computed_states_only": True,
-            "source_knot_count": len(result.trajectory.internal_times),
+            "computed_records_only": True,
+            "source_record_count": source_count,
             "frame_count": len(frames),
-            "decimated": len(frames)
-            < max(2, len(result.trajectory.internal_times) - 1),
+            "decimated": len(frames) < max(2, source_count - 1),
             "trace_truncated": result.trace.truncated,
             "static_fallback": result.plot(
-                "phase" if selected != "trajectory" else "trajectory"
+                "trajectory"
+                if selected in ("event", "events")
+                else "phase"
+                if selected == "phase_portrait"
+                else selected
             ).to_dict(),
         },
     )

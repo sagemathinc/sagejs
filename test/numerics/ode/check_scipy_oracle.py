@@ -65,6 +65,18 @@ def _sagejs_records() -> dict[str, dict[str, Any]]:
         reference_atol=1e-7,
         reference_rtol=1e-7,
     )
+    initial_positive = solve_ivp(
+        lambda t, y: [1.0],
+        (0.0, 1.0),
+        [0.0],
+        events=OdeEvent(lambda t, y: t, terminal=True, direction=1),
+    )
+    initial_negative = solve_ivp(
+        lambda t, y: [1.0],
+        (0.0, 1.0),
+        [0.0],
+        events=OdeEvent(lambda t, y: t, terminal=True, direction=-1),
+    )
     stiff = ode_problem(
         lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
         (0.0, 1.0),
@@ -96,6 +108,12 @@ def _sagejs_records() -> dict[str, dict[str, Any]]:
             "event_time": projectile.events[0].time,
             "event_state": list(projectile.events[0].state),
         },
+        "initial-event-direction": {
+            "positive_final_time": initial_positive.trajectory.final_time,
+            "positive_event_count": len(initial_positive.events),
+            "negative_final_time": initial_negative.trajectory.final_time,
+            "negative_event_count": len(initial_negative.events),
+        },
         "stiff-tracking": {"implicit_method_unsupported": unsupported},
     }
 
@@ -118,6 +136,9 @@ def _check_frozen(fixture: dict[str, Any]) -> None:
     assert _close_vector(
         actual_event["event_state"], expected_event["event_state"], 2e-8
     )
+    expected_direction = fixture["cases"]["initial-event-direction"]
+    actual_direction = records["initial-event-direction"]
+    assert actual_direction == expected_direction
     assert records["stiff-tracking"]["implicit_method_unsupported"]
 
 
@@ -162,6 +183,30 @@ def _live_scipy_records() -> tuple[str, dict[str, dict[str, Any]]]:
         dense_output=True,
         events=ground,
     )
+
+    def initial_positive_event(t: float, y: list[float]) -> float:
+        return t
+
+    initial_positive_event.terminal = True  # type: ignore[attr-defined]
+    initial_positive_event.direction = 1  # type: ignore[attr-defined]
+    initial_positive = scipy_solve_ivp(
+        lambda t, y: [1.0],
+        (0.0, 1.0),
+        [0.0],
+        events=initial_positive_event,
+    )
+
+    def initial_negative_event(t: float, y: list[float]) -> float:
+        return t
+
+    initial_negative_event.terminal = True  # type: ignore[attr-defined]
+    initial_negative_event.direction = -1  # type: ignore[attr-defined]
+    initial_negative = scipy_solve_ivp(
+        lambda t, y: [1.0],
+        (0.0, 1.0),
+        [0.0],
+        events=initial_negative_event,
+    )
     stiff = scipy_solve_ivp(
         lambda t, y: [-1000.0 * (y[0] - math.cos(t)) - math.sin(t)],
         (0.0, 1.0),
@@ -183,6 +228,12 @@ def _live_scipy_records() -> tuple[str, dict[str, dict[str, Any]]]:
         "projectile-ground": {
             "event_time": float(projectile.t_events[0][0]),
             "event_state": [float(value) for value in projectile.y_events[0][0]],
+        },
+        "initial-event-direction": {
+            "positive_final_time": float(initial_positive.t[-1]),
+            "positive_event_count": len(initial_positive.t_events[0]),
+            "negative_final_time": float(initial_negative.t[-1]),
+            "negative_event_count": len(initial_negative.t_events[0]),
         },
         "stiff-tracking": {
             "final_state": [float(value) for value in stiff.y[:, -1]],

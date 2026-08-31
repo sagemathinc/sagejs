@@ -8,11 +8,14 @@ from .model import OdeProblem, OdeUnsupportedError
 
 ODE_CAPABILITY_SCHEMA_VERSION = 1
 
-_PLATFORMS: list[JSONValue] = [
-    "browser",
-    "node",
-    "sea",
-    "linux-x64",
+_QUALIFIED_RUNTIMES: list[JSONValue] = [
+    "cpython-linux-x64",
+    "sagejs-node-linux-x64",
+]
+
+_PENDING_TARGETS: list[JSONValue] = [
+    "browser-wasm",
+    "sagejs-sea",
     "linux-arm64",
     "macos-arm64",
     "windows-x64",
@@ -30,7 +33,7 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "dense_output": "cubic_hermite",
         "events": "sign_changes_on_accepted_steps",
         "stiff": False,
-        "platforms": _PLATFORMS,
+        "qualified_runtimes": _QUALIFIED_RUNTIMES,
     },
     "rk45": {
         "classification": "translated",
@@ -43,7 +46,7 @@ _METHODS: dict[str, dict[str, JSONValue]] = {
         "dense_output": "shampine_quartic",
         "events": "sign_changes_on_accepted_steps",
         "stiff": False,
-        "platforms": _PLATFORMS,
+        "qualified_runtimes": _QUALIFIED_RUNTIMES,
     },
 }
 
@@ -103,6 +106,10 @@ def ode_capabilities() -> dict[str, JSONValue]:
             "complex": False,
             "mass_matrix": False,
             "differential_algebraic": False,
+        },
+        "portability_evidence": {
+            "qualified_runtimes": list(_QUALIFIED_RUNTIMES),
+            "pending_targets": list(_PENDING_TARGETS),
         },
         "limitations": [
             "explicit methods are unsuitable for many stiff systems",

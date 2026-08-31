@@ -33,7 +33,9 @@ data while using the nearest valid shared status. Normalize these centrally:
 
 | Requested shared identity | Current envelope identity | Required fields |
 |---|---|---|
-| `maximum_elapsed` | `backend_failure` | `elapsed_ms`, `max_elapsed_ms` |
+| `maximum_elapsed_time` | `backend_failure` on the isolated pre-integration base; exact status when shared support is present | `elapsed_ms`, `max_elapsed_ms` |
+| `maximum_output_points` | `backend_failure` | retained point/segment counts and bound |
+| `maximum_event_records` | `backend_failure` | retained event count and bound |
 | `minimum_step` | `stagnation` | `time`, `attempted_step`, `min_step` |
 | `terminal_event` | `converged` plus ODE reason | event index/name/time/residual |
 | `step_rejected_repeatedly` diagnostic | no shared diagnostic | consecutive and total rejection counts, last error norm |

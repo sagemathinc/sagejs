@@ -1,6 +1,6 @@
 # Initial-value ODE laboratory
 
-The ODE laboratory solves real binary64 systems
+The currently qualified ODE laboratory solves real binary64 systems
 
 \[
 y'(t)=f(t,y), \qquad y(t_0)=y_0
@@ -91,14 +91,20 @@ interval.
 Each accepted RK45 step also stores Shampine's quartic continuous extension.
 The dense polynomial is used for requested samples, residual evidence, and
 event location. It interpolates the numerical solution; it does not turn local
-error estimates into a global bound.
+error estimates into a global bound. Independent midpoint validation multiplies
+the derivative defect by the accepted-step width and compares its weighted RMS
+value with the requested state tolerance, using a documented factor of `64` for
+the fourth-order continuous extension. A finite but excessive defect therefore
+rejects validation instead of being treated as supporting evidence.
 
 ## Events and termination
 
 An event is a scalar function `g(t, y)`. The solver detects a sign change at
 accepted step endpoints and bisects the dense polynomial until it has a small
 time bracket or event residual. Direction is measured along the integration
-direction.
+direction. An event that is exactly zero initially is classified using its
+departure over the first accepted step; a root departing in the opposite
+direction is not reported. Duplicate reports of an endpoint root are suppressed.
 
 ```python
 impact = solve_ivp(
@@ -124,9 +130,21 @@ functions can be missed or fail residual validation. Reducing `max_step` is a
 useful response when crossings are closely spaced.
 
 Hard execution limits cover step attempts, solver callback evaluations,
-elapsed time, event-location iterations, stored output points, validation
-callbacks, trace events, and trace bytes. A zero-argument `cancel` callback is
-checked before callbacks, stages, steps, and event-location iterations.
+elapsed time, event-location iterations, internal output points, dense segments,
+event records, requested samples, validation callbacks, trace events, and trace
+bytes. Internal knots are capped at `max_output_points`, so dense segments are
+capped at one fewer. Requested samples and event records are each capped at the
+same declared bound. A zero-argument `cancel` callback and elapsed time are
+checked before and after user callbacks, as well as before stages, steps,
+validation samples, and event-location iterations.
+
+Trace records retain complete vectors through dimension four. Wider vectors use
+exact summaries containing their dimension, extrema, maximum absolute value, and
+indexed head/tail values. The numerical trajectory still retains complete state
+vectors; only the explanatory trace is decimated. Under byte budgets below 4096,
+even short vectors use an extrema-and-dimension summary and omit indexed previews.
+The final trace record reports the exact `omitted_trace_details` count when detail
+records are suppressed to reserve space for the mandatory start/final pair.
 
 ## Reading the evidence
 
@@ -134,13 +152,15 @@ The common result separates solver termination from post-validation.
 
 - `local_error_control` records accepted/rejected attempts and the largest
   weighted RMS estimate. Its scope explicitly says `not_global_error`.
-- `dense_defect` samples `dP/dt - f(t, P(t))` at independently selected dense
-  midpoints. It is backward-residual evidence for the interpolant, not a
-  forward-error certificate.
-- `invariants` records independently computed initial values, maximum drift,
-  thresholds, and pass/fail decisions.
-- `reference_solution` compares against a caller-supplied analytic or trusted
-  reference under explicit tolerances.
+- `dense_defect` samples `dP/dt - f(t, P(t))` at recorded dense midpoints and
+  quantitatively checks its step-width-scaled state effect. It is
+  backward-residual evidence for the interpolant, not a forward-error
+  certificate.
+- `invariants` records the exact sampled times, whether all knots or a
+  deterministic subset was checked, and the maximum *sampled* drift against its
+  threshold.
+- `reference_solution` records the same sampling scope and compares maximum
+  *sampled* errors against caller-supplied tolerances.
 - event records retain the final bracket, residual, direction, and location
   iterations.
 
@@ -167,6 +187,12 @@ Use SciPy Radau, SciPy BDF, or SUNDIALS outside Sage.js when a qualified stiff
 solver is required. The checked corpus preserves a SciPy Radau oracle for this
 case so future stiff work has a concrete acceptance target.
 
+This evidence boundary is intentional, but it also means the complete P4 plan is
+not yet delivered: automatic stiffness detection, a qualified stiff solver,
+complex states, higher-order reduction, and deterministic bounded-concurrency
+parameter sweeps remain unsupported. `method="auto"` always selects nonstiff
+RK45 and never implies stiffness handling.
+
 ## Visual explanations
 
 The solver records semantic `step` and `event` trace entries. The visualizer
@@ -178,9 +204,18 @@ objects:
 - `step_size`: accepted and rejected step sizes; and
 - `local_error`: embedded weighted-RMS estimates and the acceptance threshold.
 
-Animations contain computed knots only, retain fixed layer topology, are
-deterministically capped at 64 frames, and embed a static PlotSpec fallback.
-PlotSpec supplies accessible descriptions and renderer-independent JSON.
+Trajectory, phase, event, step-size, and local-error animations contain only
+computed knots or retained semantic trace records, preserve fixed layer
+topology, are deterministically capped at 64 frames, and embed a static PlotSpec
+fallback. PlotSpec supplies accessible descriptions and renderer-independent
+JSON. Step/error animations inherit trace decimation honestly.
+
+## Portability evidence boundary
+
+The checked evidence in this lane covers CPython Linux x64 and Sage.js on Node
+Linux x64. Browser Wasm, SEA, Linux ARM64, macOS ARM64, and native Windows x64
+remain release targets rather than qualified capability claims until their
+persistent-host receipts exist.
 
 ## Evidence and implementation references
 
