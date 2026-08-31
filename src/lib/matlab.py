@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import sagejs.runtime as runtime
@@ -287,6 +287,51 @@ def _vector_data(value: Any, name: str) -> tuple[list[Any], tuple[int, ...]]:
     return _array_data(value, name, allow_matrix=False)
 
 
+def _column_vector_data(value: Any, name: str) -> list[Any]:
+    values, shape = _vector_data(value, name)
+    if len(shape) == 2 and shape[0] == 1 and shape[1] > 1:
+        raise TypeError(name + " must be a column vector")
+    return values
+
+
+def _column_array(values: Any, name: str) -> Any:
+    """Project a canonical vector to a MATLAB `n`-by-1 array."""
+
+    items, _shape = _vector_data(values, name)
+    return np.array([[item] for item in items])
+
+
+def _callback_vector_data(value: Any, name: str) -> list[Any]:
+    data = value.tolist() if hasattr(value, "tolist") else value
+    if not isinstance(data, (list, tuple)):
+        if isinstance(data, (str, bytes, bytearray, dict)):
+            raise TypeError(name + " must return a numeric scalar or vector")
+        return [data]
+    values, _shape = _vector_data(data, name)
+    return values
+
+
+def _shaped_callback(
+    function: Any,
+    shape: tuple[int, ...],
+    name: str,
+    *,
+    vector_result: bool,
+) -> Callable[[Any], Any]:
+    """Adapt a flat canonical callback boundary to a MATLAB vector shape."""
+
+    if not callable(function):
+        raise TypeError(name + " must be callable")
+
+    def callback(values: Any) -> Any:
+        result = function(_restore_array(values, shape))
+        if not vector_result:
+            return result
+        return _callback_vector_data(result, name + " result")
+
+    return callback
+
+
 def _convolution_shape(
     left: tuple[int, ...], right: tuple[int, ...], length: int
 ) -> tuple[int, ...]:
@@ -298,11 +343,19 @@ def _convolution_shape(
 
 
 def linsolve(matrix: Any, right: Any, **options: Any) -> Any:
-    return numerical_value("linsolve", matrix, right, **options)
+    values = _column_vector_data(right, "linsolve right side")
+    return _column_array(
+        numerical_value("linsolve", matrix, values, **options),
+        "linsolve result",
+    )
 
 
 def lsqminnorm(matrix: Any, right: Any, **options: Any) -> Any:
-    return numerical_value("lsqminnorm", matrix, right, **options)
+    values = _column_vector_data(right, "lsqminnorm right side")
+    return _column_array(
+        numerical_value("lsqminnorm", matrix, values, **options),
+        "lsqminnorm result",
+    )
 
 
 def eig_result(matrix: Any, **options: Any) -> Any:
@@ -329,7 +382,7 @@ def svd(matrix: Any, **options: Any) -> Any:
     result = svd_result(matrix, **options)
     _require_numerical_success("svd", result)
     value = result.value
-    return value["singular_values"]
+    return _column_array(value["singular_values"], "svd singular values")
 
 
 def fft_result(samples: Any, **options: Any) -> Any:
@@ -408,19 +461,54 @@ def fminbnd(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
 def fminsearch(function: Any, initial: Any, **options: Any) -> Any:
     values, shape = _vector_data(initial, "fminsearch initial point")
     return _restore_array(
-        numerical_value("fminsearch", function, values, **options), shape
+        numerical_value(
+            "fminsearch",
+            _shaped_callback(
+                function,
+                shape,
+                "fminsearch objective",
+                vector_result=False,
+            ),
+            values,
+            **options,
+        ),
+        shape,
     )
 
 
 def fsolve(function: Any, initial: Any, **options: Any) -> Any:
     values, shape = _vector_data(initial, "fsolve initial point")
-    return _restore_array(numerical_value("fsolve", function, values, **options), shape)
+    return _restore_array(
+        numerical_value(
+            "fsolve",
+            _shaped_callback(
+                function,
+                shape,
+                "fsolve callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
 
 
 def lsqnonlin(residuals: Any, initial: Any, **options: Any) -> Any:
     values, shape = _vector_data(initial, "lsqnonlin initial point")
     return _restore_array(
-        numerical_value("lsqnonlin", residuals, values, **options), shape
+        numerical_value(
+            "lsqnonlin",
+            _shaped_callback(
+                residuals,
+                shape,
+                "lsqnonlin residual callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
     )
 
 
