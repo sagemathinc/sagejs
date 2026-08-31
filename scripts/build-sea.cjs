@@ -79,6 +79,12 @@ const numericalBackendArtifact = join(
   "numerical",
   "cminpack.wasm",
 );
+const nloptBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "nlopt-methods.wasm",
+);
 
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
   {
@@ -478,6 +484,7 @@ function buildExecutable(name, withFlint, seaNode) {
     "worker/kernel-worker.cjs": kernelWorkerBundle,
     "native/zeromq.node": zeroMQAddonFilename(),
     "numerical/cminpack.wasm": numericalBackendArtifact,
+    "numerical/nlopt-methods.wasm": nloptBackendArtifact,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     ...collectJsonCacheAssets("lazy-module-cache"),
@@ -577,13 +584,16 @@ function buildExecutable(name, withFlint, seaNode) {
 }
 
 execFileSync(process.execPath, [
-  join(root, "packages", "flint-wasm", "numerical", "scripts", "build.cjs"),
+  join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
 ], {
   cwd: root,
   stdio: "inherit",
 });
 if (!existsSync(numericalBackendArtifact)) {
   throw new Error("cminpack numerical backend build did not publish its SEA asset");
+}
+if (!existsSync(nloptBackendArtifact)) {
+  throw new Error("NLopt numerical backend build did not publish its SEA asset");
 }
 
 rmSync(outputDirectory, { recursive: true, force: true });

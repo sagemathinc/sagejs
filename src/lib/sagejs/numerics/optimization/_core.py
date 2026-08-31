@@ -9,6 +9,7 @@ from typing import Any
 
 from ..diagnostics import NumericalDiagnostic
 from ..model import (
+    NumericalConstraint,
     NumericalPlan,
     NumericalProblem,
     NumericalResult,
@@ -664,6 +665,7 @@ def problem_record(
     expression: str | None = None,
     source_language: str = "python",
     metadata: Mapping[str, Any] | None = None,
+    constraints: Sequence[NumericalConstraint] = (),
 ) -> NumericalProblem:
     if dimension <= 0 or dimension > MAX_DENSE_DIMENSION:
         raise ValueError(
@@ -699,6 +701,7 @@ def problem_record(
             "kind": "explicit_callback" if derivative is not None else "none",
             "replayable": False,
         },
+        constraints=constraints,
         resource_budget=budget,
         trace_policy=TracePolicy(
             trace_level, max_events=max_trace_events, max_bytes=max_trace_bytes
@@ -729,6 +732,8 @@ class OptimizationResult(NumericalResult):
         domain_payload: Mapping[str, Any],
     ) -> None:
         self._optimization_payload = dict(domain_payload)
+        executed_backend = self._optimization_payload.get("backend_identity")
+        external_execution = isinstance(executed_backend, str)
         super().__init__(
             problem,
             plan,
@@ -743,9 +748,15 @@ class OptimizationResult(NumericalResult):
             trace=trace,
             measurements=measurements,
             provenance={
-                "implementation": "sagejs.numerics.optimization",
-                "implementation_kind": "ordinary_python",
-                "source_transparent": True,
+                "implementation": (
+                    executed_backend
+                    if external_execution
+                    else "sagejs.numerics.optimization"
+                ),
+                "implementation_kind": (
+                    "external_library_wasm" if external_execution else "ordinary_python"
+                ),
+                "source_transparent": not external_execution,
                 "solver_status": status,
             },
             domain_payload=domain_payload,

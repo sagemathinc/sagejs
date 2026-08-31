@@ -19,7 +19,7 @@
   "reviewed_sagejs_files": {
     "adapter_sha256": "d102e72e747a0073a8c44c04482ae7e5c1b743bff64c79913d5b8929624bb3f2",
     "build_script_sha256": "08b45a140660063d803f0f895d7dd6342a6f3158323f8bd46b509f83496f2ee9",
-    "host_module_sha256": "6f2345adcf27f0ac416ec562277799719682ed9fea5d6307632de581f1de5038",
+    "host_module_sha256": "041619b1538d806a225793adc9cf876e649588a73635e53965fa7b06349b6e04",
     "release_verifier_sha256": "93bf5017133ddc09e72ae6200e1bd1f092126c8cfcc93eeda509141827fcfe1e"
   },
   "toolchain": {

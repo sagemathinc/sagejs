@@ -7,10 +7,44 @@
   "status": "active",
   "owner": "user",
   "objective": "Pin and license-close a permissive NLopt build with Luksan disabled, implement a bounded packed callback Wasm backend package, and independently qualify exact outward Nelder-Mead and COBYLA method identities without automatic selection",
-  "base_commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
+  "base_commit": "a06676b0bbc7a907373c66013decffbfa7b0a90c",
   "claims": [
+    ".agents/lanes.json",
+    "architecture/native-audit.json",
+    "architecture/native-boundaries.json",
+    "architecture/native-code.json",
+    "architecture/native-exports.json",
+    "architecture/package-graph.json",
+    "architecture/wasm-capabilities.json",
+    "architecture/wasm-capabilities-report.json",
+    "architecture/wasm-workload-dashboard.json",
+    "docs/numerical-computing/optimization/README.md",
     "src/lib/sagejs/numerics/optimization/backends/nlopt/",
+    "src/lib/sagejs/numerics/optimization/_constraints.py",
+    "src/lib/sagejs/numerics/optimization/_core.py",
+    "src/lib/sagejs/numerics/optimization/multivariate.py",
+    "src/lib/sagejs/numerics/optimization/planning.py",
+    "src/lib/sagejs/numerics/optimization/validation.py",
+    "src/lib/sagejs/numerics/model.py",
+    "src/baselib/sagejs/runtime.py",
+    "src/baselib/sagejs/runtime.pyi",
+    "packages/flint-wasm/evaluator.mjs",
+    "packages/flint-wasm/kernel-worker.mjs",
+    "packages/flint-wasm/kernel.d.ts",
+    "packages/flint-wasm/kernel.mjs",
+    "packages/flint-wasm/package.json",
+    "packages/flint-wasm/numerical/",
+    "packages/flint-wasm/release/production-capabilities.json",
+    "packages/flint-wasm/release/production-layout.json",
+    "packages/flint-wasm/release/wasm-abi-allowlist.json",
+    "packages/flint-wasm/scripts/build.cjs",
+    "packages/flint-wasm/test/",
+    "scripts/build.cjs",
+    "scripts/build-receipt.cjs",
+    "scripts/build-sea.cjs",
+    "tools/resources.ts",
     "test/numerical-p3-nlopt/",
+    "test/numerical-p3-backends/browser-resource.test.mjs",
     "bench/numerical-p3-nlopt/",
     "docs/numerical-computing/optimization/nlopt-methods.md"
   ],
@@ -46,6 +80,9 @@
     "python3 bench/numerical-p3-nlopt/scipy_oracle.py",
     "node test/numerical-p3-nlopt/browser.mjs",
     "node test/numerical-p3-nlopt/portable-smoke.mjs",
+    "node --test test/numerical-p3-nlopt/public-integration.cjs test/numerical-p3-nlopt/public-browser.mjs test/numerical-p3-nlopt/public-relocation.cjs test/numerical-p3-nlopt/public-sea.cjs test/numerical-p3-backends/browser-resource.test.mjs",
+    "pnpm --dir packages/flint-wasm build",
+    "node --test packages/flint-wasm/test/production-receipt.test.cjs packages/flint-wasm/test/wasm-abi-allowlist.test.cjs",
     "pnpm test:baselib:strict",
     "pnpm test:numerics",
     "pnpm architecture:check"
@@ -323,18 +360,17 @@
     }
   ],
   "handoff": {
-    "summary": "Pinned NLopt 2.11.0-dev revision 6e6593f with Luksan disabled and a fail-closed five-source permissive closure; implemented a bounded one-import callback Wasm reactor and JavaScript host for exact explicit nlopt-nelder-mead and nlopt-cobyla identities; independently qualified 5 Nelder-Mead and 7 feasible COBYLA envelopes plus deliberate infeasibility rejection against SciPy 1.18/PRIMA; proved packed objective/gradient/constraint/Jacobian layouts, bounds, finite/memory/ABI guards, force-stop budgets, failure cleanup, lifecycle/reuse, real Chromium behavior, and the exact artifact on Linux x64/ARM64, macOS ARM64, and Windows x64. Automatic selection remains disabled.",
+    "summary": "Integrated the pinned, Luksan-disabled NLopt closure as exact explicit-only nlopt-nelder-mead and nlopt-cobyla public methods. The implementation adds first-class scalar constraints, independently validates objective, bounds, feasibility, and local evidence, fails closed around unavailable or invalid resources, and preserves the ordinary-Python automatic route. Separate cminpack and NLopt adapter bundles are wired through Node, browser, relocated npm, Python SEA, production topology, capability, ABI, native-code, and Wasm inventories. The qualified source/artifact corpus, SciPy/PRIMA oracles, real Chromium, four supported hosts, public integration, resource-corruption, infeasibility, lifecycle, allocation, cancellation, and one-dimensional stopping regressions pass. Automatic selection remains disabled.",
     "risks": [
-      "NLopt can return a positive termination code for an infeasible COBYLA point, so central NumericalResult integration must independently recompute objective, bounds, residuals, feasibility, and applicable local-optimum evidence.",
-      "The current integration base has pre-existing unclassified cminpack and MGH C adapters and an approximation capability-record test mismatch; these block the shared architecture and numerics gates before this isolated backend can be integrated.",
-      "bench-1 rejects the available SSH identity, so the Linux x64 portability receipt is from the local x64 host rather than that persistent host.",
+      "NLopt can return a positive termination code for an infeasible COBYLA point; the public integration deliberately recomputes and rejects such results independently.",
+      "The full mathematical SEA was not rebuilt locally because this worktree lacks the optional native FLINT addon. Relocated sagepython SEA execution passes for both exact NLopt methods; repeat the full mathematical SEA in the native-prepared integration qualification.",
+      "Optimizer-opportunity artifacts were intentionally not regenerated because the integration lane owns that shared dashboard.",
       "The browser cooperative receipt proves a pre-set shared-atomic force-stop; hard interruption of a non-returning callback is correctly provided by terminating and replacing its worker."
     ],
     "next_steps": [
-      "Cherry-pick this lane commit into the integration branch and classify src/adapter.c as a foreign-library host adapter in architecture/native-code.json together with the inherited cminpack/MGH classifications.",
-      "Register the reactor, exact import/export surface, package ownership, and lazy resource beside cminpack in shared integration manifests; do not enable automatic selection.",
-      "Expose the two exact methods through the ordinary-Python optimization router, preserve correct dynamic fallbacks, and fail explicit NLopt requests rather than silently changing method identity.",
-      "Independently validate every public result, then rerun the source-bound corpus, release verifier, Chromium test, four-platform portable smoke, shared numerics suite, and architecture gate on the integrated candidate."
+      "Merge the complete lane tip so both the qualified low-level backend and central public integration land together.",
+      "Regenerate the optimizer-opportunity artifacts from the final integrated tree without enabling automatic NLopt selection.",
+      "Repeat the full mathematical SEA qualification in a native-prepared checkout and retain the passing relocated sagepython SEA receipt."
     ]
   }
 }

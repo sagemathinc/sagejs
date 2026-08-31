@@ -18,6 +18,8 @@ _CMINPACK_PLATFORMS = [
     "windows-x64",
 ]
 _CMINPACK_RUNTIMES = ["sagejs-node", "sagejs-browser", "sagejs-sea"]
+_NLOPT_PLATFORMS = list(_CMINPACK_PLATFORMS)
+_NLOPT_RUNTIMES = list(_CMINPACK_RUNTIMES)
 
 
 def _cminpack_record(method: str) -> dict[str, Any]:
@@ -33,6 +35,36 @@ def _cminpack_record(method: str) -> dict[str, Any]:
         "max_residual_dimension": 16_384,
         "platforms": _CMINPACK_PLATFORMS,
         "runtimes": _CMINPACK_RUNTIMES,
+    }
+
+
+def _nlopt_record(method: str) -> dict[str, Any]:
+    constraints = (
+        ["box_bounds"]
+        if method == "nlopt-nelder-mead"
+        else ["box_bounds", "scalar_inequality", "scalar_equality"]
+    )
+    return {
+        "classification": "extension",
+        "backend": "nlopt-mit-wasm",
+        "selection": "explicit-only",
+        "constraints": constraints,
+        "derivatives": ["none"],
+        "validation": [
+            "independent_objective",
+            "independent_feasibility",
+            "independent_feasible_direction_local_minimum",
+        ],
+        "max_dimension": MAX_DENSE_DIMENSION,
+        "max_constraints": 512,
+        "views": _view_contract(
+            "minimize",
+            "box_bounds"
+            if method == "nlopt-nelder-mead"
+            else "box_and_nonlinear_constraints",
+        ),
+        "platforms": _NLOPT_PLATFORMS,
+        "runtimes": _NLOPT_RUNTIMES,
     }
 
 
@@ -86,6 +118,8 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
         }
     },
     "minimize": {
+        "nlopt-cobyla": _nlopt_record("nlopt-cobyla"),
+        "nlopt-nelder-mead": _nlopt_record("nlopt-nelder-mead"),
         "nelder-mead": {
             "classification": "translated",
             "backend": "ordinary-python",
@@ -202,12 +236,22 @@ def capabilities(operation: str | None = None) -> dict[str, JSONValue]:
                 "selection": "explicit-only",
                 "automatic_selection": False,
             },
+            "nlopt": {
+                "platforms": list(_NLOPT_PLATFORMS),
+                "runtimes": list(_NLOPT_RUNTIMES),
+                "selection": "explicit-only",
+                "automatic_selection": False,
+            },
         },
         "operations": operations,
         "explicitly_unsupported": {
             "nonlinear_constraints": {
                 "methods": ["cobyla"],
-                "reason": "NLopt/PRIMA qualification and independent infeasibility gates are not yet integrated",
+                "reason": "the generic COBYLA identity is not qualified; request the exact nlopt-cobyla method",
+            },
+            "automatic_nonlinear_constraints": {
+                "methods": ["auto"],
+                "reason": "nonlinear constraints require the exact explicit nlopt-cobyla identity",
             },
             "sage_bounded_methods": {
                 "methods": ["tnc", "l-bfgs-b"],
@@ -256,11 +300,16 @@ def _method_envelope_error(problem: NumericalProblem, selected: str) -> str | No
     if isinstance(dimension, int) and isinstance(maximum, int) and dimension > maximum:
         return selected + " exceeds its validated dimension envelope"
     bounded = _has_box_bounds(problem)
+    constrained = len(problem.constraints) != 0
     if problem.operation == "minimize":
         if selected in ("nelder-mead", "bfgs") and bounded:
             return selected + " does not support box bounds"
         if selected == "projected-bfgs" and not bounded:
             return "projected-bfgs requires at least one finite box bound"
+        if selected == "nlopt-nelder-mead" and constrained:
+            return "nlopt-nelder-mead does not support nonlinear constraints"
+        if selected not in ("nlopt-cobyla",) and constrained:
+            return selected + " does not support nonlinear constraints"
     if selected == "cminpack-lmder" and problem.derivative is None:
         return "cminpack-lmder requires an explicit Jacobian callback"
     return None
@@ -270,6 +319,10 @@ def _automatic_method(problem: NumericalProblem) -> tuple[str, str]:
     if problem.operation == "scalar_minimum":
         return "bounded-brent", "a finite interval selects bounded Brent minimization"
     if problem.operation == "minimize":
+        if len(problem.constraints) != 0:
+            raise ValueError(
+                "automatic nonlinear-constraint selection is disabled; request nlopt-cobyla"
+            )
         bound_values = problem.bounds.get("variables")
         if isinstance(bound_values, list) and any(
             item != [None, None] for item in bound_values
@@ -344,9 +397,9 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
         fallback=(
             {
                 "kind": "none",
-                "reason": "an explicit cminpack method cannot be substituted",
+                "reason": "an explicit external-library method cannot be substituted",
             }
-            if selected.startswith("cminpack-")
+            if selected.startswith("cminpack-") or selected.startswith("nlopt-")
             else {
                 "kind": "same-source",
                 "backend": "ordinary-python",

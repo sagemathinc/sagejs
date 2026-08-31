@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "3bcdf1b82619bc2cc6653c6f5b06681dc5f4349aefea3ea93a22458e7da50298",
+  "source_sha256": "f1f550a3c7122656c50c9614dcbdb2b2f0d5dabc7c95fdc7708bd961e213cade",
   "counts": {
-    "total": 1047,
+    "total": 1048,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
       "napi-export": 330,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
-      "specialist-capability": 27
+      "specialist-capability": 28
     },
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
       "portable-fallback": 559,
-      "shared-core": 49
+      "shared-core": 50
     },
     "by_status": {
-      "available": 583,
+      "available": 584,
       "desktop-only": 47,
       "fallback": 417
     }
@@ -12864,6 +12864,24 @@
         "MultivariatePolynomialElement.resultant over ZZ"
       ],
       "explanation": "Supported exact ZZ multivariate resultants run as one bounded receipt-authenticated FLINT Wasm call; unsupported domains fail explicitly in browsers."
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead or COBYLA in Node, browsers, and SEA. Automatic planning remains on ordinary Python and an unavailable or invalid NLopt result fails closed.",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 512,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     }
   ]
 }

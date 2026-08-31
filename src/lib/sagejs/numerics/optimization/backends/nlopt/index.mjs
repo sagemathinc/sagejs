@@ -171,10 +171,7 @@ function finiteJacobian(value, rows, columns, description) {
   return finiteVector(outer, rows * columns, description);
 }
 
-export async function createNloptBackend(moduleOrBytes) {
-  const module = moduleOrBytes instanceof WebAssembly.Module
-    ? moduleOrBytes
-    : await WebAssembly.compile(moduleOrBytes);
+function createNloptBackendFromModule(module) {
   const imports = WebAssembly.Module.imports(module);
   if (imports.length !== 1 || imports[0].module !== "sagejs_numerical_nlopt" ||
       imports[0].name !== "evaluate" || imports[0].kind !== "function") {
@@ -303,7 +300,7 @@ export async function createNloptBackend(moduleOrBytes) {
     }
   }
 
-  instance = await WebAssembly.instantiate(module, {
+  instance = new WebAssembly.Instance(module, {
     sagejs_numerical_nlopt: { evaluate },
   });
   instance.exports._initialize?.();
@@ -708,4 +705,26 @@ export async function createNloptBackend(moduleOrBytes) {
     }),
     qualification: Object.freeze({ probeCallbackBatch }),
   });
+}
+
+/** Instantiate the authenticated NLopt reactor without blocking compilation. */
+export async function createNloptBackend(moduleOrBytes) {
+  const module = moduleOrBytes instanceof WebAssembly.Module
+    ? moduleOrBytes
+    : await WebAssembly.compile(moduleOrBytes);
+  return createNloptBackendFromModule(module);
+}
+
+/**
+ * Instantiate the authenticated NLopt reactor synchronously.
+ *
+ * Ordinary Python callbacks execute synchronously. Node and SEA therefore
+ * compile this separately lazy reactor only on the first exact NLopt request;
+ * browser evaluators prepare it before executing optimization imports.
+ */
+export function createNloptBackendSync(moduleOrBytes) {
+  const module = moduleOrBytes instanceof WebAssembly.Module
+    ? moduleOrBytes
+    : new WebAssembly.Module(moduleOrBytes);
+  return createNloptBackendFromModule(module);
 }

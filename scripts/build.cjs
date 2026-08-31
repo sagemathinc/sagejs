@@ -29,7 +29,7 @@ const stages = [
   ["Precompile Python modules and Node runtimes", 190],
   ["Reconcile installed native addons and adapters", 20],
   ["Publish the production native-kernel pack", 30],
-  ["Build the lazy cminpack numerical reactor", 2],
+  ["Build the lazy cminpack and NLopt numerical reactors", 2],
 ];
 
 function commandText(command, arguments_) {
@@ -308,9 +308,9 @@ async function main() {
 
   await runStage(7, async () => {
     const output = await run(process.execPath, [
-      join(root, "packages", "flint-wasm", "numerical", "scripts", "build.cjs"),
+      join(root, "packages", "flint-wasm", "numerical", "scripts", "build-all.cjs"),
     ]);
-    return nonemptyLines(output).at(-1) ?? "Lazy cminpack reactor built.";
+    return nonemptyLines(output).at(-1) ?? "Lazy numerical reactors built.";
   });
 
   writeBuildReceipt({ root, durationMilliseconds: Date.now() - started });

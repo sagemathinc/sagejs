@@ -367,15 +367,21 @@ export function createBrowserRuntimeModules({
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   importNumpy = (url) => import(String(url)),
   numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
   numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
+  nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
   fetchNumerical = globalThis.fetch,
   importNumerical = (url) => import(String(url)),
   instantiateNumerical,
+  instantiateNlopt,
   recordCapability = () => {},
 } = {}) {
   const modules = new Map();
   let numpyPromise;
   let numericalPromise;
+  let nloptPromise;
+  let numericalAdapterPromise;
+  let nloptAdapterPromise;
   const requiresNumpy = (imports) => imports.some(
     (name) => name === "numpy" || name.startsWith("numpy."),
   );
@@ -414,7 +420,9 @@ export function createBrowserRuntimeModules({
           .then(async (bytes) => {
             let instantiate = instantiateNumerical;
             if (instantiate === undefined) {
-              const adapter = await importNumerical(numericalAdapter);
+              const adapter = await (numericalAdapterPromise ??= Promise.resolve(
+                importNumerical(numericalAdapter),
+              ));
               instantiate = adapter?.createCminpackBackend;
             }
             if (typeof instantiate !== "function") {
@@ -446,7 +454,52 @@ export function createBrowserRuntimeModules({
             modules.set("@sagemath/sagejs-numerical", unavailable);
             return unavailable;
           });
-        pending.push(numericalPromise);
+        nloptPromise ??= Promise.resolve(fetchNumerical(String(numericalNlopt)))
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error(
+                `unable to load NLopt numerical backend (${response.status})`,
+              );
+            }
+            return response.arrayBuffer();
+          })
+          .then(async (bytes) => {
+            let instantiate = instantiateNlopt;
+            if (instantiate === undefined) {
+              const adapter = await (nloptAdapterPromise ??= Promise.resolve(
+                importNumerical(nloptAdapter),
+              ));
+              instantiate = adapter?.createNloptBackend;
+            }
+            if (typeof instantiate !== "function") {
+              throw new TypeError("browser NLopt numerical adapter is invalid");
+            }
+            return instantiate(bytes);
+          })
+          .then((backend) => {
+            if (backend === null || typeof backend !== "object" ||
+                typeof backend.solve !== "function" ||
+                backend.capability?.backend !== "nlopt-mit-wasm") {
+              throw new TypeError("browser NLopt numerical backend is invalid");
+            }
+            modules.set("@sagemath/sagejs-numerical-nlopt", backend);
+            return backend;
+          })
+          .catch((error) => {
+            // Like cminpack, NLopt is an explicit-only optimization resource.
+            // Keep ordinary optimization imports usable when it is absent or
+            // corrupt, while making an exact NLopt request fail synchronously
+            // at the public boundary.
+            const unavailable = Object.freeze({
+              capability: Object.freeze({ backend: "nlopt-unavailable" }),
+              solve() {
+                throw error;
+              },
+            });
+            modules.set("@sagemath/sagejs-numerical-nlopt", unavailable);
+            return unavailable;
+          });
+        pending.push(numericalPromise, nloptPromise);
       }
       await Promise.all(pending);
       return capabilities;
@@ -459,6 +512,15 @@ export function createBrowserRuntimeModules({
       ) {
         recordCapability(
           "wasm-library:cminpack:least-squares-explicit",
+          "receipt-backed-wasm-artifact",
+          { executionTarget: "wasm-artifact" },
+        );
+      } else if (
+        name === "@sagemath/sagejs-numerical-nlopt" &&
+        module?.capability?.backend === "nlopt-mit-wasm"
+      ) {
+        recordCapability(
+          "wasm-library:nlopt:derivative-free-explicit",
           "receipt-backed-wasm-artifact",
           { executionTarget: "wasm-artifact" },
         );
@@ -487,7 +549,9 @@ export async function instantiateSageEvaluator({
   nativeKernels = undefined,
   m4ri,
   numerical = new URL("./dist/cminpack.wasm", import.meta.url),
+  numericalNlopt = new URL("./dist/nlopt-methods.wasm", import.meta.url),
   numericalAdapter = new URL("./dist/numerical-backend.mjs", import.meta.url),
+  nloptAdapter = new URL("./dist/nlopt-backend.mjs", import.meta.url),
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
@@ -516,6 +580,7 @@ export async function instantiateSageEvaluator({
   fetchNumerical = globalThis.fetch,
   importNumerical = (url) => import(String(url)),
   instantiateNumerical,
+  instantiateNlopt,
   fetchLazyModules = fetchLazyModuleBundle,
   createConwayData = createLazyAuthenticatedConwayData,
   fetchDynamicPrograms = async (url) => {
@@ -538,10 +603,13 @@ export async function instantiateSageEvaluator({
     numpy,
     importNumpy,
     numerical,
+    numericalNlopt,
     numericalAdapter,
+    nloptAdapter,
     fetchNumerical,
     importNumerical,
     instantiateNumerical,
+    instantiateNlopt,
     recordCapability: (id, route, options) =>
       capabilityDispatchTrace.record(id, route, options),
   });
@@ -770,11 +838,12 @@ export async function instantiateSageEvaluator({
     if (name === "@sagemath/sagejs-symbolic") {
       return symbolicBackendModule;
     }
-    if (name === "@sagemath/sagejs-numerical") {
+    if (name === "@sagemath/sagejs-numerical" ||
+        name === "@sagemath/sagejs-numerical-nlopt") {
       const backend = runtimeModules.get(name);
       if (backend !== undefined) return backend;
       throw new Error(
-        "cminpack was not prepared for this browser optimization program",
+        "the requested numerical backend was not prepared for this browser optimization program",
       );
     }
     const runtimeModule = runtimeModules.get(name);
