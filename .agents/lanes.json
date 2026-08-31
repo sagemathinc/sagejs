@@ -192,6 +192,8 @@
       "description": "Shared agent-facing numerical problem, plan, result, capability, provenance, resource-budget, and surface-classification contracts",
       "allowed_claims": [
         "agents/numerical-computing-product-plan.md",
+        "architecture/optimizer-opportunities.manifest.json",
+        "docs/optimizer-opportunities.md",
         "scripts/check-numerical-surface.cjs",
         "scripts/numerical-computing/contracts.cjs",
         "src/lib/sagejs/numerics/capabilities.py",
