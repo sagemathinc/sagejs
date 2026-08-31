@@ -150,7 +150,7 @@ The final integration checkout passed:
 
 - the seven-stage production build;
 - architecture validation, including 1,046 reviewed Wasm capabilities;
-- strict Python validation for 274 modules with zero errors;
+- strict Python validation for 276 modules with zero errors;
 - the compiler suite with 16 passes, 19 declared historical skips, and zero
   failures;
 - all 116 unit files and all 105 portable files;
