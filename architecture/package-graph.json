@@ -25,6 +25,7 @@
     "sea-cli": {
       "normalized_median_ms": 300,
       "normalized_median_ms_by_platform_arch": {
+        "linux-x64": 350,
         "linux-arm64": 350
       },
       "hard_limit_ms": 1500,
