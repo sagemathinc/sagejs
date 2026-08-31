@@ -22,7 +22,7 @@ _NLOPT_PLATFORMS = list(_CMINPACK_PLATFORMS)
 _NLOPT_RUNTIMES = list(_CMINPACK_RUNTIMES)
 
 
-def _cminpack_record(method: str) -> dict[str, Any]:
+def _cminpack_record(method: str, operation: str) -> dict[str, Any]:
     return {
         "classification": "extension",
         "backend": "cminpack-wasm",
@@ -31,6 +31,7 @@ def _cminpack_record(method: str) -> dict[str, Any]:
         if method == "cminpack-lmder"
         else ["forward_finite_difference"],
         "validation": ["independent_residual", "independent_stationarity"],
+        "views": _view_contract(operation, "none"),
         "max_dimension": MAX_DENSE_DIMENSION,
         "max_residual_dimension": 16_384,
         "platforms": _CMINPACK_PLATFORMS,
@@ -163,8 +164,8 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
         }
     },
     "nonlinear_least_squares": {
-        "cminpack-lmdif": _cminpack_record("cminpack-lmdif"),
-        "cminpack-lmder": _cminpack_record("cminpack-lmder"),
+        "cminpack-lmdif": _cminpack_record("cminpack-lmdif", "nonlinear_least_squares"),
+        "cminpack-lmder": _cminpack_record("cminpack-lmder", "nonlinear_least_squares"),
         "damped-gauss-newton": {
             "classification": "extension",
             "backend": "ordinary-python",
@@ -176,8 +177,8 @@ _METHODS: dict[str, dict[str, dict[str, Any]]] = {
         },
     },
     "curve_fit": {
-        "cminpack-lmdif": _cminpack_record("cminpack-lmdif"),
-        "cminpack-lmder": _cminpack_record("cminpack-lmder"),
+        "cminpack-lmdif": _cminpack_record("cminpack-lmdif", "curve_fit"),
+        "cminpack-lmder": _cminpack_record("cminpack-lmder", "curve_fit"),
         "damped-gauss-newton": {
             "classification": "extension",
             "backend": "ordinary-python",
