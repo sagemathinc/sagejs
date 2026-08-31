@@ -344,9 +344,11 @@ certified algebra interface for the general exact Eisenstein formula.
 
 For a cusp space, `formula_subspace()` constructs level-one formula forms and
 all $V_d$ images with $d\mid N$, then proves their rank beyond the Sturm bound.
-The result is an explicit contained subspace. It claims to be the ambient
-space only when its certified rank equals the independently computed ambient
-dimension:
+The result is an explicit contained subspace. It does not infer containment or
+equality from dimensions: it reconstructs an independent modular-symbol basis
+through the proof precision and solves the formula rows exactly in that basis.
+It claims to be the ambient space only when the combined exact comparison has
+full rank:
 
 ```sage
 sage: F = CuspForms(2, 24).formula_subspace(prec=8)
@@ -354,12 +356,68 @@ sage: F
 Certified formula-generated proper subspace of dimension 4 of Cuspidal subspace of dimension 5 of Modular Forms space of dimension 7 for Congruence Subgroup Gamma0(2) of weight 24 over Rational Field
 sage: F.dimension(), F.ambient_dimension(), F.is_proper_subspace(), F.verify()
 (4, 5, True, True)
+sage: C = F.ambient_comparison()
+sage: C
+Verified formula/modular-symbol comparison through q^7: 1 missing direction
+sage: C.formula_coordinates_in_ambient().nrows(), C.missing_dimension()
+(4, 1)
+sage: C.missing_q_expansion_basis()
+[q - 3036624*q^6 + 30261560*q^7 + O(q^8)]
 ```
 
-Consequently, forcing `algorithm="formulas"` on this example raises an
+The missing basis is a deterministic subset of the modular-symbol row basis
+which completes the formula rows to the ambient cusp space. Thus it identifies
+actual absent directions, not merely the codimension. The certificate verifies
+the exact identities $CA=B$ for the ambient matrix $A$, formula matrix $B$,
+and coordinate matrix $C$, followed by equality of the completed row spaces.
+
+Membership and coordinates require a certified modular form with matching
+weight, character, and coefficient field. Lower-level forms are lifted when
+their level divides the ambient level. A bare truncated power series is
+deliberately not accepted as evidence of mathematical membership:
+
+```sage
+sage: A = CuspForms(2, 12).formula_subspace(prec=12)
+sage: D = certified_modular_form(CuspForms(1, 12).gen(), 12)
+sage: D in A
+True
+sage: c = A.coordinates(D)
+sage: c * A.coefficient_matrix() == vector(QQ, [D[n] for n in range(12)])
+True
+sage: A.contains(A.basis()[0])
+False
+```
+
+Consequently, forcing `algorithm="formulas"` on the proper example raises an
 explicit proper-subspace error. The same call at level $2$, weight $12$
 returns the full two-dimensional formula basis. Callers may also pass their
 own certified candidate list to `formula_subspace(candidates, prec)`.
+
+### Pinned differential correctness corpus
+
+`bench/modular/qexp-correctness/pinned-corpus.json` records canonical exact
+row-space hashes and invariants independently reproduced by SageMath and
+Magma. It includes level $1$, levels $2$ and $6$, a nontrivial quadratic
+character modulo $7$, an entirely old space at level $22$, and the quadratic
+coefficient field of a level-$23$ newform. Both full and proper formula spans
+are covered. The corpus also checks coefficients beyond the Sturm bound using
+
+$$
+a_{p^2}=a_p^2-\chi(p)p^{k-1}
+$$
+
+for $\Delta$ at $p=2,3$ and for the character-modulo-$7$ form at $p=2$.
+Run the independent systems and Sage.js pins with:
+
+```bash
+node bench/modular/qexp-correctness/run-oracles.cjs
+node bench/modular/qexp-correctness/sagejs-corpus.cjs
+```
+
+The oracle runner fails on any exact coefficient, dimension, character,
+old/new, coefficient-field, or Hecke-polynomial disagreement. The committed
+corpus describes the exact canonical encoding and pins the SageMath and Magma
+versions; it does not use Sage.js output as an oracle.
 
 The reproducible resident benchmark is
 `pnpm bench:modular:qexp-algebra`. It times product, $V_2$, and bounded
