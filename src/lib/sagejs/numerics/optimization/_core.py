@@ -187,7 +187,86 @@ def infinity_norm(values: Sequence[float]) -> float:
 
 
 def squared_norm(values: Sequence[float]) -> float:
-    return dot(values, values)
+    """Return a representable squared Euclidean norm or stop explicitly."""
+    answer = finite_squared_norm(values)
+    if answer is None:
+        raise StopExecution("invalid_problem", "squared_norm_outside_binary64_range")
+    return answer
+
+
+def scaled_sum_of_squares(values: Sequence[float]) -> tuple[float, float]:
+    """Return LAPACK-style `(scale, scaled_sum)` without squaring extremes."""
+    scale = 0.0
+    scaled_sum = 0.0
+    for value in values:
+        magnitude = abs(float(value))
+        if magnitude == 0.0:
+            continue
+        if scale < magnitude:
+            ratio = scale / magnitude
+            scaled_sum = 1.0 + scaled_sum * ratio * ratio
+            scale = magnitude
+        else:
+            ratio = magnitude / scale
+            scaled_sum += ratio * ratio
+    return scale, scaled_sum
+
+
+def stable_norm(values: Sequence[float]) -> float | None:
+    """Return a finite Euclidean norm, or `None` when it exceeds binary64."""
+    scale, scaled_sum = scaled_sum_of_squares(values)
+    if scale == 0.0:
+        return 0.0
+    answer = scale * math.sqrt(scaled_sum)
+    return answer if math.isfinite(answer) else None
+
+
+def finite_squared_norm(values: Sequence[float]) -> float | None:
+    """Return a finite, non-underflowed squared norm when representable."""
+    scale, scaled_sum = scaled_sum_of_squares(values)
+    if scale == 0.0:
+        return 0.0
+    norm = scale * math.sqrt(scaled_sum)
+    answer = norm * norm
+    if not math.isfinite(answer) or answer == 0.0:
+        return None
+    return answer
+
+
+def half_squared_norm(values: Sequence[float]) -> float | None:
+    """Return a representable least-squares cost without silent underflow."""
+    answer = finite_squared_norm(values)
+    return None if answer is None else 0.5 * answer
+
+
+def sum_squares_less(left: tuple[float, float], right: tuple[float, float]) -> bool:
+    """Compare two scaled sums of squares without materializing either square."""
+    left_scale, left_sum = left
+    right_scale, right_sum = right
+    if left_scale == 0.0:
+        return right_scale > 0.0
+    if right_scale == 0.0:
+        return False
+    common_scale = max(left_scale, right_scale)
+    left_ratio = left_scale / common_scale
+    right_ratio = right_scale / common_scale
+    return left_ratio * left_ratio * left_sum < right_ratio * right_ratio * right_sum
+
+
+def relative_sum_squares_decrease(
+    before: tuple[float, float], after: tuple[float, float]
+) -> float:
+    """Return the scale-invariant fractional decrease between accepted costs."""
+    before_scale, before_sum = before
+    after_scale, after_sum = after
+    if before_scale == 0.0:
+        return 0.0
+    common_scale = max(before_scale, after_scale)
+    before_ratio = before_scale / common_scale
+    after_ratio = after_scale / common_scale
+    before_value = before_ratio * before_ratio * before_sum
+    after_value = after_ratio * after_ratio * after_sum
+    return max(0.0, (before_value - after_value) / before_value)
 
 
 def identity(size: int) -> list[list[float]]:
@@ -353,6 +432,51 @@ def normal_equations(
     return normal, gradient
 
 
+def scaled_normal_equations(
+    jacobian: Sequence[Sequence[float]], residual: Sequence[float]
+) -> tuple[list[list[float]], list[float], float, bool]:
+    """Form globally scaled normal equations and report lost nonzero entries."""
+    scale = 0.0
+    for value in residual:
+        scale = max(scale, abs(float(value)))
+    for row in jacobian:
+        for value in row:
+            scale = max(scale, abs(float(value)))
+    if scale == 0.0:
+        normal, gradient = normal_equations(jacobian, residual)
+        return normal, gradient, 0.0, True
+    scaled_residual: list[float] = []
+    resolved = True
+    for value in residual:
+        converted = float(value) / scale
+        if value != 0.0 and converted == 0.0:
+            resolved = False
+        scaled_residual.append(converted)
+    scaled_jacobian: list[list[float]] = []
+    for row in jacobian:
+        scaled_row: list[float] = []
+        for value in row:
+            converted = float(value) / scale
+            if value != 0.0 and converted == 0.0:
+                resolved = False
+            scaled_row.append(converted)
+        scaled_jacobian.append(scaled_row)
+    normal, gradient = normal_equations(scaled_jacobian, scaled_residual)
+    for column in range(len(normal)):
+        if (
+            any(row[column] != 0.0 for row in scaled_jacobian)
+            and normal[column][column] == 0.0
+        ):
+            resolved = False
+    for row in range(len(scaled_jacobian)):
+        if scaled_residual[row] == 0.0:
+            continue
+        for value in scaled_jacobian[row]:
+            if value != 0.0 and value * scaled_residual[row] == 0.0:
+                resolved = False
+    return normal, gradient, scale, resolved
+
+
 def normalized_bounds(
     bounds: Sequence[Sequence[float | None] | None] | None, dimension: int
 ) -> tuple[list[float | None], list[float | None]]:
@@ -425,6 +549,14 @@ def finite_difference_gradient(
     callback_kind: str = "objective",
 ) -> list[float]:
     """Estimate a scalar gradient with bound-aware independent differences."""
+
+    def checked_derivative(value: float) -> float:
+        if not math.isfinite(value):
+            raise StopExecution(
+                "invalid_problem", "finite_difference_outside_binary64_range"
+            )
+        return value
+
     answer: list[float] = []
     for index in range(len(point)):
         step = _FINITE_DIFFERENCE_STEP * max(1.0, abs(point[index]))
@@ -443,7 +575,7 @@ def finite_difference_gradient(
             right_value = scalar(
                 execution.call(callback_kind, function, right, iteration=iteration)
             )
-            answer.append((right_value - left_value) / (2.0 * step))
+            answer.append(checked_derivative((right_value - left_value) / (2.0 * step)))
         elif can_right:
             right[index] += step
             base_value = scalar(
@@ -454,7 +586,7 @@ def finite_difference_gradient(
             right_value = scalar(
                 execution.call(callback_kind, function, right, iteration=iteration)
             )
-            answer.append((right_value - base_value) / step)
+            answer.append(checked_derivative((right_value - base_value) / step))
         elif can_left:
             left[index] -= step
             left_value = scalar(
@@ -465,7 +597,7 @@ def finite_difference_gradient(
                     callback_kind, function, list(point), iteration=iteration
                 )
             )
-            answer.append((base_value - left_value) / step)
+            answer.append(checked_derivative((base_value - left_value) / step))
         else:
             answer.append(0.0)
     return answer
@@ -497,12 +629,15 @@ def finite_difference_jacobian(
             execution.call(callback_kind, function, right, iteration=iteration),
             output_dimension,
         )
-        columns.append(
-            [
-                (right_value[row] - left_value[row]) / (2.0 * step)
-                for row in range(output_dimension)
-            ]
-        )
+        column: list[float] = []
+        for row in range(output_dimension):
+            derivative = (right_value[row] - left_value[row]) / (2.0 * step)
+            if not math.isfinite(derivative):
+                raise StopExecution(
+                    "invalid_problem", "finite_difference_outside_binary64_range"
+                )
+            column.append(derivative)
+        columns.append(column)
     return [
         [columns[column][row] for column in range(len(point))]
         for row in range(output_dimension)

@@ -7,7 +7,8 @@ replace that study or weaken its gates for future cminpack/NLopt backends.
 
 The declarative `corpus.json` contains smooth, nonsmooth, tiny-scale, boundary,
 active and fixed-bound, nonlinear-system, stationary-maximum, rank-deficient,
-ill-conditioned, fitting, nonfinite, malformed callback, allocation ceiling,
+ill-conditioned, residual scales from `1e-200` through `1e200`, unresolved
+variable scaling, fitting, nonfinite, malformed callback, allocation ceiling,
 cancellation, solver/validation budget, false-derivative, method-envelope, and
 unsupported-constraint cases. Acceptance fails closed when an expected value,
 objective, residual, diagnostic, validation receipt, or exact method identity

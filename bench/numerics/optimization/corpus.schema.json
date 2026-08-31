@@ -27,6 +27,7 @@
               "value": { "type": ["number", "array"] },
               "distance_max": { "type": "number", "minimum": 0 },
               "objective_max": { "type": "number", "minimum": 0 },
+              "objective_available": { "type": "boolean" },
               "validation_residual_max": { "type": "number", "minimum": 0 },
               "diagnostics": {
                 "type": "array",

@@ -124,6 +124,13 @@ def solve_case(case: dict[str, Any]) -> Any:
             gradient=lambda point: [0.0],
             method=case["method"],
         )
+    if formula == "unresolved-variable-scale":
+        return minimize(
+            lambda point: (point[0] / 1.0e200 - 1.0) ** 2,
+            initial,
+            gradient=lambda point: [2.0 * (point[0] / 1.0e200 - 1.0) / 1.0e200],
+            method=case["method"],
+        )
     if formula == "bounded-method-envelope":
         return minimize(
             lambda point: point[0] * point[0],
@@ -173,6 +180,21 @@ def solve_case(case: dict[str, Any]) -> Any:
                 point[0] + point[1] - 1.0,
                 point[0] + (1.0 + 1.0e-6) * point[1] - 1.0,
             ],
+            initial,
+        )
+    if formula == "scaled-residual-large":
+        return least_squares(
+            lambda point: [1.0e200 * (point[0] - 1.0)],
+            initial,
+        )
+    if formula == "scaled-residual-small":
+        return least_squares(
+            lambda point: [1.0e-200 * (point[0] - 1.0)],
+            initial,
+        )
+    if formula == "least-squares-unresolved-variable-scale":
+        return least_squares(
+            lambda point: [point[0] / 1.0e200 - 1.0],
             initial,
         )
     if formula == "exponential-decay":
@@ -306,6 +328,11 @@ def acceptance(case: dict[str, Any], result: Any) -> tuple[bool, dict[str, Any]]
             checks["objective"] = result.objective
             checks["objective_passed"] = result.objective <= expected["objective_max"]
             passed = passed and checks["objective_passed"]
+    if "objective_available" in expected:
+        checks["objective_available"] = (result.objective is not None) == expected[
+            "objective_available"
+        ]
+        passed = passed and checks["objective_available"]
     if "validation_residual_max" in expected:
         checks["validation_residual_present"] = result.residual is not None
         passed = passed and checks["validation_residual_present"]
