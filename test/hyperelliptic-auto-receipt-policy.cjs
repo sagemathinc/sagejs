@@ -207,13 +207,10 @@ test("the checked-in release policy disables stale entries until receipts are re
     root: ROOT,
     sourceCommit: raw.source_bundle.source_commit,
   });
-  // The Gröbner integration changes the shared production Wasm artifact.
-  // Keep these older higher-genus receipts fail-closed until they are
-  // regenerated against the new artifact identity.
-  assert.equal(policy.enabled, false);
+  assert.equal(policy.enabled, true);
   assert.equal(
     policy.source_bundle.sha256,
-    "4c90a23b20dae09ce61fecaf385a140ff583a673aa3ae7a9ed824789a2483b8a",
+    "52554fe7c0bb7b6c038df5091d48c9e3e1148467e627535d485618bab96d9f70",
   );
   assert.deepEqual(
     policy.entries.map((entry) => entry.id),
@@ -248,7 +245,7 @@ test("the checked-in release policy disables stale entries until receipts are re
   };
   assert.deepEqual(queryAutoReceiptPolicy(policy, query), {
     selected: false,
-    reason: "policy-disabled",
+    reason: "unreceipted-fallback",
   });
   for (const platform of ["linux-x64", "linux-arm64", "darwin-arm64", "win32-x64"]) {
     for (const genus of [2, 3]) {
@@ -268,7 +265,7 @@ test("the checked-in release policy disables stale entries until receipts are re
           });
           assert.deepEqual(selected, {
             selected: false,
-            reason: "policy-disabled",
+            reason: "unreceipted-fallback",
           });
         }
       }
@@ -288,7 +285,7 @@ test("the checked-in release policy disables stale entries until receipts are re
   ]) {
     assert.deepEqual(queryAutoReceiptPolicy(policy, rejected), {
       selected: false,
-      reason: "policy-disabled",
+      reason: "unreceipted-fallback",
     });
   }
   assert(Object.isFrozen(policy));
