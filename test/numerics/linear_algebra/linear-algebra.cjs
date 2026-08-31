@@ -84,6 +84,7 @@ lu_result = lu([[0, 2, 3], [4, 5, 6], [7, 8, 10]])
 assert lu_result.success and lu_result.validation.passed
 assert lu_result.factorization.to_dict()["identity"] == "A = P * L * U"
 assert lu_result.factorization.swaps >= 1
+assert "rank_estimate" not in lu_result.factorization.to_dict()
 assert json.loads(lu_result.to_json())["domain_payload"]["factorization"]["kind"] == "lu"
 
 bad_lu_check = validate_lu(
@@ -107,6 +108,7 @@ assert wide_qr.factorization.to_dict()["identity"] == "A * P = Q * R"
 chol = cholesky([[4, 2], [2, 3]])
 assert chol.success and chol.validation.passed
 assert chol.factorization.lower().entry(0, 1) == 0.0
+assert cholesky([[1e-300]]).success
 
 for method, options in (
     ("lu", {}),
@@ -167,6 +169,15 @@ assert condition.success and abs(condition.value - 2.618033988749895) < 1e-13
 infinite_condition = condition_number([[1, 2], [2, 4]])
 assert infinite_condition.success and infinite_condition.value is None
 assert "ill_conditioned" in {item.code for item in infinite_condition.diagnostics}
+
+limited_diagnostics = solve([[3, 1], [1, 2]], [9, 8], max_sweeps=1)
+assert limited_diagnostics.success
+assert "maximum_iterations" in {item.code for item in limited_diagnostics.diagnostics}
+indeterminate_rank = least_squares(
+    [[1, 1], [1, 2], [1, 3]], [1, 2, 2], max_sweeps=1
+)
+assert not indeterminate_rank.success
+assert indeterminate_rank.failure_code == "rank_diagnostic_indeterminate"
 
 det = determinant([[1, 2], [3, 4]])
 assert det.success and abs(det.value + 2.0) < 1e-14

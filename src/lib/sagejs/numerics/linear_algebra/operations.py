@@ -352,7 +352,7 @@ def lu(
         data={
             "kind": "factorization",
             "row_swaps": factorization.swaps,
-            "rank_estimate": factorization.rank_estimate,
+            "diagonal_pivots": factorization.diagonal_pivots,
         },
         important=True,
     )
@@ -449,8 +449,11 @@ def _spectral_diagnostics(
     trace: NumericalTrace,
     *,
     max_sweeps: int,
+    check: Callable[[], None] | None = None,
 ) -> SingularValueDiagnostics:
     def on_sweep(sweep: int, correlation: float, converged: bool) -> None:
+        if check is not None:
+            check()
         trace.append(
             "iteration",
             iteration=sweep,
@@ -629,9 +632,16 @@ def solve(
         record.append(
             "phase", data={"kind": "factorization", "method": selected}, important=True
         )
-        spectral = _spectral_diagnostics(dense, record, max_sweeps=max_sweeps)
+        spectral = _spectral_diagnostics(
+            dense,
+            record,
+            max_sweeps=max_sweeps,
+            check=lambda: _check_execution(problem, started, cancel),
+        )
         result_diagnostics = _condition_diagnostics(spectral, dense.nrows)
-        if spectral.rank != dense.nrows:
+        if not spectral.converged:
+            result_diagnostics.append(NumericalDiagnostic("maximum_iterations"))
+        if spectral.converged and spectral.rank != dense.nrows:
             return _failure_result(
                 problem,
                 plan,
@@ -669,7 +679,7 @@ def solve(
         solution,
         dense_right,
         tolerance=validation_tolerance,
-        condition_estimate=spectral.condition,
+        condition_estimate=spectral.condition if spectral.converged else None,
     )
     if not validation.passed:
         result_diagnostics.append(NumericalDiagnostic("validation_failed"))
@@ -822,6 +832,15 @@ def least_squares(
     record = _start_trace(problem, plan.method)
     started = time.monotonic()
     spectral = _spectral_diagnostics(dense, record, max_sweeps=max_sweeps)
+    if not spectral.converged:
+        return _failure_result(
+            problem,
+            plan,
+            record,
+            started,
+            "rank_diagnostic_indeterminate",
+            details={"sweeps": spectral.sweeps, "maximum_sweeps": max_sweeps},
+        )
     expected_rank = min(dense.nrows, dense.ncols)
     if spectral.rank != expected_rank:
         return _failure_result(
@@ -922,7 +941,7 @@ def _rank_or_condition(
     started = time.monotonic()
     spectral = _spectral_diagnostics(dense, record, max_sweeps=max_sweeps)
     validation = NumericalValidation(
-        "validated_approximate" if spectral.converged else "indeterminate",
+        "heuristic" if spectral.converged else "indeterminate",
         spectral.converged,
         checks=[
             {
@@ -1121,6 +1140,14 @@ def inverse(
         if tolerance is None
         else float(tolerance)
     )
+    if not math.isfinite(validation_tolerance) or validation_tolerance <= 0.0:
+        raise ValueError("tolerance must be finite and positive")
+    if (
+        isinstance(max_refinement, bool)
+        or not isinstance(max_refinement, int)
+        or max_refinement < 0
+    ):
+        raise ValueError("max_refinement must be a nonnegative integer")
     problem = _problem(
         "matrix_inverse",
         dense,
@@ -1139,7 +1166,7 @@ def inverse(
         return _failure_result(problem, plan, record, started, "matrix_not_square")
     factorization = lu_factorize(dense)
     spectral = _spectral_diagnostics(dense, record, max_sweeps=max_sweeps)
-    if spectral.rank != dense.nrows:
+    if spectral.converged and spectral.rank != dense.nrows:
         return _failure_result(
             problem,
             plan,
@@ -1163,9 +1190,11 @@ def inverse(
         dense,
         inverse_matrix,
         tolerance=validation_tolerance,
-        condition_estimate=spectral.condition,
+        condition_estimate=spectral.condition if spectral.converged else None,
     )
     result_diagnostics = _condition_diagnostics(spectral, dense.nrows)
+    if not spectral.converged:
+        result_diagnostics.append(NumericalDiagnostic("maximum_iterations"))
     if not validation.passed:
         result_diagnostics.append(NumericalDiagnostic("validation_failed"))
     success = validation.passed

@@ -260,20 +260,29 @@ def validate_least_squares(
     tolerance: float,
     condition_estimate: float | None,
 ) -> NumericalValidation:
-    """Validate least-squares optimality independently via `A.T r`."""
+    """Validate stationarity, or direct backward error when residual is zero."""
     residual_norm, stationarity = least_squares_stationarity(matrix, solution, right)
-    passed = stationarity <= tolerance
+    _, backward_error = normwise_backward_error(matrix, solution, right)
+    stationarity_passed = stationarity <= tolerance
+    consistent_passed = backward_error <= tolerance
+    passed = stationarity_passed or consistent_passed
     return NumericalValidation(
         "validated_approximate" if passed else "indeterminate",
         passed,
         checks=[
             {
                 "kind": "least_squares_stationarity",
-                "passed": passed,
+                "passed": stationarity_passed,
                 "residual_infinity": residual_norm,
                 "scaled_normal_residual": stationarity,
                 "threshold": tolerance,
-            }
+            },
+            {
+                "kind": "consistent_system_backward_error",
+                "passed": consistent_passed,
+                "backward_error_infinity": backward_error,
+                "threshold": tolerance,
+            },
         ],
         residual=residual_norm,
         condition_estimate=condition_estimate,

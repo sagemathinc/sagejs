@@ -46,19 +46,20 @@ class LUFactorization:
         self.pivot_threshold = pivot_threshold
 
     @property
-    def rank_estimate(self) -> int:
+    def diagonal_pivots(self) -> int:
+        """Count usable diagonal pivots, without claiming rectangular rank."""
         diagonal = min(self._packed.nrows, self._packed.ncols)
-        rank = 0
+        pivots = 0
         for index in range(diagonal):
             if abs(self._packed.entry(index, index)) > self.pivot_threshold:
-                rank += 1
-        return rank
+                pivots += 1
+        return pivots
 
     @property
     def nonsingular(self) -> bool:
         return (
             self._packed.nrows == self._packed.ncols
-            and self.rank_estimate == self._packed.nrows
+            and self.diagonal_pivots == self._packed.nrows
         )
 
     def permutation_matrix(self) -> DenseMatrix:
@@ -104,7 +105,7 @@ class LUFactorization:
                 "rank_deficient",
                 "the coefficient matrix is numerically rank deficient",
                 details={
-                    "rank_estimate": self.rank_estimate,
+                    "diagonal_pivots": self.diagonal_pivots,
                     "dimension": size,
                     "pivot_threshold": self.pivot_threshold,
                 },
@@ -161,7 +162,7 @@ class LUFactorization:
             "row_permutation": list(self._row_permutation),
             "swaps": self.swaps,
             "pivot_threshold": self.pivot_threshold,
-            "rank_estimate": self.rank_estimate,
+            "diagonal_pivots": self.diagonal_pivots,
         }
 
 

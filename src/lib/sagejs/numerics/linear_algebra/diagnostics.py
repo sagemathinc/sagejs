@@ -40,12 +40,18 @@ class SingularValueDiagnostics:
         return self.values[0] / smallest
 
     def to_dict(self) -> dict[str, Any]:
+        if len(self.values) == 0:
+            condition_kind = "undefined"
+        elif self.condition is None:
+            condition_kind = "infinite"
+        else:
+            condition_kind = "finite"
         return {
             "singular_values": list(self.values),
             "rank": self.rank,
             "rank_threshold": self.threshold,
             "condition_2": self.condition,
-            "condition_kind": "infinite" if self.condition is None else "finite",
+            "condition_kind": condition_kind,
             "sweeps": self.sweeps,
             "converged": self.converged,
             "algorithm": "one_sided_jacobi",
