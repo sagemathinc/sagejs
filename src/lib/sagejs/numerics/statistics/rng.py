@@ -8,10 +8,9 @@ from typing import Any
 
 from ..model import ResourceBudget
 from ._core import BudgetGuard, StatisticsStopped, diagnostic
+from ._special import log_gamma
 from .distributions import Binomial, ChiSquare, Distribution, Normal, Poisson, StudentT
 from .result import StatisticsResult
-from ._special import log_gamma
-
 
 RNG_CONTRACT_VERSION = 2
 RNG_ALGORITHM = "pcg32-xsh-rr-v1"

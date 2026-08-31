@@ -22,7 +22,6 @@ from ._core import (
 from .distributions import StudentT
 from .result import StatisticsResult
 
-
 _INFERENCE_ASSUMPTIONS = (
     "observations are independent within each sample",
     "the mean has an approximately normal sampling distribution; finite-sample exactness requires normal data",

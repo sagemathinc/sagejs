@@ -30,10 +30,10 @@ from ._core import (
     scaled_normal_equations,
     scaled_sum_of_squares,
     solve_linear_system,
-    stable_norm,
-    sum_squares_less,
     squared_norm,
+    stable_norm,
     status_diagnostic,
+    sum_squares_less,
     vector,
 )
 from .planning import plan

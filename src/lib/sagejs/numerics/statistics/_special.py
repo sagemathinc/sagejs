@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 
-
 _EPSILON = 3.0e-15
 _TINY = 1.0e-300
 _INFINITY = float("inf")

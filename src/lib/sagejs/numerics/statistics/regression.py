@@ -23,7 +23,6 @@ from ._core import (
 from .distributions import Normal, StudentT
 from .result import StatisticsResult
 
-
 _OLS_ASSUMPTIONS = (
     "the conditional mean of y is linear in x",
     "observations are independent",

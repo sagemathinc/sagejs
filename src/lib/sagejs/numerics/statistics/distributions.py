@@ -19,7 +19,6 @@ from ._special import (
 )
 from .result import StatisticsResult
 
-
 _INFINITY = float("inf")
 _MAX_FLOAT = 1.7976931348623157e308
 _MAX_QUANTILE_EXPANSIONS = 1024

@@ -125,6 +125,16 @@
       "prefixes": ["src/lib/sagejs/numerics/spectral/"]
     },
     {
+      "id": "numerical-statistics",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 360000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing", "plot-spec"],
+      "modules": ["sagejs.numerics.statistics"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/statistics/"]
+    },
+    {
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
