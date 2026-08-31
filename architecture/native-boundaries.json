@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 134,
-    "declared-ffi": 456,
+    "declared-ffi": 459,
     "declared-ffi-resource": 34,
     "napi-export": 325,
     "runtime-intrinsic": 147,
@@ -4085,6 +4085,17 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:integer_log_sqrt_balls_resource",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "integer_log_sqrt_balls_resource",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiIntegerLogSqrtBallsResource",
+      "symbol": "sagejs_flint_integer_log_sqrt_balls_resource",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:n_is_prime",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -5017,6 +5028,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodVectorMulMatrix",
       "symbol": "sagejs_nmod_row_vector_mul_matrix",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_analysis_resource_project",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_analysis_resource_project",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldAnalysisResourceProject",
+      "symbol": "sagejs_number_field_analysis_resource_project",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:number_field_analysis_resource_project_proof",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "number_field_analysis_resource_project_proof",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNumberFieldAnalysisResourceProjectProof",
+      "symbol": "sagejs_number_field_analysis_resource_project_proof",
       "disposition": "declared-safe-ffi"
     },
     {

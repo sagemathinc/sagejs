@@ -356,6 +356,7 @@ function createContext(
   records,
   filename,
   decorated,
+  integerConstants = new Map(),
 ) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
@@ -386,6 +387,7 @@ function createContext(
     filename,
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
+    integerConstants,
     controlDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
@@ -1580,6 +1582,12 @@ function lowerExpression(node, context, operations, expectedType = undefined) {
   if (nodeType(node) === "AST_SymbolRef") {
     const name = resolvedSymbol(context, node.name);
     const type = context.variables.get(name);
+    if (type === undefined && context.integerConstants.has(name)) {
+      const value = context.integerConstants.get(name);
+      return expectedType === "uint64"
+        ? emitUint64Constant(context, node, operations, value)
+        : emitConstant(context, node, operations, value);
+    }
     expect(context, node, type !== undefined, `unknown native value ${node.name}`);
     expect(
       context,
@@ -3276,6 +3284,7 @@ function lowerIntegerFunction(
   records,
   filename,
   decorated,
+  integerConstants = new Map(),
 ) {
   const context = createContext(
     fn,
@@ -3286,6 +3295,7 @@ function lowerIntegerFunction(
     records,
     filename,
     decorated,
+    integerConstants,
   );
   const body = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(body), "function has no return");

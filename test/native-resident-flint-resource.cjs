@@ -28,7 +28,7 @@ function runNode(modulePath, source) {
 
 test("arena-owned FLINT resources remain resident through resource calls", async () => {
   const ir = await lowerSource(readFileSync(sourcePath, "utf8"), sourcePath);
-  assert.equal(ir.version, 34);
+  assert.equal(ir.version, 36);
   const fn = ir.functions[0];
   const arena = fn.body.find((operation) =>
     operation.kind === "integer.arena.scope"
@@ -82,7 +82,11 @@ test("arena-owned FLINT resources remain resident through resource calls", async
     "sagejs_native_exact_arena_clear(&sagejs_arena)", sourceCleanup,
   );
   assert.ok(reverseCleanup > checkpoint && sourceCleanup > reverseCleanup);
-  assert.ok(arenaCleanup > sourceCleanup);
+  const checkpointCleanup = core.source.indexOf(
+    "sagejs_flint_exact_checkpoint_cleanup()", sourceCleanup,
+  );
+  assert.ok(checkpointCleanup > sourceCleanup);
+  assert.ok(arenaCleanup > checkpointCleanup);
 });
 
 test("resident FLINT HNF agrees across generated JavaScript and native tiers", async () => {
@@ -114,6 +118,12 @@ for (const implementation of [
   assert.throws(
     () => implementation(1048576n, 0n),
     /temporary capacity exhausted/,
+  );
+}
+for (let round = 0; round < 100; round += 1) {
+  assert.equal(
+    module.resident_flint_checkpoint_cache(1048576n, 1048576n),
+    1n,
   );
 }
 `);
@@ -194,6 +204,9 @@ int main(void)
         assert(mpz_cmp_ui(a, 2) == 0);
         assert(mpz_cmp_ui(d, 4) == 0);
         assert(mpz_cmp_ui(determinant, 8) == 0);
+        assert(sagejs_kernel_resident_flint_checkpoint_cache(
+            &status, determinant, 1048576, 1048576));
+        assert(mpz_cmp_ui(determinant, 1) == 0);
     }
     mpz_clears(a, b, c, d, determinant, NULL);
     return 0;

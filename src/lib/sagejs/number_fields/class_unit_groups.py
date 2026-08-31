@@ -7549,6 +7549,36 @@ def cubic_class_number_projection(field: Any, proof: bool | None = None) -> int:
     if int(field.degree()) != 3:
         raise ValueError("the cubic class-number projection requires degree three")
     proof_value = True if proof is None else bool(proof)
+    if proof_value is False:
+        # The resident program is a complete GRH-conditional
+        # polynomial-to-class-group proof, not a heuristic hint.  Its immutable
+        # receipt remains independently replayable through the ordinary exact
+        # engine.  A missing compiled artifact, unsupported cubic, exhausted
+        # arena, or rejected analytic interval declines here and leaves the
+        # established exact object pipeline unchanged.
+        try:
+            native_runtime = __import__(
+                "sagejs.number_fields.cubic_class_number_native_runtime",
+                fromlist=["cubic_class_number_native_runtime"],
+            )
+            native_certificate = native_runtime.certified_complex_cubic_class_number(
+                field
+            )
+        except (
+            AttributeError,
+            ImportError,
+            OverflowError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            ArithmeticError,
+        ):
+            native_certificate = None
+        if native_certificate is not None:
+            return _integer(
+                native_certificate.class_number,
+                "certified resident cubic class number",
+            )
     default_limits = ClassUnitEngineLimits()
     projection_key = _class_number_projection_cache_key(proof_value, default_limits)
     cached_projection = _cached_class_number_projection(

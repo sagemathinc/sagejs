@@ -13,6 +13,7 @@ const { spawnSync } = require("node:child_process");
 
 const { generateHostCore } = require("./c-backend.cjs");
 const { lowerSource } = require("./ir.cjs");
+const { createNativeImportResolver } = require("./native-imports.cjs");
 const {
   portableKernelIdentity,
   sha256,
@@ -101,7 +102,7 @@ function packIdentity(domain, modules, ownershipAdapter = null) {
 async function inventoryProductionKernels({ root, manifestPath }) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const production = manifest.kernels.filter((kernel) =>
-    kernel.id.endsWith("-production")
+    kernel.id.endsWith("-production") && kernel.wasm_production !== false
   );
   if (production.length === 0) {
     throw new Error("native kernel manifest has no production kernels");
@@ -117,8 +118,15 @@ async function inventoryProductionKernels({ root, manifestPath }) {
     // builder's checkout directory. `lowerSource` already receives the source
     // contents directly, so use the authenticated repository-relative logical
     // name for diagnostics and #line directives.
+    const resolveNativeImport = createNativeImportResolver({
+      root,
+      lowerSource,
+      initialSourcePath: sourcePath,
+      displayPath: (filename) => relative(root, filename).replaceAll("\\", "/"),
+    });
     const ir = await lowerSource(source, logicalSource, {
       functions: kernel.functions,
+      resolveNativeImport,
     });
     const identity = portableKernelIdentity({ ir, sourceHash, logicalSource });
     const automaticSelections = normalizeAutomaticSelections(
@@ -186,16 +194,20 @@ async function inventoryProductionKernels({ root, manifestPath }) {
     });
   }
   const nonProduction = manifest.kernels
-    .filter((kernel) => !kernel.id.endsWith("-production"))
+    .filter((kernel) =>
+      !kernel.id.endsWith("-production") || kernel.wasm_production === false
+    )
     .map((kernel) => ({
       id: kernel.id,
       source: kernel.source,
       status: "not-production",
-      reason: kernel.optional_foreign_libraries?.includes("m4ri")
-        ? "separate-m4ri-ownership-domain"
-        : kernel.optional_foreign_libraries?.includes("fflas")
-          ? "optional-fflas-desktop-accelerator"
-          : "development-witness-not-in-production-registry",
+      reason: kernel.wasm_production === false
+        ? kernel.wasm_fallback_reason
+        : kernel.optional_foreign_libraries?.includes("m4ri")
+          ? "separate-m4ri-ownership-domain"
+          : kernel.optional_foreign_libraries?.includes("fflas")
+            ? "optional-fflas-desktop-accelerator"
+            : "development-witness-not-in-production-registry",
       fallback: kernel.fallback,
       oracles: kernel.oracles ?? [],
       tests: kernel.benchmark === undefined ? [] : [kernel.benchmark],

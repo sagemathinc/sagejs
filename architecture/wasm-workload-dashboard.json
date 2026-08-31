@@ -24,11 +24,11 @@
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "dc15a44a604fe205506a33a6b92a9132e54c5b5b7ba9cd8a864d52b5648953e4"
+      "sha256": "6b1c8d89da0916d9dc913192c167dbecde266c5c873bba499c9f0debd70eb5b0"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
-      "sha256": "babc8f29f300326a7faadd753490895b696b8f0e6a64a197d96f08cdda7856b5"
+      "sha256": "04255ca2a59bf766c42bb58100aa262eab10c934fa36a197f6628a28b98b995a"
     },
     "performance_cases": {
       "path": "bench/browser-wasm-performance-cases.json",
@@ -42,35 +42,35 @@
     "parity_workloads": 38,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1039,
+      "total": 1044,
       "by_kind": {
-        "declared-ffi-function": 456,
+        "declared-ffi-function": 459,
         "declared-ffi-resource": 34,
         "napi-export": 325,
-        "production-kernel": 51,
+        "production-kernel": 53,
         "runtime-intrinsic": 147,
         "specialist-capability": 26
       },
       "by_disposition": {
-        "compiled-source": 51,
+        "compiled-source": 53,
         "desktop-only": 47,
-        "generated-wasm": 339,
-        "portable-fallback": 557,
+        "generated-wasm": 340,
+        "portable-fallback": 559,
         "shared-core": 45
       },
       "by_status": {
-        "available": 577,
+        "available": 579,
         "desktop-only": 47,
-        "fallback": 415
+        "fallback": 418
       }
     },
     "kernel_coverage_totals": {
-      "registered_kernels": 51,
-      "production_kernels": 44,
-      "compiled_functions": 280,
+      "registered_kernels": 53,
+      "production_kernels": 45,
+      "compiled_functions": 281,
       "unsupported_production_functions": 0,
-      "non_production_functions": 30,
-      "same_source_fallback_functions": 30
+      "non_production_functions": 54,
+      "same_source_fallback_functions": 54
     }
   },
   "route_classes": {

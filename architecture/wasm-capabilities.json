@@ -131,6 +131,13 @@
           "packages/flint-wasm/test/browser-smoke.mjs"
         ]
       },
+      "complex-cubic-native-class-group-differential": {
+        "differential": true,
+        "paths": [
+          "test/number-field-cubic-native-class-number.cjs",
+          "bench/class-unit-groups/cubic-native-class-number.py"
+        ]
+      },
       "hyperelliptic-native-kummer": {
         "differential": true,
         "paths": [
@@ -4592,6 +4599,30 @@
         "status": "included"
       },
       "public_explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
+      "id": "ffi:flint:integer_log_sqrt_balls_resource",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "generated-wasm",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "flint-wasm-resource-differential",
+        "complex-cubic-native-class-group-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The reviewed resident Arb endpoint routine is included through the shared Wasm-capable FLINT resource adapter and retains the same rigorous dyadic endpoint contract as the packed operation.",
+      "wasm_declared": true,
+      "wasm_closure": {
+        "status": "included"
+      },
+      "public_explanation": "The resident rigorous logarithm and square-root endpoint operation is available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
     },
     {
       "id": "ffi:flint:fmpz_mat_mul",
@@ -9797,6 +9828,48 @@
       "public_explanation": "This declaration is not yet Wasm-enabled; the public operation retains a tested ordinary implementation."
     },
     {
+      "id": "ffi:flint:number_field_analysis_resource_project",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential",
+        "complex-cubic-native-class-group-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "This compact live-resource projection is currently a desktop-native optimization boundary. Browser execution declines the closed accelerator and retains the ordinary exact field-analysis implementation.",
+      "wasm_declared": false,
+      "public_explanation": "The compact field-analysis projection is not yet Wasm-enabled; browser class-group computations retain the tested ordinary exact path."
+    },
+    {
+      "id": "ffi:flint:number_field_analysis_resource_project_proof",
+      "kind": "declared-ffi-function",
+      "family": "flint",
+      "source": "ffi/flint.ffi.json",
+      "disposition": "portable-fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "tests": [
+        "declared-ffi-differential",
+        "complex-cubic-native-class-group-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "This complete proof-stream projection is currently a desktop-native optimization boundary. Browser execution declines the closed accelerator and retains the independently checked ordinary maximal-order path.",
+      "wasm_declared": false,
+      "public_explanation": "The field-analysis proof projection is not yet Wasm-enabled; browser class-group computations retain the independently checked ordinary exact path."
+    },
+    {
       "id": "ffi:flint:number_field_order_from_polynomial_resource",
       "kind": "declared-ffi-function",
       "family": "flint",
@@ -10786,6 +10859,33 @@
         "compiled_functions": 4,
         "fallback_functions": 0,
         "total_functions": 4,
+        "production_pack": true,
+        "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:complex-cubic-class-group-production",
+      "kind": "production-kernel",
+      "family": "complex-cubic-class-group",
+      "source": "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+      "disposition": "compiled-source",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "tests": [
+        "production-kernel-differential",
+        "complex-cubic-native-class-group-differential"
+      ],
+      "status": "available",
+      "reviewed": true,
+      "review_note": "The receipt-authenticated production pack compiles all 1 registered functions in this source-transparent kernel family.",
+      "public_explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact.",
+      "compiled_coverage": {
+        "compiled_functions": 1,
+        "fallback_functions": 0,
+        "total_functions": 1,
         "production_pack": true,
         "fallback_reasons": []
       }
@@ -11926,6 +12026,34 @@
         "total_functions": 21,
         "production_pack": true,
         "fallback_reasons": []
+      }
+    },
+    {
+      "id": "kernel:structural-polynomial-flint-production",
+      "kind": "production-kernel",
+      "family": "structural-polynomial-flint",
+      "source": "src/lib/sagejs/kernels/polynomial/structural_flint.py",
+      "disposition": "compiled-source",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "structural-polynomial-flint"
+      ],
+      "tests": [
+        "production-kernel-differential"
+      ],
+      "status": "fallback",
+      "reviewed": true,
+      "review_note": "The production pack compiles 0 of 24 functions. The remaining 24 functions use their tested same-source dynamic fallback (foreign-resource-not-declared-for-wasm).",
+      "public_explanation": "This family uses compiled WebAssembly for 0 of 24 functions and the same-source fallback for 24 functions.",
+      "compiled_coverage": {
+        "compiled_functions": 0,
+        "fallback_functions": 24,
+        "total_functions": 24,
+        "production_pack": false,
+        "fallback_reasons": [
+          "foreign-resource-not-declared-for-wasm"
+        ]
       }
     },
     {

@@ -216,6 +216,22 @@ assert packed_field_analysis_fixed_points_are_valid(
     degree,
     2,
 )
+# Resident callers deliberately allocate fixed-capacity buffers.  The checker
+# consumes only the authenticated prefix and must neither reject nor inspect
+# unrelated trailing capacity.
+assert packed_field_analysis_fixed_points_are_valid(
+    [0] * len(workspace),
+    polynomial,
+    numerator,
+    1,
+    primes + [97, 101],
+    dimensions + [3, 3],
+    radicals + [99] * 18,
+    selectors + [99] * 6,
+    -108,
+    degree,
+    2,
+)
 
 table, identity = _order_arithmetic(
     polynomial,

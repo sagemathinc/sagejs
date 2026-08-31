@@ -1,28 +1,28 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "c0a12fd3b315275727c9db7bead68bf2a3314434d3760bd4422c90743a95b3a4",
+  "source_sha256": "6a302d34121ee396fe7929ad8dbee061edc7cac0fac9f3caacfa6cf9fc724d7e",
   "counts": {
-    "total": 1039,
+    "total": 1044,
     "by_kind": {
-      "declared-ffi-function": 456,
+      "declared-ffi-function": 459,
       "declared-ffi-resource": 34,
       "napi-export": 325,
-      "production-kernel": 51,
+      "production-kernel": 53,
       "runtime-intrinsic": 147,
       "specialist-capability": 26
     },
     "by_disposition": {
-      "compiled-source": 51,
+      "compiled-source": 53,
       "desktop-only": 47,
-      "generated-wasm": 339,
-      "portable-fallback": 557,
+      "generated-wasm": 340,
+      "portable-fallback": 559,
       "shared-core": 45
     },
     "by_status": {
-      "available": 577,
+      "available": 579,
       "desktop-only": 47,
-      "fallback": 415
+      "fallback": 418
     }
   },
   "workflow_aliases": {
@@ -4702,6 +4702,18 @@
       "explanation": "Rigorous packed logarithm and square-root endpoints are available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
     },
     {
+      "id": "ffi:flint:integer_log_sqrt_balls_resource",
+      "family": "flint",
+      "disposition": "generated-wasm",
+      "status": "available",
+      "fallback": "declared-ffi-capability-fallback",
+      "wasm_module": "flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The resident rigorous logarithm and square-root endpoint operation is available in the receipt-authenticated production WebAssembly artifact, with the same-source exact fallback retained."
+    },
+    {
       "id": "ffi:flint:n_is_prime",
       "family": "flint",
       "disposition": "generated-wasm",
@@ -5722,6 +5734,30 @@
       "explanation": "The reviewed FFI declaration is Wasm-capable and uses the shared generated adapter contract. This capability is included in the receipt-authenticated production WebAssembly artifact."
     },
     {
+      "id": "ffi:flint:number_field_analysis_resource_project",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The compact field-analysis projection is not yet Wasm-enabled; browser class-group computations retain the tested ordinary exact path."
+    },
+    {
+      "id": "ffi:flint:number_field_analysis_resource_project_proof",
+      "family": "flint",
+      "disposition": "portable-fallback",
+      "status": "fallback",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "optional-flint",
+      "public_consumers": [
+        "sagejs.ffi.flint"
+      ],
+      "explanation": "The field-analysis proof projection is not yet Wasm-enabled; browser class-group computations retain the independently checked ordinary exact path."
+    },
+    {
       "id": "ffi:flint:number_field_analyze_resource",
       "family": "flint",
       "disposition": "portable-fallback",
@@ -6299,6 +6335,18 @@
       "explanation": "This family uses compiled WebAssembly for 0 of 3 functions and the same-source fallback for 3 functions."
     },
     {
+      "id": "kernel:complex-cubic-class-group-production",
+      "family": "complex-cubic-class-group",
+      "disposition": "compiled-source",
+      "status": "available",
+      "fallback": "ordinary-sagejs-exact-fallback",
+      "wasm_module": "kernel-flint",
+      "public_consumers": [
+        "number-field-cubic-class-number"
+      ],
+      "explanation": "All 1 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
       "id": "kernel:dense-binary-m4ri-optional",
       "family": "dense-binary-m4ri",
       "disposition": "compiled-source",
@@ -6841,6 +6889,18 @@
         "sparse-random-matrix"
       ],
       "explanation": "All 4 registered functions in this family run as compiled WebAssembly in the production artifact."
+    },
+    {
+      "id": "kernel:structural-polynomial-flint-production",
+      "family": "structural-polynomial-flint",
+      "disposition": "compiled-source",
+      "status": "fallback",
+      "fallback": "same-source-dynamic-python",
+      "wasm_module": "source-kernel-pack",
+      "public_consumers": [
+        "structural-polynomial-flint"
+      ],
+      "explanation": "This family uses compiled WebAssembly for 0 of 24 functions and the same-source fallback for 24 functions."
     },
     {
       "id": "kernel:tate-algorithm-witness",

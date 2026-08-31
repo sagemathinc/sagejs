@@ -297,7 +297,7 @@ function callPlan(library, fn, catalog, resourcesByType) {
 }
 
 function validateResourceAggregateComposition(
-  filename, fn, resourcesByType, returnResource,
+  filename, fn, resourcesByType, returnResource, catalog,
 ) {
   const adapters = fn.native.arguments.filter((argument) =>
     argument.adapter !== null
@@ -312,9 +312,10 @@ function validateResourceAggregateComposition(
 
   const reject = (detail) => fail(
     filename,
-    `${fn.id} resource/aggregate composition ${detail}; only one read-only ` +
-      "UInt64Buffer packed slice, optionally paired with one borrowed " +
-      "read-only owned resource, is currently supported",
+    `${fn.id} resource/aggregate composition ${detail}; supported shapes are ` +
+      "one read-only UInt64Buffer packed slice or one transactional writable " +
+      "IntegerBuffer packed fmpz matrix, paired with at most one borrowed " +
+      "read-only owned resource",
   );
   if (adapters.length !== 1 || resourceParameters.length > 1) {
     reject("has an unsupported number of resources or adapters");
@@ -337,26 +338,47 @@ function validateResourceAggregateComposition(
   const data = fn.signature.parameters.find((parameter) =>
     parameter.name === adapter.data
   );
-  const length = fn.signature.parameters.find((parameter) =>
-    parameter.name === adapter.length
+  const adapterSpec = catalog.adapters.get(adapter.kind);
+  const dimensionNames = adapterSpec === undefined
+    ? []
+    : adapterSpec.dimensions.map((field) => adapter[field]);
+  const dimensions = dimensionNames.map((name) =>
+    fn.signature.parameters.find((parameter) => parameter.name === name)
   );
-  if (adapter.kind !== "packed_slice" || nativeArgument.direction !== "in" ||
-      nativeArgument.abi_type !== "uint64_t_ptr" ||
-      adapter.access !== "read" || adapter.aliasing !== "allowed" ||
-      adapter.transactional !== false || data?.type !== "UInt64Buffer" ||
-      data.ownership !== "borrowed" || data.mutability !== "read" ||
-      length?.type !== "uint64") {
+  const readSlice = adapter.kind === "packed_slice" &&
+    nativeArgument.direction === "in" &&
+    nativeArgument.abi_type === "uint64_t_ptr" &&
+    adapter.access === "read" && adapter.aliasing === "allowed" &&
+    adapter.transactional === false && data?.type === "UInt64Buffer" &&
+    data.ownership === "borrowed" && data.mutability === "read" &&
+    dimensions.length === 1 && dimensions[0]?.type === "uint64";
+  const writeExactMatrix = adapter.kind === "packed_fmpz_matrix" &&
+    nativeArgument.direction === "out" &&
+    nativeArgument.abi_type === "fmpz_mat_t" &&
+    adapter.access === "write" && adapter.aliasing === "allowed" &&
+    adapter.transactional === true && data?.type === "IntegerBuffer" &&
+    data.ownership === "borrowed_mut" && data.mutability === "write" &&
+    dimensions.length === 2 &&
+    dimensions.every((dimension) => dimension?.type === "uint64");
+  if (!readSlice && !writeExactMatrix) {
     reject("uses an unsupported aggregate adapter");
   }
-  const consumed = new Set([data.name, length.name]);
+  const consumed = new Set([data.name, ...dimensionNames]);
   if (resourceParameter !== undefined) consumed.add(resourceParameter.name);
   if (fn.signature.parameters.some((parameter) =>
     !consumed.has(parameter.name) && parameter.type !== "uint64"
   )) {
     reject("has a non-word auxiliary parameter");
   }
-  if (fn.effects.writes.length !== 0) {
+  if (readSlice && fn.effects.writes.length !== 0) {
     reject("declares mutation");
+  }
+  if (writeExactMatrix && (
+    resourceParameter === undefined || returnResource !== undefined ||
+    fn.signature.return_type !== "bool" ||
+    fn.effects.writes.length !== 1 || fn.effects.writes[0] !== data.name
+  )) {
+    reject("has an unauthenticated writable projection contract");
   }
   if (returnResource !== undefined) {
     if (returnResource.ownership !== "owned") {
@@ -766,7 +788,7 @@ function validateFunction(
   }
 
   validateResourceAggregateComposition(
-    filename, fn, resourcesByType, returnResource,
+    filename, fn, resourcesByType, returnResource, catalog,
   );
 
   const enriched = {
@@ -799,8 +821,13 @@ function loadDeclarationDocument(document, options = {}) {
       !/^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+$/.test(library.dynamic.package)) {
     fail(filename, "library.dynamic.package must be a package name");
   }
-  exactKeys(filename, library.native,
-    ["headers", "link", "dependencies", "toolchain"], "library.native");
+  knownKeys(filename, library.native,
+    ["headers", "link", "dependencies", "toolchain"],
+    ["checkpoint_cleanup"], "library.native");
+  if (library.native.checkpoint_cleanup !== undefined &&
+      !identifier(library.native.checkpoint_cleanup)) {
+    fail(filename, "library.native.checkpoint_cleanup must be a C identifier");
+  }
   safeStrings(filename, library.native.headers, "library.native.headers",
     /^[A-Za-z0-9_+./-]+$/);
   safeStrings(filename, library.native.dependencies,

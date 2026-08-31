@@ -630,10 +630,10 @@ def packed_field_analysis_fixed_points_are_valid(
         and polynomial[degree] == 1
         and len(numerator) == square
         and denominator > 0
-        and len(primes) == witness_count
-        and len(radical_dimensions) == witness_count
-        and len(radicals) == witness_count * square
-        and len(selectors) == witness_count * degree
+        and len(primes) >= witness_count
+        and len(radical_dimensions) >= witness_count
+        and len(radicals) >= witness_count * square
+        and len(selectors) >= witness_count * degree
     )
 
     for disc_entry in range(sylvester_size * sylvester_size):

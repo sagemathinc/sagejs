@@ -25,6 +25,7 @@ const {
 const { generateJavaScript } = require("./js-backend.cjs");
 const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
+const { createNativeImportResolver } = require("./native-imports.cjs");
 const { macosDeploymentTarget } = require("../../scripts/darwin-native.cjs");
 const {
   normalizeAutomaticSelections,
@@ -804,8 +805,14 @@ async function compileKernel(options) {
     options.cacheRoot ||
       join(dirname(sourcePath), ".sagejs-native-kernels"),
   );
+  const resolveNativeImport = createNativeImportResolver({
+    root,
+    lowerSource,
+    initialSourcePath: sourcePath,
+  });
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
+    resolveNativeImport,
   });
   const automaticSelections = normalizeAutomaticSelections(
     options.automaticSelections ?? {},

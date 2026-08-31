@@ -1,0 +1,175 @@
+// sagejs-test-tier: specialized
+"use strict";
+
+const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
+const { readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+const test = require("node:test");
+
+const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+
+const root = resolve(__dirname, "..");
+const sourcePath = resolve(
+  root,
+  "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+);
+
+function runPython(source, timeout = 180_000) {
+  const result = spawnSync(
+    process.execPath,
+    [resolve(root, "bin/sagejs"), "--python"],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_NATIVE_REQUIRED: "0" },
+      input: source,
+      timeout,
+    },
+  );
+  assert.equal(
+    result.status,
+    0,
+    `${result.error?.message || ""}\n${result.stderr}\n${result.stdout}`,
+  );
+  return result.stdout.trim();
+}
+
+test("closed native cubic receipts survive declines and authenticate targets", {
+  timeout: 240_000,
+}, async () => {
+  const compiled = await compileKernel({
+    sourcePath,
+    functions: ["certified_complex_cubic_class_group_v1"],
+  });
+  const checkerPath = resolve(
+    root,
+    "src/lib/sagejs/number_fields/field_analysis_resource.py",
+  );
+  const checkerHash = createHash("sha256")
+    .update(readFileSync(checkerPath))
+    .digest("hex");
+  assert.equal(compiled.ir.version, 36);
+  assert.deepEqual(compiled.ir.nativeSourceDependencies, [{
+    module: "sagejs.number_fields.field_analysis_resource",
+    path: checkerPath,
+    sha256: checkerHash,
+  }]);
+  assert.ok(
+    compiled.ir.callGraph._cubic_analysis_fixed_points_are_valid.includes(
+      "packed_field_analysis_fixed_points_are_valid",
+    ),
+  );
+  assert.equal(
+    compiled.ir.functions.find(
+      (fn) => fn.name === "packed_field_analysis_fixed_points_are_valid",
+    ).provenance.file,
+    checkerPath,
+  );
+  const output = runPython(String.raw`
+from sagejs.number_fields.cubic_class_number_native import certified_complex_cubic_class_group_v1
+from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+from sagejs.native import is_compiled
+
+assert is_compiled(certified_complex_cubic_class_group_v1)
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+
+def field(coefficients, name):
+    polynomial = R(0)
+    for exponent, coefficient in enumerate(coefficients):
+        polynomial += coefficient * x**exponent
+    return NumberField(polynomial, name)
+
+# This valid field used to decline after leaving FLINT's fmpz cache pointing
+# into an unmapped GMP checkpoint.  Every following computation must remain
+# independent and safe.
+declined = field((-1, 2, 0, 1), "declined")
+assert certified_complex_cubic_class_number(declined) is None
+
+cases = (
+    ((-55, 9, 0, 1), 5, (5,)),
+    ((-4, 3, -1, 1), 2, (2,)),
+)
+for index, (coefficients, order, invariants) in enumerate(cases):
+    K = field(coefficients, "a" + str(index))
+    receipt = certified_complex_cubic_class_number(K)
+    assert receipt is not None
+    assert receipt.class_number == order
+    assert receipt.invariants == invariants
+    assert receipt.proof_status == "exact-relations-conditional-grh"
+    assert receipt.theorem == "minkowski-generators-plus-belabas-friedman-grh-index-one"
+    assert receipt.assumptions == (
+        "GRH: zeta_K(s) and zeta_Q(s) are nonzero whenever Re(s) > 1/2",
+    )
+    assert receipt.matches(K)
+    assert K.class_number(proof=False) == order
+    detached = receipt.to_dict()
+    assert detached["class_number"] == order
+    assert tuple(detached["invariants"]) == invariants
+    assert detached["proof_status"] == "exact-relations-conditional-grh"
+    assert detached["assumptions"] == list(receipt.assumptions)
+    assert detached["polynomial_coefficients"] == list(coefficients)
+    try:
+        receipt.class_number = 999
+        raise AssertionError("receipt mutation was accepted")
+    except AttributeError:
+        pass
+
+print("cubic-native-receipts-ok")
+`);
+  assert.equal(output, "cubic-native-receipts-ok");
+});
+
+test("native cubic receipts replay through the independent exact engine", {
+  timeout: 240_000,
+}, () => {
+  const output = runPython(String.raw`
+from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+for index, coefficients in enumerate(((-55, 9, 0, 1), (-4, 3, -1, 1))):
+    polynomial = R(0)
+    for exponent, coefficient in enumerate(coefficients):
+        polynomial += coefficient * x**exponent
+    K = NumberField(polynomial, "v" + str(index))
+    receipt = certified_complex_cubic_class_number(K)
+    assert receipt is not None
+    assert receipt.verify()
+print("cubic-native-independent-replay-ok")
+`, 240_000);
+  assert.equal(output, "cubic-native-independent-replay-ok");
+});
+
+test("native cubic receipts agree with the pinned nontrivial LMFDB corpus", {
+  timeout: 240_000,
+}, () => {
+  const output = runPython(String.raw`
+from sagejs.number_fields.cubic_class_number_native_runtime import certified_complex_cubic_class_number
+
+R = PolynomialRing(QQ, "x")
+x = R.gen()
+cases = (
+    ("3.1.1083.1", (-12, -6, -1, 1), 3, (3,)),
+    ("3.1.1371.1", (6, 3, -1, 1), 4, (4,)),
+    ("3.1.1563.1", (-6, 7, -1, 1), 5, (5,)),
+    ("3.1.2856.1", (-21, 9, -1, 1), 7, (7,)),
+    ("3.1.4027.2", (8, 7, -1, 1), 6, (6,)),
+    ("3.1.5448.1", (30, -14, -1, 1), 8, (8,)),
+)
+for index, (label, coefficients, expected_order, expected_invariants) in enumerate(cases):
+    polynomial = R(0)
+    for exponent, coefficient in enumerate(coefficients):
+        polynomial += coefficient * x**exponent
+    K = NumberField(polynomial, "c" + str(index))
+    receipt = certified_complex_cubic_class_number(K)
+    assert receipt is not None, label
+    assert receipt.class_number == expected_order, label
+    assert receipt.invariants == expected_invariants, label
+    assert receipt.matches(K), label
+print("cubic-native-lmfdb-corpus-ok")
+`);
+  assert.equal(output, "cubic-native-lmfdb-corpus-ok");
+});

@@ -17,6 +17,8 @@
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 
+#include "sagejs/fmpz_matrix_ffi.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1699,6 +1701,33 @@ failure:
     arb_clear(square_root);
     arb_clear(logarithm);
     return 0;
+}
+
+/* Resident-resource form of the same Arb batch.  Native exact programs use
+ * this adapter when both matrices already belong to their lexical arena, so
+ * no public IntegerBuffer conversion or object-at-a-time boundary is needed.
+ */
+static inline int sagejs_flint_integer_log_sqrt_balls_resource(
+    sagejs_fmpz_matrix_t output,
+    const sagejs_fmpz_matrix_t source,
+    uint64_t precision)
+{
+    const int success = sagejs_flint_integer_log_sqrt_balls_packed(
+        output->value, source->value, precision);
+    if (success)
+        sagejs_fmpz_matrix_recompute_allocated_bytes(output);
+    return success;
+}
+
+/* Drain thread-local FLINT, Arb/MPFR, and fmpz caches before a native exact
+ * checkpoint releases the GMP limb slab from which those caches may have
+ * borrowed storage.  FLINT deliberately recycles promoted fmpz objects; the
+ * public cleanup protocol is therefore an ownership boundary, not merely a
+ * process-exit convenience, when GMP allocations come from a lexical arena.
+ */
+static inline void sagejs_flint_exact_checkpoint_cleanup(void)
+{
+    flint_cleanup();
 }
 
 #ifdef __cplusplus

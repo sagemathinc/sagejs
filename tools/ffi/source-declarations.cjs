@@ -178,7 +178,7 @@ function parseLibrary(filename, callNode) {
       "id", "python_module", "package", "headers", "link_unix",
       "link_linux", "link_darwin", "link_windows", "dependencies",
       "prefix_environment", "unix_default", "windows_default", "include_dirs",
-      "source_include_dirs",
+      "source_include_dirs", "checkpoint_cleanup",
     ],
   });
   const link = {
@@ -201,6 +201,11 @@ function parseLibrary(filename, callNode) {
       headers: strings(filename, call, "headers"),
       link,
       dependencies: strings(filename, call, "dependencies"),
+      ...(call.keywords.has("checkpoint_cleanup")
+        ? { checkpoint_cleanup: requiredString(
+          filename, call, "checkpoint_cleanup",
+        ) }
+        : {}),
       toolchain: {
         prefix_environment: requiredString(filename, call, "prefix_environment"),
         unix_default: requiredString(filename, call, "unix_default"),

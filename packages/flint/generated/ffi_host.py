@@ -451,7 +451,10 @@ from sagejs.ffi.flint import (
     number_field_order_resource_unramified_primes as _ffi_number_field_order_resource_unramified_primes,
     number_field_order_with_round2_proof_resource as _ffi_number_field_order_with_round2_proof_resource,
     number_field_analyze_resource as _ffi_number_field_analyze_resource,
+    number_field_analysis_resource_project as _ffi_number_field_analysis_resource_project,
+    number_field_analysis_resource_project_proof as _ffi_number_field_analysis_resource_project_proof,
     integer_log_sqrt_balls_packed as _ffi_integer_log_sqrt_balls_packed,
+    integer_log_sqrt_balls_resource as _ffi_integer_log_sqrt_balls_resource,
 )
 from sagejs.native import Integer, IntegerBuffer, UInt64Buffer, native, uint64
 
@@ -5399,6 +5402,36 @@ def ffiNumberFieldAnalyzeResource(
 
 
 @native
+def ffiNumberFieldAnalysisResourceProject(
+    output: IntegerBuffer,
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_number_field_analysis_resource_project(
+        output,
+        resource,
+        output_length,
+        one,
+    )
+
+
+@native
+def ffiNumberFieldAnalysisResourceProjectProof(
+    output: IntegerBuffer,
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: uint64,
+) -> bool:
+    return _ffi_number_field_analysis_resource_project_proof(
+        output,
+        resource,
+        output_length,
+        one,
+    )
+
+
+@native
 def ffiIntegerLogSqrtBallsPacked(
     output: IntegerBuffer,
     source: IntegerBuffer,
@@ -5413,5 +5446,18 @@ def ffiIntegerLogSqrtBallsPacked(
         output_length,
         count,
         one,
+        precision,
+    )
+
+
+@native
+def ffiIntegerLogSqrtBallsResource(
+    output: FmpzMatrix,
+    source: FmpzMatrix,
+    precision: uint64,
+) -> bool:
+    return _ffi_integer_log_sqrt_balls_resource(
+        output,
+        source,
         precision,
     )

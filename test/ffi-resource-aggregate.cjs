@@ -664,7 +664,7 @@ test("read-only packed ingress may construct or derive owned resources", () => {
         filename: join(temporary, "two-slices.ffi.json"),
         catalog,
       }),
-      /resource\/aggregate composition.*only one read-only UInt64Buffer packed slice/,
+      /resource\/aggregate composition.*supported shapes are one read-only UInt64Buffer packed slice/,
     );
 
     const derivedDocument = witnessDocument(temporary);

@@ -247,6 +247,7 @@
         "ffi:flint:fq_polynomial_pow",
         "ffi:flint:fq_polynomial_sub",
         "ffi:flint:integer_log_sqrt_balls_packed",
+        "ffi:flint:integer_log_sqrt_balls_resource",
         "ffi:flint:native_exact_workspace",
         "ffi:flint:native_exact_workspace_borrow",
         "ffi:flint:native_exact_workspace_borrow_addmul",
@@ -406,6 +407,7 @@
       "additionalCapabilities": [
         "kernel:arbitrary-prime-polynomial-resource-production",
         "kernel:class-group-resident-hnf-production",
+        "kernel:complex-cubic-class-group-production",
         "kernel:dense-integer-flint-production",
         "kernel:dense-prime-flint-production",
         "kernel:dense-prime-production",

@@ -51,6 +51,7 @@ flint = Library(
     windows_default="packages/flint/.native/vcpkg-installed/x64-windows-static-md-release",
     include_dirs=["include"],
     source_include_dirs=["packages/flint/include"],
+    checkpoint_cleanup="sagejs_flint_exact_checkpoint_cleanup",
 )
 
 
@@ -11152,6 +11153,86 @@ def number_field_analyze_resource(
 
 
 @flint.function(
+    dynamic="ffiNumberFieldAnalysisResourceProject",
+    symbol="sagejs_number_field_analysis_resource_project",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_("resource", sagejs_number_field_analysis_resource_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="number-field analysis projection is invalid",
+    ),
+    wasm=False,
+)
+def number_field_analysis_resource_project(
+    output: Writable[IntegerBuffer],
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiNumberFieldAnalysisResourceProjectProof",
+    symbol="sagejs_number_field_analysis_resource_project_proof",
+    returns=int,
+    abi=[
+        out(
+            "output",
+            fmpz_mat_t,
+            packed_fmpz_matrix(
+                data="output",
+                rows="output_length",
+                columns="one",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_("resource", sagejs_number_field_analysis_resource_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="number-field analysis proof projection is invalid",
+    ),
+    wasm=False,
+)
+def number_field_analysis_resource_project_proof(
+    output: Writable[IntegerBuffer],
+    resource: NumberFieldAnalysisResource,
+    output_length: uint64,
+    one: Min[uint64, 1],
+) -> bool: ...
+
+
+@flint.function(
     dynamic="ffiIntegerLogSqrtBallsPacked",
     symbol="sagejs_flint_integer_log_sqrt_balls_packed",
     returns=int,
@@ -11201,5 +11282,34 @@ def integer_log_sqrt_balls_packed(
     output_length: uint64,
     count: uint64,
     one: Min[uint64, 1],
+    precision: uint64,
+) -> bool: ...
+
+
+@flint.function(
+    dynamic="ffiIntegerLogSqrtBallsResource",
+    symbol="sagejs_flint_integer_log_sqrt_balls_resource",
+    returns=int,
+    abi=[
+        in_("output", sagejs_fmpz_matrix_t),
+        in_("source", sagejs_fmpz_matrix_t),
+        in_("precision", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT resident integer logarithm/square-root batch is invalid",
+    ),
+    wasm=True,
+)
+def integer_log_sqrt_balls_resource(
+    output: Writable[FmpzMatrix],
+    source: FmpzMatrix,
     precision: uint64,
 ) -> bool: ...

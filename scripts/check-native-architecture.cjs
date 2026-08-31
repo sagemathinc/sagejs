@@ -267,6 +267,19 @@ function validateKernelRegistry(manifest, options = {}) {
     if (kernel.host_isolation !== "certified") {
       throw new Error(`${kernel.id} is not host-isolation certified`);
     }
+    if (
+      kernel.wasm_production !== undefined &&
+      typeof kernel.wasm_production !== "boolean"
+    ) {
+      throw new Error(`${kernel.id} wasm_production must be boolean`);
+    }
+    if (
+      kernel.wasm_production === false &&
+      (typeof kernel.wasm_fallback_reason !== "string" ||
+        kernel.wasm_fallback_reason.length < 12)
+    ) {
+      throw new Error(`${kernel.id} needs a substantive Wasm fallback reason`);
+    }
     if (!Array.isArray(kernel.functions) || kernel.functions.length === 0) {
       throw new Error(`${kernel.id} must list compiled functions`);
     }

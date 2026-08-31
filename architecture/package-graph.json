@@ -215,6 +215,29 @@
       "prefixes": ["src/lib/sagejs/number_fields/"]
     },
     {
+      "id": "complex-cubic-native-program",
+      "layer": 6,
+      "startup": "lazy",
+      "max_source_bytes": 180000,
+      "depends_on": [
+        "core-runtime",
+        "native-integration",
+        "arithmetic",
+        "linear-algebra",
+        "number-field-algorithms",
+        "python-stdlib"
+      ],
+      "modules": [
+        "sagejs.number_fields.cubic_class_number_native",
+        "sagejs.number_fields.cubic_class_number_native_runtime"
+      ],
+      "files": [
+        "src/lib/sagejs/number_fields/cubic_class_number_native.py",
+        "src/lib/sagejs/number_fields/cubic_class_number_native_runtime.py"
+      ],
+      "prefixes": []
+    },
+    {
       "id": "number-field-relation-matrix",
       "layer": 6,
       "startup": "lazy",

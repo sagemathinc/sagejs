@@ -53,6 +53,12 @@ The two policies have distinct cache identities. Always retain
 `result.proof_status` with serialized results, and do not relabel a conditional
 result after an unrelated unconditional computation.
 
+The optimized complex-cubic route has a dedicated
+[correctness argument](complex-cubic-native-class-group-proof.md). It records
+the maximal-order, Minkowski, relation-lattice, unit-index, interval, and
+Belabas--Friedman steps; the precise GRH boundary; the current trusted
+computing base; and a staged Lean certificate-checker plan.
+
 If resource limits or cancellation prevent certification, `result.complete`
 is false and the status is `incomplete-resource-limit`. The result may expose
 diagnostics or tentative invariants, but `result.class_group()` deliberately
