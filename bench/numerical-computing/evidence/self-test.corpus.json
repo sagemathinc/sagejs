@@ -1,0 +1,218 @@
+{
+  "schema": "sagejs.numerical-qualification-corpus/v1",
+  "id": "qualification-harness-self-test",
+  "version": 1,
+  "domain": "qualification-harness",
+  "description": "Portable deterministic cases that exercise success, independent validation, approximation, and expected failure evidence without representing a product capability receipt.",
+  "program_phases": ["P0", "P8"],
+  "source_paths": [
+    "bench/numerical-computing/evidence/self-test-source.txt"
+  ],
+  "cases": [
+    {
+      "id": "exact-sum",
+      "description": "An exact definition case with a separately returned oracle value.",
+      "program_phase": "P0",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": { "kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": [] },
+      "input": {
+        "operation": "sum",
+        "values": [10, 11, 21],
+        "expected": 42
+      },
+      "required_capabilities": ["self-test.scalar"],
+      "expected": {
+        "outcome": "success",
+        "failure_code": null
+      },
+      "checks": [
+        {
+          "id": "definition",
+          "evidence": "correctness",
+          "kind": "deep-equal",
+          "actual": "/values/result",
+          "expected": { "literal": 42 }
+        },
+        {
+          "id": "independent-oracle",
+          "evidence": "validation",
+          "kind": "deep-equal",
+          "actual": "/values/result",
+          "expected": { "pointer": "/values/independent_oracle" }
+        }
+      ],
+      "measurement": { "warmup": 1, "samples": 2 }
+    },
+    {
+      "id": "cosine-fixed-point",
+      "description": "A binary64 approximation is checked against an independent reference and residual ceiling.",
+      "program_phase": "P8",
+      "layer": "independent-residual",
+      "workload_tier": "instant-classroom",
+      "campaign": { "kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": [] },
+      "input": {
+        "operation": "fixed-point",
+        "approximation": 0.7390851332151607,
+        "reference": 0.7390851332151607
+      },
+      "required_capabilities": ["self-test.scalar"],
+      "expected": {
+        "outcome": "success",
+        "failure_code": null
+      },
+      "checks": [
+        {
+          "id": "reference-agreement",
+          "evidence": "correctness",
+          "kind": "approximate",
+          "actual": "/values/result",
+          "expected": { "pointer": "/values/independent_oracle" },
+          "absolute_tolerance": 1e-15,
+          "relative_tolerance": 1e-15
+        },
+        {
+          "id": "residual-finite",
+          "evidence": "validation",
+          "kind": "finite",
+          "actual": "/values/residual"
+        },
+        {
+          "id": "residual-ceiling",
+          "evidence": "validation",
+          "kind": "less-than-or-equal",
+          "actual": "/values/residual",
+          "expected": { "literal": 1e-15 }
+        }
+      ],
+      "measurement": { "warmup": 1, "samples": 2 }
+    },
+    {
+      "id": "negative-square-root",
+      "description": "The expected domain failure retains the structured diagnostic and input.",
+      "program_phase": "P8",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": { "kind": "fixed", "seed": null, "trials": 1, "evidence_check_ids": [] },
+      "input": {
+        "operation": "sqrt",
+        "value": -1
+      },
+      "required_capabilities": ["self-test.scalar"],
+      "expected": {
+        "outcome": "failure",
+        "failure_code": "domain.negative-radicand"
+      },
+      "checks": [
+        {
+          "id": "diagnostic-code",
+          "evidence": "correctness",
+          "kind": "deep-equal",
+          "actual": "/values/diagnostic_code",
+          "expected": { "literal": "domain.negative-radicand" }
+        },
+        {
+          "id": "input-preserved",
+          "evidence": "validation",
+          "kind": "deep-equal",
+          "actual": "/values/input_preserved",
+          "expected": { "literal": -1 }
+        },
+        {
+          "id": "failure-independently-validated",
+          "evidence": "validation",
+          "kind": "deep-equal",
+          "actual": "/values/independently_validated",
+          "expected": { "literal": true }
+        }
+      ],
+      "measurement": { "warmup": 0, "samples": 2 }
+    },
+    {
+      "id": "deterministic-addition-fuzz",
+      "description": "A fixed-seed integer campaign records its exact trial count and invariant violations.",
+      "program_phase": "P8",
+      "layer": "fuzz",
+      "workload_tier": "instant-classroom",
+      "campaign": {
+        "kind": "deterministic-fuzz",
+        "seed": "lcg-0x12345678",
+        "trials": 64,
+        "evidence_check_ids": ["all-fuzz-trials-ran"]
+      },
+      "input": {
+        "operation": "addition-fuzz",
+        "seed": 305419896,
+        "trials": 64
+      },
+      "required_capabilities": ["self-test.scalar"],
+      "expected": {
+        "outcome": "success",
+        "failure_code": null
+      },
+      "checks": [
+        {
+          "id": "no-commutativity-violations",
+          "evidence": "correctness",
+          "kind": "deep-equal",
+          "actual": "/values/violations",
+          "expected": { "literal": 0 }
+        },
+        {
+          "id": "all-fuzz-trials-ran",
+          "evidence": "validation",
+          "kind": "deep-equal",
+          "actual": "/values/trials",
+          "expected": { "literal": 64 }
+        },
+        {
+          "id": "campaign-state-is-finite",
+          "evidence": "validation",
+          "kind": "finite",
+          "actual": "/values/final_state"
+        }
+      ],
+      "measurement": { "warmup": 0, "samples": 2 }
+    },
+    {
+      "id": "sum-scaling-metamorphism",
+      "description": "Scaling every addend must scale the exact sum by the same signed factor.",
+      "program_phase": "P8",
+      "layer": "metamorphic",
+      "workload_tier": "instant-classroom",
+      "campaign": {
+        "kind": "metamorphic",
+        "seed": null,
+        "trials": 4,
+        "evidence_check_ids": ["all-transformations-ran"]
+      },
+      "input": {
+        "operation": "sum-scaling",
+        "values": [3, -5, 11],
+        "factors": [-3, -1, 2, 7]
+      },
+      "required_capabilities": ["self-test.scalar"],
+      "expected": {
+        "outcome": "success",
+        "failure_code": null
+      },
+      "checks": [
+        {
+          "id": "no-scaling-violations",
+          "evidence": "correctness",
+          "kind": "deep-equal",
+          "actual": "/values/violations",
+          "expected": { "literal": 0 }
+        },
+        {
+          "id": "all-transformations-ran",
+          "evidence": "validation",
+          "kind": "deep-equal",
+          "actual": "/values/trials",
+          "expected": { "literal": 4 }
+        }
+      ],
+      "measurement": { "warmup": 0, "samples": 2 }
+    }
+  ]
+}

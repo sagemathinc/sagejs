@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-qualification-corpus-v1.json",
+  "title": "Sage.js backend-neutral numerical qualification corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "id", "version", "domain", "description", "program_phases", "source_paths",
+    "cases"
+  ],
+  "properties": {
+    "schema": { "const": "sagejs.numerical-qualification-corpus/v1" },
+    "id": { "$ref": "#/$defs/nonempty" },
+    "version": { "type": "integer", "minimum": 1 },
+    "domain": { "$ref": "#/$defs/nonempty" },
+    "description": { "$ref": "#/$defs/nonempty" },
+    "program_phases": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/programPhase" }
+    },
+    "source_paths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonempty" }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/case" }
+    }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "programPhase": { "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"] },
+    "pointer": { "type": "string", "pattern": "^/(?:[^~]|~[01])*$" },
+    "operand": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["literal"],
+          "properties": { "literal": true }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pointer"],
+          "properties": { "pointer": { "$ref": "#/$defs/pointer" } }
+        }
+      ]
+    },
+    "check": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "evidence", "kind", "actual"],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonempty" },
+            "evidence": { "enum": ["correctness", "validation"] },
+            "kind": { "const": "finite" },
+            "actual": { "$ref": "#/$defs/pointer" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "evidence", "kind", "actual", "expected"],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonempty" },
+            "evidence": { "enum": ["correctness", "validation"] },
+            "kind": { "enum": ["deep-equal", "less-than-or-equal", "greater-than-or-equal"] },
+            "actual": { "$ref": "#/$defs/pointer" },
+            "expected": { "$ref": "#/$defs/operand" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id", "evidence", "kind", "actual", "expected", "absolute_tolerance",
+            "relative_tolerance"
+          ],
+          "properties": {
+            "id": { "$ref": "#/$defs/nonempty" },
+            "evidence": { "enum": ["correctness", "validation"] },
+            "kind": { "const": "approximate" },
+            "actual": { "$ref": "#/$defs/pointer" },
+            "expected": { "$ref": "#/$defs/operand" },
+            "absolute_tolerance": { "type": "number", "minimum": 0 },
+            "relative_tolerance": { "type": "number", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "description", "program_phase", "layer", "workload_tier", "campaign", "input",
+        "required_capabilities", "expected", "checks", "measurement"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "description": { "$ref": "#/$defs/nonempty" },
+        "program_phase": { "$ref": "#/$defs/programPhase" },
+        "layer": {
+          "enum": [
+            "definition-identity", "independent-residual", "differential-oracle",
+            "conditioned-stress", "failure-semantics", "fuzz", "metamorphic"
+          ]
+        },
+        "workload_tier": {
+          "enum": [
+            "instant-classroom", "interactive-exploration", "substantial-local", "out-of-scope"
+          ]
+        },
+        "campaign": { "$ref": "#/$defs/campaign" },
+        "input": true,
+        "required_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        },
+        "expected": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "failure_code"],
+              "properties": {
+                "outcome": { "const": "success" },
+                "failure_code": { "type": "null" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "failure_code"],
+              "properties": {
+                "outcome": { "const": "failure" },
+                "failure_code": {
+                  "type": "string",
+                  "minLength": 1,
+                  "not": { "pattern": "^qualification\\." }
+                }
+              }
+            }
+          ]
+        },
+        "checks": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/check" },
+          "contains": {
+            "type": "object",
+            "required": ["evidence"],
+            "properties": { "evidence": { "const": "correctness" } }
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": ["evidence"],
+                "properties": { "evidence": { "const": "validation" } }
+              }
+            }
+          ]
+        },
+        "measurement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["warmup", "samples"],
+          "properties": {
+            "warmup": { "type": "integer", "minimum": 0 },
+            "samples": { "type": "integer", "minimum": 1 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "layer": { "const": "fuzz" } } },
+          "then": {
+            "properties": {
+              "campaign": {
+                "properties": {
+                  "kind": { "const": "deterministic-fuzz" },
+                  "seed": { "$ref": "#/$defs/nonempty" },
+                  "trials": { "type": "integer", "minimum": 2 }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "layer": { "const": "metamorphic" } } },
+          "then": {
+            "properties": {
+              "campaign": {
+                "properties": {
+                  "kind": { "const": "metamorphic" },
+                  "trials": { "type": "integer", "minimum": 2 }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "campaign": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "seed", "trials", "evidence_check_ids"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "fixed", "deterministic-fuzz", "metamorphic", "fault-injection", "long-duration"
+          ]
+        },
+        "seed": { "oneOf": [{ "$ref": "#/$defs/nonempty" }, { "type": "null" }] },
+        "trials": { "type": "integer", "minimum": 1 },
+        "evidence_check_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonempty" }
+        }
+      }
+    }
+  }
+}

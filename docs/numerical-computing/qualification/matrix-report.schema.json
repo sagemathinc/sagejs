@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-qualification-matrix-report-v1.json",
+  "title": "Sage.js numerical qualification matrix report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "policy", "status", "rows", "unmatched_receipt_ids", "id"],
+  "properties": {
+    "schema": { "const": "sagejs.numerical-qualification-matrix-report/v1" },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256", "require_clean", "required_rows"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "require_clean": { "type": "boolean" },
+        "required_rows": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "status": { "enum": ["passed", "failed"] },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "row_id", "status", "reasons", "receipt", "bindings", "coverage", "metrics"
+        ],
+        "properties": {
+          "row_id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["passed", "failed", "missing"] },
+          "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "receipt": { "type": ["object", "null"] },
+          "bindings": { "type": ["object", "null"] },
+          "coverage": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["program_phases", "case_layers"],
+                "properties": {
+                  "program_phases": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "enum": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"] }
+                  },
+                  "case_layers": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            ]
+          },
+          "metrics": { "type": ["object", "null"] }
+        }
+      }
+    },
+    "unmatched_receipt_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+    },
+    "id": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}
