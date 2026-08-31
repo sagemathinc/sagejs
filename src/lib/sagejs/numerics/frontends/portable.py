@@ -8,7 +8,7 @@ import json
 import math
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, NoReturn
 
 from .._json import JSONValue, canonical_json
 from .expressions import expression_record, render_expression
@@ -318,7 +318,7 @@ def _mapping(value: Any, name: str) -> Mapping[str, Any]:
     return value
 
 
-def _parse_error(language: str, message: str) -> None:
+def _parse_error(language: str, message: str) -> NoReturn:
     raise UnsupportedFrontendError(
         FrontendDiagnostic("parse_failure", message, language=language)
     )
