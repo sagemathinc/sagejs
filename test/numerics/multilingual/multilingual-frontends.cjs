@@ -90,8 +90,8 @@ except UnsupportedFrontendError as error:
     assert error.diagnostic.code == "non_replayable_intent"
 
 try:
-    registry.lower("matlab", "ode45", lambda x: x, [0, 1])
-    raise AssertionError("unregistered operation unexpectedly lowered")
+    registry.lower("matlab", "definitely_not_numerical", 1)
+    raise AssertionError("unknown operation unexpectedly lowered")
 except UnsupportedFrontendError as error:
     assert error.diagnostic.code == "unsupported_operation"
     assert error.diagnostic.to_dict()["language"] == "matlab"
@@ -114,7 +114,7 @@ adapter = OperationAdapter(
 local = FrontendRegistry((adapter,))
 sample = local.lower("matlab", "sample", 7)
 assert local.emit(sample, "sage") == "sample(7)"
-assert len(create_frontend_registry().operations()) == 1
+assert len(create_frontend_registry().operations()) == 22
 
 print("multilingual numerical frontend witness passed")
 `;
@@ -161,6 +161,58 @@ test("offline reference fixtures are provenance-complete and non-executable", ()
     assert.equal(reference.vendor_output_included, false);
   }
   assert.equal(fixture.cases.length, 3);
+
+  const catalog = JSON.parse(
+    readFileSync(
+      join(__dirname, "fixtures", "catalog-references.json"),
+      "utf8",
+    ),
+  );
+  assert.equal(catalog.schema_version, 1);
+  assert.ok(catalog.references.length >= 12);
+  assert.deepEqual(
+    [...new Set(catalog.references.map(({ system }) => system))].sort(),
+    ["matlab", "python-scipy", "sage", "wolfram"],
+  );
+  for (const reference of catalog.references) {
+    assert.match(reference.source_url, /^https:\/\//);
+    assert.equal(reference.accessed, "2026-08-31");
+    assert.equal(reference.redistribution, "facts-and-original-fixtures-only");
+    assert.equal(reference.vendor_output_included, false);
+  }
+  assert.equal(catalog.original_cases.length, 3);
+});
+
+test("the support ledger classifies every foundational operation", () => {
+  const ledger = JSON.parse(
+    readFileSync(
+      join(
+        root,
+        "docs",
+        "numerical-computing",
+        "multilingual",
+        "support-matrix.json",
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(ledger.schema_version, 1);
+  assert.deepEqual(
+    ledger.runtime_languages,
+    ["sage", "python-scipy", "matlab", "wolfram"],
+  );
+  assert.equal(ledger.operations.length, 22);
+  for (const operation of ledger.operations) {
+    const classified = new Set([
+      ...operation.emit,
+      ...(operation.unsupported || []),
+    ]);
+    assert.deepEqual(
+      [...classified].sort(),
+      [...ledger.runtime_languages].sort(),
+      operation.operation,
+    );
+  }
 });
 
 test("the documented intent schema accepts the checked fixture shape", () => {
