@@ -441,6 +441,12 @@ if (require.main === module) {
   try {
     const dist = argument("--dist") ?? path.resolve(__dirname, "..", "dist");
     const report = inspectProductionArtifact(dist);
+    const output = argument("--output");
+    const serialized = `${JSON.stringify(report, null, 2)}\n`;
+    if (output) {
+      fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
+      fs.writeFileSync(output, serialized);
+    }
     const budgetPath = argument("--budget");
     const budget = budgetPath ? JSON.parse(fs.readFileSync(budgetPath)) : null;
     const topologyFailures = enforceTopologyBudgets(report, budget);
@@ -471,12 +477,7 @@ if (require.main === module) {
       );
       if (failures.length) throw new Error(`payload budget failed:\n${failures.join("\n")}`);
     }
-    const output = argument("--output");
-    const serialized = `${JSON.stringify(report, null, 2)}\n`;
-    if (output) {
-      fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
-      fs.writeFileSync(output, serialized);
-    } else {
+    if (!output) {
       process.stdout.write(serialized);
     }
   } catch (error) {
