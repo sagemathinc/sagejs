@@ -324,6 +324,7 @@ class SageLowerer {
     }
     const head = expression.head.name;
     if (head === "Table") return this.table(expression);
+    if (head === "FindRoot") return this.findRoot(expression);
     if (head === "Plot") return this.plot(expression);
     if (head === "ParametricPlot") {
       return this.singleRangePlot(expression, "parametric_plot", head);
@@ -467,6 +468,38 @@ class SageLowerer {
     return `_wolfram.Table(lambda ${iterator.variable}: ${
       this.expression(expression.arguments[0])
     }, ${iterator.start}, ${iterator.stop}, ${iterator.step})`;
+  }
+
+  private findRoot(expression: CallExpression): string {
+    if (expression.arguments.length !== 2) {
+      throw new WolframSyntaxError(
+        "FindRoot currently requires an expression and one variable specification",
+        expression.span,
+      );
+    }
+    const specification = expression.arguments[1];
+    if (
+      specification.kind !== "list" ||
+      specification.elements.length < 2 ||
+      specification.elements.length > 3 ||
+      specification.elements[0].kind !== "symbol"
+    ) {
+      throw new WolframSyntaxError(
+        "FindRoot currently requires {variable, initial} or {variable, lower, upper}",
+        expression.span,
+      );
+    }
+    const variable = this.name(specification.elements[0].name);
+    const objective = expression.arguments[0];
+    const body = objective.kind === "binary" && objective.operator === "=="
+      ? `(${this.expression(objective.left)} - ${this.expression(objective.right)})`
+      : this.expression(objective);
+    const initial = `[${specification.elements.slice(1).map((value) =>
+      this.expression(value)
+    ).join(", ")}]`;
+    return `_wolfram.FindRoot(lambda ${variable}: ${body}, ${
+      JSON.stringify(specification.elements[0].name)
+    }, ${initial})`;
   }
 
   private plot(expression: CallExpression): string {

@@ -14,6 +14,7 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 _backend_state = {"value": None}
+_numerics_state = {"value": None}
 _FUNCTION_NAMES = {
     "Abs": "abs",
     "Cos": "cos",
@@ -57,6 +58,21 @@ def _backend() -> Any:
         backend = runtime.reflect.apply(factory, runtime.undefined, [])
         _backend_state["value"] = backend
     return backend
+
+
+def _numerics_module() -> Any:
+    module = _numerics_state["value"]
+    if module is None:
+        loader = runtime.reflect.get(runtime.global_object, "__sagejs_load_module__")
+        if loader is runtime.undefined:
+            raise RuntimeError("the numerical-computing module loader is unavailable")
+        module = runtime.reflect.apply(
+            loader,
+            runtime.undefined,
+            ["sagejs.numerics"],
+        )
+        _numerics_state["value"] = module
+    return module
 
 
 def _call_backend(name: str, parameters: Sequence[Any]) -> Any:
@@ -737,7 +753,10 @@ class Expression(sage.Element):
         upper: Any,
         maxiter: int = 100,
         xtol: float = 1e-12,
-    ) -> float:
+        method: str = "auto",
+        full_output: bool = False,
+        trace: str = "iterations",
+    ) -> Any:
         expression = self
         if (
             runtime.array.isArray(self._tree)
@@ -748,46 +767,28 @@ class Expression(sage.Element):
         variables = expression.variables()
         if len(variables) != 1:
             raise ValueError("find_root() requires an expression in one variable")
-        left = float(lower)
-        right = float(upper)
-        numeric_backend = runtime.flint_backend()
-        wasm_find_root = runtime.reflect.get(numeric_backend, "symbolicFindRoot")
-        if runtime.jstype(wasm_find_root) == "function":
-            accelerated = runtime.reflect.apply(
-                wasm_find_root,
-                numeric_backend,
-                [
-                    expression._tree,
-                    _symbol_name(variables[0]),
-                    left,
-                    right,
-                    int(maxiter),
-                    float(xtol),
-                ],
-            )
-            if accelerated is not runtime.undefined:
-                return float(accelerated)
         evaluator = fast_callable(expression, vars=variables)
-        left_value = float(evaluator(left))
-        right_value = float(evaluator(right))
-        if left_value == 0:
-            return left
-        if right_value == 0:
-            return right
-        if left_value * right_value > 0:
-            raise RuntimeError("f appears to have no zero on the interval")
-        for _index in range(int(maxiter)):
-            middle = (left + right) / 2.0
-            middle_value = float(evaluator(middle))
-            if middle_value == 0 or abs(right - left) <= float(xtol):
-                return middle
-            if left_value * middle_value <= 0:
-                right = middle
-                right_value = middle_value
-            else:
-                left = middle
-                left_value = middle_value
-        return (left + right) / 2.0
+        module = _numerics_module()
+        solver = module.find_root
+        result = solver(
+            evaluator,
+            float(lower),
+            float(upper),
+            method=method,
+            maxiter=int(maxiter),
+            xtol=float(xtol),
+            trace=trace,
+            expression=str(expression),
+            variable=_symbol_name(variables[0]),
+            source_language="sage",
+        )
+        if full_output:
+            return result
+        if not result.success:
+            if result.status == "invalid_bracket":
+                raise RuntimeError("f appears to have no zero on the interval")
+            raise RuntimeError("find_root failed: " + result.status)
+        return float(result.value)
 
     def _relation(self, head: str, other: Any) -> Expression:
         return Expression(
@@ -3389,6 +3390,17 @@ def find_root(
     upper: Any,
     **options: Any,
 ) -> float:
+    return SR(expression).find_root(lower, upper, **options)
+
+
+def numerical_root(
+    expression: Any,
+    lower: Any,
+    upper: Any,
+    **options: Any,
+) -> Any:
+    """Return the structured numerical evidence behind Sage `find_root`."""
+    options["full_output"] = True
     return SR(expression).find_root(lower, upper, **options)
 
 

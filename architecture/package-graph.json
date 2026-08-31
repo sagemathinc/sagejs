@@ -800,6 +800,16 @@
       "prefixes": ["src/lib/IPython/", "src/lib/comm/", "src/lib/sagejs/widgets/", "src/lib/traitlets/"]
     },
     {
+      "id": "numerical-computing",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 500000,
+      "depends_on": ["core-runtime", "python-stdlib", "plot-spec"],
+      "modules": ["sagejs.numerics"],
+      "files": [],
+      "prefixes": ["src/lib/sagejs/numerics/"]
+    },
+    {
       "id": "numeric-compat",
       "layer": 4,
       "startup": "lazy",
@@ -816,7 +826,7 @@
       "max_source_bytes": 120000,
       "depends_on": [
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
-        "numeric-compat", "graphics"
+        "numeric-compat", "numerical-computing", "graphics"
       ],
       "modules": ["macaulay2", "magma", "maple", "matlab", "wolfram"],
       "files": [

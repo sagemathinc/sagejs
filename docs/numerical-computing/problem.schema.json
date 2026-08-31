@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sagejs.org/schemas/numerical-problem-v1.json",
+  "title": "Sage.js NumericalProblem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "domain", "operation", "numeric_type", "variables", "function", "derivative", "initial_data", "bounds", "tolerances", "method_request", "resource_budget", "trace_policy", "source_intent", "metadata"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "domain": {"type": "string", "minLength": 1},
+    "operation": {"type": "string", "minLength": 1},
+    "numeric_type": {"type": "string", "minLength": 1},
+    "variables": {"type": "array"},
+    "function": {"$ref": "#/$defs/callback"},
+    "derivative": {"$ref": "#/$defs/callback"},
+    "initial_data": {"type": "object"},
+    "bounds": {"type": "object"},
+    "tolerances": {"type": "object"},
+    "method_request": {"type": "string", "minLength": 1},
+    "resource_budget": {"$ref": "#/$defs/resource_budget"},
+    "trace_policy": {"$ref": "trace.schema.json#/$defs/policy"},
+    "source_intent": {"type": "object"},
+    "metadata": {"type": "object"}
+  },
+  "$defs": {
+    "callback": {
+      "type": "object",
+      "required": ["kind", "replayable"],
+      "properties": {
+        "kind": {"enum": ["none", "expression", "module_function", "source", "opaque_callback", "explicit_callback"]},
+        "replayable": {"type": "boolean"},
+        "expression": {"type": "string"},
+        "variable": {"type": "string"},
+        "module": {"type": "string"},
+        "name": {"type": "string"},
+        "content_hash": {"type": "string"}
+      }
+    },
+    "resource_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_iterations", "max_evaluations", "max_elapsed_ms", "max_trace_events", "max_trace_bytes"],
+      "properties": {
+        "max_iterations": {"type": "integer", "minimum": 1},
+        "max_evaluations": {"type": "integer", "minimum": 1},
+        "max_elapsed_ms": {"type": "integer", "minimum": 1},
+        "max_trace_events": {"type": "integer", "minimum": 2},
+        "max_trace_bytes": {"type": "integer", "minimum": 1024}
+      }
+    }
+  }
+}

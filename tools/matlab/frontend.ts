@@ -258,6 +258,36 @@ class AstBuilder {
           span: sourceSpan(node),
         };
       }
+      case "lambda": {
+        const body = node.childForFieldName("expression");
+        if (!body) return this.unsupported(node);
+        const argumentsNode = node.namedChildren.find((child) =>
+          child.type === "arguments"
+        );
+        const parameters = (argumentsNode?.namedChildren ?? []).map(
+          (parameter, index) =>
+            parameter.type === "identifier"
+              ? this.text(parameter)
+              : `_ignored_${index}`,
+        );
+        return {
+          kind: "lambda",
+          parameters,
+          body: this.expression(body),
+          span: sourceSpan(node),
+        };
+      }
+      case "handle_operator": {
+        const identifiers = node.namedChildren.filter((child) =>
+          child.type === "identifier"
+        );
+        if (identifiers.length === 0) return this.unsupported(node);
+        return {
+          kind: "handle",
+          name: identifiers.map((identifier) => this.text(identifier)).join("."),
+          span: sourceSpan(node),
+        };
+      }
       case "parenthesis": {
         const child = node.namedChildren[0];
         if (!child) return this.unsupported(node);
@@ -288,6 +318,7 @@ class SageLowerer {
     axes: "_matlab.axes",
     delete: "_matlab.delete",
     figure: "_matlab.figure",
+    fzero: "_matlab.fzero",
     gca: "_matlab.gca",
     gcf: "_matlab.gcf",
     get: "_matlab.get",
@@ -524,6 +555,14 @@ class SageLowerer {
       }
       case "binary":
         return this.binary(expression);
+      case "lambda":
+        return `(lambda ${expression.parameters.join(", ")}: ${
+          this.expression(expression.body)
+        })`;
+      case "handle": {
+        const direct = this.directFunctions[expression.name];
+        return direct ?? expression.name;
+      }
     }
   }
 }

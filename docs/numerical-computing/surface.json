@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "classifications": ["faithful", "translated", "extension", "unsupported"],
+  "operations": [
+    {"id": "scalar_root", "phase": "P1", "classification": "translated", "status": "implemented", "methods": ["bisection", "brent", "secant", "newton"], "frontends": ["sage", "python", "matlab", "wolfram"]},
+    {"id": "dense_linear_system", "phase": "P2", "classification": "extension", "status": "unsupported"},
+    {"id": "dense_factorization", "phase": "P2", "classification": "extension", "status": "unsupported"},
+    {"id": "interpolation", "phase": "P2", "classification": "translated", "status": "unsupported"},
+    {"id": "spline", "phase": "P2", "classification": "extension", "status": "unsupported"},
+    {"id": "finite_difference", "phase": "P2", "classification": "extension", "status": "unsupported"},
+    {"id": "adaptive_quadrature", "phase": "P2", "classification": "translated", "status": "unsupported"},
+    {"id": "local_optimization", "phase": "P3", "classification": "extension", "status": "unsupported"},
+    {"id": "nonlinear_system", "phase": "P3", "classification": "extension", "status": "unsupported"},
+    {"id": "least_squares_fit", "phase": "P3", "classification": "extension", "status": "unsupported"},
+    {"id": "initial_value_problem", "phase": "P4", "classification": "extension", "status": "unsupported"},
+    {"id": "eigensystem", "phase": "P5", "classification": "translated", "status": "unsupported"},
+    {"id": "singular_value_decomposition", "phase": "P5", "classification": "translated", "status": "unsupported"},
+    {"id": "fft", "phase": "P5", "classification": "translated", "status": "unsupported"},
+    {"id": "convolution", "phase": "P5", "classification": "translated", "status": "unsupported"},
+    {"id": "descriptive_statistics", "phase": "P5", "classification": "extension", "status": "unsupported"},
+    {"id": "regression", "phase": "P5", "classification": "extension", "status": "unsupported"},
+    {"id": "sparse_linear_system", "phase": "P5", "classification": "extension", "status": "unsupported"}
+  ]
+}

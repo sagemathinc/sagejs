@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "codes": [
+    "backend_fallback",
+    "callback_error",
+    "cancelled",
+    "discontinuity_suspected",
+    "finite_difference_derivative",
+    "ill_conditioned",
+    "invalid_bracket",
+    "loss_of_significance",
+    "maximum_evaluations",
+    "maximum_iterations",
+    "non_replayable_callback",
+    "nonfinite_evaluation",
+    "stagnation",
+    "trace_truncated",
+    "validation_failed",
+    "zero_derivative"
+  ]
+}

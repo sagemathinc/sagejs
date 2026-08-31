@@ -5,6 +5,7 @@ from typing import Any, Callable
 
 import sagejs as sage
 import sagejs.runtime as runtime
+from sagejs.numerics import find_root as _numerical_find_root
 
 
 def _runtime_type_name(value: Any) -> str:
@@ -117,6 +118,55 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+
+
+class WolframFindRootResult:
+    """Natural Wolfram rule display backed by a structured numerical result."""
+
+    def __init__(self, variable: str, numerical_result: Any) -> None:
+        self.variable = variable
+        self.numerical_result = numerical_result
+
+    @property
+    def value(self) -> Any:
+        return self.numerical_result.value
+
+    def to_dict(self) -> Any:
+        return {
+            "rule": {"variable": self.variable, "value": self.value},
+            "numerical_result": self.numerical_result.to_dict(),
+        }
+
+    def __repr__(self) -> str:
+        return "{" + self.variable + " -> " + repr(self.value) + "}"
+
+
+def find_root(function: Any, variable: str, initial: Any) -> WolframFindRootResult:
+    """Lower Wolfram `FindRoot` to the canonical scalar-root operation."""
+    values = list(initial)
+    if len(values) == 2:
+        result = _numerical_find_root(
+            function,
+            float(values[0]),
+            float(values[1]),
+            method="brent",
+            source_language="wolfram",
+        )
+    elif len(values) == 1:
+        result = _numerical_find_root(
+            function,
+            x0=float(values[0]),
+            method="newton",
+            source_language="wolfram",
+        )
+    else:
+        raise ValueError(
+            "FindRoot requires one initial point or a two-endpoint bracket"
+        )
+    return WolframFindRootResult(variable, result)
+
+
+FindRoot = find_root
 
 
 class _GraphicsDirective:

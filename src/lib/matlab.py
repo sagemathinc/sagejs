@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 import sagejs.runtime as runtime
+from sagejs.numerics import find_root as _numerical_find_root
 
 ALL = object()
 
@@ -126,6 +127,47 @@ def mpower(value: Any, exponent: int) -> Any:
 
 def power(left: Any, right: Any) -> Any:
     return left**right
+
+
+def fzero_result(function: Any, initial: Any, options: Any = None) -> Any:
+    """Return the structured result underlying MATLAB-compatible `fzero`."""
+    if hasattr(initial, "tolist"):
+        initial = initial.tolist()
+    if (
+        isinstance(initial, (list, tuple))
+        and len(initial) == 1
+        and isinstance(initial[0], (list, tuple))
+    ):
+        initial = initial[0]
+    values = list(initial) if isinstance(initial, (list, tuple)) else [initial]
+    settings = {} if options is None else dict(options)
+    trace = str(settings.get("Trace", "iterations"))
+    if len(values) == 2:
+        return _numerical_find_root(
+            function,
+            float(values[0]),
+            float(values[1]),
+            method=str(settings.get("Method", "brent")),
+            trace=trace,
+            source_language="matlab",
+        )
+    if len(values) == 1:
+        return _numerical_find_root(
+            function,
+            x0=float(values[0]),
+            method=str(settings.get("Method", "newton")),
+            trace=trace,
+            source_language="matlab",
+        )
+    raise ValueError("fzero initial data must be a scalar or two-endpoint bracket")
+
+
+def fzero(function: Any, initial: Any, options: Any = None) -> float:
+    """Return MATLAB's scalar view of the shared structured root solver."""
+    result = fzero_result(function, initial, options)
+    if not result.success:
+        raise RuntimeError("fzero failed: " + result.status)
+    return float(result.value)
 
 
 def _integer_index(value: Any) -> int:

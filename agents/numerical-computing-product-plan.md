@@ -22,6 +22,31 @@ No implementation work is authorized by this document alone. Each domain must
 still perform its own library survey, correctness study, portability work, and
 performance evaluation before choosing a backend.
 
+### Implementation record
+
+The product goal now authorizes implementation. The first integrated milestone
+established the P0 contracts and P1 root architecture on 2026-08-31:
+
+- `sagejs.numerics` defines versioned problem, plan, result, validation,
+  diagnostic, resource-budget, trace-policy, event, and bounded-trace objects;
+- `docs/numerical-computing/` publishes their JSON schemas, the exhaustive
+  classified surface, diagnostic ledger, and routine/release evidence policy;
+- bisection, Brent-Dekker, secant, and Newton use ordinary CPython-parseable
+  source and independently recheck residual and bracket invariants;
+- automatic planning is inspectable and does not evaluate the callback;
+- the result supports explanation, independent bisection verification,
+  refinement, four-language code emission, PlotSpec visualization, and
+  topology-stable Plotly animation;
+- Sage `find_root`, Python `sagejs.numerics.find_root`, MATLAB `fzero`, and
+  Wolfram `FindRoot` are views of the same operation; and
+- focused CPython/Sage.js success, failure, cancellation, trace-budget,
+  schema, and frontend tests pass with strict Python at zero errors.
+
+This proves the shared contracts sufficiently to begin domain-owned parallel
+implementation. P1 is not classified as release-qualified until its browser,
+SEA, four-platform, performance, startup, memory, and payload receipts are
+bound to the final candidate.
+
 ## Product vision
 
 Build the numerical tool I would want to use as both a mathematical programmer
