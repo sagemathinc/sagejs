@@ -303,12 +303,96 @@ output_record = {
     "value": answer.value,
     "success": answer.success,
 }`,
+    "p6-multilingual-catalog-roundtrip": String.raw`
+from sagejs.numerics.frontends import (
+    FRONTEND_LANGUAGES, UnsupportedFrontendError, create_frontend_registry,
+    matlab_fzero_intent,
+)
+registry = create_frontend_registry()
+entries = [
+    matlab_fzero_intent(lambda x: math.cos(x)-x, [0.0, 1.0], expression="cos(x)-x"),
+    registry.lower("sage", "solve", [[3, 1], [1, 2]], [9, 8]),
+    registry.lower("matlab", "lsqminnorm", [[1, 0], [0, 1], [1, 1]], [1, 2, 3]),
+    registry.lower("sage", "eigh", [[2, 1], [1, 2]]),
+    registry.lower("matlab", "eig", [[0, -1], [1, 0]]),
+    registry.lower("sage", "svd", [[1, 2], [3, 4]]),
+    registry.lower("wolfram", "Fourier", [1, 2, 3]),
+    registry.lower("matlab", "conv", [1, 2], [3, 4]),
+    registry.lower("sage", "interpolate", [0, 1, 2], [1, 2, 5]),
+    registry.lower("matlab", "spline", [0, 1, 2], [1, 2, 5]),
+    registry.lower("wolfram", "NIntegrate", lambda x: x*x, 0, 1, expression="x^2"),
+    registry.lower("matlab", "fminbnd", lambda x: (x-2)**2, 0, 4, expression="(x-2)^2"),
+    registry.lower("sage", "minimize", lambda p: (p[0]-1)**2, [0], expression="(x0-1)^2"),
+    registry.lower("matlab", "fsolve", lambda p: [p[0]**2-2], [1], expression=["x0^2-2"]),
+    registry.lower("sage", "nonlinear_least_squares", lambda p: [p[0]-2], [0], expression=["x0-2"]),
+    registry.lower("matlab", "polyfit", [0, 1, 2], [1, 3, 5]),
+    registry.lower("matlab", "ode45", lambda t, y: [y[0]], [0, 0.25], [1], expression=["y0"]),
+    registry.lower("wolfram", "SageJSDescribe", [1, 2, 3, 4]),
+    registry.lower("matlab", "ttest", [1, 2, 4, 5], 2),
+    registry.lower("wolfram", "TwoSampleTTest", [1, 2, 4], [2, 3, 5]),
+    registry.lower("matlab", "fitlm", [0, 1, 2, 3], [1, 3, 5, 7]),
+    registry.lower("sage", "run_parameter_sweep", [1, 2, 3], lambda p, c: p*p, expression="parameter^2"),
+]
+records = []
+digest_mismatches = 0
+tamper_rejections = 0
+unexpected_diagnostics = []
+for intent in entries:
+    supported = []
+    unsupported = []
+    for language in FRONTEND_LANGUAGES:
+        try:
+            source = registry.emit(intent, language)
+        except UnsupportedFrontendError as error:
+            unsupported.append(language)
+            if error.diagnostic.code != "unsupported_target":
+                unexpected_diagnostics.append(error.diagnostic.code)
+            continue
+        reconstructed = registry.parse(source, language, intent.operation_ref)
+        supported.append(language)
+        if reconstructed.digest != intent.digest:
+            digest_mismatches += 1
+        changed = " " + source
+        try:
+            registry.parse(changed, language, intent.operation_ref)
+        except UnsupportedFrontendError as error:
+            if error.diagnostic.code == "semantic_mismatch":
+                tamper_rejections += 1
+            else:
+                unexpected_diagnostics.append(error.diagnostic.code)
+    records.append({
+        "operation": intent.operation_ref.key,
+        "supported": supported,
+        "unsupported": unsupported,
+    })
+matrix = [[3, 1], [1, 2]]
+right = [9, 8]
+equivalent = [
+    registry.lower("sage", "solve", matrix, right),
+    registry.lower("python-scipy", "numpy.linalg.solve", matrix, right),
+    registry.lower("matlab", "linsolve", matrix, right),
+    registry.lower("wolfram", "LinearSolve", matrix, right),
+]
+output_record = {
+    "operation_keys": [operation.key for operation in registry.operations()],
+    "records": records,
+    "digest_mismatches": digest_mismatches,
+    "tamper_rejections": tamper_rejections,
+    "unexpected_diagnostics": unexpected_diagnostics,
+    "equivalent_digests": [intent.digest for intent in equivalent],
+    "equivalent_values": [registry.execute(intent).value for intent in equivalent],
+}`,
     "p7-root-teaching-artifacts": String.raw`
 from sagejs.numerics import find_root
+callback_calls = [0]
+def function(x):
+    callback_calls[0] += 1
+    return math.cos(x) - x
 answer = find_root(
-    lambda x: math.cos(x) - x, 0.0, 1.0,
+    function, 0.0, 1.0,
     method="bisection", trace="iterations", max_trace_events=32,
 )
+calls_before_views = callback_calls[0]
 plot_record = answer.to_plot_spec().to_dict()
 animation_record = answer.to_animation().to_dict()
 output_record = {
@@ -316,25 +400,43 @@ output_record = {
     "animation_frames": len(animation_record["frames"]),
     "trace_events": len(answer.trace.events),
     "success": answer.success,
+    "callback_replays": callback_calls[0] - calls_before_views,
 }`,
     "p7-cross-domain-teaching-artifacts": String.raw`
 from sagejs.numerics.approximation import interpolate
 from sagejs.numerics.integration import integrate
 from sagejs.numerics.linear_algebra import lu
-from sagejs.numerics.optimization import minimize_scalar
+from sagejs.numerics.ode import solve_ivp
+from sagejs.numerics.optimization import minimize
 from sagejs.numerics.spectral import fft
 from sagejs.numerics.statistics import describe
 
+callback_calls = {"integration": 0, "ode": 0, "optimization": 0}
+def integrand(x):
+    callback_calls["integration"] += 1
+    return math.sin(x)
+def ode_field(t, state):
+    callback_calls["ode"] += 1
+    return [state[1], -state[0]]
+def objective(point):
+    callback_calls["optimization"] += 1
+    return (1.0-point[0])**2 + 100.0*(point[1]-point[0]*point[0])**2
 approximation = interpolate([-1.0, 0.0, 1.0], [1.0, 0.0, 1.0], trace="iterations")
-integration = integrate(math.sin, 0.0, math.pi)
+integration = integrate(integrand, 0.0, math.pi)
 linear = lu([[0.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 10.0]], trace="iterations")
-optimization = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)
+ode = solve_ivp(ode_field, (0.0, 2.0*math.pi), [1.0, 0.0], trace="iterations")
+optimization = minimize(
+    objective, [-1.2, 1.0], method="nelder-mead",
+    maxiter=8, trace="iterations",
+)
 spectral = fft([1.0, 0.0, -1.0, 0.0, 0.5, 0.0, -0.5], trace="iterations")
 statistics = describe([1.0, 2.0, 3.0, 4.0])
+calls_before_views = dict(callback_calls)
 artifacts = [
     ("approximation", approximation.to_plot_spec(33), approximation.to_animation(samples=17, max_frames=3)),
     ("integration", integration.to_plot_spec(), integration.to_animation()),
     ("linear-algebra", linear.plot("factorization"), linear.animate(max_frames=3)),
+    ("ode", ode.plot("phase"), ode.animate("phase")),
     ("optimization", optimization.plot(), optimization.animate()),
     ("spectral", spectral.plot(), spectral.animate("result")),
     ("statistics", statistics.to_plot_spec(), statistics.animate()),
@@ -343,7 +445,10 @@ output_record = {
     "domains": [name for name, plot, animation in artifacts],
     "plot_layers": [len(plot.layers) for name, plot, animation in artifacts],
     "animation_frames": [len(animation.frames) for name, plot, animation in artifacts],
-    "validation_issues": [len(plot.validate()) for name, plot, animation in artifacts],
+    "validation_issue_counts": {name: len(plot.validate()) for name, plot, animation in artifacts},
+    "validation_error_counts": {name: sum(1 for item in plot.validate() if item.severity == "error") for name, plot, animation in artifacts},
+    "validation_issue_codes": {name: [item.code for item in plot.validate()] for name, plot, animation in artifacts},
+    "callback_replay_counts": {name: callback_calls[name] - calls_before_views[name] for name in callback_calls},
 }`,
     "p8-statistics-deterministic-fuzz": String.raw`
 from sagejs.numerics.statistics import describe
@@ -591,6 +696,46 @@ function repeatedEvidence(records) {
   return { maximum, failures };
 }
 
+function multilingualCatalogEvidence(raw, input) {
+  const expected = new Map(input.targets.map((item) => [item.operation, item]));
+  const observed = new Map(raw.records.map((item) => [item.operation, item]));
+  const expectedKeys = [...expected.keys()].sort();
+  const observedKeys = [...observed.keys()].sort();
+  let targetMatrixMatches = JSON.stringify(expectedKeys) === JSON.stringify(observedKeys);
+  let supportedTargets = 0;
+  let unsupportedTargets = 0;
+  for (const key of expectedKeys) {
+    const actual = observed.get(key);
+    const wanted = expected.get(key);
+    if (actual === undefined ||
+        JSON.stringify(actual.supported.slice().sort()) !== JSON.stringify(wanted.emit.slice().sort()) ||
+        JSON.stringify(actual.unsupported.slice().sort()) !==
+          JSON.stringify((wanted.unsupported ?? []).slice().sort())) {
+      targetMatrixMatches = false;
+      continue;
+    }
+    supportedTargets += actual.supported.length;
+    unsupportedTargets += actual.unsupported.length;
+  }
+  let maximumLinearResidual = 0;
+  for (const value of raw.equivalent_values) {
+    maximumLinearResidual = Math.max(
+      maximumLinearResidual,
+      Math.abs(3 * value[0] + value[1] - 9),
+      Math.abs(value[0] + 2 * value[1] - 8),
+    );
+  }
+  return {
+    operationKeysMatch: JSON.stringify(raw.operation_keys.slice().sort()) ===
+      JSON.stringify(expectedKeys),
+    targetMatrixMatches,
+    supportedTargets,
+    unsupportedTargets,
+    equivalentDigests: new Set(raw.equivalent_digests).size === 1,
+    maximumLinearResidual,
+  };
+}
+
 async function normalize(sample) {
   const validationStarted = process.hrtime.bigint();
   const { raw, kernelMs } = sample.id.startsWith("p3-cminpack-") ||
@@ -793,25 +938,63 @@ async function normalize(sample) {
         independent_residual: Math.abs(Math.cos(raw.value) - raw.value),
       }, kernelMs, { roundtrips: raw.roundtrip_digests.length });
       break;
+    case "p6-multilingual-catalog-roundtrip": {
+      const evidence = multilingualCatalogEvidence(raw, input);
+      observation = success({
+        operation_keys_match: evidence.operationKeysMatch,
+        target_matrix_matches: evidence.targetMatrixMatches,
+        supported_targets: evidence.supportedTargets,
+        unsupported_targets: evidence.unsupportedTargets,
+        digest_mismatches: raw.digest_mismatches,
+        tamper_rejections: raw.tamper_rejections,
+        unexpected_diagnostics: raw.unexpected_diagnostics.length,
+        equivalent_digests: evidence.equivalentDigests,
+        maximum_linear_residual: evidence.maximumLinearResidual,
+      }, kernelMs, {
+        operations: raw.records.length,
+        emitted_roundtrips: evidence.supportedTargets,
+        structured_unsupported: evidence.unsupportedTargets,
+        tamper_rejections: raw.tamper_rejections,
+      });
+      break;
+    }
     case "p7-root-teaching-artifacts":
       observation = success({
         plot_layers: raw.plot_layers,
         animation_frames: raw.animation_frames,
         trace_events: raw.trace_events,
+        callback_replays: raw.callback_replays,
       }, kernelMs, { trace_events: raw.trace_events, animation_frames: raw.animation_frames });
       break;
     case "p7-cross-domain-teaching-artifacts":
+      {
+      const validationIssueDomains = Object.entries(raw.validation_issue_counts)
+        .filter(([, count]) => count !== 0).map(([domain]) => domain).sort();
+      const validationErrorDomains = Object.entries(raw.validation_error_counts)
+        .filter(([, count]) => count !== 0).map(([domain]) => domain).sort();
+      const callbackReplayDomains = Object.entries(raw.callback_replay_counts)
+        .filter(([, count]) => count !== 0).map(([domain]) => domain).sort();
       observation = success({
         domain_count: raw.domains.length,
         min_plot_layers: Math.min(...raw.plot_layers),
         min_animation_frames: Math.min(...raw.animation_frames),
         max_animation_frames: Math.max(...raw.animation_frames),
-        validation_issues: raw.validation_issues.reduce((left, right) => left + right, 0),
+        validation_issues: Object.values(raw.validation_issue_counts)
+          .reduce((left, right) => left + right, 0),
+        validation_issue_domains: validationIssueDomains,
+        validation_issue_codes: raw.validation_issue_codes,
+        validation_errors: Object.values(raw.validation_error_counts)
+          .reduce((left, right) => left + right, 0),
+        validation_error_domains: validationErrorDomains,
+        callback_replays: Object.values(raw.callback_replay_counts)
+          .reduce((left, right) => left + right, 0),
+        callback_replay_domains: callbackReplayDomains,
       }, kernelMs, {
         domains: raw.domains.length,
         animation_frames: raw.animation_frames.reduce((left, right) => left + right, 0),
       });
       break;
+      }
     case "p8-statistics-deterministic-fuzz": {
       const oracle = regenerateFuzz(input);
       const errors = raw.means.map((value, index) => Math.abs(value - oracle.means[index]));
@@ -925,6 +1108,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       "numerics.statistics.descriptive": "sagejs.numerics.statistics",
       "numerics.sweeps.bounded": "sagejs.numerics.sweeps",
       "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
+      "numerics.frontend.catalog": "sagejs.numerics.frontends",
       "numerics.teaching.root": "sagejs.numerics",
       "numerics.teaching.cross_domain": "sagejs.numerics",
       "numerics.lifecycle.repeated": "sagejs.numerics",

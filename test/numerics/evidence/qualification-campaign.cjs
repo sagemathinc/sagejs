@@ -42,6 +42,7 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
     "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
     "numerics.statistics.descriptive", "numerics.sweeps.bounded",
+    "numerics.frontend.catalog",
   ];
   const used = new Set(corpus.cases.flatMap((item) => item.required_capabilities));
   for (const id of required) assert(used.has(id), `missing ${id}`);
@@ -119,6 +120,7 @@ test("first-party adapter executes Sage.js and independently checks representati
       "p3-cminpack-rosenbrock-lmder", "p4-ode-exponential",
       "p4-ode-stiff-decay", "p4-ode-decay-sweep",
       "p5-fft-direct-oracle", "p5-statistics-summary",
+      "p6-multilingual-catalog-roundtrip",
       "p7-cross-domain-teaching-artifacts",
     ]) {
       const item = corpus.cases.find((entry) => entry.id === id);

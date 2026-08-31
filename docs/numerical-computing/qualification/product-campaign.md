@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 31
+- `bench/numerical-computing/qualification/product.corpus.json` — 32
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
@@ -26,7 +26,8 @@ candidate host.
 The campaign executes the integrated root, interpolation, polynomial-root,
 quadrature, dense-linear-algebra, scalar and cminpack optimization, explicit
 and stiff ODE, ODE-sweep, dense-spectral, FFT, statistics, bounded-sweep,
-multilingual-root, and six-domain teaching-artifact surfaces. It contains:
+multilingual-root and 22-operation multilingual-catalog, and seven-domain
+teaching-artifact surfaces. It contains:
 
 - definition and identity examples;
 - exact or mature-reference differential oracles;
@@ -35,9 +36,15 @@ multilingual-root, and six-domain teaching-artifact surfaces. It contains:
   singular/failure cases;
 - deterministic fuzz whose input stream is regenerated independently in
   JavaScript;
-- root-translation and four-language round-trip metamorphisms;
+- root-translation, four-language scalar-root round trips, and the complete
+  reviewed 70-supported/18-unsupported frontend target matrix, including
+  checksummed-body rejection for 66 envelope-bound emitters, semantic parsing
+  for four scalar-root emitters, and equivalent four-language execution;
 - cancellation, callback-exception, evaluation-budget, and Wasm-allocation
   lifecycle fault injection;
+- renderer-neutral views constructed exclusively from retained evidence, with
+  callback replay forbidden and cross-platform semantics checked by structure
+  plus explicit numeric tolerances rather than byte identity;
 - a same-session repeated cross-domain campaign; and
 - collector-level cold initialization, wall time, RSS, process high-water RSS,
   source/artifact bytes, and repeated-observation determinism.
