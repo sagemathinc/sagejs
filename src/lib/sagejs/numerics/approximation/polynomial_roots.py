@@ -12,8 +12,9 @@ from __future__ import annotations
 import cmath
 import math
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from .._json import materialize_json
 from ..diagnostics import NumericalDiagnostic
 from ..model import (
     STATUS_CODES,
@@ -32,6 +33,9 @@ from ._common import (
     stopped_diagnostic,
     trace_policy,
 )
+
+if TYPE_CHECKING:
+    from sagejs.plotting import PlotAnimation, PlotSpec
 
 MAX_POLYNOMIAL_ROOT_DEGREE = 64
 _TWO_PI = 6.283185307179586476925286766559
@@ -333,7 +337,8 @@ class PolynomialRootsResult(NumericalResult):
             return ()
         return tuple(dict(cluster) for cluster in clusters if isinstance(cluster, dict))
 
-    def explain(self) -> str:
+    def explanation(self) -> dict[str, Any]:
+        """Return a detached, structured account of the root computation."""
         value = self.value
         degree = 0
         maximum_backward_error: Any = None
@@ -342,6 +347,68 @@ class PolynomialRootsResult(NumericalResult):
             degree = int(value.get("degree", 0))
             maximum_backward_error = value.get("maximum_backward_error")
             maximum_condition = value.get("maximum_relative_condition")
+        answer = {
+            "schema": "sagejs.numerics.approximation.polynomial-roots.explanation/v1",
+            "operation": self.problem.operation,
+            "method": self.method,
+            "outcome": {
+                "success": self.success,
+                "status": self.status,
+                "truth_level": self.validation.truth_level,
+                "validation_passed": self.validation.passed,
+                "stop_reason": (
+                    value.get("stop_reason") if isinstance(value, dict) else None
+                ),
+            },
+            "construction": {
+                "representation": "finite-complex-root-set",
+                "degree": degree,
+                "root_count": len(self.roots),
+                "multiplicity_certified": (
+                    value.get("multiplicity_certified")
+                    if isinstance(value, dict)
+                    else False
+                ),
+                "clusters": list(self.clusters),
+            },
+            "numerical_indicators": {
+                "maximum_coefficientwise_backward_error": maximum_backward_error,
+                "maximum_relative_condition_estimate": maximum_condition,
+                "vieta_reconstruction_error": (
+                    value.get("vieta_reconstruction_error")
+                    if isinstance(value, dict)
+                    else None
+                ),
+            },
+            "validation": self.validation.to_dict(),
+            "diagnostics": [item.to_dict() for item in self.diagnostics],
+            "resources": {
+                "iterations": self.iterations,
+                "evaluations": self.evaluations,
+                "budget": self.problem.resource_budget.to_dict(),
+                "trace_policy": self.problem.trace_policy.to_dict(),
+            },
+            "semantic_trace": self.trace.to_dict(),
+            "guidance": [
+                "Interpret close roots as numerical clusters, never as certified multiplicities.",
+                "Use the backward-error and Vieta checks before treating the root set as accepted.",
+            ],
+        }
+        detached = materialize_json(answer)
+        if not isinstance(detached, dict):
+            raise TypeError("polynomial-roots explanation must be an object")
+        return detached
+
+    def explain(self) -> str:
+        """Render the structured root explanation as concise plain text."""
+        value = self.value
+        degree = int(value.get("degree", 0)) if isinstance(value, dict) else 0
+        maximum_backward_error = (
+            value.get("maximum_backward_error") if isinstance(value, dict) else None
+        )
+        maximum_condition = (
+            value.get("maximum_relative_condition") if isinstance(value, dict) else None
+        )
         lines = [
             self.method + " polynomial roots (degree " + str(degree) + ")",
             "status: " + self.status,
@@ -364,6 +431,187 @@ class PolynomialRootsResult(NumericalResult):
         for diagnostic in self.diagnostics:
             lines.append("diagnostic: " + diagnostic.code)
         return "\n".join(lines)
+
+    def to_plot_spec(self) -> PlotSpec:
+        """Return a bounded complex-plane PlotSpec without renderer coupling."""
+        return _polynomial_roots_plot_spec(self)
+
+    def to_animation(self, *, max_frames: int = 32) -> PlotAnimation:
+        """Return a bounded semantic animation of root-set construction."""
+        return _polynomial_roots_animation(self, max_frames=max_frames)
+
+
+def _root_plot_alt_text(result: PolynomialRootsResult, visible: int) -> str:
+    if not result.success:
+        return (
+            "Polynomial root computation failed using "
+            + result.method
+            + "; status "
+            + result.status
+        )
+    return (
+        "Complex-plane scatter plot showing "
+        + str(visible)
+        + " of "
+        + str(len(result.roots))
+        + " validated polynomial roots; numerical clusters do not certify multiplicity"
+    )
+
+
+def _polynomial_roots_plot_spec(
+    result: PolynomialRootsResult,
+    *,
+    visible_roots: int | None = None,
+    show_failure: bool = True,
+    constructor: str = "PolynomialRootsResult.to_plot_spec",
+) -> PlotSpec:
+    from sagejs.plotting import PlotSpec, Provenance, make_layer
+
+    roots = result.roots
+    count = len(roots) if visible_roots is None else visible_roots
+    if count < 0 or count > len(roots):
+        raise ValueError("visible root count is outside the computed root set")
+    provenance = Provenance(
+        "sagejs.numerics.approximation.polynomial_roots",
+        source_language=str(result.problem.source_intent.get("language", "python")),
+        constructor=constructor,
+        sampling={"visible_roots": count},
+        approximations=[
+            {
+                "operation": "polynomial_roots",
+                "method": result.method,
+                "truth_level": result.validation.truth_level,
+                "validation_passed": result.validation.passed,
+            }
+        ],
+        metadata={
+            "problem_digest": result.problem.digest,
+            "status": result.status,
+            "trace_truncated": result.trace.truncated,
+            "multiplicity_certified": False,
+        },
+    )
+    if not result.success:
+        message = "planned " + result.method
+        if show_failure:
+            message = "status: " + result.status
+        layer = make_layer(
+            "text",
+            {"position": [0.0, 0.0], "text": message},
+            ordinal=0,
+            namespace="polynomial-roots",
+            source_intent={"operation": "polynomial_roots", "role": "failure"},
+            style={"color": "#a23b3b", "font_size": 16},
+        )
+        axes = {"x": {"label": ""}, "y": {"label": ""}}
+    else:
+        visible = roots[:count]
+        layer = make_layer(
+            "point",
+            {
+                "x": [float(root.real) for root in visible],
+                "y": [float(root.imag) for root in visible],
+            },
+            ordinal=0,
+            namespace="polynomial-roots",
+            source_intent={"operation": "polynomial_roots", "role": "validated-roots"},
+            style={"color": "#3366cc", "size": 9, "symbol": "circle"},
+            legend={"label": "validated roots", "show": True},
+        )
+        axes = {
+            "x": {"label": "real part", "scale": "linear"},
+            "y": {"label": "imaginary part", "scale": "linear"},
+        }
+    return PlotSpec(
+        2,
+        [layer],
+        axes_or_scene=axes,
+        viewport={"responsive": True, "equal_aspect": True},
+        annotations=[{"kind": "alt_text", "text": _root_plot_alt_text(result, count)}],
+        provenance=provenance,
+    )
+
+
+def _bounded_root_counts(total: int, maximum: int) -> list[int]:
+    if total == 0:
+        return [0, 0]
+    frame_count = min(total, maximum)
+    if frame_count == 1:
+        return [total, total]
+    answer: list[int] = []
+    for index in range(frame_count):
+        count = 1 + round(index * (total - 1) / (frame_count - 1))
+        if not answer or answer[-1] != count:
+            answer.append(count)
+    return answer if len(answer) > 1 else [answer[0], answer[0]]
+
+
+def _polynomial_roots_animation(
+    result: PolynomialRootsResult, *, max_frames: int
+) -> PlotAnimation:
+    from sagejs.plotting import (
+        AnimationFrame,
+        AnimationResourceLimits,
+        AnimationTiming,
+        PlotAnimation,
+        stable_frame_id,
+    )
+
+    if isinstance(max_frames, bool) or not isinstance(max_frames, int):
+        raise TypeError("polynomial-root max_frames must be an integer")
+    if max_frames < 2 or max_frames > 64:
+        raise ValueError("polynomial-root max_frames must be between 2 and 64")
+    counts = (
+        _bounded_root_counts(len(result.roots), max_frames)
+        if result.success
+        else [0, 0]
+    )
+    frames: list[AnimationFrame] = []
+    for index in range(len(counts)):
+        count = counts[index]
+        frames.append(
+            AnimationFrame(
+                stable_frame_id(index),
+                _polynomial_roots_plot_spec(
+                    result,
+                    visible_roots=count,
+                    show_failure=index > 0,
+                    constructor="PolynomialRootsResult.to_animation",
+                ),
+                label=(
+                    "roots " + str(count) + "/" + str(len(result.roots))
+                    if result.success
+                    else ("planned " + result.method if index == 0 else result.status)
+                ),
+                metadata={
+                    "visible_roots": count,
+                    "trace_truncated": result.trace.truncated,
+                },
+            )
+        )
+    return PlotAnimation(
+        frames,
+        timing=AnimationTiming(frame_duration_ms=350, transition_duration_ms=0),
+        limits=AnimationResourceLimits(
+            max_frames=64,
+            max_layers_per_frame=1,
+            max_total_samples=4096,
+            max_payload_bytes=2 * 1024 * 1024,
+            max_duration_ms=64 * 350,
+        ),
+        metadata={
+            "operation": "polynomial_roots",
+            "method": result.method,
+            "status": result.status,
+            "problem_digest": result.problem.digest,
+            "presentation_limits": {
+                "requested_max_frames": max_frames,
+                "hard_max_frames": 64,
+                "hard_max_total_samples": 4096,
+                "hard_max_payload_bytes": 2 * 1024 * 1024,
+            },
+        },
+    )
 
 
 def _count_polynomial_evaluation(execution: ApproximationExecution) -> None:
@@ -959,7 +1207,7 @@ def _make_result(
     sorted_roots = _sort_roots(roots)
     sorted_metrics = (
         sorted(
-            zip(roots, backward_errors, conditions),
+            zip(roots, backward_errors, conditions, strict=True),
             key=lambda item: (float(item[0].real), float(item[0].imag)),
         )
         if len(backward_errors) == len(roots) and len(conditions) == len(roots)

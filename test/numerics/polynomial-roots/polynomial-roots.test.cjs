@@ -51,6 +51,12 @@ import json
 import math
 
 from sagejs.numerics import ResourceBudget
+from sagejs.numerics.approximation import (
+    capabilities,
+    plan as approximation_plan,
+    polynomial_roots as public_polynomial_roots,
+    supports,
+)
 from sagejs.numerics.approximation.polynomial_roots import (
     MAX_POLYNOMIAL_ROOT_DEGREE,
     plan_polynomial_roots,
@@ -93,6 +99,11 @@ plan_record = plan.to_dict()
 assert plan_record["capability"]["maximum_degree"] == 64
 assert plan_record["capability"]["multiplicity_policy"] == "numerical-clusters-only-never-certified"
 assert plan_record["capability"]["platform_support"]["browser"].startswith("pending_")
+assert supports(problem)
+assert approximation_plan(problem).to_dict() == plan_record
+capability = capabilities("polynomial_roots")["operations"]["polynomial_roots"]
+assert capability["maximum_degree"] == 64
+assert capability["multiplicity_policy"] == "numerical_clusters_only_never_certified"
 
 ordinary = polynomial_roots([1, -6, 11, -6], trace="iterations")
 assert ordinary.success and ordinary.status == "converged"
@@ -102,6 +113,16 @@ assert ordinary.value["maximum_backward_error"] < 1.0e-13
 assert ordinary.value["vieta_reconstruction_error"] < 1.0e-13
 assert ordinary.trace.events[0].kind == "start"
 assert ordinary.trace.events[-1].kind == "finish"
+assert public_polynomial_roots([1, -3, 2]).success
+explanation = ordinary.explanation()
+assert explanation["construction"]["root_count"] == 3
+assert explanation["numerical_indicators"]["maximum_coefficientwise_backward_error"] < 1.0e-13
+plot_spec = ordinary.to_plot_spec()
+assert plot_spec.layers[0].kind == "point"
+assert "do not certify multiplicity" in plot_spec.alt_text()
+animation = ordinary.to_animation(max_frames=3)
+assert len(animation.frames) == 3
+assert animation.frames[-1].state.layers[0].data["x"] == [root.real for root in ordinary.roots]
 
 # Returned JSON is finite and detached from the validated result.
 record = json.loads(ordinary.to_json())

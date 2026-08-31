@@ -13,6 +13,10 @@ from .interpolation import (
     MAX_VALIDATED_BARYCENTRIC_NODES,
     plan_interpolation,
 )
+from .polynomial_roots import (
+    MAX_POLYNOMIAL_ROOT_DEGREE,
+    plan_polynomial_roots,
+)
 from .splines import plan_spline
 
 CAPABILITY_SCHEMA_VERSION = 1
@@ -87,6 +91,21 @@ _OPERATION_RECORDS: dict[str, dict[str, Any]] = {
         ],
         "maximum_degree": MAX_CHEBYSHEV_DEGREE,
         "numeric_types": ["binary64"],
+        "platform_support": QUALIFIED_PLATFORM_SUPPORT,
+    },
+    "polynomial_roots": {
+        "classification": "extension",
+        "methods": ["aberth-ehrlich", "laguerre-deflation"],
+        "planner": "plan_polynomial_roots",
+        "requires": ["finite_real_or_complex_power_basis_coefficients"],
+        "validation": [
+            "coefficientwise_backward_error",
+            "independent_vieta_reconstruction",
+            "conjugate_symmetry_for_real_input",
+        ],
+        "maximum_degree": MAX_POLYNOMIAL_ROOT_DEGREE,
+        "multiplicity_policy": "numerical_clusters_only_never_certified",
+        "numeric_types": ["real-binary64", "complex-binary64"],
         "platform_support": QUALIFIED_PLATFORM_SUPPORT,
     },
 }
@@ -191,6 +210,17 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
                 "finite-difference method override conflicts with its stored stencil"
             )
         return resolved
+    if problem.operation == "polynomial_roots":
+        if requested not in ("auto", "aberth-ehrlich", "laguerre-deflation"):
+            raise ValueError(
+                "polynomial roots support Aberth--Ehrlich or Laguerre--deflation planning"
+            )
+        candidate = (
+            problem
+            if requested in ("auto", problem.method)
+            else _copy_with_method(problem, requested)
+        )
+        return plan_polynomial_roots(candidate)
     resolved = plan_polynomial_approximation(problem)
     if requested not in ("auto", "chebyshev", resolved.method):
         raise ValueError("polynomial approximation supports Chebyshev planning")
