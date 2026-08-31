@@ -11,25 +11,51 @@
     "linear_regression_pairs": 5000,
     "huber_regression_pairs": 160
   },
-  "cpython_ms": {
-    "describe_20000": 17.36,
-    "student_t_cdf_2001": 16.45,
-    "normal_sample_5000": 34.98,
-    "linear_regression_5000": 18.93,
-    "huber_regression_160": 2.86
+  "cpython": {
+    "describe_20000_ms": 18.312279018573463,
+    "huber_regression_160_ms": 2.7384799905121326,
+    "linear_regression_5000_ms": 20.737928920425475,
+    "normal_sample_5000_ms": 17.78199803084135,
+    "student_t_cdf_2001_ms": 14.153819065541029,
+    "witness": {
+      "cdf_sum": 1000.5,
+      "huber_slope": -0.7499778773418926,
+      "huber_status": "converged",
+      "linear_slope": 2.5000000244752014,
+      "sample_count": 5000,
+      "sample_first": [
+        0.16100429696574214,
+        -2.7208451548106254,
+        0.14944699404141848
+      ],
+      "summary_mean": 1000000049.95
+    }
   },
-  "sagejs_ms": {
-    "describe_20000": 2270.86,
-    "student_t_cdf_2001": 777.13,
-    "normal_sample_5000": 976.56,
-    "linear_regression_5000": 1506.08,
-    "huber_regression_160": 288.24
+  "sagejs": {
+    "describe_20000_ms": 1862.9772663116455,
+    "huber_regression_160_ms": 221.56214714050293,
+    "linear_regression_5000_ms": 1566.9562816619873,
+    "normal_sample_5000_ms": 882.735013961792,
+    "student_t_cdf_2001_ms": 633.7587833404541,
+    "witness": {
+      "cdf_sum": 1000.5,
+      "huber_slope": -0.7499778773418926,
+      "huber_status": "converged",
+      "linear_slope": 2.5000000244752014,
+      "sample_count": 5000,
+      "sample_first": [
+        0.16100429696574214,
+        -2.7208451548106254,
+        0.14944699404141848
+      ],
+      "summary_mean": 1000000049.95
+    }
   },
   "payload": {
     "python_source_files": 9,
-    "raw_bytes": 106039,
-    "gzip_bytes": 20848,
+    "raw_bytes": 145680,
+    "gzip_bytes": 27247,
     "native_dependencies_added": 0
   },
-  "equivalence": "All scalar witnesses agreed within 2e-11 relative and the RNG prefix agreed exactly. Timings exclude import/transpilation and are development-host observations, not cross-platform release claims."
+  "equivalence": "development-host numeric witnesses within 2e-11 relative; observed sample prefix matched exactly"
 }

@@ -9,12 +9,14 @@ from typing import Any
 from ..model import ResourceBudget
 from ._core import (
     BudgetGuard,
+    StatisticsNumericalError,
     StatisticsStopped,
     binary64_ulp,
     centered_sum_squares,
     diagnostic,
     median,
     paired_values,
+    scaled_centered_products,
     stable_mean,
     validate_probability,
 )
@@ -28,6 +30,7 @@ _OLS_ASSUMPTIONS = (
     "standard errors and confidence intervals assume homoscedastic residuals",
     "finite-sample t inference assumes normally distributed residuals",
 )
+_MIN_INFERENCE_TAIL_PROBABILITY = 1.0e-14
 
 
 def huber_loss(residual: float, tuning: float = 1.345) -> float:
@@ -43,18 +46,45 @@ def huber_loss(residual: float, tuning: float = 1.345) -> float:
 
 def soft_l1_loss(residual: float) -> float:
     """Smooth robust loss `2 * (sqrt(1 + r^2) - 1)`."""
-    value = float(residual)
-    return 2.0 * (math.sqrt(1.0 + value * value) - 1.0)
+    absolute = abs(float(residual))
+    if absolute <= 1.0:
+        square = absolute * absolute
+        return 2.0 * square / (math.sqrt(1.0 + square) + 1.0)
+    inverse = 1.0 / absolute
+    root = absolute * math.sqrt(1.0 + inverse * inverse)
+    return 2.0 * (root - 1.0)
 
 
 def cauchy_loss(residual: float) -> float:
     """Cauchy robust loss `log(1 + r^2)`."""
     value = float(residual)
-    return math.log1p(value * value)
+    absolute = abs(value)
+    if absolute <= math.sqrt(1.7976931348623157e308):
+        return math.log1p(value * value)
+    return 2.0 * math.log(absolute) + math.log1p(1.0 / (absolute * absolute))
 
 
 def _huber_score(residual: float, tuning: float) -> float:
     return max(-tuning, min(tuning, residual))
+
+
+def _scaled_huber_objective(
+    residuals: Sequence[float], scale: float, tuning: float
+) -> float:
+    normalized = math.fsum(
+        huber_loss(residual / scale, tuning) for residual in residuals
+    )
+    if not math.isfinite(normalized):
+        raise StatisticsNumericalError(
+            "the normalized Huber objective exceeds the binary64 envelope"
+        )
+    scaled_root = scale * math.sqrt(normalized)
+    objective = scaled_root * scaled_root
+    if not math.isfinite(objective):
+        raise StatisticsNumericalError(
+            "the Huber objective exceeds the finite binary64 result envelope"
+        )
+    return objective
 
 
 def _line_payload(
@@ -62,13 +92,18 @@ def _line_payload(
 ) -> dict[str, Any]:
     lower = min(xs)
     upper = max(xs)
+    line_y = [intercept + slope * lower, intercept + slope * upper]
+    if not all(math.isfinite(value) for value in line_y):
+        raise StatisticsNumericalError(
+            "the fitted line exceeds the finite binary64 plotting envelope"
+        )
     return {
         "plot": {
             "kind": "regression",
             "x": list(xs),
             "y": list(ys),
             "line_x": [lower, upper],
-            "line_y": [intercept + slope * lower, intercept + slope * upper],
+            "line_y": line_y,
         }
     }
 
@@ -77,25 +112,63 @@ def _stopped_result(
     operation: str,
     method: str,
     guard: BudgetGuard,
-    status: str,
+    stopped: StatisticsStopped,
     *,
     partial: dict[str, Any] | None = None,
 ) -> StatisticsResult:
-    guard.trace.append("failure", data={"status": status}, important=True, force=True)
+    guard.trace.append(
+        "failure",
+        data={"status": stopped.status, "reason": stopped.reason},
+        important=True,
+        force=True,
+    )
     return StatisticsResult(
         operation,
         success=False,
-        status=status,
+        status=stopped.status,
         value=partial,
         method=method,
         validation={"truth_level": "indeterminate", "passed": False, "checks": []},
         diagnostics=[
-            diagnostic(status, "Regression stopped at its resource boundary.")
+            diagnostic(
+                stopped.status,
+                "Regression stopped at its resource boundary.",
+                details={"statistics_reason": stopped.reason},
+            )
         ],
         trace=guard.trace,
         evaluations=guard.evaluations,
         iterations=guard.iterations,
         elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
+    )
+
+
+def _numerical_result(
+    operation: str,
+    method: str,
+    guard: BudgetGuard,
+    message: str,
+) -> StatisticsResult:
+    guard.trace.append(
+        "failure",
+        data={"status": "nonfinite_evaluation"},
+        important=True,
+        force=True,
+    )
+    return StatisticsResult(
+        operation,
+        success=False,
+        status="nonfinite_evaluation",
+        value=None,
+        method=method,
+        validation={"truth_level": "indeterminate", "passed": False, "checks": []},
+        diagnostics=[diagnostic("nonfinite_evaluation", message, severity="error")],
+        trace=guard.trace,
+        evaluations=guard.evaluations,
+        iterations=guard.iterations,
+        elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
     )
 
 
@@ -104,16 +177,31 @@ def _ols_coefficients(
 ) -> tuple[float, float, float, float, float]:
     mean_x = stable_mean(xs)
     mean_y = stable_mean(ys)
-    sxx = centered_sum_squares(xs, mean_x)
-    syy = centered_sum_squares(ys, mean_y)
-    if sxx == 0.0:
-        raise ValueError("linear regression requires at least two distinct x values")
-    sxy = math.fsum(
-        (xs[index] - mean_x) * (ys[index] - mean_y) for index in range(len(xs))
+    scale_x, scale_y, normalized_xx, normalized_yy, normalized_xy = (
+        scaled_centered_products(xs, ys, mean_x, mean_y)
     )
-    slope = sxy / sxx
+    if scale_x == 0.0 or normalized_xx == 0.0:
+        raise ValueError("linear regression requires at least two distinct x values")
+    if scale_y == 0.0:
+        slope = 0.0
+        correlation = 0.0
+    else:
+        slope = (scale_y / scale_x) * (normalized_xy / normalized_xx)
+        correlation = (normalized_xy / math.sqrt(normalized_xx)) / math.sqrt(
+            normalized_yy
+        )
+    if not math.isfinite(slope):
+        raise StatisticsNumericalError(
+            "the OLS slope exceeds the finite binary64 result envelope"
+        )
     intercept = mean_y - slope * mean_x
-    return intercept, slope, sxx, syy, sxy
+    if not math.isfinite(intercept):
+        raise StatisticsNumericalError(
+            "the OLS intercept exceeds the finite binary64 result envelope"
+        )
+    sxx = centered_sum_squares(xs, mean_x)
+    syy = 0.0 if scale_y == 0.0 else centered_sum_squares(ys, mean_y)
+    return intercept, slope, sxx, syy, correlation
 
 
 def linear_regression(
@@ -129,6 +217,10 @@ def linear_regression(
 ) -> StatisticsResult:
     """Fit `y = intercept + slope*x` by centered ordinary least squares."""
     level = validate_probability(confidence, open_interval=True)
+    if 0.5 * (1.0 - level) < _MIN_INFERENCE_TAIL_PROBABILITY:
+        raise ValueError(
+            "confidence is too close to one for the qualified Student-t tail envelope"
+        )
     if alternative not in ("two-sided", "less", "greater"):
         raise ValueError("alternative must be 'two-sided', 'less', or 'greater'")
     guard = BudgetGuard(budget=budget, cancel=cancel, trace=trace)
@@ -140,27 +232,38 @@ def linear_regression(
     )
     try:
         xs, ys = paired_values(x, y, nan_policy=nan_policy, guard=guard, minimum=3)
-        intercept, slope, sxx, syy, sxy = _ols_coefficients(xs, ys)
+        intercept, slope, sxx, syy, correlation = _ols_coefficients(xs, ys)
         fitted = [intercept + slope * value for value in xs]
         residuals = [ys[index] - fitted[index] for index in range(len(xs))]
         guard.check(len(xs))
         sse = math.fsum(value * value for value in residuals)
+        if not math.isfinite(sse):
+            raise StatisticsNumericalError(
+                "the OLS residual sum of squares exceeds the binary64 result envelope"
+            )
         degrees = len(xs) - 2
         residual_variance = sse / degrees
         slope_standard_error = math.sqrt(residual_variance / sxx)
         mean_x = stable_mean(xs)
+        centered_mean_ratio = mean_x / math.sqrt(sxx)
         intercept_standard_error = math.sqrt(
-            residual_variance * (1.0 / len(xs) + mean_x * mean_x / sxx)
+            residual_variance
+            * (1.0 / len(xs) + centered_mean_ratio * centered_mean_ratio)
         )
-        correlation = 0.0 if syy == 0.0 else sxy / math.sqrt(sxx * syy)
         correlation = min(1.0, max(-1.0, correlation))
         r_squared = (
             1.0
             if syy == 0.0 and sse == 0.0
             else (1.0 - sse / syy if syy > 0.0 else 0.0)
         )
-        critical = StudentT(degrees).quantile(0.5 + 0.5 * level)
-        diagnostics: list[dict[str, Any]] = []
+        distribution = StudentT(degrees)
+        two_sided_critical = distribution.inverse_survival(0.5 * (1.0 - level))
+        slope_critical = (
+            two_sided_critical
+            if alternative == "two-sided"
+            else distribution.inverse_survival(1.0 - level)
+        )
+        diagnostics: list[Any] = []
         if slope_standard_error == 0.0:
             statistic = None
             pvalue = None
@@ -175,52 +278,93 @@ def linear_regression(
             )
         else:
             statistic = slope / slope_standard_error
-            distribution = StudentT(degrees)
             if alternative == "less":
                 pvalue = distribution.cdf(statistic)
             elif alternative == "greater":
                 pvalue = distribution.sf(statistic)
             else:
                 pvalue = min(1.0, 2.0 * distribution.sf(abs(statistic)))
-            slope_interval = [
-                slope - critical * slope_standard_error,
-                slope + critical * slope_standard_error,
-            ]
+            if alternative == "greater":
+                slope_interval = [
+                    slope - slope_critical * slope_standard_error,
+                    None,
+                ]
+            elif alternative == "less":
+                slope_interval = [
+                    None,
+                    slope + slope_critical * slope_standard_error,
+                ]
+            else:
+                slope_interval = [
+                    slope - slope_critical * slope_standard_error,
+                    slope + slope_critical * slope_standard_error,
+                ]
             intercept_interval = [
-                intercept - critical * intercept_standard_error,
-                intercept + critical * intercept_standard_error,
+                intercept - two_sided_critical * intercept_standard_error,
+                intercept + two_sided_critical * intercept_standard_error,
             ]
-        sum_residual = abs(math.fsum(residuals))
+        reported_scalars = [
+            slope_standard_error,
+            intercept_standard_error,
+            correlation,
+            r_squared,
+        ]
+        reported_scalars.extend(
+            value for value in slope_interval + intercept_interval if value is not None
+        )
+        if not all(math.isfinite(value) for value in reported_scalars):
+            raise StatisticsNumericalError(
+                "the OLS inference result exceeds the finite binary64 envelope"
+            )
+        residual_scale = max((abs(value) for value in residuals), default=0.0)
+        normalized_residuals = (
+            [0.0] * len(residuals)
+            if residual_scale == 0.0
+            else [value / residual_scale for value in residuals]
+        )
+        centered_x = [value - mean_x for value in xs]
+        centered_x_scale = max(abs(value) for value in centered_x)
+        normalized_x = [value / centered_x_scale for value in centered_x]
+        sum_residual = abs(math.fsum(normalized_residuals))
         orthogonal_residual = abs(
-            math.fsum(residuals[index] * xs[index] for index in range(len(xs)))
+            math.fsum(
+                normalized_residuals[index] * normalized_x[index]
+                for index in range(len(xs))
+            )
         )
-        scale = max(
-            math.sqrt(max(sse, 0.0)),
-            math.sqrt(max(syy, 0.0)),
-            max(abs(value) for value in ys),
-            1.0,
-        )
-        x_scale = max(max(abs(value) for value in xs), 1.0)
-        tolerance = 128.0 * binary64_ulp(scale * max(len(xs), 1))
+        normalized_tolerance = 4096.0 * binary64_ulp(float(max(len(xs), 1)))
+        explained_sum_squares = (slope * sxx) * slope
+        if not math.isfinite(explained_sum_squares):
+            raise StatisticsNumericalError(
+                "the OLS explained sum of squares exceeds the binary64 result envelope"
+            )
         checks = [
             {
-                "identity": "sum of residuals is approximately zero",
+                "identity": "scaled sum of residuals is approximately zero",
                 "residual": sum_residual,
-                "tolerance": tolerance,
-                "passed": sum_residual <= tolerance,
+                "tolerance": normalized_tolerance,
+                "passed": sum_residual <= normalized_tolerance,
             },
             {
-                "identity": "residuals are approximately orthogonal to x",
+                "identity": "scaled residuals are approximately orthogonal to centered x",
                 "residual": orthogonal_residual,
-                "tolerance": tolerance * x_scale * len(xs),
-                "passed": orthogonal_residual <= tolerance * x_scale * len(xs),
+                "tolerance": normalized_tolerance,
+                "passed": orthogonal_residual <= normalized_tolerance,
             },
             {
                 "identity": "SST approximately equals SSR + SSE",
-                "residual": abs(syy - (slope * slope * sxx + sse)),
+                "residual": abs(syy - (explained_sum_squares + sse)),
                 "tolerance": 256.0 * binary64_ulp(max(syy, sse, 1.0)),
-                "passed": abs(syy - (slope * slope * sxx + sse))
+                "passed": abs(syy - (explained_sum_squares + sse))
                 <= 256.0 * binary64_ulp(max(syy, sse, 1.0)),
+            },
+            {
+                "identity": "R-squared agrees with squared correlation",
+                "residual": abs(r_squared - correlation * correlation),
+                "tolerance": 2.0e-12,
+                "passed": syy == 0.0
+                or abs(r_squared - correlation * correlation) <= 2.0e-12,
+                "applicable": syy != 0.0,
             },
         ]
         passed = all(bool(check["passed"]) for check in checks)
@@ -229,8 +373,9 @@ def linear_regression(
             "passed": passed,
             "checks": checks,
             "residual_norm": math.sqrt(sse),
-            "condition_indicator": (
-                max(abs(value - mean_x) for value in xs) ** 2 * len(xs) / sxx
+            "condition_indicator": max(
+                (centered_x_scale / math.sqrt(sxx)) ** 2 * len(xs),
+                abs(mean_x) / centered_x_scale,
             ),
         }
         value = {
@@ -271,11 +416,16 @@ def linear_regression(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
+            resource_budget=guard.budget,
             domain_payload=_line_payload(xs, ys, intercept, slope),
         )
     except StatisticsStopped as stopped:
         return _stopped_result(
-            "linear_regression", "ordinary-least-squares", guard, stopped.status
+            "linear_regression", "ordinary-least-squares", guard, stopped
+        )
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_result(
+            "linear_regression", "ordinary-least-squares", guard, str(error)
         )
 
 
@@ -324,8 +474,20 @@ def theil_sen_regression(
             for left in range(right):
                 guard.check(1)
                 difference = xs[right] - xs[left]
+                response_difference = ys[right] - ys[left]
+                if not math.isfinite(difference) or not math.isfinite(
+                    response_difference
+                ):
+                    raise StatisticsNumericalError(
+                        "a pairwise difference exceeds the finite binary64 envelope"
+                    )
                 if difference != 0.0:
-                    slopes.append((ys[right] - ys[left]) / difference)
+                    candidate = response_difference / difference
+                    if not math.isfinite(candidate):
+                        raise StatisticsNumericalError(
+                            "a pairwise slope exceeds the finite binary64 result envelope"
+                        )
+                    slopes.append(candidate)
         if not slopes:
             raise ValueError("Theil-Sen regression requires distinct x values")
         slopes.sort()
@@ -336,6 +498,10 @@ def theil_sen_regression(
             )
         else:
             intercept = median(ys) - slope * median(xs)
+        if not math.isfinite(intercept):
+            raise StatisticsNumericalError(
+                "the Theil-Sen intercept exceeds the binary64 result envelope"
+            )
         alpha = 1.0 - level
         z = Normal().quantile(alpha / 2.0)
         n = len(xs)
@@ -354,6 +520,10 @@ def theil_sen_regression(
         residuals = [
             ys[index] - intercept - slope * xs[index] for index in range(len(xs))
         ]
+        if not all(math.isfinite(value) for value in residuals):
+            raise StatisticsNumericalError(
+                "Theil-Sen residuals exceed the finite binary64 envelope"
+            )
         median_residual = median(residuals)
         checks = [
             {
@@ -414,6 +584,7 @@ def theil_sen_regression(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
+            resource_budget=guard.budget,
             domain_payload=_line_payload(xs, ys, intercept, slope),
         )
     except StatisticsStopped as stopped:
@@ -421,9 +592,11 @@ def theil_sen_regression(
             "theil_sen_regression",
             "theil-sen",
             guard,
-            stopped.status,
+            stopped,
             partial={"pairwise_slopes_completed": len(slopes)},
         )
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_result("theil_sen_regression", "theil-sen", guard, str(error))
 
 
 def _weighted_line(
@@ -432,23 +605,49 @@ def _weighted_line(
     total_weight = math.fsum(weights)
     if total_weight <= 0.0:
         raise ArithmeticError("all robust regression weights vanished")
-    mean_x = (
-        math.fsum(weights[index] * xs[index] for index in range(len(xs))) / total_weight
+    absolute_x = max(abs(value) for value in xs)
+    absolute_y = max(abs(value) for value in ys)
+    x_scale = max(absolute_x, 1.0)
+    y_scale = max(absolute_y, 1.0)
+    mean_x = x_scale * (
+        math.fsum(weights[index] * (xs[index] / x_scale) for index in range(len(xs)))
+        / total_weight
     )
-    mean_y = (
-        math.fsum(weights[index] * ys[index] for index in range(len(xs))) / total_weight
+    mean_y = y_scale * (
+        math.fsum(weights[index] * (ys[index] / y_scale) for index in range(len(xs)))
+        / total_weight
+    )
+    spread_x = max(abs(value - mean_x) for value in xs)
+    spread_y = max(abs(value - mean_y) for value in ys)
+    if not math.isfinite(spread_x) or not math.isfinite(spread_y):
+        raise StatisticsNumericalError(
+            "weighted centering exceeds the finite binary64 envelope"
+        )
+    if spread_x == 0.0:
+        raise ValueError("robust regression requires distinct weighted x values")
+    normalized_x = [(value - mean_x) / spread_x for value in xs]
+    normalized_y = (
+        [0.0] * len(ys)
+        if spread_y == 0.0
+        else [(value - mean_y) / spread_y for value in ys]
     )
     denominator = math.fsum(
-        weights[index] * (xs[index] - mean_x) ** 2 for index in range(len(xs))
+        weights[index] * normalized_x[index] * normalized_x[index]
+        for index in range(len(xs))
     )
     if denominator == 0.0:
         raise ValueError("robust regression requires distinct weighted x values")
     numerator = math.fsum(
-        weights[index] * (xs[index] - mean_x) * (ys[index] - mean_y)
+        weights[index] * normalized_x[index] * normalized_y[index]
         for index in range(len(xs))
     )
-    slope = numerator / denominator
-    return mean_y - slope * mean_x, slope
+    slope = 0.0 if spread_y == 0.0 else (spread_y / spread_x) * numerator / denominator
+    intercept = mean_y - slope * mean_x
+    if not math.isfinite(slope) or not math.isfinite(intercept):
+        raise StatisticsNumericalError(
+            "the weighted line exceeds the finite binary64 result envelope"
+        )
+    return intercept, slope
 
 
 def huber_regression(
@@ -489,7 +688,7 @@ def huber_regression(
         initial_residuals = [
             ys[index] - intercept - slope * xs[index] for index in range(len(xs))
         ]
-        data_scale = max(max(ys) - min(ys), max(abs(value) for value in ys), 1.0)
+        data_scale = max(max(abs(value) for value in ys), 1.0)
         scale_floor = math.sqrt(binary64_ulp(1.0)) * data_scale
         scale = (
             median(
@@ -498,15 +697,20 @@ def huber_regression(
             / 0.6744897501960817
         )
         if scale == 0.0:
-            scale = math.sqrt(
-                math.fsum(value * value for value in initial_residuals) / len(xs)
-            )
+            residual_scale = max(abs(value) for value in initial_residuals)
+            if residual_scale > 0.0:
+                scale = residual_scale * math.sqrt(
+                    math.fsum(
+                        (value / residual_scale) * (value / residual_scale)
+                        for value in initial_residuals
+                    )
+                    / len(xs)
+                )
         if scale == 0.0:
             scale = scale_floor
         scale = max(scale, scale_floor)
-        initial_objective = math.fsum(
-            huber_loss(value / scale, tuning_value) * scale * scale
-            for value in initial_residuals
+        initial_objective = _scaled_huber_objective(
+            initial_residuals, scale, tuning_value
         )
         converged = False
         weights: list[float] = [1.0] * len(xs)
@@ -516,13 +720,6 @@ def huber_regression(
                 ys[index] - intercept - slope * xs[index] for index in range(len(xs))
             ]
             guard.check(len(xs))
-            center = median(residuals)
-            new_scale = (
-                median([abs(value - center) for value in residuals])
-                / 0.6744897501960817
-            )
-            if new_scale > 0.0:
-                scale = max(new_scale, scale_floor)
             weights = []
             for residual in residuals:
                 standardized = abs(residual) / scale
@@ -534,15 +731,11 @@ def huber_regression(
                 abs(new_intercept - intercept) / max(1.0, abs(intercept)),
                 abs(new_slope - slope) / max(1.0, abs(slope)),
             )
-            objective = math.fsum(
-                huber_loss(
-                    (ys[index] - new_intercept - new_slope * xs[index]) / scale,
-                    tuning_value,
-                )
-                * scale
-                * scale
+            new_residuals = [
+                ys[index] - new_intercept - new_slope * xs[index]
                 for index in range(len(xs))
-            )
+            ]
+            objective = _scaled_huber_objective(new_residuals, scale, tuning_value)
             intercept = new_intercept
             slope = new_slope
             guard.trace.append(
@@ -566,19 +759,32 @@ def huber_regression(
             ys[index] - intercept - slope * xs[index] for index in range(len(xs))
         ]
         standardized = [value / scale for value in residuals]
+        weights = [
+            1.0 if abs(value) <= tuning_value else tuning_value / abs(value)
+            for value in standardized
+        ]
         scores = [_huber_score(value, tuning_value) for value in standardized]
         score_intercept = math.fsum(scores)
         mean_x = stable_mean(xs)
+        centered_x_scale = max(abs(value - mean_x) for value in xs)
         score_slope = math.fsum(
-            scores[index] * (xs[index] - mean_x) for index in range(len(xs))
+            scores[index] * ((xs[index] - mean_x) / centered_x_scale)
+            for index in range(len(xs))
         )
-        final_objective = math.fsum(
-            huber_loss(value, tuning_value) * scale * scale for value in standardized
+        final_objective = _scaled_huber_objective(residuals, scale, tuning_value)
+        final_residual_scale = max(abs(value) for value in residuals)
+        residual_norm = (
+            final_residual_scale
+            * math.sqrt(
+                math.fsum(
+                    (value / final_residual_scale) * (value / final_residual_scale)
+                    for value in residuals
+                )
+            )
+            if final_residual_scale > 0.0
+            else 0.0
         )
         score_scale = max(len(xs) * tuning_value, 1.0)
-        x_scale = max(
-            math.fsum(abs(value - mean_x) for value in xs) * tuning_value, 1.0
-        )
         score_tolerance = max(
             1.0e-7,
             64.0 * binary64_ulp(data_scale) / scale,
@@ -592,9 +798,9 @@ def huber_regression(
             },
             {
                 "identity": "Huber slope estimating equation is near zero",
-                "residual": abs(score_slope) / x_scale,
+                "residual": abs(score_slope) / score_scale,
                 "tolerance": score_tolerance,
-                "passed": abs(score_slope) / x_scale <= score_tolerance,
+                "passed": abs(score_slope) / score_scale <= score_tolerance,
             },
             {
                 "identity": "IRLS did not increase the Huber objective from OLS initialization",
@@ -608,7 +814,7 @@ def huber_regression(
             "truth_level": "validated_approximate" if passed else "indeterminate",
             "passed": passed,
             "checks": checks,
-            "residual_norm": math.sqrt(math.fsum(value * value for value in residuals)),
+            "residual_norm": residual_norm,
         }
         guard.trace.append("validation", data=validation, important=True, force=True)
         guard.trace.append(
@@ -643,6 +849,7 @@ def huber_regression(
             iterations=guard.iterations,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
+            resource_budget=guard.budget,
             domain_payload=_line_payload(xs, ys, intercept, slope),
         )
     except StatisticsStopped as stopped:
@@ -650,6 +857,8 @@ def huber_regression(
             "huber_regression",
             "huber-irls",
             guard,
-            stopped.status,
+            stopped,
             partial={"intercept": intercept, "slope": slope, "scale": scale},
         )
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_result("huber_regression", "huber-irls", guard, str(error))

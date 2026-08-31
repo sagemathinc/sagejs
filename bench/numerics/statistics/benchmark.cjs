@@ -138,6 +138,10 @@ assert.equal(sagejs.witness.huber_status, "converged");
 
 const evidence = {
   schema_version: 1,
+  recorded_at: "2026-08-31",
+  platform: `${process.platform}-${process.arch}`,
+  node: process.versions.node,
+  command: "node bench/numerics/statistics/benchmark.cjs --check",
   workload: {
     descriptive_observations: 20000,
     student_t_cdf_evaluations: 2001,
@@ -153,7 +157,8 @@ const evidence = {
     gzip_bytes: gzipBytes,
     native_dependencies_added: 0,
   },
-  equivalence: "numeric witnesses within 2e-11 relative; RNG prefix exact",
+  equivalence:
+    "development-host numeric witnesses within 2e-11 relative; observed sample prefix matched exactly",
 };
 
 if (check) {
