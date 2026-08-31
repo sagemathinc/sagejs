@@ -20,7 +20,7 @@ def integration_plot(result: IntegrationResult) -> PlotSpec:
     intervals.sort(key=lambda value: float(value["plot_left"]))
     midpoints: list[float] = []
     errors: list[float] = []
-    widths: list[float] = []
+    half_widths: list[float] = []
     depths: list[int] = []
     left_edges: list[float] = []
     right_edges: list[float] = []
@@ -29,9 +29,15 @@ def integration_plot(result: IntegrationResult) -> PlotSpec:
         right = float(interval["plot_right"])
         left_edges.append(left)
         right_edges.append(right)
-        midpoints.append(left + 0.5 * (right - left))
+        if left < 0.0 < right:
+            midpoint = 0.5 * left + 0.5 * right
+            half_width = 0.5 * right - 0.5 * left
+        else:
+            midpoint = left + 0.5 * (right - left)
+            half_width = 0.5 * (right - left)
+        midpoints.append(midpoint)
         errors.append(max(0.0, float(interval["error_estimate"])))
-        widths.append(right - left)
+        half_widths.append(half_width)
         depths.append(int(interval["depth"]))
     positive_errors = [value for value in errors if value > 0.0]
     display_floor = min(positive_errors) * 0.25 if positive_errors else 1e-300
@@ -51,7 +57,7 @@ def integration_plot(result: IntegrationResult) -> PlotSpec:
                 "local_error": errors,
                 "interval_left": left_edges,
                 "interval_right": right_edges,
-                "interval_width": widths,
+                "interval_half_width": half_widths,
                 "depth": depths,
             },
             ordinal=0,

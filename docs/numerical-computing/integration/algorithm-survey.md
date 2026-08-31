@@ -50,21 +50,28 @@ this QAGS would therefore be misleading. It is named
 and transforms.
 
 The quadratic endpoint transformation is qualified for logarithmic and
-inverse-square-root behavior. Stronger algebraic singularities may exhaust the
-depth or roundoff budget and are not silently promoted to supported; tanh-sinh
-or extrapolation remains deferred until its own corpus is qualified.
+inverse-square-root behavior when its physical nodes remain representable in
+binary64. If translation or scale collapses an interior transformed node onto
+the endpoint, execution stops with explicit coordinate-resolution evidence.
+Stronger algebraic singularities may exhaust the depth or roundoff budget and
+are not silently promoted to supported; tanh-sinh or extrapolation remains
+deferred until its own corpus is qualified.
 
 ## Independent evidence
 
 The embedded Gauss member is a local error estimator, not an independent
-oracle. Production success additionally requires agreement with composite
-Gauss-Legendre 8 using fresh nodes on two panels inside every final leaf. This
-validator reuses the partition but neither samples nor weights. It is
-convergence-supporting evidence, not a proof or rigorous enclosure.
+oracle. Production success additionally requires agreement, within the
+requested tolerance itself, with composite Gauss-Legendre 8 using fresh nodes
+on two panels inside every final leaf. This validator reuses the partition but
+neither samples nor weights. It is convergence-supporting evidence, not a proof
+or rigorous enclosure: both deterministic rules can miss an unsampled narrow
+feature, which must instead be bracketed by caller-supplied breakpoints.
 
 Binary64 cancellation is estimated from the integral of `abs(f)` gathered by
 the Kronrod rule. Severe cancellation emits `loss_of_significance`; a small
 absolute residual is not silently described as high relative accuracy.
+Whole-line problems adapt and accumulate their negative and positive halves
+separately so opposite signs cannot erase this evidence before validation.
 
 ## Deferred methods
 

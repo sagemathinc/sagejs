@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // sagejs-test-tier: integration
-// sagejs-test-portable: true
 "use strict";
 
 const assert = require("node:assert/strict");
@@ -51,6 +50,7 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
 const witness = String.raw`
 import json
 import math
+import time
 from sagejs.numerics.integration import (
     integrate,
     integration_capabilities,
@@ -79,6 +79,10 @@ def integrand(name):
     if name == "exp_positive": return math.exp
     if name == "gaussian": return lambda x: math.exp(-x*x)
     if name == "cauchy": return lambda x: 1.0/(1.0+x*x)
+    if name == "odd_gaussian": return lambda x: x*math.exp(-x*x)
+    if name == "odd_divergent": return lambda x: x/(1.0+x*x)
+    if name == "tiny_constant": return lambda x: 1e-308
+    if name == "inverse_sqrt_shift_1e10": return lambda x: 1.0/math.sqrt(x-1e10)
     if name == "large_odd": return lambda x: 1e3*x
     if name == "raise_at_center":
         def raises(x):
@@ -159,6 +163,91 @@ assert zero.validation.truth_level == "exact"
 
 cancelled = integrate(lambda x: x, 0.0, 1.0, cancel=lambda: True)
 assert not cancelled.success and cancelled.stop_reason == "cancelled"
+
+partial = integrate(
+    lambda x: x, 0.0, 1.0, breakpoints=[0.5], max_evaluations=30,
+)
+assert not partial.success and partial.stop_reason == "maximum_evaluations"
+assert partial.value is None and len(partial.final_intervals) == 0
+
+def fail_on_second_component(x):
+    if x > 0.5:
+        raise RuntimeError("intentional second-component failure")
+    return x
+partial_callback = integrate(
+    fail_on_second_component, 0.0, 1.0, breakpoints=[0.5],
+)
+partial_callback_payload = partial_callback.to_dict()["domain_payload"]
+assert not partial_callback.success and partial_callback.stop_reason == "callback_error"
+assert partial_callback.value is None and len(partial_callback.final_intervals) == 0
+assert partial_callback_payload["failure_details"]["phase"] == "integrand_callback"
+
+validation_limited = integrate(
+    lambda x: 1.0, 0.0, 1.0, max_evaluations=30,
+)
+validation_checks = validation_limited.validation.to_dict()["checks"]
+assert not validation_limited.success
+assert validation_limited.stop_reason == "maximum_evaluations"
+assert validation_limited.to_dict()["domain_payload"]["solver_stop_reason"] == "converged"
+assert validation_checks[0] == {"kind": "solver_converged", "passed": True}
+
+validation_disagrees = integrate(
+    lambda x: x**20, 0.0, 1.0,
+    absolute_tolerance=1.2e-12, relative_tolerance=0.0,
+)
+assert not validation_disagrees.success
+assert validation_disagrees.stop_reason == "validation_failed"
+assert validation_disagrees.error_estimate > validation_disagrees.requested_tolerance
+
+final_cancel_state = {"calls": 0, "cancelled": False}
+def cancelled_on_final_validation(x):
+    final_cancel_state["calls"] += 1
+    if final_cancel_state["calls"] == 37:
+        final_cancel_state["cancelled"] = True
+    return 1.0
+final_cancel = integrate(
+    cancelled_on_final_validation, 0.0, 1.0,
+    cancel=lambda: final_cancel_state["cancelled"],
+)
+assert not final_cancel.success and final_cancel.stop_reason == "cancelled"
+assert final_cancel.to_dict()["domain_payload"]["solver_stop_reason"] == "converged"
+
+def broken_cancel():
+    raise RuntimeError("intentional cancellation callback failure")
+cancel_error = integrate(lambda x: x, 0.0, 1.0, cancel=broken_cancel)
+assert not cancel_error.success and cancel_error.stop_reason == "callback_error"
+assert cancel_error.to_dict()["domain_payload"]["failure_details"]["phase"] == "cancellation_callback"
+
+delayed_calls = [0]
+def delayed_final_validation(x):
+    delayed_calls[0] += 1
+    if delayed_calls[0] == 37:
+        time.sleep(0.15)
+    return 1.0
+elapsed = integrate(
+    delayed_final_validation, 0.0, 1.0, max_elapsed_ms=100,
+)
+assert not elapsed.success and elapsed.stop_reason == "maximum_elapsed_time"
+assert elapsed.status == "maximum_elapsed_time"
+assert "maximum_elapsed_time" in {item.code for item in elapsed.diagnostics}
+assert elapsed.to_dict()["domain_payload"]["solver_stop_reason"] == "converged"
+
+scaled_endpoint = integrate(
+    lambda x: 1e308, 0.0, 1e-308, endpoint_singularities="left",
+)
+assert scaled_endpoint.success
+assert abs(scaled_endpoint.value-1.0) < 2e-14
+
+def narrow_peak(x):
+    return math.exp(-((x-0.1)/1e-4)**2)/1e-4
+unmarked_peak = integrate(narrow_peak, 0.0, 1.0)
+assert unmarked_peak.success and unmarked_peak.value == 0.0
+assert unmarked_peak.validation.truth_level == "validated_approximate"
+bracketed_peak = integrate(
+    narrow_peak, 0.0, 1.0, breakpoints=[0.0995, 0.1, 0.1005],
+)
+assert bracketed_peak.success
+assert abs(bracketed_peak.value-math.sqrt(math.pi)) < 1e-10
 
 truncated = integrate(
     lambda x: abs(x-0.12345), 0.0, 1.0,

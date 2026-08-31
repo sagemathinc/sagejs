@@ -78,7 +78,7 @@ class IntegrationResult(NumericalResult):
 
     @property
     def error_estimate(self) -> float | None:
-        """Return the conservative reported absolute-error evidence."""
+        """Return the reported non-rigorous absolute-error evidence."""
         return self._integration_estimated_error
 
     @property

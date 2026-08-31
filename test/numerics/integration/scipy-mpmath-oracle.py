@@ -51,8 +51,17 @@ def _case(
         limit=256,
     )
     assert sagejs.success, (name, sagejs.explain())
-    assert abs(sagejs.value - reference) <= 2e-9, name
-    assert abs(sagejs.value - scipy_value) <= max(2e-9, 8.0 * scipy_error), name
+    assert sagejs.requested_tolerance is not None
+    assert sagejs.error_estimate is not None
+    assert sagejs.error_estimate <= sagejs.requested_tolerance, name
+    reference_threshold = max(
+        sagejs.requested_tolerance,
+        64.0 * sys.float_info.epsilon * max(1.0, abs(reference)),
+    )
+    assert abs(sagejs.value - reference) <= reference_threshold, name
+    assert abs(sagejs.value - scipy_value) <= max(
+        reference_threshold, 8.0 * scipy_error
+    ), name
     return {
         "id": name,
         "sagejs": sagejs.value,
@@ -96,6 +105,7 @@ def main() -> None:
             options={"endpoint_singularities": "both"},
         ),
         _case("exp_tail", lambda x: math.exp(-x), 0.0, math.inf, 1.0),
+        _case("reversed_exp_tail", lambda x: math.exp(-x), math.inf, 0.0, -1.0),
         _case(
             "gaussian_line",
             lambda x: math.exp(-(x * x)),
@@ -110,12 +120,64 @@ def main() -> None:
             math.inf,
             float(mpmath.pi),
         ),
+        _case(
+            "oscillatory_sine",
+            lambda x: math.sin(1000.0 * x),
+            0.0,
+            1.0,
+            (1.0 - math.cos(1000.0)) / 1000.0,
+        ),
+        _case(
+            "bracketed_narrow_peak",
+            lambda x: math.exp(-(((x - 0.1) / 1e-4) ** 2)) / 1e-4,
+            0.0,
+            1.0,
+            float(mpmath.sqrt(mpmath.pi)),
+            scipy_points=[0.0995, 0.1, 0.1005],
+            options={"breakpoints": [0.0995, 0.1, 0.1005]},
+        ),
     ]
+    divergent_odd = integrate(
+        lambda x: x / (1.0 + x * x),
+        -math.inf,
+        math.inf,
+        max_depth=12,
+    )
+    assert not divergent_odd.success
+    assert divergent_odd.stop_reason in ("maximum_depth", "roundoff_detected")
+
+    partial = integrate(
+        lambda x: x,
+        0.0,
+        1.0,
+        breakpoints=[0.5],
+        max_evaluations=30,
+    )
+    assert not partial.success and partial.stop_reason == "maximum_evaluations"
+    assert partial.value is None and len(partial.final_intervals) == 0
+
+    scaled = integrate(lambda _x: 1e-308, -1e308, 1e308)
+    assert scaled.success and abs(scaled.value - 2.0) <= 2e-14
+
+    unmarked_peak = integrate(
+        lambda x: math.exp(-(((x - 0.1) / 1e-4) ** 2)) / 1e-4,
+        0.0,
+        1.0,
+    )
+    assert unmarked_peak.success and unmarked_peak.value == 0.0
     print(
         json.dumps(
             {
                 "oracle": {"scipy": scipy.__version__, "mpmath": mpmath.__version__},
                 "cases": cases,
+                "adversarial": {
+                    "divergent_odd_stop": divergent_odd.stop_reason,
+                    "partial_partition_atomic": partial.value is None,
+                    "scaled_finite_value": scaled.value,
+                    "unmarked_narrow_peak_demonstrates_finite_node_blind_spot": (
+                        unmarked_peak.value
+                    ),
+                },
             },
             sort_keys=True,
         )

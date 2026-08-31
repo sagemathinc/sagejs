@@ -117,16 +117,6 @@ _GL8_WEIGHTS = (
     0.362683783378362,
 )
 
-_SUPPORTED_PLATFORMS = [
-    "browser",
-    "node",
-    "sea",
-    "linux-x64",
-    "linux-arm64",
-    "macos-arm64",
-    "windows-x64",
-]
-
 INTEGRATION_CAPABILITY: dict[str, Any] = {
     "classification": "extension",
     "backend": "ordinary-python",
@@ -140,6 +130,7 @@ INTEGRATION_CAPABILITY: dict[str, Any] = {
     "infinite_intervals": True,
     "known_breakpoints": True,
     "explicit_endpoint_transforms": ["left", "right", "both"],
+    "endpoint_transform_limit": "physical_nodes_must_be_resolvable_in_binary64",
     "unsupported": [
         "complex_integrands",
         "multidimensional_integrals",
@@ -159,7 +150,11 @@ INTEGRATION_CAPABILITY: dict[str, Any] = {
         "trace_bytes",
         "cancellation",
     ],
-    "platforms": _SUPPORTED_PLATFORMS,
+    "qualification": {
+        "level": "development",
+        "evidence": ["cpython-linux-x64", "sagejs-dynamic-linux-x64"],
+        "release_platforms": "unqualified_pending_receipts",
+    },
 }
 
 
@@ -184,6 +179,68 @@ def _decoded_endpoint(value: Any) -> float:
     if value == "-infinity":
         return _NEGATIVE_INFINITY
     return float(value)
+
+
+def _half_width(lower: float, upper: float) -> float:
+    """Return half of a finite ordered interval width without overflow."""
+    if lower < 0.0 < upper:
+        return 0.5 * upper - 0.5 * lower
+    return 0.5 * (upper - lower)
+
+
+def _affine_point(lower: float, upper: float, fraction: float) -> float:
+    """Map `[0, 1]` into an ordered finite interval without leaving it."""
+    if fraction <= 0.0:
+        return lower
+    if fraction >= 1.0:
+        return upper
+    if lower < 0.0 < upper:
+        point = math.fsum([(1.0 - fraction) * lower, fraction * upper])
+    else:
+        point = lower + (upper - lower) * fraction
+    return min(upper, max(lower, point))
+
+
+def _open_affine_point(lower: float, upper: float, fraction: float) -> float:
+    """Map an interior reference node to a representable interior point."""
+    point = _affine_point(lower, upper, fraction)
+    if not (lower < point < upper):
+        raise _StopIntegration(
+            "interval_too_small",
+            {
+                "reason": "no_representable_interior_quadrature_node",
+                "lower": lower,
+                "upper": upper,
+            },
+        )
+    return point
+
+
+def _scaled_product_quotient(
+    numerators: Sequence[float], denominators: Sequence[float] = ()
+) -> float:
+    """Combine deliberately ordered scale factors portably."""
+    sign = 1.0
+    magnitudes: list[float] = []
+    for value in numerators:
+        if not math.isfinite(value):
+            return value
+        if value == 0.0:
+            return value
+        if value < 0.0:
+            sign = -sign
+        magnitudes.append(abs(value))
+    while len(magnitudes) > 1:
+        magnitudes.sort()
+        smallest = magnitudes.pop(0)
+        largest = magnitudes.pop()
+        magnitudes.append(smallest * largest)
+    result = math.copysign(magnitudes[0] if magnitudes else 1.0, sign)
+    for value in denominators:
+        if not math.isfinite(value) or value == 0.0:
+            return math.copysign(_POSITIVE_INFINITY, result)
+        result /= value
+    return result
 
 
 def _positive_integer(value: Any, name: str) -> int:
@@ -372,7 +429,7 @@ def _selected_transform(problem: NumericalProblem) -> str:
     singularities = problem.initial_data.get("endpoint_singularities")
     breakpoints = problem.bounds.get("breakpoints")
     if not math.isfinite(lower) and not math.isfinite(upper):
-        return "whole_infinite_rational_transform"
+        return "whole_infinite_split_rational_transform"
     if not math.isfinite(lower):
         return "negative_infinite_rational_transform"
     if not math.isfinite(upper):
@@ -452,46 +509,84 @@ class _Component:
             return "gauss_7_kronrod_15"
         return "gauss_10_kronrod_21"
 
-    def _finite_coordinate(self, parameter: float) -> tuple[float, float]:
+    def _finite_coordinate(self, parameter: float) -> tuple[float, tuple[float, ...]]:
         if self.kind == "finite":
-            return parameter, 1.0
-        width = self.end - self.start
+            return parameter, (1.0,)
+        half_width = _half_width(self.start, self.end)
         if self.kind == "endpoint_left":
-            return self.start + width * parameter * parameter, 2.0 * width * parameter
+            coordinate = _affine_point(self.start, self.end, parameter * parameter)
+            if not (self.start < coordinate < self.end):
+                raise _StopIntegration(
+                    "interval_too_small",
+                    {
+                        "reason": "endpoint_transform_coordinate_unresolved",
+                        "endpoint": self.start,
+                        "parameter": parameter,
+                    },
+                )
+            return coordinate, (4.0 * parameter, half_width)
         if self.kind == "endpoint_right":
             complement = 1.0 - parameter
-            return self.end - width * complement * complement, 2.0 * width * complement
+            coordinate = _affine_point(
+                self.start, self.end, 1.0 - complement * complement
+            )
+            if not (self.start < coordinate < self.end):
+                raise _StopIntegration(
+                    "interval_too_small",
+                    {
+                        "reason": "endpoint_transform_coordinate_unresolved",
+                        "endpoint": self.end,
+                        "parameter": parameter,
+                    },
+                )
+            return coordinate, (4.0 * complement, half_width)
         raise ValueError("component does not have a finite coordinate")
 
     def evaluate(self, execution: "_IntegrationExecution", parameter: float) -> float:
         if self.kind in ("finite", "endpoint_left", "endpoint_right"):
-            coordinate, jacobian = self._finite_coordinate(parameter)
+            coordinate, multipliers = self._finite_coordinate(parameter)
             return execution.transformed_call(
-                coordinate, jacobian, self.identifier, parameter
+                coordinate,
+                self.identifier,
+                parameter,
+                multipliers=multipliers,
             )
         if self.kind == "positive_infinite":
             coordinate = self.start + (1.0 - parameter) / parameter
             return execution.transformed_call(
-                coordinate, 1.0 / (parameter * parameter), self.identifier, parameter
+                coordinate,
+                self.identifier,
+                parameter,
+                divisors=(parameter, parameter),
             )
         if self.kind == "negative_infinite":
             coordinate = self.end - (1.0 - parameter) / parameter
             return execution.transformed_call(
-                coordinate, 1.0 / (parameter * parameter), self.identifier, parameter
+                coordinate,
+                self.identifier,
+                parameter,
+                divisors=(parameter, parameter),
             )
-        coordinate = (1.0 - parameter) / parameter
-        positive = execution.call(coordinate, self.identifier, parameter)
-        negative = execution.call(-coordinate, self.identifier, parameter)
-        transformed = math.fsum([positive, negative]) / (parameter * parameter)
-        if not math.isfinite(transformed):
-            execution.nonfinite_transformed(parameter, self.identifier)
-        return transformed
+        raise ValueError("unknown integration component kind: " + self.kind)
 
     def finite_physical_interval(self, left: float, right: float) -> list[float] | None:
         if self.kind not in ("finite", "endpoint_left", "endpoint_right"):
             return None
-        left_coordinate, _left_jacobian = self._finite_coordinate(left)
-        right_coordinate, _right_jacobian = self._finite_coordinate(right)
+        if self.kind == "finite":
+            left_coordinate = left
+            right_coordinate = right
+        elif self.kind == "endpoint_left":
+            left_coordinate = _affine_point(self.start, self.end, left * left)
+            right_coordinate = _affine_point(self.start, self.end, right * right)
+        else:
+            left_complement = 1.0 - left
+            right_complement = 1.0 - right
+            left_coordinate = _affine_point(
+                self.start, self.end, 1.0 - left_complement * left_complement
+            )
+            right_coordinate = _affine_point(
+                self.start, self.end, 1.0 - right_complement * right_complement
+            )
         return [
             min(left_coordinate, right_coordinate),
             max(left_coordinate, right_coordinate),
@@ -575,8 +670,19 @@ class _IntegrationExecution:
         return 1000.0 * (time.perf_counter() - self.started)
 
     def check(self) -> None:
-        if self.cancel is not None and self.cancel():
-            raise _StopIntegration("cancelled")
+        if self.cancel is not None:
+            try:
+                cancelled = bool(self.cancel())
+            except Exception as error:
+                raise _StopIntegration(
+                    "callback_error",
+                    {
+                        "phase": "cancellation_callback",
+                        "error_type": type(error).__name__,
+                    },
+                ) from None
+            if cancelled:
+                raise _StopIntegration("cancelled")
         if self.elapsed_ms() > self.problem.resource_budget.max_elapsed_ms:
             raise _StopIntegration("maximum_elapsed_time")
 
@@ -611,8 +717,10 @@ class _IntegrationExecution:
                 force=True,
             )
             raise _StopIntegration(
-                "callback_error", {"error_type": type(error).__name__}
+                "callback_error",
+                {"phase": "integrand_callback", "error_type": type(error).__name__},
             ) from None
+        self.check()
         if not math.isfinite(value):
             self.trace.append(
                 "failure",
@@ -634,12 +742,21 @@ class _IntegrationExecution:
                 "phase": "validation" if self.in_validation else "solver",
             },
         )
+        self.check()
         return value
 
     def transformed_call(
-        self, x: float, jacobian: float, component: int, parameter: float
+        self,
+        x: float,
+        component: int,
+        parameter: float,
+        *,
+        multipliers: Sequence[float] = (),
+        divisors: Sequence[float] = (),
     ) -> float:
-        value = self.call(x, component, parameter) * jacobian
+        value = _scaled_product_quotient(
+            [self.call(x, component, parameter), *multipliers], divisors
+        )
         if not math.isfinite(value):
             self.nonfinite_transformed(parameter, component)
         return value
@@ -672,17 +789,22 @@ def _gauss_kronrod_21(
     upper: float,
     depth: int,
 ) -> _Interval:
-    center = lower + 0.5 * (upper - lower)
-    half_length = 0.5 * (upper - lower)
+    center = _open_affine_point(lower, upper, 0.5)
+    half_length = _half_width(lower, upper)
     center_value = component.evaluate(execution, center)
     kronrod_terms = [_GK21_CENTER_WEIGHT * center_value]
     gauss_terms: list[float] = []
     absolute_terms = [_GK21_CENTER_WEIGHT * abs(center_value)]
     sampled: list[tuple[float, float]] = []
     for index in range(len(_GK21_ABSCISSAE)):
-        displacement = half_length * _GK21_ABSCISSAE[index]
-        left_value = component.evaluate(execution, center - displacement)
-        right_value = component.evaluate(execution, center + displacement)
+        left_value = component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 - _GK21_ABSCISSAE[index])),
+        )
+        right_value = component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 + _GK21_ABSCISSAE[index])),
+        )
         sampled.append((left_value, right_value))
         pair_sum = math.fsum([left_value, right_value])
         kronrod_terms.append(_GK21_WEIGHTS[index] * pair_sum)
@@ -701,11 +823,13 @@ def _gauss_kronrod_21(
             _GK21_WEIGHTS[index] * (abs(left_value - mean) + abs(right_value - mean))
         )
     absolute_half = abs(half_length)
-    value = kronrod_sum * half_length
-    resabs = math.fsum(absolute_terms) * absolute_half
-    resasc = math.fsum(deviation_terms) * absolute_half
+    value = _scaled_product_quotient((kronrod_sum, half_length))
+    resabs = _scaled_product_quotient((math.fsum(absolute_terms), absolute_half))
+    resasc = _scaled_product_quotient((math.fsum(deviation_terms), absolute_half))
     error = _rescaled_error(
-        abs((kronrod_sum - gauss_sum) * half_length), resabs, resasc
+        abs(_scaled_product_quotient((kronrod_sum - gauss_sum, half_length))),
+        resabs,
+        resasc,
     )
     return _Interval(component, lower, upper, value, error, resabs, resasc, depth)
 
@@ -717,17 +841,22 @@ def _gauss_kronrod_15(
     upper: float,
     depth: int,
 ) -> _Interval:
-    center = lower + 0.5 * (upper - lower)
-    half_length = 0.5 * (upper - lower)
+    center = _open_affine_point(lower, upper, 0.5)
+    half_length = _half_width(lower, upper)
     center_value = component.evaluate(execution, center)
     kronrod_terms = [_GK15_CENTER_WEIGHT * center_value]
     gauss_terms = [_G7_CENTER_WEIGHT * center_value]
     absolute_terms = [_GK15_CENTER_WEIGHT * abs(center_value)]
     sampled: list[tuple[float, float]] = []
     for index in range(len(_GK15_ABSCISSAE)):
-        displacement = half_length * _GK15_ABSCISSAE[index]
-        left_value = component.evaluate(execution, center - displacement)
-        right_value = component.evaluate(execution, center + displacement)
+        left_value = component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 - _GK15_ABSCISSAE[index])),
+        )
+        right_value = component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 + _GK15_ABSCISSAE[index])),
+        )
         sampled.append((left_value, right_value))
         pair_sum = math.fsum([left_value, right_value])
         kronrod_terms.append(_GK15_WEIGHTS[index] * pair_sum)
@@ -746,11 +875,13 @@ def _gauss_kronrod_15(
             _GK15_WEIGHTS[index] * (abs(left_value - mean) + abs(right_value - mean))
         )
     absolute_half = abs(half_length)
-    value = kronrod_sum * half_length
-    resabs = math.fsum(absolute_terms) * absolute_half
-    resasc = math.fsum(deviation_terms) * absolute_half
+    value = _scaled_product_quotient((kronrod_sum, half_length))
+    resabs = _scaled_product_quotient((math.fsum(absolute_terms), absolute_half))
+    resasc = _scaled_product_quotient((math.fsum(deviation_terms), absolute_half))
     error = _rescaled_error(
-        abs((kronrod_sum - gauss_sum) * half_length), resabs, resasc
+        abs(_scaled_product_quotient((kronrod_sum - gauss_sum, half_length))),
+        resabs,
+        resasc,
     )
     return _Interval(component, lower, upper, value, error, resabs, resasc, depth)
 
@@ -791,7 +922,10 @@ def _quadrature_interval(
 def _build_components(problem: NumericalProblem) -> list[_Component]:
     lower, upper, _orientation = _ordered_problem_interval(problem)
     if not math.isfinite(lower) and not math.isfinite(upper):
-        return [_Component(0, "whole_infinite", 0.0, 0.0)]
+        return [
+            _Component(0, "negative_infinite", 0.0, 0.0),
+            _Component(1, "positive_infinite", 0.0, 0.0),
+        ]
     if not math.isfinite(lower):
         return [_Component(0, "negative_infinite", 0.0, upper)]
     if not math.isfinite(upper):
@@ -861,22 +995,26 @@ def _gauss_legendre_8(
     lower: float,
     upper: float,
 ) -> float:
-    center = lower + 0.5 * (upper - lower)
-    half_length = 0.5 * (upper - lower)
+    half_length = _half_width(lower, upper)
     terms: list[float] = []
     for index in range(len(_GL8_ABSCISSAE)):
-        displacement = half_length * _GL8_ABSCISSAE[index]
-        left_value = interval.component.evaluate(execution, center - displacement)
-        right_value = interval.component.evaluate(execution, center + displacement)
+        left_value = interval.component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 - _GL8_ABSCISSAE[index])),
+        )
+        right_value = interval.component.evaluate(
+            execution,
+            _open_affine_point(lower, upper, 0.5 * (1.0 + _GL8_ABSCISSAE[index])),
+        )
         terms.append(_GL8_WEIGHTS[index] * math.fsum([left_value, right_value]))
-    return math.fsum(terms) * half_length
+    return _scaled_product_quotient((math.fsum(terms), half_length))
 
 
 def _independent_interval_value(
     execution: _IntegrationExecution, interval: _Interval
 ) -> float:
     """Apply GL8 on two fresh panels inside one final adaptive leaf."""
-    midpoint = interval.left + 0.5 * (interval.right - interval.left)
+    midpoint = _affine_point(interval.left, interval.right, 0.5)
     return math.fsum(
         [
             _gauss_legendre_8(execution, interval, interval.left, midpoint),
@@ -890,8 +1028,10 @@ def _generic_status(reason: str) -> str:
         return "converged"
     if reason in ("maximum_intervals", "maximum_depth"):
         return "maximum_iterations"
-    if reason in ("maximum_evaluations", "maximum_elapsed_time"):
+    if reason == "maximum_evaluations":
         return "maximum_evaluations"
+    if reason == "maximum_elapsed_time":
+        return "maximum_elapsed_time"
     if reason in ("roundoff_detected", "interval_too_small", "maximum_memory"):
         return "stagnation"
     if reason in (
@@ -914,9 +1054,14 @@ def _diagnostic_for_stop(
         return NumericalDiagnostic(
             "maximum_iterations", details={"integration_stop_reason": reason, **details}
         )
-    if reason in ("maximum_evaluations", "maximum_elapsed_time"):
+    if reason == "maximum_evaluations":
         return NumericalDiagnostic(
             "maximum_evaluations",
+            details={"integration_stop_reason": reason, **details},
+        )
+    if reason == "maximum_elapsed_time":
+        return NumericalDiagnostic(
+            "maximum_elapsed_time",
             details={"integration_stop_reason": reason, **details},
         )
     if reason in ("roundoff_detected", "interval_too_small"):
@@ -973,11 +1118,7 @@ def _validation_record(
             solver_error,
         )
     disagreement = abs(value - independent_value)
-    validation_threshold = max(
-        4.0 * requested,
-        4.0 * solver_error,
-        100.0 * _MACHINE_EPSILON * max(1.0, abs(value), absolute_integral),
-    )
+    validation_threshold = requested
     passed = solver_error <= requested and disagreement <= validation_threshold
     reported_error = max(solver_error, disagreement)
     return (
@@ -1101,6 +1242,7 @@ def solve_integration_problem(
             },
             domain_payload={
                 "integration_status": stop_reason,
+                "solver_stop_reason": stop_reason,
                 "estimated_absolute_error": 0.0,
                 "requested_tolerance": requested_tolerance,
                 "final_intervals": [],
@@ -1125,13 +1267,15 @@ def solve_integration_problem(
                     "max_memory_bytes": max_memory,
                 },
             )
+        initial_intervals: list[_Interval] = []
         for component in components:
             parameter_lower, parameter_upper = component.parameter_interval()
-            intervals.append(
+            initial_intervals.append(
                 _quadrature_interval(
                     execution, component, parameter_lower, parameter_upper, 0
                 )
             )
+        intervals = initial_intervals
         total, total_error, absolute_integral = _totals(intervals)
         solver_value = orientation * total
         solver_error = total_error
@@ -1176,7 +1320,7 @@ def solve_integration_problem(
                         "local_error": parent.error,
                     },
                 )
-            midpoint = parent.left + 0.5 * (parent.right - parent.left)
+            midpoint = _affine_point(parent.left, parent.right, 0.5)
             if midpoint == parent.left or midpoint == parent.right:
                 raise _StopIntegration(
                     "interval_too_small",
@@ -1256,7 +1400,8 @@ def solve_integration_problem(
             solver_error = max(0.0, total_error)
             requested_tolerance = _target(problem, solver_value)
 
-    solver_converged = stop_reason == "converged"
+    solver_stop_reason = stop_reason
+    solver_converged = solver_stop_reason == "converged"
     if solver_converged:
         try:
             execution.in_validation = True
@@ -1266,6 +1411,7 @@ def solve_integration_problem(
                     for interval in intervals
                 ]
             )
+            execution.check()
         except _StopIntegration as stop:
             stop_reason = stop.reason
             stop_details = {"phase": "independent_validation", **stop.details}
@@ -1273,7 +1419,7 @@ def solve_integration_problem(
             execution.in_validation = False
 
     validation, validation_passed, reported_error = _validation_record(
-        solver_converged and stop_reason == "converged",
+        solver_converged,
         solver_value,
         solver_error,
         requested_tolerance,
@@ -1330,6 +1476,7 @@ def solve_integration_problem(
     workspace_bytes = _workspace_bytes(len(intervals), len(components))
     payload = {
         "integration_status": stop_reason,
+        "solver_stop_reason": solver_stop_reason,
         "estimated_absolute_error": reported_error,
         "embedded_error_estimate": solver_error,
         "requested_tolerance": requested_tolerance,

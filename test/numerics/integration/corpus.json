@@ -105,6 +105,46 @@
       "absolute_acceptance": 2e-10
     },
     {
+      "id": "whole_line_integrable_odd",
+      "class": "conditioned",
+      "integrand": "odd_gaussian",
+      "bounds": ["-infinity", "+infinity"],
+      "expected": 0.0,
+      "absolute_acceptance": 1e-12,
+      "expected_diagnostic": "loss_of_significance"
+    },
+    {
+      "id": "whole_line_divergent_odd",
+      "class": "failure",
+      "integrand": "odd_divergent",
+      "bounds": ["-infinity", "+infinity"],
+      "options": {"max_depth": 12},
+      "expected_stop_reason": "maximum_depth"
+    },
+    {
+      "id": "huge_finite_scaled_constant",
+      "class": "conditioned",
+      "integrand": "tiny_constant",
+      "bounds": [-1e308, 1e308],
+      "expected": 2.0,
+      "absolute_acceptance": 2e-14
+    },
+    {
+      "id": "unresolved_shifted_endpoint_singularity",
+      "class": "failure",
+      "integrand": "inverse_sqrt_shift_1e10",
+      "bounds": [1e10, 10000000001.0],
+      "options": {"endpoint_singularities": "left"},
+      "expected_stop_reason": "interval_too_small"
+    },
+    {
+      "id": "no_representable_interior_node",
+      "class": "failure",
+      "integrand": "x2",
+      "bounds": [1.0, 1.0000000000000002],
+      "expected_stop_reason": "interval_too_small"
+    },
+    {
       "id": "finite_cancellation",
       "class": "conditioned",
       "integrand": "large_odd",

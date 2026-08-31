@@ -52,8 +52,13 @@ The infinite maps are:
 
 - `[a, +infinity)`: `x = a + (1-t)/t`, `dx = dt/t^2` after reversing limits;
 - `(-infinity, b]`: `x = b - (1-t)/t`, `dx = dt/t^2`; and
-- the whole line: the paired integrand
-  `(f((1-t)/t) + f(-(1-t)/t))/t^2` on `(0, 1]`.
+- the whole line: two independently adapted components, one using each
+  semi-infinite map above with the split point `0`.
+
+The two whole-line halves are never paired before local error and `abs(f)`
+evidence is formed. This prevents an odd divergent callback from being silently
+accepted as a symmetric Cauchy principal value and preserves cancellation
+evidence for convergent odd callbacks.
 
 Reversed bounds preserve the usual sign convention. Infinite intervals with
 interior breakpoints are rejected until multiple semi-infinite components have
@@ -64,7 +69,9 @@ a qualified error-allocation contract.
 Every execution enforces callback evaluations, active intervals, subdivision
 depth, elapsed time, conservative workspace bytes, trace events, trace bytes,
 and an optional cancellation callback. The shared `status` remains within the
-versioned P0 result vocabulary. `stop_reason` preserves the exact domain state:
+versioned P0 result vocabulary; elapsed-time exhaustion uses its exact
+`maximum_elapsed_time` status and diagnostic. `stop_reason` preserves the exact
+domain state:
 
 - `converged`, `zero_interval`;
 - `maximum_evaluations`, `maximum_elapsed_time`, `maximum_intervals`;
@@ -74,7 +81,8 @@ versioned P0 result vocabulary. `stop_reason` preserves the exact domain state:
 
 The best complete partition and estimate are retained on budget or stagnation
 failures. A partial quadrature-rule evaluation is never published as a complete
-interval.
+interval, and an initial multi-component partition is published only after
+every component has a complete first rule.
 
 ## Trace and explanation semantics
 
@@ -94,11 +102,22 @@ particular, nested multidimensional calls are not labeled supported until they
 can share one honest global tolerance, evaluation count, cancellation signal,
 and memory budget.
 
+All adaptive error evidence comes from finitely many deterministic nodes. A
+feature that is narrow enough to lie between every initial Gauss-Kronrod and
+Gauss-Legendre node can therefore remain unseen; independent-rule agreement is
+convergence-supporting evidence, not a certificate that an arbitrary callback
+has no unsampled feature. Supply breakpoints bracketing known narrow peaks or
+localized transitions. Similarly, a shifted endpoint singularity can become
+unresolvable when no binary64 number represents the transformed physical
+coordinate; that case stops as `interval_too_small` rather than probing the
+singular endpoint or reporting callback failure.
+
 ## Evidence
 
 - `test/numerics/integration/corpus.json` classifies analytic, singular,
   infinite, conditioned, pathological, metamorphic, and failure cases.
-- `integration-laboratory.cjs` runs the same corpus in CPython and Sage.js.
+- `test.cjs` runs the same corpus in CPython and Sage.js and is discovered by
+  the repository integration-test manifest.
 - `scipy-mpmath-oracle.py` differentially compares finite, breakpoint,
   singular, and infinite cases against SciPy 1.18 QUADPACK and mpmath 1.3
   high-precision references.
