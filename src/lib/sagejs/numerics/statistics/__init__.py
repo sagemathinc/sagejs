@@ -6,6 +6,7 @@ in the shared `sagejs.numerics` facade is owned by the integration lane.
 """
 
 from .descriptive import correlation, covariance, describe, quantile
+from .capabilities import capabilities, plan, supports
 from .distributions import Binomial, ChiSquare, Distribution, Normal, Poisson, StudentT
 from .inference import confidence_interval_mean, one_sample_t_test, two_sample_t_test
 from .regression import (
@@ -31,6 +32,7 @@ __all__ = [
     "StatisticsResult",
     "StudentT",
     "cauchy_loss",
+    "capabilities",
     "confidence_interval_mean",
     "correlation",
     "covariance",
@@ -39,9 +41,11 @@ __all__ = [
     "huber_regression",
     "linear_regression",
     "one_sample_t_test",
+    "plan",
     "quantile",
     "sample",
     "soft_l1_loss",
+    "supports",
     "theil_sen_regression",
     "two_sample_t_test",
 ]

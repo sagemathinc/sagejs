@@ -6,6 +6,8 @@ import math
 from collections.abc import Callable
 from typing import Any
 
+from ..model import ResourceBudget
+from ..trace import NumericalTrace, TracePolicy
 from ._core import binary64_ulp, validate_probability
 from ._special import (
     log_gamma,
@@ -192,15 +194,16 @@ class Distribution:
     def quantile(self, probability: float) -> float | int:
         raise NotImplementedError
 
-    def plot(
+    def curve(
         self,
         function: str = "pdf",
         *,
         lower: float | None = None,
         upper: float | None = None,
         points: int = 257,
-    ) -> Any:
-        """Return a bounded semantic PlotSpec for a density/mass/CDF curve."""
+        trace: str = "summary",
+    ) -> StatisticsResult:
+        """Return a structured bounded curve result without widening envelopes."""
         if function not in ("pdf", "pmf", "cdf", "sf"):
             raise ValueError("function must be pdf, pmf, cdf, or sf")
         if (
@@ -224,6 +227,8 @@ class Distribution:
             start = int(math.ceil(lower))
             stop = int(math.floor(upper))
             xs = [float(value) for value in range(start, stop + 1)]
+            if not xs:
+                raise ValueError("plot bounds contain no discrete support point")
             if len(xs) > points:
                 raise ValueError("discrete plot support exceeds the point budget")
         else:
@@ -237,7 +242,42 @@ class Distribution:
             raise ValueError(
                 "distribution plot ordinates must be finite and nonnegative"
             )
-        result = StatisticsResult(
+        trace_record = NumericalTrace(
+            TracePolicy(trace, max_events=16, max_bytes=65_536)
+        )
+        trace_record.append(
+            "start",
+            data={
+                "operation": "distribution_curve",
+                "distribution": self.name,
+                "function": method_name,
+                "point_ceiling": 4096,
+            },
+            important=True,
+            force=True,
+        )
+        trace_record.append(
+            "phase",
+            data={
+                "lower": xs[0],
+                "upper": xs[-1],
+                "points": len(xs),
+                "tail_visualization": method_name in ("cdf", "sf"),
+            },
+        )
+        trace_record.append(
+            "validation",
+            data={"finite_nonnegative_ordinates": ordinates_ok},
+            important=True,
+            force=True,
+        )
+        trace_record.append(
+            "finish",
+            data={"status": "converged"},
+            important=True,
+            force=True,
+        )
+        return StatisticsResult(
             "distribution_curve",
             success=True,
             status="converged",
@@ -253,6 +293,19 @@ class Distribution:
                     }
                 ],
             },
+            assumptions=(
+                "the curve is evaluated only inside the documented binary64 parameter and tail envelope",
+                "finite display sampling is a visualization, not a probability normalization proof",
+            ),
+            trace=trace_record,
+            evaluations=len(xs),
+            resource_budget=ResourceBudget(
+                max_iterations=16,
+                max_evaluations=4096,
+                max_elapsed_ms=30_000,
+                max_trace_events=16,
+                max_trace_bytes=65_536,
+            ),
             domain_payload={
                 "plot": {
                     "kind": "distribution",
@@ -262,7 +315,34 @@ class Distribution:
                 }
             },
         )
-        return result.to_plot_spec()
+
+    def plot(
+        self,
+        function: str = "pdf",
+        *,
+        lower: float | None = None,
+        upper: float | None = None,
+        points: int = 257,
+        trace: str = "summary",
+    ) -> Any:
+        """Return an accessible bounded semantic PlotSpec for this law."""
+        return self.curve(
+            function, lower=lower, upper=upper, points=points, trace=trace
+        ).to_plot_spec()
+
+    def animate(
+        self,
+        function: str = "pdf",
+        *,
+        lower: float | None = None,
+        upper: float | None = None,
+        points: int = 257,
+        trace: str = "summary",
+    ) -> Any:
+        """Return a bounded progressive PlotAnimation for this law."""
+        return self.curve(
+            function, lower=lower, upper=upper, points=points, trace=trace
+        ).to_plot_animation()
 
 
 class Normal(Distribution):

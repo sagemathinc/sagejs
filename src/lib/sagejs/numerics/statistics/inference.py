@@ -216,6 +216,15 @@ def confidence_interval_mean(
             "passed": passed,
             "checks": checks,
         }
+        guard.trace.append(
+            "phase",
+            data={
+                "estimate": mean,
+                "standard_error": standard_error,
+                "degrees_of_freedom": len(values) - 1,
+                "interval": [lower, upper],
+            },
+        )
         guard.trace.append("validation", data=validation, important=True, force=True)
         guard.trace.append(
             "finish" if passed else "failure",
@@ -359,6 +368,17 @@ def one_sample_t_test(
             "passed": passed,
             "checks": checks,
         }
+        guard.trace.append(
+            "phase",
+            data={
+                "estimate": mean,
+                "null_value": null_mean,
+                "statistic": statistic,
+                "p_value": pvalue,
+                "alternative": alternative,
+                "confidence_interval": interval,
+            },
+        )
         guard.trace.append("validation", data=validation, important=True, force=True)
         guard.trace.append(
             "finish" if passed else "failure",
@@ -389,19 +409,17 @@ def one_sample_t_test(
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
             resource_budget=guard.budget,
-            domain_payload=(
-                {
-                    "plot": {
-                        "kind": "interval",
-                        "parameter": "population mean",
-                        "estimate": mean,
-                        "lower": interval[0],
-                        "upper": interval[1],
-                    }
+            domain_payload={
+                "plot": {
+                    "kind": "interval",
+                    "parameter": "population mean",
+                    "estimate": mean,
+                    "lower": interval[0],
+                    "upper": interval[1],
+                    "null": null_mean,
+                    "alternative": alternative,
                 }
-                if alternative == "two-sided"
-                else None
-            ),
+            },
         )
     except StatisticsStopped as stopped:
         return _stopped("one_sample_t_test", "one-sample-student-t", guard, stopped)
@@ -561,6 +579,18 @@ def two_sample_t_test(
             if equal_variance
             else "Welch's unequal-variance standard error and Satterthwaite degrees of freedom are used"
         )
+        guard.trace.append(
+            "phase",
+            data={
+                "estimate": estimate,
+                "null_value": 0.0,
+                "statistic": statistic,
+                "p_value": pvalue,
+                "alternative": alternative,
+                "confidence_interval": interval,
+                "degrees_of_freedom": degrees,
+            },
+        )
         guard.trace.append("validation", data=validation, important=True, force=True)
         guard.trace.append(
             "finish" if passed else "failure",
@@ -591,19 +621,17 @@ def two_sample_t_test(
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
             resource_budget=guard.budget,
-            domain_payload=(
-                {
-                    "plot": {
-                        "kind": "interval",
-                        "parameter": "difference in means",
-                        "estimate": estimate,
-                        "lower": interval[0],
-                        "upper": interval[1],
-                    }
+            domain_payload={
+                "plot": {
+                    "kind": "interval",
+                    "parameter": "difference in means",
+                    "estimate": estimate,
+                    "lower": interval[0],
+                    "upper": interval[1],
+                    "null": 0.0,
+                    "alternative": alternative,
                 }
-                if alternative == "two-sided"
-                else None
-            ),
+            },
         )
     except StatisticsStopped as stopped:
         return _stopped("two_sample_t_test", method, guard, stopped)

@@ -58,6 +58,7 @@ from sagejs.numerics import (
     NumericalValidation,
     ResourceBudget,
 )
+from sagejs.plotting import PlotAnimation, PlotSpec
 from sagejs.numerics.statistics import (
     RNG_ALGORITHM,
     RNG_CONTRACT_VERSION,
@@ -68,6 +69,7 @@ from sagejs.numerics.statistics import (
     RandomStream,
     StudentT,
     cauchy_loss,
+    capabilities,
     confidence_interval_mean,
     correlation,
     covariance,
@@ -76,9 +78,11 @@ from sagejs.numerics.statistics import (
     huber_regression,
     linear_regression,
     one_sample_t_test,
+    plan,
     quantile,
     sample,
     soft_l1_loss,
+    supports,
     theil_sen_regression,
     two_sample_t_test,
 )
@@ -97,6 +101,18 @@ assert isinstance(summary.plan_record, NumericalPlan)
 assert isinstance(summary.validation, NumericalValidation)
 assert summary.validation.passed
 assert summary.trace.events[0].kind == "start"
+summary_explanation = summary.explanation()
+assert summary_explanation["kind"] == "statistics-explanation"
+assert summary_explanation["evidence"]["validation_passed"]
+summary_explanation["interpretation"].append("mutated")
+assert "mutated" not in summary.explanation()["interpretation"]
+summary_plot = summary.to_plot_spec()
+assert isinstance(summary_plot, PlotSpec) and len(summary_plot.layers) == 2
+assert "median" in summary_plot.alt_text().lower()
+assert all(item.code != "PLOT_ALT_TEXT_MISSING" for item in summary_plot.validate())
+summary_animation = summary.animate()
+assert isinstance(summary_animation, PlotAnimation)
+assert 2 <= len(summary_animation.frames) <= 8
 summary_record = json.loads(summary.to_json())
 assert summary_record["schema_version"] == 1
 assert summary_record["status"] in STATUS_CODES
@@ -106,6 +122,7 @@ assert {
     "iterations", "evaluations", "elapsed_ms", "measurements", "trace",
     "provenance", "reproducibility", "domain_payload",
 }.issubset(summary_record)
+assert summary_record["domain_payload"]["explanation"]["kind"] == "statistics-explanation"
 detached_summary = summary.value
 detached_summary["mean"] = -999
 assert summary.value["mean"] == 2.5
@@ -162,7 +179,14 @@ assert poisson.quantile(0.75) == 5
 assert close(sum(binomial.pmf(k) for k in range(11)), 1.0)
 assert close(sum(poisson.pmf(k) for k in range(60)), 1.0)
 assert Poisson(0).pmf(0) == 1.0 and Poisson(0).quantile(1.0) == 0
-assert len(normal.plot("cdf", lower=-4, upper=4, points=33).layers) == 1
+normal_curve = normal.curve("sf", lower=0, upper=8, points=33)
+assert normal_curve.success and len(normal_curve.trace.events) == 4
+tail_plot = normal_curve.to_plot_spec()
+assert len(tail_plot.layers) == 2 and "upper tail" in tail_plot.alt_text()
+tail_animation = normal_curve.animate()
+assert isinstance(tail_animation, PlotAnimation) and len(tail_animation.frames) == 8
+assert len(normal.plot("cdf", lower=-4, upper=4, points=33).layers) == 2
+assert isinstance(student.animate("sf", lower=0, upper=10, points=17), PlotAnimation)
 
 rng = RandomStream(42)
 assert RNG_ALGORITHM == "pcg32-xsh-rr-v1"
@@ -192,6 +216,8 @@ assert RandomStream(42).spawn(3).uint32() != RandomStream(42).spawn(4).uint32()
 sample_a = sample(Normal(2, 3), 12, seed=2026)
 sample_b = sample(Normal(2, 3), 12, seed=2026)
 assert sample_a.success and sample_a.value == sample_b.value
+assert len(sample_a.to_plot_spec().layers) == 1
+assert len(sample_a.animate().frames) == 8
 sample_replay = sample_a.to_dict()["reproducibility"]
 assert sample_replay["replayable"]
 sample_evidence = sample_replay["problem"]["function"]["evidence"]
@@ -229,9 +255,13 @@ assert one_sided.value["reject_at_alpha"]
 assert one_sided.value["confidence_interval"][0] > 0
 assert one_sided.value["confidence_interval"][1] is None
 assert one_sided.validation.to_dict()["checks"][1]["passed"]
+assert "positive infinity" in one_sided.to_plot_spec().alt_text()
+assert len(one_sided.animate().frames) == 2
 zero_variance = one_sample_t_test([4, 4, 4], 4)
 assert zero_variance.status == "invalid_problem"
 assert zero_variance.diagnostics[0].code == "validation_failed"
+assert "did not produce" in zero_variance.to_plot_spec().alt_text()
+assert len(zero_variance.animate().frames) == 2
 
 welch = two_sample_t_test(
     [1.0, 2.0, 4.0, 7.0, 8.0],
@@ -276,6 +306,9 @@ assert huber.success
 robust_ols = linear_regression(robust_x, robust_y)
 assert abs(huber.value["slope"] - 2.0) < abs(robust_ols.value["slope"] - 2.0)
 assert huber.value["weights"][-1] < 0.5
+assert len(huber.to_plot_spec().layers) == 3
+assert "weight below 0.8" in huber.to_plot_spec().alt_text()
+assert 2 <= len(huber.animate().frames) <= 12
 assert close(
     huber.value["objective"],
     sum(
@@ -309,6 +342,72 @@ assert abs(soft_l1_loss(1e-9) / 1e-18 - 1.0) < 2e-15
 assert math.isfinite(soft_l1_loss(1e155))
 assert math.isfinite(cauchy_loss(1e155))
 
+tiny_fit = linear_regression([0, 1, 2], [0, 1, 2.1])
+assert "overfit" in tiny_fit.to_plot_spec().alt_text()
+assert "predictive performance" in " ".join(tiny_fit.explanation()["limitations"])
+
+planning_calls = {"callbacks": 0}
+def forbidden_planning_callback(value):
+    planning_calls["callbacks"] += 1
+    planning_stream.uint32()
+    raise AssertionError("planning evaluated a callback")
+
+planning_stream = RandomStream(9182)
+planning_state = planning_stream.state()
+expected_operations = {
+    "descriptive_statistics", "distribution_curve", "random_sample",
+    "mean_confidence_interval", "one_sample_t_test", "two_sample_t_test",
+    "linear_regression", "theil_sen_regression", "huber_regression",
+    "quantile", "covariance", "correlation",
+    "huber_loss", "soft_l1_loss", "cauchy_loss",
+}
+registry = capabilities()
+assert set(registry["operations"]) == expected_operations
+registry["operations"].clear()
+assert set(capabilities()["operations"]) == expected_operations
+assert set(capabilities("random_sample")["operations"]) == {"random_sample"}
+assert capabilities("not_an_operation")["operations"] == {}
+for operation in expected_operations:
+    problem = NumericalProblem(
+        "statistics", operation,
+        function=forbidden_planning_callback,
+        method="auto",
+    )
+    assert supports(problem)
+    resolved = plan(problem)
+    assert isinstance(resolved, NumericalPlan)
+    assert resolved.problem is problem
+    assert resolved.to_dict()["expected_resources"]["planning_evaluations"] == 0
+    assert resolved.to_dict()["capability"]["operation"] == operation
+    assert resolved.to_dict()["capability"]["validation"]
+assert planning_calls["callbacks"] == 0
+assert planning_stream.state() == planning_state
+assert supports(summary.problem) and plan(summary.problem).method == summary.method
+assert not supports(NumericalProblem("other-domain", "descriptive_statistics"))
+try:
+    plan(summary.problem, "not-a-method")
+    raise AssertionError("unsupported plan method must fail")
+except ValueError:
+    pass
+
+visual_rng = RandomStream(11235)
+visual_sample = sample(Normal(), 24, rng=visual_rng)
+state_after_sampling = visual_rng.state()
+visual_sample.to_plot_spec()
+visual_sample.animate()
+assert visual_rng.state() == state_after_sampling
+
+for visual_result in (
+    summary, normal_curve, sample_a, interval, one_sided, welch,
+    ols, theil, huber, zero_variance,
+):
+    spec = visual_result.to_plot_spec()
+    animation = visual_result.animate()
+    assert isinstance(spec, PlotSpec) and spec.alt_text()
+    assert isinstance(animation, PlotAnimation)
+    assert 2 <= len(animation.frames) <= 12
+    assert animation.to_dict()["limits"]["max_total_samples"] == 100000
+
 for function in (
     lambda: describe([]),
     lambda: describe([1, float("nan")]),
@@ -322,6 +421,7 @@ for function in (
     lambda: Poisson(1000001),
     lambda: Normal(1e308, 1e308).quantile(.9),
     lambda: ChiSquare(1).plot("pdf", lower=0, upper=1),
+    lambda: Binomial(10, .3).plot("pdf", lower=.1, upper=.9),
     lambda: RandomStream(-1),
     lambda: RandomStream(1 << 4097),
     lambda: confidence_interval_mean([1, 2, 3], 0.9999999999999999),
@@ -346,6 +446,10 @@ test("statistics vertical slice runs in Sage.js", () => {
 
 const oracleText = readFileSync(join(__dirname, "oracle-fixtures.json"), "utf8");
 const failureText = readFileSync(join(__dirname, "failure-corpus.json"), "utf8");
+const teachingText = readFileSync(
+  join(root, "docs", "numerical-computing", "statistics", "assets", "teaching-cases.json"),
+  "utf8",
+);
 
 const oracleWitness = String.raw`
 import json
@@ -519,4 +623,10 @@ test("offline SciPy/R and failure corpora remain versioned", () => {
   assert.ok(oracle.distributions.student_t_5_quantiles.length >= 5);
   assert.equal(failures.schema_version, 1);
   assert.ok(failures.cases.length >= 10);
+  const teaching = JSON.parse(teachingText);
+  assert.equal(teaching.schema_version, 1);
+  assert.deepEqual(
+    teaching.cases.map((entry) => entry.concept).sort(),
+    ["honest failure", "outlier resistance", "overfit risk", "tail probability"],
+  );
 });
