@@ -55,6 +55,8 @@
     "dist/ffi-resource-backend.mjs",
     "dist/ffi-resource-manifest.json",
     "dist/m4ri-resource.wasm",
+    "dist/cminpack.wasm",
+    "dist/numerical-backend.mjs",
     "dist/m4ri-resource-adapter.c",
     "dist/m4ri-resource-backend.mjs",
     "dist/m4ri-resource-manifest.json",

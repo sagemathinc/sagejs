@@ -73,6 +73,12 @@ const productionPackAddon = join(
   "pack",
   "sagejs_native_kernel_pack.node",
 );
+const numericalBackendArtifact = join(
+  root,
+  "dist",
+  "numerical",
+  "cminpack.wasm",
+);
 
 const embeddedStandaloneLibraryBanner = `globalThis.__sagejs_embedded_standalone_library__ = ${JSON.stringify(
   {
@@ -471,6 +477,7 @@ function buildExecutable(name, withFlint, seaNode) {
     "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
     "worker/kernel-worker.cjs": kernelWorkerBundle,
     "native/zeromq.node": zeroMQAddonFilename(),
+    "numerical/cminpack.wasm": numericalBackendArtifact,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     ...collectJsonCacheAssets("lazy-module-cache"),
@@ -567,6 +574,16 @@ function buildExecutable(name, withFlint, seaNode) {
   console.log(
     `Built ${relative(root, output)} (${withFlint ? "with native mathematics" : "Python runtime"})`,
   );
+}
+
+execFileSync(process.execPath, [
+  join(root, "packages", "flint-wasm", "numerical", "scripts", "build.cjs"),
+], {
+  cwd: root,
+  stdio: "inherit",
+});
+if (!existsSync(numericalBackendArtifact)) {
+  throw new Error("cminpack numerical backend build did not publish its SEA asset");
 }
 
 rmSync(outputDirectory, { recursive: true, force: true });

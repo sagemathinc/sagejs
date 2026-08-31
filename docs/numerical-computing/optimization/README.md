@@ -19,6 +19,8 @@ current Linux x64 CPython and Sage.js Node evidence covers:
 | box-bounded minimum | `projected-bfgs` | at least one finite box bound, dimension at most 128 |
 | nonlinear system | `damped-newton` | square dense system, dimension at most 128 |
 | nonlinear least squares / curve fit | `damped-gauss-newton` | dense Jacobian envelope below |
+| nonlinear least squares / curve fit | `cminpack-lmdif` | explicit-only cminpack finite-difference Levenberg-Marquardt; `1 <= n <= 128`, `n <= m <= 16384` |
+| nonlinear least squares / curve fit | `cminpack-lmder` | explicit-only cminpack analytic-Jacobian Levenberg-Marquardt; same envelope |
 | affine fit | `centered-linear-fit` | two parameters |
 
 `auto` respects these envelopes. In particular, derivative-free problems above
@@ -29,6 +31,30 @@ raises before callback evaluation.
 These names do not imply a different library algorithm. `projected-bfgs` is
 not TNC or L-BFGS-B, `damped-gauss-newton` is not MINPACK `lmdif`/`lmder`, and
 `damped-newton` is not MINPACK `hybr`.
+
+The two `cminpack-*` identities are the exception: they execute the pinned
+cminpack implementation in a 72,155-byte, separately lazy universal Wasm
+reactor. They are available in Sage.js Node, browser, and SEA runtimes on the
+four release platforms, but remain explicit-only:
+
+```python
+from sagejs.numerics.optimization import least_squares
+
+fit = least_squares(
+    lambda p: [10.0 * (p[1] - p[0] * p[0]), 1.0 - p[0]],
+    [-1.2, 1.0],
+    method="cminpack-lmdif",
+)
+assert fit.method == "cminpack-lmdif"
+assert fit.backend == "cminpack-wasm"
+assert fit.success and fit.validation.passed
+```
+
+Use `cminpack-lmder` only with `jacobian=...`. An exact method request either
+executes that implementation or fails; it never silently substitutes
+`damped-gauss-newton`. `auto` intentionally continues to select the
+ordinary-Python implementation until an automatic-selection policy has its
+own public correctness and performance receipts.
 
 ## Validation and failures
 
@@ -157,14 +183,17 @@ mathematical oracles rather than interchangeable methods.
 
 This slice is not yet the complete P3 backend portfolio. It does **not** claim:
 
-- cminpack Wasm `lmdif`/`lmder` or Sage `find_fit` compatibility;
+- Sage `find_fit` compatibility or automatic cminpack selection;
 - NLopt/PRIMA Nelder-Mead or feasibility-aware COBYLA;
 - Powell, CG, Newton-CG, TNC, or L-BFGS-B;
 - nonlinear constraints, global optimization, or arbitrary precision;
-- browser, SEA, Linux ARM64, macOS ARM64, or Windows x64 qualification; or
-- four-platform release qualification.
+- general nonlinear-optimization qualification outside the exact envelopes
+  above; or
+- cminpack qualification on a platform/runtime not listed by `capabilities()`.
 
 Those capabilities remain absent until their exact-method corpus, independent
 feasibility checks, Wasm upstream tests, browser run, payload evidence, and
-four-host receipts are checked in. The central integration lane owns the shared
-package graph, public registries, and top-level numerical surface.
+four-host receipts are checked in. cminpack's source, license, artifact, MGH
+oracle corpus, browser receipt, resource limits, and lifecycle evidence live in
+`packages/flint-wasm/numerical/`; its low-level success code is never accepted
+as the public validation result.

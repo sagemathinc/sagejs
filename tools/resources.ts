@@ -45,6 +45,8 @@ const GRAPH_FFI_MANIFEST_ASSET = "native/sagejs_igraph_ffi_manifest.json";
 const FFLAS_FFI_ASSET = "native/sagejs_fflas_ffi.node";
 const FFLAS_FFI_MANIFEST_ASSET = "native/sagejs_fflas_ffi_manifest.json";
 const ZEROMQ_ASSET = "native/zeromq.node";
+const NUMERICAL_BACKEND_ASSET = "numerical/cminpack.wasm";
+const NUMERICAL_BACKEND_MODULE = "@sagemath/sagejs-numerical";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
@@ -71,6 +73,7 @@ let flintModule: unknown;
 let graphModule: unknown;
 let fflasModule: unknown;
 let zeroMQModule: unknown;
+let numericalBackendModule: unknown;
 const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
 let kernelWorkerFilename: string | undefined;
@@ -987,6 +990,61 @@ function loadEmbeddedZeroMQ(): unknown {
   return zeroMQModule;
 }
 
+function numericalBackendArtifact(): Uint8Array {
+  if (isSea()) {
+    if (!hasAsset(NUMERICAL_BACKEND_ASSET)) {
+      throw new Error(
+        "This Sage.js executable was built without the cminpack numerical backend",
+      );
+    }
+    return assetBytes(NUMERICAL_BACKEND_ASSET);
+  }
+  const candidates = [
+    join(__dirname, "..", "numerical", "cminpack.wasm"),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "cminpack.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "cminpack.wasm",
+    ),
+  ];
+  const filename = candidates.find((candidate) => existsSync(candidate));
+  if (filename === undefined) {
+    throw new Error(
+      "The cminpack numerical backend is unavailable; run " +
+        "`node packages/flint-wasm/numerical/scripts/build.cjs`",
+    );
+  }
+  return new Uint8Array(readFileSync(filename));
+}
+
+function loadNumericalBackend(): unknown {
+  if (numericalBackendModule !== undefined) return numericalBackendModule;
+  const runtime = require("../numerical/backend.cjs") as {
+    createCminpackBackendSync(bytes: Uint8Array): unknown;
+  };
+  if (typeof runtime.createCminpackBackendSync !== "function") {
+    throw new TypeError("the cminpack numerical runtime adapter is invalid");
+  }
+  numericalBackendModule = runtime.createCminpackBackendSync(
+    numericalBackendArtifact(),
+  );
+  return numericalBackendModule;
+}
+
 export function runtimeRequire(name: string): unknown {
   if (runtimeModuleCache.has(name)) return runtimeModuleCache.get(name);
   const kind = NATIVE_RUNTIME_MODULES.has(name)
@@ -1002,6 +1060,8 @@ export function runtimeRequire(name: string): unknown {
       module = loadEmbeddedGraph();
     } else if (isSea() && name === "zeromq") {
       module = loadEmbeddedZeroMQ();
+    } else if (name === NUMERICAL_BACKEND_MODULE) {
+      module = loadNumericalBackend();
     } else if (name === "numpy-ts") {
       module = require("../vendor/numpy-ts.cjs");
     } else if (name === "@sagemath/sagejs-symbolic") {
@@ -1016,6 +1076,7 @@ export function runtimeRequire(name: string): unknown {
 
 export function cleanNativeResources(): void {
   runtimeModuleCache.clear();
+  numericalBackendModule = undefined;
   nativeKernelModules.clear();
   if (!nativeTemporaryDirectory || !existsSync(nativeTemporaryDirectory)) return;
   try {

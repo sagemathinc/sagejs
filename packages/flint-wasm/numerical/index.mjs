@@ -3,6 +3,7 @@ const HOST_CANCELLED = -1002;
 const HOST_MAXIMUM_EVALUATIONS = -1003;
 const HOST_MAXIMUM_ELAPSED_TIME = -1004;
 const HOST_INVALID_OUTPUT = -1005;
+const HOST_MAXIMUM_ITERATIONS = -1006;
 const MAXIMUM_VARIABLES = 256;
 const MAXIMUM_RESIDUALS = 16384;
 
@@ -29,6 +30,7 @@ const backendStatus = Object.freeze({
   [-1003]: "maximum_evaluations",
   [-1004]: "maximum_elapsed_time",
   [-1005]: "invalid_callback_output",
+  [-1006]: "maximum_iterations",
   [-2001]: "invalid_argument",
   [-2002]: "allocation_failed",
   [-2003]: "corrupt_memory_region",
@@ -88,11 +90,7 @@ function checkedView(memory, offset, length, Type, description) {
   return new Type(memory.buffer, offset, length);
 }
 
-export async function createCminpackBackend(moduleOrBytes) {
-  const module =
-    moduleOrBytes instanceof WebAssembly.Module
-      ? moduleOrBytes
-      : await WebAssembly.compile(moduleOrBytes);
+function validateModule(module) {
   const imports = WebAssembly.Module.imports(module);
   const unexpectedImports = imports.filter(
     ({ module: namespace, name, kind }) =>
@@ -101,6 +99,10 @@ export async function createCminpackBackend(moduleOrBytes) {
   if (unexpectedImports.length > 0 || imports.length !== 1) {
     throw new Error(`unexpected P3 Wasm imports: ${JSON.stringify(imports)}`);
   }
+}
+
+function createCminpackBackendFromModule(module) {
+  validateModule(module);
 
   let instance;
   let activeHandle = 0;
@@ -117,6 +119,18 @@ export async function createCminpackBackend(moduleOrBytes) {
     if (context == null || activeHandle !== handle || context.m !== m || context.n !== n) {
       return HOST_CALLBACK_EXCEPTION;
     }
+    // cminpack calls its nprint hook once at the beginning of each outer
+    // iteration and once more after termination. Returning a negative status
+    // from the latter is ignored by cminpack, so a saturated counter both
+    // bounds real iteration starts and leaves normal finalization untouched.
+    if ((flags & 8) !== 0) {
+      if (context.failure != null) return context.failure.status;
+      if (context.iterations >= context.maximumIterations) {
+        return HOST_MAXIMUM_ITERATIONS;
+      }
+      context.iterations += 1;
+      return 0;
+    }
     try {
       if (context.signal?.aborted || context.cancelled?.() === true ||
           (context.cancellationBuffer != null &&
@@ -127,9 +141,10 @@ export async function createCminpackBackend(moduleOrBytes) {
           nowMilliseconds() - context.started >= context.maximumElapsedMs) {
         return fail(context, HOST_MAXIMUM_ELAPSED_TIME);
       }
-      if (context.evaluations >= context.maximumEvaluations) {
+      if (context.callbackEvaluations >= context.maximumCallbackEvaluations) {
         return fail(context, HOST_MAXIMUM_EVALUATIONS);
       }
+      context.callbackEvaluations += 1;
       const memory = instance.exports.memory;
       const x = Array.from(checkedView(memory, xOffset, n, Float64Array, "x"));
       if ((flags & 1) !== 0) {
@@ -160,7 +175,7 @@ export async function createCminpackBackend(moduleOrBytes) {
     }
   }
 
-  instance = await WebAssembly.instantiate(module, { sagejs_p3: { evaluate } });
+  instance = new WebAssembly.Instance(module, { sagejs_p3: { evaluate } });
   instance.exports._initialize?.();
   const required = [
     "memory",
@@ -225,12 +240,18 @@ export async function createCminpackBackend(moduleOrBytes) {
       throw new RangeError("maximumEvaluations must be a positive integer");
     }
     const maximumCallbackEvaluations = options.maximumCallbackEvaluations ??
-      maxfev + (method === 1 ? n + 1 : 0);
+      (method === 1
+        ? Math.min(Number.MAX_SAFE_INTEGER, maxfev + n + 1)
+        : Math.min(Number.MAX_SAFE_INTEGER, maxfev * 2));
     if (!Number.isSafeInteger(maximumCallbackEvaluations) ||
         maximumCallbackEvaluations <= 0) {
       throw new RangeError(
         "maximumCallbackEvaluations must be a positive integer",
       );
+    }
+    const maximumIterations = options.maximumIterations ?? 100_000;
+    if (!Number.isSafeInteger(maximumIterations) || maximumIterations <= 0) {
+      throw new RangeError("maximumIterations must be a positive integer");
     }
     const maximumElapsedMs = options.maximumElapsedMs;
     if (maximumElapsedMs != null &&
@@ -269,9 +290,12 @@ export async function createCminpackBackend(moduleOrBytes) {
       cancellationBuffer: options.cancellationBuffer,
       cancellationIndex,
       maximumElapsedMs,
-      maximumEvaluations: maximumCallbackEvaluations,
+      maximumCallbackEvaluations,
+      maximumIterations,
+      callbackEvaluations: 0,
       evaluations: 0,
       jacobianEvaluations: 0,
+      iterations: 0,
       failure: undefined,
       started: nowMilliseconds(),
     };
@@ -322,6 +346,9 @@ export async function createCminpackBackend(moduleOrBytes) {
         throw context.failure.error;
       }
       const status = context.failure?.status ?? code;
+      const iterations = status === HOST_MAXIMUM_ITERATIONS
+        ? context.iterations
+        : Math.max(0, context.iterations - 1);
       const normalBackendStop = status >= 0;
       const value = normalBackendStop
         ? Array.from(checkedView(instance.exports.memory, xOffset, n, Float64Array, "x"))
@@ -341,6 +368,8 @@ export async function createCminpackBackend(moduleOrBytes) {
         jacobianEvaluations: context.jacobianEvaluations,
         backendResidualEvaluations: stats[1],
         backendJacobianEvaluations: stats[2],
+        callbackEvaluations: context.callbackEvaluations,
+        iterations,
         elapsedMs: nowMilliseconds() - context.started,
       });
     } finally {
@@ -376,6 +405,31 @@ export async function createCminpackBackend(moduleOrBytes) {
       callbackMode: "synchronous-packed-linear-memory",
     }),
   });
+}
+
+/** Instantiate the authenticated cminpack reactor without blocking compilation. */
+export async function createCminpackBackend(moduleOrBytes) {
+  const module =
+    moduleOrBytes instanceof WebAssembly.Module
+      ? moduleOrBytes
+      : await WebAssembly.compile(moduleOrBytes);
+  return createCminpackBackendFromModule(module);
+}
+
+/**
+ * Instantiate the authenticated cminpack reactor synchronously.
+ *
+ * Sage.js' ordinary-Python callback contract is synchronous. Node and SEA
+ * therefore compile this small, separately lazy resource on the first exact
+ * cminpack request. Browser evaluators compile it asynchronously before
+ * executing a program that imports the optimization package.
+ */
+export function createCminpackBackendSync(moduleOrBytes) {
+  const module =
+    moduleOrBytes instanceof WebAssembly.Module
+      ? moduleOrBytes
+      : new WebAssembly.Module(moduleOrBytes);
+  return createCminpackBackendFromModule(module);
 }
 
 /**

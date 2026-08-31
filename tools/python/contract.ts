@@ -70,6 +70,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   ffi_view_valid: "ρσ_ffi_view_valid",
   float_builtin: "ρσ_float",
   flint_backend: "ρσ_flint_backend",
+  numerical_backend: 'ρσ_modules["sagejs.runtime"].numerical_backend',
   global_object: "globalThis",
   int_builtin: "ρσ_int",
   integer_bigint: "ρσ_integer_bigint",

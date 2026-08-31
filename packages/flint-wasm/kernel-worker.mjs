@@ -58,6 +58,7 @@ async function initialize(message) {
     algebraic: message.algebraic,
     nativeKernels: message.nativeKernels,
     m4ri: message.m4ri,
+    numerical: message.numerical,
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
     compilerFrontend: message.compilerFrontend,

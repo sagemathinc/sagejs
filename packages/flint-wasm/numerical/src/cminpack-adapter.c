@@ -20,6 +20,7 @@ enum {
     P3_METHOD_LMDER = 2,
     P3_CALLBACK_RESIDUAL = 1,
     P3_CALLBACK_JACOBIAN = 2,
+    P3_CALLBACK_ITERATION = 8,
     P3_INVALID_ARGUMENT = -2001,
     P3_ALLOCATION_FAILED = -2002,
     P3_CORRUPT_REGION = -2003,
@@ -183,6 +184,9 @@ static int tracked_region(uint32_t offset, size_t bytes) {
 static int residual_callback(void *opaque, int m, int n, const double *x,
                              double *fvec, int iflag) {
     callback_context *context = (callback_context *)opaque;
+    uint32_t flags = iflag == 0
+        ? P3_CALLBACK_ITERATION
+        : P3_CALLBACK_RESIDUAL | ((iflag == 2) ? 4u : 0u);
     return (int)sagejs_p3_evaluate(
         context->handle,
         (uint32_t)m,
@@ -191,7 +195,7 @@ static int residual_callback(void *opaque, int m, int n, const double *x,
         (uint32_t)(uintptr_t)fvec,
         0,
         0,
-        P3_CALLBACK_RESIDUAL | ((iflag == 2) ? 4u : 0u)
+        flags
     );
 }
 
@@ -199,7 +203,9 @@ static int derivative_callback(void *opaque, int m, int n, const double *x,
                                double *fvec, double *fjac, int ldfjac,
                                int iflag) {
     callback_context *context = (callback_context *)opaque;
-    uint32_t flags = iflag == 2 ? P3_CALLBACK_JACOBIAN : P3_CALLBACK_RESIDUAL;
+    uint32_t flags = iflag == 0
+        ? P3_CALLBACK_ITERATION
+        : iflag == 2 ? P3_CALLBACK_JACOBIAN : P3_CALLBACK_RESIDUAL;
     return (int)sagejs_p3_evaluate(
         context->handle,
         (uint32_t)m,
@@ -335,11 +341,11 @@ int32_t p3_lm_solve(
 
     if (method == P3_METHOD_LMDIF) {
         info = lmdif(residual_callback, &context, m, n, x, fvec, ftol, xtol,
-                     gtol, maxfev, epsfcn, diag, mode, 100.0, 0, &nfev,
+                     gtol, maxfev, epsfcn, diag, mode, 100.0, 1, &nfev,
                      fjac, m, ipvt, qtf, wa1, wa2, wa3, wa4);
     } else {
         info = lmder(derivative_callback, &context, m, n, x, fvec, fjac, m,
-                     ftol, xtol, gtol, maxfev, diag, mode, 100.0, 0, &nfev,
+                     ftol, xtol, gtol, maxfev, diag, mode, 100.0, 1, &nfev,
                      &njev, ipvt, qtf, wa1, wa2, wa3, wa4);
     }
 

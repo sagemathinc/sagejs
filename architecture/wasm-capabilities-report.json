@@ -1,26 +1,26 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "beab5189c8dd6e9253930114dfb4598138d1b46ec974d0b9b6e10538afa3ae49",
+  "source_sha256": "3bcdf1b82619bc2cc6653c6f5b06681dc5f4349aefea3ea93a22458e7da50298",
   "counts": {
-    "total": 1046,
+    "total": 1047,
     "by_kind": {
       "declared-ffi-function": 456,
       "declared-ffi-resource": 34,
       "napi-export": 330,
       "production-kernel": 53,
       "runtime-intrinsic": 147,
-      "specialist-capability": 26
+      "specialist-capability": 27
     },
     "by_disposition": {
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
       "portable-fallback": 559,
-      "shared-core": 48
+      "shared-core": 49
     },
     "by_status": {
-      "available": 582,
+      "available": 583,
       "desktop-only": 47,
       "fallback": 417
     }
@@ -12833,6 +12833,25 @@
         "Python parser"
       ],
       "explanation": "The authoritative Tree-sitter frontend is already bundled as browser Wasm and tested through public evaluation."
+    },
+    {
+      "id": "wasm-library:cminpack:least-squares-explicit",
+      "family": "numerical",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-damped-gauss-newton-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "cminpack",
+      "public_consumers": [
+        "sagejs.numerics.optimization.least_squares",
+        "sagejs.numerics.optimization.curve_fit"
+      ],
+      "explanation": "Explicit nonlinear least-squares requests can use authenticated cminpack lmdif or lmder in Node, browsers, and SEA; automatic planning remains on the ordinary-Python method.",
+      "resource_limits": {
+        "maximum_parameters": 256,
+        "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
     },
     {
       "id": "wasm-library:flint:fmpz-mpoly-resultant-packed-v1",
