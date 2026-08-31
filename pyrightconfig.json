@@ -281,6 +281,7 @@
     "src/lib/sagejs/numerics/statistics/regression.py",
     "src/lib/sagejs/numerics/statistics/result.py",
     "src/lib/sagejs/numerics/statistics/rng.py",
+    "src/lib/sagejs/numerics/sweeps.py",
     "src/lib/sagejs/polynomial_algorithms/__init__.py",
     "src/lib/sagejs/polynomial_algorithms/cyclotomic_core.py",
     "src/lib/sagejs/polynomial_algorithms/exact_coefficient_bytes_contract.py",

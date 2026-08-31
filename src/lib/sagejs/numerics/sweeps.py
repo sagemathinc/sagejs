@@ -21,8 +21,13 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from ._json import JSONValue, canonical_json, materialize_array, materialize_json
-from ._json import materialize_object
+from ._json import (
+    JSONValue,
+    canonical_json,
+    materialize_array,
+    materialize_json,
+    materialize_object,
+)
 
 SWEEP_SCHEMA_VERSION = 1
 SWEEP_SEED_ALGORITHM = "xorshift32-pair-index-v1"

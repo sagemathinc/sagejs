@@ -135,6 +135,16 @@
       "prefixes": ["src/lib/sagejs/numerics/statistics/"]
     },
     {
+      "id": "numerical-sweeps",
+      "layer": 5,
+      "startup": "lazy",
+      "max_source_bytes": 120000,
+      "depends_on": ["core-runtime", "python-stdlib", "numerical-computing"],
+      "modules": ["sagejs.numerics.sweeps"],
+      "files": ["src/lib/sagejs/numerics/sweeps.py"],
+      "prefixes": []
+    },
+    {
       "id": "native-integration",
       "layer": 1,
       "startup": "lazy",
