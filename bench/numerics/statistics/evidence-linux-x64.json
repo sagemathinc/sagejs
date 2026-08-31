@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-08-31",
+  "platform": "linux-x64",
+  "node": "26.7.0",
+  "command": "node bench/numerics/statistics/benchmark.cjs --check",
+  "workload": {
+    "descriptive_observations": 20000,
+    "student_t_cdf_evaluations": 2001,
+    "normal_draws": 5000,
+    "linear_regression_pairs": 5000,
+    "huber_regression_pairs": 160
+  },
+  "cpython_ms": {
+    "describe_20000": 17.36,
+    "student_t_cdf_2001": 16.45,
+    "normal_sample_5000": 34.98,
+    "linear_regression_5000": 18.93,
+    "huber_regression_160": 2.86
+  },
+  "sagejs_ms": {
+    "describe_20000": 2270.86,
+    "student_t_cdf_2001": 777.13,
+    "normal_sample_5000": 976.56,
+    "linear_regression_5000": 1506.08,
+    "huber_regression_160": 288.24
+  },
+  "payload": {
+    "python_source_files": 9,
+    "raw_bytes": 106039,
+    "gzip_bytes": 20848,
+    "native_dependencies_added": 0
+  },
+  "equivalence": "All scalar witnesses agreed within 2e-11 relative and the RNG prefix agreed exactly. Timings exclude import/transpilation and are development-host observations, not cross-platform release claims."
+}
