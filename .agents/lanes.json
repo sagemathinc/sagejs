@@ -188,6 +188,22 @@
       "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
     },
     {
+      "id": "numerical-contracts",
+      "description": "Shared agent-facing numerical problem, plan, result, capability, provenance, resource-budget, and surface-classification contracts",
+      "allowed_claims": [
+        "agents/numerical-computing-product-plan.md",
+        "scripts/check-numerical-surface.cjs",
+        "src/lib/sagejs/numerics/capabilities.py",
+        "src/lib/sagejs/numerics/model.py",
+        "src/lib/sagejs/numerics/sweeps.py"
+      ],
+      "required_checks": [
+        "pnpm test:baselib:strict",
+        "pnpm test:numerics",
+        "pnpm architecture:check"
+      ]
+    },
+    {
       "id": "numerical-linear-algebra",
       "description": "Agent-first dense and sparse numerical linear algebra, decompositions, conditioning, and independent validation",
       "allowed_claims": ["src/lib/sagejs/numerics/linear_algebra/"],

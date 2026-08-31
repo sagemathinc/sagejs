@@ -1,0 +1,42 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p0-contract-lane",
+  "title": "Register shared numerical contracts lane",
+  "lane": "integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Add a narrow parallel lane for shared numerical capability, schema, and result contracts",
+  "base_commit": "9ab9c9c7d5fda5b8c0dffb0a2dd38e758833b9bd",
+  "claims": [
+    ".agents/lanes.json",
+    ".agents/task.schema.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "not-applicable",
+    "fallback": "not-applicable",
+    "oracles": [
+      "parallel task contract validation"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm architecture:check",
+    "pnpm test:portable",
+    "pnpm test:baselib:strict"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

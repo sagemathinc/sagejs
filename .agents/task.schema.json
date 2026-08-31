@@ -43,6 +43,7 @@
         "native-compiler",
         "optimizer-development",
         "distribution",
+        "numerical-contracts",
         "integration"
       ]
     },
