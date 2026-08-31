@@ -9129,9 +9129,9 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
     return len(rows), cols, values
 
 
-def matrix(*args: Any) -> Matrix:
+def matrix(*args: Any, **options: Any) -> Matrix:
     r"""
-    Construct a dense matrix, optionally over an explicit base ring.
+    Construct a dense or sparse matrix, optionally over an explicit base ring.
 
     Sage's common row-list, flat-list, dimension, and entry-function forms are
     supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
@@ -9148,6 +9148,11 @@ def matrix(*args: Any) -> Matrix:
     [0 1]
     ```
     """
+    sparse_value = runtime.reflect.get(options, "sparse")
+    sparse = False if sparse_value is runtime.undefined else bool(sparse_value)
+    runtime.reflect.deleteProperty(options, "sparse")
+    if len(runtime.object.keys(options)):
+        raise TypeError("unsupported matrix() option")
     if not args:
         raise TypeError("matrix() requires entries or dimensions")
     values = list(args)
@@ -9228,7 +9233,7 @@ def matrix(*args: Any) -> Matrix:
         raise ValueError("matrix entry count does not match its dimensions")
     if base is None:
         base = _base_for_values(entries)
-    return MatrixSpace(base, rows, cols)(entries)
+    return MatrixSpace(base, rows, cols, sparse)(entries)
 
 
 def column_matrix(*args: Any) -> Matrix:
