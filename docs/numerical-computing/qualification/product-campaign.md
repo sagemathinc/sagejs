@@ -26,7 +26,7 @@ candidate host.
 The campaign executes the integrated root, interpolation, polynomial-root,
 quadrature, dense-linear-algebra, scalar and cminpack optimization, explicit
 and stiff ODE, ODE-sweep, dense-spectral, FFT, statistics, bounded-sweep,
-multilingual-root, and cross-domain teaching-artifact surfaces. It contains:
+multilingual-root, and six-domain teaching-artifact surfaces. It contains:
 
 - definition and identity examples;
 - exact or mature-reference differential oracles;
