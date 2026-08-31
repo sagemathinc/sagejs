@@ -10,6 +10,54 @@ _TINY = 1.0e-300
 _INFINITY = float("inf")
 _SQRT_TWO = math.sqrt(2.0)
 _SQRT_TWO_PI = math.sqrt(2.0 * math.pi)
+_MAX_SERIES_ITERATIONS = 10_000
+
+
+def _stirling_correction(value: float) -> float:
+    """Small Stirling correction for a positive argument at least eight."""
+    inverse = 1.0 / value
+    square = inverse * inverse
+    return inverse * (
+        1.0 / 12.0
+        + square
+        * (
+            -1.0 / 360.0
+            + square
+            * (
+                1.0 / 1260.0
+                + square
+                * (
+                    -1.0 / 1680.0
+                    + square
+                    * (
+                        1.0 / 1188.0
+                        + square * (-691.0 / 360360.0 + square * (7.0 / 1092.0))
+                    )
+                )
+            )
+        )
+    )
+
+
+def _log_gamma_ratio(base: float, increment: float) -> float:
+    """Return `log Gamma(base + increment) - log Gamma(base)` stably."""
+    if base < 8.0:
+        return log_gamma(base + increment) - log_gamma(base)
+    ratio = increment / base
+    return (
+        increment * math.log(base)
+        + (base + increment - 0.5) * math.log1p(ratio)
+        - increment
+        + _stirling_correction(base + increment)
+        - _stirling_correction(base)
+    )
+
+
+def _log_beta(a: float, b: float) -> float:
+    """Stable `log(Beta(a, b))`, including strongly unbalanced parameters."""
+    smaller = min(a, b)
+    larger = max(a, b)
+    return log_gamma(smaller) - _log_gamma_ratio(larger, smaller)
 
 
 def log_gamma(value: float) -> float:
@@ -58,7 +106,7 @@ def regularized_gamma_p(shape: float, x: float) -> float:
     term = 1.0 / shape
     total = term
     denominator = shape
-    for _ in range(1, 10_001):
+    for _ in range(1, _MAX_SERIES_ITERATIONS + 1):
         denominator += 1.0
         term *= x / denominator
         total += term
@@ -86,7 +134,7 @@ def regularized_gamma_q(shape: float, x: float) -> float:
     if b < 0.0:
         d = -d
     fraction = d
-    for index in range(1, 10_001):
+    for index in range(1, _MAX_SERIES_ITERATIONS + 1):
         coefficient = -index * (index - shape)
         b += 2.0
         d = coefficient * d + b
@@ -114,7 +162,7 @@ def _beta_fraction(a: float, b: float, x: float) -> float:
         d = _TINY
     d = 1.0 / d
     fraction = d
-    for index in range(1, 10_001):
+    for index in range(1, _MAX_SERIES_ITERATIONS + 1):
         even = 2 * index
         coefficient = index * (b - index) * x / ((qam + even) * (a + even))
         d = 1.0 + coefficient * d
@@ -150,13 +198,7 @@ def regularized_beta(a: float, b: float, x: float) -> float:
         return 0.0
     if x == 1.0:
         return 1.0
-    front = math.exp(
-        log_gamma(a + b)
-        - log_gamma(a)
-        - log_gamma(b)
-        + a * math.log(x)
-        + b * math.log1p(-x)
-    )
+    front = math.exp(-_log_beta(a, b) + a * math.log(x) + b * math.log1p(-x))
     if x < (a + 1.0) / (a + b + 2.0):
         value = front * _beta_fraction(a, b, x) / a
     else:

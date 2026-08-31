@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterable, Sequence
 from itertools import zip_longest
 from typing import Any, cast
 
+from ..diagnostics import NumericalDiagnostic
 from ..model import ResourceBudget
 from ..trace import NumericalTrace, TracePolicy
 
@@ -15,9 +16,14 @@ from ..trace import NumericalTrace, TracePolicy
 class StatisticsStopped(Exception):
     """Internal bounded-execution stop carrying a stable status code."""
 
-    def __init__(self, status: str) -> None:
+    def __init__(self, status: str, reason: str | None = None) -> None:
         super().__init__(status)
         self.status = status
+        self.reason = status if reason is None else reason
+
+
+class StatisticsNumericalError(ArithmeticError):
+    """Finite input exceeded the qualified binary64 operation envelope."""
 
 
 def binary64_ulp(value: float) -> float:
@@ -75,9 +81,9 @@ class BudgetGuard:
 
     def check(self, work: int = 0) -> None:
         if self.cancel is not None and self.cancel():
-            raise StatisticsStopped("cancelled")
+            raise StatisticsStopped("cancelled", "cancellation_callback")
         if self.elapsed_ms() > self.budget.max_elapsed_ms:
-            raise StatisticsStopped("maximum_elapsed_time")
+            raise StatisticsStopped("cancelled", "maximum_elapsed_time")
         if work < 0:
             raise ValueError("work increment must be nonnegative")
         if self.evaluations + work > self.budget.max_evaluations:
@@ -154,18 +160,88 @@ def paired_values(
 def stable_mean(values: Sequence[float]) -> float:
     if len(values) == 0:
         raise ValueError("mean requires at least one value")
-    return math.fsum(values) / len(values)
+    try:
+        return math.fsum(values) / len(values)
+    except OverflowError:
+        scale = max(abs(value) for value in values)
+        if scale == 0.0:
+            return 0.0
+        answer = scale * (math.fsum(value / scale for value in values) / len(values))
+        if not math.isfinite(answer):
+            raise StatisticsNumericalError(
+                "the mean is outside the finite binary64 result envelope"
+            ) from None
+        return answer
 
 
 def centered_sum_squares(values: Sequence[float], center: float) -> float:
     """Return corrected two-pass sum of squares around `center`."""
     deviations = [value - center for value in values]
-    raw = math.fsum(value * value for value in deviations)
-    correction = math.fsum(deviations)
-    corrected = raw - correction * correction / len(values)
-    if corrected < 0.0 and corrected > -16.0 * binary64_ulp(max(raw, 1.0)):
+    scale = max((abs(value) for value in deviations), default=0.0)
+    if not math.isfinite(scale):
+        raise StatisticsNumericalError(
+            "centering the observations exceeds the finite binary64 envelope"
+        )
+    if scale == 0.0:
         return 0.0
+    normalized = [value / scale for value in deviations]
+    raw_normalized = math.fsum(value * value for value in normalized)
+    correction_normalized = math.fsum(normalized)
+    corrected_normalized = (
+        raw_normalized - correction_normalized * correction_normalized / len(values)
+    )
+    if corrected_normalized < 0.0 and corrected_normalized > -16.0 * binary64_ulp(
+        max(raw_normalized, 1.0)
+    ):
+        corrected_normalized = 0.0
+    try:
+        corrected = (scale * scale) * corrected_normalized
+    except OverflowError:
+        corrected = float("inf")
+    if not math.isfinite(corrected):
+        raise StatisticsNumericalError(
+            "the centered sum of squares exceeds the binary64 result envelope"
+        )
     return corrected
+
+
+def scaled_centered_products(
+    x: Sequence[float],
+    y: Sequence[float],
+    center_x: float,
+    center_y: float,
+) -> tuple[float, float, float, float, float]:
+    """Return overflow-safe normalized centered cross products and scales."""
+    deviations_x = [value - center_x for value in x]
+    deviations_y = [value - center_y for value in y]
+    scale_x = max((abs(value) for value in deviations_x), default=0.0)
+    scale_y = max((abs(value) for value in deviations_y), default=0.0)
+    if not math.isfinite(scale_x) or not math.isfinite(scale_y):
+        raise StatisticsNumericalError(
+            "centering paired observations exceeds the finite binary64 envelope"
+        )
+    if scale_x == 0.0 or scale_y == 0.0:
+        return scale_x, scale_y, 0.0, 0.0, 0.0
+    normalized_x = [value / scale_x for value in deviations_x]
+    normalized_y = [value / scale_y for value in deviations_y]
+    xx = math.fsum(value * value for value in normalized_x)
+    yy = math.fsum(value * value for value in normalized_y)
+    xy = math.fsum(normalized_x[index] * normalized_y[index] for index in range(len(x)))
+    sum_x = math.fsum(normalized_x)
+    sum_y = math.fsum(normalized_y)
+    xx -= sum_x * sum_x / len(x)
+    yy -= sum_y * sum_y / len(y)
+    xy -= sum_x * sum_y / len(x)
+    tolerance = 16.0 * binary64_ulp(max(xx, yy, 1.0))
+    if -tolerance <= xx < 0.0:
+        xx = 0.0
+    if -tolerance <= yy < 0.0:
+        yy = 0.0
+    if xx < 0.0 or yy < 0.0 or not all(math.isfinite(item) for item in (xx, yy, xy)):
+        raise StatisticsNumericalError(
+            "centered paired products are outside the binary64 envelope"
+        )
+    return scale_x, scale_y, xx, yy, xy
 
 
 def quantile_sorted(values: Sequence[float], probability: float) -> float:
@@ -181,7 +257,12 @@ def quantile_sorted(values: Sequence[float], probability: float) -> float:
     fraction = index - lower
     if fraction == 0.0:
         return float(values[lower])
-    return float(values[lower] + fraction * (values[lower + 1] - values[lower]))
+    answer = (1.0 - fraction) * values[lower] + fraction * values[lower + 1]
+    if not math.isfinite(answer):
+        raise StatisticsNumericalError(
+            "quantile interpolation exceeds the finite binary64 envelope"
+        )
+    return float(answer)
 
 
 def median(values: Sequence[float]) -> float:
@@ -209,10 +290,19 @@ def diagnostic(
     *,
     severity: str = "warning",
     details: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    return {
-        "code": code,
-        "severity": severity,
-        "message": message,
-        "details": {} if details is None else dict(details),
+) -> NumericalDiagnostic:
+    aliases = {
+        "unsupported_parameter_range": "nonfinite_evaluation",
+        "zero_residual_variance": "loss_of_significance",
+        "zero_variance": "validation_failed",
     }
+    canonical_code = aliases.get(code, code)
+    diagnostic_details = {} if details is None else dict(details)
+    if canonical_code != code:
+        diagnostic_details["statistics_reason"] = code
+    return NumericalDiagnostic(
+        canonical_code,
+        severity=severity,
+        message=message,
+        details=diagnostic_details,
+    )

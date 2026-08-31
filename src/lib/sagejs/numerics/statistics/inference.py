@@ -9,6 +9,7 @@ from typing import Any
 from ..model import ResourceBudget
 from ._core import (
     BudgetGuard,
+    StatisticsNumericalError,
     StatisticsStopped,
     binary64_ulp,
     centered_sum_squares,
@@ -27,6 +28,7 @@ _INFERENCE_ASSUMPTIONS = (
     "the mean has an approximately normal sampling distribution; finite-sample exactness requires normal data",
     "observations are represented as finite binary64 values",
 )
+_MIN_INFERENCE_TAIL_PROBABILITY = 1.0e-14
 
 
 def _moments(values: Sequence[float]) -> tuple[float, float]:
@@ -42,6 +44,59 @@ def _pvalue(statistic: float, distribution: StudentT, alternative: str) -> float
     return min(1.0, 2.0 * distribution.sf(abs(statistic)))
 
 
+def _confidence_level(confidence: float) -> float:
+    level = validate_probability(confidence, open_interval=True)
+    if 0.5 * (1.0 - level) < _MIN_INFERENCE_TAIL_PROBABILITY:
+        raise ValueError(
+            "confidence is too close to one for the qualified Student-t tail envelope"
+        )
+    return level
+
+
+def _confidence_interval(
+    estimate: float,
+    standard_error: float,
+    distribution: StudentT,
+    level: float,
+    alternative: str,
+) -> tuple[float, list[float | None]]:
+    alpha = 1.0 - level
+    tail = 0.5 * alpha if alternative == "two-sided" else alpha
+    critical = distribution.inverse_survival(tail)
+    if alternative == "greater":
+        interval: list[float | None] = [
+            estimate - critical * standard_error,
+            None,
+        ]
+    elif alternative == "less":
+        interval = [None, estimate + critical * standard_error]
+    else:
+        interval = [
+            estimate - critical * standard_error,
+            estimate + critical * standard_error,
+        ]
+    if not math.isfinite(critical) or any(
+        value is not None and not math.isfinite(value) for value in interval
+    ):
+        raise StatisticsNumericalError(
+            "the confidence interval exceeds the finite binary64 result envelope"
+        )
+    return critical, interval
+
+
+def _interval_rejects_null(
+    interval: Sequence[float | None], null_value: float, alternative: str
+) -> bool:
+    lower, upper = interval
+    if alternative == "greater":
+        return lower is not None and null_value < lower
+    if alternative == "less":
+        return upper is not None and null_value > upper
+    return (lower is not None and null_value < lower) or (
+        upper is not None and null_value > upper
+    )
+
+
 def _stopped(
     operation: str,
     method: str,
@@ -50,7 +105,7 @@ def _stopped(
 ) -> StatisticsResult:
     guard.trace.append(
         "failure",
-        data={"status": stopped.status},
+        data={"status": stopped.status, "reason": stopped.reason},
         important=True,
         force=True,
     )
@@ -63,11 +118,44 @@ def _stopped(
         validation={"truth_level": "indeterminate", "passed": False, "checks": []},
         assumptions=_INFERENCE_ASSUMPTIONS,
         diagnostics=[
-            diagnostic(stopped.status, "Inference stopped at its resource boundary.")
+            diagnostic(
+                stopped.status,
+                "Inference stopped at its resource boundary.",
+                details={"statistics_reason": stopped.reason},
+            )
         ],
         trace=guard.trace,
         evaluations=guard.evaluations,
         elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
+    )
+
+
+def _numerical_failure(
+    operation: str,
+    method: str,
+    guard: BudgetGuard,
+    message: str,
+) -> StatisticsResult:
+    guard.trace.append(
+        "failure",
+        data={"status": "nonfinite_evaluation"},
+        important=True,
+        force=True,
+    )
+    return StatisticsResult(
+        operation,
+        success=False,
+        status="nonfinite_evaluation",
+        value=None,
+        method=method,
+        validation={"truth_level": "indeterminate", "passed": False, "checks": []},
+        assumptions=_INFERENCE_ASSUMPTIONS,
+        diagnostics=[diagnostic("nonfinite_evaluation", message, severity="error")],
+        trace=guard.trace,
+        evaluations=guard.evaluations,
+        elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
     )
 
 
@@ -81,7 +169,7 @@ def confidence_interval_mean(
     trace: str = "summary",
 ) -> StatisticsResult:
     """Two-sided Student t confidence interval for one population mean."""
-    level = validate_probability(confidence, open_interval=True)
+    level = _confidence_level(confidence)
     guard = BudgetGuard(budget=budget, cancel=cancel, trace=trace)
     guard.trace.append(
         "start",
@@ -93,10 +181,22 @@ def confidence_interval_mean(
         values = finite_values(data, nan_policy=nan_policy, guard=guard, minimum=2)
         mean, variance = _moments(values)
         standard_error = math.sqrt(variance / len(values))
-        critical = StudentT(len(values) - 1).quantile(0.5 + 0.5 * level)
+        critical, interval = _confidence_interval(
+            mean,
+            standard_error,
+            StudentT(len(values) - 1),
+            level,
+            "two-sided",
+        )
+        lower = interval[0]
+        upper = interval[1]
+        if lower is None or upper is None:
+            raise AssertionError("two-sided interval must have finite endpoints")
         half_width = critical * standard_error
-        lower = mean - half_width
-        upper = mean + half_width
+        if not all(math.isfinite(value) for value in (half_width, lower, upper)):
+            raise StatisticsNumericalError(
+                "the confidence interval exceeds the finite binary64 result envelope"
+            )
         symmetry_residual = abs((upper - mean) - (mean - lower))
         tolerance = 16.0 * binary64_ulp(max(abs(mean), abs(half_width), 1.0))
         checks = [
@@ -142,6 +242,7 @@ def confidence_interval_mean(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
+            resource_budget=guard.budget,
             domain_payload={
                 "plot": {
                     "kind": "interval",
@@ -154,6 +255,10 @@ def confidence_interval_mean(
         )
     except StatisticsStopped as stopped:
         return _stopped("mean_confidence_interval", "student-t-pivot", guard, stopped)
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_failure(
+            "mean_confidence_interval", "student-t-pivot", guard, str(error)
+        )
 
 
 def one_sample_t_test(
@@ -172,7 +277,7 @@ def one_sample_t_test(
     if not math.isfinite(null_mean):
         raise ValueError("population_mean must be finite")
     alternative = validate_alternative(alternative)
-    level = validate_probability(confidence, open_interval=True)
+    level = _confidence_level(confidence)
     guard = BudgetGuard(budget=budget, cancel=cancel, trace=trace)
     guard.trace.append(
         "start",
@@ -214,16 +319,27 @@ def one_sample_t_test(
                 trace=guard.trace,
                 evaluations=guard.evaluations,
                 elapsed_ms=guard.elapsed_ms(),
+                resource_budget=guard.budget,
             )
         degrees = len(values) - 1
-        statistic = (mean - null_mean) / standard_error
+        difference = mean - null_mean
+        if not math.isfinite(difference):
+            raise StatisticsNumericalError(
+                "the estimate-minus-null difference exceeds the binary64 envelope"
+            )
+        statistic = difference / standard_error
+        if not math.isfinite(statistic):
+            raise StatisticsNumericalError(
+                "the one-sample t statistic exceeds the binary64 result envelope"
+            )
         distribution = StudentT(degrees)
         pvalue = _pvalue(statistic, distribution, alternative)
-        critical = distribution.quantile(0.5 + 0.5 * level)
-        interval = [mean - critical * standard_error, mean + critical * standard_error]
+        _critical, interval = _confidence_interval(
+            mean, standard_error, distribution, level, alternative
+        )
         alpha = 1.0 - level
-        duality = (pvalue < alpha) == (
-            null_mean < interval[0] or null_mean > interval[1]
+        duality = (pvalue < alpha) == _interval_rejects_null(
+            interval, null_mean, alternative
         )
         checks = [
             {
@@ -232,9 +348,9 @@ def one_sample_t_test(
                 "passed": True,
             },
             {
-                "identity": "two-sided test and confidence interval are dual",
-                "passed": duality if alternative == "two-sided" else True,
-                "applicable": alternative == "two-sided",
+                "identity": "test and confidence interval are dual",
+                "passed": duality,
+                "applicable": True,
             },
             {"identity": "p-value is in [0, 1]", "passed": 0.0 <= pvalue <= 1.0},
         ]
@@ -273,18 +389,27 @@ def one_sample_t_test(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
-            domain_payload={
-                "plot": {
-                    "kind": "interval",
-                    "parameter": "population mean",
-                    "estimate": mean,
-                    "lower": interval[0],
-                    "upper": interval[1],
+            resource_budget=guard.budget,
+            domain_payload=(
+                {
+                    "plot": {
+                        "kind": "interval",
+                        "parameter": "population mean",
+                        "estimate": mean,
+                        "lower": interval[0],
+                        "upper": interval[1],
+                    }
                 }
-            },
+                if alternative == "two-sided"
+                else None
+            ),
         )
     except StatisticsStopped as stopped:
         return _stopped("one_sample_t_test", "one-sample-student-t", guard, stopped)
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_failure(
+            "one_sample_t_test", "one-sample-student-t", guard, str(error)
+        )
 
 
 def two_sample_t_test(
@@ -303,7 +428,7 @@ def two_sample_t_test(
     if not isinstance(equal_variance, bool):
         raise TypeError("equal_variance must be a bool")
     alternative = validate_alternative(alternative)
-    level = validate_probability(confidence, open_interval=True)
+    level = _confidence_level(confidence)
     guard = BudgetGuard(budget=budget, cancel=cancel, trace=trace)
     method = "pooled-two-sample-t" if equal_variance else "welch-two-sample-t"
     guard.trace.append(
@@ -321,21 +446,47 @@ def two_sample_t_test(
         )
         first_mean, first_variance = _moments(first_values)
         second_mean, second_variance = _moments(second_values)
+        estimate = first_mean - second_mean
+        if not math.isfinite(estimate):
+            raise StatisticsNumericalError(
+                "the difference in means exceeds the binary64 result envelope"
+            )
         n1 = len(first_values)
         n2 = len(second_values)
         if equal_variance:
             degrees = n1 + n2 - 2.0
-            pooled = ((n1 - 1) * first_variance + (n2 - 1) * second_variance) / degrees
+            variance_scale = max(first_variance, second_variance)
+            pooled = (
+                0.0
+                if variance_scale == 0.0
+                else variance_scale
+                * (
+                    (
+                        (n1 - 1) * (first_variance / variance_scale)
+                        + (n2 - 1) * (second_variance / variance_scale)
+                    )
+                    / degrees
+                )
+            )
             standard_error = math.sqrt(pooled * (1.0 / n1 + 1.0 / n2))
         else:
             first_component = first_variance / n1
             second_component = second_variance / n2
-            standard_error = math.sqrt(first_component + second_component)
-            denominator = first_component * first_component / (
+            component_scale = max(first_component, second_component)
+            scaled_first = (
+                0.0 if component_scale == 0.0 else first_component / component_scale
+            )
+            scaled_second = (
+                0.0 if component_scale == 0.0 else second_component / component_scale
+            )
+            standard_error = math.sqrt(component_scale) * math.sqrt(
+                scaled_first + scaled_second
+            )
+            denominator = scaled_first * scaled_first / (
                 n1 - 1
-            ) + second_component * second_component / (n2 - 1)
+            ) + scaled_second * scaled_second / (n2 - 1)
             degrees = (
-                (first_component + second_component) ** 2 / denominator
+                (scaled_first + scaled_second) ** 2 / denominator
                 if denominator > 0.0
                 else 0.0
             )
@@ -350,7 +501,7 @@ def two_sample_t_test(
                 "two_sample_t_test",
                 success=False,
                 status="invalid_problem",
-                value={"estimate": first_mean - second_mean},
+                value={"estimate": estimate},
                 method=method,
                 validation={
                     "truth_level": "indeterminate",
@@ -368,16 +519,18 @@ def two_sample_t_test(
                 trace=guard.trace,
                 evaluations=guard.evaluations,
                 elapsed_ms=guard.elapsed_ms(),
+                resource_budget=guard.budget,
             )
-        estimate = first_mean - second_mean
         statistic = estimate / standard_error
+        if not math.isfinite(statistic) or not math.isfinite(degrees):
+            raise StatisticsNumericalError(
+                "the two-sample t statistic exceeds the binary64 result envelope"
+            )
         distribution = StudentT(degrees)
         pvalue = _pvalue(statistic, distribution, alternative)
-        critical = distribution.quantile(0.5 + 0.5 * level)
-        interval = [
-            estimate - critical * standard_error,
-            estimate + critical * standard_error,
-        ]
+        _critical, interval = _confidence_interval(
+            estimate, standard_error, distribution, level, alternative
+        )
         checks = [
             {
                 "identity": "reported t statistic matches estimate / standard error",
@@ -387,7 +540,13 @@ def two_sample_t_test(
             {"identity": "p-value is in [0, 1]", "passed": 0.0 <= pvalue <= 1.0},
             {
                 "identity": "confidence interval contains the point estimate",
-                "passed": interval[0] <= estimate <= interval[1],
+                "passed": (interval[0] is None or interval[0] <= estimate)
+                and (interval[1] is None or estimate <= interval[1]),
+            },
+            {
+                "identity": "test and confidence interval are dual",
+                "passed": (pvalue < 1.0 - level)
+                == _interval_rejects_null(interval, 0.0, alternative),
             },
         ]
         passed = all(bool(check["passed"]) for check in checks)
@@ -397,6 +556,7 @@ def two_sample_t_test(
             "checks": checks,
         }
         assumptions: list[str] = list(_INFERENCE_ASSUMPTIONS)
+        assumptions.append("the two samples are mutually independent")
         assumptions.append(
             "the two population variances are equal"
             if equal_variance
@@ -431,15 +591,22 @@ def two_sample_t_test(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
-            domain_payload={
-                "plot": {
-                    "kind": "interval",
-                    "parameter": "difference in means",
-                    "estimate": estimate,
-                    "lower": interval[0],
-                    "upper": interval[1],
+            resource_budget=guard.budget,
+            domain_payload=(
+                {
+                    "plot": {
+                        "kind": "interval",
+                        "parameter": "difference in means",
+                        "estimate": estimate,
+                        "lower": interval[0],
+                        "upper": interval[1],
+                    }
                 }
-            },
+                if alternative == "two-sided"
+                else None
+            ),
         )
     except StatisticsStopped as stopped:
         return _stopped("two_sample_t_test", method, guard, stopped)
+    except (StatisticsNumericalError, OverflowError) as error:
+        return _numerical_failure("two_sample_t_test", method, guard, str(error))

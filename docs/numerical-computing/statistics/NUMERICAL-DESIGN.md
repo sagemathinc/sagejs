@@ -49,11 +49,14 @@ incomplete-gamma forms. Quantiles use monotone bracketing and binary64-aware
 bisection; the normal quantile starts from a rational approximation and refines
 against the appropriate tail.
 
-OLS is centered before forming cross products. Independent validation checks
-both normal equations and the SST/SSR/SSE identity. Theil-Sen materializes all
-finite pairwise slopes under the evaluation budget. Its confidence ranks include
-tie corrections in both `x` and `y`. Huber IRLS reports its objective, scale,
-weights, iteration trace, and estimating-equation residuals.
+OLS is centered and scaled before forming correlation and coefficient geometry.
+Independent validation checks dimensionless scaled normal equations, the
+SST/SSR/SSE identity, and agreement of R-squared with squared correlation.
+Theil-Sen materializes all finite pairwise slopes under the evaluation budget.
+Its confidence ranks include tie corrections in both `x` and `y`. Huber IRLS
+fixes its scale before iteration, reports the same fixed objective at every
+iteration, and validates that objective plus scaled estimating-equation
+residuals.
 
 ## Edge policy
 
@@ -67,25 +70,29 @@ weights, iteration trace, and estimating-equation residuals.
 - Endpoint quantiles follow the mathematical support. An unbounded Poisson
   quantile at probability one raises instead of returning a fake finite value.
 - Direct `sf` evaluation avoids catastrophic cancellation in upper tails.
+- Direct inverse-survival bisection retains the caller's tail probability rather
+  than first rounding it through `1 - p`.
 - Constant samples do not produce serialized infinite t statistics. Constant
   predictors do not produce an arbitrary slope.
-- Every potentially long loop checks cancellation, elapsed time, and evaluation
-  or iteration budgets. Trace retention is independently bounded by event and
-  byte limits.
+- Data-dependent iterative work checks cancellation, elapsed time, and
+  evaluation or iteration budgets. Standalone special-function, quantile, seed
+  folding, and rejection loops have explicit operation ceilings. Trace
+  retention is independently bounded by event and byte limits.
 
 ## Oracle policy
 
 `oracle-fixtures.json` was generated with SciPy 1.18.0. `oracle.R` expresses the
-same cases using R's `stats` package. The checked corpus covers central and tail
-CDF/SF values, quantiles, discrete masses, one- and two-sample t inference, OLS,
-and Theil-Sen. Analytic identities remain independent of either oracle:
+same cases using R's `stats` package. The test runner executes every scalar in
+the checked corpus in both CPython and Sage.js. The corpus covers central and
+tail CDF/SF values, quantiles, discrete masses, one- and two-sample t inference,
+OLS, and Theil-Sen. Analytic identities remain independent of either oracle:
 
 - `cdf(x) + sf(x) = 1` within binary64 tolerance;
 - `cdf(quantile(p))` recovers `p` for continuous laws;
 - a full finite binomial mass sums to one;
 - a sufficiently long Poisson prefix sums to one;
 - OLS residuals satisfy the normal equations; and
-- RNG replay is exact, not tolerance based.
+- PCG32 integer-state replay is exact, not tolerance based.
 
 R was not installed on the development host used for the recorded Linux receipt;
 the R source is retained for an integration or release host. This limitation is

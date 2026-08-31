@@ -21,6 +21,19 @@ from .result import StatisticsResult
 
 
 _INFINITY = float("inf")
+_MAX_FLOAT = 1.7976931348623157e308
+_MAX_QUANTILE_EXPANSIONS = 1024
+_MAX_QUANTILE_ITERATIONS = 1100
+_MIN_STUDENT_QUANTILE_DF = 0.1
+_MIN_STUDENT_QUANTILE_TAIL = 1.0e-14
+_MIN_CHI_SQUARE_QUANTILE_DF = 0.1
+_MIN_CHI_SQUARE_LOWER_QUANTILE = 1.0e-12
+_MIN_CHI_SQUARE_UPPER_QUANTILE = 1.0e-300
+
+MAX_STUDENT_DEGREES_OF_FREEDOM = 10_000.0
+MAX_CHI_SQUARE_DEGREES_OF_FREEDOM = 10_000.0
+MAX_BINOMIAL_TRIALS = 10_000_000
+MAX_POISSON_RATE = 1_000_000.0
 
 
 def _positive_finite(value: Any, name: str) -> float:
@@ -57,6 +70,7 @@ def _integer(value: Any, name: str, *, minimum: int = 0) -> int:
 def _continuous_quantile(
     probability: float,
     cdf: Callable[[float], float],
+    sf: Callable[[float], float],
     *,
     lower: float,
     upper: float,
@@ -66,23 +80,105 @@ def _continuous_quantile(
         return -_INFINITY if lower == -_INFINITY else lower
     if target == 1.0:
         return _INFINITY if upper == _INFINITY else upper
+    use_survival = target > 0.5
+    tail_target = 1.0 - target if use_survival else target
     left = -1.0 if lower == -_INFINITY else lower
     right = 1.0 if upper == _INFINITY else upper
-    while cdf(left) > target:
-        right = left
-        left *= 2.0
-    while cdf(right) < target:
-        left = right
-        right = 2.0 * right if right > 0.0 else 1.0
-    for _ in range(160):
+    expansions = 0
+    if use_survival:
+        while sf(right) > tail_target:
+            expansions += 1
+            if expansions > _MAX_QUANTILE_EXPANSIONS or right >= _MAX_FLOAT / 2.0:
+                if upper == _INFINITY and sf(_MAX_FLOAT) > tail_target:
+                    raise ValueError(
+                        "quantile lies outside the finite binary64 support envelope"
+                    )
+                right = _MAX_FLOAT if upper == _INFINITY else upper
+                break
+            left = right
+            right = 2.0 * right if right > 0.0 else 1.0
+    else:
+        while cdf(left) > tail_target:
+            expansions += 1
+            if expansions > _MAX_QUANTILE_EXPANSIONS or left <= -_MAX_FLOAT / 2.0:
+                if lower == -_INFINITY and cdf(-_MAX_FLOAT) > tail_target:
+                    raise ValueError(
+                        "quantile lies outside the finite binary64 support envelope"
+                    )
+                left = -_MAX_FLOAT if lower == -_INFINITY else lower
+                break
+            right = left
+            left *= 2.0
+        while cdf(right) < tail_target:
+            expansions += 1
+            if expansions > _MAX_QUANTILE_EXPANSIONS or right >= _MAX_FLOAT / 2.0:
+                if upper == _INFINITY and cdf(_MAX_FLOAT) < tail_target:
+                    raise ValueError(
+                        "quantile lies outside the finite binary64 support envelope"
+                    )
+                right = _MAX_FLOAT if upper == _INFINITY else upper
+                break
+            left = right
+            right = 2.0 * right if right > 0.0 else 1.0
+    for _ in range(_MAX_QUANTILE_ITERATIONS):
         midpoint = left + 0.5 * (right - left)
-        if cdf(midpoint) < target:
-            left = midpoint
+        if midpoint == left or midpoint == right:
+            break
+        if use_survival:
+            if sf(midpoint) > tail_target:
+                left = midpoint
+            else:
+                right = midpoint
         else:
-            right = midpoint
-        if right - left <= 4.0 * binary64_ulp(max(abs(midpoint), 1.0)):
+            if cdf(midpoint) < tail_target:
+                left = midpoint
+            else:
+                right = midpoint
+        if right - left <= 4.0 * binary64_ulp(midpoint):
             break
     return left + 0.5 * (right - left)
+
+
+def _continuous_inverse_survival(
+    probability: float,
+    cdf: Callable[[float], float],
+    sf: Callable[[float], float],
+    *,
+    lower: float,
+    upper: float,
+) -> float:
+    target = validate_probability(probability)
+    if target == 0.0:
+        return _INFINITY if upper == _INFINITY else upper
+    if target == 1.0:
+        return -_INFINITY if lower == -_INFINITY else lower
+    if target <= 0.5:
+        left = -1.0 if lower == -_INFINITY else lower
+        right = 1.0 if upper == _INFINITY else upper
+        expansions = 0
+        while sf(right) > target:
+            expansions += 1
+            if expansions > _MAX_QUANTILE_EXPANSIONS or right >= _MAX_FLOAT / 2.0:
+                if upper == _INFINITY and sf(_MAX_FLOAT) > target:
+                    raise ValueError(
+                        "inverse survival lies outside the finite binary64 support envelope"
+                    )
+                right = _MAX_FLOAT if upper == _INFINITY else upper
+                break
+            left = right
+            right = 2.0 * right if right > 0.0 else 1.0
+        for _ in range(_MAX_QUANTILE_ITERATIONS):
+            midpoint = left + 0.5 * (right - left)
+            if midpoint == left or midpoint == right:
+                break
+            if sf(midpoint) > target:
+                left = midpoint
+            else:
+                right = midpoint
+            if right - left <= 4.0 * binary64_ulp(midpoint):
+                break
+        return left + 0.5 * (right - left)
+    return _continuous_quantile(1.0 - target, cdf, sf, lower=lower, upper=upper)
 
 
 class Distribution:
@@ -108,7 +204,11 @@ class Distribution:
         """Return a bounded semantic PlotSpec for a density/mass/CDF curve."""
         if function not in ("pdf", "pmf", "cdf", "sf"):
             raise ValueError("function must be pdf, pmf, cdf, or sf")
-        if isinstance(points, bool) or not 2 <= points <= 4096:
+        if (
+            isinstance(points, bool)
+            or not isinstance(points, int)
+            or not 2 <= points <= 4096
+        ):
             raise ValueError("points must be an integer from 2 through 4096")
         if lower is None or upper is None:
             q_lower = self.quantile(0.001)
@@ -133,6 +233,11 @@ class Distribution:
                 for index in range(points)
             ]
         ys = [float(method(value)) for value in xs]
+        ordinates_ok = all(math.isfinite(value) and value >= 0.0 for value in ys)
+        if not ordinates_ok:
+            raise ValueError(
+                "distribution plot ordinates must be finite and nonnegative"
+            )
         result = StatisticsResult(
             "distribution_curve",
             success=True,
@@ -141,8 +246,13 @@ class Distribution:
             method="analytic-" + method_name,
             validation={
                 "truth_level": "validated_approximate",
-                "passed": all(value >= 0.0 for value in ys),
-                "checks": ["nonnegative ordinates"],
+                "passed": True,
+                "checks": [
+                    {
+                        "identity": "all plot ordinates are finite and nonnegative",
+                        "passed": True,
+                    }
+                ],
             },
             domain_payload={
                 "plot": {
@@ -192,11 +302,25 @@ class Normal(Distribution):
         return normal_sf_standard((float(x) - self.mean) / self.standard_deviation)
 
     def quantile(self, probability: float) -> float:
-        return self.mean + self.standard_deviation * normal_quantile_standard(
-            validate_probability(probability)
-        )
+        target = validate_probability(probability)
+        answer = self.mean + self.standard_deviation * normal_quantile_standard(target)
+        if target not in (0.0, 1.0) and not math.isfinite(answer):
+            raise ValueError(
+                "normal quantile lies outside the finite binary64 support envelope"
+            )
+        return answer
+
+    def inverse_survival(self, probability: float) -> float:
+        target = validate_probability(probability)
+        answer = self.mean - self.standard_deviation * normal_quantile_standard(target)
+        if target not in (0.0, 1.0) and not math.isfinite(answer):
+            raise ValueError(
+                "normal inverse survival lies outside the finite binary64 support envelope"
+            )
+        return answer
 
     ppf = quantile
+    isf = inverse_survival
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -218,6 +342,10 @@ class StudentT(Distribution):
         self.degrees_of_freedom = _positive_finite(
             degrees_of_freedom, "degrees of freedom"
         )
+        if self.degrees_of_freedom > MAX_STUDENT_DEGREES_OF_FREEDOM:
+            raise ValueError(
+                "Student-t degrees of freedom exceed the qualified binary64 envelope"
+            )
 
     @property
     def mean(self) -> float | None:
@@ -243,27 +371,96 @@ class StudentT(Distribution):
 
     def cdf(self, x: float) -> float:
         value = float(x)
+        if math.isnan(value):
+            raise ValueError("Student-t evaluation point must not be NaN")
         if value == 0.0:
             return 0.5
         df = self.degrees_of_freedom
-        beta = regularized_beta(0.5 * df, 0.5, df / (df + value * value))
-        return 1.0 - 0.5 * beta if value > 0.0 else 0.5 * beta
+        absolute = abs(value)
+        if absolute == _INFINITY:
+            return 1.0 if value > 0.0 else 0.0
+        root_df = math.sqrt(df)
+        if absolute <= min(root_df, 1.0):
+            ratio = absolute / root_df
+            center_x = ratio * ratio / (1.0 + ratio * ratio)
+            center = 0.5 * regularized_beta(0.5, 0.5 * df, center_x)
+            return 0.5 + center if value > 0.0 else 0.5 - center
+        ratio = root_df / absolute
+        tail_x = ratio * ratio / (1.0 + ratio * ratio)
+        if tail_x == 0.0:
+            raise ValueError(
+                "Student-t evaluation point exceeds the qualified transformed-tail envelope"
+            )
+        tail = 0.5 * regularized_beta(0.5 * df, 0.5, tail_x)
+        return 1.0 - tail if value > 0.0 else tail
 
     def sf(self, x: float) -> float:
         value = float(x)
+        if math.isnan(value):
+            raise ValueError("Student-t evaluation point must not be NaN")
         if value == 0.0:
             return 0.5
         df = self.degrees_of_freedom
-        beta = regularized_beta(0.5 * df, 0.5, df / (df + value * value))
-        return 0.5 * beta if value > 0.0 else 1.0 - 0.5 * beta
+        absolute = abs(value)
+        if absolute == _INFINITY:
+            return 0.0 if value > 0.0 else 1.0
+        root_df = math.sqrt(df)
+        if absolute <= min(root_df, 1.0):
+            ratio = absolute / root_df
+            center_x = ratio * ratio / (1.0 + ratio * ratio)
+            center = 0.5 * regularized_beta(0.5, 0.5 * df, center_x)
+            return 0.5 - center if value > 0.0 else 0.5 + center
+        ratio = root_df / absolute
+        tail_x = ratio * ratio / (1.0 + ratio * ratio)
+        if tail_x == 0.0:
+            raise ValueError(
+                "Student-t evaluation point exceeds the qualified transformed-tail envelope"
+            )
+        tail = 0.5 * regularized_beta(0.5 * df, 0.5, tail_x)
+        return tail if value > 0.0 else 1.0 - tail
 
     def quantile(self, probability: float) -> float:
         target = validate_probability(probability)
+        if self.degrees_of_freedom < _MIN_STUDENT_QUANTILE_DF:
+            raise ValueError(
+                "Student-t quantiles require degrees of freedom at least 0.1"
+            )
         if target == 0.5:
             return 0.0
-        return _continuous_quantile(target, self.cdf, lower=-_INFINITY, upper=_INFINITY)
+        if (
+            target not in (0.0, 1.0)
+            and min(target, 1.0 - target) < _MIN_STUDENT_QUANTILE_TAIL
+        ):
+            raise ValueError(
+                "Student-t quantile tail probability is below the qualified 1e-14 envelope"
+            )
+        return _continuous_quantile(
+            target, self.cdf, self.sf, lower=-_INFINITY, upper=_INFINITY
+        )
+
+    def inverse_survival(self, probability: float) -> float:
+        target = validate_probability(probability)
+        if self.degrees_of_freedom < _MIN_STUDENT_QUANTILE_DF:
+            raise ValueError(
+                "Student-t inverse survival requires degrees of freedom at least 0.1"
+            )
+        if (
+            target not in (0.0, 1.0)
+            and min(target, 1.0 - target) < _MIN_STUDENT_QUANTILE_TAIL
+        ):
+            raise ValueError(
+                "Student-t inverse-survival probability is below the qualified 1e-14 envelope"
+            )
+        return _continuous_inverse_survival(
+            target,
+            self.cdf,
+            self.sf,
+            lower=-_INFINITY,
+            upper=_INFINITY,
+        )
 
     ppf = quantile
+    isf = inverse_survival
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -282,6 +479,10 @@ class ChiSquare(Distribution):
         self.degrees_of_freedom = _positive_finite(
             degrees_of_freedom, "degrees of freedom"
         )
+        if self.degrees_of_freedom > MAX_CHI_SQUARE_DEGREES_OF_FREEDOM:
+            raise ValueError(
+                "chi-square degrees of freedom exceed the qualified binary64 envelope"
+            )
         self.mean = self.degrees_of_freedom
         self.variance = 2.0 * self.degrees_of_freedom
 
@@ -330,9 +531,43 @@ class ChiSquare(Distribution):
         )
 
     def quantile(self, probability: float) -> float:
-        return _continuous_quantile(probability, self.cdf, lower=0.0, upper=_INFINITY)
+        target = validate_probability(probability)
+        if self.degrees_of_freedom < _MIN_CHI_SQUARE_QUANTILE_DF:
+            raise ValueError(
+                "chi-square quantiles require degrees of freedom at least 0.1"
+            )
+        if 0.0 < target < _MIN_CHI_SQUARE_LOWER_QUANTILE:
+            raise ValueError(
+                "chi-square lower-tail quantile probability is below the qualified 1e-12 envelope"
+            )
+        return _continuous_quantile(
+            target, self.cdf, self.sf, lower=0.0, upper=_INFINITY
+        )
+
+    def inverse_survival(self, probability: float) -> float:
+        target = validate_probability(probability)
+        if self.degrees_of_freedom < _MIN_CHI_SQUARE_QUANTILE_DF:
+            raise ValueError(
+                "chi-square inverse survival requires degrees of freedom at least 0.1"
+            )
+        if 0.0 < target < _MIN_CHI_SQUARE_UPPER_QUANTILE:
+            raise ValueError(
+                "chi-square upper-tail quantile probability is below the qualified 1e-300 envelope"
+            )
+        if (
+            target not in (0.0, 1.0)
+            and target > 0.5
+            and 1.0 - target < _MIN_CHI_SQUARE_LOWER_QUANTILE
+        ):
+            raise ValueError(
+                "chi-square lower-tail inverse probability is below the qualified 1e-12 envelope"
+            )
+        return _continuous_inverse_survival(
+            target, self.cdf, self.sf, lower=0.0, upper=_INFINITY
+        )
 
     ppf = quantile
+    isf = inverse_survival
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -350,6 +585,8 @@ class Binomial(Distribution):
 
     def __init__(self, trials: int, probability: float) -> None:
         self.trials = _integer(trials, "trials")
+        if self.trials > MAX_BINOMIAL_TRIALS:
+            raise ValueError("trials exceed the qualified binary64 envelope")
         self.probability = validate_probability(probability)
         self.mean = self.trials * self.probability
         self.variance = self.mean * (1.0 - self.probability)
@@ -452,6 +689,8 @@ class Poisson(Distribution):
 
     def __init__(self, rate: float) -> None:
         self.rate = _nonnegative_finite(rate, "Poisson rate")
+        if self.rate > MAX_POISSON_RATE:
+            raise ValueError("Poisson rate exceeds the qualified binary64 envelope")
         self.mean = self.rate
         self.variance = self.rate
 

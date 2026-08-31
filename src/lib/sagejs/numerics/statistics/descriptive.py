@@ -9,6 +9,7 @@ from typing import Any
 from ..model import ResourceBudget
 from ._core import (
     BudgetGuard,
+    StatisticsNumericalError,
     StatisticsStopped,
     binary64_ulp,
     centered_sum_squares,
@@ -16,24 +17,25 @@ from ._core import (
     finite_values,
     paired_values,
     quantile_sorted,
+    scaled_centered_products,
     stable_mean,
 )
 from .result import StatisticsResult
 
 
 def _stopped_result(
-    operation: str, guard: BudgetGuard, status: str
+    operation: str, guard: BudgetGuard, stopped: StatisticsStopped
 ) -> StatisticsResult:
     guard.trace.append(
         "failure",
-        data={"status": status},
+        data={"status": stopped.status, "reason": stopped.reason},
         important=True,
         force=True,
     )
     return StatisticsResult(
         operation,
         success=False,
-        status=status,
+        status=stopped.status,
         value=None,
         method="corrected-two-pass",
         validation={
@@ -42,12 +44,47 @@ def _stopped_result(
             "checks": [],
         },
         diagnostics=[
-            diagnostic(status, "The computation stopped at its resource boundary.")
+            diagnostic(
+                stopped.status,
+                "The computation stopped at its resource boundary.",
+                details={"statistics_reason": stopped.reason},
+            )
         ],
         trace=guard.trace,
         evaluations=guard.evaluations,
         iterations=guard.iterations,
         elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
+    )
+
+
+def _numerical_failure(
+    operation: str, guard: BudgetGuard, error: StatisticsNumericalError
+) -> StatisticsResult:
+    guard.trace.append(
+        "failure",
+        data={"status": "nonfinite_evaluation"},
+        important=True,
+        force=True,
+    )
+    return StatisticsResult(
+        operation,
+        success=False,
+        status="nonfinite_evaluation",
+        value=None,
+        method="corrected-two-pass",
+        validation={"truth_level": "indeterminate", "passed": False, "checks": []},
+        diagnostics=[
+            diagnostic(
+                "nonfinite_evaluation",
+                str(error),
+                severity="error",
+            )
+        ],
+        trace=guard.trace,
+        evaluations=guard.evaluations,
+        elapsed_ms=guard.elapsed_ms(),
+        resource_budget=guard.budget,
     )
 
 
@@ -156,9 +193,20 @@ def describe(
             trace=guard.trace,
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
+            resource_budget=guard.budget,
         )
     except StatisticsStopped as stopped:
-        return _stopped_result("descriptive_statistics", guard, stopped.status)
+        return _stopped_result("descriptive_statistics", guard, stopped)
+    except StatisticsNumericalError as error:
+        return _numerical_failure("descriptive_statistics", guard, error)
+    except OverflowError:
+        return _numerical_failure(
+            "descriptive_statistics",
+            guard,
+            StatisticsNumericalError(
+                "the summary exceeds the finite binary64 result envelope"
+            ),
+        )
 
 
 def quantile(
@@ -184,13 +232,13 @@ def covariance(
         raise ValueError("sample size must exceed ddof")
     mean_x = stable_mean(xs)
     mean_y = stable_mean(ys)
-    products = math.fsum(
-        (xs[index] - mean_x) * (ys[index] - mean_y) for index in range(len(xs))
-    )
-    correction_x = math.fsum(value - mean_x for value in xs)
-    correction_y = math.fsum(value - mean_y for value in ys)
-    corrected = products - correction_x * correction_y / len(xs)
-    return corrected / (len(xs) - ddof)
+    scale_x, scale_y, _, _, xy = scaled_centered_products(xs, ys, mean_x, mean_y)
+    if scale_x == 0.0 or scale_y == 0.0:
+        return 0.0
+    answer = (xy / (len(xs) - ddof)) * scale_x * scale_y
+    if not math.isfinite(answer):
+        raise ArithmeticError("covariance exceeds the binary64 result envelope")
+    return answer
 
 
 def correlation(
@@ -200,12 +248,8 @@ def correlation(
     xs, ys = paired_values(x, y, nan_policy=nan_policy)
     mean_x = stable_mean(xs)
     mean_y = stable_mean(ys)
-    xx = centered_sum_squares(xs, mean_x)
-    yy = centered_sum_squares(ys, mean_y)
+    _, _, xx, yy, xy = scaled_centered_products(xs, ys, mean_x, mean_y)
     if xx == 0.0 or yy == 0.0:
         raise ValueError("correlation is undefined for constant data")
-    xy = math.fsum(
-        (xs[index] - mean_x) * (ys[index] - mean_y) for index in range(len(xs))
-    )
-    answer = xy / math.sqrt(xx * yy)
+    answer = (xy / math.sqrt(xx)) / math.sqrt(yy)
     return min(1.0, max(-1.0, answer))

@@ -86,23 +86,36 @@ assert experiment.value == sample(Normal(10, 2), 100, rng=replay).value
 
 The replay contract includes the algorithm name, schema version, state,
 increment, draw count, and cached Box-Muller variate. It applies to an identical
-sequence of method calls. It is not NumPy stream compatibility and the generator
-is not suitable for cryptography.
+sequence of method calls. State words are canonical hexadecimal strings and
+seed, stream, and draw-count fields are decimal strings, so a JSON round trip
+through a browser cannot round 64-bit words. Only the PCG32 integer core is
+specified for exact replay; distribution transforms also use
+platform math functions and are checked numerically rather than promised
+bit-for-bit. This is not NumPy stream compatibility, evidence of statistical
+quality beyond the named PCG32 construction, or a cryptographic generator.
 
 ## Honest failures
 
 Invalid mathematical input raises `ValueError`: examples are an empty sample,
 non-finite observations under `nan_policy="raise"`, a nonpositive Student-t
 degree of freedom, and regression with constant `x`. Runtime stops return a
-structured unsuccessful result with a stable local status:
+structured unsuccessful canonical `NumericalResult` status:
 
 - `cancelled`;
 - `maximum_evaluations`;
-- `maximum_iterations`; or
-- `maximum_elapsed_time`.
+- `maximum_iterations`.
+
+An elapsed-time deadline is reported as `cancelled`, with the trace retaining
+the resource-boundary context. Explicit inner-loop ceilings additionally bound
+special-function series, quantile bisection, PCG rejection, and Box-Muller
+rejection.
 
 A constant sample makes the t statistic undefined, so the test returns
-`invalid_problem` with `zero_variance` rather than serializing infinity or NaN.
+`invalid_problem` with the shared `validation_failed` diagnostic and a
+`statistics_reason` of `zero_variance`, rather than serializing infinity or NaN.
+Sampler parameter ranges that cannot be represented honestly return
+`invalid_problem` with a structured `nonfinite_evaluation` diagnostic; they do
+not return a constant sample labeled as distributionally valid.
 The backend-neutral failure corpus is in
 `test/numerics/statistics/failure-corpus.json`.
 
@@ -114,3 +127,15 @@ support checks for samples, test/interval duality, OLS normal equations and
 sum-of-squares decomposition, and robust estimating equations. They validate
 the implemented binary64 computation; they do not turn approximate arithmetic
 into a rigorous enclosure or validate scientific study design.
+
+## Qualified binary64 envelopes
+
+Student-t and chi-square degrees of freedom are supported through 10,000.
+Student-t quantiles and inverse survival values require `df >= 0.1` and each
+non-endpoint tail probability to be at least `1e-14`. Chi-square quantiles also
+require `df >= 0.1`; lower-tail quantiles require `p >= 1e-12`, while direct
+chi-square inverse survival is qualified down to `1e-300`.
+Binomial trials are limited to 10,000,000 and Poisson rate to 1,000,000.
+Student-t and chi-square sampling additionally require degrees of freedom at
+least `0.1`. Confidence procedures require their Student-t tail probability to
+be at least `1e-14`. Calls outside these envelopes fail explicitly.

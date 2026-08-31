@@ -16,13 +16,12 @@ from .regression import (
     soft_l1_loss,
     theil_sen_regression,
 )
-from .result import STATISTICS_SCHEMA_VERSION, StatisticsResult
+from .result import StatisticsResult
 from .rng import RNG_ALGORITHM, RNG_CONTRACT_VERSION, RandomStream, sample
 
 __all__ = [
     "RNG_ALGORITHM",
     "RNG_CONTRACT_VERSION",
-    "STATISTICS_SCHEMA_VERSION",
     "Binomial",
     "ChiSquare",
     "Distribution",
