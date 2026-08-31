@@ -267,6 +267,7 @@
     "src/lib/sagejs/numerics/ode/visualization.py",
     "src/lib/sagejs/numerics/optimization/__init__.py",
     "src/lib/sagejs/numerics/optimization/_core.py",
+    "src/lib/sagejs/numerics/optimization/explanations.py",
     "src/lib/sagejs/numerics/optimization/least_squares.py",
     "src/lib/sagejs/numerics/optimization/multivariate.py",
     "src/lib/sagejs/numerics/optimization/planning.py",
