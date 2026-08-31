@@ -147,7 +147,7 @@
       "properties": {
         "source": {"type": "string", "minLength": 1},
         "computed_evidence_only": {"const": true},
-        "callback_reevaluated": {"const": true},
+        "callback_reevaluated": {"const": false},
         "callback_count_before": {"type": ["integer", "null"], "minimum": 0},
         "callback_count_after": {"type": ["integer", "null"], "minimum": 0},
         "public_surface_gap": {"type": ["string", "null"]},

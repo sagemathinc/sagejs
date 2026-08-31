@@ -10,6 +10,8 @@ from sagejs.plotting import (
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -61,13 +63,33 @@ def _spec(
     axes: Mapping[str, Any],
     alt_text: str,
 ) -> PlotSpec:
+    raw_x = axes.get("x", {})
+    raw_y = axes.get("y", {})
+    if not isinstance(raw_x, Mapping) or not isinstance(raw_y, Mapping):
+        raise TypeError("statistics axes must contain x and y mappings")
+    canonical_axes = Axes2DSettings(
+        AxisSettings(
+            label=raw_x.get("label"),
+            scale=str(raw_x.get("scale", "linear")),
+        ),
+        AxisSettings(
+            label=raw_y.get("label"),
+            scale=str(raw_y.get("scale", "linear")),
+        ),
+    ).to_dict()
+    layout_overrides: dict[str, Any] = {}
+    if raw_x.get("visible") is False:
+        layout_overrides["xaxis"] = {"visible": False}
+    if raw_y.get("visible") is False:
+        layout_overrides["yaxis"] = {"visible": False}
     return PlotSpec(
         2,
         layers,
-        axes_or_scene=axes,
+        axes_or_scene=canonical_axes,
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, alt_text),
+        plotly_overrides={"layout": layout_overrides} if layout_overrides else None,
     )
 
 

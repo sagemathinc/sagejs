@@ -129,7 +129,8 @@ test("every presentation is computed evidence and callback counts stay frozen", 
       if (!presentation) continue;
       presentations += 1;
       assert.equal(presentation.computed_evidence_only, true);
-      assert.equal(presentation.callback_reevaluated, true);
+      assert.equal(presentation.callback_reevaluated, false);
+      assert.equal(presentation.plotly.shared_lowering.status, "available");
       assert.equal(
         presentation.callback_count_before,
         presentation.callback_count_after,
@@ -155,8 +156,8 @@ test("every presentation is computed evidence and callback counts stay frozen", 
     "root-brent",
     "cosine-fixed-point",
   ).caseRecord.presentation;
-  assert.match(root.source, /trace adapter/);
-  assert.match(root.public_surface_gap, /samples the live callback/);
+  assert.match(root.source, /retained-evidence/);
+  assert.equal(root.public_surface_gap, null);
   assert.equal(root.plot_animation.metadata.callback_reevaluated, false);
   assert.equal(root.plot_animation.metadata.computed_evidence_only, true);
 
@@ -167,12 +168,14 @@ test("every presentation is computed evidence and callback counts stay frozen", 
   ).caseRecord.presentation.plot_animation;
   assert.equal(optimized.frames.length, 32);
   assert.equal(optimized.metadata.gallery_decimated, true);
-  assert.equal(optimized.metadata.source_frame_count, 158);
+  assert.equal(optimized.metadata.source_frame_count, 128);
+  assert.equal(optimized.metadata.source_progress_states, 157);
+  assert.equal(optimized.metadata.retained_progress_states, 127);
   assert.deepEqual(
     optimized.metadata.selected_source_indices.slice(0, 2),
-    [0, 5],
+    [0, 4],
   );
-  assert.equal(optimized.metadata.selected_source_indices.at(-1), 157);
+  assert.equal(optimized.metadata.selected_source_indices.at(-1), 127);
   assert.equal(optimized.metadata.interpolation, "none");
 });
 

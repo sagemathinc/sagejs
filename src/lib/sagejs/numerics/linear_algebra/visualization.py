@@ -9,6 +9,8 @@ from sagejs.plotting import (
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -23,6 +25,13 @@ _FACTOR_PHASES = (
     "householder_qr",
     "cholesky_factorization",
 )
+
+
+def _axes(x_label: str, y_label: str) -> dict[str, Any]:
+    return Axes2DSettings(
+        AxisSettings(label=x_label),
+        AxisSettings(label=y_label),
+    ).to_dict()
 
 
 def _result_record(result: NumericalResult) -> dict[str, Any]:
@@ -336,10 +345,7 @@ def _conditioning_plot(result: NumericalResult, record: dict[str, Any]) -> PlotS
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "singular-value index"},
-            "y": {"label": "sigma / sigma_max"},
-        },
+        axes_or_scene=_axes("singular-value index", "sigma / sigma_max"),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, "linear_algebra_plot", "conditioning"),
@@ -419,10 +425,7 @@ def _factorization_plot(result: NumericalResult, record: dict[str, Any]) -> Plot
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "factorization step"},
-            "y": {"label": "relative diagonal magnitude"},
-        },
+        axes_or_scene=_axes("factorization step", "relative diagonal magnitude"),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, "linear_algebra_plot", "factorization"),
@@ -484,10 +487,9 @@ def _validation_plot(result: NumericalResult, record: dict[str, Any]) -> PlotSpe
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={
-            "x": {"label": "validation check index"},
-            "y": {"label": "error / threshold (or pass indicator)"},
-        },
+        axes_or_scene=_axes(
+            "validation check index", "error / threshold (or pass indicator)"
+        ),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, "linear_algebra_plot", "validation"),
@@ -561,7 +563,7 @@ def _convergence_plot(result: NumericalResult) -> PlotSpec:
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": x_label}, "y": {"label": y_label}},
+        axes_or_scene=_axes(x_label, y_label),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, "linear_algebra_plot", "convergence"),
@@ -628,7 +630,7 @@ def _progress_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": x_label}, "y": {"label": y_label}},
+        axes_or_scene=_axes(x_label, y_label),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": alt_text}],
         provenance=_provenance(result, "linear_algebra_animation", view),

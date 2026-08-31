@@ -197,7 +197,7 @@ export function assertGalleryBudgets(bundle, serialized = undefined) {
       if (!presentation.computed_evidence_only) {
         throw new Error(`${story.id}/${caseRecord.id}: non-evidence presentation`);
       }
-      if (!presentation.callback_reevaluated) {
+      if (presentation.callback_reevaluated) {
         throw new Error(`${story.id}/${caseRecord.id}: callback was reevaluated`);
       }
       if (

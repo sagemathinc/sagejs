@@ -10,6 +10,8 @@ from sagejs.plotting import (
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -29,6 +31,13 @@ MAX_ANIMATION_PLOT_SAMPLES = 257
 MAX_APPROXIMATION_ANIMATION_FRAMES = 64
 MAX_APPROXIMATION_ANIMATION_SCALARS = 200_000
 MAX_APPROXIMATION_ANIMATION_BYTES = 8 * 1024 * 1024
+
+
+def _axes(x_label: str, y_label: str) -> dict[str, Any]:
+    return Axes2DSettings(
+        AxisSettings(label=x_label),
+        AxisSettings(label=y_label),
+    ).to_dict()
 
 
 def _bounded_integer(value: Any, name: str, lower: int, upper: int) -> int:
@@ -358,7 +367,7 @@ def _failure_spec(
                 },
             )
         ],
-        axes_or_scene={"x": {"label": ""}, "y": {"label": ""}},
+        axes_or_scene=_axes("", ""),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": _alt_text(result, stage)}],
         provenance=_provenance(result, constructor, samples, stage),
@@ -421,7 +430,7 @@ def _finite_difference_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": "x"}, "y": {"label": "f(x)"}},
+        axes_or_scene=_axes("x", "f(x)"),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": _alt_text(result, stage)}],
         provenance=_provenance(result, constructor, samples, stage),
@@ -488,7 +497,7 @@ def _curve_spec(
     return PlotSpec(
         2,
         layers,
-        axes_or_scene={"x": {"label": "x"}, "y": {"label": "approximation"}},
+        axes_or_scene=_axes("x", "approximation"),
         viewport={"responsive": True},
         annotations=[{"kind": "alt_text", "text": _alt_text(result, stage)}],
         provenance=_provenance(result, constructor, samples, stage),
