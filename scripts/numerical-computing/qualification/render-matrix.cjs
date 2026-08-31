@@ -65,7 +65,9 @@ function renderMatrix(template, corpus, manifests) {
     throw new Error("unsupported numerical matrix template schema");
   }
   const rows = template.rows.map((row) => {
-    exactKeys(`matrix row ${row.id}`, row, ["id", "platform", "subject"]);
+    exactKeys(`matrix row ${row.id}`, row, [
+      "id", "platform", "subject", "required_memory_scope",
+    ]);
     exactKeys(`matrix row ${row.id}.subject`, row.subject, ["kind", "name", "engine"]);
     const manifest = manifests.get(row.id);
     if (manifest === undefined) throw new Error(`missing bound capability manifest for ${row.id}`);
@@ -98,6 +100,7 @@ function renderMatrix(template, corpus, manifests) {
       required_case_layers: template.required_case_layers,
       required_capabilities: template.required_capabilities,
       required_artifacts: manifest.bindings.artifacts,
+      required_memory_scope: row.required_memory_scope,
     };
   });
   const sourceHashes = new Set(rows.map((row) => row.match.source_bundle_sha256));

@@ -230,6 +230,14 @@ the corresponding artifact; a Node collector cannot impersonate them. Until
 all 16 rows have source-current manifests and measured receipts, the report
 must remain missing/fail-closed.
 
+Every matrix row also declares the memory scope it must authenticate. Direct
+Node rows require collector-process evidence. Fresh npm, relocated SEA,
+browser, and worker rows require process-tree evidence from the collector;
+adapter counters and JavaScript heap observations cannot satisfy that gate.
+The memory method and authority are recorded in each sample and aggregated
+case metric, so a receipt collected with a narrower or unauthenticated method
+fails the report even when its mathematical cases pass.
+
 ## Supplemental evidence remains fail-closed
 
 Product observations cannot prove native C/C++ memory safety or measure an

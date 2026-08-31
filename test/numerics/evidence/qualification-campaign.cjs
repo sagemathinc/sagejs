@@ -90,6 +90,10 @@ test("matrix templates enumerate native and runtime rows without fake evidence",
     [...new Set(fullTemplate.rows.map((item) => item.subject.kind))].sort(),
     ["browser", "node", "npm", "sea", "worker"],
   );
+  assert(nodeTemplate.rows.every((item) =>
+    item.required_memory_scope === "collector_process"));
+  assert(fullTemplate.rows.every((item) => item.required_memory_scope ===
+    (item.subject.kind === "node" ? "collector_process" : "process_tree")));
   const available = spec.capabilities
     .filter((item) => (item.status ?? "available") === "available")
     .map((item) => item.id)

@@ -19,6 +19,15 @@ function validateTemplate(template, expectedRows, requiredCapabilities = null) {
   if (template.rows.length !== expectedRows) throw new Error(`expected ${expectedRows} matrix rows`);
   const rowIds = new Set(template.rows.map((row) => row.id));
   if (rowIds.size !== template.rows.length) throw new Error("duplicate matrix template row");
+  for (const row of template.rows) {
+    const expectedScope = row.subject.kind === "node" ? "collector_process" : "process_tree";
+    if (row.required_memory_scope !== expectedScope) {
+      throw new Error(
+        `matrix row ${row.id} must require ${expectedScope} memory, got ` +
+        `${row.required_memory_scope}`,
+      );
+    }
+  }
   for (const phase of ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]) {
     if (!template.required_program_phases.includes(phase)) throw new Error(`matrix omits ${phase}`);
   }
