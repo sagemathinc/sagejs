@@ -57,7 +57,10 @@ function capabilityDraft(spec, corpus) {
   };
 }
 
-function prepare({ root, corpusPath, adapterPath, specPath, artifactPath, outputDirectory }) {
+function prepare({
+  root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
+  outputDirectory,
+}) {
   const corpus = validateCorpus(readJson(repositoryPath(root, corpusPath, "corpus").absolute));
   const spec = readJson(repositoryPath(root, specPath, "capability spec").absolute);
   const draft = capabilityDraft(spec, corpus);
@@ -69,7 +72,10 @@ function prepare({ root, corpusPath, adapterPath, specPath, artifactPath, output
     root,
     corpusPath,
     adapterPath,
-    artifactSpecifications: [`sagejs-dist=${artifactPath}`],
+    artifactSpecifications: [
+      `sagejs-dist=${artifactPath}`,
+      `cminpack-wasm=${cminpackArtifactPath}`,
+    ],
     draftPath,
   });
   const manifestPath = `${output.relative}/capabilities.json`;
@@ -85,6 +91,8 @@ function usage() {
   --adapter PATH         first-party Node adapter
   --spec PATH            authored capability specification
   --artifact PATH        built Sage.js dist directory (default: dist)
+  --cminpack-artifact PATH
+                         built cminpack.wasm file
   --output DIRECTORY     empty output directory (required)
 
 The generated capability manifest is immutable. Use a fresh output directory
@@ -104,8 +112,14 @@ function main(argv = process.argv.slice(2)) {
   const adapterPath = value(argv, "--adapter", DEFAULT_ADAPTER);
   const specPath = value(argv, "--spec", DEFAULT_SPEC);
   const artifactPath = value(argv, "--artifact", "dist");
+  const cminpackArtifactPath = value(
+    argv,
+    "--cminpack-artifact",
+    "packages/flint-wasm/numerical/build/cminpack.wasm",
+  );
   const prepared = prepare({
-    root, corpusPath, adapterPath, specPath, artifactPath, outputDirectory,
+    root, corpusPath, adapterPath, specPath, artifactPath, cminpackArtifactPath,
+    outputDirectory,
   });
   process.stdout.write(pretty({
     capability_manifest_id: prepared.manifest.id,
@@ -116,6 +130,7 @@ function main(argv = process.argv.slice(2)) {
       `--adapter ${adapterPath}`,
       `--capabilities ${prepared.manifestPath}`,
       `--artifact sagejs-dist=${artifactPath}`,
+      `--artifact cminpack-wasm=${cminpackArtifactPath}`,
       `--output ${outputDirectory}/node.receipt.json`,
     ].join(" "),
   }));

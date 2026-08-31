@@ -7,7 +7,7 @@
   "status": "active",
   "owner": "user",
   "objective": "Build backend-neutral P0-P8 corpora, real Sage.js Node adapters, capability binding drafts, fail-closed matrix policy templates, and qualification tests without fabricating platform evidence",
-  "base_commit": "e37cdda375d7f870d627b300c57c7e8fee97717e",
+  "base_commit": "8078e888faa8f3f61bee31c638a337dfa9b2cb9b",
   "claims": [
     ".agents/lanes.json",
     "bench/numerical-computing/qualification/",
