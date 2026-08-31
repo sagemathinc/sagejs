@@ -3086,7 +3086,9 @@ class PolynomialElement(sage.Element):
             answer.append(make_root(pair))
         return answer
 
-    def coefficients(self) -> list[Any]:
+    def coefficients(self, sparse: bool = False) -> list[Any]:
+        if sparse:
+            return [value for value in self.coefficients(False) if value != 0]
         if self._machineFieldCoefficients is not runtime.undefined:
             return list(self._machineFieldCoefficients)
         base = self._parent.base_ring()
@@ -4549,7 +4551,9 @@ class ApproximatePolynomialElement(sage.Element):
                 answer = degree
         return answer
 
-    def coefficients(self) -> list[Any]:
+    def coefficients(self, sparse: bool = False) -> list[Any]:
+        if sparse:
+            return [value for value in self.coefficients(False) if value != 0]
         if self._parent.ngens() != 1:
             raise TypeError("coefficients() requires a univariate polynomial")
         if len(self._terms) == 0:
