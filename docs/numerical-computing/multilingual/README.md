@@ -97,13 +97,17 @@ translation.
 
 ## Natural runtime surfaces
 
-`matlab.py` and `wolfram.py` provide the runtime views used by their parsers.
-Representative names include MATLAB `linsolve`, `lsqminnorm`, `eig`, `svd`,
-`fft`, `conv`, `integral`, `fminbnd`, `fminsearch`, `fsolve`, `lsqnonlin`,
-`polyfit` (degree one), `ode45`, `ttest`, `ttest2`, and `fitlm`; and Wolfram
-`LinearSolve`, `LeastSquares`, `Eigensystem`, `Fourier`, `NIntegrate`,
-`FindMinimum`, `NDSolveValue`, and the explicitly Sage.js-named statistics
-helpers.
+`matlab.py` and `wolfram.py` provide runtime views used by their parsers and by
+explicit Python embedding. Parser entrypoints are a narrower qualified subset:
+they are enabled only when natural defaults, orientations, complex values, and
+one-output conventions are preserved. MATLAB currently includes dense solve,
+least squares, convolution, integration, bounded/unconstrained optimization,
+nonlinear solve/least squares, degree-one `polyfit`, `ode45`, `svd`'s
+one-output singular-value view, deterministic `arrayfun`, and the explicitly
+named `sagejs_describe`. Wolfram currently includes dense solve, least squares,
+one finite scalar `NIntegrate` form, deterministic `Map`, and explicitly
+Sage.js-named statistics helpers. Other recognized numerical heads fail with a
+source-located unsupported diagnostic rather than an unqualified runtime call.
 
 Natural short return values do not erase evidence. Functions with meaningful
 structured state have a `*_result` helper or retain the result in a wrapper.

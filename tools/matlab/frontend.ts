@@ -301,18 +301,31 @@ class AstBuilder {
 
 class SageLowerer {
   private readonly directFunctions: Record<string, string> = {
+    arrayfun: "_matlab.arrayfun",
     class: "_matlab.class_name",
+    conv: "_matlab.conv",
     cos: "_np.cos",
     disp: "print",
     exp: "_np.exp",
+    fminbnd: "_matlab.fminbnd",
+    fminsearch: "_matlab.fminsearch",
+    fsolve: "_matlab.fsolve",
+    integral: "_matlab.integral",
     linspace: "_np.linspace",
+    linsolve: "_matlab.linsolve",
     log: "_np.log",
+    lsqminnorm: "_matlab.lsqminnorm",
+    lsqnonlin: "_matlab.lsqnonlin",
     numel: "_matlab.numel",
+    ode45: "_matlab.ode45",
     ones: "_np.ones",
+    polyfit: "_matlab.polyfit",
+    sagejs_describe: "_matlab.sagejs_describe",
     sin: "_np.sin",
     size: "_matlab.size",
     sqrt: "_np.sqrt",
     sum: "_np.sum",
+    svd: "_matlab.svd",
     tan: "_np.tan",
     zeros: "_np.zeros",
     axes: "_matlab.axes",
@@ -337,6 +350,25 @@ class SageLowerer {
     xlim: "_matlab.xlim",
     ylabel: "_matlab.ylabel",
     ylim: "_matlab.ylim",
+  };
+  private readonly unsupportedNumericalFunctions = new Set([
+    "eig",
+    "fft",
+    "fitlm",
+    "griddedInterpolant",
+    "spline",
+    "ttest",
+    "ttest2",
+  ]);
+  private readonly vectorArguments: Record<string, readonly number[]> = {
+    arrayfun: [1],
+    conv: [0, 1],
+    fminsearch: [1],
+    fsolve: [1],
+    lsqnonlin: [1],
+    ode45: [1, 2],
+    polyfit: [0, 1],
+    sagejs_describe: [0],
   };
 
   program(program: MatlabProgram, captureResult = false): string {
@@ -444,10 +476,20 @@ class SageLowerer {
       })`;
     }
     const name = expression.callee.name;
+    if (this.unsupportedNumericalFunctions.has(name)) {
+      throw new MatlabSyntaxError(
+        `${name} numerical syntax is not supported by the Sage.js MATLAB frontend`,
+        expression.span,
+      );
+    }
     const direct = this.directFunctions[name];
     if (direct) {
+      const vectorArguments = this.vectorArguments[name] ?? [];
       return `${direct}(${
-        expression.arguments.map((argument) => this.expression(argument))
+        expression.arguments.map((argument, index) => {
+          const value = this.expression(argument);
+          return vectorArguments.includes(index) ? `_np.ravel(${value})` : value;
+        })
           .join(", ")
       })`;
     }
@@ -560,6 +602,12 @@ class SageLowerer {
           this.expression(expression.body)
         })`;
       case "handle": {
+        if (this.unsupportedNumericalFunctions.has(expression.name)) {
+          throw new MatlabSyntaxError(
+            `${expression.name} numerical handles are not supported by the Sage.js MATLAB frontend`,
+            expression.span,
+          );
+        }
         const direct = this.directFunctions[expression.name];
         return direct ?? expression.name;
       }

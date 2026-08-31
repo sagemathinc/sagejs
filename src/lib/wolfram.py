@@ -216,7 +216,16 @@ def numerical_value(name: str, *arguments: Any, **options: Any) -> Any:
     """Return the conventional Wolfram value view of a structured result."""
 
     result = numerical_result(name, *arguments, **options)
+    _require_numerical_success(name, result)
     return result.value if hasattr(result, "value") else result
+
+
+def _require_numerical_success(name: str, result: Any) -> None:
+    """Reject failed iterates before projecting a Wolfram-style short result."""
+
+    if hasattr(result, "success") and not result.success:
+        status = result.status if hasattr(result, "status") else "failed"
+        raise RuntimeError(name + " failed: " + str(status))
 
 
 def linear_solve(matrix: Any, right: Any, **options: Any) -> Any:
@@ -228,17 +237,23 @@ def least_squares(matrix: Any, right: Any, **options: Any) -> Any:
 
 
 def eigensystem(matrix: Any, **options: Any) -> Any:
-    value = numerical_result("Eigensystem", matrix, **options).value
+    result = numerical_result("Eigensystem", matrix, **options)
+    _require_numerical_success("Eigensystem", result)
+    value = result.value
     return [value["eigenvalues"], value["eigenvectors"]]
 
 
 def general_eigensystem(matrix: Any, **options: Any) -> Any:
-    value = numerical_result("GeneralEigensystem", matrix, **options).value
+    result = numerical_result("GeneralEigensystem", matrix, **options)
+    _require_numerical_success("GeneralEigensystem", result)
+    value = result.value
     return [value["eigenvalues"], value["eigenvectors"]]
 
 
 def singular_value_decomposition(matrix: Any, **options: Any) -> Any:
-    value = numerical_result("SingularValueDecomposition", matrix, **options).value
+    result = numerical_result("SingularValueDecomposition", matrix, **options)
+    _require_numerical_success("SingularValueDecomposition", result)
+    value = result.value
     return [value["u"], value["singular_values"], value["vh"]]
 
 
@@ -264,15 +279,15 @@ class WolframInterpolatingFunction:
 
 
 def interpolation(nodes: Any, values: Any, **options: Any) -> Any:
-    return WolframInterpolatingFunction(
-        numerical_result("Interpolation", nodes, values, **options)
-    )
+    result = numerical_result("Interpolation", nodes, values, **options)
+    _require_numerical_success("Interpolation", result)
+    return WolframInterpolatingFunction(result)
 
 
 def cubic_spline_interpolation(nodes: Any, values: Any, **options: Any) -> Any:
-    return WolframInterpolatingFunction(
-        numerical_result("CubicSplineInterpolation", nodes, values, **options)
-    )
+    result = numerical_result("CubicSplineInterpolation", nodes, values, **options)
+    _require_numerical_success("CubicSplineInterpolation", result)
+    return WolframInterpolatingFunction(result)
 
 
 def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
@@ -284,21 +299,25 @@ def n_integrate(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
 
 def n_minimize_scalar(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
     result = numerical_result("NMinimizeScalar", function, lower, upper, **options)
+    _require_numerical_success("NMinimizeScalar", result)
     return [result.objective, {"x": result.value}]
 
 
 def find_minimum(function: Any, initial: Any, **options: Any) -> Any:
     result = numerical_result("FindMinimum", function, initial, **options)
+    _require_numerical_success("FindMinimum", result)
     return [result.objective, {"x": result.value}]
 
 
 def find_root_system(function: Any, initial: Any, **options: Any) -> Any:
     result = numerical_result("FindRootSystem", function, initial, **options)
+    _require_numerical_success("FindRootSystem", result)
     return {"x": result.value}
 
 
 def nonlinear_least_squares(residuals: Any, initial: Any, **options: Any) -> Any:
     result = numerical_result("NonlinearLeastSquares", residuals, initial, **options)
+    _require_numerical_success("NonlinearLeastSquares", result)
     return {"parameters": result.value, "objective": result.objective}
 
 
@@ -320,9 +339,9 @@ class WolframNDSolveValue:
 
 
 def nd_solve_value(function: Any, t_span: Any, y0: Any, **options: Any) -> Any:
-    return WolframNDSolveValue(
-        numerical_result("NDSolveValue", function, t_span, y0, **options)
-    )
+    result = numerical_result("NDSolveValue", function, t_span, y0, **options)
+    _require_numerical_success("NDSolveValue", result)
+    return WolframNDSolveValue(result)
 
 
 def sagejs_describe(data: Any, **options: Any) -> Any:
