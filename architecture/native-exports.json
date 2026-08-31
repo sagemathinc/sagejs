@@ -5141,6 +5141,7 @@
       "consumers": [
         "packages/flint-wasm/dynamic-compiler.mjs",
         "packages/flint-wasm/node-cli.mjs",
+        "packages/flint-wasm/numerical/scripts/build.cjs",
         "packages/flint-wasm/scripts/browser-wasm-release-artifact.cjs",
         "packages/flint-wasm/scripts/build.cjs",
         "packages/flint-wasm/scripts/production-receipt.cjs",
@@ -13128,6 +13129,7 @@
       "consumers": [
         "bench/hyperelliptic/cross-platform/run.cjs",
         "packages/flint-wasm/lazy-modules.mjs",
+        "packages/flint-wasm/numerical/qualification/run.mjs",
         "packages/flint-wasm/test/node-kernel.test.mjs",
         "packages/flint-wasm/test/optimizer-machine-domains-browser.mjs",
         "packages/flint/scripts/build-deps.cjs",
