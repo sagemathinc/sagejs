@@ -26,6 +26,10 @@ function run(command, args, source) {
   });
 }
 
+function normalizedOutput(output) {
+  return output.replaceAll("\r\n", "\n").trimEnd();
+}
+
 const differentialSource = String.raw`
 import ast
 
@@ -129,7 +133,7 @@ test("ast.literal_eval agrees with CPython on literal source", async () => {
   ]);
   assert.equal(cpython.status, 0, cpython.stderr);
   assert.equal(sagejs.status, 0, sagejs.stderr);
-  assert.equal(sagejs.stdout.trimEnd(), cpython.stdout.trimEnd());
+  assert.equal(normalizedOutput(sagejs.stdout), normalizedOutput(cpython.stdout));
 });
 
 test("ast.literal_eval supports public AST node inputs", async () => {
