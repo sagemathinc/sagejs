@@ -15,7 +15,7 @@ _QUALIFIED_RUNTIMES = ["cpython", "sagejs-node"]
 
 def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
     primary = {
-        "scalar_minimum": "sampled_objective_and_incumbent_path",
+        "scalar_minimum": "retained_objective_and_incumbent_path",
         "minimize": "parameter_path_or_convergence_history",
         "nonlinear_system": "parameter_path_or_residual_history",
         "nonlinear_least_squares": "parameter_path_or_cost_history",
@@ -27,6 +27,7 @@ def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
             "structured": "optimization-explanation/v1",
             "text": True,
             "failure_narrative": True,
+            "callback_replay": False,
             "identifiability": operation
             in ("nonlinear_least_squares", "curve_fit", "linear_fit"),
         },
@@ -35,6 +36,7 @@ def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
             "primary_view": primary,
             "accessible_description": True,
             "canonical_axes": True,
+            "callback_replay": False,
         },
         "animation": {
             "kind": "plot-animation",
@@ -42,6 +44,7 @@ def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
             "max_frames": 128,
             "controls": ["play", "pause", "iteration_slider"],
             "static_fallback": True,
+            "callback_replay": False,
         },
         "constraints": constraints,
     }

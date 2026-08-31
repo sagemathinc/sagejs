@@ -87,21 +87,38 @@ for operation in (
 ):
     for method_record in records["operations"][operation]["methods"].values():
         assert method_record["views"]["explanation"]["structured"] == "optimization-explanation/v1"
+        assert not method_record["views"]["explanation"]["callback_replay"]
         assert method_record["views"]["static"]["kind"] == "plot-spec"
         assert method_record["views"]["animation"]["kind"] == "plot-animation"
+        assert not method_record["views"]["static"]["callback_replay"]
+        assert not method_record["views"]["animation"]["callback_replay"]
 records["operations"]["minimize"]["methods"]["bfgs"]["views"]["animation"]["controls"].append("mutation")
 assert "mutation" not in capabilities()["operations"]["minimize"]["methods"]["bfgs"]["views"]["animation"]["controls"]
 
-interior = minimize_scalar(lambda x: (x - 2.0)**2, -1.0, 5.0)
+scalar_calls = [0]
+def counted_scalar(x):
+    scalar_calls[0] += 1
+    return (x - 2.0)**2
+
+interior = minimize_scalar(counted_scalar, -1.0, 5.0)
 assert interior.success and abs(interior.value - 2.0) < 1.0e-8
 assert interior.method == "bounded-brent"
 assert interior.validation.passed and interior.verify().passed
+calls_after_solve_and_verify = scalar_calls[0]
+assert interior.explanation()["outcome"]["success"]
+assert "bounded-brent" in interior.explain()
+assert scalar_calls[0] == calls_after_solve_and_verify
 interior_plot = interior.plot()
+assert scalar_calls[0] == calls_after_solve_and_verify
 assert len(interior_plot.layers) == 5
-assert "Bounded scalar objective" in interior_plot.alt_text()
+assert "objective callback was not replayed" in interior_plot.alt_text()
 assert "PLOT_ALT_TEXT_MISSING" not in {item.code for item in interior_plot.validate()}
 assert lower_plot_spec(interior_plot)["layout"]["xaxis"]["title"]["text"] == "x"
+assert interior.to_plot_spec().provenance["metadata"]["callback_replayed"] is False
+assert scalar_calls[0] == calls_after_solve_and_verify
 interior_animation = interior.animate().to_dict()
+assert scalar_calls[0] == calls_after_solve_and_verify
+assert not interior_animation["metadata"]["callback_replayed"]
 assert len(interior_animation["frames"]) >= 2
 assert interior_animation["controls"]["play"] and interior_animation["controls"]["pause"]
 assert interior_animation["controls"]["slider_prefix"] == "Iteration: "
@@ -113,6 +130,9 @@ first_axes = interior_animation["frames"][0]["state"]["value"]["axes_or_scene"]
 last_axes = interior_animation["frames"][-1]["state"]["value"]["axes_or_scene"]
 assert first_axes == last_axes
 assert not first_axes["xaxis"]["autorange"] and not first_axes["yaxis"]["autorange"]
+first_interval_reference = interior_animation["frames"][0]["state"]["value"]["layers"][1]["data"]
+last_interval_reference = interior_animation["frames"][-1]["state"]["value"]["layers"][1]["data"]
+assert first_interval_reference == last_interval_reference
 decimated = _decimate_records([{"ordinal": index} for index in range(1000)], 127)
 assert len(decimated) == 127 and decimated[0]["ordinal"] == 0
 assert decimated[-1]["ordinal"] == 999
@@ -465,12 +485,22 @@ assert not resolution_check["passed"]
 assert "independent validation did not support" in unresolved_scale.explanation()["failure"]["narrative"]
 assert "not supported by independent validation" in unresolved_scale.plot().alt_text()
 
-no_trace = minimize_scalar(lambda x: x*x, -1.0, 1.0, trace="none")
+no_trace_calls = [0]
+def counted_no_trace(x):
+    no_trace_calls[0] += 1
+    return x*x
+
+no_trace = minimize_scalar(counted_no_trace, -1.0, 1.0, trace="none")
+no_trace_calls_after_solve = no_trace_calls[0]
+no_trace_plot = no_trace.plot()
+assert no_trace_calls[0] == no_trace_calls_after_solve
+assert "1 retained finite objective state" in no_trace_plot.alt_text()
 try:
     no_trace.animate()
     raise AssertionError("animations must not fabricate unretained iterations")
 except ValueError:
     pass
+assert no_trace_calls[0] == no_trace_calls_after_solve
 
 truncated = minimize(
     lambda point: (1.0-point[0])**2 + 100.0*(point[1]-point[0]*point[0])**2,

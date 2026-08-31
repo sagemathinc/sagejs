@@ -21,7 +21,6 @@ from sagejs.plotting import (
 
 from ._core import OptimizationResult
 
-MAX_OBJECTIVE_PLOT_SAMPLES = 129
 MAX_FIT_PLOT_OBSERVATIONS = 2_048
 MAX_FIT_ANIMATION_OBSERVATIONS = 256
 MAX_OPTIMIZATION_ANIMATION_FRAMES = 128
@@ -173,6 +172,7 @@ def _provenance(
         "trace_truncated": result.trace.truncated,
         "diagnostic_codes": _diagnostic_codes(result),
         "alt_text": alt_text,
+        "callback_replayed": False,
     }
     details.update(metadata)
     return Provenance(
@@ -183,55 +183,24 @@ def _provenance(
     )
 
 
-def _sample_scalar_objective(
-    result: OptimizationResult,
-) -> tuple[list[float], list[float | None]]:
-    interval = result.problem.bounds.get("interval")
-    function = result.problem.function
-    if not isinstance(interval, list) or len(interval) != 2 or function is None:
-        raise ValueError("scalar optimization plot requires a live bounded objective")
-    lower = float(interval[0])
-    upper = float(interval[1])
-    x_values: list[float] = []
-    y_values: list[float | None] = []
-    for index in range(MAX_OBJECTIVE_PLOT_SAMPLES):
-        fraction = index / (MAX_OBJECTIVE_PLOT_SAMPLES - 1)
-        if index == 0:
-            x_value = lower
-        elif index == MAX_OBJECTIVE_PLOT_SAMPLES - 1:
-            x_value = upper
-        else:
-            span = upper - lower
-            x_value = (
-                lower + span * fraction
-                if math.isfinite(span)
-                else lower * (1.0 - fraction) + upper * fraction
-            )
-        x_values.append(x_value)
-        try:
-            y_value = float(function(x_value))
-            y_values.append(y_value if math.isfinite(y_value) else None)
-        except Exception:
-            y_values.append(None)
-    return x_values, y_values
-
-
 def _scalar_alt_text(
     result: OptimizationResult,
-    finite_samples: int,
     path_count: int,
     *,
     show_result: bool,
 ) -> str:
     interval = result.problem.bounds.get("interval")
+    state_word = "state" if path_count == 1 else "states"
     answer = (
-        "Bounded scalar objective on "
+        "Bounded scalar optimization on "
         + str(interval)
         + " with "
-        + str(finite_samples)
-        + " finite samples and "
         + str(path_count)
-        + " retained incumbent states. "
+        + " retained finite objective "
+        + state_word
+        + "; the objective callback was not "
+        "replayed. Interval endpoints are shown on an objective-reference "
+        "baseline. "
     )
     if show_result and isinstance(result.value, (int, float)):
         answer += "Returned x=" + str(result.value) + ". "
@@ -244,14 +213,11 @@ def _scalar_alt_text(
 def _scalar_plot(
     result: OptimizationResult,
     records: list[dict[str, Any]] | None = None,
-    sampled: tuple[list[float], list[float | None]] | None = None,
     *,
     show_result: bool = True,
     axis_ranges: AxisRanges | None = None,
+    reference_y_override: float | None = None,
 ) -> PlotSpec:
-    x_values, y_values = (
-        _sample_scalar_objective(result) if sampled is None else sampled
-    )
     selected = _story_records(result) if records is None else records
     path_x: list[float] = []
     path_y: list[float] = []
@@ -261,8 +227,20 @@ def _scalar_plot(
         if isinstance(candidate, (int, float)) and isinstance(objective, (int, float)):
             path_x.append(float(candidate))
             path_y.append(float(objective))
-    interval_x = [x_values[0], x_values[-1]]
-    interval_y = [y_values[0], y_values[-1]]
+    interval = result.problem.bounds.get("interval")
+    interval_x = (
+        [float(interval[0]), float(interval[1])]
+        if isinstance(interval, list) and len(interval) == 2
+        else []
+    )
+    reference_y = (
+        float(reference_y_override)
+        if reference_y_override is not None
+        else min(path_y)
+        if len(path_y) > 0
+        else 0.0
+    )
+    interval_y = [reference_y for _ in interval_x]
     returned_x: list[float] = []
     returned_y: list[float | None] = []
     if show_result and isinstance(result.value, (int, float)):
@@ -270,24 +248,40 @@ def _scalar_plot(
         returned_y.append(result.objective)
     alt_text = _scalar_alt_text(
         result,
-        sum(value is not None for value in y_values),
         len(path_x),
         show_result=show_result,
     )
     layers = [
         make_layer(
             "line",
-            {"x": x_values, "y": y_values},
+            {"x": path_x, "y": path_y},
             ordinal=0,
             namespace="optimization",
-            source_intent={"operation": "scalar_minimum", "role": "objective"},
+            source_intent={
+                "operation": "scalar_minimum",
+                "role": "retained_objective_path",
+                "evidence": "retained_solver_states",
+            },
             style={"color": "#3366cc", "width": 2},
-            legend={"label": "objective", "show": True},
+            legend={"label": "retained objective path", "show": True},
+        ),
+        make_layer(
+            "line",
+            {"x": interval_x, "y": interval_y},
+            ordinal=1,
+            namespace="optimization",
+            source_intent={
+                "operation": "scalar_minimum",
+                "role": "finite_interval_reference",
+                "placement": "minimum_retained_objective_baseline",
+            },
+            style={"color": "#7a7a7a", "width": 1, "dash": "dash"},
+            legend={"label": "finite interval", "show": True},
         ),
         make_layer(
             "point",
             {"x": interval_x, "y": interval_y},
-            ordinal=1,
+            ordinal=2,
             namespace="optimization",
             source_intent={
                 "operation": "scalar_minimum",
@@ -295,18 +289,6 @@ def _scalar_plot(
             },
             style={"color": "#7a7a7a", "size": 8, "symbol": "diamond"},
             legend={"label": "interval bounds", "show": True},
-        ),
-        make_layer(
-            "line",
-            {"x": path_x, "y": path_y},
-            ordinal=2,
-            namespace="optimization",
-            source_intent={
-                "operation": "scalar_minimum",
-                "role": "incumbent_path",
-            },
-            style={"color": "#dd8452", "width": 1},
-            legend={"label": "incumbent path", "show": True},
         ),
         make_layer(
             "point",
@@ -348,8 +330,7 @@ def _scalar_plot(
             result,
             "scalar_minimum_plot",
             alt_text,
-            objective_sample_count=MAX_OBJECTIVE_PLOT_SAMPLES,
-            retained_path_count=len(path_x),
+            retained_objective_state_count=len(path_x),
         ),
     )
 
@@ -513,14 +494,19 @@ def _record_measure(record: dict[str, Any], operation: str) -> tuple[float | Non
 def _animation_axis_ranges(
     result: OptimizationResult,
     records: list[dict[str, Any]],
-    scalar_samples: tuple[list[float], list[float | None]] | None,
 ) -> AxisRanges:
     if result.problem.operation == "scalar_minimum":
-        if scalar_samples is None:
-            return None, None
-        x_values, sampled_y = scalar_samples
-        y_values = [float(value) for value in sampled_y if value is not None]
+        interval = result.problem.bounds.get("interval")
+        x_values = (
+            [float(interval[0]), float(interval[1])]
+            if isinstance(interval, list) and len(interval) == 2
+            else []
+        )
+        y_values: list[float] = []
         for record in records:
+            candidate = record.get("candidate")
+            if isinstance(candidate, (int, float)):
+                x_values.append(float(candidate))
             objective = record.get("objective")
             if isinstance(objective, (int, float)):
                 y_values.append(float(objective))
@@ -930,12 +916,16 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
                 + str(MAX_FIT_ANIMATION_OBSERVATIONS)
                 + " retained observations"
             )
-    scalar_samples = (
-        _sample_scalar_objective(result)
-        if result.problem.operation == "scalar_minimum"
-        else None
-    )
-    axis_ranges = _animation_axis_ranges(result, records, scalar_samples)
+    axis_ranges = _animation_axis_ranges(result, records)
+    scalar_reference_y: float | None = None
+    if result.problem.operation == "scalar_minimum":
+        retained_objectives = [
+            float(record["objective"])
+            for record in records
+            if isinstance(record.get("objective"), (int, float))
+        ]
+        if len(retained_objectives) > 0:
+            scalar_reference_y = min(retained_objectives)
     frames: list[AnimationFrame] = []
     for index in range(len(records)):
         prefix = records[: index + 1]
@@ -944,9 +934,9 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
             state = _scalar_plot(
                 result,
                 prefix,
-                scalar_samples,
                 show_result=final_frame,
                 axis_ranges=axis_ranges,
+                reference_y_override=scalar_reference_y,
             )
         elif result.problem.operation in ("linear_fit", "curve_fit"):
             fitted = records[index].get("fitted_values")
@@ -1015,6 +1005,7 @@ def optimization_animation(result: OptimizationResult) -> PlotAnimation:
             "source_progress_states": original_progress_count,
             "retained_progress_states": len(progress),
             "animation_decimated": len(progress) < original_progress_count,
+            "callback_replayed": False,
             "fixed_axes": axis_ranges[0] is not None and axis_ranges[1] is not None,
             "static_fallback": {
                 "kind": "plot-spec",
