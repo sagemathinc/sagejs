@@ -2,7 +2,7 @@
   "schema": "sagejs.numerical-node-capability-spec/v1",
   "backend": {
     "id": "sagejs-node-numerical-artifacts",
-    "version": "numerical-product-v2"
+    "version": "numerical-product-v3"
   },
   "capabilities": [
     {"id": "numerics.contracts", "case_ids": ["p0-result-contract"], "envelope": {"schema_version": 1, "numeric_type": "binary64"}},
