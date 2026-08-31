@@ -22,6 +22,7 @@ from ..model import (
 from ..trace import NumericalTrace, TracePolicy
 
 StateFunction = Callable[[float, Sequence[float]], Sequence[Any]]
+StateJacobian = Callable[[float, Sequence[float]], Sequence[Sequence[Any]]]
 ScalarStateFunction = Callable[[float, Sequence[float]], Any]
 ReferenceFunction = Callable[[float], Sequence[Any]]
 _MACHINE_EPSILON = 2.220446049250313e-16
@@ -186,6 +187,8 @@ class OdeResourceBudget(ResourceBudget):
         max_output_points: int = 10_000,
         max_event_iterations: int = 64,
         max_validation_evaluations: int = 32,
+        max_linear_solve_failures: int = 8,
+        max_workspace_bytes: int = 64_000_000,
         max_trace_events: int = 256,
         max_trace_bytes: int = 1_000_000,
     ) -> None:
@@ -200,6 +203,8 @@ class OdeResourceBudget(ResourceBudget):
             "max_output_points": max_output_points,
             "max_event_iterations": max_event_iterations,
             "max_validation_evaluations": max_validation_evaluations,
+            "max_linear_solve_failures": max_linear_solve_failures,
+            "max_workspace_bytes": max_workspace_bytes,
         }
         for name, value in extras.items():
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
@@ -223,6 +228,14 @@ class OdeResourceBudget(ResourceBudget):
     @property
     def max_validation_evaluations(self) -> int:
         return self._ode_values["max_validation_evaluations"]
+
+    @property
+    def max_linear_solve_failures(self) -> int:
+        return self._ode_values["max_linear_solve_failures"]
+
+    @property
+    def max_workspace_bytes(self) -> int:
+        return self._ode_values["max_workspace_bytes"]
 
     def to_dict(self) -> dict[str, JSONValue]:
         record = super().to_dict()
@@ -253,6 +266,7 @@ class OdeProblem(NumericalProblem):
         reference: ReferenceFunction | None,
         reference_atol: float,
         reference_rtol: float,
+        jacobian: StateJacobian | None,
         resource_budget: OdeResourceBudget,
         trace_policy: TracePolicy,
         function_record: Mapping[str, Any] | None,
@@ -272,6 +286,7 @@ class OdeProblem(NumericalProblem):
         self._reference = reference
         self._reference_atol = float(reference_atol)
         self._reference_rtol = float(reference_rtol)
+        self._jacobian = jacobian
         metadata: dict[str, Any] = {
             "dense_output": self._dense_output,
             "first_step": self._first_step,
@@ -285,6 +300,12 @@ class OdeProblem(NumericalProblem):
                 "replayable": False,
                 "atol": self._reference_atol,
                 "rtol": self._reference_rtol,
+            },
+            "jacobian": {
+                "kind": "opaque_callback"
+                if jacobian is not None
+                else "finite_difference",
+                "replayable": False,
             },
         }
         super().__init__(
@@ -361,6 +382,10 @@ class OdeProblem(NumericalProblem):
     @property
     def reference_rtol(self) -> float:
         return self._reference_rtol
+
+    @property
+    def jacobian(self) -> StateJacobian | None:
+        return self._jacobian
 
     @property
     def ode_budget(self) -> OdeResourceBudget:
@@ -604,7 +629,8 @@ class OdeResult(NumericalResult):
             "limitations": {
                 "local_error_is_not_global_error_bound": True,
                 "event_detection_requires_a_sampled_sign_change": True,
-                "stiff_methods_supported": False,
+                "stiff_methods_supported": plan.method == "rosenbrock4",
+                "stiffness_detection_supported": False,
             },
         }
         super().__init__(
@@ -624,8 +650,14 @@ class OdeResult(NumericalResult):
                 "implementation": "sagejs.numerics.ode",
                 "implementation_kind": "ordinary_python",
                 "source_transparent": True,
-                "algorithm_family": "explicit_runge_kutta",
-                "dense_output": "quartic" if plan.method == "rk45" else "cubic_hermite",
+                "algorithm_family": "linearly_implicit_rosenbrock"
+                if plan.method == "rosenbrock4"
+                else "explicit_runge_kutta",
+                "dense_output": "quartic"
+                if plan.method == "rk45"
+                else "rosenbrock_cubic"
+                if plan.method == "rosenbrock4"
+                else "cubic_hermite",
             },
             domain_payload=domain_payload,
         )
@@ -652,7 +684,12 @@ class OdeResult(NumericalResult):
         local = local_value if isinstance(local_value, dict) else {}
         residual = residual_value if isinstance(residual_value, dict) else {}
         lines = [
-            self.method + " explicit Runge-Kutta IVP",
+            self.method
+            + (
+                " linearly implicit Rosenbrock IVP"
+                if self.method == "rosenbrock4"
+                else " explicit Runge-Kutta IVP"
+            ),
             "status: " + self.status + " (" + self._termination_reason + ")",
             "interval: "
             + str(self._trajectory.internal_times[0])

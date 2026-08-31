@@ -38,8 +38,8 @@ Primary sources:
 - [SUNDIALS source and package overview](https://github.com/LLNL/sundials)
 - [SUNDIALS license](https://github.com/LLNL/sundials/blob/main/LICENSE)
 
-Decision: retain SUNDIALS as the leading mature stiff/native candidate, but do
-not claim it in this lane. A production choice requires a real callback and
+Decision: retain SUNDIALS as the leading mature native candidate for sparse,
+large-scale, DAE, or multistep work, but do not claim it in this lane. A production choice requires a real callback and
 packed-state boundary, browser/Wasm build, Windows x64 build, cancellation and
 rootfinding tests, allocation accounting, payload and cold-start measurements,
 and differential agreement. None of those receipts exists yet, and this lane
@@ -55,13 +55,25 @@ License 1.0.
 Primary sources:
 
 - [Odeint stepper and controller overview](https://www.boost.org/doc/libs/latest/libs/numeric/odeint/doc/html/boost_numeric_odeint/odeint_in_detail/steppers.html)
+- [Odeint Rosenbrock4 coefficient source](https://github.com/boostorg/odeint/blob/master/include/boost/numeric/odeint/stepper/rosenbrock4.hpp)
+- [Kaps and Rentrop, *Generalized Runge–Kutta methods of order four with stepsize control for stiff ordinary differential equations*](https://doi.org/10.1007/BF01396495)
 - [Odeint dense-output concept](https://www.boost.org/doc/libs/latest/libs/numeric/odeint/doc/html/boost_numeric_odeint/concepts/dense_output_stepper.html)
 - [Boost Software License](https://www.boost.org/users/license.html)
 
-Decision: do not add a C++ dependency for the explicit slice already expressed
-clearly in ordinary Python. Reconsider Rosenbrock only through a measured stiff
-prototype; its uBLAS/Jacobian boundary and browser payload must be compared
-against SUNDIALS rather than inferred from the feature list.
+Decision: translate the published Kaps–Rentrop Rosenbrock4 coefficient set into
+ordinary Python, not a C++ dependency. The paper establishes a fourth-order
+linearly implicit family with embedded third-order step control, and the Boost
+source provides an independently inspectable coefficient and stage reference.
+The translation's fixed-step convergence ratio is checked directly. It reuses
+one partial-pivoting LU factorization per attempted step and independently
+checks every normalized linear residual.
+
+The first prototype also translated Boost's Rosenbrock dense extension. It was
+rejected because its raw derivative defect did not pass the lane's quantitative
+stiff-transition gate on the adversarial Van der Pol case. The shipped path
+uses endpoint-derivative cubic Hermite output, controls its midpoint defect
+online, and independently validates a checked `(I-hJ)` defect correction. This
+is lower-order dense output than the solution step and is declared as such.
 
 ## Algorithm decision
 
@@ -69,8 +81,11 @@ The selected implementation order follows `ARCHITECTURE.md`:
 
 1. classical fixed-step RK4 as a readable comparison baseline;
 2. ordinary-Python Dormand–Prince 5(4) as the production nonstiff path;
-3. SciPy 1.18 and analytic/invariant cases as independent oracles; and
-4. no native code or new dependency.
+3. ordinary-Python Kaps–Rentrop Rosenbrock4 as the named dense-Jacobian stiff
+   path;
+4. SciPy 1.18 Radau/BDF plus analytic, invariant, and defect cases as
+   independent oracles; and
+5. no native code or new dependency.
 
 The adaptive controller uses a component-scaled weighted RMS error norm,
 acceptance at norm at most one, safety factor `0.9`, bounded growth/shrink, and
@@ -82,7 +97,14 @@ derivative defect by the accepted-step width and require it to remain within
 extension's defect constant while rejecting stage-aliasing cases by many orders
 of magnitude; it is not presented as a global forward-error bound.
 
-Stiff support is deliberately absent. The support record names `radau`, `bdf`,
-`lsoda`, `cvode`, and `sundials` as unsupported and points to mature external
-alternatives. `method="auto"` always means the nonstiff RK45 baseline; it does
-not inspect a few early steps and invent a stiffness guarantee.
+The stiff qualification is deliberately narrow. Rosenbrock4 is dense-Jacobian,
+dense-LU, real-binary64, and linearly implicit; it has no Newton iteration,
+sparse solve, mass matrix, or DAE contract. Supplied and forward-difference
+Jacobians are covered. Robertson, HIRES, and `mu=1000` Van der Pol endpoints are
+checked against both SciPy Radau and SciPy BDF, with conservation and
+linearized-residual evidence where applicable. `radau`, `bdf`, `lsoda`,
+`cvode`, and `sundials` remain unsupported method names.
+
+`method="auto"` always means the nonstiff RK45 baseline. No independently
+qualified stiffness classifier exists, so the planner does not infer one from
+rejections or a few early Jacobians.

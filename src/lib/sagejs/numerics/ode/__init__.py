@@ -1,4 +1,4 @@
-"""Validated explicit initial-value ODE laboratory."""
+"""Validated explicit and linearly implicit initial-value ODE laboratory."""
 
 from .capabilities import (
     ODE_CAPABILITY_SCHEMA_VERSION,
@@ -16,6 +16,7 @@ from .model import (
     OdeResult,
     OdeTrajectory,
     OdeUnsupportedError,
+    StateJacobian,
 )
 from .solvers import ode_problem, solve_ivp, solve_ode_problem
 
@@ -30,6 +31,7 @@ __all__ = [
     "OdeResult",
     "OdeTrajectory",
     "OdeUnsupportedError",
+    "StateJacobian",
     "ode_capabilities",
     "ode_problem",
     "plan_ode",

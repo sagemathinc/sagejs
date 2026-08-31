@@ -6,7 +6,7 @@ The currently qualified ODE laboratory solves real binary64 systems
 y'(t)=f(t,y), \qquad y(t_0)=y_0
 \]
 
-with transparent explicit Runge–Kutta methods. It records the computed
+with transparent Runge–Kutta and linearly implicit Rosenbrock methods. It records the computed
 trajectory, local error-control decisions, dense-output coefficients, located
 events, independent derivative-defect samples, invariant drift, and optional
 analytic-reference error. Local error control is useful evidence, but it is not
@@ -60,7 +60,7 @@ new solve. If `evaluation_times` is supplied, `trajectory.times` and
 `trajectory.states` expose those requested samples while the internal knots
 remain available for explanation.
 
-## The two methods
+## Methods
 
 `method="rk4"` is the classical four-stage, fourth-order fixed-step method. It
 has no error estimator. Its cubic Hermite dense output costs one additional RHS
@@ -97,6 +97,34 @@ value with the requested state tolerance, using a documented factor of `64` for
 the fourth-order continuous extension. A finite but excessive defect therefore
 rejects validation instead of being treated as supporting evidence.
 
+`method="rosenbrock4"` is the fourth-order Kaps–Rentrop Rosenbrock method,
+using its embedded third-order correction for adaptive local error control.
+It is a named, literature-backed stiff path implemented in ordinary Python.
+Each attempted step evaluates a dense Jacobian, forms
+`I/(gamma*h) - J`, factorizes it once with partial pivoting, and reuses that LU
+factorization for every stage. A caller may supply `jacobian(t, y)`; otherwise
+the solver uses a forward finite-difference dense Jacobian whose RHS calls count
+against `max_evaluations`.
+
+Rosenbrock4 is linearly implicit: it has no nonlinear Newton iteration. Thus a
+"Newton convergence" claim is not applicable. Singular pivots, nonfinite
+solutions, and excessive normalized linear residuals are detected explicitly;
+failed factorizations shrink the step up to `max_linear_solve_failures`, then
+end with `singular_linear_system`, `nonfinite_linear_solution`, or
+`linear_solve_residual` as the exact ODE termination reason. The current dense
+linear algebra costs cubic time and quadratic logical workspace. The solver
+preflights a conservative list-backed workspace estimate against
+`max_workspace_bytes` before the first user callback.
+
+Accepted stiff steps retain endpoint-derivative cubic Hermite output. The
+embedded estimate is combined online with a midpoint derivative-defect check.
+Independent validation converts each sampled defect through the checked solve
+`(I-hJ) delta = h*(P'-f(t,P))` and compares the weighted RMS correction with
+requested tolerances using a documented threshold of `128`. This resolvent
+metric avoids rejecting useful stiff interpolants merely because the raw
+derivative residual is large, while still making the accuracy gate
+quantitative. It is residual evidence, not a forward-error theorem.
+
 ## Events and termination
 
 An event is a scalar function `g(t, y)`. The solver detects a sign change at
@@ -129,10 +157,11 @@ accepted step, tangencies without sign change, and discontinuous event
 functions can be missed or fail residual validation. Reducing `max_step` is a
 useful response when crossings are closely spaced.
 
-Hard execution limits cover step attempts, solver callback evaluations,
+Hard execution limits cover step attempts, solver callback and Jacobian evaluations,
 elapsed time, event-location iterations, internal output points, dense segments,
 event records, requested samples, validation callbacks, trace events, and trace
-bytes. Internal knots are capped at `max_output_points`, so dense segments are
+bytes. Rosenbrock linear-solve failures and logical workspace are separately
+bounded. Internal knots are capped at `max_output_points`, so dense segments are
 capped at one fewer. Requested samples and event records are each capped at the
 same declared bound. A zero-argument `cancel` callback and elapsed time are
 checked before and after user callbacks, as well as before stages, steps,
@@ -168,7 +197,7 @@ A solver can reach the requested bound and still return
 `status="validation_failed"`. Conversely, an exhausted budget retains its
 partial trajectory and evidence but does not claim success.
 
-## Failure as a teaching example
+## Stiff examples and evidence boundary
 
 The problem
 
@@ -177,21 +206,25 @@ y'=-1000(y-\cos t)-\sin t,\qquad y(0)=1
 \]
 
 has the benign-looking solution `cos(t)` but a rapidly decaying stiff mode.
-`radau`, `bdf`, `lsoda`, and SUNDIALS methods are classified as unsupported in
-this release. Requesting one raises `OdeUnsupportedError` before evaluating the
-callback. Forcing RK45 with a small evaluation budget demonstrates step
-rejection or budget exhaustion; it does not silently relabel an explicit method
-as stiff-capable.
+Rosenbrock4 follows it without the explicit RK45 stability restriction when it
+is requested by name. The permanent corpus also integrates Robertson kinetics
+to `t=100`, HIRES to `t=321.8122`, and the Van der Pol oscillator with
+`mu=1000` to `t=3000`. Frozen and live SciPy 1.18 Radau and BDF endpoints are
+independent differential oracles. Robertson total mass and the HIRES `y7+y8`
+quantity are checked independently. The compact source witness runs with both
+supplied and finite-difference Jacobians in CPython and Sage.js.
 
-Use SciPy Radau, SciPy BDF, or SUNDIALS outside Sage.js when a qualified stiff
-solver is required. The checked corpus preserves a SciPy Radau oracle for this
-case so future stiff work has a concrete acceptance target.
+`radau`, `bdf`, `lsoda`, CVODE, and SUNDIALS method names remain unsupported.
+Requesting one raises `OdeUnsupportedError` before evaluating the callback.
+Sage.js does not claim that this one Rosenbrock method replaces those families:
+large sparse systems, mass matrices, DAEs, user-supplied `df/dt`, sparse or
+iterative linear solvers, and Newton-based implicit methods are outside its
+qualified envelope.
 
-This evidence boundary is intentional, but it also means the complete P4 plan is
-not yet delivered: automatic stiffness detection, a qualified stiff solver,
-complex states, higher-order reduction, and deterministic bounded-concurrency
-parameter sweeps remain unsupported. `method="auto"` always selects nonstiff
-RK45 and never implies stiffness handling.
+Automatic stiffness detection is also unsupported. `method="auto"` always
+selects nonstiff RK45 and never implies stiffness handling. Complex states,
+higher-order reduction, browser/Wasm and four-platform receipts, and
+deterministic bounded-concurrency parameter sweeps remain separate P4 gaps.
 
 ## Visual explanations
 
@@ -223,5 +256,6 @@ persistent-host receipts exist.
 - [Qualified capability matrix](capabilities.json)
 - [Corpus](../../../test/numerics/ode/corpus.json)
 - [Frozen SciPy oracle](../../../test/numerics/ode/scipy-oracles.json)
+- [Rosenbrock4 stiff qualification record](stiff-evidence.md)
 - [Benchmark method and evidence](performance.md)
 - [Integration requests](integration-requests.md)
