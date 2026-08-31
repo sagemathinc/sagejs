@@ -15,7 +15,7 @@
     "negative_infinite": "implemented_rational_transform_gauss_7_kronrod_15",
     "whole_infinite": "implemented_paired_rational_transform_gauss_7_kronrod_15",
     "known_interior_breakpoints": "implemented_finite_only",
-    "known_endpoint_singularities": "implemented_explicit_quadratic_transform",
+    "known_endpoint_singularities": "implemented_explicit_quadratic_transform_for_logarithmic_and_inverse_square_root_behavior",
     "unknown_singularities": "not_detected_or_claimed",
     "principal_value": "unsupported",
     "weighted_oscillatory": "unsupported",

@@ -84,7 +84,9 @@ interval count, and roundoff counter. The shared trace policy bounds events and
 bytes with deterministic retention. `result.plot()` consumes only final
 partition records and never reevaluates the callback. It shows local error
 allocation in physical `x` for finite intervals and transformed `t` for
-infinite intervals.
+infinite intervals. The PlotSpec contains explicit semantic alternative text
+with the retained interval count, stop reason, global error evidence, and
+requested target.
 
 The current scope intentionally rejects complex, multidimensional,
 principal-value, and specialized oscillatory/weighted integration. In

@@ -93,6 +93,14 @@ def integration_plot(result: IntegrationResult) -> PlotSpec:
             legend={"label": "global requested tolerance", "show": True},
         ),
     ]
+    error_text = (
+        "unavailable" if result.error_estimate is None else str(result.error_estimate)
+    )
+    target_text = (
+        "unavailable"
+        if result.requested_tolerance is None
+        else str(result.requested_tolerance)
+    )
     return PlotSpec(
         2,
         layers,
@@ -103,11 +111,18 @@ def integration_plot(result: IntegrationResult) -> PlotSpec:
         viewport={"responsive": True},
         annotations=[
             {
-                "text": result.stop_reason
-                + "; "
+                "kind": "alt_text",
+                "text": "Adaptive quadrature local-error allocation across "
                 + str(len(intervals))
-                + " retained intervals",
-                "role": "accessible_summary",
+                + " retained intervals in "
+                + coordinate_label
+                + ". Status "
+                + result.stop_reason
+                + "; reported global absolute-error evidence "
+                + error_text
+                + "; requested target "
+                + target_text
+                + ".",
             }
         ],
         provenance=Provenance(

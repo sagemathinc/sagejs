@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .._json import materialize_object
 from ..diagnostics import NumericalDiagnostic
 from ..model import (
     NumericalPlan,
@@ -65,7 +66,8 @@ class IntegrationResult(NumericalResult):
         self._integration_estimated_error = estimated_error
         self._integration_requested_tolerance = requested_tolerance
         self._integration_final_intervals = tuple(
-            dict(value) for value in final_intervals
+            materialize_object(value, "$.integration_result.final_intervals")
+            for value in final_intervals
         )
         self._integration_elapsed_ms = float(elapsed_ms)
 
@@ -87,7 +89,10 @@ class IntegrationResult(NumericalResult):
     @property
     def final_intervals(self) -> tuple[dict[str, Any], ...]:
         """Return detached records for the final adaptive partition."""
-        return tuple(dict(value) for value in self._integration_final_intervals)
+        return tuple(
+            materialize_object(value, "$.integration_result.final_intervals")
+            for value in self._integration_final_intervals
+        )
 
     def explain(self) -> str:
         """Explain method choice, evidence, refinement, and failure honestly."""

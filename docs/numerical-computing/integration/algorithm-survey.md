@@ -49,6 +49,11 @@ this QAGS would therefore be misleading. It is named
 `adaptive_gauss_kronrod`, and the capability record describes the exact rules
 and transforms.
 
+The quadratic endpoint transformation is qualified for logarithmic and
+inverse-square-root behavior. Stronger algebraic singularities may exhaust the
+depth or roundoff budget and are not silently promoted to supported; tanh-sinh
+or extrapolation remains deferred until its own corpus is qualified.
+
 ## Independent evidence
 
 The embedded Gauss member is a local error estimator, not an independent

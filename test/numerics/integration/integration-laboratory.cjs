@@ -125,7 +125,10 @@ for case in corpus["cases"]:
     assert result.error_estimate is not None
     assert result.trace.events[0].kind == "start"
     assert result.trace.events[-1].kind == "finish"
-    assert len(result.plot().layers) == 3
+    result_plot = result.plot()
+    assert len(result_plot.layers) == 3
+    assert len(result_plot.validate()) == 0
+    assert "local-error allocation" in result_plot.alt_text()
     expected_diagnostic = case.get("expected_diagnostic")
     if expected_diagnostic is not None:
         assert expected_diagnostic in {item.code for item in result.diagnostics}
@@ -142,6 +145,11 @@ assert "independent check" in plotted.explain()
 serialized = json.loads(plotted.to_json())
 assert serialized["domain_payload"]["integration_status"] == "converged"
 assert serialized["measurements"]["validation_evaluations"] > 0
+detached_intervals = list(plotted.final_intervals)
+detached_intervals[0]["depth"] = 999
+detached_intervals[0]["parameter_interval"][0] = 999.0
+assert plotted.final_intervals[0]["depth"] != 999
+assert plotted.final_intervals[0]["parameter_interval"][0] != 999.0
 
 def must_not_run(x):
     raise RuntimeError("must not run")
