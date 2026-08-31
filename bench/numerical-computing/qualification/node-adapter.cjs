@@ -2,6 +2,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { spawnSync } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 
 const PROTOCOL = "sagejs.numerical-qualification-adapter/v1";
@@ -11,6 +12,7 @@ let session = null;
 let artifactRoot = null;
 let cminpackBackend = null;
 let initializedCapabilities = [];
+let scipyPython = null;
 
 function milliseconds(started) {
   return Number(process.hrtime.bigint() - started) / 1e6;
@@ -18,6 +20,38 @@ function milliseconds(started) {
 
 function pythonInput(input) {
   return `input_record = json.loads(${JSON.stringify(JSON.stringify(input))})`;
+}
+
+function findScipyPython() {
+  const candidates = [];
+  if (process.env.PYTHON) candidates.push({ executable: process.env.PYTHON, prefix: [] });
+  candidates.push({ executable: "python3", prefix: [] });
+  candidates.push({ executable: "python", prefix: [] });
+  if (process.platform === "win32") candidates.push({ executable: "py", prefix: ["-3"] });
+  for (const candidate of candidates) {
+    const probe = spawnSync(candidate.executable, [
+      ...candidate.prefix, "-I", "-c",
+      "import numpy, scipy; print(scipy.__version__)",
+    ], { encoding: "utf8", timeout: 30_000 });
+    if (probe.status === 0) return candidate;
+  }
+  return null;
+}
+
+function runScipySource(source, projection) {
+  if (scipyPython === null) throw new Error("CPython with NumPy/SciPy is unavailable");
+  const program = `${source}\nimport json\nprint(${JSON.stringify(MARKER)} + json.dumps(${projection}))`;
+  const result = spawnSync(scipyPython.executable, [
+    ...scipyPython.prefix, "-I", "-c", program,
+  ], { encoding: "utf8", timeout: 120_000, maxBuffer: 4 * 1024 * 1024 });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`emitted SciPy program failed (${result.status}): ${result.stderr || result.stdout}`);
+  }
+  const line = result.stdout.split(/\r?\n/)
+    .findLast((candidate) => candidate.startsWith(MARKER));
+  if (line === undefined) throw new Error("emitted SciPy program returned no qualification record");
+  return JSON.parse(line.slice(MARKER.length));
 }
 
 function sourceFor(id, input) {
@@ -382,6 +416,134 @@ output_record = {
     "equivalent_digests": [intent.digest for intent in equivalent],
     "equivalent_values": [registry.execute(intent).value for intent in equivalent],
 }`,
+    "p6-scipy-emitted-execution": String.raw`
+from sagejs.numerics.frontends import create_frontend_registry
+registry = create_frontend_registry()
+intents = {
+    "linear_solve": registry.lower(
+        "python-scipy", "numpy.linalg.solve", [[3.0, 1.0], [1.0, 2.0]], [9.0, 8.0]
+    ),
+    "integral": registry.lower(
+        "python-scipy", "scipy.integrate.quad", lambda x: math.exp(-x), 0.0, 1.0,
+        expression="exp(-x)",
+    ),
+    "minimum": registry.lower(
+        "python-scipy", "scipy.optimize.minimize_scalar", lambda x: (x-2.0)**2,
+        -1.0, 5.0, expression="(x-2)^2",
+    ),
+    "ode": registry.lower(
+        "python-scipy", "scipy.integrate.solve_ivp", lambda t, y: [y[0]],
+        [0.0, 0.25], [1.0], expression=["y0"],
+    ),
+}
+output_record = {
+    "sources": {name: registry.emit(intent, "python-scipy") for name, intent in intents.items()},
+    "digests": {name: intent.digest for name, intent in intents.items()},
+}`,
+    "p6-frontend-failure-and-expression-guards": String.raw`
+import matlab
+import wolfram
+from sagejs.numerics.frontends import (
+    UnsupportedFrontendError, create_frontend_registry, expression_record,
+    render_expression,
+)
+registry = create_frontend_registry()
+projection_rejections = []
+for module, name in ((matlab, "linsolve"), (wolfram, "LinearSolve")):
+    rich = module.numerical_result(name, [[1.0, 1.0], [2.0, 2.0]], [1.0, 2.0])
+    if rich.success:
+        projection_rejections.append("unexpected-success:" + name)
+    try:
+        module.numerical_value(name, [[1.0, 1.0], [2.0, 2.0]], [1.0, 2.0])
+        projection_rejections.append("escaped:" + name)
+    except RuntimeError as error:
+        if "failed:" in str(error):
+            projection_rejections.append("rejected:" + name)
+
+expression_codes = []
+for source, parameters in (
+    ("x + unbound", ("x",)),
+    ("sin(x, 1)", ("x",)),
+    ("1e9999 * x", ("x",)),
+):
+    try:
+        expression_record(source, language="sage", parameters=parameters)
+        expression_codes.append("accepted")
+    except UnsupportedFrontendError as error:
+        expression_codes.append(error.diagnostic.code)
+
+parameter_guard = False
+try:
+    registry.lower(
+        "matlab", "integral", lambda x: x, 0.0, 1.0,
+        expression="x", parameters=("x", "unused"),
+    )
+except ValueError:
+    parameter_guard = True
+
+mismatched = registry.lower(
+    "matlab", "integral", lambda x: x, 0.0, 1.0, expression="x^2"
+)
+mismatched_result = registry.execute(mismatched)
+output_record = {
+    "projection_rejections": projection_rejections,
+    "expression_codes": expression_codes,
+    "parameter_guard": parameter_guard,
+    "callback_mismatch_success": mismatched_result.success,
+    "callback_mismatch_status": mismatched_result.status,
+    "matlab_inequality": render_expression(
+        expression_record("x != 0", language="python", parameters=("x",)), "matlab"
+    ),
+}`,
+    "p6-frontend-resource-guards": String.raw`
+import base64
+import hashlib
+from sagejs.numerics.frontends import NumericalFrontendIntent, OperationRef, UnsupportedFrontendError
+from sagejs.numerics.frontends.portable import attach_intent, parse_attached_intent, portable_value
+
+rejections = []
+deep = 0
+for _index in range(70):
+    deep = [deep]
+try:
+    portable_value(deep)
+except ValueError as error:
+    if "nesting depth" in str(error):
+        rejections.append("depth")
+try:
+    portable_value([0] * 100001)
+except ValueError as error:
+    if "node count" in str(error):
+        rejections.append("nodes")
+operation = OperationRef("qualification", "resource_budget", 1)
+intent = NumericalFrontendIntent(
+    operation, operands={"value": 1}, source_language="sage", source_name="resource_budget"
+)
+try:
+    attach_intent("x" * 2000001, intent, "sage")
+except ValueError as error:
+    if "byte budget" in str(error):
+        rejections.append("source-bytes")
+
+body = "result = 1"
+semantic = intent.semantic_dict()
+semantic["operands"] = {"value": deep}
+envelope = {
+    "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+    "semantic": semantic,
+}
+payload = base64.urlsafe_b64encode(
+    json.dumps(envelope, separators=(",", ":"), sort_keys=True).encode("utf-8")
+).decode("ascii")
+deep_envelope_code = None
+try:
+    parse_attached_intent(body + "\n# sagejs-intent-v1:" + payload, "sage", operation)
+except UnsupportedFrontendError as error:
+    deep_envelope_code = error.diagnostic.code
+output_record = {
+    "rejections": rejections,
+    "deep_envelope_code": deep_envelope_code,
+}`,
     "p7-root-teaching-artifacts": String.raw`
 from sagejs.numerics import find_root
 callback_calls = [0]
@@ -449,6 +611,30 @@ output_record = {
     "validation_error_counts": {name: sum(1 for item in plot.validate() if item.severity == "error") for name, plot, animation in artifacts},
     "validation_issue_codes": {name: [item.code for item in plot.validate()] for name, plot, animation in artifacts},
     "callback_replay_counts": {name: callback_calls[name] - calls_before_views[name] for name in callback_calls},
+}`,
+    "p7-scalar-optimization-retained-view": String.raw`
+from sagejs.numerics.optimization import minimize_scalar
+callback_calls = [0]
+def objective(x):
+    callback_calls[0] += 1
+    return (x - 2.0)**2
+answer = minimize_scalar(objective, -1.0, 5.0, trace="iterations")
+calls_after_solve = callback_calls[0]
+first_plot = answer.plot()
+second_plot = answer.to_plot_spec()
+first_animation = answer.animate()
+second_animation = answer.to_animation()
+output_record = {
+    "success": answer.success,
+    "value": answer.value,
+    "callback_replays": callback_calls[0] - calls_after_solve,
+    "plot_layers": len(first_plot.layers),
+    "plot_validation_errors": sum(1 for issue in first_plot.validate() if issue.severity == "error"),
+    "animation_frames": len(first_animation.frames),
+    "repeated_plot_layers": len(second_plot.layers),
+    "repeated_animation_frames": len(second_animation.frames),
+    "plot_callback_replayed": first_plot.provenance["metadata"]["callback_replayed"],
+    "animation_callback_replayed": first_animation.to_dict()["metadata"]["callback_replayed"],
 }`,
     "p8-statistics-deterministic-fuzz": String.raw`
 from sagejs.numerics.statistics import describe
@@ -518,6 +704,52 @@ async function evaluate(id, input) {
   const started = process.hrtime.bigint();
   const result = await session.evaluate(sourceFor(id, input));
   return { raw: parseEvaluation(result), kernelMs: milliseconds(started) };
+}
+
+async function evaluateParserGuards() {
+  if (artifactRoot === null) throw new Error("Sage.js qualification artifact is not initialized");
+  const started = process.hrtime.bigint();
+  const { createForeignFrontend } = require(path.join(artifactRoot, "tools", "foreign", "index.js"));
+  const matlab = await createForeignFrontend("matlab");
+  const wolfram = await createForeignFrontend("wolfram");
+  const cases = [
+    [matlab, "eig([3 1;1 2])", "MatlabSyntaxError", "eig numerical syntax is not supported"],
+    [matlab, "griddedInterpolant([0 1],[0 1])", "MatlabSyntaxError", "griddedInterpolant numerical syntax is not supported"],
+    [matlab, "ttest2([1 2 3],[2 3 4])", "MatlabSyntaxError", "ttest2 numerical syntax is not supported"],
+    [wolfram, "Fourier[{1,2,3}]", "WolframSyntaxError", "Fourier numerical syntax is not supported"],
+    [wolfram, "Eigensystem[{{3,1},{1,2}}]", "WolframSyntaxError", "Eigensystem numerical syntax is not supported"],
+    [wolfram, "FindMinimum[(x-2)^2,{x,0}]", "WolframSyntaxError", "FindMinimum numerical syntax is not supported"],
+  ];
+  const records = [];
+  for (const [frontend, source, expectedName, expectedMessage] of cases) {
+    try {
+      frontend.lower(source, { captureResult: true });
+      records.push({ source, rejected: false, name: null, message_matches: false });
+    } catch (error) {
+      records.push({
+        source,
+        rejected: true,
+        name: error?.name ?? null,
+        message_matches: String(error?.message ?? "").includes(expectedMessage),
+        name_matches: error?.name === expectedName,
+        positioned: Number.isInteger(error?.line) && Number.isInteger(error?.column),
+      });
+    }
+  }
+  const safe = [
+    matlab.lower("integral(@(x) x^2,0,1)", { captureResult: true }).source,
+    wolfram.lower("NIntegrate[x^2,{x,0,1}]", { captureResult: true }).source,
+  ];
+  return { raw: { records, safe }, kernelMs: milliseconds(started) };
+}
+
+function executeScipyPrograms(sources) {
+  return {
+    linear_solve: runScipySource(sources.linear_solve, "result.tolist()"),
+    integral: runScipySource(sources.integral, "float(result)"),
+    minimum: runScipySource(sources.minimum, "float(result)"),
+    ode: runScipySource(sources.ode, "float(result.y[0, -1])"),
+  };
 }
 
 async function evaluateCminpack(id, input) {
@@ -738,10 +970,15 @@ function multilingualCatalogEvidence(raw, input) {
 
 async function normalize(sample) {
   const validationStarted = process.hrtime.bigint();
-  const { raw, kernelMs } = sample.id.startsWith("p3-cminpack-") ||
-    sample.id === "p8-cminpack-cancelled"
-    ? await evaluateCminpack(sample.id, sample.input)
-    : await evaluate(sample.id, sample.input);
+  let evaluated;
+  if (sample.id.startsWith("p3-cminpack-") || sample.id === "p8-cminpack-cancelled") {
+    evaluated = await evaluateCminpack(sample.id, sample.input);
+  } else if (sample.id === "p6-multilingual-parser-fail-closed") {
+    evaluated = await evaluateParserGuards();
+  } else {
+    evaluated = await evaluate(sample.id, sample.input);
+  }
+  const { raw, kernelMs } = evaluated;
   const input = sample.input;
   let observation;
   switch (sample.id) {
@@ -958,6 +1195,61 @@ async function normalize(sample) {
       });
       break;
     }
+    case "p6-multilingual-parser-fail-closed": {
+      const rejected = raw.records.filter((item) => item.rejected).length;
+      const named = raw.records.filter((item) => item.name_matches).length;
+      const messaged = raw.records.filter((item) => item.message_matches).length;
+      const positioned = raw.records.filter((item) => item.positioned).length;
+      observation = success({
+        cases: raw.records.length,
+        structured_rejections: rejected,
+        correct_error_names: named,
+        specific_messages: messaged,
+        source_positions: positioned,
+        safe_lowerings: raw.safe.length,
+        safe_lowerings_reach_runtime: raw.safe.every((source) =>
+          source.includes(".integral(") || source.includes(".NIntegrate(")),
+      }, kernelMs, { parser_rejections: rejected, safe_lowerings: raw.safe.length });
+      break;
+    }
+    case "p6-scipy-emitted-execution": {
+      const executed = executeScipyPrograms(raw.sources);
+      const linear = executed.linear_solve;
+      const linearResidual = Math.max(
+        Math.abs(3 * linear[0] + linear[1] - 9),
+        Math.abs(linear[0] + 2 * linear[1] - 8),
+      );
+      observation = success({
+        programs: Object.keys(executed).length,
+        distinct_intent_digests: new Set(Object.values(raw.digests)).size,
+        linear_residual: linearResidual,
+        integral_error: Math.abs(executed.integral - (1 - Math.exp(-1))),
+        minimum_error: Math.abs(executed.minimum - 2),
+        ode_error: Math.abs(executed.ode - Math.exp(0.25)),
+      }, kernelMs, { emitted_programs_executed: Object.keys(executed).length });
+      break;
+    }
+    case "p6-frontend-failure-and-expression-guards":
+      observation = success({
+        projection_rejections: raw.projection_rejections.slice().sort(),
+        parse_failure_count: raw.expression_codes.filter((code) => code === "parse_failure").length,
+        parameter_guard: raw.parameter_guard,
+        callback_mismatch_success: raw.callback_mismatch_success,
+        callback_mismatch_status: raw.callback_mismatch_status,
+        matlab_inequality: raw.matlab_inequality,
+      }, kernelMs, {
+        failed_value_projections: raw.projection_rejections.filter((item) =>
+          item.startsWith("rejected:"),
+        ).length,
+        expression_rejections: raw.expression_codes.length,
+      });
+      break;
+    case "p6-frontend-resource-guards":
+      observation = success({
+        rejections: raw.rejections.slice().sort(),
+        deep_envelope_code: raw.deep_envelope_code,
+      }, kernelMs, { resource_rejections: raw.rejections.length + 1 });
+      break;
     case "p7-root-teaching-artifacts":
       observation = success({
         plot_layers: raw.plot_layers,
@@ -995,6 +1287,22 @@ async function normalize(sample) {
       });
       break;
       }
+    case "p7-scalar-optimization-retained-view":
+      observation = success({
+        independent_minimum_error: Math.abs(raw.value - 2),
+        callback_replays: raw.callback_replays,
+        plot_layers: raw.plot_layers,
+        plot_validation_errors: raw.plot_validation_errors,
+        animation_frames: raw.animation_frames,
+        repeated_plot_layers: raw.repeated_plot_layers,
+        repeated_animation_frames: raw.repeated_animation_frames,
+        plot_callback_replayed: raw.plot_callback_replayed,
+        animation_callback_replayed: raw.animation_callback_replayed,
+      }, kernelMs, {
+        animation_frames: raw.animation_frames,
+        repeated_views: 4,
+      });
+      break;
     case "p8-statistics-deterministic-fuzz": {
       const oracle = regenerateFuzz(input);
       const errors = raw.means.map((value, index) => Math.abs(value - oracle.means[index]));
@@ -1063,6 +1371,7 @@ module.exports = {
     );
     const { createCminpackBackend } = await import(pathToFileURL(cminpackModulePath).href);
     cminpackBackend = await createCminpackBackend(fs.readFileSync(cminpackArtifact.path));
+    scipyPython = findScipyPython();
     try {
       const { createSage } = require(kernelPath);
       session = await createSage({ mode: "python" });
@@ -1109,13 +1418,19 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       "numerics.sweeps.bounded": "sagejs.numerics.sweeps",
       "numerics.frontend.scalar_root": "sagejs.numerics.frontends",
       "numerics.frontend.catalog": "sagejs.numerics.frontends",
+      "numerics.frontend.parser_guards": "sagejs.numerics.frontends",
+      "numerics.frontend.scipy_execution": "external:scipy-python",
+      "numerics.frontend.guardrails": "sagejs.numerics.frontends",
       "numerics.teaching.root": "sagejs.numerics",
       "numerics.teaching.cross_domain": "sagejs.numerics",
+      "numerics.teaching.scalar_optimization": "sagejs.numerics.optimization",
       "numerics.lifecycle.repeated": "sagejs.numerics",
       };
       initializedCapabilities = context.capabilities
         .filter((item) => item.status === "available" && (
-          requirements[item.id] === "external:cminpack-wasm" || present.has(requirements[item.id])
+          requirements[item.id] === "external:cminpack-wasm" ||
+          (requirements[item.id] === "external:scipy-python" && scipyPython !== null) ||
+          present.has(requirements[item.id])
         ))
         .map((item) => item.id)
         .sort();
@@ -1128,6 +1443,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       session = null;
       artifactRoot = null;
       cminpackBackend = null;
+      scipyPython = null;
       initializedCapabilities = [];
       throw error;
     }
@@ -1142,6 +1458,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
     session = null;
     artifactRoot = null;
     cminpackBackend = null;
+    scipyPython = null;
     initializedCapabilities = [];
   },
 
@@ -1150,6 +1467,7 @@ print(${JSON.stringify(MARKER)} + json.dumps({"available": available}, sort_keys
       initialized: session !== null,
       artifact_root: artifactRoot,
       cminpack_initialized: cminpackBackend !== null,
+      scipy_python_initialized: scipyPython !== null,
       capability_ids: [...initializedCapabilities],
     };
   },

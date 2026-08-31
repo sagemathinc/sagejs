@@ -42,7 +42,9 @@ test("product corpus covers every P0-P8 phase, evidence layer, and integrated do
     "numerics.ode.explicit_ivp", "numerics.ode.stiff_ivp", "numerics.ode.sweeps",
     "numerics.spectral.dense", "numerics.spectral.fft",
     "numerics.statistics.descriptive", "numerics.sweeps.bounded",
-    "numerics.frontend.catalog",
+    "numerics.frontend.catalog", "numerics.frontend.parser_guards",
+    "numerics.frontend.scipy_execution", "numerics.frontend.guardrails",
+    "numerics.teaching.scalar_optimization",
   ];
   const used = new Set(corpus.cases.flatMap((item) => item.required_capabilities));
   for (const id of required) assert(used.has(id), `missing ${id}`);
@@ -121,7 +123,12 @@ test("first-party adapter executes Sage.js and independently checks representati
       "p4-ode-stiff-decay", "p4-ode-decay-sweep",
       "p5-fft-direct-oracle", "p5-statistics-summary",
       "p6-multilingual-catalog-roundtrip",
+      "p6-multilingual-parser-fail-closed",
+      "p6-scipy-emitted-execution",
+      "p6-frontend-failure-and-expression-guards",
+      "p6-frontend-resource-guards",
       "p7-cross-domain-teaching-artifacts",
+      "p7-scalar-optimization-retained-view",
     ]) {
       const item = corpus.cases.find((entry) => entry.id === id);
       const observed = await adapter.runCase({

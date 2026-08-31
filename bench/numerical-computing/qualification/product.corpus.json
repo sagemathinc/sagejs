@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v3",
-  "version": 3,
+  "id": "sagejs-numerical-product-v4",
+  "version": 4,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -472,6 +472,83 @@
       "measurement": {"warmup": 0, "samples": 1}
     },
     {
+      "id": "p6-multilingual-parser-fail-closed",
+      "description": "The actual built MATLAB and Wolfram parsers reject six semantically unsafe numerical mappings with positioned structured syntax errors while two qualified integral forms still lower to runtime wrappers.",
+      "program_phase": "P6",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 8, "evidence_check_ids": ["unsafe-parser-mappings-rejected"]},
+      "input": {"operation": "multilingual-parser-fail-closed", "unsafe_cases": 6, "safe_cases": 2},
+      "required_capabilities": ["numerics.frontend.parser_guards"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "unsafe-parser-mappings-rejected", "evidence": "validation", "kind": "deep-equal", "actual": "/values/structured_rejections", "expected": {"literal": 6}},
+        {"id": "parser-corpus-size", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/cases", "expected": {"literal": 6}},
+        {"id": "parser-errors-typed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/correct_error_names", "expected": {"literal": 6}},
+        {"id": "parser-errors-specific", "evidence": "validation", "kind": "deep-equal", "actual": "/values/specific_messages", "expected": {"literal": 6}},
+        {"id": "parser-errors-positioned", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_positions", "expected": {"literal": 6}},
+        {"id": "safe-parser-forms-lowered", "evidence": "validation", "kind": "deep-equal", "actual": "/values/safe_lowerings", "expected": {"literal": 2}},
+        {"id": "safe-parser-forms-reach-runtime", "evidence": "validation", "kind": "deep-equal", "actual": "/values/safe_lowerings_reach_runtime", "expected": {"literal": true}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p6-scipy-emitted-execution",
+      "description": "Four Python/SciPy programs emitted by the Sage.js artifact execute in isolated CPython with NumPy/SciPy, then the Node adapter independently checks their mathematical outputs.",
+      "program_phase": "P6",
+      "layer": "differential-oracle",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 4, "evidence_check_ids": ["all-scipy-programs-executed"]},
+      "input": {"operation": "scipy-emitted-execution", "programs": ["linear_solve", "integral", "minimum", "ode"]},
+      "required_capabilities": ["numerics.frontend.scipy_execution"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "all-scipy-programs-executed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/programs", "expected": {"literal": 4}},
+        {"id": "scipy-intents-distinct", "evidence": "validation", "kind": "deep-equal", "actual": "/values/distinct_intent_digests", "expected": {"literal": 4}},
+        {"id": "scipy-linear-residual", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/linear_residual", "expected": {"literal": 1e-12}},
+        {"id": "scipy-integral-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/integral_error", "expected": {"literal": 1e-10}},
+        {"id": "scipy-minimum-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/minimum_error", "expected": {"literal": 1e-7}},
+        {"id": "scipy-ode-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/ode_error", "expected": {"literal": 3e-5}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
+      "id": "p6-frontend-failure-and-expression-guards",
+      "description": "Failed numerical results cannot escape through short MATLAB/Wolfram value projections, and replayable expressions reject free symbols, wrong arity, nonfinite literals, parameter mismatches, and dishonest callbacks.",
+      "program_phase": "P6",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 8, "evidence_check_ids": ["failed-values-rejected"]},
+      "input": {"operation": "frontend-failure-and-expression-guards"},
+      "required_capabilities": ["numerics.frontend.guardrails"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "failed-values-rejected", "evidence": "validation", "kind": "deep-equal", "actual": "/values/projection_rejections", "expected": {"literal": ["rejected:LinearSolve", "rejected:linsolve"]}},
+        {"id": "invalid-expressions-rejected", "evidence": "validation", "kind": "deep-equal", "actual": "/values/parse_failure_count", "expected": {"literal": 3}},
+        {"id": "callback-parameters-guarded", "evidence": "validation", "kind": "deep-equal", "actual": "/values/parameter_guard", "expected": {"literal": true}},
+        {"id": "dishonest-callback-failed", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_mismatch_success", "expected": {"literal": false}},
+        {"id": "dishonest-callback-status", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/callback_mismatch_status", "expected": {"literal": "callback_error"}},
+        {"id": "matlab-inequality-rendering", "evidence": "validation", "kind": "deep-equal", "actual": "/values/matlab_inequality", "expected": {"literal": "x ~= 0"}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p6-frontend-resource-guards",
+      "description": "Portable numerical operands and generated-source envelopes reject excessive depth, node count, source bytes, and adversarial deep envelope payloads before execution.",
+      "program_phase": "P6",
+      "layer": "failure-semantics",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 4, "evidence_check_ids": ["frontend-resource-limits-enforced"]},
+      "input": {"operation": "frontend-resource-guards"},
+      "required_capabilities": ["numerics.frontend.guardrails"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "frontend-resource-limits-enforced", "evidence": "validation", "kind": "deep-equal", "actual": "/values/rejections", "expected": {"literal": ["depth", "nodes", "source-bytes"]}},
+        {"id": "deep-envelope-fails-closed", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/deep_envelope_code", "expected": {"literal": "parse_failure"}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
+    },
+    {
       "id": "p7-root-teaching-artifacts",
       "description": "A traced root computation produces bounded renderer-neutral plot and animation records.",
       "program_phase": "P7",
@@ -506,6 +583,30 @@
         {"id": "teaching-animation-bound", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/max_animation_frames", "expected": {"literal": 128}},
         {"id": "teaching-plot-valid", "evidence": "validation", "kind": "deep-equal", "actual": "/values/validation_errors", "expected": {"literal": 0}},
         {"id": "teaching-retained-evidence", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_replays", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p7-scalar-optimization-retained-view",
+      "description": "Repeated scalar-optimization plots and animations use only retained solver evidence: no objective callback replay, no renderer errors, and bounded frames.",
+      "program_phase": "P7",
+      "layer": "definition-identity",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 4, "evidence_check_ids": ["scalar-view-no-replay"]},
+      "input": {"operation": "scalar-optimization-retained-view"},
+      "required_capabilities": ["numerics.teaching.scalar_optimization"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "scalar-view-minimum-oracle", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/independent_minimum_error", "expected": {"literal": 1e-7}},
+        {"id": "scalar-view-no-replay", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_replays", "expected": {"literal": 0}},
+        {"id": "scalar-view-plot-layers", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/plot_layers", "expected": {"literal": 1}},
+        {"id": "scalar-view-plot-valid", "evidence": "validation", "kind": "deep-equal", "actual": "/values/plot_validation_errors", "expected": {"literal": 0}},
+        {"id": "scalar-view-animation-frames", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/animation_frames", "expected": {"literal": 2}},
+        {"id": "scalar-view-animation-bound", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/animation_frames", "expected": {"literal": 128}},
+        {"id": "scalar-view-repeat-plot-stable", "evidence": "validation", "kind": "deep-equal", "actual": "/values/repeated_plot_layers", "expected": {"pointer": "/values/plot_layers"}},
+        {"id": "scalar-view-repeat-animation-stable", "evidence": "validation", "kind": "deep-equal", "actual": "/values/repeated_animation_frames", "expected": {"pointer": "/values/animation_frames"}},
+        {"id": "scalar-view-plot-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/plot_callback_replayed", "expected": {"literal": false}},
+        {"id": "scalar-view-animation-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/animation_callback_replayed", "expected": {"literal": false}}
       ],
       "measurement": {"warmup": 0, "samples": 2}
     },
