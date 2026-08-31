@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.wasm-capability-report/v1",
   "source": "architecture/wasm-capabilities.json",
-  "source_sha256": "21312542632b59c0b80849051451594f2044a07bd9811079b04f94842a028369",
+  "source_sha256": "beab5189c8dd6e9253930114dfb4598138d1b46ec974d0b9b6e10538afa3ae49",
   "counts": {
     "total": 1046,
     "by_kind": {
@@ -16,13 +16,13 @@
       "compiled-source": 53,
       "desktop-only": 47,
       "generated-wasm": 339,
-      "portable-fallback": 561,
-      "shared-core": 46
+      "portable-fallback": 559,
+      "shared-core": 48
     },
     "by_status": {
-      "available": 580,
+      "available": 582,
       "desktop-only": 47,
-      "fallback": 419
+      "fallback": 417
     }
   },
   "workflow_aliases": {
@@ -32,6 +32,10 @@
     "analytic-gamma-xi-batches": [
       "analytic:complex-gamma",
       "analytic:riemann-xi"
+    ],
+    "brandt-degeneracy-and-elliptic-scalar-fallback": [
+      "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+      "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix"
     ],
     "capability-report-api": [
       "specialist:capability-report-api"
@@ -64,6 +68,11 @@
       "ffi:flint:fmpz_matrix_det",
       "ffi:flint:fmpz_matrix_hnf",
       "ffi:flint:fmpz_mod_polynomial_gcd"
+    ],
+    "exact-public-builtins": [
+      "napi:@sagemath/sagejs-flint:binomial",
+      "napi:@sagemath/sagejs-flint:factorial",
+      "napi:@sagemath/sagejs-flint:primePi"
     ],
     "extension-field-conway-data": [
       "ffi:flint:fq_context",
@@ -153,6 +162,10 @@
     ],
     "partition-count-and-ranking": [
       "ffi:flint:arith_number_of_partitions"
+    ],
+    "portable-extension-and-complex-matrices": [
+      "napi:@sagemath/sagejs-flint:acbMatrix",
+      "napi:@sagemath/sagejs-flint:fqMatrix"
     ],
     "python-float-underscore-separators": [
       "specialist:capability-report-api"
@@ -9275,14 +9288,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
       "family": "modular-symbols",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/modular.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Weight-2 degeneracy matrices run in the receipt-authenticated FLINT WebAssembly artifact with an ordinary exact fallback."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
@@ -9688,14 +9701,14 @@
     {
       "id": "napi:@sagemath/sagejs-flint:primePi",
       "family": "exact-arithmetic",
-      "disposition": "portable-fallback",
-      "status": "fallback",
+      "disposition": "shared-core",
+      "status": "available",
       "fallback": "ordinary-sagejs-public-operation",
-      "wasm_module": "host-runtime",
+      "wasm_module": "flint",
       "public_consumers": [
         "src/baselib/builtins.py"
       ],
-      "explanation": "The Node adapter remains host-specific; browser execution uses the reviewed public mathematical fallback."
+      "explanation": "Exact prime counting through inputs below 2^63 runs in the receipt-authenticated FLINT WebAssembly artifact."
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primorial",

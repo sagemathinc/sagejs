@@ -100,6 +100,7 @@ class NormalizedNewform(sage.Element):
     """A normalized newform represented by its exact simple Hecke constituent."""
 
     def __init__(self, parent: Any, constituent: Any, name: str) -> None:
+        self._kind = "NormalizedNewform"
         self._parent = parent
         self._constituent = constituent
         self._dimension = constituent.dimension()

@@ -12,10 +12,10 @@ Trusted route receipts: 0; rejected receipts: 0.
 
 | Class | Expected requirements | Observed calls |
 | --- | ---: | ---: |
-| `wasm-library` | 92 | 0 |
+| `wasm-library` | 94 | 0 |
 | `wasm-compiled-source` | 16 | 0 |
 | `portable-orchestration` | 5 | 0 |
-| `portable-computation` | 0 | 0 |
+| `portable-computation` | 5 | 0 |
 
 ## Families
 
@@ -23,18 +23,20 @@ Trusted route receipts: 0; rejected receipts: 0.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | algebraic-numbers | 3 | 2 | 0 | 2 | 0 | 1 |
 | analytic-functions | 6 | 6 | 0 | 6 | 0 | 0 |
+| arithmetic-geometry | 1 | 0 | 0 | 0 | 0 | 1 |
 | combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | combinatorics-number-theory | 2 | 2 | 0 | 2 | 0 | 0 |
 | dense-binary-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | dense-prime-matrices | 2 | 2 | 0 | 2 | 0 | 0 |
 | elliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
 | enumerative-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
-| exact-arithmetic | 3 | 1 | 0 | 1 | 0 | 2 |
+| exact-arithmetic | 4 | 1 | 0 | 1 | 0 | 3 |
 | extension-fields | 3 | 3 | 0 | 3 | 0 | 0 |
 | finite-fields | 2 | 2 | 0 | 2 | 0 | 0 |
 | graphs | 4 | 4 | 0 | 4 | 0 | 0 |
 | groups-combinatorics | 2 | 2 | 0 | 2 | 0 | 0 |
 | hyperelliptic-curves | 3 | 3 | 0 | 3 | 0 | 0 |
+| linear-algebra | 1 | 0 | 0 | 0 | 0 | 1 |
 | modular-symbols | 2 | 1 | 0 | 1 | 0 | 1 |
 | multivariate-polynomials | 2 | 2 | 0 | 2 | 0 | 0 |
 | number-fields | 4 | 2 | 0 | 2 | 0 | 2 |
@@ -50,6 +52,9 @@ Trusted route receipts: 0; rejected receipts: 0.
 | Workload | Family | Heavy | Status | Route classes | Blocking issues |
 | --- | --- | --- | --- | --- | --- |
 | `parity:exact-big-integer` | exact-arithmetic | no | unmeasured | `wasm-library` | — |
+| `parity:exact-public-builtins` | exact-arithmetic | no | review-required | `portable-computation`, `wasm-library` | `unreviewed-portable-computation:napi:@sagemath/sagejs-flint:binomial`<br>`unreviewed-portable-computation:napi:@sagemath/sagejs-flint:factorial` |
+| `parity:portable-extension-and-complex-matrices` | linear-algebra | no | review-required | `portable-computation` | `unreviewed-portable-computation:napi:@sagemath/sagejs-flint:acbMatrix`<br>`unreviewed-portable-computation:napi:@sagemath/sagejs-flint:fqMatrix` |
+| `parity:brandt-degeneracy-and-elliptic-scalar-fallback` | arithmetic-geometry | no | review-required | `portable-computation`, `wasm-library` | `unreviewed-portable-computation:napi:@sagemath/sagejs-flint:ecScalarMulPrime` |
 | `parity:partition-count-and-ranking` | enumerative-combinatorics | yes | failed | `wasm-library` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:optimizer-gf-p2-affine` | finite-fields | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |
 | `parity:optimizer-gf-pk-affine` | finite-fields | yes | failed | `wasm-compiled-source` | `missing-trusted-route-telemetry:chromium`<br>`missing-trusted-route-telemetry:firefox`<br>`missing-trusted-route-telemetry:webkit` |

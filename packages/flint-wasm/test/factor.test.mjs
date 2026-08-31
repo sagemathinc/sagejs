@@ -57,6 +57,14 @@ test("tests primality and finds proven next primes", () => {
   );
 });
 
+test("provides exact public integer combinatorics and prime counting", () => {
+  assert.equal(flint.factorial(20), 2432902008176640000n);
+  assert.equal(flint.binomial(100, 50), 100891344545564193334812497256n);
+  assert.equal(flint.primePi(1000000n), 78498n);
+  assert.equal(flint.primePi(1000000000000n), 37607912018n);
+  assert.throws(() => flint.primePi(1n << 63n), /between 0 and 2\^63 - 1/);
+});
+
 test("shares the native P1 and weight-2 modular-symbol core", () => {
   assert.deepEqual(flint.modularSymbolsWeight2Info(389), {
     level: 389,
@@ -148,6 +156,10 @@ test("exposes persistent P1 objects and exact weight-2 matrices", () => {
     flint.p1ListReducePath(p1, 0, 1, 1, 0).entries,
     [-1n, 0n, 0n],
   );
+  const source = flint.p1List(33);
+  const degeneracy = flint.p1ListDegeneracyMatrix(source, p1, 1n);
+  assert.equal(degeneracy.rows, 3);
+  assert.equal(degeneracy.cols, 9);
 });
 
 test("computes large signed modular-symbol charpolys inside FLINT", () => {

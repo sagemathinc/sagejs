@@ -18,7 +18,7 @@
     "declared-ffi-resource": 34,
     "napi-export": 330,
     "runtime-intrinsic": 147,
-    "wasm-export": 72
+    "wasm-export": 74
   },
   "boundaries": [
     {
@@ -12172,6 +12172,15 @@
       "disposition": "legacy-handwritten-wasm"
     },
     {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_degeneracy_matrix",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_degeneracy_matrix",
+      "symbol": "sagejs_p1_degeneracy_matrix",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
       "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_destroy",
       "kind": "wasm-export",
       "path": "packages/flint-wasm/src/modsym.c",
@@ -12520,6 +12529,15 @@
       "package": "@sagemath/sagejs-flint-wasm",
       "export": "sagejs_wasm_ec_lseries_point_text",
       "symbol": "sagejs_wasm_ec_lseries_point_text",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_wasm_prime_pi",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_wasm_prime_pi",
+      "symbol": "sagejs_wasm_prime_pi",
       "disposition": "legacy-handwritten-wasm"
     }
   ]

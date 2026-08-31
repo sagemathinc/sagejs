@@ -538,6 +538,10 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_numeric_matrix_eigensystem",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_numeric_output_capacity",
           "kind": "function"
         },
@@ -635,6 +639,10 @@
         },
         {
           "name": "sagejs_p1_cuspidal_basis",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_p1_degeneracy_matrix",
           "kind": "function"
         },
         {
@@ -2047,6 +2055,10 @@
         },
         {
           "name": "sagejs_wasm_numberOfPartitions",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_prime_pi",
           "kind": "function"
         },
         {

@@ -27,8 +27,40 @@ def _euler_phi(value: int) -> int:
     return result
 
 
+def _lcm(left: int, right: int) -> int:
+    return left // int(runtime.bigint_gcd(left, right)) * right
+
+
+def _bernoulli_polynomial(index: int, value: Any) -> Any:
+    """Evaluate Sage's Bernoulli polynomial convention exactly."""
+    bernoulli_number = runtime.reflect.get(runtime.global_object, "bernoulli")
+    binomial_coefficient = runtime.reflect.get(runtime.global_object, "binomial")
+    answer = sage.QQ(0)
+    for degree in range(index + 1):
+        bernoulli_value = sage.QQ(-1) / 2 if degree == 1 else bernoulli_number(degree)
+        answer += (
+            binomial_coefficient(index, degree)
+            * bernoulli_value
+            * value ** (index - degree)
+        )
+    return answer
+
+
 def _native_field(value: Any, name: str) -> Any:
     return runtime.reflect.get(value, name)
+
+
+def _backend_has_function(name: str) -> bool:
+    """Return whether the active FLINT backend implements `name`."""
+    candidate = runtime.reflect.get(runtime.flint_backend(), name)
+    return runtime.jstype(candidate) == "function"
+
+
+def _backend_call(name: str, values: list[Any]) -> Any:
+    """Call one capability already checked by `_backend_has_function`."""
+    backend = runtime.flint_backend()
+    method = runtime.reflect.get(backend, name)
+    return runtime.reflect.apply(method, backend, values)
 
 
 def _analytic_precision(precision: Any) -> int:
@@ -572,13 +604,33 @@ class DirichletCharacter(sage.Element):
     def gauss_sum(self, a: Any = 1) -> Any:
         """Return the exact Gauss sum in Sage.js's algebraic closure."""
         additive_factor = runtime.integer_bigint(a) % self._parent._modulus
-        return _qqbar_from_native(
-            runtime.flint_backend().dirichletGaussSumExact(
-                self._parent._native,
-                self._index,
-                runtime.integer_bigint(additive_factor),
+        if _backend_has_function("dirichletGaussSumExact"):
+            return _qqbar_from_native(
+                _backend_call(
+                    "dirichletGaussSumExact",
+                    [
+                        self._parent._native,
+                        self._index,
+                        runtime.integer_bigint(additive_factor),
+                    ],
+                )
             )
+        modulus = int(self._parent._modulus)
+        character_order = int(self._parent._native_exponent)
+        common_order = _lcm(modulus, character_order)
+        field = CyclotomicField(common_order)
+        character_root = field.gen() ** (common_order // character_order)
+        additive_root = field.gen() ** (common_order // modulus)
+        exponents = runtime.flint_backend().dirichletCharacterExponents(
+            self._parent._native, self._index
         )
+        result = field.zero()
+        for residue, exponent in enumerate(exponents):
+            if exponent is not None:
+                result += character_root**exponent * additive_root ** (
+                    residue * additive_factor
+                )
+        return _qqbar_from_native(result._native)
 
     def gauss_sum_numerical(
         self,
@@ -587,16 +639,21 @@ class DirichletCharacter(sage.Element):
     ) -> Any:
         """Return a FLINT/Arb approximation to the Gauss sum."""
         precision = _analytic_precision(prec)
-        additive_factor = runtime.integer_bigint(a) % self._parent._modulus
-        return _complex_from_native(
-            runtime.flint_backend().dirichletGaussSum(
-                self._parent._native,
-                self._index,
-                runtime.integer_bigint(additive_factor),
+        if _backend_has_function("dirichletGaussSum"):
+            additive_factor = runtime.integer_bigint(a) % self._parent._modulus
+            return _complex_from_native(
+                _backend_call(
+                    "dirichletGaussSum",
+                    [
+                        self._parent._native,
+                        self._index,
+                        runtime.integer_bigint(additive_factor),
+                        precision,
+                    ],
+                ),
                 precision,
-            ),
-            precision,
-        )
+            )
+        return self.gauss_sum(a).n(precision)
 
     def jacobi_sum(
         self,
@@ -608,13 +665,29 @@ class DirichletCharacter(sage.Element):
             raise TypeError("characters must belong to the same Dirichlet group")
         if check and self.modulus() != char.modulus():
             raise ValueError("characters must have the same modulus")
-        return _qqbar_from_native(
-            runtime.flint_backend().dirichletJacobiSumExact(
-                self._parent._native,
-                self._index,
-                char._index,
+        if _backend_has_function("dirichletJacobiSumExact"):
+            return _qqbar_from_native(
+                _backend_call(
+                    "dirichletJacobiSumExact",
+                    [self._parent._native, self._index, char._index],
+                )
             )
+        order = int(self._parent._native_exponent)
+        field = CyclotomicField(order)
+        root = field.gen()
+        left_values = runtime.flint_backend().dirichletCharacterExponents(
+            self._parent._native, self._index
         )
+        right_values = runtime.flint_backend().dirichletCharacterExponents(
+            self._parent._native, char._index
+        )
+        result = field.zero()
+        modulus = int(self._parent._modulus)
+        for residue, left_exponent in enumerate(left_values):
+            right_exponent = right_values[(1 - residue) % modulus]
+            if left_exponent is not None and right_exponent is not None:
+                result += root ** (left_exponent + right_exponent)
+        return _qqbar_from_native(result._native)
 
     def jacobi_sum_numerical(
         self,
@@ -625,29 +698,36 @@ class DirichletCharacter(sage.Element):
         if not isinstance(char, DirichletCharacter) or char._parent is not self._parent:
             raise TypeError("characters must belong to the same Dirichlet group")
         precision = _analytic_precision(prec)
-        return _complex_from_native(
-            runtime.flint_backend().dirichletJacobiSum(
-                self._parent._native,
-                self._index,
-                char._index,
+        if _backend_has_function("dirichletJacobiSum"):
+            return _complex_from_native(
+                _backend_call(
+                    "dirichletJacobiSum",
+                    [self._parent._native, self._index, char._index, precision],
+                ),
                 precision,
-            ),
-            precision,
-        )
+            )
+        return self.jacobi_sum(char).n(precision)
 
     def root_number(self, prec: int = 53) -> Any:
         """Return the root number of this primitive character."""
         if not self.is_primitive():
             raise ValueError("root number requires a primitive character")
         precision = _analytic_precision(prec)
-        return _complex_from_native(
-            runtime.flint_backend().dirichletRootNumber(
-                self._parent._native,
-                self._index,
+        if _backend_has_function("dirichletRootNumber"):
+            return _complex_from_native(
+                _backend_call(
+                    "dirichletRootNumber",
+                    [self._parent._native, self._index, precision],
+                ),
                 precision,
-            ),
-            precision,
-        )
+            )
+        algebraic_field = runtime.reflect.get(runtime.global_object, "QQbar")
+        denominator = algebraic_field(self.conductor()).sqrt()
+        if self.is_odd():
+            denominator *= algebraic_field._from_native(
+                runtime.flint_backend().qqbarI()
+            )
+        return (self.gauss_sum() / denominator).n(precision)
 
     def lfunction(
         self,
@@ -683,13 +763,38 @@ class DirichletCharacter(sage.Element):
         cached = self._bernoulli_cache.get(index)
         if cache and cached is not runtime.undefined:
             return cached
-        result = _qqbar_from_native(
-            runtime.flint_backend().dirichletBernoulli(
-                self._parent._native,
-                self._index,
-                index,
+        if _backend_has_function("dirichletBernoulli"):
+            result = _qqbar_from_native(
+                _backend_call(
+                    "dirichletBernoulli",
+                    [self._parent._native, self._index, index],
+                )
             )
+            if cache:
+                self._bernoulli_cache.set(index, result)
+            return result
+        modulus = int(self._parent._modulus)
+        order = int(self._parent._native_exponent)
+        field = CyclotomicField(order)
+        root = field.gen()
+        exponents = runtime.flint_backend().dirichletCharacterExponents(
+            self._parent._native, self._index
         )
+        scale = (
+            sage.QQ(1) / sage.QQ(modulus)
+            if index == 0
+            else sage.QQ(modulus) ** (index - 1)
+        )
+        exact = field.zero()
+        for residue, exponent in enumerate(exponents):
+            if exponent is None:
+                continue
+            numerator = modulus if residue == 0 else residue
+            exact += root**exponent * field(
+                _bernoulli_polynomial(index, sage.QQ(numerator) / sage.QQ(modulus))
+                * scale
+            )
+        result = _qqbar_from_native(exact._native)
         if cache:
             self._bernoulli_cache.set(index, result)
         return result

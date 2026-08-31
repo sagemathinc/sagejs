@@ -155,7 +155,7 @@ def auto_receipt_decision(
             if selected or reason != "policy-disabled":
                 raise RuntimeError("invalid disabled hyperelliptic receipt policy")
             return AutoReceiptDecision(
-                allowed=True,
+                allowed=False,
                 policy_present=True,
                 policy_enabled=False,
                 reason=reason,

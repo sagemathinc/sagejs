@@ -106,11 +106,11 @@ both finite and rational computations. The reviewed msolve slice makes the
 complete `flint-factor.wasm` artifact 6,739,430 bytes raw and 2,551,799 bytes
 under `gzip -9`; the narrow raw guard is 6,800,000 bytes.
 
-Because this changes the shared production Wasm source identity, the existing
-higher-genus automatic-dispatch policy remains installed but has zero enabled
-entries. Its three old Cantor envelopes are retained for future receipt
-regeneration, but none can authorize native code; unmatched workloads take the
-exact fallback.
+Because this changes the shared production Wasm source identity, the checked
+higher-genus automatic-dispatch policy is disabled and the runtime treats that
+state as fail-closed. Its three old Cantor envelopes are retained for future
+receipt regeneration, but none can authorize native code; unmatched workloads
+take the exact fallback.
 
 ## Sanitizers and lifetime evidence
 

@@ -19,6 +19,7 @@
 #include <mpfr.h>
 
 #include <flint/acb.h>
+#include <flint/acb_mat.h>
 #include <flint/acb_dirichlet.h>
 #include <flint/acb_hypgeom.h>
 #include <flint/arb.h>
@@ -45,7 +46,8 @@ enum
     NUMERIC_RESOURCE_LIMIT = 4,
     NUMERIC_INVALID_EXPRESSION = 5,
     NUMERIC_NO_BRACKETED_ROOT = 6,
-    NUMERIC_NONFINITE_RESULT = 7
+    NUMERIC_NONFINITE_RESULT = 7,
+    NUMERIC_NO_CONVERGENCE = 8
 };
 
 typedef struct
@@ -1018,6 +1020,269 @@ static void acb_midpoint_to_complex(complex_slot *result, const acb_t source)
 {
     arf_get_mpfr(result->real, arb_midref(acb_realref(source)), MPFR_RNDN);
     arf_get_mpfr(result->imaginary, arb_midref(acb_imagref(source)), MPFR_RNDN);
+}
+
+static double acb_mid_real_double(const acb_t value)
+{
+    return arf_get_d(arb_midref(acb_realref(value)), ARF_RND_NEAR);
+}
+
+static double acb_mid_imag_double(const acb_t value)
+{
+    return arf_get_d(arb_midref(acb_imagref(value)), ARF_RND_NEAR);
+}
+
+static int acb_pretty_less(const acb_t left, const acb_t right)
+{
+    double left_real = acb_mid_real_double(left);
+    double right_real = acb_mid_real_double(right);
+    if (left_real < right_real)
+        return 1;
+    if (left_real > right_real)
+        return 0;
+    return acb_mid_imag_double(left) < acb_mid_imag_double(right);
+}
+
+static void release_complex_handle(uint32_t handle)
+{
+    complex_slot *slot = complex_from_handle(handle);
+    if (slot == NULL)
+        return;
+    mpfr_clear(slot->imaginary);
+    mpfr_clear(slot->real);
+    slot->live = 0;
+    numeric_live_count--;
+}
+
+static uint32_t store_acb_midpoint(const acb_t value, uint32_t precision)
+{
+    complex_slot *slot;
+    uint32_t handle = allocate_complex((mpfr_prec_t) precision, &slot);
+    if (handle != 0)
+        acb_midpoint_to_complex(slot, value);
+    return handle;
+}
+
+static int store_normalized_eigenvector(
+    uint32_t *output,
+    const acb_mat_t vectors,
+    slong vector_index,
+    int right,
+    uint32_t precision)
+{
+    slong size = acb_mat_nrows(vectors);
+    slong index;
+    slong pivot = 0;
+    double largest = -1.0;
+    arb_t magnitude;
+    arb_t pivot_magnitude;
+    arb_t norm_squared;
+    arb_t norm;
+    acb_t factor;
+    acb_t normalized;
+    const acb_struct *entry;
+    int ok = 1;
+
+    arb_init(magnitude);
+    arb_init(pivot_magnitude);
+    arb_init(norm_squared);
+    arb_init(norm);
+    acb_init(factor);
+    acb_init(normalized);
+    arb_zero(norm_squared);
+    for (index = 0; index < size; index++)
+    {
+        double current;
+        entry = right
+            ? acb_mat_entry(vectors, index, vector_index)
+            : acb_mat_entry(vectors, vector_index, index);
+        acb_abs(magnitude, entry, (slong) precision);
+        arb_addmul(norm_squared, magnitude, magnitude, (slong) precision);
+        current = arf_get_d(arb_midref(magnitude), ARF_RND_NEAR);
+        if (current > largest)
+        {
+            largest = current;
+            pivot = index;
+            arb_set(pivot_magnitude, magnitude);
+        }
+    }
+    arb_sqrt(norm, norm_squared, (slong) precision);
+    entry = right
+        ? acb_mat_entry(vectors, pivot, vector_index)
+        : acb_mat_entry(vectors, vector_index, pivot);
+    acb_conj(factor, entry);
+    acb_div_arb(factor, factor, pivot_magnitude, (slong) precision);
+    acb_div_arb(factor, factor, norm, (slong) precision);
+    for (index = 0; index < size; index++)
+    {
+        entry = right
+            ? acb_mat_entry(vectors, index, vector_index)
+            : acb_mat_entry(vectors, vector_index, index);
+        if (index == pivot)
+        {
+            acb_set_arb(normalized, pivot_magnitude);
+            acb_div_arb(normalized, normalized, norm, (slong) precision);
+        }
+        else
+            acb_mul(normalized, entry, factor, (slong) precision);
+        output[index] = store_acb_midpoint(normalized, precision);
+        if (output[index] == 0)
+        {
+            ok = 0;
+            break;
+        }
+    }
+    arb_clear(magnitude);
+    arb_clear(pivot_magnitude);
+    arb_clear(norm_squared);
+    arb_clear(norm);
+    acb_clear(factor);
+    acb_clear(normalized);
+    return ok;
+}
+
+/*
+ * Compute one complete approximate eigensystem from complex resource handles.
+ * Input is ``size^2`` uint32 handles in row-major order. Output is
+ * ``size + 2*size^2`` handles: sorted values, row-oriented left vectors, then
+ * row-oriented right vectors. All returned values are rounded midpoints at
+ * the requested public precision.
+ */
+EXPORT uint32_t sagejs_numeric_matrix_eigensystem(
+    uint32_t size,
+    uint32_t precision)
+{
+    uint32_t *input = (uint32_t *) numeric_input;
+    uint32_t *output = (uint32_t *) numeric_output;
+    const size_t capacity_count = NUMERIC_CAPACITY / sizeof(uint32_t);
+    size_t matrix_count;
+    size_t output_count;
+    size_t written = 0;
+    acb_mat_t source;
+    acb_mat_t left;
+    acb_mat_t right;
+    acb_ptr eigenvalues = NULL;
+    slong *order = NULL;
+    slong row;
+    slong column;
+    slong index;
+    slong position;
+    int initialized = 0;
+
+    numeric_status = NUMERIC_INVALID_INPUT;
+    if ((size_t) size > capacity_count ||
+        (size != 0 && (size_t) size > capacity_count / (size_t) size))
+        return 0;
+    matrix_count = (size_t) size * (size_t) size;
+    if (matrix_count > (capacity_count - (size_t) size) / 2)
+        return 0;
+    output_count = (size_t) size + 2 * matrix_count;
+    if (!valid_precision(precision) ||
+        output_count > NUMERIC_MAX_LIVE_RESOURCES - numeric_live_count)
+        return 0;
+    memset(output, 0, output_count * sizeof(uint32_t));
+    acb_mat_init(source, (slong) size, (slong) size);
+    acb_mat_init(left, (slong) size, (slong) size);
+    acb_mat_init(right, (slong) size, (slong) size);
+    initialized = 1;
+    eigenvalues = _acb_vec_init((slong) size);
+    order = size == 0 ? NULL : malloc((size_t) size * sizeof(slong));
+    if ((size != 0 && order == NULL) || (size != 0 && eigenvalues == NULL))
+    {
+        numeric_status = NUMERIC_ALLOCATION_FAILED;
+        goto fail;
+    }
+    for (row = 0; row < (slong) size; row++)
+        for (column = 0; column < (slong) size; column++)
+        {
+            complex_slot *slot = complex_from_handle(
+                input[(size_t) row * size + (size_t) column]);
+            if (slot == NULL)
+            {
+                numeric_status = NUMERIC_INVALID_HANDLE;
+                goto fail;
+            }
+            complex_to_acb(
+                acb_mat_entry(source, row, column),
+                slot,
+                (slong) precision + 32);
+        }
+    if (!acb_mat_approx_eig_qr(
+            eigenvalues,
+            left,
+            right,
+            source,
+            NULL,
+            0,
+            (slong) precision + 32))
+    {
+        numeric_status = NUMERIC_NO_CONVERGENCE;
+        goto fail;
+    }
+    for (index = 0; index < (slong) size; index++)
+        order[index] = index;
+    for (index = 1; index < (slong) size; index++)
+    {
+        slong selected = order[index];
+        position = index;
+        while (position > 0 && acb_pretty_less(
+                eigenvalues + selected,
+                eigenvalues + order[position - 1]))
+        {
+            order[position] = order[position - 1];
+            position--;
+        }
+        order[position] = selected;
+    }
+    for (position = 0; position < (slong) size; position++)
+    {
+        index = order[position];
+        output[written] = store_acb_midpoint(eigenvalues + index, precision);
+        if (output[written++] == 0)
+            goto fail;
+        if (!store_normalized_eigenvector(
+                output + size + (size_t) position * size,
+                left,
+                index,
+                0,
+                precision))
+        {
+            written = size + (size_t) position * size + size;
+            goto fail;
+        }
+        if (!store_normalized_eigenvector(
+                output + size + matrix_count + (size_t) position * size,
+                right,
+                index,
+                1,
+                precision))
+        {
+            written = size + matrix_count + (size_t) position * size + size;
+            goto fail;
+        }
+    }
+    numeric_status = NUMERIC_OK;
+    free(order);
+    _acb_vec_clear(eigenvalues, (slong) size);
+    acb_mat_clear(right);
+    acb_mat_clear(left);
+    acb_mat_clear(source);
+    return 1;
+
+fail:
+    for (size_t item = 0; item < output_count; item++)
+        release_complex_handle(output[item]);
+    if (order != NULL)
+        free(order);
+    if (eigenvalues != NULL)
+        _acb_vec_clear(eigenvalues, (slong) size);
+    if (initialized)
+    {
+        acb_mat_clear(right);
+        acb_mat_clear(left);
+        acb_mat_clear(source);
+    }
+    return 0;
 }
 
 EXPORT uint32_t sagejs_numeric_complex_ei(uint32_t source_handle)
