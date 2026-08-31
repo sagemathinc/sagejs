@@ -49,6 +49,7 @@ sys.path.insert(0, ${JSON.stringify(join(root, "src/lib"))})
 const witness = String.raw`
 import json
 import math
+import time
 from sagejs.numerics import (
     NumericalDiagnostic,
     TracePolicy,
@@ -159,6 +160,22 @@ cancelled = find_root(
     cancel=lambda: True,
 )
 assert not cancelled.success and cancelled.status == "cancelled"
+
+def deliberately_slow(x):
+    started = time.perf_counter()
+    while (time.perf_counter() - started) * 1000.0 < 5.0:
+        pass
+    return x*x - 2.0
+
+timed_out = find_root(
+    deliberately_slow,
+    1.0,
+    2.0,
+    method="bisection",
+    max_elapsed_ms=1,
+)
+assert not timed_out.success and timed_out.status == "maximum_elapsed_time"
+assert "maximum_elapsed_time" in {item.code for item in timed_out.diagnostics}
 
 truncated = find_root(
     lambda x: x*x - 2.0,

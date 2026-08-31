@@ -45,7 +45,7 @@ class _RootExecution:
         if self.cancel is not None and self.cancel():
             raise _StopRoot("cancelled")
         if self.elapsed_ms() > self.problem.resource_budget.max_elapsed_ms:
-            raise _StopRoot("maximum_evaluations")
+            raise _StopRoot("maximum_elapsed_time")
 
     def evaluate(self, x: float, *, iteration: int | None = None) -> float:
         self.check()
@@ -581,6 +581,7 @@ def solve_root_problem(
         "invalid_bracket": "invalid_bracket",
         "maximum_iterations": "maximum_iterations",
         "maximum_evaluations": "maximum_evaluations",
+        "maximum_elapsed_time": "maximum_elapsed_time",
         "zero_derivative": "zero_derivative",
         "nonfinite_evaluation": "nonfinite_evaluation",
         "cancelled": "cancelled",

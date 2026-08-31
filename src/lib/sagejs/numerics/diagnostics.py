@@ -76,6 +76,13 @@ _DEFINITIONS: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
         ("Increase the budget or choose a more suitable method.",),
     ),
     (
+        "maximum_elapsed_time",
+        "warning",
+        "execution",
+        "The elapsed-time budget was exhausted.",
+        ("Increase the time budget or choose a more suitable method.",),
+    ),
+    (
         "maximum_iterations",
         "warning",
         "execution",

@@ -24,6 +24,7 @@ STATUS_CODES = (
     "invalid_bracket",
     "maximum_iterations",
     "maximum_evaluations",
+    "maximum_elapsed_time",
     "zero_derivative",
     "nonfinite_evaluation",
     "cancelled",

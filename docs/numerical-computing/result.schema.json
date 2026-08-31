@@ -9,7 +9,7 @@
     "schema_version": {"const": 1},
     "problem_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "success": {"type": "boolean"},
-    "status": {"enum": ["converged", "exact_root", "invalid_bracket", "maximum_iterations", "maximum_evaluations", "zero_derivative", "nonfinite_evaluation", "cancelled", "callback_error", "stagnation", "validation_failed", "invalid_problem", "backend_failure"]},
+    "status": {"enum": ["converged", "exact_root", "invalid_bracket", "maximum_iterations", "maximum_evaluations", "maximum_elapsed_time", "zero_derivative", "nonfinite_evaluation", "cancelled", "callback_error", "stagnation", "validation_failed", "invalid_problem", "backend_failure"]},
     "value": {},
     "validation": {
       "type": "object",

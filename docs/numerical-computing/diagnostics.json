@@ -10,6 +10,7 @@
     "invalid_bracket",
     "loss_of_significance",
     "maximum_evaluations",
+    "maximum_elapsed_time",
     "maximum_iterations",
     "non_replayable_callback",
     "nonfinite_evaluation",
