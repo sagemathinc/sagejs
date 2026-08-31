@@ -240,7 +240,7 @@ many coefficients and an independently known dimension.
   the other's returned basis as its internal proof of correctness.
 - [x] On overlapping integral-weight spaces, compare their exact spans through
   the Sturm bound after canonical coefficient-field coercion.
-- [ ] Use modular symbols to identify missing cusp directions when a formula
+- [x] Use modular symbols to identify missing cusp directions when a formula
   candidate family spans only a proper subspace, while retaining that honest
   P0B result.
 - [ ] Use formula-generated forms as independent oracles for modular-symbol
@@ -279,10 +279,10 @@ many coefficients and an independently known dimension.
 ### Correctness corpus
 
 - [x] Cover level $1$ forms including $\Delta\in S_{12}(\mathrm{SL}_2(\ZZ))$.
-- [ ] Independently construct the level-$1$ basis through both modular symbols
+- [x] Independently construct the level-$1$ basis through both modular symbols
   and the exact $\QQ[E_4,E_6]$ formula algebra.
 - [x] Cover rational weight-$2$ newforms at prime and composite levels.
-- [ ] Cover a higher-weight trivial-character space of dimension greater than
+- [x] Cover a higher-weight trivial-character space of dimension greater than
   one.
 - [ ] Cover quadratic and higher-degree coefficient fields.
 - [x] Cover nontrivial primitive and imprimitive Dirichlet characters.
@@ -301,7 +301,7 @@ many coefficients and an independently known dimension.
   dimension and verify that it is returned only as a certified subspace.
 - [ ] Check every coefficient through the Sturm bound against an independent
   implementation.
-- [ ] Check selected coefficients beyond the Sturm bound by independent Hecke
+- [x] Check selected coefficients beyond the Sturm bound by independent Hecke
   recurrences and direct comparison.
 - [ ] Differentially compare exact bases and newform packets with SageMath,
   PARI/GP, and Magma on a pinned corpus.
@@ -310,6 +310,15 @@ many coefficients and an independently known dimension.
 - [ ] Add adversarial tests for wrong signs, wrong character parity, insufficient
   precision, nonsemisimple reductions, repeated factors, and coefficient-field
   embedding confusion.
+
+The pinned P0 differential receipt lives in
+`bench/modular/qexp-correctness/pinned-corpus.json`. Its current rows cover
+level $1$, prime and composite levels, a nontrivial character, an old space, a
+quadratic coefficient field, exact full/proper formula comparisons, and
+beyond-Sturm prime-power recurrences. SageMath and Magma independently replay
+the pins. The broader unchecked entries above remain open intentionally: this
+receipt does not yet cover a higher-degree coefficient field, every old/new
+level shape, PARI/GP, or every coefficient in the full declared P0 domain.
 
 ### Performance and architecture
 

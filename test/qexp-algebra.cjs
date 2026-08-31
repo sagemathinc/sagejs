@@ -146,6 +146,48 @@ test("formula spans report full and proper subspaces honestly", async () => {
   }
 });
 
+test("formula subspaces expose certified coordinates and ambient complements", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A = CuspForms(2,12,prec=16)",
+            "AF = A.formula_subspace(prec=16)",
+            "D = certified_modular_form(CuspForms(1,12,prec=16).gen(),16)",
+            "c = AF.coordinates(D)",
+            "AC = AF.ambient_comparison()",
+            "B = CuspForms(2,24,prec=24)",
+            "BF = B.formula_subspace(prec=24)",
+            "BC = BF.ambient_comparison()",
+            "newform = B.newforms()[0]",
+            "[AF.contains(D), D in AF, len(c),",
+            " c*AF.coefficient_matrix() == vector(QQ,[D[n] for n in [0..15]]),",
+            " AF.contains(AF.basis()[0]), AC.is_equal(), AC.missing_dimension(),",
+            " AC.verify(), BF.contains(newform), BC.is_equal(),",
+            " BC.missing_dimension(),len(BC.missing_q_expansion_basis(12)),",
+            " BC.verify()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, 2, True, False, True, 0, True, False, False, 1, 1, True]",
+    );
+
+    assert.equal(
+      (await session.evaluate("BC")).repr,
+      "Verified formula/modular-symbol comparison through q^23: 1 missing direction",
+    );
+
+    await assert.rejects(
+      session.evaluate("BF.coordinates(newform)"),
+      /not in this subspace/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("automatic q-expansion selection exposes exact-domain receipts", async () => {
   const session = await createSage();
   try {

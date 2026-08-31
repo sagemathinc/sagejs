@@ -834,6 +834,169 @@ def _series_from_matrix(matrix: Any, precision: int, variable: str) -> list[Any]
     return [ring(row.list()).add_bigoh(precision) for row in matrix.rows()]
 
 
+class FormulaAmbientComparisonCertificate(sage.Parent):
+    r"""An exact Sturm comparison with the modular-symbol ambient space.
+
+    The formula rows are expressed in the independently reconstructed
+    modular-symbol basis.  A deterministic subset of ambient basis rows then
+    completes them to the full cusp space.  Thus a proper formula span comes
+    with explicit missing directions, not only a dimension deficit.
+    """
+
+    def __init__(self, formula_subspace: Any) -> None:
+        self._formula_subspace = formula_subspace
+        self._precision = formula_subspace.proof_precision()
+        ambient = formula_subspace.ambient_space()
+        ambient_basis = ambient.q_expansion_basis(
+            self._precision,
+            algorithm="modular_symbols",
+        )
+        matrix_constructor = _global("matrix")
+        ambient_rows = [
+            [series[index] for index in range(self._precision)]
+            for series in ambient_basis
+        ]
+        self._ambient_matrix = (
+            matrix_constructor(sage.QQ, ambient_rows)
+            if len(ambient_rows)
+            else matrix_constructor(sage.QQ, 0, self._precision)
+        )
+        if self._ambient_matrix.nrows() != ambient.dimension():
+            raise ArithmeticError(
+                "the modular-symbol basis has the wrong ambient dimension"
+            )
+        formula_matrix = formula_subspace.coefficient_matrix()
+        if formula_matrix.nrows() == 0:
+            self._formula_coordinates = matrix_constructor(
+                sage.QQ,
+                0,
+                self._ambient_matrix.nrows(),
+            )
+        else:
+            self._formula_coordinates = self._ambient_matrix.solve_left(formula_matrix)
+
+        selected: list[int] = []
+        spanning_rows = [row.list() for row in formula_matrix.rows()]
+        current_rank = formula_matrix.rank()
+        for index, row in enumerate(self._ambient_matrix.rows()):
+            trial_rows = spanning_rows + [row.list()]
+            trial = matrix_constructor(sage.QQ, trial_rows)
+            trial_rank = trial.rank()
+            if trial_rank > current_rank:
+                selected.append(index)
+                spanning_rows.append(row.list())
+                current_rank = trial_rank
+            if current_rank == self._ambient_matrix.nrows():
+                break
+        self._missing_indices = runtime.math_tuple(selected)
+        self._missing_matrix = self._ambient_matrix.matrix_from_rows(selected)
+        identity = _global("identity_matrix")(
+            sage.QQ,
+            self._ambient_matrix.nrows(),
+        )
+        self._missing_ambient_coordinates = identity.matrix_from_rows(selected)
+        self._verified = self._verify()
+        if not self._verified:
+            raise ArithmeticError(
+                "formula/modular-symbol ambient comparison certificate failed"
+            )
+        runtime.object.freeze(self)
+
+    def formula_subspace(self) -> Any:
+        return self._formula_subspace
+
+    def ambient_space(self) -> Any:
+        return self._formula_subspace.ambient_space()
+
+    def precision(self) -> int:
+        return self._precision
+
+    def sturm_bound(self) -> int:
+        return self._formula_subspace.sturm_bound()
+
+    def formula_dimension(self) -> int:
+        return self._formula_subspace.dimension()
+
+    def ambient_dimension(self) -> int:
+        return self._formula_subspace.ambient_dimension()
+
+    def missing_dimension(self) -> int:
+        return self.ambient_dimension() - self.formula_dimension()
+
+    def is_equal(self) -> bool:
+        return self.missing_dimension() == 0
+
+    def formula_coordinates_in_ambient(self) -> Any:
+        r"""Return $C$ such that $C A=B$ for ambient/formula row bases."""
+        return self._formula_coordinates
+
+    def missing_ambient_coordinates(self) -> Any:
+        """Return ambient-basis rows completing the formula span."""
+        return self._missing_ambient_coordinates
+
+    def missing_q_expansion_basis(
+        self,
+        prec: Any = None,
+        variable: str = "q",
+    ) -> list[Any]:
+        """Return deterministic modular-symbol directions outside the span."""
+        precision = self._precision if prec is None else _nonnegative(prec, "precision")
+        if precision > self._precision:
+            raise ValueError("requested precision exceeds the comparison data")
+        return [
+            series.add_bigoh(precision)
+            for series in _series_from_matrix(
+                self._missing_matrix,
+                self._precision,
+                variable,
+            )
+        ]
+
+    def verify(self) -> bool:
+        return self._verify()
+
+    def is_verified(self) -> bool:
+        return self._verified
+
+    def _verify(self) -> bool:
+        formula_matrix = self._formula_subspace.coefficient_matrix()
+        if self._precision <= self.sturm_bound():
+            return False
+        if self._ambient_matrix.rank() != self.ambient_dimension():
+            return False
+        if self._formula_coordinates * self._ambient_matrix != formula_matrix:
+            return False
+        if len(self._missing_indices) != self.missing_dimension():
+            return False
+        if (
+            self._missing_ambient_coordinates * self._ambient_matrix
+            != self._missing_matrix
+        ):
+            return False
+        combined = formula_matrix.stack(self._missing_matrix)
+        return (
+            combined.rank() == self.ambient_dimension()
+            and combined.row_space() == self._ambient_matrix.row_space()
+        )
+
+    def __repr__(self) -> str:
+        if self.is_equal():
+            result = "exact span equality"
+        else:
+            result = str(self.missing_dimension()) + " missing direction"
+            if self.missing_dimension() != 1:
+                result += "s"
+        return (
+            "Verified formula/modular-symbol comparison through q^"
+            + str(self._precision - 1)
+            + ": "
+            + result
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class CertifiedFormulaSubspace(sage.Parent):
     """The exact contained subspace spanned by certified formula candidates."""
 
@@ -850,6 +1013,7 @@ class CertifiedFormulaSubspace(sage.Parent):
         self._display_precision = display_precision
         self._proof_precision = proof_precision
         self._matrix = _matrix_from_candidates(candidates, proof_precision)
+        self._ambient_comparison = FormulaAmbientComparisonCertificate(self)
         self._verified = self._verify()
         if not self._verified:
             raise ArithmeticError("formula-generated subspace certificate failed")
@@ -892,6 +1056,69 @@ class CertifiedFormulaSubspace(sage.Parent):
 
     def coefficient_matrix(self) -> Any:
         return self._matrix
+
+    def ambient_comparison(self) -> FormulaAmbientComparisonCertificate:
+        """Return the exact modular-symbol span comparison certificate."""
+        return self._ambient_comparison
+
+    comparison_certificate = ambient_comparison
+
+    def missing_dimension(self) -> int:
+        return self._ambient_comparison.missing_dimension()
+
+    def missing_q_expansion_basis(
+        self,
+        prec: Any = None,
+        variable: str = "q",
+    ) -> list[Any]:
+        """Return deterministic ambient directions missing from the span."""
+        return self._ambient_comparison.missing_q_expansion_basis(prec, variable)
+
+    def _member_coefficient_row(self, value: Any) -> Any:
+        form = certified_modular_form(value, self._proof_precision)
+        if form.weight() != self.weight():
+            raise ValueError("the modular form has the wrong weight")
+        if self.level() % form.level():
+            raise ValueError("the modular form level does not divide the ambient level")
+        if form.level() != self.level():
+            form = form.lift_level(self.level())
+        if not form.is_cuspidal():
+            raise ValueError("membership requires a certified cusp form")
+        if not form.character().is_trivial():
+            raise ValueError("the modular form has nontrivial nebentypus")
+        if form.base_ring() is not sage.QQ:
+            raise TypeError("formula-subspace membership currently requires QQ")
+        vector_constructor = _global("vector")
+        return vector_constructor(
+            sage.QQ,
+            [form[index] for index in range(self._proof_precision)],
+        )
+
+    def contains(self, value: Any) -> bool:
+        r"""Test certified mathematical membership through the Sturm bound.
+
+        Bare power series are intentionally rejected: matching finitely many
+        coefficients does not by itself certify that a series is a modular
+        form in the ambient space.
+        """
+        try:
+            row = self._member_coefficient_row(value)
+        except (TypeError, ValueError, NotImplementedError):
+            return False
+        return self._matrix.stack(row).rank() == self.dimension()
+
+    def __contains__(self, value: Any) -> bool:
+        return self.contains(value)
+
+    def coordinates(self, value: Any) -> Any:
+        """Return exact coordinates in the canonical formula row basis."""
+        row = self._member_coefficient_row(value)
+        if self._matrix.stack(row).rank() != self.dimension():
+            raise ValueError("the certified modular form is not in this subspace")
+        answer = self._matrix.solve_left(row)
+        if answer * self._matrix != row.row():
+            raise ArithmeticError("formula-subspace coordinate verification failed")
+        return answer.row(0)
 
     def q_expansion_basis(self, prec: Any = None, variable: str = "q") -> list[Any]:
         precision = (
@@ -955,6 +1182,7 @@ class CertifiedFormulaSubspace(sage.Parent):
             replay == self._matrix
             and self._matrix.rank() == self.dimension()
             and self.dimension() <= self.ambient_dimension()
+            and self._ambient_comparison.verify()
         )
 
     def certificate(self) -> CertifiedFormulaSubspace:
@@ -1196,6 +1424,7 @@ __all__ = [
     "CertifiedFormulaSubspace",
     "CertifiedModularForm",
     "ExactNebentypus",
+    "FormulaAmbientComparisonCertificate",
     "MAX_EXACT_TWIST_CONDUCTOR",
     "OldformMetadata",
     "QExpansionAlgebraCertificate",
