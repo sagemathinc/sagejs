@@ -4,15 +4,15 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
 
-import { createCminpackPrototype } from
-  "../../packages/flint-wasm/experimental/numerical-p3-backends/backend.mjs";
+import { createCminpackBackend } from
+  "../../packages/flint-wasm/numerical/index.mjs";
 
 const artifact = new URL(
-  "../../packages/flint-wasm/experimental/numerical-p3-backends/build/p3-cminpack.wasm",
+  "../../packages/flint-wasm/numerical/build/cminpack.wasm",
   import.meta.url,
 );
 const bytes = await readFile(artifact);
-const solver = await createCminpackPrototype(bytes);
+const solver = await createCminpackBackend(bytes);
 const samples = Number(process.env.SAGEJS_P3_SAMPLES ?? 50);
 if (!Number.isSafeInteger(samples) || samples < 3) throw new Error("invalid sample count");
 
@@ -70,7 +70,7 @@ for (const benchmark of cases) {
     durations.push(performance.now() - started);
   }
   const residual = benchmark.validate(last);
-  if (!last.success || residual > 1e-10) {
+  if (!last.backendConverged || residual > 1e-10) {
     throw new Error(`${benchmark.id} failed its independent residual gate`);
   }
   results.push({

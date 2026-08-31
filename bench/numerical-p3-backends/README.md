@@ -5,9 +5,7 @@
 The smallest defensible production path for Sage.js P3 is a **separately lazy,
 universal numerical Wasm reactor**, introduced in two method-gated steps:
 
-1. cminpack `lmdif` and `lmder` for nonlinear least squares and fitting, after
-   the complete upstream MINPACK differential suite runs from the production
-   Wasm artifact; then
+1. cminpack `lmdif` and `lmder` for nonlinear least squares and fitting; then
 2. the permissive NLopt build, initially exposing only individually qualified
    `NLOPT_LN_NELDERMEAD` and `NLOPT_LN_COBYLA` methods.
 
@@ -18,9 +16,11 @@ runtime/compiler path that Sage.js does not otherwise need.
 
 This conclusion strengthens rather than replaces
 [`agents/numerical-optimization-backend-strategy.md`](../../agents/numerical-optimization-backend-strategy.md).
-The new evidence closes the callback-boundary feasibility question for
-cminpack. It does **not** yet satisfy the production correctness gates, and no
-automatic capability should be enabled from this branch.
+The new evidence closes both the callback-boundary question and the bounded
+cminpack artifact-qualification gate: the final reactor passes the complete
+53-case upstream MGH corpus for both methods in Node and Chromium. Automatic
+selection still belongs to the integration lane because the ordinary-Python
+router must independently validate results and construct public contracts.
 
 ## Why an explicit Wasm adapter is architecturally necessary
 
@@ -57,11 +57,12 @@ particular, the provisional NLopt COBYLA adapter returned a success code on an
 infeasible case; independent feasibility checks correctly rejected it. That
 is a permanent API requirement, not a one-off backend bug workaround.
 
-## Implemented feasibility prototype
+## Implemented production candidate
 
-`packages/flint-wasm/experimental/numerical-p3-backends/` contains a content-
-locked experiment around cminpack `lmdif` and `lmder`. It intentionally lives
-outside the public package graph.
+`packages/flint-wasm/numerical/` contains the content-locked cminpack `lmdif`
+and `lmder` reactor. It remains outside the public package graph so an
+integration-owned change can register it without entangling the optimization
+domain or duplicating the binary in FLINT.
 
 The C boundary imports exactly one synchronous function:
 
@@ -92,14 +93,14 @@ allocation.
 
 ### Artifact and runtime evidence
 
-The current artifact is identified by
-`c29b04e2a0ca8940f643b144525a8b882a53aff670880d79ea406f180718065c`:
+The final candidate artifact is identified by
+`f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855`:
 
 | Measure | Value |
 | --- | ---: |
-| Raw Wasm | 69,419 bytes |
-| gzip -9 | 28,095 bytes |
-| Brotli | 23,355 bytes |
+| Raw Wasm | 72,149 bytes |
+| gzip -9 | 28,936 bytes |
+| Brotli | 23,904 bytes |
 | Imports | one function, `sagejs_p3.evaluate` |
 | Initial memory | 2 MiB |
 | Maximum memory | 128 MiB |
@@ -111,13 +112,24 @@ The identical artifact solved the analytic-Jacobian Rosenbrock residual at
 - Chromium on Linux x64;
 - Node 26.7.0 on local Linux x64;
 - Node 26.5.1 on persistent Linux ARM64 (`bench-arm`);
-- Node 26.5.0 on persistent macOS ARM64 (`m1`); and
+- Node 26.7.0 on persistent macOS ARM64 (`m1`); and
 - Node 26.5.1 on persistent Windows x64 (`windows`).
 
-Every run reported zero live allocations after completion. The seven focused
-Node tests also cover finite-difference LM, callback exceptions, malformed and
-non-finite outputs, four cancellation/budget forms, reentrancy, reuse after
-failure, and 250 repeated solves without memory growth.
+Every run reported zero live allocations and bytes after completion. The
+focused Node tests also cover finite-difference LM, callback exceptions,
+malformed and non-finite outputs, four cancellation/budget forms, reentrancy,
+reuse after failure, every internal allocation-failure position, 500 corrupt
+ABI regions, 200 deterministic random linear least-squares oracles, 250
+repeated solves without memory growth, worker-owned shared-memory cancellation,
+and termination/recreation of a hard-stuck evaluator worker.
+
+The exact final artifact additionally ran all 53 upstream MGH cases for both
+`lmdif` and `lmder` in Node and real Chromium. A separate no-import oracle
+compiled from upstream `ssqfcn`, `ssqjac`, and `ssqipt` recomputed every final
+residual. Both runtimes produced result digest
+`594f138289f78ee057e7f1de90a7ea2a81c9909cb732fcb38a1afbd47c09f285`.
+The compact authenticated summary is
+[`qualification-v1.json`](../../packages/flint-wasm/numerical/release/qualification-v1.json).
 
 `bench-1` rejected the available SSH identity during this lane, so local Linux
 x64 is explicitly a substitute smoke and **not** a persistent-host receipt.
@@ -147,33 +159,28 @@ This lane deliberately does not edit either shared integration manifest. The
 exact failed and passing runs are recorded in
 `.agents/tasks/numerical-p3-backends.json`. Once integration reconciles those
 base files, architecture checking must additionally classify the production
-adapter in `architecture/native-code.json`; the experimental file here is not
-a reason to weaken that gate.
+and qualification adapters in `architecture/native-code.json`; this lane's
+narrow claim deliberately does not edit that shared manifest.
 
-## What the prototype does not prove
+## Remaining integration gates
 
-The prototype must not be promoted directly. Production still requires:
+The backend core is qualified, but public registration still requires:
 
-1. Compile the complete cminpack intensive drivers and committed MINPACK
-   reference cross-check into/against the exact production Wasm artifact. The
-   current smoke covers two well-conditioned problems only.
-2. Add the Moré-Garbow-Hillstrom suite at multiple starts/scales, supplied and
-   finite-difference Jacobians, rank deficiency, poor scaling, NaN/infinity,
-   callback corruption, and allocation-failure injection.
-3. Run the solver in a worker. Synchronous Wasm blocks a browser main thread;
-   an `AbortSignal` event cannot fire on that same thread during a solve.
-   Cooperative callback checks and `SharedArrayBuffer`/`Atomics` cancellation
-   work, but worker ownership is required for responsive external
-   cancellation and recovery.
-4. Fuzz the exported ABI and run native adapter-equivalent sanitizer tests.
-   The production wrapper must be the only normal caller of allocation/free
-   exports, and the ABI allowlist must fail closed.
-5. Bind source, license, build flags, artifact, corpus, and method capability
-   hashes in authenticated receipts. The pinned upstream revision is newer
-   than tag `v1.3.14`; production must retain the exact commit or deliberately
-   move to a reviewed release, never call it merely “1.3.14.”
-6. Verify relocated npm and SEA use, browser worker recovery, cold load, RSS,
-   memory pressure, and the persistent Linux x64 host.
+1. Register the separately lazy artifact in the Node/SEA/browser evaluator
+   resource loader without bundling it into FLINT or eagerly loading it.
+2. Route only the exact `cminpack-lmdif` and `cminpack-lmder` identities from
+   ordinary Python, and independently validate the final point before
+   constructing a `NumericalResult`.
+3. Classify both C adapters in `architecture/native-code.json`, update package
+   ownership, and satisfy the shared architecture gate.
+4. Verify relocated npm and SEA resolution, startup/payload budgets, and the
+   persistent Linux x64 host. `bench-1` rejected this lane's SSH identity.
+5. Keep hard recovery at the evaluator-worker boundary. Arbitrary functions
+   cannot be cloned to a nested solver worker; the worker owning the user
+   callback must also own the reactor.
+6. Do not claim sanitizer evidence. This lane instead supplies bounded Wasm
+   memory plus explicit corrupt-region, allocation-failure, random-oracle,
+   callback-error, lifecycle, and worker-recovery campaigns.
 
 ### Dynamic fallback semantics
 
@@ -216,10 +223,11 @@ merely because the library builds.
 Integrate only after the current ordinary-Python optimization lane has landed,
 in this order:
 
-1. **Numerical Wasm package lane** — create `packages/numerical-wasm/` with
-   pinned source restoration, verbatim licenses, cminpack adapter/core, worker
-   host, loader, ABI allowlist, and source/artifact receipts. Do not attach this
-   dependency to FLINT or duplicate it in per-method modules.
+1. **Numerical Wasm package lane** — integrate the completed
+   `packages/flint-wasm/numerical/` candidate as one separately lazy resource,
+   optionally moving the directory as a unit. Retain its pinned restoration,
+   verbatim license, ABI allowlist, production manifest, and qualification
+   receipt. Do not link the core into FLINT or duplicate it per method.
 2. **Runtime integration lane** — add a lazy `numerical_backend()` boundary in
    `src/baselib/sagejs/runtime.py` and `.pyi`, its compiler mapping in
    `tools/python/contract.ts`, and host injection in Node/SEA/browser evaluator
@@ -230,25 +238,26 @@ in this order:
    `cminpack-lmdif`/`cminpack-lmder`, retain ordinary Python for every miss,
    update planning/capabilities, and convert backend counters/status into the
    existing canonical `NumericalResult` without trusting success.
-4. **Evidence lane** — port the complete cminpack cross-check and expanded MGH
-   corpus, then run the same Wasm digest on browser, persistent four-platform
-   Node, npm relocation, and SEA. Promote LM only when those receipts bind to
-   the final artifact.
+4. **Evidence lane** — retain the complete final-artifact MGH and browser
+   qualification already supplied here, then add relocated npm, SEA, and the
+   missing persistent Linux x64 receipt after resource integration.
 5. **NLopt method lanes** — add the MIT-only source core and adapter once, then
    qualify and promote Nelder-Mead and COBYLA as separate reviewed commits.
 6. **Integration/release lane** — update workspace/package graphs, pyright,
    capability and native-boundary manifests, payload/startup budgets, public
    docs, and release receipts only after the method gates are green.
 
-The experimental files in this branch are a reviewable reference for steps 1
-and 4. They should be copied into a dedicated package and hardened, not exposed
-from `packages/flint-wasm` as a public accidental ABI.
+The production manifest deliberately permits explicit registration only;
+automatic selection remains disabled until steps 2–4 are complete.
 
 ## Reproduction
 
 ```sh
-node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs
-node --test test/numerical-p3-backends/lm-wasm.test.mjs
+node packages/flint-wasm/numerical/scripts/build.cjs
+node packages/flint-wasm/numerical/qualification/run.mjs
+node --test test/numerical-p3-backends/lm-wasm.test.mjs \
+  test/numerical-p3-backends/abi-fuzz.test.mjs \
+  test/numerical-p3-backends/worker-owned.test.mjs
 node test/numerical-p3-backends/browser-lm.mjs
 node bench/numerical-p3-backends/benchmark.mjs
 node bench/numerical-optimization/callback-boundary.mjs \

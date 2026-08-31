@@ -11,6 +11,7 @@
   "claims": [
     "bench/numerical-p3-backends/",
     "packages/flint-wasm/experimental/numerical-p3-backends/",
+    "packages/flint-wasm/numerical/",
     "test/numerical-p3-backends/"
   ],
   "dependencies": [],
@@ -38,8 +39,9 @@
     "pnpm architecture:check",
     "pnpm test:portable",
     "pnpm test:baselib:strict",
-    "node packages/flint-wasm/experimental/numerical-p3-backends/build.cjs",
-    "node --test test/numerical-p3-backends/lm-wasm.test.mjs",
+    "node packages/flint-wasm/numerical/scripts/build.cjs",
+    "node packages/flint-wasm/numerical/qualification/run.mjs",
+    "node --test test/numerical-p3-backends/lm-wasm.test.mjs test/numerical-p3-backends/abi-fuzz.test.mjs test/numerical-p3-backends/worker-owned.test.mjs",
     "node test/numerical-p3-backends/browser-lm.mjs"
   ],
   "runs": [
@@ -142,21 +144,61 @@
       "commit": "94d2e86ad52b295b975050652006af411dd4b5c3",
       "workspace_fingerprint": "74e3836fff566a6007f0c3b224c63a95b2b6e78f06efd1d80403ce3a452a9064",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/numerical/scripts/build.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.805,
+      "started_at": "2026-08-31T16:35:41.060Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node packages/flint-wasm/numerical/qualification/run.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.176,
+      "started_at": "2026-08-31T16:35:55.993Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerical-p3-backends/lm-wasm.test.mjs test/numerical-p3-backends/abi-fuzz.test.mjs test/numerical-p3-backends/worker-owned.test.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.24,
+      "started_at": "2026-08-31T16:35:56.932Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node test/numerical-p3-backends/browser-lm.mjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.195,
+      "started_at": "2026-08-31T16:35:57.926Z",
+      "commit": "2a7859695173ef6055a6ed13ef3c11526f3ec31d",
+      "workspace_fingerprint": "a1c1cc786fbab7f790281230a966a778c7e05f4d4f1e6d3534e82dd55a3f4306",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Produced a decision-ready P3 backend survey and an isolated, content-locked cminpack lmdif/lmder Wasm feasibility prototype. The one-import packed callback ABI preserves method identity, callback exception identity, deterministic cleanup, non-reentrancy, cooperative/Atomics/evaluation/elapsed cancellation, finite-output checks, and explicit memory/dimension envelopes. Seven focused Node tests and a real Chromium smoke pass. The identical 69,419-byte artifact solved the analytic Rosenbrock residual on local Linux x64 plus persistent Linux arm64, macOS arm64, and Windows x64 hosts with zero live allocations. No automatic or public production capability is enabled.",
+    "summary": "Promoted the feasibility prototype into a content-locked, explicit-only cminpack lmdif/lmder production candidate. The 72,149-byte one-import reactor binds source, license, build/toolchain, ABI, artifact, upstream MGH corpus, reference outputs, and qualification summary. The exact final artifact passes 53 upstream cases for each method in Node and Chromium with independent oracle residual recomputation and an identical canonical result digest. Focused tests cover 200 random linear oracles, 500 corrupt ABI regions, every internal allocation failure, callback/error/budget cleanup, non-reentrancy, repeated reuse, worker-owned shared-memory cancellation, and hard-stuck worker replacement. The same artifact passes Node smokes on local Linux x64 and persistent Linux ARM64, macOS ARM64, and Windows x64. An integration API preserves exact method identity and permits only auto requests to fall back to ordinary-Python damped-gauss-newton with an inspectable diagnostic. Automatic selection remains disabled pending integration-owned public validation and resource wiring.",
     "risks": [
       "The persistent Linux x64 host bench-1 rejected the available SSH identity, so local Linux x64 is only a substitute smoke and no four-persistent-host receipt is claimed.",
-      "Production promotion still requires the full cminpack intensive/reference cross-check, an expanded More-Garbow-Hillstrom corpus, ABI fuzzing and allocation-failure/sanitizer evidence, authenticated receipts, npm/SEA relocation tests, and worker-owned browser cancellation/recovery.",
+      "Relocated npm and SEA receipts require integration-owned runtime/resource wiring and are not claimed by this isolated package lane.",
       "The branch base contains numerical-computing integration work not yet present on origin/main. Repository-wide architecture and portable gates currently stop on base-owned package-graph and lane-policy mismatches before reaching this prototype; this lane does not edit those shared manifests.",
-      "The experimental adapter exports raw allocation functions for feasibility. Production must expose an allowlisted worker/package boundary, prevent direct arbitrary frees, and retain the 128 MiB memory ceiling.",
+      "The Wasm ABI necessarily exports tracked allocation helpers for the host wrapper. Arbitrary, undersized, overlapping, untracked, and double-freed regions fail closed; integration must expose only the JavaScript wrapper as public API.",
       "An explicit cminpack method request cannot silently fall back to the existing damped-gauss-newton method; automatic fallback must create a new plan and diagnostic recording the method change. The same method-identity rule applies to NLopt variants."
     ],
     "next_steps": [
-      "Create a dedicated packages/numerical-wasm package with the pinned cminpack core, verbatim license, hardened adapter, worker host, ABI allowlist, and artifact/source receipts; do not publish this experiment from flint-wasm.",
+      "Register the completed packages/flint-wasm/numerical candidate as one separately lazy resource, optionally moving it as a unit; retain the source/license/artifact/qualification chain and do not link it into FLINT.",
       "Add the lazy numerical_backend runtime/compiler/evaluator boundary in an integration-owned change, then route exact cminpack-lmdif and cminpack-lmder identities below the ordinary-Python optimization API.",
-      "Run the complete upstream MINPACK/cminpack cross-check and expanded nonlinear least-squares corpus from the exact production Wasm digest on Chromium, persistent four-platform Node, relocated npm, and SEA before enabling capability selection.",
+      "Retain the complete 106-solve Node/Chromium MGH qualification, then add relocated npm, SEA, and persistent Linux x64 receipts after integration; bench-1 rejected this lane's SSH identity.",
       "Add the MIT-only NLopt core with NLOPT_LUKSAN=OFF only after source/object/symbol allowlists prove Luksan absent; qualify NLOPT_LN_NELDERMEAD and NLOPT_LN_COBYLA independently, retaining PRIMA/SciPy as oracles."
     ]
   }

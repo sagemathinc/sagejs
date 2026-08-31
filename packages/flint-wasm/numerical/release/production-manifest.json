@@ -1,0 +1,47 @@
+{
+  "schema": "sagejs.numerical-wasm-production/v1",
+  "source": {
+    "name": "cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license_sha256": "8887036b1039e299ebcc8b95a73ea1538df548393fb8462361c80bea605a4fbe"
+  },
+  "source_closure": {
+    "sha256": "b2aa0feb82e0cbe2012684eb640e816eeec5ebfdd531a79741d2a405277ecdd0"
+  },
+  "toolchain": {
+    "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off"
+  },
+  "artifact": {
+    "filename": "cminpack.wasm",
+    "sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+    "bytes": 72149,
+    "gzip_bytes": 28936,
+    "brotli_bytes": 23904
+  },
+  "abi": {
+    "sha256": "4db7233e6d5543ac900396b452ff074c114e3a6b08f68e966ac054b9cf4134ba",
+    "imports": [
+      {
+        "module": "sagejs_p3",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "memory": {
+      "initial_bytes": 2097152,
+      "maximum_bytes": 134217728
+    }
+  },
+  "methods": [
+    "cminpack-lmdif",
+    "cminpack-lmder"
+  ],
+  "selection": "explicit-only-pending-runtime-registration",
+  "qualification_receipt": {
+    "path": "release/qualification-v1.json",
+    "sha256": "a0cf37d9442ffa8f269cc91413a741f911ea2105d35d256b83daaea7ee1cff56"
+  }
+}

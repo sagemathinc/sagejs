@@ -4,16 +4,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-import { createCminpackPrototype } from
-  "../../packages/flint-wasm/experimental/numerical-p3-backends/backend.mjs";
+import {
+  NumericalBackendCapabilityError,
+  createCminpackBackend,
+  solveLeastSquaresWithFallback,
+} from
+  "../../packages/flint-wasm/numerical/index.mjs";
 
 const artifact = new URL(
-  "../../packages/flint-wasm/experimental/numerical-p3-backends/build/p3-cminpack.wasm",
+  "../../packages/flint-wasm/numerical/build/cminpack.wasm",
   import.meta.url,
 );
 
 async function backend() {
-  return createCminpackPrototype(await readFile(artifact));
+  return createCminpackBackend(await readFile(artifact));
 }
 
 function assertClose(actual, expected, tolerance = 1e-9) {
@@ -37,7 +41,8 @@ test("lmdif recovers a linear fit through a packed residual callback", async () 
       xs.map((x, index) => slope * x + intercept - ys[index]),
     maximumEvaluations: 300,
   });
-  assert.equal(result.success, true);
+  assert.equal(result.backendConverged, true);
+  assert.equal(result.independentValidationRequired, true);
   assert.equal(result.method, "cminpack-lmdif");
   assertClose(result.value, [2.5, -0.75], 1e-10);
   const independentResidual = Math.hypot(
@@ -48,6 +53,7 @@ test("lmdif recovers a linear fit through a packed residual callback", async () 
     activeContexts: 0,
     activeHandle: 0,
     liveAllocations: 0,
+    liveBytes: 0,
     memoryBytes: solver.inspect().memoryBytes,
   });
 });
@@ -61,7 +67,7 @@ test("lmder uses the supplied complete Jacobian and preserves method identity", 
     jacobian: ([x]) => [[-20 * x, 10], [-1, 0]],
     maximumEvaluations: 300,
   });
-  assert.equal(result.success, true);
+  assert.equal(result.backendConverged, true);
   assert.equal(result.method, "cminpack-lmder");
   assert.ok(result.jacobianEvaluations > 0);
   assertClose(result.value, [1, 1], 1e-10);
@@ -98,7 +104,7 @@ test("cancellation, evaluation, and elapsed budgets stop at callback boundaries"
     "cancelled",
   );
   assert.equal(
-    solver.leastSquares({ ...common, maximumEvaluations: 1 }).status,
+    solver.leastSquares({ ...common, maximumCallbackEvaluations: 1 }).status,
     "maximum_evaluations",
   );
   assert.equal(
@@ -161,7 +167,7 @@ test("the module rejects reentrant solves and remains reusable", async () => {
     residualCount: 1,
     residual: ([x]) => [x - 2],
   });
-  assert.equal(result.success, true);
+  assert.equal(result.backendConverged, true);
   assertClose(result.value, [2]);
 });
 
@@ -179,8 +185,63 @@ test("repeated solves leave no live allocations and stabilize memory", async () 
       residualCount: 1,
       residual: ([x]) => [x - 2],
     });
-    assert.equal(result.success, true);
+    assert.equal(result.backendConverged, true);
     assert.equal(solver.inspect().liveAllocations, 0);
   }
   assert.equal(solver.inspect().memoryBytes, warmedBytes);
+});
+
+test("every internal allocation failure unwinds and leaves the reactor reusable", async () => {
+  const solver = await backend();
+  for (let failure = 0; failure < 9; failure += 1) {
+    const result = solver.leastSquares({
+      initial: [4],
+      residualCount: 1,
+      residual: ([x]) => [x - 2],
+      testingAllocationFailureAfter: failure,
+    });
+    assert.equal(result.status, "allocation_failed");
+    assert.equal(result.value, undefined);
+    assert.equal(solver.inspect().liveAllocations, 0);
+    assert.equal(solver.inspect().liveBytes, 0);
+  }
+  const recovered = solver.leastSquares({
+    initial: [4],
+    residualCount: 1,
+    residual: ([x]) => [x - 2],
+  });
+  assert.equal(recovered.backendConverged, true);
+  assertClose(recovered.value, [2]);
+});
+
+test("exact method requests fail closed while auto records fallback identity", async () => {
+  const solver = await backend();
+  assert.throws(
+    () => solver.leastSquares({
+      method: "cminpack-lmder",
+      initial: [1],
+      residualCount: 1,
+      residual: ([x]) => [x],
+    }),
+    NumericalBackendCapabilityError,
+  );
+  let observed;
+  const routed = solveLeastSquaresWithFallback(
+    solver,
+    {
+      method: "auto",
+      initial: Array.from({ length: 257 }, () => 0),
+      residualCount: 257,
+      residual: (point) => point,
+    },
+    (options, diagnostic) => {
+      observed = { options, diagnostic };
+      return { portable: true };
+    },
+  );
+  assert.equal(routed.route, "ordinary-python");
+  assert.equal(routed.result.portable, true);
+  assert.equal(observed.options.method, "damped-gauss-newton");
+  assert.deepEqual(observed.diagnostic, routed.diagnostic);
+  assert.equal(routed.diagnostic.rejectedBackend, "cminpack-wasm");
 });
