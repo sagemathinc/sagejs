@@ -1,7 +1,7 @@
 {
   "schema": "sagejs.numerical-qualification-corpus/v1",
-  "id": "sagejs-numerical-product-v4",
-  "version": 4,
+  "id": "sagejs-numerical-product-v5",
+  "version": 5,
   "domain": "numerical-computing-product",
   "description": "Backend-neutral P0-P8 product cases executed through a real Sage.js artifact and checked independently by the host adapter.",
   "program_phases": ["P0", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
@@ -270,6 +270,29 @@
       "measurement": {"warmup": 0, "samples": 2}
     },
     {
+      "id": "p3-cminpack-optional-resource-fail-closed",
+      "description": "Missing and corrupt optional cminpack boundaries leave automatic least squares on its validated ordinary-Python method while explicit cminpack requests return the same structured, nonleaking backend failure.",
+      "program_phase": "P3",
+      "layer": "failure-semantics",
+      "workload_tier": "instant-classroom",
+      "campaign": {"kind": "fault-injection", "seed": null, "trials": 2, "evidence_check_ids": ["optional-resource-failures-injected"]},
+      "input": {"operation": "cminpack-optional-resource-fail-closed", "resource_failures": ["missing", "corrupt"]},
+      "required_capabilities": ["numerics.optimization.cminpack_optional_resource"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "optional-resource-failures-injected", "evidence": "validation", "kind": "deep-equal", "actual": "/values/resource_failures", "expected": {"literal": ["missing", "corrupt"]}},
+        {"id": "auto-remains-successful", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/automatic_successes", "expected": {"literal": 2}},
+        {"id": "auto-method-identity", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_methods", "expected": {"literal": ["damped-gauss-newton", "damped-gauss-newton"]}},
+        {"id": "auto-backend-identity", "evidence": "validation", "kind": "deep-equal", "actual": "/values/automatic_backends", "expected": {"literal": ["ordinary-python", "ordinary-python"]}},
+        {"id": "auto-fallback-oracle", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_automatic_error", "expected": {"literal": 1e-9}},
+        {"id": "explicit-requests-fail", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_failures", "expected": {"literal": 2}},
+        {"id": "explicit-status-stable", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_statuses", "expected": {"literal": ["backend_failure", "backend_failure"]}},
+        {"id": "explicit-reason-stable", "evidence": "validation", "kind": "deep-equal", "actual": "/values/explicit_reasons", "expected": {"literal": ["cminpack_backend_error", "cminpack_backend_error"]}},
+        {"id": "resource-private-details-hidden", "evidence": "validation", "kind": "deep-equal", "actual": "/values/private_details_leaked", "expected": {"literal": 0}}
+      ],
+      "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
       "id": "p4-ode-exponential",
       "description": "Dormand-Prince solves y'=y and is compared with the exact exponential flow.",
       "program_phase": "P4",
@@ -424,7 +447,7 @@
     },
     {
       "id": "p6-multilingual-catalog-roundtrip",
-      "description": "Every foundational numerical operation emits exactly its reviewed language targets and round-trips without semantic drift; the 66 envelope-bound emitters reject changed bodies while four scalar-root parsers accept semantically equivalent source syntax.",
+      "description": "Every foundational numerical operation emits exactly its reviewed language targets and round-trips without semantic drift; the 59 envelope-bound emitters reject changed bodies while four scalar-root parsers accept semantically equivalent source syntax.",
       "program_phase": "P6",
       "layer": "metamorphic",
       "workload_tier": "interactive-exploration",
@@ -435,13 +458,13 @@
           {"operation": "roots:scalar_root:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
           {"operation": "linear_algebra:linear_solve:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
           {"operation": "linear_algebra:least_squares:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-          {"operation": "spectral:symmetric_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-          {"operation": "spectral:general_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-          {"operation": "spectral:singular_value_decomposition:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "spectral:symmetric_eigen:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
+          {"operation": "spectral:general_eigen:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
+          {"operation": "spectral:singular_value_decomposition:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
           {"operation": "spectral:fourier_transform:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
           {"operation": "spectral:convolution:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
           {"operation": "approximation:interpolation:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
-          {"operation": "approximation:cubic_spline:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "approximation:cubic_spline:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
           {"operation": "integration:definite_integral:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
           {"operation": "optimization:scalar_minimum:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
           {"operation": "optimization:minimize:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
@@ -450,9 +473,9 @@
           {"operation": "fitting:linear_fit:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
           {"operation": "ode:initial_value_problem:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
           {"operation": "statistics:descriptive_statistics:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-          {"operation": "statistics:one_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-          {"operation": "statistics:two_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-          {"operation": "statistics:linear_regression:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
+          {"operation": "statistics:one_sample_t_test:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
+          {"operation": "statistics:two_sample_t_test:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
+          {"operation": "statistics:linear_regression:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
           {"operation": "sweeps:parameter_sweep:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]}
         ]
       },
@@ -461,10 +484,10 @@
       "checks": [
         {"id": "frontend-catalog-operations", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/operation_keys_match", "expected": {"literal": true}},
         {"id": "frontend-catalog-target-matrix", "evidence": "validation", "kind": "deep-equal", "actual": "/values/target_matrix_matches", "expected": {"literal": true}},
-        {"id": "frontend-catalog-supported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/supported_targets", "expected": {"literal": 70}},
-        {"id": "frontend-catalog-unsupported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/unsupported_targets", "expected": {"literal": 18}},
+        {"id": "frontend-catalog-supported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/supported_targets", "expected": {"literal": 63}},
+        {"id": "frontend-catalog-unsupported-targets", "evidence": "validation", "kind": "deep-equal", "actual": "/values/unsupported_targets", "expected": {"literal": 25}},
         {"id": "frontend-catalog-roundtrip-digests", "evidence": "validation", "kind": "deep-equal", "actual": "/values/digest_mismatches", "expected": {"literal": 0}},
-        {"id": "frontend-catalog-tamper-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/tamper_rejections", "expected": {"literal": 66}},
+        {"id": "frontend-catalog-tamper-rejection", "evidence": "validation", "kind": "deep-equal", "actual": "/values/tamper_rejections", "expected": {"literal": 59}},
         {"id": "frontend-catalog-structured-diagnostics", "evidence": "validation", "kind": "deep-equal", "actual": "/values/unexpected_diagnostics", "expected": {"literal": 0}},
         {"id": "frontend-catalog-equivalent-digests", "evidence": "validation", "kind": "deep-equal", "actual": "/values/equivalent_digests", "expected": {"literal": true}},
         {"id": "frontend-catalog-linear-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/maximum_linear_residual", "expected": {"literal": 1e-12}}
@@ -491,6 +514,26 @@
         {"id": "safe-parser-forms-reach-runtime", "evidence": "validation", "kind": "deep-equal", "actual": "/values/safe_lowerings_reach_runtime", "expected": {"literal": true}}
       ],
       "measurement": {"warmup": 0, "samples": 2}
+    },
+    {
+      "id": "p6-matlab-vector-shapes",
+      "description": "The built MATLAB parser preserves one-output column vectors, callback parameter row/column orientation, convolution row shape, and matrix-shaped arrayfun results across eleven executable programs.",
+      "program_phase": "P6",
+      "layer": "definition-identity",
+      "workload_tier": "interactive-exploration",
+      "campaign": {"kind": "fixed", "seed": null, "trials": 11, "evidence_check_ids": []},
+      "input": {"operation": "matlab-vector-shapes", "programs": 11},
+      "required_capabilities": ["numerics.frontend.matlab_shapes"],
+      "expected": {"outcome": "success", "failure_code": null},
+      "checks": [
+        {"id": "matlab-shape-witness-count", "evidence": "correctness", "kind": "deep-equal", "actual": "/values/witnesses", "expected": {"literal": 11}},
+        {"id": "matlab-shape-no-mismatches", "evidence": "validation", "kind": "deep-equal", "actual": "/values/mismatches", "expected": {"literal": []}},
+        {"id": "matlab-one-output-columns", "evidence": "validation", "kind": "deep-equal", "actual": "/values/one_output_column_shapes", "expected": {"literal": ["(2, 1)", "(2, 1)", "(2, 1)"]}},
+        {"id": "matlab-callback-rows", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_row_shapes", "expected": {"literal": ["(1, 2)", "(1, 2)", "(1, 2)"]}},
+        {"id": "matlab-callback-columns", "evidence": "validation", "kind": "deep-equal", "actual": "/values/callback_column_shapes", "expected": {"literal": ["(2, 1)", "(2, 1)", "(2, 1)"]}},
+        {"id": "matlab-container-shapes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/container_shapes", "expected": {"literal": ["(1, 3)", "(2, 2)"]}}
+      ],
+      "measurement": {"warmup": 0, "samples": 1}
     },
     {
       "id": "p6-scipy-emitted-execution",
