@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "numeric_type": "binary64",
+  "description": "Backend-neutral dense linear algebra definitions, residual oracles, conditioned cases, and classified failures.",
+  "cases": [
+    {
+      "id": "solve-well-conditioned",
+      "category": "definition",
+      "operation": "solve",
+      "matrix": [[3.0, 1.0], [1.0, 2.0]],
+      "right": [9.0, 8.0],
+      "expected": [2.0, 3.0],
+      "absolute_tolerance": 1e-14,
+      "oracle": "exact substitution and independent backward residual"
+    },
+    {
+      "id": "solve-multiple-right-sides",
+      "category": "definition",
+      "operation": "solve",
+      "matrix": [[4.0, 1.0], [2.0, 3.0]],
+      "right": [[6.0, 1.0], [8.0, 7.0]],
+      "expected": [[1.0, -0.4], [2.0, 2.6]],
+      "absolute_tolerance": 1e-14,
+      "oracle": "exact substitution and independent backward residual"
+    },
+    {
+      "id": "solve-hilbert-five",
+      "category": "conditioned_stress",
+      "operation": "solve",
+      "matrix": [
+        [1.0, 0.5, 0.3333333333333333, 0.25, 0.2],
+        [0.5, 0.3333333333333333, 0.25, 0.2, 0.16666666666666666],
+        [0.3333333333333333, 0.25, 0.2, 0.16666666666666666, 0.14285714285714285],
+        [0.25, 0.2, 0.16666666666666666, 0.14285714285714285, 0.125],
+        [0.2, 0.16666666666666666, 0.14285714285714285, 0.125, 0.1111111111111111]
+      ],
+      "right": [2.283333333333333, 1.45, 1.0928571428571427, 0.8845238095238095, 0.7456349206349207],
+      "expected": [1.0, 1.0, 1.0, 1.0, 1.0],
+      "absolute_tolerance": 1e-9,
+      "condition_reference": 476607.25024099136,
+      "condition_relative_tolerance": 1e-8,
+      "oracle": "NumPy SVD fixture plus independent backward residual"
+    },
+    {
+      "id": "least-squares-tall",
+      "category": "definition",
+      "operation": "least_squares",
+      "matrix": [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0]],
+      "right": [1.0, 2.0, 2.0],
+      "expected": [0.6666666666666666, 0.5],
+      "absolute_tolerance": 1e-14,
+      "oracle": "orthogonality of residual to the column space"
+    },
+    {
+      "id": "least-squares-wide-minimum-norm",
+      "category": "definition",
+      "operation": "least_squares",
+      "matrix": [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+      "right": [2.0, 3.0],
+      "expected": [2.0, 3.0, 0.0],
+      "absolute_tolerance": 1e-14,
+      "oracle": "exact constraint and minimum Euclidean norm"
+    },
+    {
+      "id": "rank-deficient",
+      "category": "definition",
+      "operation": "rank",
+      "matrix": [[1.0, 2.0], [2.0, 4.0]],
+      "expected": 1,
+      "oracle": "exact row dependence with scale-aware singular-value threshold"
+    },
+    {
+      "id": "determinant-row-swap",
+      "category": "definition",
+      "operation": "determinant",
+      "matrix": [[1.0, 2.0], [3.0, 4.0]],
+      "expected": -2.0,
+      "absolute_tolerance": 1e-14,
+      "oracle": "closed-form 2-by-2 determinant"
+    },
+    {
+      "id": "inverse-two-by-two",
+      "category": "definition",
+      "operation": "inverse",
+      "matrix": [[4.0, 7.0], [2.0, 6.0]],
+      "expected": [[0.6, -0.7], [-0.2, 0.4]],
+      "absolute_tolerance": 1e-14,
+      "oracle": "both left and right identity residuals"
+    },
+    {
+      "id": "singular-direct-solve",
+      "category": "failure",
+      "operation": "solve",
+      "matrix": [[1.0, 2.0], [2.0, 4.0]],
+      "right": [1.0, 2.0],
+      "failure_code": "rank_deficient"
+    },
+    {
+      "id": "nonsquare-direct-solve",
+      "category": "failure",
+      "operation": "solve",
+      "matrix": [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+      "right": [1.0, 2.0, 3.0],
+      "failure_code": "matrix_not_square"
+    },
+    {
+      "id": "rank-deficient-least-squares",
+      "category": "failure",
+      "operation": "least_squares",
+      "matrix": [[1.0, 2.0], [2.0, 4.0], [3.0, 6.0]],
+      "right": [1.0, 2.0, 3.0],
+      "failure_code": "rank_deficient"
+    },
+    {
+      "id": "nonsymmetric-cholesky",
+      "category": "failure",
+      "operation": "cholesky",
+      "matrix": [[2.0, 1.0], [0.0, 2.0]],
+      "failure_code": "not_symmetric"
+    },
+    {
+      "id": "indefinite-cholesky",
+      "category": "failure",
+      "operation": "cholesky",
+      "matrix": [[1.0, 2.0], [2.0, 1.0]],
+      "failure_code": "not_positive_definite"
+    }
+  ]
+}
