@@ -1,4 +1,4 @@
-# Numerical optimization strategy for Sage.js
+# Numerical optimization backend strategy for Sage.js
 
 **Status:** architecture recommendation, supported by a checked-in correctness
 and benchmark corpus
@@ -11,6 +11,26 @@ and benchmark corpus
 **Sage reference:**
 [`8bed9c3744bfeaf3a443ad428dbcfe300b1a1b75`](https://github.com/sagemath/sage/blob/8bed9c3744bfeaf3a443ad428dbcfe300b1a1b75/src/sage/numerical/optimize.py)
 
+## Product context
+
+This report is the measured optimization-backend study for the broader
+[`numerical-computing-product-plan.md`](numerical-computing-product-plan.md).
+It does not define the ceiling of Sage.js numerical computing.
+
+Sage is a valuable compatibility authority and supplies useful names, examples,
+and mathematical semantics. It is one frontend, not the product architecture.
+The canonical Sage.js numerical API should be agent-first, structured,
+inspectable, visualizable, and more coherent than Sage's historical thin
+wrappers. A Sage-facing call may deliberately preserve a Sage/SciPy algorithm;
+the canonical API may offer better defaults as long as it reports the exact
+method and never implies compatibility it does not provide.
+
+The backend conclusions below remain unchanged: optimization algorithms still
+need method-specific qualification, honest fallbacks, and a common portable
+execution boundary. The broader plan adds the product model, multilingual
+frontends, iteration traces, Plotly animation, educational scope, and roadmap
+around those kernels.
+
 ## Decision
 
 Sage.js should not choose one general-purpose numerical-optimization library,
@@ -21,9 +41,10 @@ The best architecture is a **method-specific portfolio behind one
 Sage-compatible ordinary-Python API and one small, synchronous,
 callback-capable WebAssembly pack**:
 
-1. Preserve the Sage/SciPy method selected by each public API. Do not silently
-   replace one named algorithm with a vaguely similar algorithm from another
-   library.
+1. Preserve the method selected by any explicit public option. For the Sage
+   compatibility facade, preserve the deliberately supported Sage/SciPy method.
+   Do not silently replace one named algorithm with a vaguely similar algorithm
+   from another library.
 2. Keep the small one-dimensional Brent algorithms as readable Python with a
    correct dynamic path. They are already sub-millisecond and are not the
    source of an important performance problem.
@@ -59,10 +80,12 @@ release complexity and, more importantly, makes floating-point behavior more
 uniform. The cminpack native ARM64 result below shows that this is a correctness
 advantage, not merely packaging convenience.
 
-## What compatibility means
+## What compatibility means for the Sage facade
 
-The relevant Sage surface is much smaller and more precise than “provide an
-optimization library.” The pinned Sage source delegates as follows:
+This section defines the Sage-facing acceptance oracle, not the scope or
+default design of the canonical Sage.js numerical product. The relevant Sage
+surface is much smaller and more precise than “provide an optimization
+library.” The pinned Sage source delegates as follows:
 
 | Sage operation | Current delegated method | Initial Sage.js contract |
 | --- | --- | --- |
