@@ -31,6 +31,33 @@ function validateTemplate(template, expectedRows, requiredCapabilities = null) {
   }
 }
 
+function validateSupplementalTemplate(template) {
+  if (template.schema !== "sagejs.numerical-qualification-supplemental-template/v1") {
+    throw new Error("unexpected supplemental evidence template schema");
+  }
+  const required = new Set([
+    "cminpack-native-sanitizers",
+    "nlopt-native-sanitizers",
+    "numerical-wasm-destructive-faults",
+    "browser-process-tree-memory",
+  ]);
+  for (const item of template.requirements) {
+    if (!required.delete(item.id)) throw new Error(`unexpected supplemental requirement ${item.id}`);
+    if (item.status !== "pending") {
+      throw new Error(`checked-in supplemental requirement ${item.id} must remain pending`);
+    }
+    if (!Array.isArray(item.required_evidence) || item.required_evidence.length === 0) {
+      throw new Error(`supplemental requirement ${item.id} lacks evidence types`);
+    }
+    if (typeof item.acceptance !== "string" || item.acceptance.length < 32) {
+      throw new Error(`supplemental requirement ${item.id} lacks an acceptance contract`);
+    }
+  }
+  if (required.size !== 0) {
+    throw new Error(`missing supplemental requirements: ${[...required].join(", ")}`);
+  }
+}
+
 function main() {
   const corpus = validateCorpus(readJson(corpusPath));
   const draft = capabilityDraft(readJson(specPath), corpus);
@@ -60,6 +87,9 @@ function main() {
     4,
     requiredCapabilities,
   );
+  validateSupplementalTemplate(
+    readJson(path.join(matrixDirectory, "supplemental-evidence.template.json")),
+  );
   validateTemplate(
     readJson(path.join(matrixDirectory, "full-runtime.template.json")),
     16,
@@ -81,4 +111,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { main, validateTemplate };
+module.exports = { main, validateSupplementalTemplate, validateTemplate };

@@ -584,6 +584,7 @@ output_record = {
     "source_transparent": record["provenance"]["source_transparent"],
 }`,
     "p3-nlopt-failure-provenance": String.raw`
+import sagejs.runtime as runtime
 from sagejs.numerics.optimization import minimize
 
 def broken(_point):
@@ -600,6 +601,9 @@ cancelled = minimize(
     method="nlopt-nelder-mead",
     cancel=cancel,
 )
+backend = runtime.numerical_backend("nlopt")
+inspect = runtime.reflect.get(backend, "inspect")
+backend_state = runtime.reflect.apply(inspect, backend, [])
 
 def execution_record(result):
     record = result.to_dict()
@@ -619,6 +623,10 @@ output_record = {
     "callback": execution_record(callback),
     "cancelled": execution_record(cancelled),
     "cancel_checks": cancel_checks[0],
+    "active_contexts": int(runtime.reflect.get(backend_state, "activeContexts")),
+    "active_handle": int(runtime.reflect.get(backend_state, "activeHandle")),
+    "live_allocations": int(runtime.reflect.get(backend_state, "liveAllocations")),
+    "live_bytes": int(runtime.reflect.get(backend_state, "liveBytes")),
 }`,
     "p3-nlopt-optional-resource-fail-closed": String.raw`
 import sagejs.runtime as runtime
@@ -1999,6 +2007,10 @@ async function normalizeEvaluated(sample, evaluated) {
         source_transparent: records.map((item) => item.source_transparent),
         private_details_leaked: records.filter((item) => item.private_detail_leaked).length,
         cancel_checks: raw.cancel_checks,
+        active_contexts: raw.active_contexts,
+        active_handle: raw.active_handle,
+        live_allocations: raw.live_allocations,
+        live_bytes: raw.live_bytes,
       }, kernelMs, { cancellation_checks: raw.cancel_checks });
       break;
     }
@@ -2499,6 +2511,13 @@ module.exports = {
     const cminpackArtifact = context.artifacts.find((item) => item.name === "cminpack-wasm");
     if (cminpackArtifact === undefined || !fs.statSync(cminpackArtifact.path).isFile()) {
       throw new Error("the cminpack-wasm artifact must be the built cminpack.wasm file");
+    }
+    const runtimeCminpackPath = path.join(artifactRoot, "numerical", "cminpack.wasm");
+    if (!fs.statSync(runtimeCminpackPath).isFile()) {
+      throw new Error("sagejs-dist lacks numerical/cminpack.wasm");
+    }
+    if (!fs.readFileSync(runtimeCminpackPath).equals(fs.readFileSync(cminpackArtifact.path))) {
+      throw new Error("the bound cminpack-wasm artifact differs from the Sage.js runtime resource");
     }
     const cminpackModulePath = path.resolve(
       __dirname, "..", "..", "..", "packages", "flint-wasm", "numerical", "index.mjs",

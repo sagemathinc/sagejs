@@ -562,7 +562,11 @@
         {"id": "nlopt-failure-implementation-provenance", "evidence": "validation", "kind": "deep-equal", "actual": "/values/implementation_kinds", "expected": {"literal": ["external_library_wasm", "external_library_wasm"]}},
         {"id": "nlopt-failure-not-source-transparent", "evidence": "validation", "kind": "deep-equal", "actual": "/values/source_transparent", "expected": {"literal": [false, false]}},
         {"id": "nlopt-failure-private-details-hidden", "evidence": "validation", "kind": "deep-equal", "actual": "/values/private_details_leaked", "expected": {"literal": 0}},
-        {"id": "nlopt-failure-cancel-polled", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 3}}
+        {"id": "nlopt-failure-cancel-polled", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/cancel_checks", "expected": {"literal": 3}},
+        {"id": "nlopt-failure-no-active-context", "evidence": "validation", "kind": "deep-equal", "actual": "/values/active_contexts", "expected": {"literal": 0}},
+        {"id": "nlopt-failure-no-active-handle", "evidence": "validation", "kind": "deep-equal", "actual": "/values/active_handle", "expected": {"literal": 0}},
+        {"id": "nlopt-failure-no-live-allocations", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}},
+        {"id": "nlopt-failure-no-live-bytes", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_bytes", "expected": {"literal": 0}}
       ],
       "measurement": {"warmup": 0, "samples": 1}
     },

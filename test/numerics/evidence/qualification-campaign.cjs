@@ -5,6 +5,7 @@
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 
@@ -337,4 +338,44 @@ test("first-party adapter executes Sage.js and independently checks representati
     await adapter.close();
   }
   assert.equal(adapter.qualificationState().initialized, false);
+});
+
+test("Node adapter authenticates separately bound numerical resources", {
+  skip: built ? false : "run pnpm build to exercise numerical resource authentication",
+}, async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-auth-"));
+  const draft = capabilityDraft(spec, corpus);
+  async function rejectsMutation(name, source, expected) {
+    const mutated = path.join(directory, `${name}.wasm`);
+    const bytes = fs.readFileSync(source);
+    bytes[Math.floor(bytes.length / 2)] ^= 1;
+    fs.writeFileSync(mutated, bytes);
+    const adapterPath = path.join(campaign, "node-adapter.cjs");
+    delete require.cache[require.resolve(adapterPath)];
+    const adapter = require(adapterPath);
+    const artifacts = [
+      { name: "sagejs-dist", path: dist, sha256: "test-only", bytes: 0 },
+      { name: "cminpack-wasm", path: name === "cminpack" ? mutated : cminpackWasm,
+        sha256: "test-only", bytes: 0 },
+      { name: "nlopt-wasm", path: name === "nlopt" ? mutated : nloptWasm,
+        sha256: "test-only", bytes: 0 },
+    ];
+    try {
+      await assert.rejects(
+        adapter.initialize({
+          root, backend: draft.backend, subject: draft.subject,
+          artifacts, capabilities: draft.capabilities,
+        }),
+        expected,
+      );
+    } finally {
+      await adapter.close();
+    }
+  }
+  try {
+    await rejectsMutation("cminpack", cminpackWasm, /bound cminpack-wasm artifact differs/);
+    await rejectsMutation("nlopt", nloptWasm, /bound nlopt-wasm artifact differs/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });

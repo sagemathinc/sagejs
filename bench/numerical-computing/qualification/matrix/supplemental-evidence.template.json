@@ -1,0 +1,35 @@
+{
+  "schema": "sagejs.numerical-qualification-supplemental-template/v1",
+  "id": "sagejs-numerical-product-supplemental-evidence",
+  "description": "Fail-closed component and operating-system evidence that cannot be honestly derived from a product adapter observation alone.",
+  "requirements": [
+    {
+      "id": "cminpack-native-sanitizers",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["address", "undefined", "leak"],
+      "acceptance": "The exact vendored cminpack source and Sage.js host adapter execute success, callback failure, cancellation, allocation failure, and repeated lifecycle workloads under each sanitizer with no finding."
+    },
+    {
+      "id": "nlopt-native-sanitizers",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["address", "undefined", "leak"],
+      "acceptance": "The exact vendored NLopt source and Sage.js host adapter execute both qualified algorithms, constraints, callback failure, cancellation, allocation failure, and repeated lifecycle workloads under each sanitizer with no finding."
+    },
+    {
+      "id": "numerical-wasm-destructive-faults",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["allocation-failure", "corrupt-region", "artifact-digest-mismatch", "post-failure-recovery"],
+      "acceptance": "Authenticated cminpack and NLopt reactors fail closed on every injected fault, release all contexts/handles/allocations/bytes, expose no private callback or resource details, and remain reusable after recovery."
+    },
+    {
+      "id": "browser-process-tree-memory",
+      "platform": "linux-x64",
+      "status": "pending",
+      "required_evidence": ["chromium", "firefox", "webkit", "worker-replacement"],
+      "acceptance": "The qualification collector authenticates operating-system process-tree peak memory for the exact browser executable while running the bounded memory workload; browser-heap counters are supplemental and cannot substitute for process-tree evidence."
+    }
+  ]
+}
