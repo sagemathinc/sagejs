@@ -1,0 +1,72 @@
+{
+  "schema": "sagejs.numerical-wasm-qualification-summary/v1",
+  "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+  "oracle_sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
+  "source_revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+  "qualification_inputs": {
+    "cases_sha256": "4486706a38af157667b9c2523a4c037d904cb9f0dc4828d01b78183c978d0392",
+    "lmdif_reference_sha256": "93cd86536c839b49931c57e4e6f9f976493e75336088fcafe91c42fa8448ee34",
+    "lmder_reference_sha256": "35b472d0f6210557b50cae2b555a51784f9b011b7742641ca3d15242fc65db5b"
+  },
+  "mgh": {
+    "cases_per_method": 53,
+    "methods": [
+      "cminpack-lmdif",
+      "cminpack-lmder"
+    ],
+    "total_final_artifact_solves": 106,
+    "results_sha256": "594f138289f78ee057e7f1de90a7ea2a81c9909cb732fcb38a1afbd47c09f285",
+    "node_linux_x64": "pass",
+    "chromium_linux_x64": "pass",
+    "independent_final_residual_recomputation": true,
+    "live_allocations_after": 0,
+    "live_bytes_after": 0
+  },
+  "abi_and_lifecycle": {
+    "random_linear_oracles": 200,
+    "corrupt_region_cases": 500,
+    "allocation_failure_positions": 9,
+    "callback_exception_cleanup": "pass",
+    "nonfinite_callback_cleanup": "pass",
+    "evaluation_elapsed_and_shared_memory_budgets": "pass",
+    "reentrancy_rejection_and_reuse": "pass",
+    "worker_shared_memory_cancellation_and_reuse": "pass",
+    "hard_stuck_worker_termination_and_recreation": "pass"
+  },
+  "portable_final_artifact_smoke": [
+    {
+      "host": "local integration host (bench-1 unavailable)",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.7.0",
+      "result": "pass"
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "result": "pass"
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.7.0",
+      "result": "pass"
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "result": "pass"
+    }
+  ],
+  "limitations": [
+    "bench-1 rejected the available SSH identity, so Linux x64 is not a persistent-host receipt",
+    "npm relocation and SEA integration require the integration-owned runtime/resource wiring",
+    "automatic selection remains disabled until the ordinary-Python router validates and constructs the public NumericalResult",
+    "sanitizer instrumentation is not claimed; memory safety evidence here is bounded Wasm memory plus ABI, corruption, allocation-failure, and lifecycle tests"
+  ]
+}

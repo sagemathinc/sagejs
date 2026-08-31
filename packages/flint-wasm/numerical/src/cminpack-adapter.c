@@ -7,7 +7,7 @@
 #include "cminpack.h"
 
 /*
- * Experimental callback-capable LM adapter.
+ * Callback-capable LM adapter.
  *
  * This file owns only the host/solver boundary. cminpack owns the numerical
  * algorithm. The JavaScript host owns callback exceptions and cancellation;
@@ -29,7 +29,8 @@ enum {
 enum {
     P3_MAX_VARIABLES = 256,
     P3_MAX_RESIDUALS = 16384,
-    P3_MAX_WORKSPACE_BYTES = 64 * 1024 * 1024
+    P3_MAX_WORKSPACE_BYTES = 64 * 1024 * 1024,
+    P3_MAX_TRACKED_ALLOCATIONS = 32
 };
 
 __attribute__((import_module("sagejs_p3"), import_name("evaluate")))
@@ -70,6 +71,17 @@ static int valid_region(uint32_t offset, size_t count, size_t item_size,
     return end <= wasm_memory_bytes();
 }
 
+static int regions_overlap(uint32_t left_offset, size_t left_bytes,
+                           uint32_t right_offset, size_t right_bytes) {
+    size_t left_end;
+    size_t right_end;
+    if (!checked_sum((size_t)left_offset, left_bytes, &left_end) ||
+        !checked_sum((size_t)right_offset, right_bytes, &right_end)) {
+        return 1;
+    }
+    return (size_t)left_offset < right_end && (size_t)right_offset < left_end;
+}
+
 static int workspace_size_ok(int m, int n) {
     size_t matrix;
     size_t doubles;
@@ -89,24 +101,83 @@ typedef struct {
     uint32_t handle;
 } callback_context;
 
+typedef struct {
+    void *pointer;
+    size_t bytes;
+} allocation_record;
+
+static allocation_record allocations[P3_MAX_TRACKED_ALLOCATIONS];
 static int32_t live_allocations = 0;
+static size_t live_bytes = 0;
+static int32_t fail_allocations_after = -1;
+
+static int register_allocation(void *pointer, size_t bytes) {
+    for (int i = 0; i < P3_MAX_TRACKED_ALLOCATIONS; ++i) {
+        if (allocations[i].pointer == NULL) {
+            allocations[i].pointer = pointer;
+            allocations[i].bytes = bytes;
+            live_allocations += 1;
+            live_bytes += bytes;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int should_fail_allocation(void) {
+    if (fail_allocations_after < 0) return 0;
+    if (fail_allocations_after == 0) return 1;
+    fail_allocations_after -= 1;
+    return 0;
+}
 
 static void *tracked_malloc(size_t bytes) {
+    if (should_fail_allocation()) return NULL;
     void *pointer = malloc(bytes);
-    if (pointer != NULL) live_allocations += 1;
+    if (pointer != NULL && !register_allocation(pointer, bytes)) {
+        free(pointer);
+        return NULL;
+    }
     return pointer;
 }
 
 static void *tracked_calloc(size_t count, size_t bytes) {
+    size_t total;
+    if (!checked_product(count, bytes, &total) || should_fail_allocation()) {
+        return NULL;
+    }
     void *pointer = calloc(count, bytes);
-    if (pointer != NULL) live_allocations += 1;
+    if (pointer != NULL && !register_allocation(pointer, total)) {
+        free(pointer);
+        return NULL;
+    }
     return pointer;
 }
 
-static void tracked_free(void *pointer) {
-    if (pointer == NULL) return;
-    live_allocations -= 1;
-    free(pointer);
+static int tracked_free(void *pointer) {
+    if (pointer == NULL) return 1;
+    for (int i = 0; i < P3_MAX_TRACKED_ALLOCATIONS; ++i) {
+        if (allocations[i].pointer == pointer) {
+            size_t bytes = allocations[i].bytes;
+            allocations[i].pointer = NULL;
+            allocations[i].bytes = 0;
+            live_allocations -= 1;
+            live_bytes -= bytes;
+            free(pointer);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int tracked_region(uint32_t offset, size_t bytes) {
+    void *pointer = (void *)(uintptr_t)offset;
+    for (int i = 0; i < P3_MAX_TRACKED_ALLOCATIONS; ++i) {
+        if (allocations[i].pointer == pointer && allocations[i].bytes >= bytes) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static int residual_callback(void *opaque, int m, int n, const double *x,
@@ -148,13 +219,25 @@ uint32_t p3_alloc(uint32_t bytes) {
 }
 
 __attribute__((export_name("p3_free")))
-void p3_free(uint32_t offset) {
-    tracked_free((void *)(uintptr_t)offset);
+int32_t p3_free(uint32_t offset) {
+    return tracked_free((void *)(uintptr_t)offset);
 }
 
 __attribute__((export_name("p3_live_allocations")))
 int32_t p3_live_allocations(void) {
     return live_allocations;
+}
+
+__attribute__((export_name("p3_live_bytes")))
+uint32_t p3_live_bytes(void) {
+    return (uint32_t)live_bytes;
+}
+
+__attribute__((export_name("p3_set_allocation_failure_after")))
+int32_t p3_set_allocation_failure_after(int32_t count) {
+    if (count < -1) return 0;
+    fail_allocations_after = count;
+    return 1;
 }
 
 __attribute__((export_name("p3_lm_solve")))
@@ -206,8 +289,22 @@ int32_t p3_lm_solve(
         !valid_region(stats_offset, 4, sizeof(int32_t), _Alignof(int32_t))) {
         return P3_CORRUPT_REGION;
     }
+    if (!tracked_region(x_offset, (size_t)n * sizeof(double)) ||
+        !tracked_region(stats_offset, 4 * sizeof(int32_t))) {
+        return P3_CORRUPT_REGION;
+    }
     if (diag_offset != 0 &&
-        !valid_region(diag_offset, (size_t)n, sizeof(double), _Alignof(double))) {
+        (!valid_region(diag_offset, (size_t)n, sizeof(double), _Alignof(double)) ||
+         !tracked_region(diag_offset, (size_t)n * sizeof(double)))) {
+        return P3_CORRUPT_REGION;
+    }
+    if (regions_overlap(x_offset, (size_t)n * sizeof(double),
+                        stats_offset, 4 * sizeof(int32_t)) ||
+        (diag_offset != 0 &&
+         (regions_overlap(x_offset, (size_t)n * sizeof(double),
+                          diag_offset, (size_t)n * sizeof(double)) ||
+          regions_overlap(stats_offset, 4 * sizeof(int32_t),
+                          diag_offset, (size_t)n * sizeof(double))))) {
         return P3_CORRUPT_REGION;
     }
     if (!workspace_size_ok(m, n)) return P3_DIMENSION_LIMIT;

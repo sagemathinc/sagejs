@@ -4,10 +4,10 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import process from "node:process";
 
-import { createCminpackPrototype } from "./backend.mjs";
+import { createCminpackBackend } from "./index.mjs";
 
-const bytes = await readFile(new URL("./p3-cminpack.wasm", import.meta.url));
-const solver = await createCminpackPrototype(bytes);
+const bytes = await readFile(new URL("./cminpack.wasm", import.meta.url));
+const solver = await createCminpackBackend(bytes);
 const result = solver.leastSquares({
   initial: [-1.2, 1],
   residualCount: 2,
@@ -19,7 +19,8 @@ const residualNorm = Math.hypot(
   10 * (result.value[1] - result.value[0] ** 2),
   1 - result.value[0],
 );
-if (!result.success || residualNorm > 1e-10 || solver.inspect().liveAllocations !== 0) {
+if (!result.backendConverged || residualNorm > 1e-10 ||
+    solver.inspect().liveAllocations !== 0 || solver.inspect().liveBytes !== 0) {
   throw new Error(`portable P3 smoke failed: ${JSON.stringify({ result, residualNorm })}`);
 }
 process.stdout.write(`${JSON.stringify({

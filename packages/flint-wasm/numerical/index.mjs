@@ -3,6 +3,16 @@ const HOST_CANCELLED = -1002;
 const HOST_MAXIMUM_EVALUATIONS = -1003;
 const HOST_MAXIMUM_ELAPSED_TIME = -1004;
 const HOST_INVALID_OUTPUT = -1005;
+const MAXIMUM_VARIABLES = 256;
+const MAXIMUM_RESIDUALS = 16384;
+
+export class NumericalBackendCapabilityError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "NumericalBackendCapabilityError";
+    this.details = Object.freeze({ ...details });
+  }
+}
 
 const backendStatus = Object.freeze({
   0: "improper_input",
@@ -30,7 +40,7 @@ function finiteVector(value, length, description) {
     throw new TypeError(`${description} must be an iterable of ${length} numbers`);
   }
   const result = Float64Array.from(value);
-  if (result.length !== length) {
+  if (length != null && result.length !== length) {
     throw new RangeError(`${description} has length ${result.length}; expected ${length}`);
   }
   for (let index = 0; index < result.length; index += 1) {
@@ -78,7 +88,7 @@ function checkedView(memory, offset, length, Type, description) {
   return new Type(memory.buffer, offset, length);
 }
 
-export async function createCminpackPrototype(moduleOrBytes) {
+export async function createCminpackBackend(moduleOrBytes) {
   const module =
     moduleOrBytes instanceof WebAssembly.Module
       ? moduleOrBytes
@@ -157,7 +167,9 @@ export async function createCminpackPrototype(moduleOrBytes) {
     "p3_alloc",
     "p3_free",
     "p3_live_allocations",
+    "p3_live_bytes",
     "p3_lm_solve",
+    "p3_set_allocation_failure_after",
   ];
   for (const name of required) {
     if (instance.exports[name] == null) throw new Error(`missing P3 Wasm export ${name}`);
@@ -174,28 +186,67 @@ export async function createCminpackPrototype(moduleOrBytes) {
     if (typeof options?.residual !== "function") {
       throw new TypeError("residual must be a function");
     }
-    const initial = finiteVector(options.initial, options.initial?.length ?? 0, "initial");
+    const initial = finiteVector(options.initial, undefined, "initial");
     const n = initial.length;
     const m = Number(options.residualCount);
     if (!Number.isSafeInteger(m) || m < n || n === 0) {
       throw new RangeError("residualCount must be an integer at least initial.length");
     }
-    const method = options.jacobian == null ? 1 : 2;
+    if (n > MAXIMUM_VARIABLES || m > MAXIMUM_RESIDUALS) {
+      throw new NumericalBackendCapabilityError(
+        `cminpack dimensions exceed the qualified ${MAXIMUM_RESIDUALS} by ` +
+          `${MAXIMUM_VARIABLES} residual/variable envelope`,
+        { residualCount: m, variableCount: n },
+      );
+    }
+    const requestedMethod = options.method ?? "auto";
+    if (!["auto", "cminpack-lmdif", "cminpack-lmder"].includes(requestedMethod)) {
+      throw new NumericalBackendCapabilityError(
+        `unsupported cminpack method ${requestedMethod}`,
+        { requestedMethod },
+      );
+    }
+    const method = requestedMethod === "cminpack-lmdif"
+      ? 1
+      : requestedMethod === "cminpack-lmder"
+        ? 2
+        : options.jacobian == null ? 1 : 2;
     if (options.jacobian != null && typeof options.jacobian !== "function") {
       throw new TypeError("jacobian must be a function");
+    }
+    if (method === 2 && options.jacobian == null) {
+      throw new NumericalBackendCapabilityError(
+        "cminpack-lmder requires an analytic Jacobian callback",
+        { requestedMethod: "cminpack-lmder" },
+      );
     }
     const maxfev = options.maximumEvaluations ?? 100 * (n + 1);
     if (!Number.isSafeInteger(maxfev) || maxfev <= 0) {
       throw new RangeError("maximumEvaluations must be a positive integer");
+    }
+    const maximumCallbackEvaluations = options.maximumCallbackEvaluations ??
+      maxfev + (method === 1 ? n + 1 : 0);
+    if (!Number.isSafeInteger(maximumCallbackEvaluations) ||
+        maximumCallbackEvaluations <= 0) {
+      throw new RangeError(
+        "maximumCallbackEvaluations must be a positive integer",
+      );
     }
     const maximumElapsedMs = options.maximumElapsedMs;
     if (maximumElapsedMs != null &&
         (!Number.isFinite(maximumElapsedMs) || maximumElapsedMs < 0)) {
       throw new RangeError("maximumElapsedMs must be finite and nonnegative");
     }
+    if (options.cancelled != null && typeof options.cancelled !== "function") {
+      throw new TypeError("cancelled must be a function");
+    }
     if (options.cancellationBuffer != null &&
-        !(options.cancellationBuffer instanceof Int32Array)) {
-      throw new TypeError("cancellationBuffer must be an Int32Array");
+        (!(options.cancellationBuffer instanceof Int32Array) ||
+          typeof SharedArrayBuffer === "undefined" ||
+          !(options.cancellationBuffer.buffer instanceof SharedArrayBuffer))) {
+      throw new TypeError(
+        "cancellationBuffer must be an Int32Array backed by SharedArrayBuffer",
+      );
     }
     const cancellationIndex = options.cancellationIndex ?? 0;
     if (options.cancellationBuffer != null &&
@@ -204,8 +255,8 @@ export async function createCminpackPrototype(moduleOrBytes) {
       throw new RangeError("cancellationIndex lies outside cancellationBuffer");
     }
 
-    const xOffset = allocate(n * Float64Array.BYTES_PER_ELEMENT);
-    const statsOffset = allocate(4 * Int32Array.BYTES_PER_ELEMENT);
+    let xOffset = 0;
+    let statsOffset = 0;
     let diagOffset = 0;
     const handle = nextHandle++;
     const context = {
@@ -218,13 +269,15 @@ export async function createCminpackPrototype(moduleOrBytes) {
       cancellationBuffer: options.cancellationBuffer,
       cancellationIndex,
       maximumElapsedMs,
-      maximumEvaluations: maxfev,
+      maximumEvaluations: maximumCallbackEvaluations,
       evaluations: 0,
       jacobianEvaluations: 0,
       failure: undefined,
       started: nowMilliseconds(),
     };
     try {
+      xOffset = allocate(n * Float64Array.BYTES_PER_ELEMENT);
+      statsOffset = allocate(4 * Int32Array.BYTES_PER_ELEMENT);
       checkedView(instance.exports.memory, xOffset, n, Float64Array, "x").set(initial);
       if (options.scale != null) {
         const scale = finiteVector(options.scale, n, "scale");
@@ -236,6 +289,17 @@ export async function createCminpackPrototype(moduleOrBytes) {
       }
       contexts.set(handle, context);
       activeHandle = handle;
+      if (options.testingAllocationFailureAfter != null) {
+        if (!Number.isSafeInteger(options.testingAllocationFailureAfter) ||
+            options.testingAllocationFailureAfter < 0) {
+          throw new RangeError(
+            "testingAllocationFailureAfter must be a nonnegative integer",
+          );
+        }
+        instance.exports.p3_set_allocation_failure_after(
+          options.testingAllocationFailureAfter,
+        );
+      }
       const code = instance.exports.p3_lm_solve(
         handle,
         method,
@@ -266,11 +330,12 @@ export async function createCminpackPrototype(moduleOrBytes) {
         throw new RangeError("cminpack returned a non-finite parameter vector");
       }
       return Object.freeze({
-        success: status >= 1 && status <= 4,
+        backendConverged: status >= 1 && status <= 4,
+        independentValidationRequired: true,
         status: statusRecord(status),
         value,
         method: method === 1 ? "cminpack-lmdif" : "cminpack-lmder",
-        backend: "experimental-cminpack-wasm",
+        backend: "cminpack-wasm",
         backendStatus: code,
         residualEvaluations: context.evaluations,
         jacobianEvaluations: context.jacobianEvaluations,
@@ -279,11 +344,16 @@ export async function createCminpackPrototype(moduleOrBytes) {
         elapsedMs: nowMilliseconds() - context.started,
       });
     } finally {
+      instance.exports.p3_set_allocation_failure_after(-1);
       activeHandle = 0;
       contexts.delete(handle);
-      if (diagOffset !== 0) instance.exports.p3_free(diagOffset);
-      instance.exports.p3_free(statsOffset);
-      instance.exports.p3_free(xOffset);
+      if (diagOffset !== 0 && instance.exports.p3_free(diagOffset) !== 1) {
+        throw new Error("cminpack scale allocation ownership was corrupted");
+      }
+      if ((statsOffset !== 0 && instance.exports.p3_free(statsOffset) !== 1) ||
+          (xOffset !== 0 && instance.exports.p3_free(xOffset) !== 1)) {
+        throw new Error("cminpack caller allocation ownership was corrupted");
+      }
     }
   }
 
@@ -294,15 +364,65 @@ export async function createCminpackPrototype(moduleOrBytes) {
         activeContexts: contexts.size,
         activeHandle,
         liveAllocations: instance.exports.p3_live_allocations(),
+        liveBytes: instance.exports.p3_live_bytes(),
         memoryBytes: instance.exports.memory.buffer.byteLength,
       }),
     capability: Object.freeze({
-      backend: "experimental-cminpack-wasm",
+      backend: "cminpack-wasm",
       methods: Object.freeze(["cminpack-lmdif", "cminpack-lmder"]),
-      maximumVariables: 256,
-      maximumResiduals: 16384,
+      maximumVariables: MAXIMUM_VARIABLES,
+      maximumResiduals: MAXIMUM_RESIDUALS,
       reentrant: false,
       callbackMode: "synchronous-packed-linear-memory",
     }),
   });
+}
+
+/**
+ * Route a least-squares request without disguising a method substitution.
+ *
+ * Explicit cminpack requests either execute that exact implementation or
+ * throw. `auto` alone may call the ordinary-Python host fallback, and the
+ * fallback receives an inspectable diagnostic describing the method change.
+ */
+export function solveLeastSquaresWithFallback(
+  backend,
+  options,
+  ordinaryPythonFallback,
+) {
+  const requestedMethod = options?.method ?? "auto";
+  try {
+    return Object.freeze({
+      route: "cminpack-wasm",
+      diagnostic: undefined,
+      result: backend.leastSquares(options),
+    });
+  } catch (error) {
+    if (!(error instanceof NumericalBackendCapabilityError) ||
+        requestedMethod !== "auto") {
+      throw error;
+    }
+    if (typeof ordinaryPythonFallback !== "function") {
+      throw new NumericalBackendCapabilityError(
+        "the cminpack route missed and no ordinary-Python fallback is available",
+        { cause: error.message },
+      );
+    }
+    const diagnostic = Object.freeze({
+      kind: "backend_fallback",
+      requestedMethod: "auto",
+      rejectedBackend: "cminpack-wasm",
+      rejectedReason: error.message,
+      selectedBackend: "ordinary-python",
+      selectedMethod: "damped-gauss-newton",
+    });
+    return Object.freeze({
+      route: "ordinary-python",
+      diagnostic,
+      result: ordinaryPythonFallback(
+        { ...options, method: "damped-gauss-newton" },
+        diagnostic,
+      ),
+    });
+  }
 }
