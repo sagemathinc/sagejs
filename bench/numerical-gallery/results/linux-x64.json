@@ -1,0 +1,49 @@
+{
+  "schema": "sagejs.numerics.gallery.benchmark/v1",
+  "source_digest_sha256": "7018fd2620542fc4e8922fa7d456e6745ace67e223fd37157d31ae101ede8e57",
+  "host": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v26.7.0",
+    "cpu": "AMD EPYC 7B13",
+    "logical_cpus": 16,
+    "memory_bytes": 67418701824,
+    "chromium": "/usr/bin/chromium"
+  },
+  "payload": {
+    "evidence_bytes": 1526276,
+    "static_html_bytes": 50929,
+    "css_bytes": 3124,
+    "renderer_bytes": 19085,
+    "plotly_distribution_bytes": 4851164,
+    "all_export_bytes": 2313432,
+    "bundle_bytes": 1526276,
+    "story_count": 9,
+    "case_count": 18,
+    "animated_case_count": 13
+  },
+  "timing": {
+    "evidence_generation_ms": 1443.774,
+    "parse_and_budget_validation_ms": 43.925,
+    "static_html_generation_ms": 0.844,
+    "all_exports_generation_ms": 10.518,
+    "export_count": 51,
+    "browser": {
+      "status": "measured",
+      "wall_ms": 1985.66,
+      "ready_at_ms": 1999.6,
+      "dom_content_loaded_ms": 1166.8,
+      "load_event_ms": 1167.1,
+      "transfer_bytes": 51267,
+      "decoded_body_bytes": 50967,
+      "rendered_figures": 17,
+      "plotly_nodes": 17
+    }
+  },
+  "interpretation": {
+    "solver_and_visualization_generation": "included in evidence_generation_ms",
+    "browser_wall_scope": "navigation, evidence fetch/validation, 17 Plotly renders, and frame registration",
+    "cache_policy": "one cold browser page in a fresh context; no network CDN",
+    "claim": "measurement, not a release performance threshold"
+  }
+}
