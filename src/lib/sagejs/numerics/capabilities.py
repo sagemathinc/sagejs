@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from ._json import JSONValue, materialize_json
 from .diagnostics import NumericalDiagnostic
-from .model import NumericalPlan, NumericalProblem
+from .model import NumericalPlan, NumericalProblem, ResourceBudget
 
 CAPABILITY_SCHEMA_VERSION = 1
+
+_TARGET_PLATFORMS = (
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64",
+)
+_TARGET_RUNTIMES = (
+    "browser",
+    "node",
+    "sea",
+    "cpython",
+    "sagejs-node",
+    "sagejs-browser",
+    "sagejs-sea",
+)
+_CLASSIFICATION_PRIORITY = ("extension", "translated", "faithful")
 
 _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
     "bisection": {
@@ -194,6 +212,7 @@ _DOMAIN_NAMES = (
     "ode",
     "spectral",
     "statistics",
+    "sweeps",
 )
 
 _DOMAIN_ALIASES = {
@@ -209,6 +228,119 @@ def _detached_object(value: Any, description: str) -> dict[str, JSONValue]:
     if not isinstance(detached, dict):
         raise TypeError(description + " must be an object")
     return detached
+
+
+def _method_ids(capability: Mapping[str, Any]) -> list[str]:
+    methods = capability.get("methods")
+    if isinstance(methods, dict):
+        return sorted(str(name) for name in methods)
+    if isinstance(methods, list):
+        return sorted(str(name) for name in methods)
+    scheduler = capability.get("scheduler")
+    if isinstance(scheduler, str) and scheduler != "":
+        return [scheduler]
+    return []
+
+
+def _operation_classification(capability: Mapping[str, Any]) -> str:
+    declared = capability.get("classification")
+    if isinstance(declared, str) and declared in _CLASSIFICATION_PRIORITY:
+        return declared
+    methods = capability.get("methods")
+    classifications: set[str] = set()
+    if isinstance(methods, dict):
+        for value in methods.values():
+            if isinstance(value, dict):
+                classification = value.get("classification")
+                if (
+                    isinstance(classification, str)
+                    and classification in _CLASSIFICATION_PRIORITY
+                ):
+                    classifications.add(classification)
+    for classification in _CLASSIFICATION_PRIORITY:
+        if classification in classifications:
+            return classification
+    # New canonical operations that do not claim compatibility are Sage.js
+    # extensions. This is a registry-wide rule, not an operation allowlist.
+    return "extension"
+
+
+def _normalize_method_record(value: Mapping[str, Any]) -> dict[str, JSONValue]:
+    record = _detached_object(value, "numerical method capability")
+    platforms: list[JSONValue] = []
+    runtimes: list[JSONValue] = []
+    declared_platforms = record.pop("platforms", [])
+    declared_runtimes = record.pop("runtimes", [])
+    if isinstance(declared_platforms, list):
+        for target in declared_platforms:
+            if target in _TARGET_RUNTIMES:
+                runtimes.append(target)
+            else:
+                platforms.append(target)
+    if isinstance(declared_runtimes, list):
+        runtimes.extend(declared_runtimes)
+    raw_targets = record.get("implementation_targets")
+    targets: JSONValue
+    if not isinstance(raw_targets, dict):
+        targets = {"platforms": platforms, "runtimes": runtimes}
+    else:
+        targets = materialize_json(raw_targets)
+    record["implementation_targets"] = targets
+    if "receipt_qualification" not in record:
+        record["receipt_qualification"] = {
+            "status": "unqualified_in_public_registry",
+            "platforms": [],
+            "runtimes": [],
+            "receipt_sha256": [],
+        }
+    return record
+
+
+def _normalize_operation_capability(
+    capability: Mapping[str, Any],
+) -> dict[str, JSONValue]:
+    record = _detached_object(capability, "numerical operation capability")
+    methods = record.get("methods")
+    if isinstance(methods, dict):
+        record["methods"] = {
+            str(name): _normalize_method_record(value)
+            if isinstance(value, Mapping)
+            else materialize_json(value)
+            for name, value in sorted(methods.items())
+        }
+    surface: dict[str, JSONValue] = {
+        "classification": _operation_classification(record),
+        "status": "implemented",
+        "methods": materialize_json(_method_ids(record)),
+    }
+    record["surface"] = surface
+    return record
+
+
+def _normalize_domain_document(
+    domain: str, document: Mapping[str, Any]
+) -> dict[str, JSONValue]:
+    record = _detached_object(document, domain + " capability document")
+    operations = record.get("operations")
+    if not isinstance(operations, dict):
+        raise TypeError(domain + " capability document has no operations")
+    record["operations"] = {
+        str(name): _normalize_operation_capability(value)
+        if isinstance(value, Mapping)
+        else value
+        for name, value in sorted(operations.items())
+    }
+    implementation_claims = record.pop("qualification", None)
+    if implementation_claims is not None:
+        record["implementation_claims"] = implementation_claims
+    record["receipt_qualification"] = {
+        "status": "not_bound_by_public_capability_registry",
+        "platforms": [],
+        "runtimes": [],
+        "receipt_sha256": [],
+        "evidence_source": "P8 qualification reports",
+    }
+    return record
 
 
 def _canonical_domain(domain: str) -> str:
@@ -280,9 +412,15 @@ def _domain_document(domain: str) -> dict[str, JSONValue]:
         from .spectral import capabilities as spectral_capabilities
 
         return _detached_object(spectral_capabilities(), "spectral capability document")
-    from .statistics import capabilities as statistics_capabilities
+    if domain == "statistics":
+        from .statistics import capabilities as statistics_capabilities
 
-    return _detached_object(statistics_capabilities(), "statistics capability document")
+        return _detached_object(
+            statistics_capabilities(), "statistics capability document"
+        )
+    from .sweeps import sweep_capabilities
+
+    return _detached_object(sweep_capabilities(), "sweep capability document")
 
 
 def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
@@ -294,11 +432,14 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
     if domain is not None:
         if not isinstance(domain, str):
             raise TypeError("numerical capability domain must be a string or None")
-        return _domain_document(_canonical_domain(domain))
+        canonical = _canonical_domain(domain)
+        return _normalize_domain_document(canonical, _domain_document(canonical))
     domains: dict[str, JSONValue] = {}
     operation_index: dict[str, JSONValue] = {}
     for domain_name in _DOMAIN_NAMES:
-        document = _domain_document(domain_name)
+        document = _normalize_domain_document(
+            domain_name, _domain_document(domain_name)
+        )
         domains[domain_name] = document
         operations = document.get("operations")
         if not isinstance(operations, dict):
@@ -309,10 +450,30 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
                 "operation": operation_name,
                 "capability": operations[operation_name],
             }
+    from .frontends import create_frontend_registry
+
+    frontend_index: dict[str, JSONValue] = {}
+    for metadata in create_frontend_registry().metadata():
+        key = metadata.get("operation_key")
+        if not isinstance(key, str) or key == "" or key in frontend_index:
+            raise TypeError("invalid or duplicate numerical frontend operation")
+        references = metadata.get("capability_operations")
+        if not isinstance(references, list) or any(
+            not isinstance(reference, str) or reference not in operation_index
+            for reference in references
+        ):
+            raise TypeError(key + " references an unknown numerical capability")
+        frontend_index[key] = metadata
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "domains": domains,
         "operation_index": operation_index,
+        "frontend_index": frontend_index,
+        "resource_budget_contract": ResourceBudget.capability_record(),
+        "portability_contract": {
+            "implementation_targets": "declared build/runtime targets",
+            "receipt_qualification": "empty unless exact retained receipt digests are bound",
+        },
     }
 
 

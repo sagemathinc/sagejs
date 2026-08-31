@@ -118,18 +118,33 @@ The collector records:
 - adapter module load and initialization time;
 - harness-measured wall time for every warmup and measured sample;
 - adapter-reported named phase times and counters, labeled as adapter telemetry;
-- RSS before and after a sample, RSS sampled at 5 ms asynchronous intervals,
-  and Node's process high-water RSS where available; and
+- diagnostic collector RSS before and after a sample, RSS sampled at 5 ms
+  asynchronous intervals, and Node's process high-water RSS where available;
+- one collector-authenticated `peak_memory` record per sample and case, with an
+  exact method, scope, sampling interval, and byte count; and
 - exact installed bytes for the corpus, adapter, capability manifest, and every
   passed artifact path.
 
-The 5 ms sampler cannot observe a short synchronous allocation spike by itself;
-the process high-water value is retained separately. Installed artifact bytes
+Node subjects use `collector_process` scope. npm, SEA, browser, and worker
+subjects use `process_tree`, defined as the collector process plus every
+descendant visible to the collector at each sample. Linux reads `/proc`, macOS
+reads `ps`, and Windows reads CIM. `browser_heap` is supplemental and cannot
+satisfy a process-tree policy. Adapter telemetry cannot populate or authenticate
+`peak_memory`; the exact authority is always `qualification-collector`.
+An external-subject sample fails if the collector sees no descendant process,
+so an adapter connected to an unrelated or remote browser cannot relabel the
+collector's RSS as browser process-tree evidence.
+
+Sampled measurements cannot observe every short synchronous allocation spike;
+the Node process high-water value is retained separately as diagnostic data.
+Installed artifact bytes
 are not called compressed bytes. To measure a compressed archive, pass that
 archive as its own artifact. The harness records measurements but does not
 invent performance thresholds before representative hosts have been measured.
 
-These fields are receipt structure, not an automatic performance claim. A
+These fields are receipt structure, not an automatic performance claim. Every
+matrix row names `required_memory_scope`; report generation fails closed if a
+receipt has no collector-authenticated record at that exact scope. A
 release policy pins the same corpus/source digest for every backend or host row,
 while each row retains its own warmup/sample timings, evaluation counters,
 startup, memory, and payload. Numeric budgets belong in a reviewed policy only

@@ -63,6 +63,33 @@
     "status": { "enum": ["passed", "failed"] },
     "nonnegativeNumber": { "type": "number", "minimum": 0 },
     "nonnegativeInteger": { "type": "integer", "minimum": 0 },
+    "peakMemory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes", "measurement_method", "measurement_scope", "authenticated_by",
+        "sample_interval_ms"
+      ],
+      "properties": {
+        "bytes": { "$ref": "#/$defs/nonnegativeInteger" },
+        "measurement_method": {
+          "enum": [
+            "node-process-rss-boundary-v1",
+            "linux-procfs-process-tree-sampled-v1",
+            "macos-ps-process-tree-sampled-v1",
+            "windows-cim-process-tree-sampled-v1",
+            "browser-performance-memory-v1"
+          ]
+        },
+        "measurement_scope": {
+          "enum": ["collector_process", "process_tree", "browser_heap"]
+        },
+        "authenticated_by": { "const": "qualification-collector" },
+        "sample_interval_ms": {
+          "oneOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }]
+        }
+      }
+    },
     "repository": {
       "type": "object",
       "additionalProperties": false,
@@ -141,7 +168,7 @@
       "additionalProperties": false,
       "required": ["kind", "name", "version", "engine"],
       "properties": {
-        "kind": { "enum": ["node", "sea", "browser", "worker", "other"] },
+        "kind": { "enum": ["node", "npm", "sea", "browser", "worker", "other"] },
         "name": { "$ref": "#/$defs/nonempty" },
         "version": { "$ref": "#/$defs/nonempty" },
         "engine": { "type": ["string", "null"] }
@@ -311,7 +338,7 @@
           "additionalProperties": false,
           "required": [
             "wall_ms", "rss_before_bytes", "rss_after_bytes", "rss_peak_sampled_bytes",
-            "process_max_rss_bytes", "memory_method"
+            "process_max_rss_bytes", "memory_method", "peak_memory"
           ],
           "properties": {
             "wall_ms": { "$ref": "#/$defs/nonnegativeNumber" },
@@ -321,7 +348,8 @@
             "process_max_rss_bytes": {
               "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
             },
-            "memory_method": { "$ref": "#/$defs/nonempty" }
+            "memory_method": { "$ref": "#/$defs/nonempty" },
+            "peak_memory": { "$ref": "#/$defs/peakMemory" }
           }
         }
       }
@@ -400,7 +428,8 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "wall_ms", "rss_peak_sampled_bytes", "process_max_rss_bytes", "adapter_phases_ms"
+            "wall_ms", "rss_peak_sampled_bytes", "process_max_rss_bytes", "peak_memory",
+            "adapter_phases_ms"
           ],
           "properties": {
             "wall_ms": { "oneOf": [{ "$ref": "#/$defs/summary" }, { "type": "null" }] },
@@ -409,6 +438,9 @@
             },
             "process_max_rss_bytes": {
               "oneOf": [{ "$ref": "#/$defs/nonnegativeInteger" }, { "type": "null" }]
+            },
+            "peak_memory": {
+              "oneOf": [{ "$ref": "#/$defs/peakMemory" }, { "type": "null" }]
             },
             "adapter_phases_ms": {
               "type": "object",

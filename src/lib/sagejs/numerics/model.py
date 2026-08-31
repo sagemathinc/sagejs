@@ -41,6 +41,114 @@ STATUS_CODES = (
     "backend_failure",
 )
 
+_HEX_DIGITS = "0123456789abcdef"
+
+
+def _optional_sha256(value: Any, name: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError(name + " must be a lowercase SHA-256 digest or None")
+    if len(value) != 64 or any(character not in _HEX_DIGITS for character in value):
+        raise ValueError(name + " must be a lowercase SHA-256 digest or None")
+    return value
+
+
+def _execution_target(
+    backend: str,
+    capability: Mapping[str, Any],
+    declared: Mapping[str, Any] | None,
+) -> dict[str, JSONValue]:
+    record = materialize_object(declared, "$.plan.execution_target")
+    implementation_kind = record.get("implementation_kind")
+    if implementation_kind is None:
+        implementation_kind = (
+            "ordinary_python" if backend == "ordinary-python" else "external_artifact"
+        )
+    if not isinstance(implementation_kind, str) or implementation_kind == "":
+        raise TypeError("execution target implementation_kind must be nonempty")
+    source_digest = _optional_sha256(
+        record.get("source_digest", capability.get("source_digest")),
+        "execution target source_digest",
+    )
+    artifact_sha256 = _optional_sha256(
+        record.get("artifact_sha256", capability.get("artifact_sha256")),
+        "execution target artifact_sha256",
+    )
+    receipt_sha256 = _optional_sha256(
+        record.get(
+            "qualification_receipt_sha256",
+            capability.get("qualification_receipt_sha256"),
+        ),
+        "execution target qualification_receipt_sha256",
+    )
+    if implementation_kind == "ordinary_python":
+        binding_status = (
+            "source_digest_bound" if source_digest is not None else "source_transparent"
+        )
+    elif artifact_sha256 is None:
+        binding_status = "declared_unbound"
+    elif receipt_sha256 is None:
+        binding_status = "artifact_digest_bound"
+    else:
+        binding_status = "receipt_qualified"
+    return {
+        "backend": backend,
+        "implementation_kind": implementation_kind,
+        "source_digest": source_digest,
+        "artifact_sha256": artifact_sha256,
+        "qualification_receipt_sha256": receipt_sha256,
+        "binding_status": binding_status,
+    }
+
+
+def _limitation_records(
+    declared: Sequence[Any], domain_payload: Mapping[str, Any]
+) -> list[JSONValue]:
+    records: list[JSONValue] = []
+    seen: set[str] = set()
+
+    def append(code: str, detail: Any = None) -> None:
+        if code in seen:
+            return
+        if code == "":
+            raise ValueError("numerical limitation codes must be nonempty")
+        seen.add(code)
+        records.append(
+            {
+                "code": code,
+                "detail": materialize_json(detail, "$.result.limitations.detail"),
+            }
+        )
+
+    for value in declared:
+        if isinstance(value, str):
+            append(value)
+        elif isinstance(value, Mapping):
+            code = value.get("code")
+            if not isinstance(code, str):
+                raise TypeError("numerical limitation mappings require a string code")
+            append(code, value.get("detail"))
+        else:
+            raise TypeError("numerical limitations must be strings or mappings")
+    domain = domain_payload.get("limitations")
+    if isinstance(domain, Mapping):
+        for key in sorted(domain):
+            detail = domain[key]
+            if detail is not False and detail is not None:
+                append(str(key), detail)
+    elif isinstance(domain, Sequence) and not isinstance(
+        domain, (str, bytes, bytearray)
+    ):
+        for value in domain:
+            if isinstance(value, str):
+                append(value)
+            elif isinstance(value, Mapping):
+                code = value.get("code")
+                if isinstance(code, str):
+                    append(code, value.get("detail"))
+    return records
+
 
 class ResourceBudget:
     """Hard execution and trace budgets carried by every problem."""
@@ -74,6 +182,32 @@ class ResourceBudget:
 
     def to_dict(self) -> dict[str, JSONValue]:
         return dict(self._values)
+
+    @classmethod
+    def capability_record(cls) -> dict[str, JSONValue]:
+        """Describe common fields without overstating domain enforcement."""
+        return {
+            "common_fields": {
+                "max_iterations": "domain_enforced",
+                "max_evaluations": "domain_enforced_callback_accounting",
+                "max_elapsed_ms": "cooperative_domain_enforcement",
+                "max_trace_events": "hard_retention_limit",
+                "max_trace_bytes": "hard_retention_limit",
+            },
+            "not_common_fields": {
+                "max_callback_depth": "unsupported_common_contract",
+                "max_allocation_bytes": "unsupported_common_contract",
+                "max_memory_bytes": "domain_specific_only",
+            },
+            "domain_specific": {
+                "sweeps.parameter_sweep": [
+                    "max_input_bytes",
+                    "max_result_bytes",
+                    "max_memory_bytes_cooperative",
+                    "max_concurrency",
+                ]
+            },
+        }
 
 
 class NumericalConstraint:
@@ -304,6 +438,7 @@ class NumericalPlan:
         capability: Mapping[str, Any],
         fallback: Mapping[str, Any] | None = None,
         expected_resources: Mapping[str, Any] | None = None,
+        execution_target: Mapping[str, Any] | None = None,
         rejected_alternatives: Sequence[Any] = (),
         diagnostics: Sequence[NumericalDiagnostic | Mapping[str, Any]] = (),
     ) -> None:
@@ -315,6 +450,9 @@ class NumericalPlan:
         self._fallback = materialize_object(fallback, "$.plan.fallback")
         self._expected_resources = materialize_object(
             expected_resources, "$.plan.expected_resources"
+        )
+        self._execution_target = _execution_target(
+            self._backend, self._capability, execution_target
         )
         self._rejected = materialize_array(
             rejected_alternatives, "$.plan.rejected_alternatives"
@@ -335,6 +473,10 @@ class NumericalPlan:
     def backend(self) -> str:
         return self._backend
 
+    @property
+    def execution_target(self) -> dict[str, JSONValue]:
+        return materialize_object(self._execution_target, "$.plan.execution_target")
+
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "schema_version": NUMERICAL_SCHEMA_VERSION,
@@ -349,6 +491,7 @@ class NumericalPlan:
             "expected_resources": materialize_object(
                 self._expected_resources, "$.plan.expected_resources"
             ),
+            "execution_target": self.execution_target,
             "rejected_alternatives": list(self._rejected),
             "diagnostics": [dict(value) for value in self._diagnostics],
         }
@@ -419,6 +562,7 @@ class NumericalResult:
         measurements: Mapping[str, Any] | None = None,
         provenance: Mapping[str, Any] | None = None,
         domain_payload: Mapping[str, Any] | None = None,
+        limitations: Sequence[Any] = (),
     ) -> None:
         if status not in STATUS_CODES:
             raise ValueError("unknown numerical status code: " + status)
@@ -440,6 +584,7 @@ class NumericalResult:
         self._domain_payload = materialize_object(
             domain_payload, "$.result.domain_payload"
         )
+        self._limitations = _limitation_records(limitations, self._domain_payload)
 
     @property
     def value(self) -> Any:
@@ -495,6 +640,37 @@ class NumericalResult:
     def plan_record(self) -> NumericalPlan:
         return self._plan
 
+    @property
+    def limitations(self) -> list[JSONValue]:
+        return materialize_array(self._limitations, "$.result.limitations")
+
+    def _provenance_record(self) -> dict[str, JSONValue]:
+        record = materialize_object(self._provenance, "$.result.provenance")
+        target = self._plan.execution_target
+        record["planned_execution_target"] = target
+        for name in (
+            "source_digest",
+            "artifact_sha256",
+            "qualification_receipt_sha256",
+        ):
+            if name not in record:
+                record[name] = target[name]
+        observed_external = record.get("implementation_kind") not in (
+            None,
+            "ordinary_python",
+        )
+        artifact = record.get("artifact_sha256")
+        receipt = record.get("qualification_receipt_sha256")
+        if observed_external and artifact is None:
+            record["execution_binding_status"] = "external_artifact_unbound"
+        elif observed_external and receipt is None:
+            record["execution_binding_status"] = "artifact_digest_bound"
+        elif observed_external:
+            record["execution_binding_status"] = "receipt_qualified"
+        else:
+            record["execution_binding_status"] = "source_transparent_or_unobserved"
+        return record
+
     def to_dict(self) -> dict[str, JSONValue]:
         return {
             "schema_version": NUMERICAL_SCHEMA_VERSION,
@@ -514,7 +690,8 @@ class NumericalResult:
                 self._measurements, "$.result.measurements"
             ),
             "trace": self._trace.to_dict(),
-            "provenance": materialize_object(self._provenance, "$.result.provenance"),
+            "provenance": self._provenance_record(),
+            "limitations": self.limitations,
             "reproducibility": {
                 "replayable": self._problem.replayable,
                 "problem": self._problem.to_dict(),
@@ -565,19 +742,10 @@ class NumericalResult:
         return refine_root_result(self, tolerance)
 
     def code(self, language: str | None = None) -> str | dict[str, str]:
-        from .roots import emit_root_code
-
-        if self._problem.operation != "scalar_root":
-            raise NotImplementedError(
-                "code emission is not implemented for this operation"
-            )
-        records = emit_root_code(self._problem, self.method)
-        if language is None:
-            return records
-        key = language.lower()
-        if key not in records:
-            raise ValueError("unsupported output language: " + language)
-        return records[key]
+        raise NotImplementedError(
+            "canonical numerical results do not retain frontend language intent; "
+            "emit code from FrontendExecutionResult.to_code(language)"
+        )
 
     def to_code(self, language: str | None = None) -> str | dict[str, str]:
         """Return equivalent source through the operation's language emitter."""

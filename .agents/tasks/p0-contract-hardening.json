@@ -1,0 +1,72 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "p0-contract-hardening",
+  "title": "Harden numerical capability and result contracts",
+  "lane": "numerical-contracts",
+  "status": "active",
+  "owner": "user",
+  "objective": "Derive the public surface from runtime capabilities, expose honest qualification/provenance/budget/outward-code contracts, and validate them exhaustively",
+  "base_commit": "9b344479a2cc6d41bd2a376b03ab371fe6237ab1",
+  "claims": [
+    "agents/numerical-computing-product-plan.md",
+    "architecture/optimizer-opportunities.manifest.json",
+    "docs/optimizer-opportunities.md",
+    "docs/numerical-computing/README.md",
+    "docs/numerical-computing/bounded-sweeps.md",
+    "docs/numerical-computing/gallery/evidence.json",
+    "docs/numerical-computing/inventory.md",
+    "docs/numerical-computing/plan.schema.json",
+    "docs/numerical-computing/problem.schema.json",
+    "docs/numerical-computing/qualification/capability-manifest.schema.json",
+    "docs/numerical-computing/qualification/matrix-policy.schema.json",
+    "docs/numerical-computing/qualification/matrix-report.schema.json",
+    "docs/numerical-computing/qualification/README.md",
+    "docs/numerical-computing/qualification/cross-platform.md",
+    "docs/numerical-computing/qualification/run-receipt.schema.json",
+    "docs/numerical-computing/result.schema.json",
+    "docs/numerical-computing/surface.json",
+    "scripts/check-numerical-surface.cjs",
+    "scripts/numerical-computing/contracts.cjs",
+    "scripts/numerical-computing/receipt.cjs",
+    "scripts/numerical-computing/report.cjs",
+    "src/lib/sagejs/numerics/capabilities.py",
+    "src/lib/sagejs/numerics/frontends/operations.py",
+    "src/lib/sagejs/numerics/frontends/registry.py",
+    "src/lib/sagejs/numerics/model.py",
+    "src/lib/sagejs/numerics/sweeps.py",
+    "test/numerics/capability-facade.cjs",
+    "test/numerics/contracts/common-contracts.cjs",
+    "test/numerical-root-laboratory.cjs",
+    "test/numerics/evidence/qualification.cjs",
+    "website/numerical-computing/stories/root-finding.json"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "not-applicable",
+    "oracles": [
+      "public capability registry exhaustiveness",
+      "CPython and Sage.js contract parity"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

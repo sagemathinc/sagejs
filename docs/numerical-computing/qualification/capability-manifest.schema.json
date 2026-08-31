@@ -49,7 +49,7 @@
       "additionalProperties": false,
       "required": ["kind", "name", "version", "engine"],
       "properties": {
-        "kind": { "enum": ["node", "sea", "browser", "worker", "other"] },
+        "kind": { "enum": ["node", "npm", "sea", "browser", "worker", "other"] },
         "name": { "$ref": "#/$defs/nonempty" },
         "version": { "$ref": "#/$defs/nonempty" },
         "engine": { "type": ["string", "null"] }

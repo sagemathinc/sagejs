@@ -69,6 +69,7 @@ expected_domains = {
     "ode",
     "spectral",
     "statistics",
+    "sweeps",
 }
 assert set(registry["domains"]) == expected_domains
 index = registry["operation_index"]
@@ -81,6 +82,7 @@ for name in (
     "ode.initial_value_problem",
     "spectral.fourier_transform",
     "statistics.descriptive_statistics",
+    "sweeps.parameter_sweep",
 ):
     assert name in index, name
 
@@ -134,12 +136,12 @@ print(json.dumps({"domains": sorted(expected_domains), "operation_count": len(in
 
 test("the numerical capability facade is coherent in CPython", () => {
   const result = JSON.parse(runCPython(witness));
-  assert.equal(result.domains.length, 8);
-  assert.ok(result.operation_count >= 30);
+  assert.equal(result.domains.length, 9);
+  assert.ok(result.operation_count >= 49);
 });
 
 test("the same capability and planning facade runs in Sage.js", () => {
   const result = JSON.parse(runSagejs(witness));
-  assert.equal(result.domains.length, 8);
-  assert.ok(result.operation_count >= 30);
+  assert.equal(result.domains.length, 9);
+  assert.ok(result.operation_count >= 49);
 });

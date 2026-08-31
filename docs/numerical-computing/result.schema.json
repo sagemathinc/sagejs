@@ -4,7 +4,7 @@
   "title": "Sage.js NumericalResult",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "problem_digest", "success", "status", "value", "validation", "diagnostics", "method", "backend", "precision", "iterations", "evaluations", "elapsed_ms", "measurements", "trace", "provenance", "reproducibility", "domain_payload"],
+  "required": ["schema_version", "problem_digest", "success", "status", "value", "validation", "diagnostics", "method", "backend", "precision", "iterations", "evaluations", "elapsed_ms", "measurements", "trace", "provenance", "limitations", "reproducibility", "domain_payload"],
   "properties": {
     "schema_version": {"const": 1},
     "problem_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -33,8 +33,38 @@
     "elapsed_ms": {"type": "number", "minimum": 0},
     "measurements": {"type": "object"},
     "trace": {"$ref": "trace.schema.json"},
-    "provenance": {"type": "object"},
+    "provenance": {
+      "type": "object",
+      "required": ["planned_execution_target", "source_digest", "artifact_sha256", "qualification_receipt_sha256", "execution_binding_status"],
+      "properties": {
+        "planned_execution_target": {"type": "object"},
+        "source_digest": {"$ref": "#/$defs/optional_sha256"},
+        "artifact_sha256": {"$ref": "#/$defs/optional_sha256"},
+        "qualification_receipt_sha256": {"$ref": "#/$defs/optional_sha256"},
+        "execution_binding_status": {"enum": ["source_transparent_or_unobserved", "external_artifact_unbound", "artifact_digest_bound", "receipt_qualified"]}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "detail"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "detail": {}
+        }
+      }
+    },
     "reproducibility": {"type": "object"},
     "domain_payload": {"type": "object"}
+  },
+  "$defs": {
+    "optional_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      ]
+    }
   }
 }
