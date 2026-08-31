@@ -367,7 +367,7 @@ class CertifiedModularForm(sage.Element):
             raise IndexError("coefficient lies beyond the certified precision")
         return self._series[exponent]
 
-    def certificate(self) -> QExpansionAlgebraCertificate:
+    def certificate(self) -> Any:
         return QExpansionAlgebraCertificate(self)
 
     def _same_coefficient_ring(self, other: CertifiedModularForm) -> None:
@@ -1209,9 +1209,7 @@ def _default_formula_candidates(
     if space.base_ring() is not sage.QQ or space.group()._family != "Gamma0":
         raise NotImplementedError("formula candidates currently require Gamma0 over QQ")
     level_one = _global("CuspForms")(1, space.weight(), sage.QQ, True, precision)
-    if level_one.dimension() == 0:
-        return []
-    source_forms = level_one.basis(precision)
+    source_forms = [] if level_one.dimension() == 0 else level_one.basis(precision)
     candidates = []
     for divisor in sage.divisors(space.level()):
         factor = _positive(divisor, "level divisor")
@@ -1222,6 +1220,9 @@ def _default_formula_candidates(
             if candidate.level() != space.level():
                 candidate = candidate.lift_level(space.level())
             candidates.append(candidate)
+    from .eta_products import registry_eta_product_candidates
+
+    candidates.extend(registry_eta_product_candidates(space, precision))
     return candidates
 
 

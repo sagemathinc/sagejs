@@ -119,27 +119,30 @@ test("formula spans report full and proper subspaces honestly", async () => {
             "AF = A.formula_subspace(prec=8)",
             "B = CuspForms(2,24)",
             "BF = B.formula_subspace(prec=8)",
+            "H = CuspForms(37,2)",
+            "HF = H.formula_subspace(prec=8)",
             "[A.dimension(),AF.dimension(),AF.is_full_ambient(),AF.verify(),",
             " len(A.q_expansion_basis(8,algorithm='formulas')),",
             " B.dimension(),BF.dimension(),BF.ambient_dimension(),",
-            " BF.is_proper_subspace(),BF.verify()]",
+            " BF.is_full_ambient(),BF.verify(),H.dimension(),HF.dimension(),",
+            " HF.ambient_dimension(),HF.is_proper_subspace(),HF.verify()]",
           ].join("\n"),
         )
       ).repr,
-      "[2, 2, True, True, 2, 5, 4, 5, True, True]",
+      "[2, 2, True, True, 2, 5, 5, 5, True, True, 2, 0, 2, True, True]",
     );
 
     assert.equal(
       (await session.evaluate("BF")).repr,
-      "Certified formula-generated proper subspace of dimension 4 of " +
+      "Certified formula-generated full subspace of dimension 5 of " +
         "Cuspidal subspace of dimension 5 of Modular Forms space of " +
         "dimension 7 for Congruence Subgroup Gamma0(2) of weight 24 " +
         "over Rational Field",
     );
 
     await assert.rejects(
-      session.evaluate("CuspForms(2,24).q_expansion_basis(8,algorithm='formulas')"),
-      /certify only a proper subspace of dimension 4 in ambient dimension 5/,
+      session.evaluate("CuspForms(37,2).q_expansion_basis(8,algorithm='formulas')"),
+      /certify only a proper subspace of dimension 0 in ambient dimension 2/,
     );
   } finally {
     await session.close();
@@ -158,7 +161,7 @@ test("formula subspaces expose certified coordinates and ambient complements", a
             "D = certified_modular_form(CuspForms(1,12,prec=16).gen(),16)",
             "c = AF.coordinates(D)",
             "AC = AF.ambient_comparison()",
-            "B = CuspForms(2,24,prec=24)",
+            "B = CuspForms(37,2,prec=24)",
             "BF = B.formula_subspace(prec=24)",
             "BC = BF.ambient_comparison()",
             "newform = B.newforms()[0]",
@@ -171,12 +174,12 @@ test("formula subspaces expose certified coordinates and ambient complements", a
           ].join("\n"),
         )
       ).repr,
-      "[True, True, 2, True, False, True, 0, True, False, False, 1, 1, True]",
+      "[True, True, 2, True, False, True, 0, True, False, False, 2, 2, True]",
     );
 
     assert.equal(
       (await session.evaluate("BC")).repr,
-      "Verified formula/modular-symbol comparison through q^23: 1 missing direction",
+      "Verified formula/modular-symbol comparison through q^23: 2 missing directions",
     );
 
     await assert.rejects(
@@ -203,22 +206,24 @@ test("automatic q-expansion selection exposes exact-domain receipts", async () =
             " A.selected_algorithm(),A.receipt_id(),",
             " A.formula_subspace().is_full_ambient(),A.verify(),",
             " B.selected_algorithm(),B.receipt_id(),",
-            " B.formula_subspace().is_proper_subspace(),B.verify(),",
+            " B.formula_subspace().is_full_ambient(),B.verify(),",
             " H.selected_algorithm(),H.receipt_id(),H.verify(),",
             " CuspForms(1,24).q_expansion_basis(4,algorithm='auto') ==",
             " CuspForms(1,24).q_expansion_basis(4,algorithm='formulas'),",
             " CuspForms(2,12).q_expansion_basis(8,algorithm='auto') ==",
             " CuspForms(2,12).q_expansion_basis(8,algorithm='formulas'),",
             " CuspForms(2,24).q_expansion_basis(8,algorithm='auto') ==",
-            " CuspForms(2,24).q_expansion_basis(8,algorithm='modular_symbols')]",
+            " CuspForms(2,24).q_expansion_basis(8,algorithm='formulas'),",
+            " CuspForms(37,2).q_expansion_basis(8,algorithm='auto') ==",
+            " CuspForms(37,2).q_expansion_basis(8,algorithm='modular_symbols')]",
           ].join("\n"),
         )
       ).repr,
       "['formulas', 'qexp-auto-level-one-victor-miller-v1', True, " +
         "'formulas', 'qexp-auto-certified-formula-span-v1', True, True, " +
+        "'formulas', 'qexp-auto-certified-formula-span-v1', True, True, " +
         "'modular_symbols', 'qexp-auto-proper-formula-span-fallback-v1', " +
-        "True, True, 'modular_symbols', " +
-        "'qexp-auto-proper-formula-span-fallback-v1', True, True, True, True]",
+        "True, True, True, True, True]",
     );
   } finally {
     await session.close();

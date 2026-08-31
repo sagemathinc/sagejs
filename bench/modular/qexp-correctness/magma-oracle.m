@@ -42,8 +42,9 @@ end procedure;
 print "SAGEJS_QEXP_MAGMA_VERSION|", GetVersion();
 PrintCuspCase("level1-weight24", 1, 24, 12);
 PrintCuspCase("level2-weight12", 2, 12, 12);
-PrintCuspCase("level2-weight24-proper", 2, 24, 12);
-PrintCuspCase("level6-weight12-composite", 6, 12, 20);
+PrintCuspCase("level2-weight24-eta-complete", 2, 24, 12);
+PrintCuspCase("level6-weight12-eta-complete", 6, 12, 20);
+PrintCuspCase("level37-weight2-proper", 37, 2, 12);
 PrintCuspCase("level22-weight2-entirely-old", 22, 2, 16);
 
 new_space := NewSubspace(CuspForms(23, 2));

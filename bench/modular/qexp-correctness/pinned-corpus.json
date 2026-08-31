@@ -29,26 +29,37 @@
       "formula_sha256": "19d90dc48857b471217e3161f6759c84e653e01f905c179671c933041d87942b"
     },
     {
-      "id": "level2-weight24-proper",
+      "id": "level2-weight24-eta-complete",
       "level": 2,
       "weight": 24,
       "precision": 12,
       "sturm_bound": 7,
       "ambient_dimension": 5,
-      "formula_dimension": 4,
+      "formula_dimension": 5,
       "ambient_sha256": "aa73890c1a53a94e80a394fefaaf23bae6797107e9afe89612a5255006b613e4",
-      "formula_sha256": "18463ff7171aa8b766fbb37e6fcbb263a72c94e19e5b0b45b6f8b78ca496fa50"
+      "formula_sha256": "aa73890c1a53a94e80a394fefaaf23bae6797107e9afe89612a5255006b613e4"
     },
     {
-      "id": "level6-weight12-composite",
+      "id": "level6-weight12-eta-complete",
       "level": 6,
       "weight": 12,
       "precision": 20,
       "sturm_bound": 13,
       "ambient_dimension": 9,
-      "formula_dimension": 4,
+      "formula_dimension": 9,
       "ambient_sha256": "362d304cb0e8bda76722650c6b6f4bfe86ea811def452a9f71c9c3152c2b704b",
-      "formula_sha256": "8c4993e1485ee8409f7eeb42f1945e28224a1096d7ff76d441d2f18dc6b32069"
+      "formula_sha256": "362d304cb0e8bda76722650c6b6f4bfe86ea811def452a9f71c9c3152c2b704b"
+    },
+    {
+      "id": "level37-weight2-proper",
+      "level": 37,
+      "weight": 2,
+      "precision": 12,
+      "sturm_bound": 8,
+      "ambient_dimension": 2,
+      "formula_dimension": 0,
+      "ambient_sha256": "602c5014ba32cdf292f49c1461d5c01f95908bd00f22d61854613aed9b72d4cd",
+      "formula_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
   "nontrivial_character": {

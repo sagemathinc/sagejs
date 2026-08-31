@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 210,
+    "pass": 216,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -204,6 +204,36 @@
       "id": "src/baselib/elliptic_curves.py#5fc3f419b1f2ec5e-112e7d5ec82c367f",
       "status": "pass",
       "actual": "(161/16 : -2065/64 : 1)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#957b693c349934d0-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#96b86da201d30303-e7f6f82a048f2867",
+      "status": "pass",
+      "actual": "q - 24*q^2 + 252*q^3 - 1472*q^4 + 4830*q^5 - 6048*q^6 - 16744*q^7 + O(q^8)\n"
+    },
+    {
+      "id": "src/baselib/modular.py#0c1cafa5d766a5a7-3cbc87c7681f34db",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/modular.py#8df4654ed7387978-cefdabba6bf347c1",
+      "status": "pass",
+      "actual": "[((1, 2), (11, 2))]\n"
+    },
+    {
+      "id": "src/baselib/modular.py#fe85b20279a780b5-e3b0c44298fc1c14",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/modular.py#a0e18d83ecc03c5c-cd589672dc7b7b8a",
+      "status": "pass",
+      "actual": "(False, 'the eta product has a pole at a cusp')\n"
     },
     {
       "id": "src/baselib/finite_fields.py#d5fed5b346a11651-bdf39be03f43bdb9",

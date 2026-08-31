@@ -170,6 +170,7 @@
     "src/lib/sagejs/modular_forms/newforms.py",
     "src/lib/sagejs/modular_forms/qexp.py",
     "src/lib/sagejs/modular_forms/qexp_algebra.py",
+    "src/lib/sagejs/modular_forms/eta_products.py",
     "src/lib/sagejs/modular_forms/algebraic.py",
     "src/lib/sagejs/modular_forms/brandt.py",
     "src/lib/sagejs/modular_forms/component_groups.py",
