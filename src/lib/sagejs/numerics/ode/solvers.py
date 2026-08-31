@@ -28,8 +28,8 @@ from .model import (
     OdeResult,
     OdeTrajectory,
     ReferenceFunction,
-    StateJacobian,
     StateFunction,
+    StateJacobian,
     coerce_state,
 )
 from .rosenbrock import (

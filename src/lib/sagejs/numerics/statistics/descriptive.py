@@ -22,7 +22,6 @@ from ._core import (
 )
 from .result import StatisticsResult
 
-
 _MAX_VISUAL_OBSERVATIONS = 257
 
 

@@ -19,7 +19,6 @@ from sagejs.plotting import (
 
 from .result import StatisticsResult
 
-
 _MAX_ANIMATION_FRAMES = 12
 _MAX_ANIMATION_SAMPLES = 100_000
 _MAX_ANIMATION_BYTES = 8_000_000

@@ -7,7 +7,6 @@ from typing import Any
 from .._json import JSONValue, materialize_object
 from ..model import NumericalPlan, NumericalProblem
 
-
 CAPABILITY_SCHEMA_VERSION = 1
 
 _OPERATIONS: dict[str, dict[str, Any]] = {
