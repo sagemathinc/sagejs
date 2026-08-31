@@ -5,12 +5,16 @@ SageMath:
 
 1. multiply $\Delta$ by $E_4$;
 2. apply $V_2$ to $\Delta$; and
-3. twist $\Delta$ by the primitive quadratic character modulo $5$.
+3. twist $\Delta$ by the primitive quadratic character modulo $5$; and
+4. construct the exact eta product $\eta(z)^2\eta(11z)^2$.
 
 Each timed iteration constructs the result and reads an eight-coefficient tail
 checksum. The harness rejects a checksum mismatch before publishing ratios.
 Process startup and construction of the resident input forms are outside the
-timed region.
+timed region. The eta-product case constructs a fresh result on every timed
+iteration. SageMath uses its sparse Euler-pentagonal `qexp_eta` implementation;
+Sage.js uses its public certified constructor, including Newman--Ligozat
+metadata.
 
 Run it with:
 
@@ -65,3 +69,27 @@ The precision-$1024$ exact tail checksums were `903958579`, `25564100`, and
 `766298009`. Thus the largest ratio remains the sub-millisecond $V_2$ metadata
 path, while neither exact coefficient multiplication nor twisting shows an
 order-of-magnitude regression against SageMath on this host.
+
+## Eta-product optimization receipt, 2026-08-31
+
+The certified eta-product implementation was measured after replacing repeated
+Euler-factor convolution with Euler's pentagonal identity and FLINT-backed
+truncated series arithmetic. The command was:
+
+```sh
+QEXP_PRECISION=500 QEXP_REPEATS=1 QEXP_SAMPLES=5 \
+  SAGE=/opt/cocalc-webdev-python/bin/sage \
+  pnpm bench:modular:qexp-algebra -- --json
+```
+
+The eta-product row had matching exact tail checksum `20`:
+
+| operation | Sage.js | SageMath | Sage.js / SageMath |
+|---|---:|---:|---:|
+| $\eta(z)^2\eta(11z)^2+O(q^{500})$ | 23.8 ms | 47.1 ms | 0.504 |
+
+Sage.js constructs the public certified object, including exact weight, level,
+character, cusp-order, and provenance metadata. SageMath constructs the same
+exact expansion from `qexp_eta`. Process startup is excluded from both sides.
+Against the preceding Sage.js implementation's 9.32-second resident timing on
+the same workload, this is a roughly $392$-fold improvement.

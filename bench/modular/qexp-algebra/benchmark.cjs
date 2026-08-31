@@ -59,6 +59,9 @@ async function sagejsRecord() {
       "            elif operation == 'twist':",
       "                result=D.twist(psi)",
       "                factor=1",
+      "            elif operation == 'eta':",
+      "                result=eta_product(11,{1:2,11:2},prec=precision)",
+      "                factor=1",
       "            for offset in range(1,9):",
       "                coefficient=result[factor*(precision-offset)]",
       "                checksum=(checksum+(offset+1)*ZZ(coefficient))%modulus",
@@ -68,9 +71,10 @@ async function sagejsRecord() {
       "D*E4",
       "D.V(2)",
       "D.twist(psi)",
+      "eta_product(11,{1:2,11:2},prec=16)",
       "json.dumps({'system':'Sage.js','precision':precision,",
       " 'repeats':repeats,'samples':samples,",
-      " 'operations':{name:timed(name) for name in ['product','V2','twist']}},",
+      " 'operations':{name:timed(name) for name in ['product','V2','twist','eta']}},",
       " sort_keys=True)",
     ].join("\n");
     const result = await session.evaluate(source);
@@ -98,7 +102,7 @@ async function main() {
   const sagejs = await sagejsRecord();
   const sagemath = sageRecord();
   const rows = [];
-  for (const operation of ["product", "V2", "twist"]) {
+  for (const operation of ["product", "V2", "twist", "eta"]) {
     const left = sagejs.operations[operation];
     const right = sagemath.operations[operation];
     if (JSON.stringify(left.checksums) !== JSON.stringify(right.checksums)) {
