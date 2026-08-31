@@ -227,6 +227,7 @@
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "cminpack-lmdif-solution", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_parameter_error", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmdif-independent-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/independent_validation_required", "expected": {"literal": true}},
         {"id": "cminpack-lmdif-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual_norm", "expected": {"literal": 1e-8}},
         {"id": "cminpack-lmdif-stationarity", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_stationarity", "expected": {"literal": 1e-7}},
         {"id": "cminpack-lmdif-no-leak", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}}
@@ -245,6 +246,7 @@
       "expected": {"outcome": "success", "failure_code": null},
       "checks": [
         {"id": "cminpack-lmder-solution", "evidence": "correctness", "kind": "less-than-or-equal", "actual": "/values/max_parameter_error", "expected": {"literal": 1e-8}},
+        {"id": "cminpack-lmder-independent-validation", "evidence": "validation", "kind": "deep-equal", "actual": "/values/independent_validation_required", "expected": {"literal": true}},
         {"id": "cminpack-lmder-residual", "evidence": "validation", "kind": "less-than-or-equal", "actual": "/values/independent_residual_norm", "expected": {"literal": 1e-8}},
         {"id": "cminpack-lmder-jacobian-used", "evidence": "validation", "kind": "greater-than-or-equal", "actual": "/values/jacobian_evaluations", "expected": {"literal": 1}},
         {"id": "cminpack-lmder-no-leak", "evidence": "validation", "kind": "deep-equal", "actual": "/values/live_allocations", "expected": {"literal": 0}}
