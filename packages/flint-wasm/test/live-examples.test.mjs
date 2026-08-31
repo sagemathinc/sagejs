@@ -8,6 +8,7 @@ test("every live dropdown example executes verbatim in production Node-Wasm", as
   const expected = new Set([
     "interactive-symbolic-plot",
     "interactive-function-explorer",
+    "ipywidgets-core-gallery",
     "number-field",
     "elliptic-lseries",
     "complex-plot",

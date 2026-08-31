@@ -552,6 +552,7 @@ async function loadCapabilities() {
     ["Plot limit", `${DEFAULT_LIMITS.plotBytes.toLocaleString()} bytes per display`],
     ["Widget model limit", `${DEFAULT_WIDGET_LIMITS.liveModels.toLocaleString()} per session`],
     ["Widget view limit", `${DEFAULT_WIDGET_LIMITS.liveViews.toLocaleString()} per session`],
+    ["Widget retained output", `${DEFAULT_WIDGET_LIMITS.outputBytes.toLocaleString()} bytes per Output control`],
     ["Widget event queue", `${DEFAULT_WIDGET_LIMITS.queuedEvents.toLocaleString()} pending callbacks`],
     ["Widget callback limit", `${DEFAULT_WIDGET_LIMITS.callbackTimeoutMs / 1000} seconds`],
   ];

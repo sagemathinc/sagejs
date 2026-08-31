@@ -96,3 +96,47 @@ test("upstream Image keeps binary state outside widget JSON", async (t) => {
   assert.equal(Object.hasOwn(model.data.state, "value"), false);
   assert.deepEqual(Array.from(model.buffers[0]), [137, 80, 78, 71, 13, 10, 26, 10]);
 });
+
+test("upstream FileUpload receives browser binary buffers as memoryviews", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const created = await session.evaluate(
+    [
+      "import ipywidgets",
+      "received = []",
+      "upload = ipywidgets.FileUpload()",
+      "def receive(change):",
+      "    item = change['new'][0]",
+      "    received.append((item['name'], item['content'].tobytes()))",
+      "upload.observe(receive, names='value')",
+    ].join("\n"),
+  );
+  const model = created.commEvents.find(
+    (event) => event.data.state?._model_name === "FileUploadModel",
+  );
+  assert.ok(model, "FileUploadModel comm_open was not published");
+
+  await session.comm(
+    incoming("message", {
+      parentId: "file-upload-change",
+      commId: model.commId,
+      data: {
+        method: "update",
+        state: {
+          value: [{
+            name: "example.txt",
+            type: "text/plain",
+            size: 3,
+            last_modified: 0,
+          }],
+        },
+        buffer_paths: [["value", 0, "content"]],
+      },
+      buffers: [Uint8Array.from([65, 66, 67])],
+    }),
+  );
+  await session.evaluate(
+    "assert upload.value[0]['content'].tobytes() == b'ABC'\n" +
+      "assert received == [('example.txt', b'ABC')]",
+  );
+});

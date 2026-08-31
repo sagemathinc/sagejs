@@ -11,13 +11,19 @@ Implementation is active. As of 2026-08-31:
   work in the evaluator and standard Jupyter kernel.
 - The app portion of P6B is complete for core widgets and `Output`, including
   offline assets, bidirectional state updates, reset behavior, and browser
-  acceptance coverage. Live models and views have explicit per-session limits;
-  clear/reset deterministically removes rendered views, and reset replaces
-  stale controls with a rerun notice. Frontend events have a bounded queue and
-  widget callbacks have a worker-replacing timeout; a regression deliberately
-  runs a nonreturning Python callback and verifies that the clean replacement
-  kernel immediately evaluates new code. Extracting the reusable P6A Cell
-  remains open.
+  acceptance coverage. A core gallery now qualifies scalar/nested controls,
+  frontend-only `jslink`, rich `Output` capture/clear/error behavior, and a real
+  binary `FileUpload` round trip in offline Chromium. The browser manager eagerly
+  instantiates comm-opened headless models, matching Jupyter's requirement for
+  link models that are not reachable from the displayed widget tree. Incoming
+  typed-array buffers are normalized to Python `memoryview` objects before
+  upstream ipywidgets deserialization. Live models and views have explicit
+  per-session limits; retained `Output` state is capped at one MiB per control;
+  clear/reset deterministically removes rendered views, and reset replaces stale
+  controls with a rerun notice. Frontend events have a bounded queue and widget
+  callbacks have a worker-replacing timeout; a regression deliberately runs a
+  nonreturning Python callback and verifies that the clean replacement kernel
+  immediately evaluates new code. Extracting the reusable P6A Cell remains open.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,

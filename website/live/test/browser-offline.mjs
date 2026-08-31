@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXAMPLES } from "../examples.mjs";
@@ -10,6 +11,13 @@ import { startStaticServer } from "../scripts/static-server.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const chromium = [process.env.SAGEJS_CHROMIUM, "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"].filter(Boolean).find(existsSync);
 assert.ok(chromium, "Chromium not found; set SAGEJS_CHROMIUM");
+
+const uploadDirectory = mkdtempSync(path.join(tmpdir(), "sagejs-widget-upload-"));
+const uploadName = "sagejs-upload.txt";
+const uploadContents = "Sage.js upload\n";
+const uploadBytes = Buffer.from(uploadContents);
+const uploadPath = path.join(uploadDirectory, uploadName);
+writeFileSync(uploadPath, uploadBytes);
 
 const staged = await stageRelease({ appRoot: root });
 const server = await startStaticServer({ directory: staged.target });
@@ -76,6 +84,13 @@ try {
       source: document.querySelector('#source')?.value,
       runDisabled: document.querySelector('[data-run="all"]')?.disabled,
       diagnostics: document.querySelector('#diagnostics')?.textContent,
+      widgetInputs: Array.from(document.querySelectorAll('#output input'), (input) => ({
+        type: input.type,
+        value: input.value,
+      })),
+      widgetSliders: Array.from(document.querySelectorAll('#output [role=slider]'), (slider) => ({
+        value: slider.getAttribute('aria-valuenow'),
+      })),
     })`);
     throw new Error(`timed out waiting for ${expression}\npage snapshot: ${snapshot}\nbrowser console:\n${browserConsole.join("\n")}\n${errors.join("\n")}\n${chromeErrors}`);
   }
@@ -327,6 +342,81 @@ try {
       "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0",
     30_000,
   );
+  const galleryExample = EXAMPLES.find(
+    (example) => example.id === "ipywidgets-core-gallery",
+  );
+  assert.ok(galleryExample);
+  await evaluate("document.querySelector('#clear-output').click()");
+  await runSource(
+    galleryExample.source,
+    "document.querySelector('#output [role=slider]') !== null && " +
+      "document.querySelector('#output input[type=number]')?.value === '4' && " +
+      "Array.from(document.querySelectorAll('#output button'))" +
+      ".some((button) => button.textContent.includes('Upload text'))",
+    30_000,
+  );
+  await evaluate("document.querySelector('#output [role=slider]').focus()");
+  await command("Input.dispatchKeyEvent", {
+    type: "keyDown", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await command("Input.dispatchKeyEvent", {
+    type: "keyUp", key: "ArrowRight", code: "ArrowRight",
+    windowsVirtualKeyCode: 39,
+  });
+  await waitFor(
+    "Number(document.querySelector('#output [role=slider]')?.getAttribute('aria-valuenow')) === 5 && " +
+      "document.querySelector('#output input[type=number]')?.value === '5'",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Capture output')).click()`);
+  await waitFor(
+    "document.querySelector('#output')?.textContent.includes('captured 5') && " +
+      "document.querySelector('#output .katex') !== null",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Clear output')).click()`);
+  await waitFor(
+    "!document.querySelector('#output')?.textContent.includes('captured 5')",
+    30_000,
+  );
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Raise error')).click()`);
+  await waitFor(
+    "document.querySelector('#output .widget-error')?.textContent.includes('deliberate widget error')",
+    30_000,
+  );
+  await command("Page.setInterceptFileChooserDialog", { enabled: true });
+  const fileChooser = new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error("timed out waiting for the widget file chooser")),
+      10_000,
+    );
+    const listener = ({ data }) => {
+      const message = JSON.parse(data);
+      if (message.method !== "Page.fileChooserOpened") return;
+      clearTimeout(timeout);
+      socket.removeEventListener("message", listener);
+      resolve(message.params);
+    };
+    socket.addEventListener("message", listener);
+  });
+  await evaluate(`Array.from(document.querySelectorAll('#output button'))
+    .find((button) => button.textContent.includes('Upload text')).click()`);
+  const fileChooserEvent = await fileChooser;
+  await command("DOM.setFileInputFiles", {
+    backendNodeId: fileChooserEvent.backendNodeId,
+    files: [uploadPath],
+  });
+  await command("Page.setInterceptFileChooserDialog", { enabled: false });
+  await waitFor(
+    `document.querySelector('#output')?.textContent.includes(${JSON.stringify(
+      `uploaded ${uploadName} ${uploadBytes.length} ${uploadBytes.reduce((sum, value) => sum + value, 0)}`,
+    )})`,
+    30_000,
+  );
   await evaluate("document.querySelector('#reset').click()");
   await waitFor(
     "document.querySelector('#output .widget-stale-notice')?.textContent.includes('Run its input again') && " +
@@ -347,4 +437,5 @@ try {
 } finally {
   chrome.kill("SIGTERM");
   server.close();
+  rmSync(uploadDirectory, { recursive: true, force: true });
 }

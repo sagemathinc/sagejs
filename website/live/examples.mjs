@@ -26,6 +26,60 @@ def function_explorer(f=input_box('x^3 - 2*x', label='f(x)=')):
 `,
   },
   {
+    id: "ipywidgets-core-gallery",
+    title: "Core widget gallery",
+    description: "Try linked controls, rich Output capture, callback errors, and a binary file upload through the standard ipywidgets protocol.",
+    source: `import ipywidgets as widgets
+from IPython.display import display
+
+slider = widgets.IntSlider(value=4, min=0, max=10, description='Linked value')
+number = widgets.IntText(value=4, description='Mirror')
+frontend_link = widgets.jslink((slider, 'value'), (number, 'value'))
+text = widgets.Text(value='Sage.js', description='Text')
+choice = widgets.Dropdown(options=['alpha', 'beta', 'gamma'], value='beta', description='Choice')
+enabled = widgets.Checkbox(value=True, description='Enabled')
+color = widgets.ColorPicker(value='#3366cc', description='Color')
+
+output = widgets.Output(layout=widgets.Layout(border='1px solid #888'))
+capture = widgets.Button(description='Capture output', icon='check')
+clear = widgets.Button(description='Clear output')
+fail = widgets.Button(description='Raise error', button_style='warning')
+upload = widgets.FileUpload(accept='.txt', multiple=False, description='Upload text')
+
+def capture_output(_button):
+    with output:
+        print('captured', slider.value, text.value, choice.value, enabled.value, color.value)
+        display(x^2 + slider.value)
+
+def clear_output(_button):
+    output.clear_output()
+
+def fail_output(_button):
+    with output:
+        raise ValueError('deliberate widget error')
+
+def receive_upload(change):
+    if len(change['new']) == 0:
+        return
+    uploaded = change['new'][0]
+    content = uploaded['content'].tobytes()
+    with output:
+        print('uploaded', uploaded['name'], len(content), sum(content))
+
+capture.on_click(capture_output)
+clear.on_click(clear_output)
+fail.on_click(fail_output)
+upload.observe(receive_upload, names='value')
+display(widgets.VBox([
+    widgets.HBox([slider, number]),
+    widgets.HBox([text, choice]),
+    widgets.HBox([enabled, color]),
+    widgets.HBox([capture, clear, fail, upload]),
+    output,
+]))
+`,
+  },
+  {
     id: "number-field",
     title: "Number field arithmetic",
     description: "A maximal order, prime decomposition, and the first Dedekind zeta coefficients.",

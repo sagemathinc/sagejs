@@ -15,6 +15,17 @@ test("live interact examples cover sliders and editable Sage expressions", () =>
   assert.match(expression?.source ?? "", /f\.derivative\(x\)/);
 });
 
+test("the core widget gallery covers linked, output, error, and binary controls", () => {
+  const gallery = EXAMPLES.find(
+    (entry) => entry.id === "ipywidgets-core-gallery",
+  );
+  assert.match(gallery?.source ?? "", /widgets\.jslink/);
+  assert.match(gallery?.source ?? "", /widgets\.Output/);
+  assert.match(gallery?.source ?? "", /raise ValueError\('deliberate widget error'\)/);
+  assert.match(gallery?.source ?? "", /widgets\.FileUpload/);
+  assert.match(gallery?.source ?? "", /\.tobytes\(\)/);
+});
+
 test("live elliptic examples exercise the production smalljac coefficient path", () => {
   for (const id of ["elliptic-lseries", "complex-plot"]) {
     const example = EXAMPLES.find((entry) => entry.id === id);

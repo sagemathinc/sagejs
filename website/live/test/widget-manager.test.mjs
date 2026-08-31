@@ -156,6 +156,46 @@ test("frontend-created comms publish an open event", async () => {
   host.close();
 });
 
+test("widget manager instantiates headless link models", async () => {
+  const session = new TestSession();
+  const loaded = [];
+  const host = createWidgetHost({
+    session,
+    async loadManager() {
+      return {
+        createWidgetManager() {
+          return {
+            async get_model(modelId) {
+              loaded.push(modelId);
+              return {};
+            },
+            async render() {},
+          };
+        },
+      };
+    },
+    async renderOutput() {},
+  });
+  session.emit(event("open", {
+    data: { state: { _model_name: "IntSliderModel" }, buffer_paths: [] },
+  }));
+  session.emit(event("open", {
+    commId: "link-1",
+    data: {
+      state: {
+        _model_name: "LinkModel",
+        _view_name: null,
+        source: ["IPY_MODEL_model-1", "value"],
+        target: ["IPY_MODEL_model-2", "value"],
+      },
+      buffer_paths: [],
+    },
+  }));
+  await host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-1" } }, {});
+  assert.deepEqual(new Set(loaded), new Set(["model-1", "link-1"]));
+  host.close();
+});
+
 test("Output widgets capture parent-scoped display events locally", async () => {
   const session = new TestSession();
   let outputComm;
@@ -246,6 +286,7 @@ test("widget host bounds live models and closes rejected kernel comms", async ()
       callbackTimeoutMs: 50,
       liveModels: 1,
       liveViews: 2,
+      outputBytes: 1_000_000,
       queuedEvents: 2,
     },
     onViolation(error) {
@@ -277,6 +318,7 @@ test("widget host bounds live models and closes rejected kernel comms", async ()
       callbackTimeoutMs: 50,
       liveModels: 1,
       liveViews: 2,
+      outputBytes: 1_000_000,
       queuedEvents: 2,
     },
   });
@@ -310,6 +352,7 @@ test("widget reset removes live views and leaves a rerun notice", async () => {
       callbackTimeoutMs: 50,
       liveModels: 2,
       liveViews: 1,
+      outputBytes: 1_000_000,
       queuedEvents: 2,
     },
     async loadManager() {
@@ -359,6 +402,7 @@ test("widget host bounds queued frontend events", async () => {
       callbackTimeoutMs: 50,
       liveModels: 2,
       liveViews: 2,
+      outputBytes: 1_000_000,
       queuedEvents: 1,
     },
     onViolation(error) {
@@ -395,5 +439,77 @@ test("widget host bounds queued frontend events", async () => {
   resolveRequest();
   await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(host.stats().queuedEvents, 0);
+  host.close();
+});
+
+test("Output widgets bound retained output and recover after clear", async () => {
+  const session = new TestSession();
+  let outputComm;
+  const host = createWidgetHost({
+    session,
+    limits: {
+      callbackTimeoutMs: 50,
+      liveModels: 2,
+      liveViews: 2,
+      outputBytes: 200,
+      queuedEvents: 2,
+    },
+    async loadManager() {
+      return {
+        createWidgetManager(environment) {
+          return {
+            async render(modelId) {
+              outputComm = await environment.openCommChannel({
+                comm_id: modelId,
+                target_name: "jupyter.widget",
+              });
+            },
+          };
+        },
+      };
+    },
+    async renderOutput() {},
+  });
+  session.emit(event("open", {
+    data: {
+      state: {
+        _model_name: "OutputModel",
+        msg_id: "cell-output-limit",
+        outputs: [],
+      },
+      buffer_paths: [],
+    },
+  }));
+  await host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-1" } }, {});
+  const messages = [];
+  outputComm.on_msg((message) => messages.push(message));
+  assert.equal(host.captureOutput({
+    schema: "sagejs.output-event/v1",
+    type: "stream",
+    parentId: "cell-output-limit",
+    name: "stdout",
+    text: "x".repeat(300),
+  }), true);
+  assert.equal(
+    messages.at(-1).content.data.state.outputs[0].ename,
+    "WidgetOutputLimitError",
+  );
+  host.captureOutput({
+    schema: "sagejs.output-event/v1",
+    type: "clear_output",
+    parentId: "cell-output-limit",
+    wait: false,
+  });
+  host.captureOutput({
+    schema: "sagejs.output-event/v1",
+    type: "stream",
+    parentId: "cell-output-limit",
+    name: "stdout",
+    text: "small",
+  });
+  assert.equal(
+    messages.at(-1).content.data.state.outputs[0].text,
+    "small",
+  );
   host.close();
 });

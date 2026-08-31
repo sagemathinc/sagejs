@@ -4,6 +4,7 @@ export const DEFAULT_WIDGET_LIMITS = Object.freeze({
   callbackTimeoutMs: 15_000,
   liveModels: 512,
   liveViews: 512,
+  outputBytes: 1_000_000,
   queuedEvents: 128,
 });
 
@@ -13,6 +14,7 @@ function normalizedLimits(limits = DEFAULT_WIDGET_LIMITS) {
     "callbackTimeoutMs",
     "liveModels",
     "liveViews",
+    "outputBytes",
     "queuedEvents",
   ]) {
     const value = limits[name] ?? DEFAULT_WIDGET_LIMITS[name];
@@ -190,10 +192,12 @@ export function createWidgetHost({
   }
 
   function publishLocalOutput(record, event) {
-    const current = Array.isArray(record.state.outputs)
+    if (record.outputLimitExceeded && event.type !== "clear_output") return;
+    let current = Array.isArray(record.state.outputs)
       ? [...record.state.outputs]
       : [];
     if (event.type === "clear_output") {
+      record.outputLimitExceeded = false;
       if (event.wait) record.clearOnNext = true;
       else current.length = 0;
     } else {
@@ -221,6 +225,18 @@ export function createWidgetHost({
       } else {
         current.push(item);
       }
+    }
+    const retainedBytes = new TextEncoder().encode(
+      JSON.stringify(current),
+    ).byteLength;
+    if (retainedBytes > limits.outputBytes) {
+      record.outputLimitExceeded = true;
+      current = [{
+        output_type: "error",
+        ename: "WidgetOutputLimitError",
+        evalue: `Widget output exceeded the ${limits.outputBytes} byte limit. Clear it before continuing.`,
+        traceback: [],
+      }];
     }
     record.state.outputs = current;
     comms.get(record.commId)?._message({
@@ -263,6 +279,14 @@ export function createWidgetHost({
     } catch (error) {
       rejectModel(event, error);
       return;
+    }
+    if (event.type === "open" && managerPromise && records.has(event.commId)) {
+      void managerPromise
+        .then((activeManager) => activeManager.get_model?.(event.commId))
+        .catch((error) => onViolation(error, {
+          type: "model-load",
+          commId: event.commId,
+        }));
     }
     const comm = comms.get(event.commId);
     if (event.type === "message") comm?._message(event);
@@ -415,8 +439,20 @@ export function createWidgetHost({
 
   async function manager() {
     if (closed) throw new Error("widget host is closed");
-    managerPromise ??= loadManager().then(({ createWidgetManager }) =>
-      createWidgetManager(environment));
+    managerPromise ??= loadManager()
+      .then(({ createWidgetManager }) => createWidgetManager(environment))
+      .then(async (activeManager) => {
+        if (typeof activeManager.get_model === "function") {
+          // Jupyter widget managers instantiate every comm-opened model, even
+          // when it has no view.  Frontend-only LinkModel/DirectionalLinkModel
+          // instances depend on that behavior and are otherwise unreachable
+          // from the displayed widget tree.
+          await Promise.all(
+            [...records.keys()].map((modelId) => activeManager.get_model(modelId)),
+          );
+        }
+        return activeManager;
+      });
     return managerPromise;
   }
 

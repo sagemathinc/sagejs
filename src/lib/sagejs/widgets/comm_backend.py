@@ -44,6 +44,15 @@ def _python_json(value: Any) -> Any:
     return answer
 
 
+def _python_buffers(value: Any) -> list[memoryview]:
+    """Copy host typed arrays into the Python buffer protocol."""
+    if value is None:
+        return []
+    if not runtime.array.isArray(value):
+        raise TypeError("comm buffers must be a list")
+    return [memoryview(bytes(buffer)) for buffer in value]
+
+
 _manager: Any = None
 _installed = False
 
@@ -114,7 +123,7 @@ def _message(event: Any) -> dict[str, Any]:
         "parent_header": {},
         "metadata": _python_json(_event_value(event, "metadata", {})),
         "content": content,
-        "buffers": _event_value(event, "buffers", []),
+        "buffers": _python_buffers(_event_value(event, "buffers", [])),
     }
 
 
