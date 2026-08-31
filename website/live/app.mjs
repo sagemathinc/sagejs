@@ -23,7 +23,10 @@ import {
   newWorkspace,
   WorkspaceStore,
 } from "./session-store.mjs";
-import { createWidgetHost } from "./widget-manager.mjs";
+import {
+  createWidgetHost,
+  DEFAULT_WIDGET_LIMITS,
+} from "./widget-manager.mjs";
 
 const $ = (selector) => document.querySelector(selector);
 const fetchCredentials = requestCredentials(location.search);
@@ -547,6 +550,8 @@ async function loadCapabilities() {
     ["Time limit", `up to ${DEFAULT_LIMITS.maximumTimeoutMs / 1000} seconds per run`],
     ["Output limit", `${DEFAULT_LIMITS.outputBytes.toLocaleString()} bytes per run`],
     ["Plot limit", `${DEFAULT_LIMITS.plotBytes.toLocaleString()} bytes per display`],
+    ["Widget model limit", `${DEFAULT_WIDGET_LIMITS.liveModels.toLocaleString()} per session`],
+    ["Widget view limit", `${DEFAULT_WIDGET_LIMITS.liveViews.toLocaleString()} per session`],
   ];
   try {
     const response = await fetch("./runtime-version.json", { cache: "no-store", credentials: fetchCredentials });
@@ -671,7 +676,10 @@ $("#share").addEventListener("click", async () => {
     setLive("A local source-only share URL was copied. It contains no saved results or credentials.");
   } catch (error) { setLive(`Could not create the share URL: ${error.message}`); }
 });
-$("#clear-output").addEventListener("click", () => elements.output.replaceChildren());
+$("#clear-output").addEventListener("click", () => {
+  widgetHost?.clearViews();
+  elements.output.replaceChildren();
+});
 $("#about").addEventListener("click", () => elements.about.showModal());
 $("#close-about").addEventListener("click", () => elements.about.close());
 

@@ -233,3 +233,91 @@ test("Output widgets capture parent-scoped display events locally", async () => 
   );
   host.close();
 });
+
+test("widget host bounds live models and closes rejected kernel comms", async () => {
+  const session = new TestSession();
+  const violations = [];
+  const host = createWidgetHost({
+    session,
+    limits: { liveModels: 1, liveViews: 2 },
+    onViolation(error) {
+      violations.push(error);
+    },
+    async loadManager() {
+      return { createWidgetManager() { return { async render() {} }; } };
+    },
+    async renderOutput() {},
+  });
+  session.emit(event("open", {
+    data: { state: { _model_name: "IntModel" }, buffer_paths: [] },
+  }));
+  session.emit(event("open", {
+    commId: "model-2",
+    data: { state: { _model_name: "IntModel" }, buffer_paths: [] },
+  }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.match(violations[0].message, /1 live-model limit/);
+  assert.equal(session.sent.at(-1).type, "close");
+  assert.equal(session.sent.at(-1).commId, "model-2");
+  assert.deepEqual(host.stats(), {
+    models: 1,
+    rejectedModels: 1,
+    comms: 0,
+    views: 0,
+    limits: { liveModels: 1, liveViews: 2 },
+  });
+  await assert.rejects(
+    host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-2" } }, {}),
+    /1 live-model limit/,
+  );
+  host.close();
+});
+
+test("widget reset removes live views and leaves a rerun notice", async () => {
+  const session = new TestSession();
+  let removed = 0;
+  const ownerDocument = {
+    createElement() {
+      return { className: "", textContent: "" };
+    },
+  };
+  const element = {
+    isConnected: true,
+    ownerDocument,
+    widget: { remove() { removed += 1; } },
+    replaceWith(replacement) {
+      this.replacement = replacement;
+    },
+  };
+  const destination = { children: [] };
+  const host = createWidgetHost({
+    session,
+    limits: { liveModels: 2, liveViews: 1 },
+    async loadManager() {
+      return {
+        createWidgetManager() {
+          return {
+            async render(_modelId, target) {
+              target.children.push(element);
+            },
+          };
+        },
+      };
+    },
+    async renderOutput() {},
+  });
+  session.emit(event("open", {
+    data: { state: { _model_name: "IntModel" }, buffer_paths: [] },
+  }));
+  await host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-1" } }, destination);
+  assert.equal(host.stats().views, 1);
+  await assert.rejects(
+    host.render({ [WIDGET_VIEW_MIME]: { model_id: "model-1" } }, destination),
+    /1 live-view limit/,
+  );
+  host.reset();
+  assert.equal(removed, 1);
+  assert.match(element.replacement.textContent, /Run its input again/);
+  assert.equal(host.stats().views, 0);
+  host.close();
+});

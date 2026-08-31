@@ -327,6 +327,13 @@ try {
       "Math.min(...document.querySelector('#output .js-plotly-plot').data[0].y) >= 0",
     30_000,
   );
+  await evaluate("document.querySelector('#reset').click()");
+  await waitFor(
+    "document.querySelector('#output .widget-stale-notice')?.textContent.includes('Run its input again') && " +
+      "document.querySelector('#output input[type=text]') === null && " +
+      "document.querySelector('#kernel-status')?.dataset.state === 'ready'",
+    30_000,
+  );
   await evaluate("document.querySelector('#clear-output').click()");
   await runFactor();
   await evaluate("navigator.serviceWorker.ready.then(() => true)");

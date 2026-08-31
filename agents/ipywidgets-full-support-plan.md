@@ -11,7 +11,10 @@ Implementation is active. As of 2026-08-31:
   work in the evaluator and standard Jupyter kernel.
 - The app portion of P6B is complete for core widgets and `Output`, including
   offline assets, bidirectional state updates, reset behavior, and browser
-  acceptance coverage. Extracting the reusable P6A Cell remains open.
+  acceptance coverage. Live models and views have explicit per-session limits;
+  clear/reset deterministically removes rendered views, and reset replaces
+  stale controls with a rerun notice. Extracting the reusable P6A Cell remains
+  open.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,
@@ -24,8 +27,10 @@ Implementation is active. As of 2026-08-31:
   Taylor-polynomial, derivative, quadratic-equation, coin-toss, and basic demo
   applications. Text controls evaluate through the authoritative Sage parser
   in native kernels and the isolated browser compiler, while Python `eval`
-  retains Python semantics. The app's primary interactive symbolic-plot preset
-  exercises Sage `@interact` offline and verifies a live frontend update.
+  retains Python semantics. The app's interactive symbolic-plot and editable
+  function-explorer presets exercise Sage `@interact` offline; browser
+  acceptance changes `x^3 - 2*x` to `x^4`, verifies the plot update, and then
+  verifies clean widget teardown across a kernel reset.
   Completing the remaining full browser/Jupyter PREP matrix and upstream Sage
   widget doctest inventory remains open.
 - P8–P10 and the remaining lifecycle, embedding, documentation, budget, and

@@ -1,5 +1,22 @@
 const WIDGET_VIEW_MIME = "application/vnd.jupyter.widget-view+json";
 
+export const DEFAULT_WIDGET_LIMITS = Object.freeze({
+  liveModels: 512,
+  liveViews: 512,
+});
+
+function normalizedLimits(limits = DEFAULT_WIDGET_LIMITS) {
+  const answer = {};
+  for (const name of ["liveModels", "liveViews"]) {
+    const value = limits[name] ?? DEFAULT_WIDGET_LIMITS[name];
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new TypeError(`widget ${name} limit must be a positive safe integer`);
+    }
+    answer[name] = value;
+  }
+  return Object.freeze(answer);
+}
+
 function uuid() {
   return globalThis.crypto?.randomUUID?.().replaceAll("-", "") ??
     `sagejs${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
@@ -62,15 +79,67 @@ function jupyterMessage(event, msgId = uuid()) {
  * Bridge a transport-neutral SageSession to the standard Jupyter widget
  * manager. The manager is loaded only after the first widget is displayed.
  */
-export function createWidgetHost({ session, loadManager, renderOutput }) {
+export function createWidgetHost({
+  session,
+  loadManager,
+  renderOutput,
+  limits: requestedLimits,
+  onViolation = (error) => console.error(error),
+}) {
+  const limits = normalizedLimits(requestedLimits);
   const records = new Map();
   const comms = new Map();
+  const rejected = new Map();
+  const views = new Set();
   let managerPromise;
   let closed = false;
 
+  function modelLimitError() {
+    return new RangeError(
+      `widget session exceeds the ${limits.liveModels} live-model limit`,
+    );
+  }
+
+  function viewLimitError() {
+    return new RangeError(
+      `widget session exceeds the ${limits.liveViews} live-view limit`,
+    );
+  }
+
+  function rejectModel(event, error) {
+    rejected.set(event.commId, error);
+    const comm = comms.get(event.commId);
+    comm?._close({
+      schema: "sagejs.comm-event/v1",
+      type: "close",
+      commId: event.commId,
+      data: {},
+      metadata: {},
+      buffers: [],
+    });
+    comms.delete(event.commId);
+    records.delete(event.commId);
+    destroyViews((view) => view.modelId === event.commId);
+    onViolation(error, event);
+    void session.comm({
+      schema: "sagejs.comm-event/v1",
+      type: "close",
+      commId: event.commId,
+      parentId: event.parentId,
+      data: {},
+      metadata: {},
+      buffers: [],
+    }).catch((closeError) => onViolation(closeError, event));
+  }
+
   function recordOpen(event) {
+    if (!records.has(event.commId) && records.size >= limits.liveModels) {
+      rejectModel(event, modelLimitError());
+      return;
+    }
     const data = event.data ?? {};
     const state = stateWithBuffers(data.state, data.buffer_paths, event.buffers);
+    rejected.delete(event.commId);
     records.set(event.commId, {
       commId: event.commId,
       targetName: event.targetName,
@@ -180,14 +249,21 @@ export function createWidgetHost({ session, loadManager, renderOutput }) {
 
   function handleComm(event) {
     if (closed || event?.schema !== "sagejs.comm-event/v1") return;
-    if (event.type === "open") recordOpen(event);
-    else if (event.type === "message") recordUpdate(event);
+    try {
+      if (event.type === "open") recordOpen(event);
+      else if (event.type === "message") recordUpdate(event);
+    } catch (error) {
+      rejectModel(event, error);
+      return;
+    }
     const comm = comms.get(event.commId);
     if (event.type === "message") comm?._message(event);
     if (event.type === "close") {
       comm?._close(event);
       comms.delete(event.commId);
       records.delete(event.commId);
+      rejected.delete(event.commId);
+      destroyViews((view) => view.modelId === event.commId);
     }
   }
 
@@ -310,6 +386,37 @@ export function createWidgetHost({ session, loadManager, renderOutput }) {
     return managerPromise;
   }
 
+  function destroyView(view, message) {
+    views.delete(view);
+    try {
+      view.element.widget?.remove?.();
+    } catch (error) {
+      onViolation(error, { type: "view-close", commId: view.modelId });
+    }
+    if (
+      message &&
+      view.element.ownerDocument &&
+      typeof view.element.replaceWith === "function"
+    ) {
+      const notice = view.element.ownerDocument.createElement("p");
+      notice.className = "widget-stale-notice";
+      notice.textContent = message;
+      view.element.replaceWith(notice);
+    } else {
+      view.element.remove?.();
+    }
+  }
+
+  function destroyViews(predicate = () => true, message) {
+    for (const view of [...views]) {
+      if (predicate(view)) destroyView(view, message);
+    }
+  }
+
+  function pruneDetachedViews() {
+    destroyViews((view) => view.element.isConnected === false);
+  }
+
   return Object.freeze({
     handleComm,
     isWidgetDisplay(data) {
@@ -322,9 +429,34 @@ export function createWidgetHost({ session, loadManager, renderOutput }) {
       if (typeof modelId !== "string" || !modelId) {
         throw new TypeError("widget view output has no model_id");
       }
+      const rejection = rejected.get(modelId);
+      if (rejection) throw rejection;
+      pruneDetachedViews();
+      if (views.size >= limits.liveViews) throw viewLimitError();
+      const before = new Set(Array.from(destination?.children ?? []));
       await (await manager()).render(modelId, destination);
+      for (const element of Array.from(destination?.children ?? [])) {
+        if (!before.has(element)) views.add({ modelId, element });
+      }
+    },
+    clearViews() {
+      destroyViews();
+    },
+    stats() {
+      pruneDetachedViews();
+      return Object.freeze({
+        models: records.size,
+        rejectedModels: rejected.size,
+        comms: comms.size,
+        views: views.size,
+        limits,
+      });
     },
     reset() {
+      destroyViews(
+        () => true,
+        "This widget belonged to a stopped kernel. Run its input again to restore it.",
+      );
       for (const [commId, comm] of comms) {
         comm._close({
           schema: "sagejs.comm-event/v1",
@@ -337,6 +469,7 @@ export function createWidgetHost({ session, loadManager, renderOutput }) {
       }
       records.clear();
       comms.clear();
+      rejected.clear();
       managerPromise = undefined;
     },
     close() {
