@@ -1,0 +1,58 @@
+# Approximation integration requests
+
+This lane intentionally did not edit shared registries, schemas, parent
+packages, the package graph, `package.json`, or `pyrightconfig.json`.
+
+The integration lane should make these exact changes after reviewing the
+domain surface:
+
+1. Re-export the approved names from `sagejs.numerics`: `ApproximationResult`,
+   `interpolate`, `interpolation_problem`, `plan_interpolation`,
+   `solve_interpolation_problem`, `cubic_spline`, `spline_problem`,
+   `plan_spline`, `solve_spline_problem`, `finite_difference`,
+   `finite_difference_problem`, `plan_finite_difference`,
+   `solve_finite_difference_problem`, `chebyshev_approximation`,
+   `polynomial_approximation_problem`, `plan_polynomial_approximation`, and
+   `solve_polynomial_approximation_problem`.
+2. Add `polynomial_interpolation`, `piecewise_interpolation`, `cubic_spline`,
+   `finite_difference_derivative`, and `polynomial_approximation` to the
+   numerical capability/surface registries using `support-matrix.json` as the
+   qualified envelope.
+3. Add the portable test to the shared `test:numerics` command or migrate that
+   command to directory discovery:
+   `test/numerics/approximation/approximation-laboratory.test.cjs`.
+4. Decide whether approximation-specific result dispatch belongs in the
+   shared `NumericalResult.evaluate/plot` surface. The current subclass keeps
+   this lane serializable without changing the shared object.
+5. Lower `ApproximationResult.plot_data()` through the shared PlotSpec
+   visualizer. The solver/model code must remain renderer-neutral.
+
+## Requested diagnostic codes
+
+The implementation currently maps to the closest existing shared codes and
+uses `ValueError` for invalid construction input. These domain codes would
+make integration more precise:
+
+| Code | Severity | Phase | Intended trigger |
+|---|---|---|---|
+| `duplicate_abscissa` | error | planning | two interpolation/spline nodes are equal |
+| `barycentric_weight_underflow` | error | planning | normalized general-node weights still underflow |
+| `inconsistent_periodic_boundary` | error | planning | periodic endpoint values disagree |
+| `finite_difference_step_unrepresentable` | error | execution | a nonzero stencil offset rounds back to the center |
+| `approximation_target_not_met` | warning | validation | a fixed-degree holdout corpus exceeds the requested tolerance |
+| `interpolation_condition_large` | warning | validation | sampled Lebesgue indicator exceeds the qualified threshold |
+
+No new shared status is essential. The current status mapping is explicit:
+
+- invalid construction intent raises before execution and should become
+  `invalid_problem` if integration standardizes constructor failures as
+  results;
+- callback, cancellation, and budget termination use their existing shared
+  statuses;
+- defining-equation or requested-accuracy failure uses
+  `validation_failed`; and
+- a successfully constructed and independently checked model uses
+  `converged` under the current shared vocabulary.
+
+If the shared result vocabulary later distinguishes construction from
+iteration, rename `converged` centrally rather than adding a local alias.

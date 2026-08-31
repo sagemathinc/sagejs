@@ -1,0 +1,25 @@
+{
+  "schema": "sagejs.numerics.approximation.corpus/v1",
+  "portable_corpus": "test/numerics/approximation/approximation-laboratory.test.cjs",
+  "live_differential_corpus": "test/numerics/approximation/differential_oracles.py",
+  "benchmark": "bench/numerics/approximation/benchmark.py",
+  "success_cases": [
+    "polynomial_value_and_derivative_identity",
+    "piecewise_linear_locality",
+    "Runge_equispaced_vs_Chebyshev",
+    "not_a_knot_cubic_reproduction",
+    "natural_clamped_mixed_periodic_splines",
+    "central_forward_backward_Fornberg_weights",
+    "analytic_first_and_second_derivatives",
+    "Chebyshev_value_and_derivative"
+  ],
+  "failure_cases": [
+    "duplicate_nodes",
+    "inconsistent_periodic_endpoint",
+    "callback_nonfinite",
+    "cancellation",
+    "evaluation_budget_exhaustion",
+    "trace_truncation",
+    "fixed_degree_target_not_met"
+  ]
+}

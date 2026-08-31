@@ -1,0 +1,58 @@
+{
+  "schema": "sagejs.numerics.approximation.support/v1",
+  "numeric_type": "IEEE-754 binary64",
+  "implementation": "ordinary-python",
+  "platforms": [
+    "browser",
+    "node",
+    "sea",
+    "linux-x64",
+    "linux-arm64",
+    "macos-arm64",
+    "windows-x64"
+  ],
+  "operations": [
+    {
+      "id": "polynomial_interpolation",
+      "classification": "extension",
+      "methods": ["barycentric"],
+      "validation": ["node_reproduction", "newton_form_crosscheck_up_to_32_nodes"],
+      "known_limits": ["distinct_finite_real_nodes", "global_polynomial_conditioning_remains_node_dependent"]
+    },
+    {
+      "id": "piecewise_interpolation",
+      "classification": "extension",
+      "methods": ["linear"],
+      "validation": ["node_reproduction"],
+      "known_limits": ["scalar_real_samples", "end_segment_extrapolation"]
+    },
+    {
+      "id": "cubic_spline",
+      "classification": "translated",
+      "methods": ["not-a-knot", "natural", "clamped", "periodic", "mixed_explicit"],
+      "validation": ["node_reproduction", "C1_continuity", "C2_continuity", "boundary_equations"],
+      "known_limits": ["scalar_real_samples", "strictly_increasing_finite_nodes"]
+    },
+    {
+      "id": "finite_difference_derivative",
+      "classification": "extension",
+      "methods": ["fornberg-central", "fornberg-forward", "fornberg-backward"],
+      "validation": ["step_halving", "roundoff_floor", "cancellation_index", "optional_analytic_reference"],
+      "known_limits": ["real_scalar_callback", "binary64_error_estimate_is_not_an_enclosure"]
+    },
+    {
+      "id": "polynomial_approximation",
+      "classification": "extension",
+      "methods": ["chebyshev"],
+      "validation": ["independent_holdout_samples", "coefficient_tail_indicator"],
+      "known_limits": ["finite_real_interval", "fixed_degree", "heuristic_uniform_error_evidence"]
+    }
+  ],
+  "oracles": [
+    "analytic_polynomial_and_derivative_identities",
+    "SciPy_BarycentricInterpolator",
+    "SciPy_CubicSpline",
+    "NumPy_chebinterpolate",
+    "mpmath_80_digit_derivatives"
+  ]
+}
