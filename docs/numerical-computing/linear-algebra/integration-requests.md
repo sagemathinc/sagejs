@@ -13,8 +13,10 @@ surface review.
   linear solve planning explicitly rather than through import order.
 - Add the nine implemented operations and their exact envelopes from
   `support-matrix.json` to shared capability discovery and the numerical
-  surface ledger.
-- Add the six domain Python files to `pyrightconfig.json`; standalone Pyright
+  surface ledger. The package-local `capabilities`, `supports`, and `plan`
+  functions already provide detached no-computation dispatch records that the
+  shared facade can import lazily.
+- Add the domain Python files to `pyrightconfig.json`; standalone Pyright
   validation is already zero-error.
 - Extend `pnpm test:numerics` to discover
   `test/numerics/linear_algebra/linear-algebra.cjs` or rely on the repository's

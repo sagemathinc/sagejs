@@ -82,9 +82,12 @@ function validateAgainstSchema(value, schema, path = "$") {
 const witness = String.raw`
 import json
 import math
+from sagejs.plotting import PlotAnimation, PlotSpec
+from sagejs.numerics import NumericalProblem
 from sagejs.numerics.linear_algebra import (
     DenseMatrix,
     DenseVector,
+    capabilities,
     cholesky,
     condition_number,
     determinant,
@@ -93,8 +96,10 @@ from sagejs.numerics.linear_algebra import (
     least_squares,
     lu,
     matrix_rank,
+    plan,
     qr,
     solve,
+    supports,
     validate_least_squares,
     validate_lu,
 )
@@ -116,16 +121,149 @@ assert DenseVector([1e-200]).norm_two() == 1e-200
 assert DenseVector([1e200]).norm_two() == 1e200
 assert matrix.transpose().to_rows() == matrix.to_rows()
 
+capability_record = capabilities()
+assert capability_record["schema_version"] == 1
+assert capability_record["domain"] == "linear_algebra"
+assert sorted(capability_record["operations"]) == [
+    "cholesky_factorization",
+    "condition_number",
+    "determinant",
+    "least_squares",
+    "linear_solve",
+    "lu_factorization",
+    "matrix_inverse",
+    "matrix_rank",
+    "qr_factorization",
+]
+assert list(capabilities("linear_solve")["operations"]) == ["linear_solve"]
+assert capabilities("not-an-operation")["operations"] == {}
+capability_record["operations"]["linear_solve"]["methods"]["partial_pivot_lu"]["requires"].append("mutation")
+assert "mutation" not in capabilities()["operations"]["linear_solve"]["methods"]["partial_pivot_lu"]["requires"]
+
+planner_calls = [0]
+def forbidden_planner_callback(*args):
+    planner_calls[0] += 1
+    raise AssertionError("planning evaluated a callback")
+
+planning_cases = (
+    ("lu_factorization", [3, 2], "partial_pivot_lu", {}),
+    ("qr_factorization", [3, 2], "householder_qr", {}),
+    ("cholesky_factorization", [3, 3], "cholesky", {}),
+    ("linear_solve", [3, 3], "partial_pivot_lu", {}),
+    ("least_squares", [3, 2], "column_pivoted_householder_qr", {}),
+    ("least_squares", [2, 3], "column_pivoted_householder_qr_of_transpose", {}),
+    ("matrix_rank", [3, 2], "one_sided_jacobi", {}),
+    ("condition_number", [3, 2], "one_sided_jacobi", {}),
+    ("determinant", [3, 3], "partial_pivot_lu", {}),
+    ("matrix_inverse", [3, 3], "partial_pivot_lu", {}),
+    ("linear_solve", [3, 3], "cholesky", {"assume": "positive_definite"}),
+    ("qr_factorization", [3, 2], "column_pivoted_householder_qr", {"pivoted": True}),
+)
+for operation, shape, expected_method, metadata in planning_cases:
+    planning_problem = NumericalProblem(
+        "linear_algebra",
+        operation,
+        function=forbidden_planner_callback,
+        numeric_type="binary64",
+        variables=[{"name": "A", "shape": shape}],
+        method="auto",
+        metadata=metadata,
+    )
+    assert supports(planning_problem)
+    planned = plan(planning_problem)
+    assert planned.method == expected_method
+    assert planned.backend == "ordinary-python"
+    planned_record = planned.to_dict()
+    assert planned_record["capability"]["source_transparent"] is True
+    assert planned_record["expected_resources"]["shape"] == shape
+assert planner_calls == [0]
+detached_plan_record = planned.to_dict()
+detached_plan_record["capability"]["requires"].append("mutation")
+assert "mutation" not in plan(planning_problem).to_dict()["capability"]["requires"]
+assert planner_calls == [0]
+
+nonsquare_solve_problem = NumericalProblem(
+    "linear_algebra",
+    "linear_solve",
+    numeric_type="binary64",
+    variables=[{"name": "A", "shape": [2, 3]}],
+    method="auto",
+)
+assert not supports(nonsquare_solve_problem)
+assert not supports(planning_problem, method="not-a-method")
+fractional_shape_problem = NumericalProblem(
+    "linear_algebra",
+    "matrix_rank",
+    numeric_type="binary64",
+    variables=[{"name": "A", "shape": [2.5, 3]}],
+    method="auto",
+)
+assert not supports(fractional_shape_problem)
+wide_least_squares_problem = NumericalProblem(
+    "linear_algebra",
+    "least_squares",
+    numeric_type="binary64",
+    variables=[{"name": "A", "shape": [2, 3]}],
+    method="auto",
+)
+assert not supports(
+    wide_least_squares_problem, method="column_pivoted_householder_qr"
+)
+try:
+    plan(wide_least_squares_problem, method="column_pivoted_householder_qr")
+except ValueError as error:
+    assert "least-squares shape" in str(error)
+else:
+    raise AssertionError("planning accepted a tall-only method for a wide problem")
+
 extreme_qr_solve = solve([[1e308]], [1e308], method="qr")
 assert extreme_qr_solve.success
 assert extreme_qr_solve.value == [1.0]
 
-lu_result = lu([[0, 2, 3], [4, 5, 6], [7, 8, 10]])
+lu_result = lu([[0, 2, 3], [4, 5, 6], [7, 8, 10]], trace="iterations")
 assert lu_result.success and lu_result.validation.passed
 assert lu_result.factorization.to_dict()["identity"] == "A = P * L * U"
 assert lu_result.factorization.swaps >= 1
 assert "rank_estimate" not in lu_result.factorization.to_dict()
 assert json.loads(lu_result.to_json())["domain_payload"]["factorization"]["kind"] == "lu"
+
+lu_explanation = lu_result.explanation()
+assert lu_explanation["schema_version"] == 1
+assert lu_explanation["shape"] == [3, 3]
+assert lu_explanation["outcome"] == {
+    "success": True,
+    "status": "converged",
+    "failure_code": None,
+    "failure_details": None,
+}
+assert lu_explanation["factorization"]["identity"] == "A = P * L * U"
+assert "upper" not in lu_explanation["factorization"]
+assert lu_explanation["validation"]["independent"] is True
+assert lu_explanation["validation"]["evidence_kind"] == "independent_postcheck"
+assert "validation passed" in lu_result.explain()
+
+factor_plot = lu_result.plot("factorization")
+assert isinstance(factor_plot, PlotSpec)
+assert factor_plot.provenance["metadata"]["view"] == "factorization"
+assert "diagonal profile" in factor_plot.alt_text()
+assert factor_plot.validate() == ()
+json.loads(factor_plot.to_json())
+
+extreme_threshold_plot = lu(
+    [[1e-308, 1e308], [0.0, 1e-308]]
+).plot("factorization")
+assert extreme_threshold_plot.validate() == ()
+json.loads(extreme_threshold_plot.to_json())
+
+factor_animation = lu_result.animate(max_frames=3)
+assert isinstance(factor_animation, PlotAnimation)
+assert len(factor_animation.frames) == 3
+factor_animation_record = factor_animation.to_dict()
+assert factor_animation_record["metadata"]["source"] == "retained_bounded_numerical_trace"
+assert factor_animation_record["metadata"]["view"] == "factorization"
+assert all(frame.state.validate() == () for frame in factor_animation.frames)
+assert all(len(frame.state.alt_text()) >= 40 for frame in factor_animation.frames)
+json.loads(factor_animation.to_json())
 
 bad_lu_check = validate_lu(
     DenseMatrix.from_rows([[1, 0, 0], [0, 1, 0], [0, 0, 2]]),
@@ -192,6 +330,13 @@ assert any(
     event.kind == "iteration" and event.data.get("phase") == "iterative_refinement"
     for event in refined.trace.events
 )
+convergence_plot = refined.plot("convergence")
+assert isinstance(convergence_plot, PlotSpec)
+assert "retained bounded trace events" in convergence_plot.alt_text()
+assert convergence_plot.validate() == ()
+convergence_animation = refined.animate("convergence", max_frames=3)
+assert 2 <= len(convergence_animation.frames) <= 3
+assert convergence_animation.to_dict()["metadata"]["view"] == "convergence"
 
 tall = least_squares([[1, 1], [1, 2], [1, 3]], [1, 2, 2])
 assert tall.success
@@ -223,6 +368,13 @@ rank = matrix_rank([[1, 2], [2, 4]], trace="iterations")
 assert rank.success and rank.value == 1
 condition = condition_number([[3, 1], [1, 2]])
 assert condition.success and abs(condition.value - 2.618033988749895) < 1e-13
+condition_plot = condition.plot()
+assert isinstance(condition_plot, PlotSpec)
+assert condition_plot.provenance["metadata"]["view"] == "conditioning"
+assert "Relative singular-value profile" in condition_plot.alt_text()
+assert condition_plot.validate() == ()
+assert condition.explanation()["validation"]["independent"] is False
+assert condition.explanation()["validation"]["evidence_kind"] == "algorithm_diagnostic"
 infinite_condition = condition_number([[1, 2], [2, 4]])
 assert infinite_condition.success and infinite_condition.value is None
 assert "ill_conditioned" in {item.code for item in infinite_condition.diagnostics}
@@ -288,6 +440,31 @@ for case in corpus["cases"]:
             assert result.value is None
             assert not result.to_dict()["domain_payload"]["ordinary_value_representable"]
 
+with open(
+    "docs/numerical-computing/linear-algebra/visualization-examples.json",
+    encoding="utf-8",
+) as examples_file:
+    visualization_examples = json.load(examples_file)
+assert visualization_examples["schema_version"] == 1
+for example in visualization_examples["examples"]:
+    if example["operation"] == "lu":
+        visual_result = lu(example["matrix"], trace=example["trace"])
+    elif example["operation"] == "condition_number":
+        visual_result = condition_number(example["matrix"], trace=example["trace"])
+    else:
+        visual_result = cholesky(example["matrix"], trace=example["trace"])
+    assert visual_result.success is example["expected_success"], example["id"]
+    assert visual_result.status == example["expected_status"], example["id"]
+    if "expected_failure_code" in example:
+        assert visual_result.failure_code == example["expected_failure_code"]
+    example_plot = visual_result.plot(example["view"])
+    assert example["alt_text_contains"] in example_plot.alt_text()
+    assert example_plot.validate() == ()
+    if "expected_animation_view" in example:
+        example_animation = visual_result.animate(max_frames=4)
+        assert example_animation.to_dict()["metadata"]["view"] == example["expected_animation_view"]
+        assert 2 <= len(example_animation.frames) <= 4
+
 # Scaling and row permutation preserve the solve.
 base = solve([[3, 1], [1, 2]], [9, 8])
 scaled = solve([[3e-9, 1e-9], [1e-9, 2e-9]], [9e-9, 8e-9])
@@ -330,6 +507,27 @@ callback_failure = solve([[1.0]], [1.0], cancel=broken_cancel)
 assert not callback_failure.success
 assert callback_failure.failure_code == "cancellation_callback_error"
 
+failed_cholesky = cholesky([[2.0, 1.0], [0.0, 2.0]])
+assert not failed_cholesky.success
+failure_explanation = failed_cholesky.explanation()
+assert failure_explanation["outcome"]["failure_code"] == "not_symmetric"
+assert failure_explanation["outcome"]["failure_details"]["row"] == 1
+assert failure_explanation["validation"]["independent"] is False
+assert len(failure_explanation["guidance"]) == 1
+assert "Classified failure: not_symmetric" in failed_cholesky.explain()
+failure_plot = failed_cholesky.plot()
+assert isinstance(failure_plot, PlotSpec)
+assert failure_plot.provenance["metadata"]["view"] == "validation"
+assert "did not pass" in failure_plot.alt_text()
+assert failure_plot.validate() == ()
+
+try:
+    failed_cholesky.animate()
+except ValueError as error:
+    assert "trace='iterations'" in str(error)
+else:
+    raise AssertionError("failure without iterative evidence produced an animation")
+
 nonfinite_lu_update = lu([[1e308, 1e308], [1e308, -1e308]])
 assert not nonfinite_lu_update.success
 assert nonfinite_lu_update.failure_code == "nonfinite_intermediate"
@@ -360,6 +558,12 @@ truncated = solve(
 assert truncated.success and truncated.trace.truncated
 assert len(truncated.trace.events) <= 4
 assert json.loads(truncated.trace.to_json())["diagnostics"][0]["code"] == "trace_truncated"
+
+bounded_factor_trace = lu(budget_matrix, trace="iterations", max_trace_events=4)
+assert bounded_factor_trace.success and bounded_factor_trace.trace.truncated
+bounded_animation = bounded_factor_trace.animate(max_frames=64)
+assert len(bounded_animation.frames) <= 4
+assert bounded_animation.to_dict()["metadata"]["trace_truncated"] is True
 
 for invalid in (
     lambda: DenseMatrix.from_rows([[1, 2], [3]]),
