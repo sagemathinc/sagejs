@@ -193,6 +193,7 @@
       "allowed_claims": [
         "agents/numerical-computing-product-plan.md",
         "scripts/check-numerical-surface.cjs",
+        "scripts/numerical-computing/contracts.cjs",
         "src/lib/sagejs/numerics/capabilities.py",
         "src/lib/sagejs/numerics/frontends/operations.py",
         "src/lib/sagejs/numerics/frontends/registry.py",
