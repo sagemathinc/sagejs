@@ -2804,6 +2804,19 @@ class HigherWeightManinPresentation:
     def reduction_matrix(self) -> Any:
         """Map every `(i,u,v)` generator to quotient coordinates."""
         if self._reduction is None and self._lazy_reduction:
+            rational_entries = runtime.reflect.get(
+                self._native, "rationalReductionEntries"
+            )
+            if rational_entries is not runtime.undefined:
+                entries = [
+                    sage.QQ(runtime.normalize_integer(entry[0]))
+                    / sage.QQ(runtime.normalize_integer(entry[1]))
+                    for entry in rational_entries
+                ]
+                self._reduction = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    self._base_ring, self._generators, self._dimension
+                )(entries)
+                return self._reduction
             if self._character_presentation:
                 raw = runtime.flint_backend().characterPresentationReduction(
                     self._native

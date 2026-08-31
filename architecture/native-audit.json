@@ -413,17 +413,18 @@
     },
     {
       "path": "packages/flint-wasm/src/numeric.c",
-      "lines": 1443,
-      "bytes": 45694,
+      "lines": 1702,
+      "bytes": 53575,
       "decision": "retain-bridge",
       "priority": "high",
       "responsibilities": [
         "bounded generation-tagged MPFR and complex resource ownership",
         "decimal ingress plus exact MPFR spill and restore transport",
         "mature Arb and Acb special-function dispatch",
-        "bounded elementary-expression VM, quadrature, and root iteration"
+        "bounded elementary-expression VM, quadrature, and root iteration",
+        "ordered approximate matrix eigensystems with normalized left and right eigenvectors"
       ],
-      "rationale": "The scalar numerical algorithms and special functions delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, and bisection loop are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping this bounded coarse call in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
+      "rationale": "The scalar numerical algorithms, special functions, and eigensystems delegate to mature MPFR, Arb, and Acb operations. The handwritten finite VM, GK21 quadrature policy, bisection loop, and eigensystem result transport are an explicit measured compiler limitation exception: the isolated synchronous reactor cannot call a Python/JavaScript callback, while the source compiler does not yet lower MPFR/Acb resource operations. Keeping these bounded coarse calls in the reactor removes the measured hot loops without embedding an interpreter or Unix runtime.",
       "fallback": "Ordinary Python numerical evaluation remains explicit for unsupported expression trees and arbitrary Python callables.",
       "oracles": [
         "CPython",

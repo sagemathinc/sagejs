@@ -1524,24 +1524,13 @@ class MatrixSpaceParent(sage.Parent):
                 return self._from_m4ri_matrix_resource(resource)
             values = runtime.uint64_unpack_le(entries, width, count)
             return self._from_uint64_residues(values)
-        backend = runtime.flint_backend()
-        if getattr(self._base, "_kind", None) == "ZMOD":
-            native = backend.zmodMatrixPacked(
-                self._rows,
-                self._cols,
-                entries,
-                width,
-                self._base._modulus,
-            )
-        else:
-            native = backend.nmodMatrixPacked(
-                self._rows,
-                self._cols,
-                entries,
-                width,
-                self._base._modulus,
-            )
-        return Matrix(self, native)
+        count = self._rows * self._cols
+        if width not in [1, 2, 4, 8]:
+            raise ValueError("unsupported packed residue width")
+        if len(entries) != count * width:
+            raise ValueError("packed matrix residue count does not match dimensions")
+        values = runtime.uint64_unpack_le(entries, width, count)
+        return self([self._base(value) for value in values])
 
     def _from_uint64_residues(self, entries: Any) -> Matrix:
         """Construct `GF(p)` storage from canonical row-major residues."""
@@ -3194,7 +3183,16 @@ class Matrix(sage.Element):
                 region = _m4ri_ffi_module().matrix_sagepack_bytes(self._m4ri_resource())
                 return region.take_bytes()
             return runtime.uint64_pack_le(self._prime_residues(), width)
-        return runtime.flint_backend().matrixExportPacked(self._native, width)
+        if width not in [1, 2, 4, 8]:
+            raise ValueError("unsupported packed residue width")
+        modulus = runtime.integer_bigint(_untyped(self.base_ring()).characteristic())
+        limit = runtime.bigint(1) << runtime.bigint(8 * width)
+        if modulus - runtime.bigint(1) >= limit:
+            raise OverflowError("a matrix residue does not fit the requested width")
+        values = []
+        for entry in self.list():
+            values.append(runtime.integer_bigint(entry._value))
+        return runtime.uint64_pack_le(_packed_uint64(values), width)
 
     def _prime_residues(self) -> Any:
         """Return canonical row-major residues for a prime field."""
@@ -3551,7 +3549,14 @@ class Matrix(sage.Element):
                 if entry != 0:
                     return False
             return True
-        return runtime.flint_backend().matrixIsZero(self._native)
+        # Algebraic and approximate matrices may own dedicated native
+        # resources, while composite-residue matrices may use a coarse legacy
+        # handle.  Their common exact public oracle is entry comparison; this
+        # also avoids the host-only `matrixIsZero` adapter in WebAssembly.
+        for entry in self.list():
+            if entry != 0:
+                return False
+        return True
 
     def __bool__(self) -> bool:
         return not self.is_zero()
@@ -6849,6 +6854,16 @@ class Matrix(sage.Element):
             raise ArithmeticError("only valid for square matrix")
         if not _is_approximate_base(self.base_ring()):
             raise TypeError("approximate eigensystems require a real or complex matrix")
+        if self._has_portable_storage():
+            field = _complex_field(_approximate_precision(self.base_ring()))
+            entries = []
+            for value in self.list():
+                entries.append(runtime.reflect.get(field(value), "_native"))
+            return runtime.flint_backend().matrixApproxEigensystemPortable(
+                entries,
+                self.nrows(),
+                _approximate_precision(self.base_ring()),
+            )
         return runtime.flint_backend().matrixApproxEigensystem(self._native)
 
     def eigenvalues(
@@ -8081,18 +8096,6 @@ class Matrix(sage.Element):
                 modulus,
             )
             return answer
-        if base is sage.ZZ or base is sage.QQ:
-            answer = Matrix(
-                MatrixSpace(
-                    base,
-                    top.nrows() + bottom.nrows(),
-                    top.ncols(),
-                ),
-                runtime.flint_backend().matrixStack(top._native, bottom._native),
-            )
-            if subdivide:
-                answer._row_subdivisions = [top.nrows()]
-            return answer
         answer = matrix(
             base,
             top.nrows() + bottom.nrows(),
@@ -8243,18 +8246,6 @@ class Matrix(sage.Element):
                 answer.ncols(),
                 modulus,
             )
-            return answer
-        if base is sage.ZZ or base is sage.QQ:
-            answer = Matrix(
-                MatrixSpace(
-                    base,
-                    left.nrows(),
-                    left.ncols() + right.ncols(),
-                ),
-                runtime.flint_backend().matrixAugment(left._native, right._native),
-            )
-            if subdivide:
-                answer._col_subdivisions = [left.ncols()]
             return answer
         entries = []
         for row in range(left.nrows()):
@@ -9359,7 +9350,7 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
     return len(rows), cols, values
 
 
-def matrix(*args: Any) -> Matrix:
+def matrix(*args: Any, **options: Any) -> Matrix:
     r"""
     Construct a dense matrix, optionally over an explicit base ring.
 
@@ -9378,6 +9369,11 @@ def matrix(*args: Any) -> Matrix:
     [0 1]
     ```
     """
+    sparse_value = runtime.reflect.get(options, "sparse")
+    sparse = False if sparse_value is runtime.undefined else bool(sparse_value)
+    runtime.reflect.deleteProperty(options, "sparse")
+    if len(runtime.object.keys(options)):
+        raise TypeError("unsupported matrix() option")
     if not args:
         raise TypeError("matrix() requires entries or dimensions")
     values = list(args)
@@ -9458,7 +9454,7 @@ def matrix(*args: Any) -> Matrix:
         raise ValueError("matrix entry count does not match its dimensions")
     if base is None:
         base = _base_for_values(entries)
-    return MatrixSpace(base, rows, cols)(entries)
+    return MatrixSpace(base, rows, cols, sparse=bool(sparse))(entries)
 
 
 def column_matrix(*args: Any) -> Matrix:

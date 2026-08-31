@@ -318,6 +318,7 @@ const wasmNumericStatus = Object.freeze({
   5: "unsupported or malformed WebAssembly numeric expression",
   6: "expression has no bracketed root on the interval",
   7: "expression produced a non-finite value",
+  8: "FLINT's approximate eigensolver did not converge",
 });
 
 const wasmNumericExports = Object.freeze([
@@ -348,6 +349,7 @@ const wasmNumericExports = Object.freeze([
   "sagejs_numeric_complex_part_double",
   "sagejs_numeric_complex_format",
   "sagejs_numeric_complex_close",
+  "sagejs_numeric_matrix_eigensystem",
   "sagejs_numeric_complex_ei",
   "sagejs_numeric_complex_bessel_i",
   "sagejs_numeric_zeta_zero_output",
@@ -548,6 +550,18 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
     }
     new Uint8Array(memory.buffer, pointer, bytes.length).set(bytes);
     return bytes.length;
+  }
+
+  function writeComplexHandles(values, operation) {
+    const states = requireResources(values, "complex");
+    const pointer = uint32(exports.sagejs_numeric_input());
+    const byteLength = states.length * 4;
+    if (pointer + byteLength > memory.buffer.byteLength) {
+      throw new RangeError(`${operation} input exceeds the numeric buffer`);
+    }
+    const view = new DataView(memory.buffer, pointer, byteLength);
+    states.forEach((state, index) => view.setUint32(index * 4, state.handle, true));
+    return byteLength;
   }
 
   function readOutput(operation) {
@@ -1083,6 +1097,41 @@ function createWasmNumericBackend(instance, { recordCapability = () => {} } = {}
         },
       );
       return result;
+    },
+    matrixApproxEigensystemPortable(entries, size, precision) {
+      size = Number(size);
+      precision = Number(precision);
+      if (!Number.isSafeInteger(size) || size < 0 || entries.length !== size * size) {
+        throw new RangeError("eigensystem matrix dimensions are invalid");
+      }
+      const ingressBytes = writeComplexHandles(entries, "matrix eigensystem");
+      if (exports.sagejs_numeric_matrix_eigensystem(size, precision) !== 1) {
+        failure("matrix eigensystem");
+      }
+      const outputCount = size + 2 * size * size;
+      const pointer = uint32(exports.sagejs_numeric_output());
+      const byteLength = outputCount * 4;
+      if (pointer + byteLength > memory.buffer.byteLength) {
+        throw new Error("matrix eigensystem returned an invalid output range");
+      }
+      const view = new DataView(memory.buffer, pointer, byteLength);
+      let offset = 0;
+      const take = () => complex(
+        view.getUint32((offset++) * 4, true),
+        precision,
+        "matrix eigensystem result",
+      );
+      const values = Array.from({ length: size }, take);
+      const leftVectors = Array.from(
+        { length: size },
+        () => Array.from({ length: size }, take),
+      );
+      const rightVectors = Array.from(
+        { length: size },
+        () => Array.from({ length: size }, take),
+      );
+      trace("matrixApproxEigensystem", ingressBytes, byteLength);
+      return Object.freeze({ values, leftVectors, rightVectors });
     },
     serializeAnalyticPoint(value) {
       const realPart = backend.complexReal(value);

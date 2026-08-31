@@ -69,7 +69,7 @@ export async function instantiateFlintFactor(
   const generatedResourceBackend = createGeneratedWasmBackend(instance, {
     recordCapability,
   });
-  const polynomialBackend = createPortablePolynomialBackend();
+  const polynomialBackend = createPortablePolynomialBackend({ recordCapability });
   const exactBackend = createPortableExactBackend({
     recordCapability,
     primePi(value) {
@@ -719,6 +719,593 @@ export async function instantiateFlintFactor(
       ));
   }
 
+  function binomialBigInt(n, k) {
+    k = Math.min(k, n - k);
+    let answer = 1n;
+    for (let index = 1; index <= k; index += 1) {
+      answer = answer * BigInt(n - k + index) / BigInt(index);
+    }
+    return answer;
+  }
+
+  function signedPresentation(value, weight, sign) {
+    const p1 = p1Object(value);
+    weight = Number(weight);
+    sign = Number(sign);
+    if (!Number.isSafeInteger(weight) || weight < 2 ||
+        ![-1, 0, 1].includes(sign)) {
+      throw new RangeError(
+        "higher-weight presentation requires weight >= 2 and sign -1, 0, or 1",
+      );
+    }
+    const cosets = p1.count;
+    const generators = (weight - 1) * cosets;
+    if (!Number.isSafeInteger(generators) || generators > 20000) {
+      throw new RangeError("higher-weight presentation exceeds the portable generator limit");
+    }
+    const pairs = Array.from({ length: cosets }, (_, index) => p1ListEntry(value, index));
+    const parent = Array.from({ length: generators }, (_, index) => index);
+    const coefficient = Array.from({ length: generators }, () => 1);
+    const killed = Array.from({ length: generators }, () => false);
+    const find = (item) => {
+      const ancestor = parent[item];
+      if (ancestor !== item) {
+        const root = find(ancestor);
+        coefficient[item] *= coefficient[ancestor];
+        parent[item] = root;
+      }
+      return parent[item];
+    };
+    const union = (left, right, relationCoefficient) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      const leftScale = coefficient[left];
+      const rightScale = coefficient[right];
+      if (leftRoot === rightRoot) {
+        if (leftScale + relationCoefficient * rightScale !== 0) killed[leftRoot] = true;
+        return;
+      }
+      parent[leftRoot] = rightRoot;
+      coefficient[leftRoot] = -relationCoefficient * rightScale * leftScale;
+      killed[rightRoot] ||= killed[leftRoot];
+    };
+    for (let degree = 0; degree <= weight - 2; degree += 1) {
+      for (let coset = 0; coset < cosets; coset += 1) {
+        const [u, v] = pairs[coset];
+        const imageCoset = p1ListIndex(value, BigInt(v), -BigInt(u));
+        union(
+          degree * cosets + coset,
+          (weight - 2 - degree) * cosets + imageCoset,
+          degree & 1 ? -1 : 1,
+        );
+      }
+    }
+    if (sign !== 0) {
+      for (let degree = 0; degree <= weight - 2; degree += 1) {
+        for (let coset = 0; coset < cosets; coset += 1) {
+          const [u, v] = pairs[coset];
+          const imageCoset = p1ListIndex(value, -BigInt(u), BigInt(v));
+          const imageCoefficient = degree & 1 ? -1 : 1;
+          union(
+            degree * cosets + coset,
+            degree * cosets + imageCoset,
+            -sign * imageCoefficient,
+          );
+        }
+      }
+    }
+    const rootColumn = Array.from({ length: generators }, () => -1);
+    const columnRoot = [];
+    for (let generator = 0; generator < generators; generator += 1) {
+      const root = find(generator);
+      if (!killed[root] && rootColumn[root] === -1) {
+        rootColumn[root] = columnRoot.length;
+        columnRoot.push(root);
+      }
+    }
+    const freeCount = columnRoot.length;
+    if (generators * freeCount > 5_000_000) {
+      throw new RangeError("higher-weight relation matrix exceeds the portable dense guard");
+    }
+    const relationIntegers = Array.from(
+      { length: generators * freeCount }, () => 0n,
+    );
+    const addRelation = (row, original, valueCoefficient) => {
+      const root = find(original);
+      if (killed[root]) return;
+      const column = rootColumn[root];
+      relationIntegers[row * freeCount + column] +=
+        valueCoefficient * BigInt(coefficient[original]);
+    };
+    for (let degree = 0; degree <= weight - 2; degree += 1) {
+      for (let coset = 0; coset < cosets; coset += 1) {
+        const row = degree * cosets + coset;
+        const [u, v] = pairs[coset];
+        const tCoset = p1ListIndex(value, BigInt(v), -BigInt(u) - BigInt(v));
+        const ttCoset = p1ListIndex(value, -BigInt(u) - BigInt(v), BigInt(u));
+        const complement = weight - 2 - degree;
+        addRelation(row, row, 1n);
+        for (let index = 0; index <= complement; index += 1) {
+          const signValue = (weight - 2 + index) & 1 ? -1n : 1n;
+          addRelation(
+            row,
+            index * cosets + tCoset,
+            signValue * binomialBigInt(complement, index),
+          );
+        }
+        for (let index = 0; index <= degree; index += 1) {
+          const signValue = (weight - 2 - degree + index) & 1 ? -1n : 1n;
+          addRelation(
+            row,
+            (weight - 2 - degree + index) * cosets + ttCoset,
+            signValue * binomialBigInt(degree, index),
+          );
+        }
+      }
+    }
+    const relations = matrixBackend.qqMatrix(
+      generators,
+      freeCount,
+      relationIntegers.map((entry) => [entry, 1n]),
+    );
+    const rank = matrixBackend.matrixRank(relations);
+    const reduced = matrixBackend.matrixRref(relations);
+    const pivotRows = Array.from({ length: freeCount }, () => -1);
+    let pivotColumn = 0;
+    for (let row = 0; row < rank; row += 1) {
+      while (pivotColumn < freeCount &&
+             reduced.entries[row * freeCount + pivotColumn].numerator === 0n) {
+        pivotColumn += 1;
+      }
+      if (pivotColumn >= freeCount) throw new Error("invalid higher-weight rank profile");
+      pivotRows[pivotColumn++] = row;
+    }
+    const freeColumns = [];
+    for (let column = 0; column < freeCount; column += 1) {
+      if (pivotRows[column] === -1) freeColumns.push(column);
+    }
+    const dimension = freeColumns.length;
+    const targetByColumn = new Map(freeColumns.map((column, index) => [column, index]));
+    const reductionEntries = [];
+    for (let original = 0; original < generators; original += 1) {
+      const root = find(original);
+      const column = killed[root] ? -1 : rootColumn[root];
+      const scale = BigInt(coefficient[original]);
+      for (const freeColumn of freeColumns) {
+        if (column === -1) {
+          reductionEntries.push([0n, 1n]);
+        } else if (pivotRows[column] === -1) {
+          reductionEntries.push([
+            targetByColumn.get(column) === targetByColumn.get(freeColumn) ? scale : 0n,
+            1n,
+          ]);
+        } else {
+          const entry = reduced.entries[pivotRows[column] * freeCount + freeColumn];
+          reductionEntries.push([-scale * entry.numerator, entry.denominator]);
+        }
+      }
+    }
+    const reduction = matrixBackend.qqMatrix(generators, dimension, reductionEntries);
+    recordCapability(
+      "napi:@sagemath/sagejs-flint:p1ListHigherWeightPresentation",
+      "shared-runtime-js",
+      { executionTarget: "host-runtime-js", ingressBytes: 0, egressBytes: 0 },
+    );
+    return Object.freeze({
+      generators,
+      twoTermGenerators: freeCount,
+      dimension,
+      basisGenerators: Object.freeze(freeColumns.map((column) => columnRoot[column])),
+      rationalReductionEntries: Object.freeze(
+        reductionEntries.map(([numerator, denominator]) =>
+          Object.freeze([numerator, denominator])),
+      ),
+      reduction,
+    });
+  }
+
+  function characterPresentation(value, weight, sign, group, characterIndex) {
+    if (typeof algebraicBackend.qqbarRootOfUnity !== "function") {
+      throw new Error(
+        "character presentations require the algebraic WebAssembly module",
+      );
+    }
+    const p1 = p1Object(value);
+    weight = Number(weight);
+    sign = Number(sign);
+    if (!Number.isSafeInteger(weight) || weight < 2 ||
+        ![-1, 0, 1].includes(sign)) {
+      throw new RangeError(
+        "character presentation requires weight >= 2 and sign -1, 0, or 1",
+      );
+    }
+    const groupData = dirichletGroupBackend.dirichletGroupData(group);
+    const characterData = dirichletGroupBackend.dirichletCharacterData(
+      group, BigInt(characterIndex),
+    );
+    if (BigInt(groupData.modulus) !== BigInt(p1.level)) {
+      throw new RangeError("character modulus must equal the P1List level");
+    }
+    const characterOrder = BigInt(characterData.order);
+    const rootOrderBig = characterOrder % 2n === 0n
+      ? characterOrder : 2n * characterOrder;
+    if (rootOrderBig < 1n || rootOrderBig > 0xffff_ffffn) {
+      throw new RangeError("character root order exceeds browser limits");
+    }
+    const rootOrder = Number(rootOrderBig);
+    const halfOrder = rootOrder / 2;
+    const groupExponent = BigInt(groupData.exponent);
+    const characterExponent = (residue) => {
+      const raw = dirichletGroupBackend.dirichletCharacterExponent(
+        group, BigInt(characterIndex), BigInt(residue),
+      );
+      if (raw === null) throw new Error("character scalar is not a unit");
+      const scaled = BigInt(raw) * rootOrderBig;
+      if (scaled % groupExponent !== 0n) {
+        throw new Error("character exponent does not lie in the root field");
+      }
+      return Number(scaled / groupExponent);
+    };
+    const moduloExponent = (value) => {
+      value %= rootOrder;
+      return value < 0 ? value + rootOrder : value;
+    };
+    const cosets = p1.count;
+    const generators = (weight - 1) * cosets;
+    if (!Number.isSafeInteger(generators) || generators > 20000) {
+      throw new RangeError("character presentation exceeds the portable generator limit");
+    }
+    const pairs = Array.from(
+      { length: cosets }, (_, index) => p1ListEntry(value, index),
+    );
+    const parent = Array.from({ length: generators }, (_, index) => index);
+    const exponent = Array.from({ length: generators }, () => 0);
+    const killed = Array.from({ length: generators }, () => false);
+    const find = (item) => {
+      const ancestor = parent[item];
+      if (ancestor !== item) {
+        const root = find(ancestor);
+        exponent[item] = moduloExponent(exponent[item] + exponent[ancestor]);
+        parent[item] = root;
+      }
+      return parent[item];
+    };
+    // Impose left + zeta^relationExponent * right = 0.
+    const union = (left, right, relationExponent) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      const leftScale = exponent[left];
+      const rightScale = exponent[right];
+      const expectedLeft = moduloExponent(
+        halfOrder + relationExponent + rightScale,
+      );
+      if (leftRoot === rightRoot) {
+        if (leftScale !== expectedLeft) killed[leftRoot] = true;
+        return;
+      }
+      parent[leftRoot] = rightRoot;
+      exponent[leftRoot] = moduloExponent(expectedLeft - leftScale);
+      killed[rightRoot] ||= killed[leftRoot];
+    };
+    for (let degree = 0; degree <= weight - 2; degree += 1) {
+      for (let coset = 0; coset < cosets; coset += 1) {
+        const [u, v] = pairs[coset];
+        const [imageU, imageV, scalar] = p1ListNormalize(
+          value, BigInt(v), -BigInt(u), true,
+        );
+        const imageCoset = p1ListIndex(
+          value, BigInt(imageU), BigInt(imageV),
+        );
+        let relationExponent = characterExponent(scalar);
+        if (degree & 1) relationExponent += halfOrder;
+        union(
+          degree * cosets + coset,
+          (weight - 2 - degree) * cosets + imageCoset,
+          moduloExponent(relationExponent),
+        );
+      }
+    }
+    if (sign !== 0) {
+      for (let degree = 0; degree <= weight - 2; degree += 1) {
+        for (let coset = 0; coset < cosets; coset += 1) {
+          const [u, v] = pairs[coset];
+          const [imageU, imageV, scalar] = p1ListNormalize(
+            value, -BigInt(u), BigInt(v), true,
+          );
+          const imageCoset = p1ListIndex(
+            value, BigInt(imageU), BigInt(imageV),
+          );
+          let relationExponent = characterExponent(scalar);
+          if (Boolean(degree & 1) !== (sign > 0)) {
+            relationExponent += halfOrder;
+          }
+          union(
+            degree * cosets + coset,
+            degree * cosets + imageCoset,
+            moduloExponent(relationExponent),
+          );
+        }
+      }
+    }
+    const rootColumn = Array.from({ length: generators }, () => -1);
+    const columnRoot = [];
+    for (let generator = 0; generator < generators; generator += 1) {
+      const root = find(generator);
+      if (!killed[root] && rootColumn[root] === -1) {
+        rootColumn[root] = columnRoot.length;
+        columnRoot.push(root);
+      }
+    }
+    const freeCount = columnRoot.length;
+    if (characterData.real) {
+      if (generators * freeCount > 5_000_000) {
+        throw new RangeError(
+          "real-character relation matrix exceeds the portable dense guard",
+        );
+      }
+      const realRoot = (valueExponent) => {
+        const power = moduloExponent(valueExponent);
+        if (power === 0) return 1n;
+        if (rootOrder % 2 === 0 && power === halfOrder) return -1n;
+        throw new Error("real character produced a non-real root of unity");
+      };
+      const relationIntegers = Array.from(
+        { length: generators * freeCount }, () => 0n,
+      );
+      const addRealRelation = (
+        row, original, integerCoefficient, valueExponent,
+      ) => {
+        const root = find(original);
+        if (killed[root]) return;
+        const column = rootColumn[root];
+        relationIntegers[row * freeCount + column] +=
+          integerCoefficient * realRoot(valueExponent + exponent[original]);
+      };
+      for (let degree = 0; degree <= weight - 2; degree += 1) {
+        for (let coset = 0; coset < cosets; coset += 1) {
+          const row = degree * cosets + coset;
+          const [u, v] = pairs[coset];
+          const [tU, tV, tScalar] = p1ListNormalize(
+            value, BigInt(v), -BigInt(u) - BigInt(v), true,
+          );
+          const [ttU, ttV, ttScalar] = p1ListNormalize(
+            value, -BigInt(u) - BigInt(v), BigInt(u), true,
+          );
+          const tCoset = p1ListIndex(value, BigInt(tU), BigInt(tV));
+          const ttCoset = p1ListIndex(value, BigInt(ttU), BigInt(ttV));
+          const tExponent = characterExponent(tScalar);
+          const ttExponent = characterExponent(ttScalar);
+          const complement = weight - 2 - degree;
+          addRealRelation(row, row, 1n, 0);
+          for (let index = 0; index <= complement; index += 1) {
+            const signValue = (weight - 2 + index) & 1 ? -1n : 1n;
+            addRealRelation(
+              row,
+              index * cosets + tCoset,
+              signValue * binomialBigInt(complement, index),
+              tExponent,
+            );
+          }
+          for (let index = 0; index <= degree; index += 1) {
+            const signValue = (weight - 2 - degree + index) & 1 ? -1n : 1n;
+            addRealRelation(
+              row,
+              (weight - 2 - degree + index) * cosets + ttCoset,
+              signValue * binomialBigInt(degree, index),
+              ttExponent,
+            );
+          }
+        }
+      }
+      const relations = matrixBackend.qqMatrix(
+        generators,
+        freeCount,
+        relationIntegers.map((entry) => [entry, 1n]),
+      );
+      const rank = matrixBackend.matrixRank(relations);
+      const reduced = matrixBackend.matrixRref(relations);
+      const pivotRows = Array.from({ length: freeCount }, () => -1);
+      let pivotColumn = 0;
+      for (let row = 0; row < rank; row += 1) {
+        while (pivotColumn < freeCount &&
+               reduced.entries[row * freeCount + pivotColumn].numerator === 0n) {
+          pivotColumn += 1;
+        }
+        if (pivotColumn >= freeCount) {
+          throw new Error("invalid real-character rank profile");
+        }
+        pivotRows[pivotColumn++] = row;
+      }
+      const freeColumns = [];
+      for (let column = 0; column < freeCount; column += 1) {
+        if (pivotRows[column] === -1) freeColumns.push(column);
+      }
+      const dimension = freeColumns.length;
+      const targetByColumn = new Map(
+        freeColumns.map((column, index) => [column, index]),
+      );
+      const reductionEntries = [];
+      for (let original = 0; original < generators; original += 1) {
+        const root = find(original);
+        const column = killed[root] ? -1 : rootColumn[root];
+        const scale = realRoot(exponent[original]);
+        for (const freeColumn of freeColumns) {
+          if (column === -1) {
+            reductionEntries.push([0n, 1n]);
+          } else if (pivotRows[column] === -1) {
+            reductionEntries.push([
+              targetByColumn.get(column) === targetByColumn.get(freeColumn)
+                ? scale : 0n,
+              1n,
+            ]);
+          } else {
+            const entry = reduced.entries[
+              pivotRows[column] * freeCount + freeColumn
+            ];
+            reductionEntries.push([
+              -scale * entry.numerator, entry.denominator,
+            ]);
+          }
+        }
+      }
+      const reduction = matrixBackend.qqMatrix(
+        generators, dimension, reductionEntries,
+      );
+      recordCapability(
+        "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
+        "shared-runtime-js",
+        { executionTarget: "host-runtime-js", ingressBytes: 0, egressBytes: 0 },
+      );
+      return Object.freeze({
+        generators,
+        twoTermGenerators: freeCount,
+        dimension,
+        basisGenerators: Object.freeze(
+          freeColumns.map((column) => columnRoot[column]),
+        ),
+        rationalReductionEntries: Object.freeze(
+          reductionEntries.map(([numerator, denominator]) =>
+            Object.freeze([numerator, denominator])),
+        ),
+        reduction,
+      });
+    }
+    if (generators * freeCount > 4095 || generators > 128 || freeCount > 128) {
+      throw new RangeError(
+        "character relation matrix exceeds the algebraic browser guard",
+      );
+    }
+    const zero = algebraicBackend.qqbarFromRational(0n, 1n);
+    const roots = Array.from(
+      { length: rootOrder },
+      (_, power) => algebraicBackend.qqbarRootOfUnity(power, rootOrder),
+    );
+    const relationEntries = Array.from(
+      { length: generators * freeCount }, () => zero,
+    );
+    const addRelation = (row, original, integerCoefficient, valueExponent) => {
+      const root = find(original);
+      if (killed[root]) return;
+      const column = rootColumn[root];
+      const power = moduloExponent(valueExponent + exponent[original]);
+      const coefficientValue = algebraicBackend.qqbarFromRational(
+        integerCoefficient, 1n,
+      );
+      const term = algebraicBackend.qqbarMul(roots[power], coefficientValue);
+      const offset = row * freeCount + column;
+      relationEntries[offset] = algebraicBackend.qqbarAdd(
+        relationEntries[offset], term,
+      );
+    };
+    for (let degree = 0; degree <= weight - 2; degree += 1) {
+      for (let coset = 0; coset < cosets; coset += 1) {
+        const row = degree * cosets + coset;
+        const [u, v] = pairs[coset];
+        const [tU, tV, tScalar] = p1ListNormalize(
+          value, BigInt(v), -BigInt(u) - BigInt(v), true,
+        );
+        const [ttU, ttV, ttScalar] = p1ListNormalize(
+          value, -BigInt(u) - BigInt(v), BigInt(u), true,
+        );
+        const tCoset = p1ListIndex(value, BigInt(tU), BigInt(tV));
+        const ttCoset = p1ListIndex(value, BigInt(ttU), BigInt(ttV));
+        const tExponent = characterExponent(tScalar);
+        const ttExponent = characterExponent(ttScalar);
+        const complement = weight - 2 - degree;
+        addRelation(row, row, 1n, 0);
+        for (let index = 0; index <= complement; index += 1) {
+          const signValue = (weight - 2 + index) & 1 ? -1n : 1n;
+          addRelation(
+            row,
+            index * cosets + tCoset,
+            signValue * binomialBigInt(complement, index),
+            tExponent,
+          );
+        }
+        for (let index = 0; index <= degree; index += 1) {
+          const signValue = (weight - 2 - degree + index) & 1 ? -1n : 1n;
+          addRelation(
+            row,
+            (weight - 2 - degree + index) * cosets + ttCoset,
+            signValue * binomialBigInt(degree, index),
+            ttExponent,
+          );
+        }
+      }
+    }
+    const relations = algebraicBackend.qqbarMatrix(
+      generators, freeCount, relationEntries, Boolean(characterData.real),
+    );
+    const rank = algebraicBackend.matrixRank(relations);
+    const reduced = algebraicBackend.matrixRref(relations);
+    const pivotRows = Array.from({ length: freeCount }, () => -1);
+    let pivotColumn = 0;
+    for (let row = 0; row < rank; row += 1) {
+      while (pivotColumn < freeCount && algebraicBackend.qqbarEqual(
+        algebraicBackend.matrixEntry(reduced, row, pivotColumn), zero,
+      )) {
+        pivotColumn += 1;
+      }
+      if (pivotColumn >= freeCount) {
+        throw new Error("invalid character-presentation rank profile");
+      }
+      pivotRows[pivotColumn++] = row;
+    }
+    const freeColumns = [];
+    for (let column = 0; column < freeCount; column += 1) {
+      if (pivotRows[column] === -1) freeColumns.push(column);
+    }
+    const dimension = freeColumns.length;
+    if (generators * dimension > 4095 || dimension > 128) {
+      throw new RangeError(
+        "character reduction matrix exceeds the algebraic browser guard",
+      );
+    }
+    const targetByColumn = new Map(
+      freeColumns.map((column, index) => [column, index]),
+    );
+    const reductionEntries = [];
+    for (let original = 0; original < generators; original += 1) {
+      const root = find(original);
+      const column = killed[root] ? -1 : rootColumn[root];
+      const scale = roots[exponent[original]];
+      for (const freeColumn of freeColumns) {
+        if (column === -1) {
+          reductionEntries.push(zero);
+        } else if (pivotRows[column] === -1) {
+          reductionEntries.push(
+            targetByColumn.get(column) === targetByColumn.get(freeColumn)
+              ? scale : zero,
+          );
+        } else {
+          const entry = algebraicBackend.matrixEntry(
+            reduced, pivotRows[column], freeColumn,
+          );
+          reductionEntries.push(algebraicBackend.qqbarNeg(
+            algebraicBackend.qqbarMul(entry, scale),
+          ));
+        }
+      }
+    }
+    const reduction = algebraicBackend.qqbarMatrix(
+      generators, dimension, reductionEntries, Boolean(characterData.real),
+    );
+    recordCapability(
+      "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
+      "shared-runtime-js",
+      { executionTarget: "host-runtime-js", ingressBytes: 0, egressBytes: 0 },
+    );
+    return Object.freeze({
+      generators,
+      twoTermGenerators: freeCount,
+      dimension,
+      basisGenerators: Object.freeze(
+        freeColumns.map((column) => columnRoot[column]),
+      ),
+      reduction,
+    });
+  }
+
   const backend = {
     factor,
     isPrime,
@@ -752,6 +1339,10 @@ export async function instantiateFlintFactor(
     },
     p1ListStarEigenspaceBasis,
     p1ListReducePath,
+    p1ListHigherWeightPresentation: signedPresentation,
+    higherWeightPresentationReduction: (presentation) => presentation.reduction,
+    p1ListCharacterPresentation: characterPresentation,
+    characterPresentationReduction: (presentation) => presentation.reduction,
     ...polynomialBackend,
     ...multivariateBackend,
     ...matrixBackend,
