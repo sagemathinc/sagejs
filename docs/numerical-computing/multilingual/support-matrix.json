@@ -1,34 +1,167 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "semantics": "sagejs-canonical-numerical-intent-v1",
   "legend": {
-    "runtime": "natural source alias lowers and executes the shared Sage.js operation",
+    "registry": "a programmatic source alias lowers to the canonical Sage.js operation",
+    "natural_parser": "the actual foreign-language parser recognizes a qualified natural source form",
     "emit": "target-native source emission and checked generated-source round trip are qualified",
-    "unsupported": "a structured unsupported_target diagnostic is returned"
+    "unsupported_emit": "outward emission fails with a structured unsupported_target diagnostic"
   },
-  "runtime_languages": ["sage", "python-scipy", "matlab", "wolfram"],
+  "languages": ["sage", "python-scipy", "matlab", "wolfram"],
   "operations": [
-    {"operation": "roots:scalar_root:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "linear_algebra:linear_solve:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "linear_algebra:least_squares:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "spectral:symmetric_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "spectral:general_eigen:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "spectral:singular_value_decomposition:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "spectral:fourier_transform:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "spectral:convolution:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "approximation:interpolation:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]},
-    {"operation": "approximation:cubic_spline:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "integration:definite_integral:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "optimization:scalar_minimum:v1", "emit": ["sage", "python-scipy", "matlab", "wolfram"]},
-    {"operation": "optimization:minimize:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "nonlinear_systems:nonlinear_system:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "least_squares:nonlinear_least_squares:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "fitting:linear_fit:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "ode:initial_value_problem:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "statistics:descriptive_statistics:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "statistics:one_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "statistics:two_sample_t_test:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "statistics:linear_regression:v1", "emit": ["sage", "python-scipy", "matlab"], "unsupported": ["wolfram"]},
-    {"operation": "sweeps:parameter_sweep:v1", "emit": ["sage", "python-scipy"], "unsupported": ["matlab", "wolfram"]}
+    {
+      "operation": "roots:scalar_root:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "linear_algebra:linear_solve:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "linear_algebra:least_squares:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "spectral:symmetric_eigen:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": [],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "spectral:general_eigen:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": [],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "spectral:singular_value_decomposition:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "spectral:fourier_transform:v1",
+      "registry": ["sage", "python-scipy"],
+      "natural_parser": [],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "spectral:convolution:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "approximation:interpolation:v1",
+      "registry": ["sage", "python-scipy"],
+      "natural_parser": [],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "approximation:cubic_spline:v1",
+      "registry": ["sage", "python-scipy"],
+      "natural_parser": [],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "integration:definite_integral:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "optimization:scalar_minimum:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab", "wolfram"],
+      "unsupported_emit": []
+    },
+    {
+      "operation": "optimization:minimize:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "nonlinear_systems:nonlinear_system:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "least_squares:nonlinear_least_squares:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "fitting:linear_fit:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "ode:initial_value_problem:v1",
+      "registry": ["sage", "python-scipy", "matlab"],
+      "natural_parser": ["matlab"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "statistics:descriptive_statistics:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy", "matlab"],
+      "unsupported_emit": ["wolfram"]
+    },
+    {
+      "operation": "statistics:one_sample_t_test:v1",
+      "registry": ["sage", "python-scipy", "wolfram"],
+      "natural_parser": ["wolfram"],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "statistics:two_sample_t_test:v1",
+      "registry": ["sage", "python-scipy", "wolfram"],
+      "natural_parser": ["wolfram"],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "statistics:linear_regression:v1",
+      "registry": ["sage", "python-scipy", "wolfram"],
+      "natural_parser": ["wolfram"],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    },
+    {
+      "operation": "sweeps:parameter_sweep:v1",
+      "registry": ["sage", "python-scipy", "matlab", "wolfram"],
+      "natural_parser": ["matlab", "wolfram"],
+      "emit": ["sage", "python-scipy"],
+      "unsupported_emit": ["matlab", "wolfram"]
+    }
   ]
 }

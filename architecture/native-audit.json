@@ -541,6 +541,27 @@
       "next": "Upstream the status-returning embedding changes and remove local containment code when msolve provides an equivalent stable library contract."
     },
     {
+      "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
+      "lines": 367,
+      "bytes": 11651,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "validate bounded cminpack dimensions, tolerances, workspace, and linear-memory regions",
+        "marshal complete residual and Jacobian callback batches across one synchronous Wasm import",
+        "track and release every operation-owned allocation on success and failure"
+      ],
+      "rationale": "This adapter owns only a bounded status, callback, and memory ABI around authenticated upstream cminpack; the Levenberg-Marquardt iteration policy remains entirely in the mature external library.",
+      "fallback": "The public automatic route remains the independently tested ordinary-Python damped Gauss-Newton implementation, while an explicit cminpack identity fails rather than silently substituting it.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "cminpack upstream MGH corpus",
+        "SciPy"
+      ],
+      "next": "Retain the one-import packed boundary and exact method names; widen dimensions or select it automatically only with fresh lifecycle, correctness, payload, and performance receipts."
+    },
+    {
       "path": "packages/wasm-toolchain/patches/sagejs_wasi_fenv_compat.h",
       "lines": 25,
       "bytes": 560,

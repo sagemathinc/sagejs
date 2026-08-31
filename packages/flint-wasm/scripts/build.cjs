@@ -369,6 +369,9 @@ requirePath(
 );
 
 fs.mkdirSync(outputDirectory, { recursive: true });
+run(process.execPath, [
+  path.join(packageRoot, "numerical", "scripts", "build.cjs"),
+]);
 // Earlier builds copied these source modules beside the bundled runtime. They
 // are no longer served or receipted; remove them explicitly when resuming a
 // package build so the physical dist directory is as clean as its manifest.

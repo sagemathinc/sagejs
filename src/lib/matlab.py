@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import sagejs.runtime as runtime
+from sagejs.numerics.frontends import (
+    FrontendDiagnostic,
+    UnsupportedFrontendError,
+    matlab_fzero_intent,
+)
 from sagejs.numerics.frontends import (
     create_frontend_registry as _create_numerical_registry,
 )
@@ -15,9 +20,6 @@ from sagejs.numerics.frontends import (
 )
 from sagejs.numerics.frontends import (
     execute_scalar_root_intent as _execute_numerical_intent,
-)
-from sagejs.numerics.frontends import (
-    matlab_fzero_intent,
 )
 
 ALL = object()
@@ -218,25 +220,156 @@ def _require_numerical_success(name: str, result: Any) -> None:
         raise RuntimeError(name + " failed: " + str(status))
 
 
+def _unsupported_vendor_numerical(name: str, reason: str) -> Any:
+    """Fail closed when a MATLAB spelling does not preserve MATLAB semantics."""
+
+    raise UnsupportedFrontendError(
+        FrontendDiagnostic(
+            "unsupported_operation",
+            name + " is not yet qualified for the Sage.js MATLAB surface: " + reason,
+            language="matlab",
+            details={"surface": "natural-vendor-alias", "source_name": name},
+        )
+    )
+
+
+def _array_data(
+    value: Any, name: str, *, allow_matrix: bool
+) -> tuple[list[Any], tuple[int, ...]]:
+    """Return column-major values and an explicitly bounded MATLAB shape."""
+
+    data = value.tolist() if hasattr(value, "tolist") else value
+    if isinstance(data, (str, bytes, bytearray)) or not isinstance(data, (list, tuple)):
+        raise TypeError(name + " must be a finite vector or matrix")
+    outer = list(data)
+    nested = [
+        isinstance(item, (list, tuple))
+        and not isinstance(item, (str, bytes, bytearray))
+        for item in outer
+    ]
+    if not any(nested):
+        return outer, (len(outer),)
+    if not all(nested):
+        raise TypeError(name + " must be rectangular")
+    rows = [list(item) for item in outer]
+    columns = len(rows[0]) if rows else 0
+    if any(len(row) != columns for row in rows):
+        raise TypeError(name + " must be rectangular")
+    if any(isinstance(item, (list, tuple)) for row in rows for item in row):
+        raise TypeError(name + " supports at most two dimensions")
+    shape = (len(rows), columns)
+    if not allow_matrix and shape[0] > 1 and shape[1] > 1:
+        raise TypeError(name + " must be a vector, not a matrix")
+    flat = [rows[row][column] for column in range(columns) for row in range(len(rows))]
+    return flat, shape
+
+
+def _restore_array(values: Any, shape: tuple[int, ...]) -> Any:
+    items = list(values)
+    expected = 1
+    for dimension in shape:
+        expected *= dimension
+    if len(items) != expected:
+        raise RuntimeError("MATLAB numerical adapter changed the array element count")
+    if len(shape) == 1:
+        return items
+    rows, columns = shape
+    matrix = [[None for _column in range(columns)] for _row in range(rows)]
+    index = 0
+    for column in range(columns):
+        for row in range(rows):
+            matrix[row][column] = items[index]
+            index += 1
+    return np.array(matrix)
+
+
+def _vector_data(value: Any, name: str) -> tuple[list[Any], tuple[int, ...]]:
+    return _array_data(value, name, allow_matrix=False)
+
+
+def _column_vector_data(value: Any, name: str) -> list[Any]:
+    values, shape = _vector_data(value, name)
+    if len(shape) == 2 and shape[0] == 1 and shape[1] > 1:
+        raise TypeError(name + " must be a column vector")
+    return values
+
+
+def _column_array(values: Any, name: str) -> Any:
+    """Project a canonical vector to a MATLAB `n`-by-1 array."""
+
+    items, _shape = _vector_data(values, name)
+    return np.array([[item] for item in items])
+
+
+def _callback_vector_data(value: Any, name: str) -> list[Any]:
+    data = value.tolist() if hasattr(value, "tolist") else value
+    if not isinstance(data, (list, tuple)):
+        if isinstance(data, (str, bytes, bytearray, dict)):
+            raise TypeError(name + " must return a numeric scalar or vector")
+        return [data]
+    values, _shape = _vector_data(data, name)
+    return values
+
+
+def _shaped_callback(
+    function: Any,
+    shape: tuple[int, ...],
+    name: str,
+    *,
+    vector_result: bool,
+) -> Callable[[Any], Any]:
+    """Adapt a flat canonical callback boundary to a MATLAB vector shape."""
+
+    if not callable(function):
+        raise TypeError(name + " must be callable")
+
+    def callback(values: Any) -> Any:
+        result = function(_restore_array(values, shape))
+        if not vector_result:
+            return result
+        return _callback_vector_data(result, name + " result")
+
+    return callback
+
+
+def _convolution_shape(
+    left: tuple[int, ...], right: tuple[int, ...], length: int
+) -> tuple[int, ...]:
+    if len(left) == 1 and len(right) == 1:
+        return (length,)
+    if len(left) == 2 and left[0] == 1 and len(right) == 2 and right[0] == 1:
+        return (1, length)
+    return (length, 1)
+
+
 def linsolve(matrix: Any, right: Any, **options: Any) -> Any:
-    return numerical_value("linsolve", matrix, right, **options)
+    values = _column_vector_data(right, "linsolve right side")
+    return _column_array(
+        numerical_value("linsolve", matrix, values, **options),
+        "linsolve result",
+    )
 
 
 def lsqminnorm(matrix: Any, right: Any, **options: Any) -> Any:
-    return numerical_value("lsqminnorm", matrix, right, **options)
+    values = _column_vector_data(right, "lsqminnorm right side")
+    return _column_array(
+        numerical_value("lsqminnorm", matrix, values, **options),
+        "lsqminnorm result",
+    )
 
 
 def eig_result(matrix: Any, **options: Any) -> Any:
-    return numerical_result("eig", matrix, **options)
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "eig", "complex decoding and eigenvector orientation are not preserved"
+    )
 
 
 def eig(matrix: Any, **options: Any) -> Any:
-    """Return MATLAB's one-output eigenvalue view."""
-
-    result = eig_result(matrix, **options)
-    _require_numerical_success("eig", result)
-    value = result.value
-    return value["eigenvalues"]
+    del matrix, options
+    return _unsupported_vendor_numerical(
+        "eig", "complex decoding and eigenvector orientation are not preserved"
+    )
 
 
 def svd_result(matrix: Any, **options: Any) -> Any:
@@ -249,27 +382,38 @@ def svd(matrix: Any, **options: Any) -> Any:
     result = svd_result(matrix, **options)
     _require_numerical_success("svd", result)
     value = result.value
-    return value["singular_values"]
+    return _column_array(value["singular_values"], "svd singular values")
 
 
 def fft_result(samples: Any, **options: Any) -> Any:
-    return numerical_result("fft", samples, **options)
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "fft", "complex values are not yet projected as MATLAB complex arrays"
+    )
 
 
 def fft(samples: Any, **options: Any) -> Any:
-    result = fft_result(samples, **options)
-    _require_numerical_success("fft", result)
-    return result.value
+    del samples, options
+    return _unsupported_vendor_numerical(
+        "fft", "complex values are not yet projected as MATLAB complex arrays"
+    )
 
 
 def conv_result(left: Any, right: Any, **options: Any) -> Any:
-    return numerical_result("conv", left, right, **options)
+    left_values, _left_shape = _vector_data(left, "conv left operand")
+    right_values, _right_shape = _vector_data(right, "conv right operand")
+    return numerical_result("conv", left_values, right_values, **options)
 
 
 def conv(left: Any, right: Any, **options: Any) -> Any:
-    result = conv_result(left, right, **options)
+    left_values, left_shape = _vector_data(left, "conv left operand")
+    right_values, right_shape = _vector_data(right, "conv right operand")
+    result = numerical_result("conv", left_values, right_values, **options)
     _require_numerical_success("conv", result)
-    return result.value
+    return _restore_array(
+        result.value,
+        _convolution_shape(left_shape, right_shape, len(result.value)),
+    )
 
 
 class MatlabInterpolant:
@@ -286,15 +430,17 @@ class MatlabInterpolant:
 
 
 def gridded_interpolant(nodes: Any, values: Any, **options: Any) -> Any:
-    result = numerical_result("griddedInterpolant", nodes, values, **options)
-    _require_numerical_success("griddedInterpolant", result)
-    return MatlabInterpolant(result)
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "griddedInterpolant", "default method and extrapolation semantics differ"
+    )
 
 
 def spline(nodes: Any, values: Any, **options: Any) -> Any:
-    result = numerical_result("spline", nodes, values, **options)
-    _require_numerical_success("spline", result)
-    return MatlabInterpolant(result)
+    del nodes, values, options
+    return _unsupported_vendor_numerical(
+        "spline", "endpoint and returned-form semantics are not yet qualified"
+    )
 
 
 def integral_result(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
@@ -313,15 +459,57 @@ def fminbnd(function: Any, lower: Any, upper: Any, **options: Any) -> Any:
 
 
 def fminsearch(function: Any, initial: Any, **options: Any) -> Any:
-    return numerical_value("fminsearch", function, initial, **options)
+    values, shape = _vector_data(initial, "fminsearch initial point")
+    return _restore_array(
+        numerical_value(
+            "fminsearch",
+            _shaped_callback(
+                function,
+                shape,
+                "fminsearch objective",
+                vector_result=False,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
 
 
 def fsolve(function: Any, initial: Any, **options: Any) -> Any:
-    return numerical_value("fsolve", function, initial, **options)
+    values, shape = _vector_data(initial, "fsolve initial point")
+    return _restore_array(
+        numerical_value(
+            "fsolve",
+            _shaped_callback(
+                function,
+                shape,
+                "fsolve callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
 
 
 def lsqnonlin(residuals: Any, initial: Any, **options: Any) -> Any:
-    return numerical_value("lsqnonlin", residuals, initial, **options)
+    values, shape = _vector_data(initial, "lsqnonlin initial point")
+    return _restore_array(
+        numerical_value(
+            "lsqnonlin",
+            _shaped_callback(
+                residuals,
+                shape,
+                "lsqnonlin residual callback",
+                vector_result=True,
+            ),
+            values,
+            **options,
+        ),
+        shape,
+    )
 
 
 def polyfit(xdata: Any, ydata: Any, degree: int = 1, **options: Any) -> Any:
@@ -329,7 +517,9 @@ def polyfit(xdata: Any, ydata: Any, degree: int = 1, **options: Any) -> Any:
         raise NotImplementedError(
             "the validated MATLAB polyfit frontend currently supports degree 1"
         )
-    return numerical_value("polyfit", xdata, ydata, **options)
+    x_values, _x_shape = _vector_data(xdata, "polyfit x data")
+    y_values, _y_shape = _vector_data(ydata, "polyfit y data")
+    return numerical_value("polyfit", x_values, y_values, **options)
 
 
 class MatlabOdeSolution:
@@ -353,31 +543,45 @@ class MatlabOdeSolution:
 
 
 def ode45(function: Any, t_span: Any, y0: Any, **options: Any) -> MatlabOdeSolution:
-    result = numerical_result("ode45", function, t_span, y0, **options)
+    times, _time_shape = _vector_data(t_span, "ode45 time span")
+    state, _state_shape = _vector_data(y0, "ode45 initial state")
+    result = numerical_result("ode45", function, times, state, **options)
     _require_numerical_success("ode45", result)
     return MatlabOdeSolution(result)
 
 
 def sagejs_describe(data: Any, **options: Any) -> Any:
-    return numerical_value("sagejs_describe", data, **options)
+    values, _shape = _vector_data(data, "sagejs_describe data")
+    return numerical_value("sagejs_describe", values, **options)
 
 
 def ttest(data: Any, population_mean: Any = 0, **options: Any) -> Any:
-    return numerical_value("ttest", data, population_mean, **options)
+    del data, population_mean, options
+    return _unsupported_vendor_numerical(
+        "ttest", "MATLAB's one-output hypothesis decision is not preserved"
+    )
 
 
 def ttest2(first: Any, second: Any, **options: Any) -> Any:
-    return numerical_value("ttest2", first, second, **options)
+    del first, second, options
+    return _unsupported_vendor_numerical(
+        "ttest2", "MATLAB defaults and one-output hypothesis decision are not preserved"
+    )
 
 
 def fitlm(x: Any, y: Any, **options: Any) -> Any:
-    return numerical_value("fitlm", x, y, **options)
+    del x, y, options
+    return _unsupported_vendor_numerical(
+        "fitlm", "MATLAB's model object and default inference are not preserved"
+    )
 
 
 def arrayfun(function: Any, parameters: Any, **options: Any) -> Any:
     """Apply one callback through the deterministic bounded sweep contract."""
 
-    return numerical_value("arrayfun", function, parameters, **options)
+    values, shape = _array_data(parameters, "arrayfun input", allow_matrix=True)
+    result = numerical_value("arrayfun", function, values, **options)
+    return _restore_array(result, shape)
 
 
 def _integer_index(value: Any) -> int:

@@ -8974,7 +8974,7 @@
       "id": "native-file:packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
-      "disposition": "host-adapter",
+      "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration"
     },
@@ -8983,7 +8983,7 @@
       "kind": "classified-native-file",
       "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
       "disposition": "external-library-bridge",
-      "review_status": "accepted",
+      "review_status": "audited",
       "lane": "integration"
     },
     {

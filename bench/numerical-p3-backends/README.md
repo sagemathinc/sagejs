@@ -18,9 +18,10 @@ This conclusion strengthens rather than replaces
 [`agents/numerical-optimization-backend-strategy.md`](../../agents/numerical-optimization-backend-strategy.md).
 The new evidence closes both the callback-boundary question and the bounded
 cminpack artifact-qualification gate: the final reactor passes the complete
-53-case upstream MGH corpus for both methods in Node and Chromium. Automatic
-selection still belongs to the integration lane because the ordinary-Python
-router must independently validate results and construct public contracts.
+53-case upstream MGH corpus for both methods in Node and Chromium. The public
+integration now independently validates results and constructs the ordinary-
+Python contracts. Automatic selection remains disabled pending a separate
+performance and correctness policy.
 
 ## Why an explicit Wasm adapter is architecturally necessary
 
@@ -60,9 +61,9 @@ is a permanent API requirement, not a one-off backend bug workaround.
 ## Implemented production candidate
 
 `packages/flint-wasm/numerical/` contains the content-locked cminpack `lmdif`
-and `lmder` reactor. It remains outside the public package graph so an
-integration-owned change can register it without entangling the optimization
-domain or duplicating the binary in FLINT.
+and `lmder` reactor. It is registered as one separately lazy public resource
+for Node, browser evaluators, npm relocation, and SEA without entangling the
+optimization domain or duplicating the binary in FLINT.
 
 The C boundary imports exactly one synchronous function:
 
@@ -82,7 +83,8 @@ and no WASI host import. The adapter enforces:
 - module-wide non-reentrancy;
 - deterministic counters and tracked allocation cleanup;
 - callback-exception identity after C cleanup;
-- callback-boundary cancellation, elapsed-time, and evaluation budgets; and
+- callback-boundary cancellation, elapsed-time, total-callback, and exact
+  outer-iteration budgets; and
 - exact outward method names `cminpack-lmdif` and `cminpack-lmder`.
 
 The host copies the current parameter vector before invoking user code and
@@ -94,13 +96,13 @@ allocation.
 ### Artifact and runtime evidence
 
 The final candidate artifact is identified by
-`f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855`:
+`4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5`:
 
 | Measure | Value |
 | --- | ---: |
-| Raw Wasm | 72,149 bytes |
-| gzip -9 | 28,936 bytes |
-| Brotli | 23,904 bytes |
+| Raw Wasm | 72,155 bytes |
+| gzip -9 | 28,940 bytes |
+| Brotli | 23,884 bytes |
 | Imports | one function, `sagejs_p3.evaluate` |
 | Initial memory | 2 MiB |
 | Maximum memory | 128 MiB |
@@ -112,7 +114,7 @@ The identical artifact solved the analytic-Jacobian Rosenbrock residual at
 - Chromium on Linux x64;
 - Node 26.7.0 on local Linux x64;
 - Node 26.5.1 on persistent Linux ARM64 (`bench-arm`);
-- Node 26.7.0 on persistent macOS ARM64 (`m1`); and
+- Node 26.5.0 on persistent macOS ARM64 (`m1`); and
 - Node 26.5.1 on persistent Windows x64 (`windows`).
 
 Every run reported zero live allocations and bytes after completion. The
@@ -143,44 +145,36 @@ obvious performance blocker; they are not release performance claims.
 
 ### Repository-level validation state
 
-The seven-stage repository build passed from this worktree in 6m40s, and
-`pnpm test:baselib:strict` passed 285 modules with zero errors. The required
-broader gates currently stop on two base-owned inconsistencies before reaching
-this experiment:
+The eight-stage repository build passes with the lazy reactor as its final
+stage. `pnpm architecture:check` and strict Python validation pass with the
+adapter, ABI, capability, package, and resource-lifetime classifications
+current. Focused public tests pass through Node, real Chromium, a clean packed
+npm install, and a relocated Python SEA. Browser provenance is recorded only
+when the public runtime actually requests cminpack, not merely because the
+optimization package was imported.
 
-- `pnpm architecture:check` reaches package-graph validation, then reports
-  that `src/lib/sagejs/numerics/approximation/__init__.py` has no package
-  owner; and
-- `pnpm test:portable` reaches `test/parallel-development.cjs`, then reports
-  that the test expects eight numerical lanes absent from the base's
-  `.agents/lanes.json`.
+The integration source is content-bound in [`evidence.json`](evidence.json).
+Its focused regression set proves exact iteration accounting, a total callback
+budget including analytic Jacobians, structured missing-resource failure, and
+method-driven finite-difference diagnostics in addition to the earlier solver,
+ABI, lifecycle, and recovery campaigns.
 
-This lane deliberately does not edit either shared integration manifest. The
-exact failed and passing runs are recorded in
-`.agents/tasks/numerical-p3-backends.json`. Once integration reconciles those
-base files, architecture checking must additionally classify the production
-and qualification adapters in `architecture/native-code.json`; this lane's
-narrow claim deliberately does not edit that shared manifest.
+The root, browser-package, and SEA entry points deliberately each rerun the
+content-locked numerical build. This adds roughly two seconds per independently
+invoked pipeline and ensures that none can package an unverified artifact; a
+shared cache is deferred until its small saving justifies another identity and
+invalidation boundary.
 
-## Remaining integration gates
+## Remaining release gates
 
-The backend core is qualified, but public registration still requires:
-
-1. Register the separately lazy artifact in the Node/SEA/browser evaluator
-   resource loader without bundling it into FLINT or eagerly loading it.
-2. Route only the exact `cminpack-lmdif` and `cminpack-lmder` identities from
-   ordinary Python, and independently validate the final point before
-   constructing a `NumericalResult`.
-3. Classify both C adapters in `architecture/native-code.json`, update package
-   ownership, and satisfy the shared architecture gate.
-4. Verify relocated npm and SEA resolution, startup/payload budgets, and the
-   persistent Linux x64 host. `bench-1` rejected this lane's SSH identity.
-5. Keep hard recovery at the evaluator-worker boundary. Arbitrary functions
-   cannot be cloned to a nested solver worker; the worker owning the user
-   callback must also own the reactor.
-6. Do not claim sanitizer evidence. This lane instead supplies bounded Wasm
-   memory plus explicit corrupt-region, allocation-failure, random-oracle,
-   callback-error, lifecycle, and worker-recovery campaigns.
+`bench-1` still rejects the available SSH identity, so local Linux x64 remains
+an explicitly labeled substitute rather than a persistent-host receipt. The
+current artifact has fresh receipts from `bench-arm`, `m1`, and `windows`.
+Automatic selection remains disabled; enabling it requires a separate public
+performance/correctness policy. Sanitizer evidence is not claimed: the present
+memory-safety evidence is bounded Wasm memory plus corruption,
+allocation-failure, random-oracle, callback-error, lifecycle, and worker-
+recovery campaigns.
 
 ### Dynamic fallback semantics
 
@@ -218,37 +212,22 @@ latter needs scaled, curved, redundant, nearly active, and infeasible
 constraints against pinned PRIMA/SciPy fixtures. Neither should be automatic
 merely because the library builds.
 
-## Exact integration sequence and ownership
+## Integrated ownership and next sequence
 
-Integrate only after the current ordinary-Python optimization lane has landed,
-in this order:
+The numerical package, runtime/compiler boundary, explicit public router,
+independent validation, architecture classification, and browser/npm/SEA
+resource paths are now integrated as one content-bound change. The remaining
+sequence is:
 
-1. **Numerical Wasm package lane** — integrate the completed
-   `packages/flint-wasm/numerical/` candidate as one separately lazy resource,
-   optionally moving the directory as a unit. Retain its pinned restoration,
-   verbatim license, ABI allowlist, production manifest, and qualification
-   receipt. Do not link the core into FLINT or duplicate it per method.
-2. **Runtime integration lane** — add a lazy `numerical_backend()` boundary in
-   `src/baselib/sagejs/runtime.py` and `.pyi`, its compiler mapping in
-   `tools/python/contract.ts`, and host injection in Node/SEA/browser evaluator
-   and worker paths. This shared change must not be made from the optimization
-   domain lane.
-3. **Optimization domain lane** — add a narrow backend router below
-   `src/lib/sagejs/numerics/optimization/`; route qualified
-   `cminpack-lmdif`/`cminpack-lmder`, retain ordinary Python for every miss,
-   update planning/capabilities, and convert backend counters/status into the
-   existing canonical `NumericalResult` without trusting success.
-4. **Evidence lane** — retain the complete final-artifact MGH and browser
-   qualification already supplied here, then add relocated npm, SEA, and the
-   missing persistent Linux x64 receipt after resource integration.
-5. **NLopt method lanes** — add the MIT-only source core and adapter once, then
+1. **Persistent Linux x64 evidence** — repeat the exact portable smoke on
+   `bench-1` after its SSH authentication is restored.
+2. **NLopt method lanes** — add the MIT-only source core and adapter once, then
    qualify and promote Nelder-Mead and COBYLA as separate reviewed commits.
-6. **Integration/release lane** — update workspace/package graphs, pyright,
+3. **Integration/release lane** — update workspace/package graphs, pyright,
    capability and native-boundary manifests, payload/startup budgets, public
    docs, and release receipts only after the method gates are green.
 
-The production manifest deliberately permits explicit registration only;
-automatic selection remains disabled until steps 2–4 are complete.
+The production manifest deliberately permits explicit registration only.
 
 ## Reproduction
 

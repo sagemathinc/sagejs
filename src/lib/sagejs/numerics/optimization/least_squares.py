@@ -383,6 +383,159 @@ def _damped_gauss_newton(
     return list(point), list(residual), iteration, status, payload
 
 
+def _cminpack_least_squares(
+    execution: Execution,
+    method: str,
+) -> tuple[list[float] | None, list[float] | None, int, str, dict[str, Any]]:
+    """Run one exact cminpack method through the lazy runtime boundary."""
+    try:
+        import sagejs.runtime as runtime
+    except (ImportError, NameError):
+        raise StopExecution("backend_failure", "cminpack_backend_unavailable") from None
+
+    problem = execution.problem
+    initial = problem.initial_data.get("point")
+    if not isinstance(initial, list):
+        raise StopExecution("invalid_problem", "missing_initial_parameters")
+    point = [float(value) for value in initial]
+    initial_residual = _residual(execution, point, iteration=0)
+    residual_count = len(initial_residual)
+    if residual_count < len(point):
+        raise StopExecution(
+            "invalid_problem", "least_squares_requires_at_least_as_many_residuals"
+        )
+
+    try:
+        backend = runtime.numerical_backend()
+        solve = runtime.reflect.get(backend, "leastSquares")
+        if runtime.jstype(solve) != "function":
+            raise StopExecution("backend_failure", "invalid_cminpack_runtime_contract")
+    except StopExecution:
+        raise
+    except Exception:
+        raise StopExecution("backend_failure", "cminpack_backend_unavailable") from None
+
+    def residual_callback(candidate: list[float]) -> list[float]:
+        return _residual(execution, candidate, residual_count)
+
+    def jacobian_callback(candidate: list[float]) -> list[list[float]]:
+        return _jacobian(execution, candidate, residual_count)
+
+    try:
+        options = runtime.object.create(None)
+
+        def set_option(name: str, value: Any) -> None:
+            runtime.reflect.set(options, name, value)
+
+        set_option("method", method)
+        set_option("initial", point)
+        set_option("residualCount", residual_count)
+        set_option("residual", residual_callback)
+        if method == "cminpack-lmder":
+            set_option("jacobian", jacobian_callback)
+        set_option("functionTolerance", float(problem.tolerances["ftol"]))
+        set_option("stepTolerance", float(problem.tolerances["xtol"]))
+        set_option("gradientTolerance", float(problem.tolerances["gtol"]))
+        set_option(
+            "maximumEvaluations",
+            max(1, problem.resource_budget.max_evaluations - execution.evaluations),
+        )
+        set_option(
+            "maximumCallbackEvaluations",
+            max(1, problem.resource_budget.max_evaluations - execution.evaluations),
+        )
+        set_option("maximumIterations", problem.resource_budget.max_iterations)
+        set_option(
+            "maximumElapsedMs",
+            max(0.0, problem.resource_budget.max_elapsed_ms - execution.elapsed_ms()),
+        )
+        result = runtime.reflect.apply(solve, backend, [options])
+    except (StopExecution, CallbackFailure):
+        raise
+    except Exception:
+        raise StopExecution("backend_failure", "cminpack_backend_error") from None
+
+    try:
+        returned_method = str(runtime.reflect.get(result, "method"))
+        returned_backend = str(runtime.reflect.get(result, "backend"))
+        if returned_method != method or returned_backend != "cminpack-wasm":
+            raise StopExecution("backend_failure", "cminpack_method_identity_mismatch")
+        raw_value = runtime.reflect.get(result, "value")
+        value: list[float] | None = None
+        if runtime.jstype(raw_value) != "undefined":
+            value = [float(item) for item in raw_value]
+            if len(value) != len(point) or any(
+                not math.isfinite(item) for item in value
+            ):
+                raise StopExecution(
+                    "backend_failure", "invalid_cminpack_parameter_vector"
+                )
+        backend_status = str(runtime.reflect.get(result, "status"))
+        backend_converged = bool(runtime.reflect.get(result, "backendConverged"))
+        iterations = int(runtime.reflect.get(result, "iterations"))
+        backend_status_code = int(runtime.reflect.get(result, "backendStatus"))
+        backend_residual_evaluations = int(
+            runtime.reflect.get(result, "backendResidualEvaluations")
+        )
+        backend_jacobian_evaluations = int(
+            runtime.reflect.get(result, "backendJacobianEvaluations")
+        )
+        callback_evaluations = int(runtime.reflect.get(result, "callbackEvaluations"))
+        if iterations < 0 or callback_evaluations < 0:
+            raise StopExecution("backend_failure", "invalid_cminpack_counters")
+    except StopExecution:
+        raise
+    except Exception:
+        raise StopExecution(
+            "backend_failure", "invalid_cminpack_runtime_result"
+        ) from None
+
+    residual: list[float] | None = None
+    if value is not None:
+        # Recompute at the public boundary. The backend's success bit and
+        # internal residual storage are never accepted as validation.
+        residual = _residual(execution, value, residual_count)
+    if backend_converged:
+        status = "converged"
+    elif backend_status == "maximum_evaluations":
+        status = "maximum_evaluations"
+    elif backend_status == "maximum_iterations":
+        status = "maximum_iterations"
+    elif backend_status == "cancelled":
+        status = "cancelled"
+    elif backend_status == "maximum_elapsed_time":
+        status = "maximum_elapsed_time"
+    elif backend_status in (
+        "function_tolerance_too_small",
+        "step_tolerance_too_small",
+        "gradient_tolerance_too_small",
+    ):
+        status = "stagnation"
+    else:
+        status = "backend_failure"
+
+    payload: dict[str, Any] = {
+        "backend_status": backend_status,
+        "backend_status_code": backend_status_code,
+        "backend_residual_evaluations": backend_residual_evaluations,
+        "backend_jacobian_evaluations": backend_jacobian_evaluations,
+        "backend_callback_evaluations": callback_evaluations,
+        "method_identity": returned_method,
+        "backend_identity": returned_backend,
+    }
+    if residual is not None:
+        payload.update(_residual_metrics(residual))
+        payload["objective"] = half_squared_norm(residual)
+        payload["parameter_diagnostics"] = {
+            "covariance_available": False,
+            "rank_deficient_or_ill_conditioned": None,
+            "standard_errors": [None for _ in point],
+            "normal_matrix_condition_estimate": None,
+            "reason": "cminpack does not expose a solver-owned final Jacobian",
+        }
+    return value, residual, iterations, status, payload
+
+
 def _result_from_least_squares(
     problem: NumericalProblem,
     *,
@@ -405,7 +558,7 @@ def _result_from_least_squares(
     diagnostics: list[NumericalDiagnostic] = []
     if not problem.replayable:
         diagnostics.append(NumericalDiagnostic("non_replayable_callback"))
-    if problem.derivative is None:
+    if problem.derivative is None or selected_plan.method == "cminpack-lmdif":
         diagnostics.append(NumericalDiagnostic("finite_difference_derivative"))
     value: list[float] | None = None
     residual: list[float] | None = None
@@ -414,7 +567,14 @@ def _result_from_least_squares(
     reason: str | None = None
     payload: dict[str, Any] = {}
     try:
-        value, residual, iterations, status, payload = _damped_gauss_newton(execution)
+        if selected_plan.method in ("cminpack-lmdif", "cminpack-lmder"):
+            value, residual, iterations, status, payload = _cminpack_least_squares(
+                execution, selected_plan.method
+            )
+        else:
+            value, residual, iterations, status, payload = _damped_gauss_newton(
+                execution
+            )
     except StopExecution as stop:
         status = stop.status
         reason = stop.reason

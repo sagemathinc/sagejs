@@ -1,6 +1,6 @@
 {
   "schema": "sagejs.numerical-wasm-qualification-summary/v1",
-  "artifact_sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
+  "artifact_sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
   "oracle_sha256": "1f513f438d5173affb47a78c271ed390a618f8eca5802007610ce02a5352fcb8",
   "source_revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
   "qualification_inputs": {
@@ -28,7 +28,7 @@
     "allocation_failure_positions": 9,
     "callback_exception_cleanup": "pass",
     "nonfinite_callback_cleanup": "pass",
-    "evaluation_elapsed_and_shared_memory_budgets": "pass",
+    "iteration_total_callback_elapsed_and_shared_memory_budgets": "pass",
     "reentrancy_rejection_and_reuse": "pass",
     "worker_shared_memory_cancellation_and_reuse": "pass",
     "hard_stuck_worker_termination_and_recreation": "pass"
@@ -38,7 +38,7 @@
       "host": "local integration host (bench-1 unavailable)",
       "platform": "linux",
       "architecture": "x64",
-      "node": "v26.7.0",
+      "node": "v26.5.0",
       "result": "pass"
     },
     {
@@ -63,10 +63,23 @@
       "result": "pass"
     }
   ],
+  "production_integration": {
+    "source_sha256": "578bf0f6baecf89eff3bdd04d34b71b8e283bb4668beeacb668deb1c08c492b9",
+    "source_evidence": "bench/numerical-p3-backends/evidence.json#public_integration_source",
+    "public_node_lmdif_and_lmder_with_independent_validation": "pass",
+    "public_iteration_callback_elapsed_cancellation_and_reuse": "pass",
+    "execution_specific_browser_provenance": "pass",
+    "structured_missing_resource_failure": "pass",
+    "browser_missing_and_corrupt_resource_isolation": "pass",
+    "chromium_evaluator_lazy_fetch_and_public_lmdif": "pass",
+    "relocated_npm_package_public_lmdif": "pass",
+    "relocated_python_sea_public_lmdif": "pass",
+    "browser_lazy_module_bundle_contains_public_optimization_package": true,
+    "automatic_selection": false
+  },
   "limitations": [
     "bench-1 rejected the available SSH identity, so Linux x64 is not a persistent-host receipt",
-    "npm relocation and SEA integration require the integration-owned runtime/resource wiring",
-    "automatic selection remains disabled until the ordinary-Python router validates and constructs the public NumericalResult",
+    "automatic selection remains disabled; explicit method identity is required until a separate automatic policy has public performance and correctness receipts",
     "sanitizer instrumentation is not claimed; memory safety evidence here is bounded Wasm memory plus ABI, corruption, allocation-failure, and lifecycle tests"
   ]
 }

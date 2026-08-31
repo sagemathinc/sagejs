@@ -159,17 +159,17 @@
     },
     {
       "path": "packages/flint-wasm/numerical/qualification/mgh-oracle-adapter.c",
-      "category": "host-adapter",
+      "category": "benchmark-reference",
       "review_status": "accepted",
       "lane": "integration",
-      "rationale": "Qualification-only bounded Wasm32 transport for the independently sourced Moré–Garbow–Hillstrom residual and Jacobian oracle; it exposes upstream test functions without implementing solver policy."
+      "rationale": "Qualification-only host-neutral adapter over cminpack's upstream MINPACK-2 MGH functions; it is compiled into an independent oracle reactor and is never shipped as the production solver."
     },
     {
       "path": "packages/flint-wasm/numerical/src/cminpack-adapter.c",
       "category": "external-library-bridge",
-      "review_status": "accepted",
+      "review_status": "audited",
       "lane": "integration",
-      "rationale": "Bounded callback, allocation, cancellation, and status bridge to the pinned cminpack lmdif and lmder implementations; cminpack owns the numerical algorithms and Sage.js independently validates returned residuals."
+      "rationale": "Bounded callback, total evaluation-budget, allocation, cancellation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source, allocations are operation-scoped, and Sage.js independently validates returned residuals."
     },
     {
       "path": "packages/flint-wasm/src/factor.c",

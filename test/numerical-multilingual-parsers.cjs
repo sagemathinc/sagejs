@@ -42,7 +42,12 @@ test("MATLAB numerical heads lower to their owned runtime wrappers", async () =>
   const convolution = frontend.lower("conv([1 2],[3 4])", {
     captureResult: true,
   });
-  assert.match(convolution.source, /_matlab\.conv\(_np\.ravel\(/);
+  assert.match(convolution.source, /_matlab\.conv\(/);
+  assert.doesNotMatch(convolution.source, /_np\.ravel/);
+  const sweep = frontend.lower("arrayfun(@(x) x^2,[1 2;3 4])", {
+    captureResult: true,
+  });
+  assert.doesNotMatch(sweep.source, /_np\.ravel/);
 });
 
 test("MATLAB numerical syntax fails closed before unqualified runtime calls", async () => {
@@ -158,13 +163,102 @@ test("representative multilingual programs reach canonical runtime operations", 
       "linsolve([3 1;1 2],[9;8])",
       { language: "matlab" },
     );
-    assert.equal(matlabSolve.repr, "[[2.0], [3.0]]");
+    assert.equal(
+      matlabSolve.repr.replace(/\s+/g, ""),
+      "array([[2.][3.]])",
+    );
+    const matlabSolveSize = await session.evaluate(
+      "x=linsolve([3 1;1 2],[9;8]); size(x)",
+      { language: "matlab" },
+    );
+    assert.equal(matlabSolveSize.repr, "(2, 1)");
+    const matlabSolveIndex = await session.evaluate(
+      "x=linsolve([3 1;1 2],[9;8]); x(2,1)",
+      { language: "matlab" },
+    );
+    closeTo(Number(matlabSolveIndex.repr), 3);
+
+    const matlabLeastSquaresSize = await session.evaluate(
+      "x=lsqminnorm([1 0;0 1;1 1],[1;2;3]); size(x)",
+      { language: "matlab" },
+    );
+    assert.equal(matlabLeastSquaresSize.repr, "(2, 1)");
+    const matlabLeastSquaresIndex = await session.evaluate(
+      "x=lsqminnorm([1 0;0 1;1 1],[1;2;3]); x(2,1)",
+      { language: "matlab" },
+    );
+    closeTo(Number(matlabLeastSquaresIndex.repr), 2);
+
+    const matlabSvdSize = await session.evaluate(
+      "s=svd([3 1;1 2]); size(s)",
+      { language: "matlab" },
+    );
+    assert.equal(matlabSvdSize.repr, "(2, 1)");
+    const matlabSvdIndex = await session.evaluate(
+      "s=svd([3 1;1 2]); s(2,1)",
+      { language: "matlab" },
+    );
+    closeTo(Number(matlabSvdIndex.repr), 1.381966011250105);
+
+    for (const [operation, callback] of [
+      ["fminsearch", "@(x) (x(1,1)-1)^2+(x(1,2)-2)^2"],
+      ["fsolve", "@(x) [x(1,1)-1 x(1,2)-2]"],
+      ["lsqnonlin", "@(x) [x(1,1)-1 x(1,2)-2]"],
+    ]) {
+      const rowSize = await session.evaluate(
+        `x=${operation}(${callback},[1 2]); size(x)`,
+        { language: "matlab" },
+      );
+      assert.equal(rowSize.repr, "(1, 2)", operation + " row shape");
+      const rowIndex = await session.evaluate(
+        `x=${operation}(${callback},[1 2]); x(1,2)`,
+        { language: "matlab" },
+      );
+      closeTo(Number(rowIndex.repr), 2);
+
+      const columnCallback = callback
+        .replaceAll("x(1,2)", "x(2,1)")
+        .replace("[x(1,1)-1 x(2,1)-2]", "[x(1,1)-1;x(2,1)-2]");
+      const columnSize = await session.evaluate(
+        `x=${operation}(${columnCallback},[1;2]); size(x)`,
+        { language: "matlab" },
+      );
+      assert.equal(columnSize.repr, "(2, 1)", operation + " column shape");
+      const columnIndex = await session.evaluate(
+        `x=${operation}(${columnCallback},[1;2]); x(2,1)`,
+        { language: "matlab" },
+      );
+      closeTo(Number(columnIndex.repr), 2);
+    }
 
     const matlabConvolution = await session.evaluate(
       "conv([1 2],[3 4])",
       { language: "matlab" },
     );
-    assert.deepEqual(JSON.parse(matlabConvolution.repr), [3, 10, 8]);
+    assert.equal(
+      matlabConvolution.repr.replace(/\s+/g, ""),
+      "array([[3.,10.,8.]])",
+    );
+
+    const matlabSweep = await session.evaluate(
+      "arrayfun(@(x) x^2,[1 2;3 4])",
+      { language: "matlab" },
+    );
+    assert.equal(
+      matlabSweep.repr.replace(/\s+/g, ""),
+      "array([[1,4][9,16]])",
+    );
+
+    await assert.rejects(
+      session.evaluate("conv([1 2;3 4],[1 2])", { language: "matlab" }),
+      /must be a vector, not a matrix/,
+    );
+    await assert.rejects(
+      session.evaluate("fminsearch(@(x) x(1)^2,[1 2;3 4])", {
+        language: "matlab",
+      }),
+      /must be a vector, not a matrix/,
+    );
 
     const matlabIntegral = await session.evaluate(
       "integral(@(x) x^2,0,1)",

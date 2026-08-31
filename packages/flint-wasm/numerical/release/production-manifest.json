@@ -7,7 +7,7 @@
     "license_sha256": "8887036b1039e299ebcc8b95a73ea1538df548393fb8462361c80bea605a4fbe"
   },
   "source_closure": {
-    "sha256": "b2aa0feb82e0cbe2012684eb640e816eeec5ebfdd531a79741d2a405277ecdd0"
+    "sha256": "c1b1788faab2ee4070d66d58fd77a8cf7425dd4a16092c901c1ad3d882f8dc81"
   },
   "toolchain": {
     "identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
@@ -16,10 +16,10 @@
   },
   "artifact": {
     "filename": "cminpack.wasm",
-    "sha256": "f8ce5abcca0128be5e61a3b3d31b983207dad1117d61a7642fae336c3268e855",
-    "bytes": 72149,
-    "gzip_bytes": 28936,
-    "brotli_bytes": 23904
+    "sha256": "4874663c92bb035be0ab7a4f65003292002d2843d8f69185ac430bf50592c5c5",
+    "bytes": 72155,
+    "gzip_bytes": 28940,
+    "brotli_bytes": 23884
   },
   "abi": {
     "sha256": "4db7233e6d5543ac900396b452ff074c114e3a6b08f68e966ac054b9cf4134ba",
@@ -39,9 +39,9 @@
     "cminpack-lmdif",
     "cminpack-lmder"
   ],
-  "selection": "explicit-only-pending-runtime-registration",
+  "selection": "explicit-only",
   "qualification_receipt": {
     "path": "release/qualification-v1.json",
-    "sha256": "a0cf37d9442ffa8f269cc91413a741f911ea2105d35d256b83daaea7ee1cff56"
+    "sha256": "1db338d66fa4658923fcda6921d8191202a8f8d3a9156cbb920ffd3c45567b94"
   }
 }

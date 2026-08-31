@@ -652,6 +652,18 @@ def documentation_registry():
     return registry
 
 
+_numerical_backend_state = {"backend": None}
+
+
+def numerical_backend():
+    """Return the lazy, explicit-only cminpack backend."""
+    if _numerical_backend_state["backend"] is None:
+        _numerical_backend_state["backend"] = require_module(
+            "@sagemath/sagejs-numerical"
+        )
+    return _numerical_backend_state["backend"]
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt

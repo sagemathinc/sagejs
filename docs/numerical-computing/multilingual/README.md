@@ -19,9 +19,10 @@ The foundational catalog contains 22 operations:
   regression; and
 - deterministic parameter sweeps.
 
-Every registered source alias can execute through its package's structured
-result. Emitted code is deliberately narrower: it is available only where the
-target's default convention is qualified. An unavailable target raises
+Every registered programmatic alias can execute through its package's
+structured result. The foreign-language parser surface and emitted-code
+surface are deliberately narrower: they are available only where argument,
+shape, default, and result conventions are qualified. An unavailable target raises
 `UnsupportedFrontendError` with `unsupported_target`; it never prints
 plausible-looking code with changed normalization, orientation, resource, or
 callback semantics.
@@ -72,14 +73,17 @@ returns `non_replayable_intent`.
 ## Support ledger
 
 The machine-readable ledger is
-[`support-matrix.json`](support-matrix.json). "runtime" means a source alias
-lowers and executes the canonical Sage.js operation. "emit" means the adapter
-also emits target-native source and accepts an exact checked round trip.
+[`support-matrix.json`](support-matrix.json). It separates `registry`
+availability for programmatic lowering, `natural_parser` availability in the
+actual MATLAB/Wolfram parsers, and `emit` qualification for checked outward
+source. These are intentionally independent claims. `unsupported_emit`
+exhaustively classifies the remaining target languages.
 
 Important boundaries:
 
-- general eigensystems and reduced SVD do not emit Wolfram code until
-  eigenvector orientation and near-defective behavior are qualified;
+- eigensystems and reduced SVD emit only Sage and SciPy until MATLAB/Wolfram
+  multi-output forms, complex decoding, eigenvector orientation, and
+  near-defective behavior are qualified;
 - interpolation emits only Sage and SciPy; MATLAB and Wolfram interpolant
   defaults do not preserve the current method-selection contract;
 - convolution does not emit Wolfram code until padding and origin conventions
@@ -98,16 +102,19 @@ translation.
 ## Natural runtime surfaces
 
 `matlab.py` and `wolfram.py` provide runtime views used by their parsers and by
-explicit Python embedding. Parser entrypoints are a narrower qualified subset:
-they are enabled only when natural defaults, orientations, complex values, and
-one-output conventions are preserved. MATLAB currently includes dense solve,
-least squares, convolution, integration, bounded/unconstrained optimization,
-nonlinear solve/least squares, degree-one `polyfit`, `ode45`, `svd`'s
-one-output singular-value view, deterministic `arrayfun`, and the explicitly
-named `sagejs_describe`. Wolfram currently includes dense solve, least squares,
-one finite scalar `NIntegrate` form, deterministic `Map`, and explicitly
-Sage.js-named statistics helpers. Other recognized numerical heads fail with a
-source-located unsupported diagnostic rather than an unqualified runtime call.
+explicit Python embedding. Natural vendor names are enabled only when defaults,
+orientations, complex values, shapes, and one-output conventions are preserved,
+and the same boundary applies to parser calls, programmatic registry lowering,
+and direct module calls. MATLAB currently includes dense solve, least squares,
+vector convolution, integration, bounded/unconstrained optimization, nonlinear
+solve/least squares, degree-one `polyfit`, `ode45`, `svd`'s one-output
+singular-value view, shape-preserving deterministic `arrayfun`, and the
+explicitly named `sagejs_describe`. Wolfram currently includes dense solve,
+least squares, one finite scalar `NIntegrate` form, deterministic `Map`, and
+qualified statistics helpers. Other recognized numerical heads fail with a
+structured unsupported diagnostic rather than exposing a plausible but
+different result. Canonical Sage.js spectral and approximation packages remain
+available directly without claiming vendor conventions.
 
 Natural short return values do not erase evidence. Functions with meaningful
 structured state have a `*_result` helper or retain the result in a wrapper.
