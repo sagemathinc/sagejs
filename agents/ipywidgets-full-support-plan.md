@@ -23,10 +23,11 @@ Implementation is active. As of 2026-08-31:
   their documented defaults, and a lazy `sage.interacts` library ships tested
   Taylor-polynomial, derivative, quadratic-equation, coin-toss, and basic demo
   applications. Text controls evaluate through the authoritative Sage parser
-  while Python `eval` retains Python semantics. The app's primary interactive
-  symbolic-plot preset exercises Sage `@interact` offline and verifies a live
-  frontend update. Completing the remaining full browser/Jupyter PREP matrix
-  and upstream Sage widget doctest inventory remains open.
+  in native kernels and the isolated browser compiler, while Python `eval`
+  retains Python semantics. The app's primary interactive symbolic-plot preset
+  exercises Sage `@interact` offline and verifies a live frontend update.
+  Completing the remaining full browser/Jupyter PREP matrix and upstream Sage
+  widget doctest inventory remains open.
 - P8–P10 and the remaining lifecycle, embedding, documentation, budget, and
   four-platform gates remain open. Custom widgets remain deliberately last.
 

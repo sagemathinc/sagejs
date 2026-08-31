@@ -5558,10 +5558,10 @@ def sage_eval(
         raise TypeError("locals must be a dictionary")
     if cmds:
         program = str(cmds) + "\n__sagejs_sage_eval_result__ = (\n" + source + "\n)"
-        code = _builtins_compile_code(program, "<string>", "exec", preparse)
+        code = _builtins_compile_code(program, "<sage-eval>", "exec", preparse)
         ρσ_exec(code, locals, locals)
         return locals.pop("__sagejs_sage_eval_result__")
-    code = _builtins_compile_code(source, "<string>", "eval", preparse)
+    code = _builtins_compile_code(source, "<sage-eval>", "eval", preparse)
     return ρσ_eval(code, locals, locals)
 
 
