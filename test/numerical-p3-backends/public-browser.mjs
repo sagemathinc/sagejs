@@ -29,6 +29,11 @@ test("a real browser routes public least_squares through lazy cminpack", {
   ]);
   const server = http.createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url, "http://x").pathname);
+    if (pathname === "/corrupt-cminpack.wasm") {
+      response.writeHead(200, { "Content-Type": "application/wasm" });
+      response.end("not a WebAssembly module");
+      return;
+    }
     const relative = pathname === "/" ? "demo/index.html" : pathname.slice(1);
     const filename = path.resolve(packageRoot, relative);
     if (!filename.startsWith(`${packageRoot}${path.sep}`) || !fs.existsSync(filename)) {
@@ -58,6 +63,34 @@ test("a real browser routes public least_squares through lazy cminpack", {
     const results = await page.evaluate(async () => {
       const { createSage } = await import("/kernel.mjs");
       const session = await createSage({ timeout: 120_000 });
+      async function unavailableResource(numerical) {
+        const unavailableSession = await createSage({
+          numerical,
+          timeout: 120_000,
+        });
+        try {
+          const automatic = await unavailableSession.evaluate(`
+from sagejs.numerics.optimization import least_squares
+answer = least_squares(lambda point: [point[0] - 2.0], [20.0], method="auto")
+print(answer.success)
+print(answer.backend)
+`, { timeout: 120_000 });
+          const explicit = await unavailableSession.evaluate(`
+from sagejs.numerics.optimization import least_squares
+answer = least_squares(
+    lambda point: [point[0] - 2.0],
+    [20.0],
+    method="cminpack-lmdif",
+)
+print(answer.success)
+print(answer.status)
+print(answer.domain_payload["stop_reason"])
+`, { timeout: 120_000 });
+          return { automatic, explicit };
+        } finally {
+          await unavailableSession.close();
+        }
+      }
       try {
         const ordinary = await session.evaluate(`
 from sagejs.numerics.optimization import minimize_scalar
@@ -76,7 +109,12 @@ print(answer.backend)
 print(answer.success and answer.validation.passed)
 print(max(abs(answer.value[0] - 1.0), abs(answer.value[1] - 1.0)) < 1.0e-8)
 `, { timeout: 120_000 });
-        return { ordinary, explicit };
+        return {
+          ordinary,
+          explicit,
+          missing: await unavailableResource("/missing-cminpack.wasm"),
+          corrupt: await unavailableResource("/corrupt-cminpack.wasm"),
+        };
       } finally {
         await session.close();
       }
@@ -110,6 +148,39 @@ print(max(abs(answer.value[0] - 1.0), abs(answer.value[1] - 1.0)) < 1.0e-8)
         egress_bytes: 0,
       }],
     );
+    for (const [kind, unavailable] of Object.entries({
+      missing: results.missing,
+      corrupt: results.corrupt,
+    })) {
+      assert.equal(unavailable.automatic.stderr, "", `${kind} auto stderr`);
+      assert.equal(
+        unavailable.automatic.stdout,
+        "True\nordinary-python\n",
+        `${kind} auto fallback`,
+      );
+      assert.equal(unavailable.explicit.stderr, "", `${kind} explicit stderr`);
+      assert.equal(
+        unavailable.explicit.stdout,
+        "False\nbackend_failure\ncminpack_backend_error\n",
+        `${kind} exact structured failure`,
+      );
+      assert.equal(
+        unavailable.automatic.instrumentation.routes.some(
+          ({ capability_id }) =>
+            capability_id === "wasm-library:cminpack:least-squares-explicit",
+        ),
+        false,
+        `${kind} auto must not claim cminpack`,
+      );
+      assert.equal(
+        unavailable.explicit.instrumentation.routes.some(
+          ({ capability_id }) =>
+            capability_id === "wasm-library:cminpack:least-squares-explicit",
+        ),
+        false,
+        `${kind} failed exact request must not claim cminpack execution`,
+      );
+    }
   } finally {
     await browser.close();
     await new Promise((resolve) => server.close(resolve));

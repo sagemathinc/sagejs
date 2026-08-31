@@ -63,3 +63,28 @@ test("browser runtime fetches cminpack only for optimization imports", async () 
   assert.equal(fetches, 1);
   assert.equal(adapterImports, 1);
 });
+
+test("browser optimization imports survive an unavailable cminpack resource", async () => {
+  const capabilities = [];
+  const modules = createBrowserRuntimeModules({
+    numerical: "missing:cminpack",
+    async fetchNumerical() {
+      return { ok: false, status: 404 };
+    },
+    recordCapability(...record) {
+      capabilities.push(record);
+    },
+  });
+
+  assert.deepEqual(
+    await modules.prepare(["sagejs.numerics.optimization.least_squares"]),
+    [],
+  );
+  const unavailable = modules.get("@sagemath/sagejs-numerical");
+  assert.equal(unavailable.capability.backend, "cminpack-unavailable");
+  assert.throws(
+    () => unavailable.leastSquares({}),
+    /unable to load cminpack numerical backend \(404\)/,
+  );
+  assert.deepEqual(capabilities, []);
+});

@@ -430,7 +430,22 @@ export function createBrowserRuntimeModules({
             }
             modules.set("@sagemath/sagejs-numerical", backend);
             return backend;
-        });
+          })
+          .catch((error) => {
+            // Optimization imports must remain usable when the explicit-only
+            // cminpack resource is absent or corrupt. Install a synchronous
+            // throwing boundary so an exact cminpack request is normalized by
+            // the ordinary-Python public contract without making `auto`
+            // depend on this optional backend.
+            const unavailable = Object.freeze({
+              capability: Object.freeze({ backend: "cminpack-unavailable" }),
+              leastSquares() {
+                throw error;
+              },
+            });
+            modules.set("@sagemath/sagejs-numerical", unavailable);
+            return unavailable;
+          });
         pending.push(numericalPromise);
       }
       await Promise.all(pending);
@@ -438,7 +453,10 @@ export function createBrowserRuntimeModules({
     },
     get(name) {
       const module = modules.get(name);
-      if (name === "@sagemath/sagejs-numerical" && module !== undefined) {
+      if (
+        name === "@sagemath/sagejs-numerical" &&
+        module?.capability?.backend === "cminpack-wasm"
+      ) {
         recordCapability(
           "wasm-library:cminpack:least-squares-explicit",
           "receipt-backed-wasm-artifact",

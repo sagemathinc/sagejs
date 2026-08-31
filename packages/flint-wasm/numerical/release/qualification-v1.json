@@ -64,12 +64,13 @@
     }
   ],
   "production_integration": {
-    "source_sha256": "85d1cc1c41235fc017a61e4ee529eeb6145664c413f4cfad0ad99180db217b29",
+    "source_sha256": "578bf0f6baecf89eff3bdd04d34b71b8e283bb4668beeacb668deb1c08c492b9",
     "source_evidence": "bench/numerical-p3-backends/evidence.json#public_integration_source",
     "public_node_lmdif_and_lmder_with_independent_validation": "pass",
     "public_iteration_callback_elapsed_cancellation_and_reuse": "pass",
     "execution_specific_browser_provenance": "pass",
     "structured_missing_resource_failure": "pass",
+    "browser_missing_and_corrupt_resource_isolation": "pass",
     "chromium_evaluator_lazy_fetch_and_public_lmdif": "pass",
     "relocated_npm_package_public_lmdif": "pass",
     "relocated_python_sea_public_lmdif": "pass",

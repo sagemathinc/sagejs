@@ -42,6 +42,6 @@
   "selection": "explicit-only",
   "qualification_receipt": {
     "path": "release/qualification-v1.json",
-    "sha256": "576e05ffecc1114351f62bfabba081477f0bdd5ff183756ea2e5c2c10177521b"
+    "sha256": "1db338d66fa4658923fcda6921d8191202a8f8d3a9156cbb920ffd3c45567b94"
   }
 }

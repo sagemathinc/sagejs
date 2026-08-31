@@ -36,7 +36,6 @@ def _cminpack_record(method: str) -> dict[str, Any]:
     }
 
 
-
 def _view_contract(operation: str, constraints: str) -> dict[str, Any]:
     primary = {
         "scalar_minimum": "retained_objective_and_incumbent_path",
