@@ -95,6 +95,7 @@ artifact names:
         "definition-identity", "independent-residual", "differential-oracle",
         "conditioned-stress", "failure-semantics", "fuzz", "metamorphic"
       ],
+      "required_memory_scope": "collector_process",
       "required_capabilities": ["root.bisection", "root.brent", "root.secant", "root.newton"],
       "required_artifacts": [
         { "name": "sagejs-package", "sha256": "REPLACE_WITH_64_HEX_DIGEST" }
@@ -132,8 +133,11 @@ node scripts/numerical-computing/qualify.cjs report --policy build/root-finding-
 ```
 
 The report fails when a row is absent, duplicated, dirty when cleanliness is
-required, backed by a failed receipt, missing a required capability, or missing
-a required artifact. A missing row contains `null` receipt, bindings, and
+required, backed by a failed receipt, missing a required capability, missing a
+required artifact, or lacking collector-authenticated memory evidence at its
+exact `required_memory_scope`. Node rows require `collector_process`; npm, SEA,
+browser, and worker rows require `process_tree`. A browser-heap measurement is
+supplemental and never satisfies the latter. A missing row contains `null` receipt, bindings, and
 metrics. It is never populated from another platform or from an average. Extra
 receipts are listed as unmatched and do not satisfy a required row.
 

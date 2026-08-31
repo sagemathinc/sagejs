@@ -90,13 +90,21 @@ function corpusFixture() {
   };
 }
 
-function adapterSource() {
+function adapterSource(subject) {
   return `"use strict";
+const { spawn } = require("node:child_process");
+let subjectProcess = null;
 module.exports = {
   protocol: "sagejs.numerical-qualification-adapter/v1",
   async initialize(context) {
+    if (${JSON.stringify(subject.kind !== "node")}) {
+      subjectProcess = spawn(process.execPath, [
+        "-e", "setInterval(() => {}, 1000)",
+      ], { stdio: "ignore", windowsHide: true });
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
     return {
-      subject: { kind: "node", name: "node", version: process.version, engine: null },
+      subject: ${JSON.stringify(subject)},
       capability_ids: ["fixture.answer"],
     };
   },
@@ -107,15 +115,20 @@ module.exports = {
       metrics: { phases_ms: { kernel: 0.25 }, counters: { evaluations: 1 } },
     };
   },
+  async close() {
+    if (subjectProcess !== null) subjectProcess.kill();
+  },
 };
 `;
 }
 
-function capabilityDraft(status = "available") {
+function capabilityDraft(status = "available", subject = {
+  kind: "node", name: "node", version: process.version, engine: null,
+}) {
   return {
     schema: CAPABILITY_SCHEMA,
     backend: { id: "fixture-backend", version: "1" },
-    subject: { kind: "node", name: "node", version: process.version, engine: null },
+    subject,
     capabilities: [{
       id: "fixture.answer",
       status,
@@ -137,14 +150,20 @@ function commitAll(root, message) {
   git(root, "commit", "-q", "-m", message);
 }
 
-function makeWorkspace({ capabilityStatus = "available" } = {}) {
+function makeWorkspace({
+  capabilityStatus = "available",
+  subject = { kind: "node", name: "node", version: process.version, engine: null },
+} = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-numerical-evidence-"));
   initializeGit(root);
   fs.writeFileSync(path.join(root, "source.txt"), "exact fixture source\n");
   fs.writeFileSync(path.join(root, "artifact.bin"), Buffer.from([0, 1, 2, 3, 255]));
-  fs.writeFileSync(path.join(root, "adapter.cjs"), adapterSource());
+  fs.writeFileSync(path.join(root, "adapter.cjs"), adapterSource(subject));
   writeJson(path.join(root, "fixture.corpus.json"), corpusFixture());
-  writeJson(path.join(root, "capability-draft.json"), capabilityDraft(capabilityStatus));
+  writeJson(
+    path.join(root, "capability-draft.json"),
+    capabilityDraft(capabilityStatus, subject),
+  );
   commitAll(root, "fixture inputs");
   const manifest = bindCapabilityDraft({
     root,
@@ -238,6 +257,8 @@ function policyFor(receipt, rows = [{ id: "measured", platform: receipt.platform
       required_program_phases: ["P1"],
       required_case_layers: ["differential-oracle"],
       required_capabilities: ["fixture.answer"],
+      required_memory_scope: row.required_memory_scope ??
+        (receipt.runtime.subject.kind === "node" ? "collector_process" : "process_tree"),
       required_artifacts: [{
         name: "core",
         sha256: receipt.artifacts.find((item) => item.name === "core").sha256,
@@ -307,6 +328,17 @@ test("portable harness self-test executes failure, deterministic fuzz, and metam
     "startup must stop at adapter readiness rather than include the case campaign",
   );
   assert(receipt.metrics.payload.artifact_installed_bytes > 0);
+  assert.deepEqual(
+    receipt.cases[0].samples[0].metrics.peak_memory,
+    {
+      bytes: receipt.cases[0].samples[0].metrics.peak_memory.bytes,
+      measurement_method: "node-process-rss-boundary-v1",
+      measurement_scope: "collector_process",
+      authenticated_by: "qualification-collector",
+      sample_interval_ms: 5,
+    },
+  );
+  assert.equal(receipt.cases[0].metrics.peak_memory.measurement_scope, "collector_process");
   assert.equal(verifyReceipt(receipt, {
     root: workspace.root,
     requireClean: true,
@@ -422,6 +454,20 @@ test("matrix reports preserve missing evidence as missing and never infer metric
     program_phases: ["P1"],
     case_layers: ["differential-oracle"],
   });
+  assert.equal(passing.rows[0].required_memory_scope, "collector_process");
+  assert.equal(
+    passing.rows[0].metrics.peak_memory.authenticated_by,
+    "qualification-collector",
+  );
+
+  const wrongScopePolicy = policyFor(receipt);
+  wrongScopePolicy.rows[0].required_memory_scope = "process_tree";
+  const wrongScope = buildReport(
+    wrongScopePolicy,
+    [{ path: "measured.receipt.json", value: receipt }],
+  );
+  assert.equal(wrongScope.status, "failed");
+  assert.match(wrongScope.rows[0].reasons.join("\n"), /required process_tree memory evidence/);
 
   const missingPlatform = receipt.platform.id === "windows-x64" ? "linux-x64" : "windows-x64";
   const incomplete = buildReport(policyFor(receipt, [
@@ -442,6 +488,41 @@ test("matrix reports preserve missing evidence as missing and never infer metric
   ]);
   assert.equal(duplicate.status, "failed");
   assert.match(duplicate.rows[0].reasons[0], /must be unambiguous/);
+});
+
+test("memory evidence is authenticated by the collector, never by adapters", async (t) => {
+  const workspace = makeWorkspace();
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const receipt = await collectFixture(workspace);
+  const forged = structuredClone(receipt);
+  forged.cases[0].samples[0].metrics.peak_memory.authenticated_by = "adapter";
+  forged.id = contentId(receiptCore(forged));
+  assert.throws(
+    () => verifyReceipt(forged, { historical: true }),
+    /authenticated_by.*qualification-collector/,
+  );
+});
+
+test("external subjects receive authenticated process-tree memory evidence", async (t) => {
+  const subject = { kind: "sea", name: "fixture-sea", version: "1", engine: null };
+  const workspace = makeWorkspace({ subject });
+  t.after(() => fs.rmSync(workspace.root, { recursive: true, force: true }));
+  const receipt = await collectFixture(workspace);
+  const memory = receipt.cases[0].metrics.peak_memory;
+  const methods = {
+    linux: "linux-procfs-process-tree-sampled-v1",
+    darwin: "macos-ps-process-tree-sampled-v1",
+    win32: "windows-cim-process-tree-sampled-v1",
+  };
+  assert.equal(memory.measurement_scope, "process_tree");
+  assert.equal(memory.measurement_method, methods[process.platform]);
+  assert.equal(memory.authenticated_by, "qualification-collector");
+  assert(memory.bytes > 0);
+  const report = buildReport(
+    policyFor(receipt),
+    [{ path: "sea.receipt.json", value: receipt }],
+  );
+  assert.equal(report.status, "passed");
 });
 
 test("phase and campaign contracts reject unauditable fuzz and matrix coverage", async (t) => {

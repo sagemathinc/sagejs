@@ -26,10 +26,14 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "row_id", "status", "reasons", "receipt", "bindings", "coverage", "metrics"
+          "row_id", "required_memory_scope", "status", "reasons", "receipt", "bindings",
+          "coverage", "metrics"
         ],
         "properties": {
           "row_id": { "type": "string", "minLength": 1 },
+          "required_memory_scope": {
+            "enum": ["collector_process", "process_tree", "browser_heap"]
+          },
           "status": { "enum": ["passed", "failed", "missing"] },
           "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 } },
           "receipt": { "type": ["object", "null"] },

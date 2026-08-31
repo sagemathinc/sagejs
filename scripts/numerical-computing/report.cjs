@@ -33,6 +33,7 @@ function rowEvidence(row, receiptRecord, requireClean) {
   if (receiptRecord === null) {
     return {
       row_id: row.id,
+      required_memory_scope: row.required_memory_scope,
       status: "missing",
       reasons: ["no measured receipt matches this required matrix row"],
       receipt: null,
@@ -77,8 +78,24 @@ function rowEvidence(row, receiptRecord, requireClean) {
     Math.max(maximum, item.metrics.rss_peak_sampled_bytes ?? 0), 0) || null;
   const processMaxRss = receipt.cases.reduce((maximum, item) =>
     Math.max(maximum, item.metrics.process_max_rss_bytes ?? 0), 0) || null;
+  const peakMemoryRecords = receipt.cases.map((item) => item.metrics.peak_memory);
+  const invalidMemory = peakMemoryRecords.find((item) => item === null ||
+    item.authenticated_by !== "qualification-collector" ||
+    item.measurement_scope !== row.required_memory_scope);
+  if (invalidMemory !== undefined) {
+    reasons.push(
+      `required ${row.required_memory_scope} memory evidence is missing or has the wrong scope`,
+    );
+  }
+  const scopedMemory = peakMemoryRecords.filter((item) => item !== null &&
+    item.authenticated_by === "qualification-collector" &&
+    item.measurement_scope === row.required_memory_scope);
+  const peakMemory = scopedMemory.length === 0 ? null : scopedMemory.reduce(
+    (maximum, item) => item.bytes > maximum.bytes ? item : maximum,
+  );
   return {
     row_id: row.id,
+    required_memory_scope: row.required_memory_scope,
     status: reasons.length === 0 ? "passed" : "failed",
     reasons,
     receipt: {
@@ -108,6 +125,7 @@ function rowEvidence(row, receiptRecord, requireClean) {
       total_wall_ms: receipt.metrics.total_wall_ms,
       rss_peak_sampled_bytes: peakRss,
       process_max_rss_bytes: processMaxRss,
+      peak_memory: peakMemory,
       payload: receipt.metrics.payload,
       cases: receipt.cases.map((item) => ({
         id: item.case_id,
@@ -118,6 +136,7 @@ function rowEvidence(row, receiptRecord, requireClean) {
         wall_ms: item.metrics.wall_ms,
         rss_peak_sampled_bytes: item.metrics.rss_peak_sampled_bytes,
         process_max_rss_bytes: item.metrics.process_max_rss_bytes,
+        peak_memory: item.metrics.peak_memory,
         adapter_phases_ms: item.metrics.adapter_phases_ms,
       })),
     },
@@ -139,6 +158,7 @@ function buildReport(policyValue, receiptRecords) {
     if (matches.length > 1) {
       return {
         row_id: row.id,
+        required_memory_scope: row.required_memory_scope,
         status: "failed",
         reasons: [`${matches.length} receipts match; matrix evidence must be unambiguous`],
         receipt: null,
@@ -177,7 +197,7 @@ function markdownReport(report) {
     "",
     `Policy SHA-256: \`${report.policy.sha256}\``,
     "",
-    "| Required row | Status | Platform / runtime | Phases | Layers | Receipt | Source | Total ms | Peak RSS bytes | Artifact bytes |",
+    "| Required row | Status | Platform / runtime | Phases | Layers | Receipt | Source | Total ms | Qualified memory bytes / scope | Artifact bytes |",
     "|---|---:|---|---|---|---|---|---:|---:|---:|",
   ];
   for (const row of report.rows) {
@@ -193,7 +213,9 @@ function markdownReport(report) {
       row.receipt?.id ?? "missing",
       row.bindings?.source_bundle_sha256 ?? "missing",
       row.metrics?.total_wall_ms ?? "—",
-      row.metrics?.rss_peak_sampled_bytes ?? "—",
+      row.metrics?.peak_memory === null || row.metrics?.peak_memory === undefined
+        ? "—"
+        : `${row.metrics.peak_memory.bytes} / ${row.metrics.peak_memory.measurement_scope}`,
       row.metrics?.payload.artifact_installed_bytes ?? "—",
       "|",
     ].join(" | "));

@@ -35,12 +35,36 @@ established the P0 contracts and P1 root architecture on 2026-08-31:
   source and independently recheck residual and bracket invariants;
 - automatic planning is inspectable and does not evaluate the callback;
 - the result supports explanation, independent bisection verification,
-  refinement, four-language code emission, PlotSpec visualization, and
-  topology-stable Plotly animation;
+  refinement, PlotSpec visualization, and topology-stable Plotly animation;
+  its frontend wrapper owns four-language code emission;
 - Sage `find_root`, Python `sagejs.numerics.find_root`, MATLAB `fzero`, and
   Wolfram `FindRoot` are views of the same operation; and
 - focused CPython/Sage.js success, failure, cancellation, trace-budget,
   schema, and frontend tests pass with strict Python at zero errors.
+
+The P0 contract audit then hardened this foundation before release:
+
+- the exhaustive surface is generated from the actual public capability and
+  frontend registries, including all cminpack/NLopt identities and generic
+  bounded sweeps, rather than checked against a second hardcoded name list;
+- frontend adapters expose detached metadata and explicit bindings to their
+  capability operations, so omissions and classification drift fail the
+  architecture gate;
+- implementation targets are separate from digest-bound qualification
+  receipts; an intended browser or platform no longer masquerades as retained
+  release evidence;
+- common plans carry source/artifact/receipt-aware execution targets, common
+  results expose binding status and explicit limitations, and unsupported
+  callback-depth/allocation/memory contracts are classified honestly;
+- outward code is generated only by frontend-wrapped results that retain
+  language intent; canonical domain results remain language-neutral evidence;
+  and
+- npm is a first-class qualification subject instead of an ambiguous `other`
+  runtime; and
+- qualification memory is collector-authenticated and scope-aware: Node policy
+  may require collector-process RSS, while npm, SEA, browser, and worker policy
+  requires sampled process-tree evidence. Adapter telemetry and browser heap
+  estimates cannot satisfy that release gate.
 
 This proves the shared contracts sufficiently to begin domain-owned parallel
 implementation. P1 is not classified as release-qualified until its browser,
@@ -526,13 +550,14 @@ options—not parser tokens.
 
 ### Results should translate outward too
 
-Communication is bidirectional. An agent should be able to request:
+Communication is bidirectional. A frontend-wrapped result, which retains the
+source-language intent, should be able to request:
 
 ```python
-r.to_code("sage")
-r.to_code("python-scipy")
-r.to_code("matlab")
-r.to_code("wolfram")
+frontend_result.to_code("sage")
+frontend_result.to_code("python-scipy")
+frontend_result.to_code("matlab")
+frontend_result.to_code("wolfram")
 r.to_markdown()
 r.to_plot_spec()
 ```
@@ -541,6 +566,11 @@ Generated code includes the method, tolerances, seed, and relevant data. It
 must say when a target language lacks an exact equivalent and label the
 translation. Code generation is tested by parsing it back and comparing the
 canonical problem where possible.
+
+A canonical domain result deliberately does not implement `to_code`: without
+frontend intent it cannot know which language conventions, shapes, option
+names, and return form to preserve. It remains the language-neutral evidence
+record nested inside the frontend wrapper.
 
 This feature is particularly valuable for agents: Sage.js can compute in a
 portable browser environment, then communicate a reproducible MATLAB or

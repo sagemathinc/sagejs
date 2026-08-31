@@ -5,6 +5,12 @@ describes what exists, what is an oracle rather than a runtime dependency, and
 where compatibility syntax ends and canonical Sage.js semantics begin. The
 machine-readable claim ledger is [`surface.json`](surface.json).
 
+The ledger is generated from the live public capability and frontend
+registries. `pnpm architecture:numerics` fails when a capability or adapter is
+added, removed, renamed, reclassified, or changes its method/language surface
+without regenerating and reviewing the ledger. There is no independent
+hardcoded “required operations” list that can quietly drift behind the API.
+
 ## Existing Sage.js runtime
 
 | Area | Existing implementation | Laboratory decision |
@@ -54,3 +60,7 @@ An implementation is not promoted from `unsupported` merely because a backend
 contains a similarly named function. Promotion requires the domain corpus,
 independent mathematical validation, failure semantics, portability evidence,
 and budgets defined in `evidence-policy.json`.
+
+Implementation targets and receipt qualification are different claims. The
+former records intended platforms and runtimes. The latter is empty unless
+exact retained receipt digests authenticate those platform/runtime rows.

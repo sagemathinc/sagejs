@@ -46,6 +46,7 @@ class _Definition:
         options: Sequence[str] = (),
         classification: str = "translated",
         targets: Sequence[str] = (),
+        capability_operations: Sequence[str] | None = None,
     ) -> None:
         self.operation = OperationRef(domain, name, 1)
         self.operands = tuple(operands)
@@ -57,6 +58,11 @@ class _Definition:
         self.options = tuple(options)
         self.classification = classification
         self.targets = tuple(targets) if targets else _LANGUAGES
+        self.capability_operations = (
+            (domain + "." + name,)
+            if capability_operations is None
+            else tuple(capability_operations)
+        )
 
 
 _LANGUAGES = ("sage", "python-scipy", "matlab", "wolfram")
@@ -206,6 +212,10 @@ _DEFINITIONS = (
         options=("method", "trace"),
         outputs=("interpolant", "evidence"),
         targets=("sage", "python-scipy"),
+        capability_operations=(
+            "approximation.polynomial_interpolation",
+            "approximation.piecewise_interpolation",
+        ),
     ),
     _Definition(
         "approximation",
@@ -308,6 +318,7 @@ _DEFINITIONS = (
         callback="function",
         options=("method", "xtol", "ftol", "maxiter", "max_evaluations", "trace"),
         targets=("sage", "python-scipy", "matlab"),
+        capability_operations=("optimization.nonlinear_system",),
     ),
     _Definition(
         "least_squares",
@@ -332,6 +343,7 @@ _DEFINITIONS = (
             "trace",
         ),
         targets=("sage", "python-scipy", "matlab"),
+        capability_operations=("optimization.nonlinear_least_squares",),
     ),
     _Definition(
         "fitting",
@@ -348,6 +360,7 @@ _DEFINITIONS = (
         options=("max_evaluations", "max_elapsed_ms", "trace"),
         outputs=("parameters", "evidence"),
         targets=("sage", "python-scipy", "matlab"),
+        capability_operations=("optimization.linear_fit",),
     ),
     _Definition(
         "ode",
@@ -783,6 +796,8 @@ def operation_adapters() -> tuple[OperationAdapter, ...]:
                 emitters=emitters,
                 parsers=parsers,
                 executor=_make_executor(definition),
+                classification=definition.classification,
+                capability_operations=definition.capability_operations,
             )
         )
     return tuple(adapters)

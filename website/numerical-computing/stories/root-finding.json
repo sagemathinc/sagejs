@@ -164,6 +164,7 @@
         "elapsed_ms": 0,
         "evaluations": 8,
         "iterations": 6,
+        "limitations": [],
         "measurements": {
           "fixture_elapsed_policy": "normalized; performance is measured separately"
         },
@@ -174,9 +175,21 @@
         },
         "problem_digest": "4b6d9bec6947ad65f025d8d8b9f0726d32d1f1a367d7436b7b7082583e9655d5",
         "provenance": {
+          "artifact_sha256": null,
+          "execution_binding_status": "source_transparent_or_unobserved",
           "implementation": "sagejs.numerics.roots",
           "implementation_kind": "ordinary_python",
+          "planned_execution_target": {
+            "artifact_sha256": null,
+            "backend": "ordinary-python",
+            "binding_status": "source_transparent",
+            "implementation_kind": "ordinary_python",
+            "qualification_receipt_sha256": null,
+            "source_digest": null
+          },
+          "qualification_receipt_sha256": null,
           "solver_status": "converged",
+          "source_digest": null,
           "source_transparent": true
         },
         "reproducibility": {
@@ -212,6 +225,14 @@
               ]
             },
             "diagnostics": [],
+            "execution_target": {
+              "artifact_sha256": null,
+              "backend": "ordinary-python",
+              "binding_status": "source_transparent",
+              "implementation_kind": "ordinary_python",
+              "qualification_receipt_sha256": null,
+              "source_digest": null
+            },
             "expected_resources": {
               "max_elapsed_ms": 30000,
               "max_evaluations": 256,
@@ -648,6 +669,7 @@
         "elapsed_ms": 0,
         "evaluations": 42,
         "iterations": 40,
+        "limitations": [],
         "measurements": {
           "fixture_elapsed_policy": "normalized; performance is measured separately"
         },
@@ -658,9 +680,21 @@
         },
         "problem_digest": "4b6d9bec6947ad65f025d8d8b9f0726d32d1f1a367d7436b7b7082583e9655d5",
         "provenance": {
+          "artifact_sha256": null,
+          "execution_binding_status": "source_transparent_or_unobserved",
           "implementation": "sagejs.numerics.roots",
           "implementation_kind": "ordinary_python",
+          "planned_execution_target": {
+            "artifact_sha256": null,
+            "backend": "ordinary-python",
+            "binding_status": "source_transparent",
+            "implementation_kind": "ordinary_python",
+            "qualification_receipt_sha256": null,
+            "source_digest": null
+          },
+          "qualification_receipt_sha256": null,
           "solver_status": "converged",
+          "source_digest": null,
           "source_transparent": true
         },
         "reproducibility": {
@@ -696,6 +730,14 @@
               ]
             },
             "diagnostics": [],
+            "execution_target": {
+              "artifact_sha256": null,
+              "backend": "ordinary-python",
+              "binding_status": "source_transparent",
+              "implementation_kind": "ordinary_python",
+              "qualification_receipt_sha256": null,
+              "source_digest": null
+            },
             "expected_resources": {
               "max_elapsed_ms": 30000,
               "max_evaluations": 256,
@@ -1879,6 +1921,7 @@
         "elapsed_ms": 0,
         "evaluations": 42,
         "iterations": 40,
+        "limitations": [],
         "measurements": {
           "fixture_elapsed_policy": "normalized; performance is measured separately"
         },
@@ -1889,9 +1932,21 @@
         },
         "problem_digest": "72edf3691930d98bc81f2c84118be0d6b118f8a8a1a3f124bc5da09e9e0edd32",
         "provenance": {
+          "artifact_sha256": null,
+          "execution_binding_status": "source_transparent_or_unobserved",
           "implementation": "sagejs.numerics.roots",
           "implementation_kind": "ordinary_python",
+          "planned_execution_target": {
+            "artifact_sha256": null,
+            "backend": "ordinary-python",
+            "binding_status": "source_transparent",
+            "implementation_kind": "ordinary_python",
+            "qualification_receipt_sha256": null,
+            "source_digest": null
+          },
+          "qualification_receipt_sha256": null,
           "solver_status": "converged",
+          "source_digest": null,
           "source_transparent": true
         },
         "reproducibility": {
@@ -1927,6 +1982,14 @@
               ]
             },
             "diagnostics": [],
+            "execution_target": {
+              "artifact_sha256": null,
+              "backend": "ordinary-python",
+              "binding_status": "source_transparent",
+              "implementation_kind": "ordinary_python",
+              "qualification_receipt_sha256": null,
+              "source_digest": null
+            },
             "expected_resources": {
               "max_elapsed_ms": 30000,
               "max_evaluations": 256,
@@ -2946,6 +3009,7 @@
         "elapsed_ms": 0,
         "evaluations": 2,
         "iterations": 0,
+        "limitations": [],
         "measurements": {
           "fixture_elapsed_policy": "normalized; performance is measured separately"
         },
@@ -2956,9 +3020,21 @@
         },
         "problem_digest": "e53f100e28413e99181b01adc9f4ecc02be4282b8b065e30a90da9c007659f02",
         "provenance": {
+          "artifact_sha256": null,
+          "execution_binding_status": "source_transparent_or_unobserved",
           "implementation": "sagejs.numerics.roots",
           "implementation_kind": "ordinary_python",
+          "planned_execution_target": {
+            "artifact_sha256": null,
+            "backend": "ordinary-python",
+            "binding_status": "source_transparent",
+            "implementation_kind": "ordinary_python",
+            "qualification_receipt_sha256": null,
+            "source_digest": null
+          },
+          "qualification_receipt_sha256": null,
           "solver_status": "invalid_bracket",
+          "source_digest": null,
           "source_transparent": true
         },
         "reproducibility": {
@@ -2994,6 +3070,14 @@
               ]
             },
             "diagnostics": [],
+            "execution_target": {
+              "artifact_sha256": null,
+              "backend": "ordinary-python",
+              "binding_status": "source_transparent",
+              "implementation_kind": "ordinary_python",
+              "qualification_receipt_sha256": null,
+              "source_digest": null
+            },
             "expected_resources": {
               "max_elapsed_ms": 30000,
               "max_evaluations": 256,
@@ -3210,6 +3294,7 @@
         "elapsed_ms": 0,
         "evaluations": 9,
         "iterations": 8,
+        "limitations": [],
         "measurements": {
           "fixture_elapsed_policy": "normalized; performance is measured separately"
         },
@@ -3220,9 +3305,21 @@
         },
         "problem_digest": "d2c4ffdc3ea90e1cc1e4d9b7ca186b4ec8b134a855e8975c4f3fbb87136943c2",
         "provenance": {
+          "artifact_sha256": null,
+          "execution_binding_status": "source_transparent_or_unobserved",
           "implementation": "sagejs.numerics.roots",
           "implementation_kind": "ordinary_python",
+          "planned_execution_target": {
+            "artifact_sha256": null,
+            "backend": "ordinary-python",
+            "binding_status": "source_transparent",
+            "implementation_kind": "ordinary_python",
+            "qualification_receipt_sha256": null,
+            "source_digest": null
+          },
+          "qualification_receipt_sha256": null,
           "solver_status": "maximum_iterations",
+          "source_digest": null,
           "source_transparent": true
         },
         "reproducibility": {
@@ -3261,6 +3358,14 @@
               ]
             },
             "diagnostics": [],
+            "execution_target": {
+              "artifact_sha256": null,
+              "backend": "ordinary-python",
+              "binding_status": "source_transparent",
+              "implementation_kind": "ordinary_python",
+              "qualification_receipt_sha256": null,
+              "source_digest": null
+            },
             "expected_resources": {
               "max_elapsed_ms": 30000,
               "max_evaluations": 256,
