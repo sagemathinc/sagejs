@@ -103,7 +103,7 @@ invalidates the installed-addon cache.
 The Node Wasm suite exercises finite and rational packets, malformed packets,
 resource rejection, and exact output conversion. A real Chromium run passes
 both finite and rational computations. The reviewed msolve slice makes the
-complete `flint-factor.wasm` artifact 6,739,430 bytes raw and 2,551,799 bytes
+complete `flint-factor.wasm` artifact 6,744,875 bytes raw and 2,554,576 bytes
 under `gzip -9`; the narrow raw guard is 6,800,000 bytes.
 
 Because this changes the shared production Wasm source identity, the checked
@@ -154,7 +154,7 @@ The final integration checkout passed:
 - the compiler suite with 16 passes, 19 declared historical skips, and zero
   failures;
 - all 116 unit files and all 105 portable files;
-- the production Wasm suite with 182 passes and two expected unavailable-browser
+- the production Wasm suite with 188 passes and two expected unavailable-browser
   skips; and
 - the complete native functional, lifecycle, sanitizer, and resource suites.
 
