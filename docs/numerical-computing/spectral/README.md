@@ -2,9 +2,10 @@
 
 This package is the ordinary-Python, backend-neutral spectral slice of the
 Sage.js numerical laboratory. It runs from both CPython and Sage.js and returns
-the shared `NumericalResult` envelope. A solver termination is never sufficient
-for success: every successful result has independent residual, reconstruction,
-or orthogonality evidence appropriate to the operation.
+`SpectralResult`, a domain-owned extension of the shared `NumericalResult`
+envelope. A solver termination is never sufficient for success: every
+successful result has independent residual, reconstruction, or orthogonality
+evidence appropriate to the operation.
 
 ```python
 from sagejs.numerics.spectral import eigh, fft, svd
@@ -40,6 +41,65 @@ use a JSON representation: effectively real numbers remain JSON numbers and a
 nonreal value is `[real, imaginary]`. The algorithm works internally with
 Python complex numbers; the encoding keeps `to_json()` deterministic and
 portable.
+
+## Planning, explanations, and semantic views
+
+Package-local `supports(problem, method=None)` and `plan(problem, method=None)`
+provide discovery without running a numerical method or evaluating an opaque
+callback. They inspect only the immutable problem record: operation, requested
+method, sequence lengths, budgets, and independently recorded certificates.
+Automatic sparse planning never infers positive definiteness from Hermitian
+symmetry; it selects CG only when `spd_certified` is explicitly true and
+otherwise selects BiCGSTAB. Sparse power iteration similarly fails closed when
+the problem record has no unique-dominant-magnitude certificate. Capability
+records returned by `capabilities()` and embedded in plans are detached copies.
+
+```python
+from sagejs.numerics import NumericalProblem
+from sagejs.numerics.spectral import plan, supports
+
+problem = NumericalProblem(
+    "spectral",
+    "fourier_transform",
+    initial_data={"samples": [0.0] * 7},
+)
+assert supports(problem)
+assert plan(problem).method == "bluestein_radix2"
+```
+
+Every `SpectralResult` has a versioned, canonical-JSON explanation and a concise
+accessible text rendering:
+
+```python
+record = decomposition.explanation()
+text = decomposition.explain()
+payload = decomposition.explanation_json()
+
+singular_values = decomposition.plot()
+conditioning = decomposition.plot("conditioning")
+progress = decomposition.animate("convergence")
+```
+
+The renderer-neutral `PlotSpec` views are eigenvalues in the complex plane,
+singular spectra, DFT magnitudes, linear-convolution coefficients, retained
+convergence metrics, rejected eigenbasis conditioning witnesses, and explicit
+FFT or circular-convolution aliasing maps. These are semantic explanations, not
+new numerical experiments: they use only returned values, independent
+validation evidence, immutable problem metadata, and retained trace events.
+Aliasing views explain equivalence classes; they do not claim that aliasing can
+be detected without a physical sample rate and band-limit.
+
+Every static spec carries provenance and explicit alternative text. Static
+plots retain at most 1024 deterministic samples, preserving endpoints and
+recording decimation in provenance. Animations retain at most 32
+topology-stable frames, carry hard layer/sample/payload budgets, and embed an
+accessible static fallback. A convergence view is advertised only when the
+bounded semantic trace contains a relevant metric; no events are invented when
+`trace="none"`, when direct convolution has no iterative progress, or after a
+trace budget truncates the retained evidence. When finite complex components
+have a magnitude beyond binary64, magnitude views divide by a finite component
+scale and record that normalization in provenance rather than materializing an
+infinity.
 
 All algorithms normalize their finite inputs before forming norms, squared
 energies, residuals, Hermitian checks, or iterative thresholds. Results are
@@ -98,6 +158,7 @@ not a replacement public matrix hierarchy.
 
 ```text
 node --test test/numerics/spectral/spectral-laboratory.cjs
+node --test test/numerics/spectral/spectral-visualization.cjs
 python3 -I test/numerics/spectral/numpy_scipy_oracle.py
 python3 -I bench/numerics/spectral/benchmark.py
 ```

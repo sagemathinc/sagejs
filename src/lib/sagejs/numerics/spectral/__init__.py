@@ -12,8 +12,11 @@ from .dense import (
     svd,
     symmetric_eigen,
 )
+from .planning import plan, supports
+from .result import SPECTRAL_EXPLANATION_SCHEMA_VERSION, SpectralResult
 from .sparse import CSRMatrix, cg, eigsh, sparse_eigen, sparse_solve
 from .transforms import convolve, fft, fourier_transform, ifft
+from .visualization import spectral_animation, spectral_plot
 
 SPECTRAL_CAPABILITY_SCHEMA_VERSION = 1
 
@@ -28,6 +31,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "eigenvector_orthogonality",
             "spectral_reconstruction",
         ],
+        "visualization": ["eigenvalues", "convergence"],
     },
     "general_eigen": {
         "status": "implemented",
@@ -42,6 +46,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "schur_vector_orthogonality",
             "schur_reconstruction",
         ],
+        "visualization": ["eigenvalues", "conditioning", "convergence"],
     },
     "singular_value_decomposition": {
         "status": "implemented",
@@ -53,6 +58,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "left_singular_vector_orthogonality",
             "right_singular_vector_orthogonality",
         ],
+        "visualization": ["singular_values", "conditioning", "convergence"],
     },
     "fourier_transform": {
         "status": "implemented",
@@ -64,6 +70,19 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "parseval_energy",
             "orthogonality_scaling",
         ],
+        "visualization": ["spectrum", "aliasing", "convergence"],
+    },
+    "inverse_fourier_transform": {
+        "status": "implemented",
+        "classification": "translated",
+        "methods": ["radix2_cooley_tukey", "bluestein_radix2"],
+        "envelope": "finite nonempty one-dimensional complex binary64 sequences under the explicit workspace budget",
+        "validation": [
+            "independent_direct_reconstruction",
+            "parseval_energy",
+            "orthogonality_scaling",
+        ],
+        "visualization": ["spectrum", "aliasing", "convergence"],
     },
     "convolution": {
         "status": "implemented",
@@ -74,6 +93,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "independent_direct_convolution",
             "convolution_reconstruction",
         ],
+        "visualization": ["coefficients", "aliasing", "convergence"],
     },
     "sparse_linear_solve": {
         "status": "implemented",
@@ -81,6 +101,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
         "methods": ["cg", "bicgstab"],
         "envelope": "explicit finite square CSR matrices; CG requires a strict Hermitian diagonal-dominance positive-definiteness certificate",
         "validation": ["independent_linear_residual", "normwise_backward_error"],
+        "visualization": ["convergence"],
     },
     "sparse_dominant_eigen": {
         "status": "implemented",
@@ -93,6 +114,7 @@ _OPERATIONS: dict[str, dict[str, Any]] = {
             "rayleigh_reconstruction",
             "dominant_magnitude_uniqueness_certificate",
         ],
+        "visualization": ["eigenvalues", "convergence"],
     },
 }
 
@@ -182,6 +204,8 @@ def capabilities(operation: str | None = None) -> dict[str, Any]:
 __all__ = [
     "CSRMatrix",
     "SPECTRAL_CAPABILITY_SCHEMA_VERSION",
+    "SPECTRAL_EXPLANATION_SCHEMA_VERSION",
+    "SpectralResult",
     "capabilities",
     "cg",
     "convolve",
@@ -192,9 +216,13 @@ __all__ = [
     "fourier_transform",
     "general_eigen",
     "ifft",
+    "plan",
     "singular_value_decomposition",
     "sparse_eigen",
     "sparse_solve",
+    "spectral_animation",
+    "spectral_plot",
+    "supports",
     "svd",
     "symmetric_eigen",
 ]

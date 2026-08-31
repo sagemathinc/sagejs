@@ -17,20 +17,20 @@ diagnostic rather than a like-for-like product contest.
 
 | Workload | Ordinary Python + validation (ms) | NumPy/SciPy oracle (ms) |
 | --- | ---: | ---: |
-| Hermitian eigen, 24×24 | 71.97 | 0.14 |
-| General eigen, 10×10 | 16.83 | 0.06 |
-| Reduced SVD, 30×18 | 65.63 | 0.08 |
-| Complex FFT, 4096 | 97.62 | 0.05 |
-| FFT convolution, 512×512 | 12.95 | 0.11 |
-| CG tridiagonal solve, 400×400 | 42.97 | 0.52 |
-| Dominant sparse eigenpair, 400×400 | 19.00 | 0.79 |
+| Hermitian eigen, 24×24 | 72.72 | 0.14 |
+| General eigen, 10×10 | 16.21 | 0.05 |
+| Reduced SVD, 30×18 | 63.02 | 0.07 |
+| Complex FFT, 4096 | 97.39 | 0.05 |
+| FFT convolution, 512×512 | 13.13 | 0.11 |
+| CG tridiagonal solve, 400×400 | 42.95 | 0.53 |
+| Dominant sparse eigenpair, 400×400 | 19.04 | 0.94 |
 
-On small survey cases, system mpmath 1.3.0 took 21.08 ms for a 6×6 general
-eigensystem and 5.15 ms for an 8×5 SVD. The values characterize this host only.
+On small survey cases, system mpmath 1.3.0 took 20.96 ms for a 6×6 general
+eigensystem and 5.22 ms for an 8×5 SVD. The values characterize this host only.
 
-The five first-party Python files were 137,992 uncompressed bytes and 24,371
+The eight first-party Python files were 195,565 uncompressed bytes and 35,700
 bytes when concatenated and gzip-compressed at level 9. Their SHA-256 was
-`6260e89f20b94808b7f4aef308568be5f8be793123de9c1e215e87d6a8192f5e`.
+`7a79cc84ddf45c9a9d59759e2c699d6304fdb001d3217623923663cba3874d2a`.
 This change adds zero native or Wasm bytes and no new dependency. Rerun the
 benchmark after edits rather than treating an earlier payload hash as current.
 
