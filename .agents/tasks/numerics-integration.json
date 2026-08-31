@@ -1,0 +1,182 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-integration",
+  "title": "Validated adaptive integration",
+  "lane": "numerical-integration",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement adaptive quadrature and integration with error evidence, resource budgets, traces, failure classification and P2 acceptance tests",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "src/lib/sagejs/numerics/integration/",
+    "test/numerics/integration/",
+    "bench/numerics/integration/",
+    "docs/numerical-computing/integration/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "SciPy/mpmath and analytic-integral differential corpus"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 45.397,
+      "started_at": "2026-08-31T06:28:00.931Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 400.678,
+      "started_at": "2026-08-31T06:29:01.262Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/integration/integration-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.658,
+      "started_at": "2026-08-31T06:35:52.947Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/integration/scipy-mpmath-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.582,
+      "started_at": "2026-08-31T06:36:12.083Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node bench/numerics/integration/benchmark.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 5.605,
+      "started_at": "2026-08-31T06:36:22.691Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 5.91,
+      "started_at": "2026-08-31T06:36:50.211Z",
+      "commit": "4cd7599dc18f30740ff96bb433617936f39899e6",
+      "workspace_fingerprint": "1477d81c3083ac5ad30e542a47646b68d2ad613074e4dcb3b3585b9c0905443b",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/integration/test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 14.102,
+      "started_at": "2026-08-31T14:17:44.727Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "9e976ddbc38560345e2e45118d3e585b2dbe78b9732c60d04e9493bd455bda82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/integration/scipy-mpmath-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.435,
+      "started_at": "2026-08-31T14:18:05.031Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "9e976ddbc38560345e2e45118d3e585b2dbe78b9732c60d04e9493bd455bda82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/integration/adaptive.py src/lib/sagejs/numerics/integration/result.py src/lib/sagejs/numerics/integration/visualization.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.736,
+      "started_at": "2026-08-31T14:18:13.474Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "9e976ddbc38560345e2e45118d3e585b2dbe78b9732c60d04e9493bd455bda82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.313,
+      "started_at": "2026-08-31T14:18:23.205Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "9e976ddbc38560345e2e45118d3e585b2dbe78b9732c60d04e9493bd455bda82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 426.428,
+      "started_at": "2026-08-31T14:19:20.540Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "9e976ddbc38560345e2e45118d3e585b2dbe78b9732c60d04e9493bd455bda82",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/integration/adaptive.py src/lib/sagejs/numerics/integration/result.py src/lib/sagejs/numerics/integration/visualization.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.801,
+      "started_at": "2026-08-31T14:36:47.734Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "3858cdea20b90693676b89ef437091997e0a8660a9d875ce3f3eedb955955ea9",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/integration/scipy-mpmath-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.47,
+      "started_at": "2026-08-31T14:36:54.703Z",
+      "commit": "9a557bf764dcb0f1f43582906a0076c9c951aae7",
+      "workspace_fingerprint": "3858cdea20b90693676b89ef437091997e0a8660a9d875ce3f3eedb955955ea9",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Hardened the adaptive integrator against principal-value false success, partial initial partitions, affine overflow and endpoint-coordinate collapse, callback-side budget overruns, and permissive independent validation. Whole-line halves now adapt separately; validation preserves the solver termination record; exact elapsed-time status/diagnostics align with the shared contract; the manifest-discovered CPython/Sage.js laboratory and SciPy/mpmath oracle now cover adversarial odd divergence, cancellation, budgets, callback failures, huge and adjacent finite intervals, reversed and oscillatory cases, and deterministic narrow-feature blind spots. Documentation and capability metadata now state the qualified numerical and platform envelope without unearned release claims.",
+    "risks": [
+      "The exact maximum_elapsed_time result depends on central shared-contract commit 52d91d862 (status and diagnostic registry); this lane intentionally does not edit shared registries.",
+      "Binary64 cannot resolve arbitrarily translated endpoint-singularity coordinates; the implementation now fails explicitly with interval_too_small instead of sampling an endpoint or claiming success.",
+      "Deterministic embedded and independent quadrature rules can jointly miss an unbracketed feature narrower than their sampled nodes; this limitation is documented and regression-demonstrated."
+    ],
+    "next_steps": [
+      "Integrate the central package ownership, registry, pyright, and maximum_elapsed_time shared-contract changes, then rerun the manifest integration tier.",
+      "Collect browser, SEA, Linux arm64, macOS arm64, and Windows x64 receipts before changing the development-only platform qualification."
+    ]
+  }
+}
