@@ -172,6 +172,13 @@
       "rationale": "Bounded callback, total evaluation-budget, allocation, cancellation, and status ABI over the pinned cminpack lmdif/lmder implementation; mathematical iteration policy stays in authenticated upstream source, allocations are operation-scoped, and Sage.js independently validates returned residuals."
     },
     {
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "numerical-optimization",
+      "rationale": "Bounded packed callback, force-stop, allocation, status, and linear-memory ABI over the pinned MIT NLopt Nelder-Mead and COBYLA sources; NLopt owns the algorithms, automatic selection is disabled, and Sage.js independently validates every public result."
+    },
+    {
       "path": "packages/flint-wasm/src/factor.c",
       "category": "external-library-bridge",
       "review_status": "accepted",

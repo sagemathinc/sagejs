@@ -653,15 +653,19 @@ def documentation_registry():
 
 
 _numerical_backend_state = {"backend": None}
+_nlopt_backend_state = {"backend": None}
 
 
-def numerical_backend():
-    """Return the lazy, explicit-only cminpack backend."""
-    if _numerical_backend_state["backend"] is None:
-        _numerical_backend_state["backend"] = require_module(
-            "@sagemath/sagejs-numerical"
-        )
-    return _numerical_backend_state["backend"]
+def numerical_backend(name="cminpack"):
+    """Return a cached explicit-only numerical backend by exact identity."""
+    if name not in ("cminpack", "nlopt"):
+        raise ValueError("unknown numerical backend")
+    state = _numerical_backend_state if name == "cminpack" else _nlopt_backend_state
+    if state["backend"] is not None:
+        return state["backend"]
+    suffix = "" if name == "cminpack" else "-nlopt"
+    state["backend"] = require_module("@sagemath/sagejs-numerical" + suffix)
+    return state["backend"]
 
 
 array = Array

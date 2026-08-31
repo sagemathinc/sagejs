@@ -56,6 +56,8 @@
     "dist/ffi-resource-manifest.json",
     "dist/m4ri-resource.wasm",
     "dist/cminpack.wasm",
+    "dist/nlopt-methods.wasm",
+    "dist/nlopt-backend.mjs",
     "dist/numerical-backend.mjs",
     "dist/m4ri-resource-adapter.c",
     "dist/m4ri-resource-backend.mjs",

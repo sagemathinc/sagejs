@@ -1,0 +1,132 @@
+{
+  "schema": "sagejs.numerical-nlopt-qualification-summary/v1",
+  "artifact_sha256": "2d248aaa49c9482ab0afabaff1a9358a106b4deae23a9c2f8df033d75fa37c0f",
+  "artifact_bytes": 101376,
+  "artifact_gzip_bytes": 39521,
+  "artifact_brotli_bytes": 33049,
+  "source_revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+  "source_closure_sha256": "bcf6395e6ff2a33c9635c21908eeb7b53ccefd5d4ee9492b12c9a086e6a4dd4f",
+  "corpus_sha256": "151aab999ac1114770503050b3bb1d57f04af940b30468db3430254485f3521f",
+  "oracle": {
+    "scipy_output_sha256": "034eb6e6417b77600c3286c79afab5fef27b04bf6c0bbc458048b78ef6f7b39e",
+    "scipy": "1.18.0",
+    "numpy": "2.5.1",
+    "python": "3.14.4",
+    "cobyla_implementation": "PRIMA"
+  },
+  "methods": {
+    "nlopt-nelder-mead": {
+      "upstream_identity": "NLOPT_LN_NELDERMEAD",
+      "accepted_cases": 5,
+      "envelopes": [
+        "normal smooth",
+        "nonsmooth",
+        "box-bound active",
+        "ill-scaled variables"
+      ]
+    },
+    "nlopt-cobyla": {
+      "upstream_identity": "NLOPT_LN_COBYLA",
+      "accepted_feasible_cases": 7,
+      "independently_rejected_infeasible_cases": 1,
+      "envelopes": [
+        "linear active",
+        "curved active",
+        "redundant constraints",
+        "equality constraints",
+        "box-bound active",
+        "near-active constraints",
+        "ill-scaled constraints"
+      ]
+    }
+  },
+  "node_linux_x64": {
+    "node": "v26.7.0",
+    "full_corpus_cases": 13,
+    "results_sha256": "041fa922018d8017d445acbd5b76a90fd6775350f7d0dd7f74d2a0513f500651",
+    "lifecycle_after": {
+      "live_allocations": 0,
+      "live_bytes": 0
+    }
+  },
+  "chromium_linux_x64": {
+    "chromium": "149.0.7827.196",
+    "full_corpus_cases": 13,
+    "results_sha256": "7c8a63a9259ebe423c587a88a5e0d22f046671cf009947cc8a0453131ff2906e",
+    "pre_set_shared_atomic_force_stop": "pass",
+    "hard_worker_replacement": "pass",
+    "lifecycle_after": {
+      "live_allocations": 0,
+      "live_bytes": 0
+    }
+  },
+  "portable_final_artifact_smoke": [
+    {
+      "host": "local integration host",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.7.0",
+      "receipt": "bench/numerical-p3-nlopt/portable-receipts/linux-x64.json",
+      "result": "pass"
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "receipt": "bench/numerical-p3-nlopt/portable-receipts/linux-arm64.json",
+      "result": "pass"
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.5.0",
+      "receipt": "bench/numerical-p3-nlopt/portable-receipts/macos-arm64.json",
+      "result": "pass"
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "receipt": "bench/numerical-p3-nlopt/portable-receipts/windows-x64.json",
+      "result": "pass"
+    }
+  ],
+  "abi_and_lifecycle": {
+    "imports": [
+      {
+        "module": "sagejs_numerical_nlopt",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "packed_batch_probes": [
+      "objective and gradient",
+      "inequality vector and Jacobian",
+      "equality vector and Jacobian"
+    ],
+    "method_derivative_requests": 0,
+    "corrupt_region_cases": 500,
+    "allocation_failure_positions_per_method": 20,
+    "repeated_mixed_method_reuse": 200,
+    "callback_exception_and_nonfinite_cleanup": "pass",
+    "evaluation_callback_elapsed_abort_and_shared_memory_budgets": "pass",
+    "reentrancy_rejection_and_reuse": "pass",
+    "maximum_linear_memory_bytes": 134217728
+  },
+  "benchmark_linux_x64": {
+    "samples": 100,
+    "nelder_mead_rosenbrock_2_median_ms": 0.28997,
+    "cobyla_circle_active_2_median_ms": 0.32708
+  },
+  "selection": "explicit-only",
+  "limitations": [
+    "automatic selection is intentionally disabled",
+    "public NumericalResult integration must independently validate objective, bounds, feasibility, and local-optimum evidence",
+    "bench-1 rejected the available SSH identity, so Linux x64 is a local qualification rather than a persistent-host receipt",
+    "npm, SEA, and public browser resource wiring belong to the integration lane and are not claimed here",
+    "the two qualified methods are derivative-free; the packed gradient and Jacobian ABI is shape-tested but no derivative-using NLopt method is enabled"
+  ]
+}

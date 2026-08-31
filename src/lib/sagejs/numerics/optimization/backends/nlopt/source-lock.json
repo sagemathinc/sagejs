@@ -1,0 +1,22 @@
+{
+  "schema": "sagejs.numerical-nlopt-source-lock/v1",
+  "nlopt": {
+    "repository": "https://github.com/stevengj/nlopt",
+    "revision": "6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "version": "2.11.0-dev",
+    "archive": "https://codeload.github.com/stevengj/nlopt/tar.gz/6e6593f131ba3a38bc9edbed0a357bc01526e54b",
+    "archive_sha256": "268470455acee4b4460c809772c51312be042cd000c7746049dfa6191e64a0f1",
+    "license_file": "COPYING",
+    "license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
+    "distributed_license_sha256": "44039a06cc56e0e29e5c8563502ba143bd12bcd9163c00ffa2e1f15a7462cd07",
+    "license": "MIT plus permissive notices in selected algorithm sources",
+    "cmake_policy": {
+      "NLOPT_LUKSAN": false,
+      "NLOPT_CXX": false,
+      "selected_algorithms": [
+        "NLOPT_LN_NELDERMEAD",
+        "NLOPT_LN_COBYLA"
+      ]
+    }
+  }
+}

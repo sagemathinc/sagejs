@@ -47,6 +47,8 @@ const FFLAS_FFI_MANIFEST_ASSET = "native/sagejs_fflas_ffi_manifest.json";
 const ZEROMQ_ASSET = "native/zeromq.node";
 const NUMERICAL_BACKEND_ASSET = "numerical/cminpack.wasm";
 const NUMERICAL_BACKEND_MODULE = "@sagemath/sagejs-numerical";
+const NLOPT_BACKEND_ASSET = "numerical/nlopt-methods.wasm";
+const NLOPT_BACKEND_MODULE = "@sagemath/sagejs-numerical-nlopt";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
@@ -74,6 +76,7 @@ let graphModule: unknown;
 let fflasModule: unknown;
 let zeroMQModule: unknown;
 let numericalBackendModule: unknown;
+let nloptBackendModule: unknown;
 const runtimeModuleCache = new Map<string, unknown>();
 let nativeTemporaryDirectory: string | undefined;
 let kernelWorkerFilename: string | undefined;
@@ -1031,6 +1034,61 @@ function numericalBackendArtifact(): Uint8Array {
   return new Uint8Array(readFileSync(filename));
 }
 
+function nloptBackendArtifact(): Uint8Array {
+  if (isSea()) {
+    if (!hasAsset(NLOPT_BACKEND_ASSET)) {
+      throw new Error(
+        "This Sage.js executable was built without the NLopt numerical backend",
+      );
+    }
+    return assetBytes(NLOPT_BACKEND_ASSET);
+  }
+  const candidates = [
+    join(__dirname, "..", "numerical", "nlopt-methods.wasm"),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "packages",
+      "flint-wasm",
+      "numerical",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+    join(
+      __dirname,
+      "..",
+      "..",
+      "src",
+      "lib",
+      "sagejs",
+      "numerics",
+      "optimization",
+      "backends",
+      "nlopt",
+      "build",
+      "nlopt-methods.wasm",
+    ),
+  ];
+  const filename = candidates.find((candidate) => existsSync(candidate));
+  if (filename === undefined) {
+    throw new Error(
+      "The NLopt numerical backend is unavailable; run " +
+        "`node packages/flint-wasm/numerical/scripts/build-all.cjs`",
+    );
+  }
+  return new Uint8Array(readFileSync(filename));
+}
+
 function loadNumericalBackend(): unknown {
   if (numericalBackendModule !== undefined) return numericalBackendModule;
   const runtime = require("../numerical/backend.cjs") as {
@@ -1043,6 +1101,18 @@ function loadNumericalBackend(): unknown {
     numericalBackendArtifact(),
   );
   return numericalBackendModule;
+}
+
+function loadNloptBackend(): unknown {
+  if (nloptBackendModule !== undefined) return nloptBackendModule;
+  const runtime = require("../numerical/nlopt-backend.cjs") as {
+    createNloptBackendSync(bytes: Uint8Array): unknown;
+  };
+  if (typeof runtime.createNloptBackendSync !== "function") {
+    throw new TypeError("the NLopt numerical runtime adapter is invalid");
+  }
+  nloptBackendModule = runtime.createNloptBackendSync(nloptBackendArtifact());
+  return nloptBackendModule;
 }
 
 export function runtimeRequire(name: string): unknown {
@@ -1062,6 +1132,8 @@ export function runtimeRequire(name: string): unknown {
       module = loadEmbeddedZeroMQ();
     } else if (name === NUMERICAL_BACKEND_MODULE) {
       module = loadNumericalBackend();
+    } else if (name === NLOPT_BACKEND_MODULE) {
+      module = loadNloptBackend();
     } else if (name === "numpy-ts") {
       module = require("../vendor/numpy-ts.cjs");
     } else if (name === "@sagemath/sagejs-symbolic") {
@@ -1077,6 +1149,7 @@ export function runtimeRequire(name: string): unknown {
 export function cleanNativeResources(): void {
   runtimeModuleCache.clear();
   numericalBackendModule = undefined;
+  nloptBackendModule = undefined;
   nativeKernelModules.clear();
   if (!nativeTemporaryDirectory || !existsSync(nativeTemporaryDirectory)) return;
   try {

@@ -9,6 +9,11 @@ from typing import Any
 from ..diagnostics import NumericalDiagnostic
 from ..model import NumericalProblem, NumericalValidation
 from ..trace import NumericalTrace
+from ._constraints import (
+    constraint_records,
+    normalize_constraints,
+    problem_constraints,
+)
 from ._core import (
     MAX_DENSE_DIMENSION,
     CallbackFailure,
@@ -43,7 +48,7 @@ def minimize_problem(
     xtol: float = 1.0e-9,
     ftol: float = 1.0e-10,
     gtol: float = 1.0e-7,
-    initial_step: float = 0.05,
+    initial_step: float | Sequence[float] = 0.05,
     maxiter: int = 1000,
     max_evaluations: int = 20_000,
     max_elapsed_ms: int = 30_000,
@@ -55,19 +60,17 @@ def minimize_problem(
 ) -> NumericalProblem:
     """Construct an inspectable local-minimization problem.
 
-    Nonlinear constraints are deliberately rejected until a qualified COBYLA
-    backend and its infeasibility corpus are integrated. Box bounds use the
-    explicitly named `projected-bfgs` extension rather than impersonating TNC
-    or L-BFGS-B.
+    Nonlinear constraints use SciPy-shaped scalar mappings with `type` equal
+    to `ineq` (meaning `fun(x) >= 0`) or `eq` (meaning `fun(x) == 0`). They
+    are available only through the explicitly requested `nlopt-cobyla`
+    identity. Box bounds use the explicitly named `projected-bfgs` extension
+    for the ordinary-Python automatic route.
     """
     if not callable(function):
         raise TypeError("objective must be callable")
     if gradient is not None and not callable(gradient):
         raise TypeError("gradient must be callable")
-    if len(constraints) != 0:
-        raise NotImplementedError(
-            "nonlinear constraints require a qualified COBYLA backend; only box bounds are supported"
-        )
+    constraint_specs = normalize_constraints(constraints)
     if len(x0) == 0 or len(x0) > MAX_DENSE_DIMENSION:
         raise ValueError(
             "initial point dimension must be between 1 and " + str(MAX_DENSE_DIMENSION)
@@ -78,10 +81,25 @@ def minimize_problem(
             raise ValueError("the initial point must be finite")
     lower, upper = normalized_bounds(bounds, len(point))
     point = project(point, lower, upper)
-    if xtol <= 0.0 or ftol < 0.0 or gtol <= 0.0 or initial_step <= 0.0:
-        raise ValueError("optimization tolerances and initial_step must be positive")
+    if xtol <= 0.0 or ftol < 0.0 or gtol <= 0.0:
+        raise ValueError("optimization tolerances must be positive")
+    if isinstance(initial_step, Sequence) and not isinstance(
+        initial_step, (str, bytes, bytearray)
+    ):
+        if len(initial_step) != len(point):
+            raise ValueError("initial_step must have the same dimension as x0")
+        step_record = [float(value) for value in initial_step]
+    else:
+        step = float(initial_step)
+        step_record = [step * max(1.0, abs(value)) for value in point]
+    if any(not math.isfinite(value) or value <= 0.0 for value in step_record):
+        raise ValueError("initial_step entries must be finite and positive")
     bound_record = [[lower[index], upper[index]] for index in range(len(point))]
     requested = method.lower()
+    if len(constraint_specs) != 0 and requested != "nlopt-cobyla":
+        raise ValueError(
+            "nonlinear constraints require the explicit nlopt-cobyla method"
+        )
     if requested in ("nelder-mead", "bfgs") and any(
         item != [None, None] for item in bound_record
     ):
@@ -94,14 +112,19 @@ def minimize_problem(
         raise ValueError("projected-bfgs requires at least one finite box bound")
     if requested == "nelder-mead" and len(point) > 64:
         raise ValueError("Nelder-Mead is limited to dimension 64")
+    if requested.startswith("nlopt-") and gradient is not None:
+        raise ValueError("qualified NLopt methods are derivative-free; omit gradient")
     return problem_record(
         "optimization",
         "minimize",
         function,
         gradient,
         dimension=len(point),
-        initial_data={"point": point, "initial_step": float(initial_step)},
-        bounds={"variables": bound_record},
+        initial_data={"point": point, "initial_step": step_record},
+        bounds={
+            "variables": bound_record,
+            "constraints": constraint_records(constraint_specs),
+        },
         tolerances={"xtol": float(xtol), "ftol": float(ftol), "gtol": float(gtol)},
         method=method,
         max_iterations=maxiter,
@@ -112,6 +135,7 @@ def minimize_problem(
         max_trace_bytes=max_trace_bytes,
         expression=expression,
         source_language=source_language,
+        constraints=constraint_specs,
     )
 
 
@@ -161,11 +185,14 @@ def _nelder_mead(
         raise StopExecution("invalid_problem", "missing_initial_point")
     point = [float(value) for value in initial]
     dimension = len(point)
-    step = float(problem.initial_data["initial_step"])
+    raw_step = problem.initial_data["initial_step"]
+    if not isinstance(raw_step, list) or len(raw_step) != dimension:
+        raise StopExecution("invalid_problem", "invalid_initial_step")
+    step = [float(value) for value in raw_step]
     simplex = [list(point)]
     for index in range(dimension):
         vertex = list(point)
-        vertex[index] += step * max(1.0, abs(vertex[index]))
+        vertex[index] += step[index]
         simplex.append(vertex)
     values: list[float] = [
         float(_objective(execution, vertex, 0)) for vertex in simplex
@@ -453,6 +480,204 @@ def _bfgs(
     )
 
 
+def _nlopt_minimize(
+    execution: Execution,
+    method: str,
+) -> tuple[list[float] | None, float | None, int, str, dict[str, Any]]:
+    """Execute one exact NLopt identity through the lazy runtime boundary."""
+    try:
+        import sagejs.runtime as runtime
+    except (ImportError, NameError):
+        raise StopExecution("backend_failure", "nlopt_backend_unavailable") from None
+
+    problem = execution.problem
+    initial = problem.initial_data.get("point")
+    raw_step = problem.initial_data.get("initial_step")
+    if not isinstance(initial, list):
+        raise StopExecution("invalid_problem", "missing_initial_point")
+    if not isinstance(raw_step, list) or len(raw_step) != len(initial):
+        raise StopExecution("invalid_problem", "invalid_initial_step")
+    point = [float(value) for value in initial]
+    step = [float(value) for value in raw_step]
+    constraints = problem_constraints(problem)
+    inequality = [item for item in constraints if item.kind == "inequality"]
+    equality = [item for item in constraints if item.kind == "equality"]
+    if method == "nlopt-nelder-mead" and len(constraints) != 0:
+        raise StopExecution(
+            "invalid_problem", "nlopt_nelder_mead_nonlinear_constraints"
+        )
+
+    try:
+        backend = runtime.numerical_backend("nlopt")
+        solve = runtime.reflect.get(backend, "solve")
+        if runtime.jstype(solve) != "function":
+            raise StopExecution("backend_failure", "invalid_nlopt_runtime_contract")
+    except StopExecution:
+        raise
+    except Exception:
+        raise StopExecution("backend_failure", "nlopt_backend_unavailable") from None
+
+    options = runtime.object.create(None)
+
+    def set_option(name: str, value: Any) -> None:
+        runtime.reflect.set(options, name, value)
+
+    def objective_callback(candidate: list[float]) -> float:
+        return _objective(execution, candidate)
+
+    def inequality_callback(candidate: list[float]) -> list[float]:
+        # Public `ineq` follows SciPy (`fun(x) >= 0`); NLopt consumes `g(x) <= 0`.
+        return [
+            -scalar(execution.call("inequality", item.function, candidate))
+            for item in inequality
+        ]
+
+    def equality_callback(candidate: list[float]) -> list[float]:
+        return [
+            scalar(execution.call("equality", item.function, candidate))
+            for item in equality
+        ]
+
+    bounds_record = problem.bounds.get("variables")
+    bound_input = bounds_record if isinstance(bounds_record, list) else None
+    lower, upper = normalized_bounds(bound_input, len(point))
+    remaining_evaluations = (
+        problem.resource_budget.max_evaluations - execution.evaluations
+    )
+    if remaining_evaluations <= 0:
+        raise StopExecution("maximum_evaluations")
+    remaining_elapsed = problem.resource_budget.max_elapsed_ms - execution.elapsed_ms()
+    if remaining_elapsed <= 0.0:
+        raise StopExecution("maximum_elapsed_time", "elapsed_time_budget")
+    set_option("method", method)
+    set_option("initial", point)
+    set_option("initialStep", step)
+    set_option(
+        "lower",
+        [float("-inf") if value is None else float(value) for value in lower],
+    )
+    set_option(
+        "upper",
+        [float("inf") if value is None else float(value) for value in upper],
+    )
+    set_option("objective", objective_callback)
+    set_option("inequalityCount", len(inequality))
+    set_option("equalityCount", len(equality))
+    if len(inequality) != 0:
+        set_option("inequality", inequality_callback)
+        set_option("inequalityTolerance", [item.tolerance for item in inequality])
+    if len(equality) != 0:
+        set_option("equality", equality_callback)
+        set_option("equalityTolerance", [item.tolerance for item in equality])
+    # NLopt combines its stopping criteria with OR. In one dimension, equal
+    # objective values at opposite simplex vertices can therefore satisfy a
+    # relative function test while the simplex is still far from stationary
+    # (for example, the two sides of a quadratic minimizer). Keep function
+    # tolerance in the independent public validation contract, and use the
+    # parameter tolerance as the backend convergence stop.
+    # Omitting NLopt's optional function-tolerance field selects its documented
+    # disabled value. Do not pass a Python float wrapper across this low-level
+    # JavaScript option boundary merely to spell that default explicitly.
+    set_option("relativeParameterTolerance", float(problem.tolerances["xtol"]))
+    # NLopt's derivative-free algorithms expose an evaluation stop, not a
+    # portable iteration counter. Use the stricter of the caller's iteration
+    # and evaluation budgets rather than silently ignoring either contract.
+    backend_evaluation_budget = min(
+        remaining_evaluations, problem.resource_budget.max_iterations
+    )
+    set_option("maximumEvaluations", backend_evaluation_budget)
+    set_option("maximumCallbacks", backend_evaluation_budget)
+    set_option("maximumElapsedMs", remaining_elapsed)
+
+    try:
+        result = runtime.reflect.apply(solve, backend, [options])
+    except (StopExecution, CallbackFailure):
+        raise
+    except Exception:
+        raise StopExecution("backend_failure", "nlopt_backend_error") from None
+
+    try:
+        returned_method = str(runtime.reflect.get(result, "method"))
+        returned_backend = str(runtime.reflect.get(result, "backend"))
+        if returned_method != method or returned_backend != "nlopt-mit-wasm":
+            raise StopExecution("backend_failure", "nlopt_method_identity_mismatch")
+        if not bool(runtime.reflect.get(result, "independentValidationRequired")):
+            raise StopExecution("backend_failure", "nlopt_validation_contract_missing")
+        raw_value = runtime.reflect.get(result, "value")
+        value: list[float] | None = None
+        if runtime.jstype(raw_value) != "undefined":
+            value = [float(item) for item in raw_value]
+            if len(value) != len(point) or any(
+                not math.isfinite(item) for item in value
+            ):
+                raise StopExecution("backend_failure", "invalid_nlopt_parameter_vector")
+        backend_status = str(runtime.reflect.get(result, "status"))
+        backend_status_code = int(runtime.reflect.get(result, "backendStatus"))
+        backend_converged = bool(runtime.reflect.get(result, "backendConverged"))
+        backend_evaluations = int(runtime.reflect.get(result, "evaluations"))
+        objective_callbacks = int(runtime.reflect.get(result, "objectiveCallbacks"))
+        inequality_callbacks = int(runtime.reflect.get(result, "inequalityCallbacks"))
+        equality_callbacks = int(runtime.reflect.get(result, "equalityCallbacks"))
+        callback_count = int(runtime.reflect.get(result, "callbackCount"))
+        gradient_callbacks = int(runtime.reflect.get(result, "gradientCallbacks"))
+        jacobian_callbacks = int(runtime.reflect.get(result, "jacobianCallbacks"))
+        if (
+            any(
+                count < 0
+                for count in (
+                    backend_evaluations,
+                    objective_callbacks,
+                    inequality_callbacks,
+                    equality_callbacks,
+                    callback_count,
+                    gradient_callbacks,
+                    jacobian_callbacks,
+                )
+            )
+            or gradient_callbacks != 0
+            or jacobian_callbacks != 0
+        ):
+            raise StopExecution("backend_failure", "invalid_nlopt_counters")
+    except StopExecution:
+        raise
+    except Exception:
+        raise StopExecution("backend_failure", "invalid_nlopt_runtime_result") from None
+
+    if backend_converged:
+        status = "converged"
+    elif backend_status in ("maximum_evaluations", "maximum_callbacks"):
+        status = "maximum_evaluations"
+    elif backend_status in ("maximum_time", "maximum_elapsed_time"):
+        status = "maximum_elapsed_time"
+    elif backend_status == "cancelled":
+        status = "cancelled"
+    elif backend_status == "roundoff_limited":
+        status = "stagnation"
+    else:
+        status = "backend_failure"
+
+    objective: float | None = None
+    if value is not None:
+        # Recompute at the public boundary. The backend objective and positive
+        # termination status are execution evidence, never validation.
+        objective = _objective(execution, value)
+    payload: dict[str, Any] = {
+        "backend_status": backend_status,
+        "backend_status_code": backend_status_code,
+        "backend_evaluations": backend_evaluations,
+        "backend_objective_callbacks": objective_callbacks,
+        "backend_inequality_callbacks": inequality_callbacks,
+        "backend_equality_callbacks": equality_callbacks,
+        "backend_callback_count": callback_count,
+        "backend_derivative_callbacks": 0,
+        "backend_iterations_available": False,
+        "backend_evaluation_budget": backend_evaluation_budget,
+        "method_identity": returned_method,
+        "backend_identity": returned_backend,
+    }
+    return value, objective, 0, status, payload
+
+
 def solve_minimize_problem(
     problem: NumericalProblem,
     *,
@@ -488,7 +713,11 @@ def solve_minimize_problem(
     reason: str | None = None
     payload: dict[str, Any] = {}
     try:
-        if selected_plan.method == "nelder-mead":
+        if selected_plan.method in ("nlopt-nelder-mead", "nlopt-cobyla"):
+            value, objective, iterations, status, payload = _nlopt_minimize(
+                execution, selected_plan.method
+            )
+        elif selected_plan.method == "nelder-mead":
             value, objective, iterations, status, payload = _nelder_mead(execution)
         else:
             value, objective, iterations, status, payload = _bfgs(

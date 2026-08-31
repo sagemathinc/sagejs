@@ -8,6 +8,7 @@ from typing import Any
 from ..diagnostics import NumericalDiagnostic
 from ..model import NumericalProblem, NumericalValidation
 from ..trace import NumericalTrace, TracePolicy
+from ._constraints import problem_constraints
 from ._core import (
     CallbackFailure,
     Execution,
@@ -286,6 +287,9 @@ def _minimize_validation(
     bounds_record = problem.bounds.get("variables")
     bound_input = bounds_record if isinstance(bounds_record, list) else None
     lower, upper = normalized_bounds(bound_input, len(point))
+    constraints = problem_constraints(problem)
+    if len(constraints) != 0:
+        return _constrained_minimize_validation(problem, point, execution, lower, upper)
     objective = scalar(execution.call("validation", function, point))
     gradient = _independent_bound_gradient(
         execution, function, point, objective, lower, upper
@@ -364,6 +368,187 @@ def _minimize_validation(
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
         residual=residual,
+    )
+
+
+def _constrained_minimize_validation(
+    problem: NumericalProblem,
+    point: list[float],
+    execution: Execution,
+    lower: list[float | None],
+    upper: list[float | None],
+) -> NumericalValidation:
+    """Independently check feasibility and feasible local objective probes."""
+    function = problem.function
+    if function is None:
+        return NumericalValidation(
+            "indeterminate",
+            False,
+            checks=[{"kind": "callback_available", "passed": False}],
+        )
+    constraints = problem_constraints(problem)
+    objective = scalar(execution.call("validation", function, point))
+    values: list[float] = []
+    adjusted_violations: list[float] = []
+    equality_gradients: list[list[float]] = []
+    for item in constraints:
+        constraint_value = scalar(execution.call("validation", item.function, point))
+        values.append(constraint_value)
+        violation = (
+            max(0.0, -item.tolerance - constraint_value)
+            if item.kind == "inequality"
+            else max(0.0, abs(constraint_value) - item.tolerance)
+        )
+        adjusted_violations.append(violation)
+        if item.kind == "equality":
+            equality_gradients.append(
+                _independent_bound_gradient(
+                    execution,
+                    item.function,
+                    point,
+                    constraint_value,
+                    lower,
+                    upper,
+                )
+            )
+
+    bound_tolerance = max(1.0e-10, float(problem.tolerances["xtol"]) * 10.0)
+    bound_violation = 0.0
+    for index in range(len(point)):
+        lower_value = lower[index]
+        upper_value = upper[index]
+        if lower_value is not None:
+            bound_violation = max(
+                bound_violation,
+                float(lower_value) - point[index] - bound_tolerance,
+            )
+        if upper_value is not None:
+            bound_violation = max(
+                bound_violation,
+                point[index] - float(upper_value) - bound_tolerance,
+            )
+    bound_violation = max(0.0, bound_violation)
+    maximum_violation = max([bound_violation] + adjusted_violations)
+    feasible = maximum_violation == 0.0
+
+    # Build an independent orthonormal equality-normal basis, then poll both
+    # coordinate and equality-tangent directions. Only independently feasible
+    # candidates are allowed to support the local-minimum conclusion.
+    equality_normals: list[list[float]] = []
+    for gradient in equality_gradients:
+        residual_gradient = list(gradient)
+        for normal in equality_normals:
+            coefficient = sum(
+                residual_gradient[index] * normal[index] for index in range(len(point))
+            )
+            residual_gradient = [
+                residual_gradient[index] - coefficient * normal[index]
+                for index in range(len(point))
+            ]
+        norm = math.sqrt(sum(item * item for item in residual_gradient))
+        if norm > 1.0e-10:
+            equality_normals.append([item / norm for item in residual_gradient])
+
+    directions: list[list[float]] = []
+    for coordinate in range(len(point)):
+        basis = [0.0 for _ in point]
+        basis[coordinate] = 1.0
+        directions.append(basis)
+        tangent = list(basis)
+        for normal in equality_normals:
+            coefficient = sum(
+                tangent[index] * normal[index] for index in range(len(point))
+            )
+            tangent = [
+                tangent[index] - coefficient * normal[index]
+                for index in range(len(point))
+            ]
+        norm = math.sqrt(sum(item * item for item in tangent))
+        if norm > 1.0e-10:
+            directions.append([item / norm for item in tangent])
+
+    step = _SECOND_ORDER_STEP * max(1.0, infinity_norm(point))
+    feasible_probe_count = 0
+    resolved_probe = False
+    maximum_relative_local_decrease = 0.0
+    for direction in directions:
+        for sign in (-1.0, 1.0):
+            candidate = [
+                point[index] + sign * step * direction[index]
+                for index in range(len(point))
+            ]
+            for index in range(len(candidate)):
+                lower_value = lower[index]
+                upper_value = upper[index]
+                if lower_value is not None:
+                    candidate[index] = max(float(lower_value), candidate[index])
+                if upper_value is not None:
+                    candidate[index] = min(float(upper_value), candidate[index])
+            if candidate == point:
+                continue
+            candidate_feasible = True
+            for item in constraints:
+                candidate_value = scalar(
+                    execution.call("validation", item.function, candidate)
+                )
+                if item.kind == "inequality":
+                    candidate_feasible = (
+                        candidate_feasible and candidate_value >= -item.tolerance
+                    )
+                else:
+                    candidate_feasible = (
+                        candidate_feasible and abs(candidate_value) <= item.tolerance
+                    )
+            if not candidate_feasible:
+                continue
+            feasible_probe_count += 1
+            candidate_objective = scalar(
+                execution.call("validation", function, candidate)
+            )
+            resolved_probe = resolved_probe or candidate_objective != objective
+            comparison_scale = max(abs(objective), abs(candidate_objective))
+            if comparison_scale > 0.0:
+                maximum_relative_local_decrease = max(
+                    maximum_relative_local_decrease,
+                    max(
+                        0.0,
+                        objective / comparison_scale
+                        - candidate_objective / comparison_scale,
+                    ),
+                )
+
+    isolated_by_equalities = len(equality_normals) >= len(point)
+    probe_resolved = isolated_by_equalities or (
+        feasible_probe_count > 0 and resolved_probe
+    )
+    local_threshold = max(1.0e-10, float(problem.tolerances["ftol"]) * 20.0)
+    locally_minimal = (
+        maximum_relative_local_decrease <= local_threshold and probe_resolved
+    )
+    passed = feasible and locally_minimal and math.isfinite(objective)
+    return NumericalValidation(
+        "validated_approximate" if passed else "indeterminate",
+        passed,
+        checks=[
+            {
+                "kind": "independent_constraint_feasibility",
+                "passed": feasible,
+                "values": values,
+                "adjusted_violations": adjusted_violations,
+                "bound_violation": bound_violation,
+                "maximum_violation": maximum_violation,
+            },
+            {
+                "kind": "independent_feasible_direction_local_minimum",
+                "passed": locally_minimal,
+                "feasible_probe_count": feasible_probe_count,
+                "equality_rank": len(equality_normals),
+                "maximum_relative_sampled_decrease": maximum_relative_local_decrease,
+                "threshold": local_threshold,
+            },
+            {"kind": "finite_objective", "passed": math.isfinite(objective)},
+        ],
+        residual=maximum_violation,
     )
 
 
