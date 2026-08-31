@@ -138,3 +138,28 @@ test("the bounded registry proves spans and preserves honest misses", async () =
     await session.close();
   }
 });
+
+test("high-precision eta products retain exact coefficients and a broad performance budget", async () => {
+  const session = await createSage();
+  try {
+    const result = await session.evaluate(
+      [
+        "import time",
+        "eta_product(11,{1:2,11:2},prec=40)",
+        "started=time.perf_counter()",
+        "F=eta_product(11,{1:2,11:2},prec=500)",
+        "elapsed_ms=1000*(time.perf_counter()-started)",
+        "fingerprint=sum((n+1)*ZZ(F[n]) for n in range(500))%1000000007",
+        "[fingerprint,elapsed_ms]",
+      ].join("\n"),
+    );
+    const [fingerprint, elapsedMs] = JSON.parse(result.repr);
+    assert.equal(fingerprint, 15364);
+    assert.ok(
+      elapsedMs < 1000,
+      `precision-500 eta product took ${elapsedMs.toFixed(1)}ms`,
+    );
+  } finally {
+    await session.close();
+  }
+});

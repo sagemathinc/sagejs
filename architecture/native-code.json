@@ -176,7 +176,7 @@
       "category": "host-adapter",
       "review_status": "audited",
       "lane": "distribution",
-      "rationale": "Fixed bounded Wasm32 buffers adapt caller-owned canonical packets to the host-neutral FLINT multivariate resultant core; no mathematical algorithm is implemented in this file."
+      "rationale": "Fixed bounded Wasm32 buffers adapt caller-owned canonical packets to the host-neutral FLINT multivariate resultant and msolve Groebner cores; no mathematical algorithm is implemented in this file."
     },
     {
       "path": "packages/flint-wasm/src/algebraic.c",
@@ -683,6 +683,34 @@
       "rationale": "Fixed-width packet schema, status codes, and resource limits for the shared multivariate resultant boundary."
     },
     {
+      "path": "packages/flint/src/groebner_wasm_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Host-neutral bounded parser and serializer for one-crossing msolve prime-field and rational Groebner packets, with explicit allocation and output limits."
+    },
+    {
+      "path": "packages/flint/src/groebner_wasm_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Versioned fixed-width packed ABI, status codes, and resource limits shared by native tests and the WebAssembly msolve adapter."
+    },
+    {
+      "path": "packages/flint/src/msolve_core.c",
+      "category": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra",
+      "rationale": "Narrow status-returning ownership and process-containment bridge around pinned msolve F4 and modular rational exports."
+    },
+    {
+      "path": "packages/flint/src/msolve_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Owned result structures and status-only host-neutral ABI for the pinned msolve integration."
+    },
+    {
       "path": "packages/flint/src/modsym_core.c",
       "category": "mathematical-algorithm",
       "review_status": "audited",
@@ -709,6 +737,692 @@
       "review_status": "accepted",
       "lane": "arithmetic-algebra",
       "rationale": "Declarations for multivariate polynomial operations."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/crt/longlong.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/crt/mpq_reconstruct.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/crt/mpz_CRT_ui.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/crt/ulong_extras.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/aligned_alloc.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/berlekamp_massey.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/data_fglm.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/fglm.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/fglm_core.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/libfglm.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/linalg-fglm.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/fglm/matrix-mult.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/duplicate.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/getdelim.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/hilbert.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/iofiles.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/libmsolve.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/lifting-gb.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/lifting.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/linear.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/main.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve-data.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve-data.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/primes.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/msolve/streams.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/basis.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/basis.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/convert.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/data.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/data.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/engine.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/engine.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/f4.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/f4.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/f4sat.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/f4sat.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/gb.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/hash.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/hash.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/io.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/io.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/la.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_16.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_32.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_8.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/la_qq.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/libneogb.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/meta_data.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/meta_data.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/modular.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/modular.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/nf.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/nf.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/order.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/sba.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/sba.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/sort_r.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/symbol.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/tools.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/tools.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/update.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/neogb/update.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_extra.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_left_nullspace.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_permute_rows.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_arith.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_io.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mbasis.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mem.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_set_from.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_shift.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/bisection.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/data_usolve.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/debug.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/debug.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/descartes.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/descartes.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/evaluate.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/evaluate.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/libusolve.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/print_usolve.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/print_usolve.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/refine.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/refine.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/taylor_shift.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/taylor_shift.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/tests.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/univmultiply.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/univmultiply.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/usolve.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
+    },
+    {
+      "path": "packages/flint/vendor/msolve/src/usolve/utils.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra",
+      "rationale": "Pinned GPL-2.0-or-later msolve source tracked by SOURCE.json provenance and an exact aggregate hash; only the narrow reviewed library translation units are compiled."
     },
     {
       "path": "packages/flint/src/number_field_factor.c",

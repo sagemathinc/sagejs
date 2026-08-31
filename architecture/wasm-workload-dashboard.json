@@ -20,11 +20,11 @@
     },
     "parity_corpus": {
       "path": "test/browser-wasm-parity-corpus.json",
-      "sha256": "0c6eddce99ee25c3dd0d33db6b1f02b5916fa55a42634125914d8e9dd115d8a0"
+      "sha256": "24ee05185045006e06845fe69ab2c4c07bafa1fc7327a1ad7713f9ff04829df8"
     },
     "capability_report": {
       "path": "architecture/wasm-capabilities-report.json",
-      "sha256": "0ef739db9e5632a47bf95a83af5b48ce976250400710ce5a5cb12c829296c76c"
+      "sha256": "0b60f0389e7bfe1abf1828300e003e4981df7c2ef977cba3bb92bb94809e162d"
     },
     "kernel_coverage": {
       "path": "packages/flint-wasm/release/production-kernel-coverage.json",
@@ -39,14 +39,14 @@
     "source_revisions": []
   },
   "source_inventory": {
-    "parity_workloads": 38,
+    "parity_workloads": 41,
     "performance_workloads": 21,
     "capability_counts": {
-      "total": 1044,
+      "total": 1046,
       "by_kind": {
         "declared-ffi-function": 456,
         "declared-ffi-resource": 34,
-        "napi-export": 328,
+        "napi-export": 330,
         "production-kernel": 53,
         "runtime-intrinsic": 147,
         "specialist-capability": 26
@@ -55,13 +55,13 @@
         "compiled-source": 53,
         "desktop-only": 47,
         "generated-wasm": 339,
-        "portable-fallback": 560,
-        "shared-core": 45
+        "portable-fallback": 559,
+        "shared-core": 48
       },
       "by_status": {
-        "available": 579,
+        "available": 582,
         "desktop-only": 47,
-        "fallback": 418
+        "fallback": 417
       }
     },
     "kernel_coverage_totals": {
@@ -75,10 +75,10 @@
   },
   "route_classes": {
     "expected_requirements": {
-      "wasm-library": 92,
+      "wasm-library": 94,
       "wasm-compiled-source": 16,
       "portable-orchestration": 5,
-      "portable-computation": 0
+      "portable-computation": 5
     },
     "observed_calls": {
       "wasm-library": 0,
@@ -103,6 +103,14 @@
       "failed": 6,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
+    },
+    "arithmetic-geometry": {
+      "workloads": 1,
+      "heavy_workloads": 0,
+      "accelerated": 0,
+      "failed": 0,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
     },
     "combinatorics": {
       "workloads": 2,
@@ -153,12 +161,12 @@
       "unmeasured_or_review_required": 0
     },
     "exact-arithmetic": {
-      "workloads": 3,
+      "workloads": 4,
       "heavy_workloads": 1,
       "accelerated": 0,
       "failed": 1,
       "reviewed_fallback": 0,
-      "unmeasured_or_review_required": 2
+      "unmeasured_or_review_required": 3
     },
     "extension-fields": {
       "workloads": 3,
@@ -199,6 +207,14 @@
       "failed": 3,
       "reviewed_fallback": 0,
       "unmeasured_or_review_required": 0
+    },
+    "linear-algebra": {
+      "workloads": 1,
+      "heavy_workloads": 0,
+      "accelerated": 0,
+      "failed": 0,
+      "reviewed_fallback": 0,
+      "unmeasured_or_review_required": 1
     },
     "modular-symbols": {
       "workloads": 2,
@@ -307,6 +323,167 @@
         }
       },
       "issues": []
+    },
+    {
+      "id": "parity:exact-public-builtins",
+      "public_workflow": "exact-public-builtins",
+      "family": "exact-arithmetic",
+      "tier": "routine",
+      "heavy": false,
+      "status": "review-required",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:binomial",
+          "legacy_route": "portable-fallback",
+          "route_class": "portable-computation",
+          "reviewed": false,
+          "review": null,
+          "capability_status": "fallback",
+          "capability_disposition": "portable-fallback"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:factorial",
+          "legacy_route": "portable-fallback",
+          "route_class": "portable-computation",
+          "reviewed": false,
+          "review": null,
+          "capability_status": "fallback",
+          "capability_disposition": "portable-fallback"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:primePi",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "unreviewed-portable-computation",
+          "capability_id": "napi:@sagemath/sagejs-flint:binomial"
+        },
+        {
+          "code": "unreviewed-portable-computation",
+          "capability_id": "napi:@sagemath/sagejs-flint:factorial"
+        }
+      ]
+    },
+    {
+      "id": "parity:portable-extension-and-complex-matrices",
+      "public_workflow": "portable-extension-and-complex-matrices",
+      "family": "linear-algebra",
+      "tier": "routine",
+      "heavy": false,
+      "status": "review-required",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:acbMatrix",
+          "legacy_route": "portable-fallback",
+          "route_class": "portable-computation",
+          "reviewed": false,
+          "review": null,
+          "capability_status": "fallback",
+          "capability_disposition": "portable-fallback"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:fqMatrix",
+          "legacy_route": "portable-fallback",
+          "route_class": "portable-computation",
+          "reviewed": false,
+          "review": null,
+          "capability_status": "fallback",
+          "capability_disposition": "portable-fallback"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "unreviewed-portable-computation",
+          "capability_id": "napi:@sagemath/sagejs-flint:acbMatrix"
+        },
+        {
+          "code": "unreviewed-portable-computation",
+          "capability_id": "napi:@sagemath/sagejs-flint:fqMatrix"
+        }
+      ]
+    },
+    {
+      "id": "parity:brandt-degeneracy-and-elliptic-scalar-fallback",
+      "public_workflow": "brandt-degeneracy-and-elliptic-scalar-fallback",
+      "family": "arithmetic-geometry",
+      "tier": "routine",
+      "heavy": false,
+      "status": "review-required",
+      "expected_routes": [
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+          "legacy_route": "portable-fallback",
+          "route_class": "portable-computation",
+          "reviewed": false,
+          "review": null,
+          "capability_status": "fallback",
+          "capability_disposition": "portable-fallback"
+        },
+        {
+          "capability_id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
+          "legacy_route": "receipt-backed-wasm-artifact",
+          "route_class": "wasm-library",
+          "reviewed": true,
+          "review": null,
+          "capability_status": "available",
+          "capability_disposition": "shared-core"
+        }
+      ],
+      "engines": {
+        "chromium": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "firefox": {
+          "status": "missing",
+          "observed_routes": []
+        },
+        "webkit": {
+          "status": "missing",
+          "observed_routes": []
+        }
+      },
+      "issues": [
+        {
+          "code": "unreviewed-portable-computation",
+          "capability_id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime"
+        }
+      ]
     },
     {
       "id": "parity:partition-count-and-ranking",

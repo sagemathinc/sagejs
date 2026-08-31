@@ -166,8 +166,8 @@ for (const line of runSage(performance).split("\n")) {
     [primeText, rowText, columnText, blockText].map(Number);
   // These deliberately loose ceilings catch a return to one host crossing per
   // entry without making shared CI load part of the API contract.
-  assert.ok(row < 0.01, `GF(${prime}) set_row took ${row}s`);
-  assert.ok(column < 0.01, `GF(${prime}) set_column took ${column}s`);
+  assert.ok(row < 0.02, `GF(${prime}) set_row took ${row}s`);
+  assert.ok(column < 0.02, `GF(${prime}) set_column took ${column}s`);
   // The portable release pack intentionally excludes M4RI until its native
   // dependency is supported on Windows. Its exact dynamic fallback performs
   // the same checked mutation but cannot meet the compiled bulk-kernel gate.

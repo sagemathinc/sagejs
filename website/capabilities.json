@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updated": "2026-08-22",
+  "updated": "2026-08-31",
   "capabilities": [
     {
       "id": "sage-language",
@@ -153,15 +153,15 @@
       "state": "partial",
       "quality": "tested",
       "coverage": {
-        "level": "focused",
-        "label": "Small and medium exact ideal workflows",
-        "summary": "Provides usable Gröbner bases and reduction, but not yet the high-performance commutative-algebra surface needed for large research problems.",
-        "includes": ["ideal.groebner_basis()", "normal-form reduction", "ideal membership", "elimination foundations", "small book and teaching examples"]
+        "level": "substantial",
+        "label": "Portable modern ideal workflows over prime fields and QQ",
+        "summary": "Provides scalar msolve F4 over prime fields and an explicit modular rational path, with reduced bases, normal forms, leading ideals, membership, and inspectable proof metadata.",
+        "includes": ["ideal.groebner_basis()", "msolve F4 over prime GF(p)", "modular QQ bases", "normal-form reduction", "leading ideals", "ideal membership", "native and browser WebAssembly"]
       },
-      "summary": "Polynomial ideals provide useful Gröbner basis and reduction functionality; large research workloads need stronger engines.",
-      "implementation": "Readable Sage.js algorithms with native polynomial foundations.",
-      "evidence": "Polynomial-ideal regression tests and book examples.",
-      "target": "Integrate or port msolve-class algorithms, then add syzygies and free resolutions.",
+      "summary": "Polynomial ideals have a modern portable F4 backend over prime fields and an experimental fast modular backend over the rationals.",
+      "implementation": "A reviewed msolve source slice shares Sage.js's FLINT/GMP layer through bounded native and Wasm packet ABIs; FLINT remains the exact rational default.",
+      "evidence": "Versioned multi-oracle corpus, independent exact verifier, four-platform native suite, sanitizers, Node-Wasm, and real Chromium tests.",
+      "target": "Add certified modular QQ output, FGLM/order conversion, broader coefficient fields, modules, syzygies, and an optional Singular breadth tier.",
       "priority": "next"
     },
     {

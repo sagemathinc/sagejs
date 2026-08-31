@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "architecture/package-graph.json",
-      "sha256": "8b7935b60280ef8b7106be7ea0969d69a29c02b91f4993ec7f859bfa1a86c69b"
+      "sha256": "937d645333274af77eb1cd98c0424c54ecac3b56a12f99736810ba76806c7b85"
     },
     {
       "path": "bench/modular/qexp-correctness/README.md",
@@ -47,7 +47,7 @@
     },
     {
       "path": "docs/index.md",
-      "sha256": "34342c258bbb22f9d1e8ac4e6da4f8f27de7a463599898598d6d81fa9a30327d"
+      "sha256": "8a12f3be00cca2e4ad985fbc70d8ef305c3b42cb026f48be24cd15fb2712638d"
     },
     {
       "path": "docs/modular-form-q-expansions.md",
@@ -59,7 +59,7 @@
     },
     {
       "path": "src/baselib/modular.py",
-      "sha256": "d8e05267bc9cb5e5b580545b1f34646138430546c6a6d3787c1ee985a9718a56"
+      "sha256": "3f4d502c65afe56b8c2a4ef870759ce45da45cdc5550156958ed4b7fcd1adb96"
     },
     {
       "path": "src/lib/sagejs/modular_forms/__init__.py",
@@ -67,7 +67,7 @@
     },
     {
       "path": "src/lib/sagejs/modular_forms/eta_products.py",
-      "sha256": "3bf0889c1d449b028e8d560b956a0e9fac10435a4a71ee2b609c7946b285be36"
+      "sha256": "ea6ad705e086eb7a8e559fa62b127e8867216bef997d8795168235a80ead4eba"
     },
     {
       "path": "src/lib/sagejs/modular_forms/half_integral.py",
@@ -87,7 +87,7 @@
     },
     {
       "path": "test/eta-products.cjs",
-      "sha256": "f2e5be7353eb4af30c11a495cdcad66bdb9c822f11f2a5bea03e1feae3da9b6b"
+      "sha256": "c3d7213b24dc2c59ac8edcc66738d73f1571ee645360dff52c6f247444f7cbe6"
     },
     {
       "path": "test/formula-hecke.cjs",
@@ -114,5 +114,5 @@
       "sha256": "8c3772414120829e410eaf0647a689d100109fae717241294c42fffa539c85c4"
     }
   ],
-  "bundle_sha256": "4f244ca4f4940d3e79aa6e0d2e2d77e095450a3415c2c51b9e32ba07ebe054f2"
+  "bundle_sha256": "4008ac76d02eeac6fbf8b081466d5219562ee1042f244f7203f7a4879b55a9f2"
 }

@@ -43,6 +43,15 @@ The dependency build records the exact upstream URLs, versions, and SHA-256
 digests used to produce the linked addon. The combined Sage.js distribution
 is conveyed under GPL-3.0-only.
 
+The native and WebAssembly polynomial backends compile a reviewed source slice
+from [msolve](https://github.com/algebraic-solving/msolve), version
+0.10.1-14-g1e3af01 at commit
+`1e3af01f3864f6c848814b02a450f384c108adea`. Upstream licenses msolve under
+GPL version 2 or later. Its complete license, source receipt, selected source
+directories, aggregate hash, and portability patch ledger are in
+`packages/flint/vendor/msolve`. The combined Sage.js distribution is conveyed
+under GPL-3.0-only.
+
 The native mathematics addon also compiles a patched source closure from John
 Cremona's eclib for elliptic-curve 2-descent. See `ECLIB-GPL-NOTICE.md` for the
 exact revision, source and patch locations, and GPL-2.0-or-later notice. The

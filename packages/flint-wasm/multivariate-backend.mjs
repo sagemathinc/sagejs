@@ -13,12 +13,20 @@ const INPUT_MAGIC = 0x49504d53;
 const OUTPUT_MAGIC = 0x4f504d53;
 const VERSION = 1;
 const RESULTANT = 1;
+const GROEBNER_INPUT_MAGIC = 0x49424753;
+const GROEBNER_OUTPUT_MAGIC = 0x4f424753;
+const GROEBNER_F4 = 1;
+const GROEBNER_QQ = 2;
 const MAX_INPUT_BYTES = 1024 * 1024;
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const MAX_TERMS = 256;
 const MAX_COEFFICIENT_WORDS = 16;
 const MAX_ELIMINATION_DEGREE = 8;
 const MAX_PARAMETER_DEGREE = 8;
+const MAX_GROEBNER_VARIABLES = 4096;
+const MAX_GROEBNER_GENERATORS = 262144;
+const MAX_GROEBNER_TERMS = 1048576;
+const MAX_GROEBNER_EXPONENT_ENTRIES = 16777216;
 
 const STATUS = Object.freeze({
   OK: 0,
@@ -77,11 +85,114 @@ function compareMonomials(context, left, right) {
   return 0;
 }
 
+function integerGcd(left, right) {
+  left = left < 0n ? -left : left;
+  right = right < 0n ? -right : right;
+  while (right !== 0n) [left, right] = [right, left % right];
+  return left;
+}
+
+function normalizeCoefficient(context, value, denominator = 1n) {
+  if (context.kind === "qq") {
+    if (Array.isArray(value)) [value, denominator] = value;
+    else if (value && typeof value === "object") {
+      denominator = value.denominator;
+      value = value.numerator;
+    }
+    let numerator = BigInt(value);
+    denominator = BigInt(denominator);
+    if (denominator === 0n) throw new RangeError("rational denominator is zero");
+    if (denominator < 0n) {
+      numerator = -numerator;
+      denominator = -denominator;
+    }
+    const divisor = integerGcd(numerator, denominator);
+    return Object.freeze({
+      numerator: numerator / divisor,
+      denominator: denominator / divisor,
+    });
+  }
+  value = BigInt(value);
+  if (context.kind !== "nmod") return value;
+  value %= context.modulus;
+  return value < 0n ? value + context.modulus : value;
+}
+
+function coefficientIsZero(context, value) {
+  return context.kind === "qq" ? value.numerator === 0n : value === 0n;
+}
+
+function coefficientAdd(context, left, right) {
+  if (context.kind === "qq") {
+    return normalizeCoefficient(context,
+      left.numerator * right.denominator + right.numerator * left.denominator,
+      left.denominator * right.denominator);
+  }
+  return normalizeCoefficient(context, left + right);
+}
+
+function coefficientNegate(context, value) {
+  return context.kind === "qq"
+    ? normalizeCoefficient(context, -value.numerator, value.denominator)
+    : normalizeCoefficient(context, -value);
+}
+
+function coefficientMultiply(context, left, right) {
+  if (context.kind === "qq") {
+    return normalizeCoefficient(context,
+      left.numerator * right.numerator,
+      left.denominator * right.denominator);
+  }
+  return normalizeCoefficient(context, left * right);
+}
+
+function coefficientDivide(context, left, right) {
+  if (context.kind === "qq") {
+    if (right.numerator === 0n) throw new RangeError("division by zero coefficient");
+    return normalizeCoefficient(context,
+      left.numerator * right.denominator,
+      left.denominator * right.numerator);
+  }
+  if (context.kind === "nmod") {
+    return normalizeCoefficient(
+      context, left * modularInverse(right, context.modulus),
+    );
+  }
+  if (right === 0n || left % right !== 0n) return null;
+  return left / right;
+}
+
+function coefficientEqual(context, left, right) {
+  return context.kind === "qq"
+    ? left.numerator === right.numerator && left.denominator === right.denominator
+    : left === right;
+}
+
+function coefficientSign(context, value) {
+  const scalar = context.kind === "qq" ? value.numerator : value;
+  return scalar < 0n ? -1 : scalar > 0n ? 1 : 0;
+}
+
+function modularInverse(value, modulus) {
+  let oldR = normalizeCoefficient({ kind: "nmod", modulus }, value);
+  let r = modulus;
+  let oldS = 1n;
+  let s = 0n;
+  while (r !== 0n) {
+    const quotient = oldR / r;
+    [oldR, r] = [r, oldR - quotient * r];
+    [oldS, s] = [s, oldS - quotient * s];
+  }
+  if (oldR !== 1n) throw new RangeError("coefficient is not invertible");
+  oldS %= modulus;
+  return oldS < 0n ? oldS + modulus : oldS;
+}
+
 function canonicalTerms(context, entries) {
   const combined = new Map();
   for (const entry of entries) {
-    const coefficient = BigInt(entry.coefficient);
-    if (coefficient === 0n) continue;
+    const coefficient = normalizeCoefficient(context, entry.coefficient);
+    if (coefficientIsZero(context, coefficient)) continue;
     if (!Array.isArray(entry.exponents) ||
         entry.exponents.length !== context.variables ||
         entry.exponents.some((value) =>
@@ -91,12 +202,14 @@ function canonicalTerms(context, entries) {
     const key = exponentKey(entry.exponents);
     const previous = combined.get(key);
     combined.set(key, {
-      coefficient: (previous?.coefficient ?? 0n) + coefficient,
+      coefficient: previous === undefined
+        ? coefficient
+        : coefficientAdd(context, previous.coefficient, coefficient),
       exponents: previous?.exponents ?? entry.exponents.slice(),
     });
   }
   return [...combined.values()]
-    .filter(({ coefficient }) => coefficient !== 0n)
+    .filter(({ coefficient }) => !coefficientIsZero(context, coefficient))
     .sort((left, right) =>
       -compareMonomials(context, left.exponents, right.exponents))
     .map(({ coefficient, exponents }) => Object.freeze({
@@ -128,7 +241,9 @@ function add(left, right, sign = 1n) {
   return polynomial(left.context, [
     ...left.terms,
     ...right.terms.map(({ coefficient, exponents }) => ({
-      coefficient: sign * coefficient,
+      coefficient: sign === 1n
+        ? coefficient
+        : coefficientNegate(left.context, coefficient),
       exponents,
     })),
   ]);
@@ -137,7 +252,7 @@ function add(left, right, sign = 1n) {
 function negate(value) {
   value = assertPolynomial(value);
   return polynomial(value.context, value.terms.map(({ coefficient, exponents }) => ({
-    coefficient: -coefficient,
+    coefficient: coefficientNegate(value.context, coefficient),
     exponents,
   })));
 }
@@ -148,7 +263,9 @@ function multiply(left, right) {
   for (const leftTerm of left.terms) {
     for (const rightTerm of right.terms) {
       entries.push({
-        coefficient: leftTerm.coefficient * rightTerm.coefficient,
+        coefficient: coefficientMultiply(
+          left.context, leftTerm.coefficient, rightTerm.coefficient,
+        ),
         exponents: leftTerm.exponents.map(
           (exponent, index) => exponent + rightTerm.exponents[index],
         ),
@@ -325,6 +442,272 @@ function decodeResult(context, bytes) {
   return polynomial(context, entries);
 }
 
+function encodeGroebner(values) {
+  if (!Array.isArray(values)) throw new TypeError("expected an array of polynomials");
+  const nonzero = values.map(assertPolynomial).filter((value) => value.terms.length !== 0);
+  if (nonzero.length === 0) return { context: values[0]?.context, bytes: null };
+  const context = nonzero[0].context;
+  for (const value of nonzero) {
+    if (value.context !== context) {
+      throw new TypeError("multivariate polynomials have different parents");
+    }
+  }
+  if (context.kind !== "nmod" || context.order !== "degrevlex" ||
+      context.modulus < 2n || context.modulus >= (1n << 31n)) {
+    throw capabilityUnavailable(
+      "msolve F4 requires GF(p), p < 2^31, and degree reverse lexicographic order",
+    );
+  }
+  const terms = nonzero.reduce((sum, value) => sum + value.terms.length, 0);
+  if (context.variables > MAX_GROEBNER_VARIABLES ||
+      nonzero.length > MAX_GROEBNER_GENERATORS ||
+      terms > MAX_GROEBNER_TERMS ||
+      context.variables * terms > MAX_GROEBNER_EXPONENT_ENTRIES) {
+    throw capabilityUnavailable("input exceeds the reviewed msolve resource envelope");
+  }
+  const length = 32 + 4 * nonzero.length +
+    4 * terms * (context.variables + 1);
+  if (length > MAX_INPUT_BYTES) {
+    throw capabilityUnavailable(`packed input is limited to ${MAX_INPUT_BYTES} bytes`);
+  }
+  const bytes = new Uint8Array(length);
+  [
+    GROEBNER_INPUT_MAGIC,
+    VERSION,
+    GROEBNER_F4,
+    context.variables,
+    ORDER[context.order],
+    Number(context.modulus),
+    nonzero.length,
+    terms,
+  ].forEach((value, index) => writeU32(bytes, index * 4, value));
+  let offset = 32;
+  for (const value of nonzero) {
+    writeU32(bytes, offset, value.terms.length);
+    offset += 4;
+  }
+  for (const value of nonzero) {
+    for (const term of value.terms) {
+      writeU32(bytes, offset, Number(term.coefficient));
+      offset += 4;
+      for (const exponent of term.exponents) {
+        if (exponent > 0x7fffffff) {
+          throw capabilityUnavailable("msolve F4 exponents are limited to signed 32-bit values");
+        }
+        writeU32(bytes, offset, exponent);
+        offset += 4;
+      }
+    }
+  }
+  if (offset !== length) throw new Error("Groebner packet size drifted");
+  return { context, bytes };
+}
+
+function decodeGroebner(context, bytes) {
+  if (bytes.byteLength < 32 ||
+      readU32(bytes, 0) !== GROEBNER_OUTPUT_MAGIC ||
+      readU32(bytes, 4) !== VERSION ||
+      readU32(bytes, 8) !== GROEBNER_F4 ||
+      readU32(bytes, 12) !== context.variables ||
+      readU32(bytes, 16) !== ORDER[context.order] ||
+      readU32(bytes, 20) !== Number(context.modulus)) {
+    throw new Error("msolve WebAssembly returned an invalid Groebner header");
+  }
+  const count = readU32(bytes, 24);
+  const terms = readU32(bytes, 28);
+  const lengths = [];
+  let offset = 32;
+  let counted = 0;
+  for (let index = 0; index < count; index += 1) {
+    const length = readU32(bytes, offset);
+    offset += 4;
+    if (length === 0 || counted > terms - length) {
+      throw new Error("msolve WebAssembly returned invalid polynomial lengths");
+    }
+    lengths.push(length);
+    counted += length;
+  }
+  if (counted !== terms) {
+    throw new Error("msolve WebAssembly returned an inconsistent term count");
+  }
+  const answer = [];
+  for (const length of lengths) {
+    const entries = [];
+    for (let index = 0; index < length; index += 1) {
+      const coefficient = BigInt(readU32(bytes, offset));
+      offset += 4;
+      if (coefficient >= context.modulus) {
+        throw new Error("msolve WebAssembly returned a noncanonical coefficient");
+      }
+      const exponents = [];
+      for (let variable = 0; variable < context.variables; variable += 1) {
+        exponents.push(readU32(bytes, offset));
+        offset += 4;
+      }
+      entries.push({ coefficient, exponents });
+    }
+    answer.push(polynomial(context, entries));
+  }
+  if (offset !== bytes.byteLength) {
+    throw new Error("msolve WebAssembly returned trailing Groebner bytes");
+  }
+  return answer;
+}
+
+function encodeGroebnerQQ(values) {
+  if (!Array.isArray(values)) throw new TypeError("expected an array of polynomials");
+  const nonzero = values.map(assertPolynomial).filter((value) => value.terms.length !== 0);
+  if (nonzero.length === 0) return { context: values[0]?.context, bytes: null };
+  const context = nonzero[0].context;
+  for (const value of nonzero) {
+    if (value.context !== context) {
+      throw new TypeError("multivariate polynomials have different parents");
+    }
+  }
+  if (context.kind !== "qq" || context.order !== "degrevlex") {
+    throw capabilityUnavailable(
+      "msolve modular QQ requires rational coefficients and degree reverse lexicographic order",
+    );
+  }
+  const terms = nonzero.reduce((sum, value) => sum + value.terms.length, 0);
+  if (context.variables > MAX_GROEBNER_VARIABLES ||
+      nonzero.length > MAX_GROEBNER_GENERATORS ||
+      terms > MAX_GROEBNER_TERMS ||
+      context.variables * terms > MAX_GROEBNER_EXPONENT_ENTRIES) {
+    throw capabilityUnavailable("input exceeds the reviewed msolve resource envelope");
+  }
+  let length = 32 + 4 * nonzero.length;
+  for (const value of nonzero) {
+    for (const term of value.terms) {
+      const numeratorWords = magnitudeWords(term.coefficient.numerator);
+      const denominatorWords = magnitudeWords(term.coefficient.denominator);
+      length += 12 + 4 * (numeratorWords.length + denominatorWords.length) +
+        4 * context.variables;
+    }
+  }
+  if (length > MAX_INPUT_BYTES) {
+    throw capabilityUnavailable(`packed input is limited to ${MAX_INPUT_BYTES} bytes`);
+  }
+  const bytes = new Uint8Array(length);
+  [
+    GROEBNER_INPUT_MAGIC,
+    VERSION,
+    GROEBNER_QQ,
+    context.variables,
+    ORDER[context.order],
+    0,
+    nonzero.length,
+    terms,
+  ].forEach((value, index) => writeU32(bytes, index * 4, value));
+  let offset = 32;
+  for (const value of nonzero) {
+    writeU32(bytes, offset, value.terms.length);
+    offset += 4;
+  }
+  for (const value of nonzero) {
+    for (const term of value.terms) {
+      const numeratorWords = magnitudeWords(term.coefficient.numerator);
+      const denominatorWords = magnitudeWords(term.coefficient.denominator);
+      writeU32(bytes, offset, term.coefficient.numerator < 0n ? 2 : 1);
+      writeU32(bytes, offset + 4, numeratorWords.length);
+      offset += 8;
+      for (const word of numeratorWords) {
+        writeU32(bytes, offset, word);
+        offset += 4;
+      }
+      writeU32(bytes, offset, denominatorWords.length);
+      offset += 4;
+      for (const word of denominatorWords) {
+        writeU32(bytes, offset, word);
+        offset += 4;
+      }
+      for (const exponent of term.exponents) {
+        if (exponent > 0x7fffffff) {
+          throw capabilityUnavailable(
+            "msolve modular QQ exponents are limited to signed 32-bit values",
+          );
+        }
+        writeU32(bytes, offset, exponent);
+        offset += 4;
+      }
+    }
+  }
+  if (offset !== length) throw new Error("Groebner QQ packet size drifted");
+  return { context, bytes };
+}
+
+function decodeSignedMagnitude(bytes, offset) {
+  const sign = readU32(bytes, offset);
+  const wordCount = readU32(bytes, offset + 4);
+  offset += 8;
+  if ((sign !== 1 && sign !== 2) || wordCount === 0 ||
+      wordCount > Math.floor((bytes.byteLength - offset) / 4)) {
+    throw new Error("msolve WebAssembly returned an invalid integer coefficient");
+  }
+  let value = 0n;
+  for (let word = 0; word < wordCount; word += 1) {
+    value |= BigInt(readU32(bytes, offset)) << BigInt(32 * word);
+    offset += 4;
+  }
+  if (value === 0n) {
+    throw new Error("msolve WebAssembly returned a zero encoded coefficient");
+  }
+  return { value: sign === 2 ? -value : value, offset };
+}
+
+function decodeGroebnerQQ(context, bytes) {
+  if (bytes.byteLength < 32 ||
+      readU32(bytes, 0) !== GROEBNER_OUTPUT_MAGIC ||
+      readU32(bytes, 4) !== VERSION ||
+      readU32(bytes, 8) !== GROEBNER_QQ ||
+      readU32(bytes, 12) !== context.variables ||
+      readU32(bytes, 16) !== ORDER[context.order] ||
+      readU32(bytes, 20) !== 0) {
+    throw new Error("msolve WebAssembly returned an invalid QQ Groebner header");
+  }
+  const count = readU32(bytes, 24);
+  const terms = readU32(bytes, 28);
+  const lengths = [];
+  let offset = 32;
+  let counted = 0;
+  for (let index = 0; index < count; index += 1) {
+    const length = readU32(bytes, offset);
+    offset += 4;
+    if (length === 0 || counted > terms - length) {
+      throw new Error("msolve WebAssembly returned invalid QQ polynomial lengths");
+    }
+    lengths.push(length);
+    counted += length;
+  }
+  if (counted !== terms) {
+    throw new Error("msolve WebAssembly returned an inconsistent QQ term count");
+  }
+  const answer = [];
+  for (const length of lengths) {
+    const entries = [];
+    for (let index = 0; index < length; index += 1) {
+      const decoded = decodeSignedMagnitude(bytes, offset);
+      offset = decoded.offset;
+      const exponents = [];
+      for (let variable = 0; variable < context.variables; variable += 1) {
+        exponents.push(readU32(bytes, offset));
+        offset += 4;
+      }
+      entries.push({ coefficient: decoded.value, exponents });
+    }
+    const primitive = polynomial(context, entries);
+    const leading = primitive.terms[0].coefficient;
+    answer.push(polynomial(context, primitive.terms.map((term) => ({
+      coefficient: coefficientDivide(context, term.coefficient, leading),
+      exponents: term.exponents,
+    }))));
+  }
+  if (offset !== bytes.byteLength) {
+    throw new Error("msolve WebAssembly returned trailing QQ Groebner bytes");
+  }
+  return answer;
+}
+
 function format(value, names) {
   value = assertPolynomial(value);
   if (!Array.isArray(names) || names.length !== value.context.variables) {
@@ -332,15 +715,24 @@ function format(value, names) {
   }
   if (value.terms.length === 0) return "0";
   return value.terms.map((term, index) => {
-    const negative = term.coefficient < 0n;
-    const magnitude = negative ? -term.coefficient : term.coefficient;
+    const negative = coefficientSign(value.context, term.coefficient) < 0;
+    const numerator = value.context.kind === "qq"
+      ? term.coefficient.numerator
+      : term.coefficient;
+    const denominator = value.context.kind === "qq"
+      ? term.coefficient.denominator
+      : 1n;
+    const magnitude = negative ? -numerator : numerator;
+    const scalar = denominator === 1n
+      ? String(magnitude)
+      : `${magnitude}/${denominator}`;
     const monomial = term.exponents.flatMap((exponent, variable) => {
       if (exponent === 0) return [];
       return [exponent === 1 ? names[variable] : `${names[variable]}^${exponent}`];
     }).join("*");
     const body = monomial === ""
-      ? String(magnitude)
-      : magnitude === 1n ? monomial : `${magnitude}*${monomial}`;
+      ? scalar
+      : magnitude === denominator ? monomial : `${scalar}*${monomial}`;
     if (index === 0) return negative ? `-${body}` : body;
     return negative ? `-${body}` : `+${body}`;
   }).join("");
@@ -351,22 +743,29 @@ export function createMultivariateBackend(instance, {
   enabled = true,
 } = {}) {
   const exports = instance?.exports ?? {};
-  const requiredExports = [
+  const commonExports = [
     "sagejs_wasm_mpoly_input",
     "sagejs_wasm_mpoly_input_capacity",
     "sagejs_wasm_mpoly_output",
     "sagejs_wasm_mpoly_output_capacity",
     "sagejs_wasm_mpoly_output_length",
-    "sagejs_wasm_mpoly_resultant",
   ];
-  const available = enabled && requiredExports.every(
+  const commonAvailable = enabled && commonExports.every(
     (name) => typeof exports[name] === "function",
   );
+  const resultantAvailable = commonAvailable &&
+    typeof exports.sagejs_wasm_mpoly_resultant === "function";
+  const groebnerAvailable = commonAvailable &&
+    typeof exports.sagejs_wasm_mpoly_groebner === "function";
+  const groebnerQQAvailable = commonAvailable &&
+    typeof exports.sagejs_wasm_mpoly_groebner_qq === "function";
   const memory = exports.memory;
 
   function mpolyContext(kind, variables, order, modulus) {
-    if (kind !== "zz") {
-      throw capabilityUnavailable("browser multivariate construction currently requires ZZ");
+    if (kind !== "zz" && kind !== "qq" && kind !== "nmod") {
+      throw capabilityUnavailable(
+        "browser multivariate construction currently requires ZZ, QQ, or a word-size modular ring",
+      );
     }
     if (!Number.isInteger(variables) || variables < 1) {
       throw new RangeError("multivariate polynomial variable count must be positive");
@@ -374,14 +773,18 @@ export function createMultivariateBackend(instance, {
     if (!Object.hasOwn(ORDER, order)) {
       throw new RangeError(`unsupported multivariate monomial order ${order}`);
     }
-    if (BigInt(modulus) !== 0n) {
-      throw new TypeError("ZZ multivariate contexts do not have a modulus");
+    modulus = BigInt(modulus);
+    if ((kind === "zz" || kind === "qq") && modulus !== 0n) {
+      throw new TypeError(`${kind.toUpperCase()} multivariate contexts do not have a modulus`);
     }
-    return Object.freeze({ [CONTEXT]: true, kind, variables, order });
+    if (kind === "nmod" && (modulus < 2n || modulus > 0xffffffffffffffffn)) {
+      throw new RangeError("modular context modulus is out of range");
+    }
+    return Object.freeze({ [CONTEXT]: true, kind, variables, order, modulus });
   }
 
   function mpolyResultant(left, right, eliminated) {
-    if (!available || !(memory instanceof WebAssembly.Memory)) {
+    if (!resultantAvailable || !(memory instanceof WebAssembly.Memory)) {
       throw capabilityUnavailable("the production FLINT resultant export is absent or disabled");
     }
     const input = encodeResultant(left, right, eliminated);
@@ -430,6 +833,165 @@ export function createMultivariateBackend(instance, {
     return result;
   }
 
+  function mpolyGroebner(values) {
+    const encoded = encodeGroebner(values);
+    if (encoded.bytes === null) return [];
+    if (!groebnerAvailable || !(memory instanceof WebAssembly.Memory)) {
+      throw capabilityUnavailable("the production msolve F4 export is absent or disabled");
+    }
+    const inputPointer = Number(exports.sagejs_wasm_mpoly_input()) >>> 0;
+    const inputCapacity = Number(exports.sagejs_wasm_mpoly_input_capacity()) >>> 0;
+    const outputPointer = Number(exports.sagejs_wasm_mpoly_output()) >>> 0;
+    const outputCapacity = Number(exports.sagejs_wasm_mpoly_output_capacity()) >>> 0;
+    if (inputCapacity !== MAX_INPUT_BYTES || outputCapacity !== MAX_OUTPUT_BYTES ||
+        inputPointer + encoded.bytes.byteLength > memory.buffer.byteLength ||
+        outputPointer + outputCapacity > memory.buffer.byteLength) {
+      throw new Error("msolve WebAssembly multivariate buffer contract drifted");
+    }
+    new Uint8Array(memory.buffer, inputPointer, encoded.bytes.byteLength)
+      .set(encoded.bytes);
+    const status = Number(
+      exports.sagejs_wasm_mpoly_groebner(encoded.bytes.byteLength),
+    );
+    const outputLength = Number(exports.sagejs_wasm_mpoly_output_length()) >>> 0;
+    if (status === STATUS.UNSUPPORTED) {
+      throw capabilityUnavailable("the valid input is outside the reviewed msolve F4 slice");
+    }
+    if (status === STATUS.FLINT_FAILURE) {
+      throw new Error("msolve F4 failed without publishing a partial result");
+    }
+    if (status === STATUS.RESULT_LIMIT) {
+      throw new RangeError("msolve F4 result exceeds the 16 MiB WebAssembly limit");
+    }
+    if (status === STATUS.OUTPUT_TOO_SMALL) {
+      throw new Error("msolve WebAssembly output reservation is defective");
+    }
+    if (status === STATUS.MALFORMED) {
+      throw new Error("msolve WebAssembly rejected the adapter's Groebner packet");
+    }
+    if (status !== STATUS.OK || outputLength > outputCapacity ||
+        outputPointer + outputLength > memory.buffer.byteLength) {
+      throw new Error(`msolve WebAssembly F4 failed with status ${status}`);
+    }
+    const output = Uint8Array.from(
+      new Uint8Array(memory.buffer, outputPointer, outputLength),
+    );
+    const answer = decodeGroebner(encoded.context, output);
+    recordCapability("wasm-library:msolve:f4-prime-field-packed-v1",
+      "receipt-backed-wasm-artifact", {
+        executionTarget: "wasm-artifact",
+        ingressBytes: encoded.bytes.byteLength,
+        egressBytes: output.byteLength,
+        boundaryCrossings: 1,
+        copiedBytes: encoded.bytes.byteLength + output.byteLength,
+      });
+    return answer;
+  }
+
+  function mpolyGroebnerMsolve(values) {
+    if (!Array.isArray(values)) throw new TypeError("expected an array of polynomials");
+    const first = values.map(assertPolynomial).find((value) => value.terms.length !== 0);
+    if (first === undefined) return [];
+    if (first.context.kind === "nmod") return mpolyGroebner(values);
+    const encoded = encodeGroebnerQQ(values);
+    if (!groebnerQQAvailable || !(memory instanceof WebAssembly.Memory)) {
+      throw capabilityUnavailable("the production msolve modular QQ export is absent or disabled");
+    }
+    const inputPointer = Number(exports.sagejs_wasm_mpoly_input()) >>> 0;
+    const inputCapacity = Number(exports.sagejs_wasm_mpoly_input_capacity()) >>> 0;
+    const outputPointer = Number(exports.sagejs_wasm_mpoly_output()) >>> 0;
+    const outputCapacity = Number(exports.sagejs_wasm_mpoly_output_capacity()) >>> 0;
+    if (inputCapacity !== MAX_INPUT_BYTES || outputCapacity !== MAX_OUTPUT_BYTES ||
+        inputPointer + encoded.bytes.byteLength > memory.buffer.byteLength ||
+        outputPointer + outputCapacity > memory.buffer.byteLength) {
+      throw new Error("msolve WebAssembly QQ buffer contract drifted");
+    }
+    new Uint8Array(memory.buffer, inputPointer, encoded.bytes.byteLength)
+      .set(encoded.bytes);
+    const status = Number(
+      exports.sagejs_wasm_mpoly_groebner_qq(encoded.bytes.byteLength),
+    );
+    const outputLength = Number(exports.sagejs_wasm_mpoly_output_length()) >>> 0;
+    if (status === STATUS.UNSUPPORTED) {
+      throw capabilityUnavailable("the valid input is outside the reviewed msolve modular QQ slice");
+    }
+    if (status === STATUS.FLINT_FAILURE) {
+      throw new Error("msolve modular QQ failed without publishing a partial result");
+    }
+    if (status === STATUS.RESULT_LIMIT) {
+      throw new RangeError("msolve modular QQ result exceeds the 16 MiB WebAssembly limit");
+    }
+    if (status === STATUS.OUTPUT_TOO_SMALL) {
+      throw new Error("msolve WebAssembly QQ output reservation is defective");
+    }
+    if (status === STATUS.MALFORMED) {
+      throw new Error("msolve WebAssembly rejected the adapter's QQ Groebner packet");
+    }
+    if (status !== STATUS.OK || outputLength > outputCapacity ||
+        outputPointer + outputLength > memory.buffer.byteLength) {
+      throw new Error(`msolve WebAssembly modular QQ failed with status ${status}`);
+    }
+    const output = Uint8Array.from(
+      new Uint8Array(memory.buffer, outputPointer, outputLength),
+    );
+    const answer = decodeGroebnerQQ(encoded.context, output);
+    recordCapability("wasm-library:msolve:modular-qq-packed-v1",
+      "receipt-backed-wasm-artifact", {
+        executionTarget: "wasm-artifact",
+        ingressBytes: encoded.bytes.byteLength,
+        egressBytes: output.byteLength,
+        boundaryCrossings: 1,
+        copiedBytes: encoded.bytes.byteLength + output.byteLength,
+      });
+    return answer;
+  }
+
+  function mpolyReduce(value, basis) {
+    value = assertPolynomial(value);
+    if (!Array.isArray(basis)) throw new TypeError("expected a polynomial basis array");
+    basis = basis.map(assertPolynomial);
+    for (const divisor of basis) {
+      if (divisor.context !== value.context) {
+        throw new TypeError("multivariate polynomials have different parents");
+      }
+      if (divisor.terms.length === 0) {
+        throw new RangeError("multivariate reduction basis contains zero");
+      }
+    }
+    let pending = value;
+    let remainder = polynomial(value.context, []);
+    while (pending.terms.length !== 0) {
+      const leading = pending.terms[0];
+      let reduced = false;
+      for (const divisor of basis) {
+        const divisorLeading = divisor.terms[0];
+        if (divisorLeading.exponents.some(
+          (exponent, index) => exponent > leading.exponents[index],
+        )) continue;
+        let coefficient;
+        coefficient = coefficientDivide(
+          value.context, leading.coefficient, divisorLeading.coefficient,
+        );
+        if (coefficient === null) continue;
+        const monomial = polynomial(value.context, [{
+          coefficient,
+          exponents: leading.exponents.map(
+            (exponent, index) => exponent - divisorLeading.exponents[index],
+          ),
+        }]);
+        pending = add(pending, multiply(monomial, divisor), -1n);
+        reduced = true;
+        break;
+      }
+      if (!reduced) {
+        const term = polynomial(value.context, [leading]);
+        remainder = add(remainder, term);
+        pending = add(pending, term, -1n);
+      }
+    }
+    return remainder;
+  }
+
   function unavailable(operation) {
     return () => { throw capabilityUnavailable(`${operation} is outside the reviewed slice`); };
   }
@@ -438,11 +1000,18 @@ export function createMultivariateBackend(instance, {
     mpolyContext,
     mpolyConstant(context, numerator, denominator) {
       context = assertContext(context);
-      if (BigInt(denominator) !== 1n) {
+      numerator = BigInt(numerator);
+      denominator = BigInt(denominator);
+      if (context.kind === "zz" && denominator !== 1n) {
         throw new TypeError("ZZ multivariate coefficients must be integral");
       }
+      if (context.kind === "qq") {
+        numerator = normalizeCoefficient(context, numerator, denominator);
+      } else if (context.kind === "nmod") {
+        numerator *= modularInverse(denominator, context.modulus);
+      }
       return polynomial(context, [{
-        coefficient: BigInt(numerator),
+        coefficient: numerator,
         exponents: Array(context.variables).fill(0),
       }]);
     },
@@ -463,7 +1032,9 @@ export function createMultivariateBackend(instance, {
     mpolyEqual(left, right) {
       [left, right] = assertSameContext(left, right);
       return left.terms.length === right.terms.length && left.terms.every(
-        (term, index) => term.coefficient === right.terms[index].coefficient &&
+        (term, index) => coefficientEqual(
+          left.context, term.coefficient, right.terms[index].coefficient,
+        ) &&
           term.exponents.every(
             (exponent, variable) => exponent === right.terms[index].exponents[variable],
           ),
@@ -472,7 +1043,7 @@ export function createMultivariateBackend(instance, {
     mpolyCompare(left, right) {
       const difference = add(left, right, -1n);
       return difference.terms.length === 0 ? 0 :
-        difference.terms[0].coefficient < 0n ? -1 : 1;
+        coefficientSign(difference.context, difference.terms[0].coefficient);
     },
     mpolyDivExact: unavailable("exact multivariate division"),
     mpolyGcd: unavailable("multivariate gcd"),
@@ -498,7 +1069,10 @@ export function createMultivariateBackend(instance, {
       const degree = value.terms.reduce(
         (maximum, term) => Math.max(maximum, term.exponents[variable]), -1,
       );
-      const coefficients = Array(degree + 1).fill(0n);
+      const coefficients = Array(degree + 1).fill(null).map(() =>
+        value.context.kind === "qq"
+          ? normalizeCoefficient(value.context, 0n)
+          : 0n);
       for (const term of value.terms) {
         if (term.exponents.some((exponent, index) => index !== variable && exponent !== 0)) {
           throw new TypeError("multivariate polynomial involves other generators");
@@ -520,8 +1094,17 @@ export function createMultivariateBackend(instance, {
         (maximum, term) => Math.max(maximum, totalDegree(term.exponents)), -1,
       );
     },
-    mpolyGroebner: unavailable("multivariate Groebner bases"),
-    mpolyReduce: unavailable("multivariate reduction"),
+    mpolyLeadingMonomial(value) {
+      value = assertPolynomial(value);
+      if (value.terms.length === 0) return polynomial(value.context, []);
+      return polynomial(value.context, [{
+        coefficient: 1n,
+        exponents: value.terms[0].exponents,
+      }]);
+    },
+    mpolyGroebner,
+    mpolyGroebnerMsolve,
+    mpolyReduce,
   });
 }
 
