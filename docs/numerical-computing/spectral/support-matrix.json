@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "domain": "spectral",
+  "runtimes_tested": ["cpython", "sagejs-node"],
+  "common": {
+    "backend": "ordinary-python",
+    "fallback": "same-source",
+    "numeric_types": ["binary64", "complex_binary64"],
+    "budgets": ["iterations", "evaluations_where_applicable", "elapsed_time", "allocation_or_nonzeros", "trace_events", "trace_bytes"],
+    "cancellation": "cooperative bounded polling",
+    "trace": "semantic and deterministically bounded"
+  },
+  "implemented": [
+    {
+      "operation": "symmetric_eigen",
+      "classification": "translated",
+      "method": "cyclic_jacobi",
+      "envelope": "finite Hermitian square matrices under max_matrix_elements",
+      "validation": ["eigenpair_backward_residual", "eigenvector_orthogonality", "spectral_reconstruction"]
+    },
+    {
+      "operation": "general_eigen",
+      "classification": "extension",
+      "method": "complex_shifted_qr",
+      "envelope": "finite square matrices with an independently validated, numerically nonsingular right-eigenvector basis",
+      "validation": ["eigenpair_backward_residual", "eigenbasis_reciprocal_condition", "eigenbasis_inverse_residual", "eigenbasis_reconstruction", "schur_vector_orthogonality", "schur_reconstruction"]
+    },
+    {
+      "operation": "singular_value_decomposition",
+      "classification": "translated",
+      "method": "one_sided_jacobi",
+      "envelope": "finite rectangular matrices; reduced factors only",
+      "validation": ["svd_reconstruction", "left_singular_vector_orthogonality", "right_singular_vector_orthogonality"]
+    },
+    {
+      "operation": "fourier_transform",
+      "classification": "translated",
+      "method": "radix2_cooley_tukey_or_bluestein",
+      "envelope": "finite nonempty one-dimensional sequences under max_points",
+      "validation": ["independent_direct_reconstruction", "parseval_energy", "orthogonality_scaling"]
+    },
+    {
+      "operation": "convolution",
+      "classification": "translated",
+      "method": "direct_or_fft",
+      "envelope": "finite nonempty one-dimensional sequences; full/same/valid",
+      "validation": ["independent_direct_convolution", "convolution_reconstruction"]
+    },
+    {
+      "operation": "sparse_linear_solve",
+      "classification": "extension",
+      "method": "cg_or_bicgstab",
+      "envelope": "explicit finite square canonical CSR; CG additionally requires a strict Hermitian diagonal-dominance positive-definiteness certificate",
+      "validation": ["independent_linear_residual", "normwise_backward_error"]
+    },
+    {
+      "operation": "sparse_dominant_eigen",
+      "classification": "extension",
+      "method": "power_iteration",
+      "envelope": "k=1 largest-magnitude pair for explicit finite Hermitian CSR with separated Gershgorin intervals certifying a unique dominant magnitude",
+      "validation": ["eigenpair_backward_residual", "eigenvector_orthogonality", "rayleigh_reconstruction", "dominant_magnitude_uniqueness_certificate"]
+    }
+  ],
+  "unsupported": [
+    {"operation": "generalized_eigenvalue_pencil", "classification": "unsupported", "reason": "no qualified QZ path"},
+    {"operation": "general_eigen_defective_or_near_defective_basis", "classification": "unsupported", "reason": "a numerically singular right-eigenvector basis is not returned as a successful eigensystem"},
+    {"operation": "general_eigen_left_vectors", "classification": "unsupported", "reason": "current Schur path returns right vectors only"},
+    {"operation": "full_svd", "classification": "unsupported", "reason": "only reduced factors are generated"},
+    {"operation": "multidimensional_fft", "classification": "unsupported", "reason": "axis and storage contracts are not integrated"},
+    {"operation": "sparse_cg_without_spd_certificate", "classification": "unsupported", "reason": "Hermitian symmetry alone does not certify positive definiteness for CG"},
+    {"operation": "sparse_dominant_eigen_without_gap_certificate", "classification": "unsupported", "reason": "power iteration cannot identify a unique dominant-magnitude eigenpair without an independent gap certificate"},
+    {"operation": "sparse_multiple_or_interior_eigenpairs", "classification": "unsupported", "reason": "restarted Lanczos/Arnoldi and robust reorthogonalization are not implemented"},
+    {"operation": "sparse_nonsymmetric_eigenproblem", "classification": "unsupported", "reason": "the sparse eigen path requires an explicit Hermitian operator"}
+  ]
+}
