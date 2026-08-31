@@ -35,6 +35,8 @@ print(summary.value["standard_deviation"])
 print(interval.value["interval"])
 print(interval.explain())
 plot = interval.to_plot_spec()
+animation = interval.animate()
+evidence = interval.explanation()
 ```
 
 The confidence interval is not a probability statement about a fixed unknown
@@ -64,6 +66,7 @@ print(least_squares.value["slope"])
 print(theil_sen.value["slope"])
 print(huber.value["slope"])
 fit_plot = huber.to_plot_spec()
+fit_animation = huber.animate()
 ```
 
 Ordinary least squares minimizes squared residuals, so one large residual can
@@ -93,6 +96,45 @@ specified for exact replay; distribution transforms also use
 platform math functions and are checked numerically rather than promised
 bit-for-bit. This is not NumPy stream compatibility, evidence of statistical
 quality beyond the named PCG32 construction, or a cryptographic generator.
+
+Plotting or animating a completed sample reads its detached result evidence and
+does not advance the RNG. The sequence view is capped at 512 display draws;
+replay state and the full result value remain unchanged.
+
+## Instructive visual cases
+
+The domain visualizers deliberately keep interpretation visible:
+
+- `StudentT(5).animate("sf", lower=0, upper=10)` highlights the directly
+  computed upper tail instead of teaching `1 - cdf` subtraction;
+- a three-observation OLS plot states that an in-sample line supplies little
+  evidence against overfit and does not validate prediction;
+- a Huber view marks final weights below 0.8 and replays retained IRLS updates,
+  while warning that residual robustness does not remove leverage risk;
+- an invalid zero-variance t test produces an accessible status view rather
+  than inventing an infinite statistic.
+
+The machine-readable source for these examples is
+`assets/teaching-cases.json`.
+
+All static views provide explicit alternative text. Animations contain fully
+materialized semantic frames and hard frame/sample/byte/duration ceilings; they
+do not depend on a browser callback and do not promise autoplay or looping.
+
+## Detached planning
+
+```python
+from sagejs.numerics import NumericalProblem
+from sagejs.numerics.statistics import capabilities, plan, supports
+
+problem = NumericalProblem("statistics", "two_sample_t_test", method="auto")
+assert supports(problem)
+resolved = plan(problem)
+```
+
+The package-local planner chooses only from operation metadata. It does not
+evaluate a live callback, inspect data by calling user code, or consume random
+state. Shared top-level facade registration remains an integration-lane task.
 
 ## Honest failures
 

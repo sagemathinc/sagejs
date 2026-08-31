@@ -17,7 +17,7 @@
     }
   },
   "payload": {
-    "maximum_raw_bytes": 150000,
-    "maximum_gzip_bytes": 30000
+    "maximum_raw_bytes": 200000,
+    "maximum_gzip_bytes": 40000
   }
 }

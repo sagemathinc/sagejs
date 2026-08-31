@@ -23,6 +23,27 @@ from ._core import (
 from .result import StatisticsResult
 
 
+_MAX_VISUAL_OBSERVATIONS = 257
+
+
+def _visual_observations(ordered: list[float]) -> tuple[list[float], list[float]]:
+    """Return bounded values and their exact source empirical ranks."""
+    if len(ordered) <= _MAX_VISUAL_OBSERVATIONS:
+        indices = list(range(len(ordered)))
+    else:
+        last = len(ordered) - 1
+        indices = [
+            (index * last) // (_MAX_VISUAL_OBSERVATIONS - 1)
+            for index in range(_MAX_VISUAL_OBSERVATIONS)
+        ]
+    last = len(ordered) - 1
+    denominator = max(last, 1)
+    return (
+        [ordered[index] for index in indices],
+        [index / denominator for index in indices],
+    )
+
+
 def _stopped_result(
     operation: str, guard: BudgetGuard, stopped: StatisticsStopped
 ) -> StatisticsResult:
@@ -163,6 +184,17 @@ def describe(
             "ddof": ddof,
             "quantile_method": "linear-r-type-7",
         }
+        visual_values, visual_ranks = _visual_observations(ordered)
+        guard.trace.append(
+            "phase",
+            data={
+                "count": len(values),
+                "mean": mean,
+                "median": median,
+                "interquartile_range": q3 - q1,
+                "visual_sample_count": len(visual_values),
+            },
+        )
         guard.trace.append(
             "validation",
             data={"checks": checks, "passed": passed},
@@ -194,6 +226,14 @@ def describe(
             evaluations=guard.evaluations,
             elapsed_ms=guard.elapsed_ms(),
             resource_budget=guard.budget,
+            domain_payload={
+                "plot": {
+                    "kind": "descriptive",
+                    "ordered_values": visual_values,
+                    "empirical_ranks": visual_ranks,
+                    "source_count": len(values),
+                }
+            },
         )
     except StatisticsStopped as stopped:
         return _stopped_result("descriptive_statistics", guard, stopped)

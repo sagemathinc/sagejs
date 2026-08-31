@@ -1,11 +1,11 @@
-"""Canonical numerical results with statistics-specific PlotSpec views."""
+"""Canonical numerical results with statistics-specific explanations."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from sagejs.plotting import PlotSpec, Provenance, make_layer
+from sagejs.plotting import PlotAnimation, PlotSpec
 
 from .._json import materialize_json, materialize_object
 from ..diagnostics import NumericalDiagnostic
@@ -17,12 +17,6 @@ from ..model import (
     ResourceBudget,
 )
 from ..trace import NumericalTrace
-
-
-def _required_number(value: Any, name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise TypeError(name + " must be numeric")
-    return float(value)
 
 
 def _optional_number(value: Any) -> float | None:
@@ -148,106 +142,172 @@ class StatisticsResult(NumericalResult):
     def assumptions(self) -> tuple[str, ...]:
         return self._statistics_assumptions
 
+    def explanation(self) -> dict[str, Any]:
+        """Return a detached structured interpretation of recorded evidence."""
+        value = self.value
+        interpretation: list[str] = []
+        limitations: list[str] = []
+        if not self.success:
+            interpretation.append(
+                "No successful statistical claim is made because execution ended with status "
+                + self.status
+                + "."
+            )
+        elif self.operation == "descriptive_statistics" and isinstance(value, dict):
+            interpretation.append(
+                "The recorded sample has center "
+                + str(value.get("mean"))
+                + " and standard deviation "
+                + str(value.get("standard_deviation"))
+                + "."
+            )
+            limitations.append(
+                "This summary describes the supplied observations; it does not establish representativeness or causality."
+            )
+        elif self.operation == "distribution_curve" and isinstance(value, dict):
+            interpretation.append(
+                "The curve evaluates the recorded "
+                + str(value.get("function"))
+                + " within explicit finite display bounds."
+            )
+            limitations.append(
+                "Display samples are a visualization and do not widen the distribution's qualified parameter or tail envelope."
+            )
+        elif self.operation == "random_sample" and isinstance(value, list):
+            interpretation.append(
+                str(len(value))
+                + " draws were completed in replay order using the recorded generator state."
+            )
+            limitations.append(
+                "A realized sample does not by itself demonstrate distributional quality or cryptographic security."
+            )
+        elif self.operation in (
+            "mean_confidence_interval",
+            "one_sample_t_test",
+            "two_sample_t_test",
+        ) and isinstance(value, dict):
+            if "p_value" in value:
+                interpretation.append(
+                    "The p-value "
+                    + str(value.get("p_value"))
+                    + " is a tail probability under the null model, not the probability that the null is true."
+                )
+                interpretation.append(
+                    "The recorded decision at the configured alpha is "
+                    + ("reject." if value.get("reject_at_alpha") else "do not reject.")
+                )
+            else:
+                interpretation.append(
+                    "The interval reports a long-run coverage procedure for the population mean."
+                )
+            limitations.append(
+                "The arithmetic records assumptions but cannot establish independence, normality, or representative sampling."
+            )
+        elif self.operation.endswith("regression") and isinstance(value, dict):
+            interpretation.append(
+                "The fitted line has slope "
+                + str(value.get("slope"))
+                + " and intercept "
+                + str(value.get("intercept"))
+                + "."
+            )
+            if self.operation == "huber_regression":
+                weights = value.get("weights")
+                if isinstance(weights, list):
+                    downweighted = sum(float(weight) < 0.8 for weight in weights)
+                    interpretation.append(
+                        str(downweighted)
+                        + " observations have final Huber weight below 0.8."
+                    )
+                limitations.append(
+                    "The robust coefficients do not imply classical p-values or immunity to leverage points."
+                )
+            elif self.operation == "theil_sen_regression":
+                limitations.append(
+                    "The robust slope interval does not provide an intercept interval or predictive validation."
+                )
+            else:
+                limitations.append(
+                    "In-sample fit does not establish predictive performance, absence of overfit, association as causation, or valid extrapolation."
+                )
+        else:
+            interpretation.append(
+                "The operation completed with independently recorded validation evidence."
+            )
+        if not self.validation.passed:
+            limitations.append(
+                "Independent validation did not pass, so no validated-approximate success claim is available."
+            )
+        return materialize_object(
+            {
+                "schema_version": 1,
+                "kind": "statistics-explanation",
+                "operation": self.operation,
+                "headline": self.method + " " + self.operation.replace("_", " "),
+                "outcome": {
+                    "success": self.success,
+                    "status": self.status,
+                },
+                "method": self.method,
+                "interpretation": interpretation,
+                "evidence": {
+                    "truth_level": self.validation.truth_level,
+                    "validation_passed": self.validation.passed,
+                    "checks": self.validation.to_dict()["checks"],
+                    "evaluations": self.evaluations,
+                    "iterations": self.iterations,
+                    "retained_trace_events": len(self.trace.events),
+                    "trace_truncated": self.trace.truncated,
+                },
+                "assumptions": list(self._statistics_assumptions),
+                "limitations": limitations,
+                "diagnostics": [value.to_dict() for value in self.diagnostics],
+            },
+            "$.statistics.explanation",
+        )
+
+    structured_explanation = explanation
+
     def explain(self) -> str:
         lines = [super().explain()]
+        record = self.explanation()
+        interpretations = record["interpretation"]
+        if isinstance(interpretations, list) and interpretations:
+            lines.append("interpretation:")
+            lines.extend("- " + str(value) for value in interpretations)
         if self._statistics_assumptions:
             lines.append("assumptions:")
             lines.extend("- " + value for value in self._statistics_assumptions)
+        limitations = record["limitations"]
+        if isinstance(limitations, list) and limitations:
+            lines.append("limitations:")
+            lines.extend("- " + str(value) for value in limitations)
         return "\n".join(lines)
 
     def to_dict(self) -> dict[str, Any]:
         """Return the canonical result schema as a fully detached object."""
-        return materialize_object(super().to_dict(), "$.statistics.result")
+        record = materialize_object(super().to_dict(), "$.statistics.result")
+        payload = record["domain_payload"]
+        if not isinstance(payload, dict):
+            raise TypeError("canonical domain payload must be a mapping")
+        payload["explanation"] = self.explanation()
+        return record
 
     def to_plot_spec(self) -> PlotSpec:
         """Return a semantic plot derived solely from recorded evidence."""
-        plot = self._domain_payload.get("plot")
-        if not isinstance(plot, dict):
-            raise ValueError("this result has no PlotSpec-ready payload")
-        kind = plot.get("kind")
-        if kind == "regression":
-            x = plot["x"]
-            y = plot["y"]
-            line_x = plot["line_x"]
-            line_y = plot["line_y"]
-            layers = [
-                make_layer(
-                    "point",
-                    {"x": x, "y": y},
-                    ordinal=0,
-                    namespace="statistics",
-                    source_intent={"operation": self.operation, "role": "observed"},
-                    style={"color": "#3366cc", "size": 8},
-                    legend={"label": "observed", "show": True},
-                ),
-                make_layer(
-                    "line",
-                    {"x": line_x, "y": line_y},
-                    ordinal=1,
-                    namespace="statistics",
-                    source_intent={"operation": self.operation, "role": "fitted"},
-                    style={"color": "#dd8452", "width": 2},
-                    legend={"label": self.method, "show": True},
-                ),
-            ]
-            axes = {"x": {"label": "x"}, "y": {"label": "y"}}
-        elif kind == "interval":
-            estimate = _required_number(plot["estimate"], "plot estimate")
-            lower = _required_number(plot["lower"], "plot lower bound")
-            upper = _required_number(plot["upper"], "plot upper bound")
-            layers = [
-                make_layer(
-                    "line",
-                    {"x": [lower, upper], "y": [0.0, 0.0]},
-                    ordinal=0,
-                    namespace="statistics",
-                    source_intent={"operation": self.operation, "role": "interval"},
-                    style={"color": "#3366cc", "width": 3},
-                ),
-                make_layer(
-                    "point",
-                    {"x": [estimate], "y": [0.0]},
-                    ordinal=1,
-                    namespace="statistics",
-                    source_intent={"operation": self.operation, "role": "estimate"},
-                    style={"color": "#dd8452", "size": 10},
-                ),
-            ]
-            axes = {
-                "x": {"label": str(plot.get("parameter", "estimate"))},
-                "y": {"visible": False},
-            }
-        elif kind == "distribution":
-            layers = [
-                make_layer(
-                    "line",
-                    {"x": plot["x"], "y": plot["y"]},
-                    ordinal=0,
-                    namespace="statistics",
-                    source_intent={
-                        "operation": self.operation,
-                        "role": plot["function"],
-                    },
-                    style={"color": "#3366cc", "width": 2},
-                )
-            ]
-            axes = {"x": {"label": "x"}, "y": {"label": plot["function"]}}
-        else:
-            raise ValueError("unknown statistics plot payload kind")
-        return PlotSpec(
-            2,
-            layers,
-            axes_or_scene=axes,
-            viewport={"responsive": True},
-            provenance=Provenance(
-                "sagejs.numerics.statistics",
-                source_language="python",
-                constructor="StatisticsResult.to_plot_spec",
-                metadata={"operation": self.operation, "method": self.method},
-            ),
-        )
+        from .visualization import statistics_plot
+
+        return statistics_plot(self)
 
     plot = to_plot_spec
+
+    def to_plot_animation(self) -> PlotAnimation:
+        """Return a resource-bounded animation of recorded semantic evidence."""
+        from .visualization import statistics_animation
+
+        return statistics_animation(self)
+
+    animate = to_plot_animation
 
     def __repr__(self) -> str:
         return (

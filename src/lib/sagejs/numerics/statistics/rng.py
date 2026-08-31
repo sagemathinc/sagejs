@@ -511,6 +511,15 @@ def sample(
             ],
         }
         guard.trace.append(
+            "phase",
+            data={
+                "completed_draws": len(values),
+                "requested_draws": size,
+                "rng_draw_count_after": stream.state()["draw_count"],
+                "visual_sample_ceiling": 512,
+            },
+        )
+        guard.trace.append(
             "validation",
             data=validation,
             important=True,
