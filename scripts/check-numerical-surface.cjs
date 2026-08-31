@@ -30,8 +30,53 @@ for (const operation of surface.operations) {
   if (!new Set(["implemented", "unsupported"]).has(operation.status)) {
     throw new Error(`ambiguous numerical operation status: ${operation.id}`);
   }
+  if (
+    operation.status === "implemented" &&
+    !new Set(["development-pending-P8", "release-qualified"]).has(
+      operation.qualification,
+    )
+  ) {
+    throw new Error(
+      `implemented numerical operation lacks an honest qualification state: ${operation.id}`,
+    );
+  }
+  if (
+    operation.status === "implemented" &&
+    (!Array.isArray(operation.methods) || operation.methods.length === 0)
+  ) {
+    throw new Error(`implemented numerical operation has no methods: ${operation.id}`);
+  }
 }
-if (!ids.has("scalar_root")) throw new Error("scalar_root is missing from the surface");
+for (const required of [
+  "scalar_root",
+  "dense_linear_system",
+  "dense_factorization",
+  "interpolation",
+  "spline",
+  "finite_difference",
+  "polynomial_approximation",
+  "adaptive_quadrature",
+  "local_optimization",
+  "nonlinear_system",
+  "least_squares_fit",
+  "initial_value_problem",
+  "ode_parameter_sweep",
+  "eigensystem",
+  "singular_value_decomposition",
+  "polynomial_roots",
+  "fft",
+  "convolution",
+  "descriptive_statistics",
+  "probability_and_inference",
+  "random_sampling",
+  "regression",
+  "sparse_linear_system",
+  "sparse_dominant_eigenpair",
+]) {
+  if (!ids.has(required)) {
+    throw new Error(`${required} is missing from the numerical surface`);
+  }
+}
 if (new Set(diagnostics.codes).size !== diagnostics.codes.length) {
   throw new Error("duplicate numerical diagnostic code");
 }
