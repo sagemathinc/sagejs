@@ -61,7 +61,8 @@ from sagejs.numerics import (
     root_problem,
 )
 
-assert capabilities()["schema_version"] == 1
+assert capabilities()["schema_version"] == 2
+assert capabilities("roots")["schema_version"] == 1
 assert {item["code"] for item in diagnostic_registry()} >= {
     "invalid_bracket", "validation_failed", "trace_truncated"
 }

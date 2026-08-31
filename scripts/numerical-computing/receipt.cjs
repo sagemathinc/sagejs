@@ -445,6 +445,7 @@ async function collectReceipt({
   for (const id of initialization.capability_ids) {
     if (!knownCapabilities.has(id)) fail("adapter initialization.capability_ids", `unknown ${id}`);
   }
+  const readyMs = elapsedMilliseconds(processEntryTime);
 
   const cases = [];
   try {
@@ -486,7 +487,7 @@ async function collectReceipt({
     },
     metrics: {
       startup: {
-        process_entry_to_ready_ms: elapsedMilliseconds(processEntryTime),
+        process_entry_to_ready_ms: readyMs,
         adapter_load_ms: adapterLoadMs,
         adapter_initialize_ms: initializeMs,
       },
