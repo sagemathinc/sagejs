@@ -5002,6 +5002,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"mpolyUnivariateCoefficients", NULL,
             sagejs_mpoly_univariate_coefficients,
             NULL, NULL, NULL, napi_default, NULL},
+        {"mpolyTerms", NULL, sagejs_mpoly_terms,
+            NULL, NULL, NULL, napi_default, NULL},
         {"mpolyLength", NULL, sagejs_mpoly_length, NULL, NULL, NULL,
             napi_default, NULL},
         {"mpolyDegree", NULL, sagejs_mpoly_degree, NULL, NULL, NULL,

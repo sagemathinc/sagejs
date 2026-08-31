@@ -1136,6 +1136,11 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTerms",
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
       "family": "multivariate",
       "decision": "migrate-to-declared-ffi"

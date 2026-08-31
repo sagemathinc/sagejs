@@ -92,6 +92,38 @@ def _minimum_monomial_support_cover(supports: list[Any]) -> int:
     return best
 
 
+def _groebner_contract() -> Any:
+    return __import__(
+        "sagejs.polynomial_algorithms.groebner_contract",
+        fromlist=["GroebnerRing"],
+    )
+
+
+def _groebner_contract_ring(ring: Any) -> Any:
+    base = ring.base_ring()
+    characteristic = (
+        runtime.normalize_integer(base._modulus) if base._kind == "GF" else 0
+    )
+    return _groebner_contract().GroebnerRing(ring.ngens(), ring._order, characteristic)
+
+
+def _pack_groebner_polynomial(polynomial: Any) -> Any:
+    base = polynomial.parent().base_ring()
+    packed = []
+    for coefficient, exponents in polynomial.terms():
+        if base._kind == "QQ":
+            scalar = runtime.math_tuple(
+                [
+                    runtime.normalize_integer(coefficient._numerator),
+                    runtime.normalize_integer(coefficient._denominator),
+                ]
+            )
+        else:
+            scalar = runtime.normalize_integer(coefficient._value)
+        packed.append(runtime.math_tuple([scalar, runtime.math_tuple(exponents)]))
+    return runtime.math_tuple(packed)
+
+
 def _closed_field_horner(base: Any, coefficients: Any, value: Any) -> Any:
     """Evaluate by Horner over one low-to-high coefficient sequence.
 
@@ -4164,6 +4196,35 @@ class MultivariatePolynomialElement(sage.Element):
     def number_of_terms(self) -> int:
         return runtime.flint_backend().mpolyLength(self._native)
 
+    def terms(self) -> list[Any]:
+        """Return canonical sparse `(coefficient, exponent_vector)` terms.
+
+        Terms are ordered from greatest to least in this ring's monomial
+        order. The exponent vector uses the ring's generator order.
+        """
+        base = self._parent.base_ring()
+        raw_terms = runtime.flint_backend().mpolyTerms(self._native)
+        answer = []
+        for raw_coefficient, raw_exponents in raw_terms:
+            if base._kind == "QQ":
+                coefficient = base(
+                    runtime.reflect.get(raw_coefficient, "numerator"),
+                    runtime.reflect.get(raw_coefficient, "denominator"),
+                )
+            else:
+                coefficient = base(runtime.normalize_integer(raw_coefficient))
+            exponents = []
+            for exponent in raw_exponents:
+                exponents.append(runtime.normalize_integer(exponent))
+            answer.append(
+                runtime.math_tuple([coefficient, runtime.math_tuple(exponents)])
+            )
+        return answer
+
+    def monomial_coefficients(self) -> dict[Any, Any]:
+        """Return the sparse coefficient dictionary keyed by exponents."""
+        return {exponents: coefficient for coefficient, exponents in self.terms()}
+
     def univariate_polynomial(
         self,
         variable: Any = None,
@@ -4343,6 +4404,27 @@ class MultivariatePolynomialRingParent(sage.Parent):
                 self._nativeContext, numerator, denominator
             ),
         )
+
+    def _from_sparse_terms(self, terms: Any) -> MultivariatePolynomialElement:
+        """Materialize storage-neutral sparse terms in this parent."""
+        result = self(0)
+        generators = self.gens()
+        for coefficient, exponents in terms:
+            if len(exponents) != self.ngens():
+                raise ValueError("incorrect polynomial exponent vector")
+            if self._base._kind == "QQ" and isinstance(coefficient, (list, tuple)):
+                scalar = self._base(coefficient[0], coefficient[1])
+            else:
+                scalar = self._base(coefficient)
+            term = self(scalar)
+            for index in range(self.ngens()):
+                exponent = int(exponents[index])
+                if exponent < 0:
+                    raise ValueError("polynomial exponents must be nonnegative")
+                if exponent:
+                    term *= generators[index] ** exponent
+            result += term
+        return result
 
     def _coercePolynomial(
         self,
@@ -4976,6 +5058,7 @@ class PolynomialIdeal:
             [ring(generator) for generator in generators]
         )
         self._groebner_cache: dict[str, PolynomialSequence] = {}
+        self._groebner_transform_cache: dict[str, Any] = {}
         self._groebner_metadata: dict[str, Any] = {}
 
     def ring(self) -> MultivariatePolynomialRingParent:
@@ -5063,8 +5146,11 @@ class PolynomialIdeal:
         Prime fields use the portable scalar msolve F4 backend for global
         degree-reverse-lexicographic order and primes below `2^31`. Rational
         ideals use FLINT's bounded exact Buchberger implementation when proof
-        is required and the modular msolve backend otherwise. An explicit
-        `proof` argument overrides the global `proof.polynomial()` preference.
+        is required and the modular msolve backend otherwise. The explicit
+        `algorithm="buchberger"` backend is a deterministic, storage-neutral
+        exact implementation over both `QQ` and prime fields; it is intended
+        for modest problems, independent verification, and portable fallback.
+        An explicit `proof` argument overrides `proof.polynomial()`.
         """
         if not isinstance(algorithm, str):
             raise TypeError("Gröbner basis algorithm must be a string")
@@ -5076,26 +5162,38 @@ class PolynomialIdeal:
             proof_required = proof_module.proof.polynomial()
         base = self._ring.base_ring()
         if base._kind == "GF":
-            if algorithm not in ["auto", "msolve"]:
-                raise ValueError("prime-field Gröbner bases require algorithm='msolve'")
-            if self._ring._order != "degrevlex":
+            if algorithm not in ["auto", "msolve", "buchberger"]:
+                raise ValueError("unknown prime-field Gröbner basis algorithm")
+            use_buchberger = algorithm == "buchberger" or (
+                algorithm == "auto"
+                and (
+                    self._ring._order != "degrevlex"
+                    or base._modulus >= runtime.bigint(2147483648)
+                )
+            )
+            if use_buchberger:
+                backend = "python:groebner-reference-with-provenance-v1"
+            elif self._ring._order != "degrevlex":
                 raise NotImplementedError(
                     "msolve F4 currently requires degree reverse lexicographic order"
                 )
-            if base._modulus >= runtime.bigint(2147483648):
+            elif base._modulus >= runtime.bigint(2147483648):
                 raise NotImplementedError(
                     "msolve F4 currently requires characteristic below 2^31"
                 )
-            backend = "msolve:f4-prime-field-v1"
+            else:
+                backend = "msolve:f4-prime-field-v1"
         else:
-            if algorithm not in ["auto", "flint", "msolve"]:
+            if algorithm not in ["auto", "flint", "msolve", "buchberger"]:
                 raise ValueError("unknown rational Gröbner basis algorithm")
             use_msolve = algorithm == "msolve" or (
                 algorithm == "auto"
                 and not proof_required
                 and self._ring._order == "degrevlex"
             )
-            if use_msolve:
+            if algorithm == "buchberger":
+                backend = "python:groebner-reference-with-provenance-v1"
+            elif use_msolve:
                 if self._ring._order != "degrevlex":
                     raise NotImplementedError(
                         "msolve modular QQ currently requires degree reverse "
@@ -5110,14 +5208,41 @@ class PolynomialIdeal:
                 backend = "flint:bounded-buchberger-v1"
         key = backend + (":proof" if proof_required else ":candidate")
         if key not in self._groebner_cache:
-            native_generators = [generator._native for generator in self._generators]
-            if backend.startswith("msolve:"):
-                native = runtime.flint_backend().mpolyGroebnerMsolve(native_generators)
+            if backend.startswith("python:"):
+                contract = _groebner_contract()
+                contract_ring = _groebner_contract_ring(self._ring)
+                packed_generators = tuple(
+                    _pack_groebner_polynomial(generator)
+                    for generator in self._generators
+                )
+                packed_basis, transformation = contract.groebner_basis_reference(
+                    packed_generators, contract_ring
+                )
+                verification = contract.verify_groebner_certificate(
+                    packed_generators,
+                    packed_basis,
+                    transformation,
+                    contract_ring,
+                )
+                if not verification.valid:
+                    raise ArithmeticError("exact Buchberger certificate failed")
+                values = []
+                for packed in packed_basis:
+                    values.append(self._ring._from_sparse_terms(packed))
+                self._groebner_transform_cache[key] = transformation
             else:
-                native = runtime.flint_backend().mpolyGroebner(native_generators)
-            values = []
-            for value in native:
-                values.append(MultivariatePolynomialElement(self._ring, value))
+                native_generators = [
+                    generator._native for generator in self._generators
+                ]
+                if backend.startswith("msolve:"):
+                    native = runtime.flint_backend().mpolyGroebnerMsolve(
+                        native_generators
+                    )
+                else:
+                    native = runtime.flint_backend().mpolyGroebner(native_generators)
+                values = []
+                for value in native:
+                    values.append(MultivariatePolynomialElement(self._ring, value))
             self._groebner_cache[key] = PolynomialSequence(values, self._ring)
         self._groebner_metadata = {
             "backend": backend,
