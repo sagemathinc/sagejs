@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "kind": "sagejs-numerical-gallery",
+  "title": "Numerical methods, with evidence",
+  "description": "Interactive teaching stories built from bounded Sage.js numerical results, traces, validation checks, and semantic plots.",
+  "story_schema": "../../docs/numerical-computing/gallery/story.schema.json",
+  "budgets": {
+    "max_story_bytes": 300000,
+    "max_trace_events_per_result": 64,
+    "max_trace_payload_bytes_per_result": 32768,
+    "max_animation_frames": 32,
+    "max_samples_per_frame": 400,
+    "max_animation_payload_bytes": 125000
+  },
+  "stories": [
+    {
+      "id": "root-finding",
+      "title": "A root is more than a crossing",
+      "domain": "roots",
+      "operation": "scalar_root",
+      "status": "complete",
+      "href": "./stories/root-finding.json",
+      "entrypoint": "./index.html#root-finding",
+      "case_ids": [
+        "cosine-fixed-point",
+        "jump-discontinuity",
+        "invalid-bracket",
+        "newton-two-cycle"
+      ],
+      "capabilities": [
+        "method-assumptions",
+        "trace-table",
+        "manual-animation",
+        "static-fallback",
+        "diagnostic-actions",
+        "plotspec-json-export",
+        "plotly-json-export",
+        "accessible-html-export",
+        "four-language-examples"
+      ]
+    }
+  ]
+}
