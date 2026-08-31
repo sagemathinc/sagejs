@@ -129,12 +129,21 @@ def ode_capabilities() -> dict[str, JSONValue]:
             "qualified_runtimes": list(_QUALIFIED_RUNTIMES),
             "pending_targets": list(_PENDING_TARGETS),
         },
+        "parameter_sweeps": {
+            "status": "implemented",
+            "scheduler": "bounded-batch-v1",
+            "ordering": "stable_input_order",
+            "seeds": "deterministic_per_item",
+            "default_executor": "portable_sequential",
+            "concurrency": "explicit_host_batch_executor",
+            "nested_accounting": "ode_result_evaluations_logical_memory_and_serialized_result",
+        },
         "limitations": [
             "auto selects explicit RK45 and performs no stiffness detection",
             "rosenbrock4 uses dense Jacobians and cubic workspace",
             "events without a sampled sign change can be missed",
             "local error control is not a global error bound",
-            "parameter sweeps are not implemented in this lane",
+            "browser worker concurrency requires a separately qualified host executor",
         ],
     }
 

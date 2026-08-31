@@ -78,7 +78,7 @@ this lane. None is claimed.
 
 `method="auto"` stays on RK45. There is no independently qualified stiffness
 detector. Sparse matrices, iterative linear solvers, mass matrices, DAEs,
-complex states, parameter sweeps, and SUNDIALS lifecycle/payload qualification
+complex states, and SUNDIALS lifecycle/payload qualification
 remain outside this record.
 
 ## Reproduction
