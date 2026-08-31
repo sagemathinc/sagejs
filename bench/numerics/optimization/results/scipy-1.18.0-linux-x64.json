@@ -33,6 +33,10 @@
               "value": 2.2204478561861154e-16
             },
             {
+              "kind": "objective_probe_resolution",
+              "passed": true
+            },
+            {
               "kind": "finite_objective",
               "passed": true
             }
@@ -85,9 +89,14 @@
             },
             {
               "kind": "coordinate_local_minimum",
-              "maximum_sampled_decrease": 0.0,
+              "maximum_relative_sampled_decrease": 0.0,
               "passed": true,
               "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 4,
+              "passed": true
             },
             {
               "kind": "finite_objective",
@@ -148,9 +157,14 @@
             },
             {
               "kind": "coordinate_local_minimum",
-              "maximum_sampled_decrease": 0.0,
+              "maximum_relative_sampled_decrease": 0.0,
               "passed": true,
               "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 4,
+              "passed": true
             },
             {
               "kind": "finite_objective",
@@ -211,9 +225,14 @@
             },
             {
               "kind": "coordinate_local_minimum",
-              "maximum_sampled_decrease": 0.0,
+              "maximum_relative_sampled_decrease": 0.0,
               "passed": true,
               "threshold": 1e-09
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "movable_probe_count": 2,
+              "passed": true
             },
             {
               "kind": "finite_objective",
@@ -289,9 +308,9 @@
       "checks": {
         "expected_method": "damped-gauss-newton",
         "method": true,
-        "objective_difference": 1.7769593927192275e-22,
+        "objective_difference": 2.0381190469965145e-22,
         "objective_difference_limit": 1e-12,
-        "value_distance": 1.2297718399167934e-11,
+        "value_distance": 1.4050760555051056e-11,
         "value_distance_limit": 2e-06
       },
       "id": "least-squares-exponential",
@@ -299,38 +318,44 @@
       "sagejs": {
         "evaluations": 38,
         "method": "damped-gauss-newton",
-        "objective": 1.7769761064785453e-22,
+        "objective": 2.0381357607558322e-22,
         "status": "converged",
         "validation": {
           "checks": [
             {
               "kind": "independent_least_squares_stationarity",
+              "normalization_scale": 1.4715177647050648,
               "passed": true,
+              "scale_resolved": true,
               "threshold": 2e-06,
-              "value": 3.207519581407802e-11
+              "value": 1.48751034412889e-11
             },
             {
               "kind": "coordinate_second_order_minimum",
-              "maximum_sampled_decrease": 0.0,
-              "minimum_sampled_curvature": 1.5530017927915214,
+              "maximum_relative_sampled_decrease": 0.0,
+              "minimum_sampled_curvature": 26055043.525798965,
               "passed": true,
-              "value_tolerance": 2.842170943040401e-14
+              "relative_value_tolerance": 2.842170943040401e-14
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "passed": true
             },
             {
               "kind": "residual_norm",
               "passed": true,
-              "value": 1.885192884814997e-11
+              "value": 2.0189778407678635e-11
             }
           ],
           "condition_estimate": null,
           "error_estimate": null,
           "passed": true,
-          "residual": 3.207519581407802e-11,
+          "residual": 1.48751034412889e-11,
           "truth_level": "validated_approximate"
         },
         "value": [
-          1.9999999999876947,
-          0.4999999999905205
+          1.9999999999859417,
+          0.4999999999899869
         ]
       },
       "scipy": {
@@ -346,7 +371,7 @@
       "checks": {
         "expected_method": "damped-gauss-newton",
         "method": true,
-        "objective_difference": 1.7115228318371542e-17,
+        "objective_difference": 1.7114179852004476e-17,
         "objective_difference_limit": 1e-12,
         "value_distance": 0.0,
         "value_distance_limit": 0.0
@@ -356,56 +381,62 @@
       "sagejs": {
         "evaluations": 33,
         "method": "damped-gauss-newton",
-        "objective": 1.1374670244232887e-22,
+        "objective": 1.1622130695090578e-21,
         "status": "converged",
         "validation": {
           "checks": [
             {
               "kind": "independent_least_squares_stationarity",
+              "normalization_scale": 2.0000000000021223,
               "passed": true,
+              "scale_resolved": true,
               "threshold": 2e-06,
-              "value": 3.3726355042063005e-11
+              "value": 2.6951496590015545e-11
             },
             {
               "kind": "coordinate_second_order_minimum",
-              "maximum_sampled_decrease": 0.0,
-              "minimum_sampled_curvature": 5.000000000000001,
+              "maximum_relative_sampled_decrease": 0.0,
+              "minimum_sampled_curvature": 83886050.36667655,
               "passed": true,
-              "value_tolerance": 2.842170943040401e-14
+              "relative_value_tolerance": 2.842170943040401e-14
+            },
+            {
+              "kind": "objective_probe_resolution",
+              "passed": true
             },
             {
               "kind": "residual_norm",
               "passed": true,
-              "value": 1.5082884501469133e-11
+              "value": 4.821230277655399e-11
             }
           ],
           "condition_estimate": null,
           "error_estimate": null,
           "passed": true,
-          "residual": 3.3726355042063005e-11,
+          "residual": 2.6951496590015545e-11,
           "truth_level": "validated_approximate"
         },
         "value": [
-          0.9999999999965994,
-          0.9999999999966553
+          0.9999999999892378,
+          0.999999999989201
         ]
       },
       "scipy": {
         "objective": 1.7115342065073985e-17,
         "value": [
-          0.9999999999965994,
-          0.9999999999966553
+          0.9999999999892378,
+          0.999999999989201
         ]
       }
     }
   ],
-  "corpus_sha256": "255ddb3bdf9380e72f23c75a692d7283915821de9de0b1e4bbafeff43bcd525d",
+  "corpus_sha256": "44557f4fe1024bbe0da333a01c549410324a19ed1f2971c80a8badeed9efa01f",
   "numpy_version": "2.5.1",
   "oracle": "scipy",
   "passed": 7,
   "platform": "linux-x64",
   "schema_version": 1,
   "scipy_version": "1.18.0",
-  "source_revision": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+  "source_revision": "d48302b91f5cddf0e786693ea06f767017002ef4",
   "total": 7
 }

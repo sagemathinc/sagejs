@@ -192,6 +192,7 @@ print("optimization success laboratory passed")
 `;
 
 const failureWitness = String.raw`
+import json
 from sagejs.numerics.optimization import (
     MAX_FIT_OBSERVATIONS,
     MAX_RESIDUAL_DIMENSION,
@@ -343,6 +344,53 @@ condition = ill_conditioned.domain_payload["parameter_diagnostics"]
 assert condition["covariance_available"]
 assert condition["rank_deficient_or_ill_conditioned"]
 assert condition["normal_matrix_condition_estimate"] > 1.0e12
+
+large_scale = least_squares(
+    lambda point: [1.0e200*(point[0] - 1.0)],
+    [0.0],
+)
+assert large_scale.success and abs(large_scale.value[0] - 1.0) < 1.0e-8
+assert large_scale.objective is None
+assert large_scale.domain_payload["residual_norm"] > 1.0e180
+large_record = json.loads(large_scale.to_json())
+assert large_record["domain_payload"]["objective"] is None
+assert large_record["domain_payload"]["cost"] is None
+
+small_scale = least_squares(
+    lambda point: [1.0e-200*(point[0] - 1.0)],
+    [0.0],
+)
+assert small_scale.success and abs(small_scale.value[0] - 1.0) < 1.0e-8
+assert small_scale.objective is None
+assert small_scale.domain_payload["residual_norm"] > 0.0
+
+unresolved_least_squares_scale = least_squares(
+    lambda point: [point[0]/1.0e200 - 1.0],
+    [0.0],
+)
+assert unresolved_least_squares_scale.status == "converged"
+assert not unresolved_least_squares_scale.success
+assert unresolved_least_squares_scale.validation.truth_level == "indeterminate"
+least_squares_resolution_check = [
+    check for check in unresolved_least_squares_scale.validation.to_dict()["checks"]
+    if check["kind"] == "objective_probe_resolution"
+][0]
+assert not least_squares_resolution_check["passed"]
+
+unresolved_scale = minimize(
+    lambda point: (point[0]/1.0e200 - 1.0)**2,
+    [0.0],
+    gradient=lambda point: [2.0*(point[0]/1.0e200 - 1.0)/1.0e200],
+    method="bfgs",
+)
+assert unresolved_scale.status == "converged"
+assert not unresolved_scale.success
+assert unresolved_scale.validation.truth_level == "indeterminate"
+resolution_check = [
+    check for check in unresolved_scale.validation.to_dict()["checks"]
+    if check["kind"] == "objective_probe_resolution"
+][0]
+assert not resolution_check["passed"]
 
 no_trace = minimize_scalar(lambda x: x*x, -1.0, 1.0, trace="none")
 try:

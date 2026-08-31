@@ -1,0 +1,64 @@
+{
+  "cases": {
+    "exponential-growth": {
+      "dense_mid_state": [1.648721273052936],
+      "final_state": [2.718281833541765],
+      "final_time": 1.0,
+      "method": "RK45",
+      "nfev": 74,
+      "status": 0,
+      "success": true
+    },
+    "harmonic-oscillator": {
+      "dense_mid_state": [-0.9999999961612615, 7.139868522798576e-10],
+      "final_state": [0.9999999922868672, -1.1772557789724303e-09],
+      "final_time": 6.283185307179586,
+      "method": "RK45",
+      "nfev": 524,
+      "status": 0,
+      "success": true
+    },
+    "projectile-ground": {
+      "event_state": [1.7763568394002505e-15, -14.007141035914502],
+      "event_time": 1.427843122927064,
+      "final_state": [1.7763568394002505e-15, -14.007141035914502],
+      "final_time": 1.427843122927064,
+      "method": "RK45",
+      "nfev": 38,
+      "status": 1,
+      "success": true
+    },
+    "initial-event-direction": {
+      "positive_final_time": 0.0,
+      "positive_event_count": 1,
+      "negative_final_time": 1.0,
+      "negative_event_count": 0
+    },
+    "stiff-tracking": {
+      "radau_final_state": [0.5403023058725869],
+      "bdf_final_state": [0.5403023058683774]
+    },
+    "robertson": {
+      "interval": [0.0, 100.0],
+      "radau_final_state": [0.6172348823969773, 6.153591274660255e-06, 0.38275896401174725],
+      "bdf_final_state": [0.617234882968574, 6.153591288489097e-06, 0.382758963440137],
+      "sagejs_oracle_tolerance": 5e-7
+    },
+    "hires": {
+      "interval": [0.0, 321.8122],
+      "radau_final_state": [0.0007371312573326504, 0.00014424857263163496, 5.888729740969134e-05, 0.0011756513432833041, 0.002386356198833849, 0.0062389682527467325, 0.0028499983951912524, 0.002850001604808755],
+      "bdf_final_state": [0.0007371312577328592, 0.00014424857271046443, 5.888729748451712e-05, 0.0011756513440245426, 0.0023863562110059394, 0.006238968291146798, 0.00284999840365014, 0.0028500015963498567],
+      "sagejs_oracle_tolerance": 2e-8
+    },
+    "stiff-vanderpol": {
+      "mu": 1000.0,
+      "interval": [0.0, 3000.0],
+      "radau_final_state": [-1.5106069366824337, 0.0011783800008516119],
+      "bdf_final_state": [-1.5106053123615406, 0.0011783832447546303],
+      "sagejs_oracle_tolerance": 2e-6
+    }
+  },
+  "oracle": "scipy.integrate.solve_ivp",
+  "schema_version": 1,
+  "scipy_version": "1.18.0"
+}

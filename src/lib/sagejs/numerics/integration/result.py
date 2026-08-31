@@ -46,6 +46,9 @@ class IntegrationResult(NumericalResult):
         provenance: Mapping[str, Any] | None = None,
         domain_payload: Mapping[str, Any] | None = None,
     ) -> None:
+        integration_payload = materialize_object(
+            domain_payload, "$.integration_result.domain_payload"
+        )
         super().__init__(
             problem,
             plan,
@@ -60,7 +63,7 @@ class IntegrationResult(NumericalResult):
             trace=trace,
             measurements=measurements,
             provenance=provenance,
-            domain_payload=domain_payload,
+            domain_payload=integration_payload,
         )
         self._integration_stop_reason = str(stop_reason)
         self._integration_estimated_error = estimated_error
@@ -70,6 +73,7 @@ class IntegrationResult(NumericalResult):
             for value in final_intervals
         )
         self._integration_elapsed_ms = float(elapsed_ms)
+        self._integration_domain_payload = integration_payload
 
     @property
     def stop_reason(self) -> str:
@@ -78,7 +82,7 @@ class IntegrationResult(NumericalResult):
 
     @property
     def error_estimate(self) -> float | None:
-        """Return the reported non-rigorous absolute-error evidence."""
+        """Return error evidence for the value or retained solver estimate."""
         return self._integration_estimated_error
 
     @property
@@ -109,6 +113,20 @@ class IntegrationResult(NumericalResult):
             "method: " + self.method + "; " + transform,
             "estimate: " + ("unavailable" if self.value is None else str(self.value)),
         ]
+        solver_estimate = self._integration_domain_payload.get("solver_estimate")
+        solver_estimate_semantics = self._integration_domain_payload.get(
+            "solver_estimate_semantics"
+        )
+        if (
+            self.value is None
+            and solver_estimate is not None
+            and solver_estimate_semantics == "unvalidated_best_complete_partition"
+        ):
+            lines.append(
+                "unvalidated best-complete-partition estimate: "
+                + str(solver_estimate)
+                + "; suppressed as the result value"
+            )
         if self.error_estimate is not None:
             lines.append(
                 "reported absolute-error evidence: " + str(self.error_estimate)
@@ -117,6 +135,41 @@ class IntegrationResult(NumericalResult):
             lines.append(
                 "requested absolute/relative target: " + str(self.requested_tolerance)
             )
+        initial_partition = None
+        retained_subdivisions = 0
+        for event in self.trace.events:
+            data = event.data
+            if event.kind == "phase" and data.get("phase") == "initial_partition":
+                active = data.get("active_intervals")
+                if isinstance(active, int) and not isinstance(active, bool):
+                    initial_partition = active
+            elif event.kind == "iteration":
+                retained_subdivisions += 1
+        if initial_partition is not None:
+            lines.append(
+                "initial partition: "
+                + str(initial_partition)
+                + " complete interval rule"
+                + ("" if initial_partition == 1 else "s")
+                + " established atomically"
+            )
+        elif self._integration_final_intervals:
+            components = {
+                str(record.get("component"))
+                for record in self._integration_final_intervals
+            }
+            lines.append(
+                "initial partition: trace event unavailable; final evidence spans "
+                + str(len(components))
+                + " component"
+                + ("" if len(components) == 1 else "s")
+            )
+        elif self.stop_reason == "zero_interval":
+            lines.append(
+                "initial partition: unnecessary for an exact zero-width interval"
+            )
+        else:
+            lines.append("initial partition: no complete partition was retained")
         lines.append(
             "partition: "
             + str(len(self._integration_final_intervals))
@@ -124,6 +177,19 @@ class IntegrationResult(NumericalResult):
             + str(self.iterations)
             + " subdivisions"
         )
+        if self.iterations > 0:
+            lines.append(
+                "refinement: repeatedly bisected the retained interval with the "
+                + "largest local error; "
+                + str(retained_subdivisions)
+                + " subdivision event"
+                + (" was" if retained_subdivisions == 1 else "s were")
+                + " retained in the bounded trace"
+            )
+        else:
+            lines.append(
+                "refinement: no adaptive subdivision was required or completed"
+            )
         lines.append(
             "resources: "
             + str(self.evaluations)
@@ -142,7 +208,7 @@ class IntegrationResult(NumericalResult):
                 ):
                     independent = check
         if isinstance(independent, dict):
-            lines.append(
+            independent_line = (
                 "independent check: Gauss-Legendre 8 on the final partition; "
                 + (
                     "agreement passed"
@@ -150,14 +216,76 @@ class IntegrationResult(NumericalResult):
                     else "agreement did not pass"
                 )
             )
+            difference = self._integration_domain_payload.get("independent_difference")
+            independent_estimate = self._integration_domain_payload.get(
+                "independent_estimate"
+            )
+            if independent_estimate is not None:
+                independent_line += "; independent estimate " + str(
+                    independent_estimate
+                )
+            if difference is not None:
+                independent_line += "; absolute difference " + str(difference)
+            lines.append(independent_line)
+        if not self.success:
+            solver_stop_reason = self._integration_domain_payload.get(
+                "solver_stop_reason"
+            )
+            reason = {
+                "maximum_evaluations": "the callback evaluation budget was exhausted",
+                "maximum_elapsed_time": "the hard elapsed-time budget was exhausted",
+                "maximum_intervals": "the active-interval budget was exhausted",
+                "maximum_depth": "the selected interval reached the subdivision-depth limit",
+                "maximum_memory": "the conservative workspace-memory budget was exhausted",
+                "interval_too_small": "no representable interior refinement node remained",
+                "roundoff_detected": "repeated subdivision no longer reduced the error evidence",
+                "cancelled": "the cancellation callback requested termination",
+                "callback_error": "a user callback raised an exception",
+                "nonfinite_evaluation": "a required callback evaluation was nonfinite",
+                "validation_failed": "the independent rule did not agree within the requested tolerance",
+                "invalid_problem": "the requested problem is outside the supported contract",
+            }.get(
+                self.stop_reason, "the solver did not establish validated convergence"
+            )
+            if solver_stop_reason == "converged" and self.stop_reason != "converged":
+                lines.append(
+                    "why this failed: the adaptive solver met its embedded-error "
+                    + "target, but "
+                    + reason
+                )
+            else:
+                lines.append("why this failed: " + reason)
         if self.trace.truncated:
-            lines.append("trace: bounded policy retained a deterministic subset")
+            lines.append(
+                "trace: bounded policy retained a deterministic subset; missing "
+                + "iterations are omitted rather than interpolated"
+            )
         for diagnostic in self.diagnostics:
             lines.append("diagnostic: " + diagnostic.code)
         return "\n".join(lines)
 
-    def plot(self) -> Any:
-        """Return a PlotSpec showing the final local-error allocation."""
+    def plot(self, view: str = "partition") -> Any:
+        """Return a retained-evidence partition or convergence PlotSpec."""
         from .visualization import integration_plot
 
-        return integration_plot(self)
+        return integration_plot(self, view=view)
+
+    def convergence_plot(self) -> Any:
+        """Return the retained global error and tolerance history."""
+        from .visualization import integration_convergence_plot
+
+        return integration_convergence_plot(self)
+
+    def to_plot_spec(self, view: str = "partition") -> Any:
+        """Return the canonical static semantic view for the selected view."""
+        return self.plot(view=view)
+
+    def animate(self) -> Any:
+        """Return a bounded PlotAnimation of retained refinement events."""
+        from .visualization import integration_animation
+
+        return integration_animation(self)
+
+    def to_animation(self) -> Any:
+        """Return the canonical retained-evidence refinement animation."""
+        return self.animate()
