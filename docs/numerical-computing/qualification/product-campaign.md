@@ -4,7 +4,7 @@ The product campaign turns the P0-P8 plan into executable, source-bound and
 artifact-bound evidence without making a release claim before the release
 hosts run it. Its inputs are:
 
-- `bench/numerical-computing/qualification/product.corpus.json` — 32
+- `bench/numerical-computing/qualification/product.corpus.json` — 37
   backend-neutral cases spanning P0 through P8 and all seven evidence layers;
 - `bench/numerical-computing/qualification/node-adapter.cjs` — a first-party
   adapter which loads `dist/tools/kernel.js`, creates a real Python-mode
@@ -40,11 +40,19 @@ teaching-artifact surfaces. It contains:
   reviewed 70-supported/18-unsupported frontend target matrix, including
   checksummed-body rejection for 66 envelope-bound emitters, semantic parsing
   for four scalar-root emitters, and equivalent four-language execution;
+- direct built-parser evidence that six unsafe MATLAB/Wolfram mappings fail
+  closed with typed, positioned diagnostics while qualified integral forms
+  still lower to the shared runtime;
+- execution of four artifact-emitted Python/SciPy programs in an isolated
+  CPython process, followed by independent Node-side residual/oracle checks;
+- failed-result projection, replayable-expression, callback-consistency, and
+  portable operand/envelope resource guards;
 - cancellation, callback-exception, evaluation-budget, and Wasm-allocation
   lifecycle fault injection;
 - renderer-neutral views constructed exclusively from retained evidence, with
   callback replay forbidden and cross-platform semantics checked by structure
-  plus explicit numeric tolerances rather than byte identity;
+  plus explicit numeric tolerances rather than byte identity, including a
+  repeated scalar-minimization view witness that checks callback counters;
 - a same-session repeated cross-domain campaign; and
 - collector-level cold initialization, wall time, RSS, process high-water RSS,
   source/artifact bytes, and repeated-observation determinism.
@@ -53,6 +61,11 @@ The adapter never returns a `passed` field. It returns observed values and
 structured outcomes. The generic collector evaluates the corpus checks.
 Solver-reported validation is retained as an additional observation for some
 cases, never as the only mathematical evidence.
+
+The `numerics.frontend.scipy_execution` capability is observed only when the
+host adapter can launch isolated CPython with both NumPy and SciPy. A host
+without that independent runtime cannot satisfy this campaign row: generated
+source text alone is deliberately not counted as executable-language evidence.
 
 ## Prepare and collect one Node receipt
 
