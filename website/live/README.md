@@ -58,6 +58,7 @@ after the network is disabled:
 
 ```sh
 node website/live/test/browser-offline.mjs
+node website/live/test/browser-embed.mjs
 ```
 
 The test stages the verified release, loads it under production headers in
@@ -73,6 +74,44 @@ Sage.js release caches after the new install succeeds.
 Firefox and WebKit remain manual/CI browser-matrix release checks because this
 focused script intentionally uses Chromium's DevTools protocol to make network
 loss deterministic.
+
+## Embeddable cell candidate
+
+The staged site includes a provisional reusable cell at `/embed/v1/`. It is
+built from the same controller, evaluator, rich-output pipeline, and standard
+ipywidgets manager as the standalone app. The declarative form is:
+
+```html
+<script type="module" src="./embed/v1/sagejs-cell.mjs"></script>
+<sagejs-cell run-button-text="Evaluate">
+  <script type="text/x-sage">factor(2026)</script>
+</sagejs-cell>
+```
+
+The equivalent module API is:
+
+```js
+import { createSageCell } from "./embed/v1/sagejs-cell.mjs";
+
+const cell = await createSageCell(document.querySelector("#calculus"), {
+  source: "show(integral(sin(x), x))",
+  autoEvaluate: true,
+});
+```
+
+Each cell currently owns an independent worker and exposes `source`, `ready`,
+`run`, `interrupt`, `reset`, `clear`, `snapshot`, and `dispose`. Configuration
+supports Sage or Python language mode, editor visibility, button text,
+auto-evaluation, bounded timeout, System/Light/Dark themes, and math
+typesetting. Controller events are re-emitted as bubbling, composed custom
+events from the element. Removing a cell disposes its worker and widget views.
+
+`browser-embed.mjs` qualifies both declarative and factory-created cells,
+including Shadow DOM CodeMirror/output, independent lifecycle, KaTeX, and a
+live Sage `@interact` slider. The public cross-origin loader, iframe transport,
+shared-session/pooling policy, and non-isolated browser matrix are still under
+implementation; do not yet treat the candidate URL as a frozen compatibility
+contract or copy it to unrelated origins.
 
 ## Product behavior
 

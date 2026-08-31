@@ -24,7 +24,9 @@ test("public shell exposes accessible execution and file controls", async () => 
   assert.match(app, /wasm-capabilities-report\.json/);
   assert.match(app, /record\.resource_limits/);
   assert.match(app, /Fallback:/);
-  assert.match(app, /value\.on\("error"/);
+  assert.match(app, /cellController\.addEventListener\("error"/);
+  const controller = await read("cell-controller.mjs");
+  assert.match(controller, /this\.session\.on\("error"/);
   assert.match(app, /Ready — recovered session/);
   assert.match(app, /result-input/);
   assert.match(app, /Copy input/);
@@ -71,4 +73,22 @@ test("offline worker is same-origin, versioned and credentialless by default", a
   const app = await read("app.mjs");
   assert.match(app, /new URL\("\.\/sw\.js"/);
   assert.match(app, /searchParams\.set\("release"/);
+});
+
+test("embeddable cell has a transport-neutral, instance-scoped contract", async () => {
+  const component = await read("embed/v1/sagejs-cell.mjs");
+  assert.match(component, /class SageJsCell extends HTMLElement/);
+  assert.match(component, /attachShadow\(\{ mode: "open" \}\)/);
+  assert.match(component, /createSageCellController/);
+  assert.match(component, /export async function createSageCell/);
+  for (const operation of ["ready", "run", "interrupt", "reset", "snapshot", "dispose"]) {
+    assert.match(component, new RegExp(`async ${operation}\\(|${operation}\\(\\) \\{`));
+  }
+  assert.doesNotMatch(component, /https?:\/\//);
+  const declarative = await read("embed/v1/index.html");
+  assert.match(declarative, /<sagejs-cell/);
+  assert.match(declarative, /type="text\/x-sage"/);
+  const factory = await read("embed/v1/factory-example.mjs");
+  assert.match(factory, /createSageCell/);
+  assert.match(factory, /@interact/);
 });

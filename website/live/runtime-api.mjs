@@ -1,5 +1,6 @@
 let runtimePromise;
 let widgetRuntimePromise;
+const resourceRoot = new URL("./", import.meta.url);
 
 export function requestCredentials() {
   // Managed CoCalc apps authenticate same-origin asset requests with their
@@ -32,9 +33,10 @@ function loadStylesheet(source) {
 /** Load the immutable, content-addressed browser runtime selected by version.json. */
 export function loadSageRuntime() {
   runtimePromise ??= (async () => {
-    const response = await fetch("./runtime-version.json", {
+    const versionUrl = new URL("runtime-version.json", resourceRoot);
+    const response = await fetch(versionUrl, {
       cache: "no-store",
-      credentials: requestCredentials(location.search),
+      credentials: requestCredentials(),
     });
     if (!response.ok) throw new Error(`runtime version returned HTTP ${response.status}`);
     const version = await response.json();
@@ -45,14 +47,15 @@ export function loadSageRuntime() {
     ) {
       throw new Error("runtime version metadata is invalid");
     }
+    const assetBase = new URL(version.assetBase, versionUrl);
     await Promise.all([
-      loadScript(`${version.assetBase}dist/plotly.min.js`),
-      loadScript("./vendor/katex/katex.min.js"),
-      loadStylesheet("./vendor/katex/katex.min.css"),
+      loadScript(new URL("dist/plotly.min.js", assetBase)),
+      loadScript(new URL("vendor/katex/katex.min.js", resourceRoot)),
+      loadStylesheet(new URL("vendor/katex/katex.min.css", resourceRoot)),
     ]);
     const [kernel, renderer] = await Promise.all([
-      import(`${version.assetBase}kernel.mjs`),
-      import(`${version.assetBase}plotly-renderer.mjs`),
+      import(new URL("kernel.mjs", assetBase)),
+      import(new URL("plotly-renderer.mjs", assetBase)),
     ]);
     return Object.freeze({ ...kernel, ...renderer, version });
   })();
@@ -62,8 +65,8 @@ export function loadSageRuntime() {
 /** Load the standard widget manager and controls only when first needed. */
 export function loadWidgetRuntime() {
   widgetRuntimePromise ??= Promise.all([
-    loadStylesheet("./vendor/widgets/widgets.built.css"),
-    import("./vendor/widgets/index.mjs"),
+    loadStylesheet(new URL("vendor/widgets/widgets.built.css", resourceRoot)),
+    import(new URL("vendor/widgets/index.mjs", resourceRoot)),
   ]).then(([, manager]) => manager);
   return widgetRuntimePromise;
 }

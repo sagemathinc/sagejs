@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sage.js Cell declarative example</title>
+    <style>
+      body { max-width: 58rem; margin: 2rem auto; padding: 0 1rem; font: 16px/1.5 system-ui, sans-serif; }
+      sagejs-cell { margin: 1.25rem 0; }
+    </style>
+    <script type="module" src="./sagejs-cell.mjs"></script>
+  </head>
+  <body>
+    <h1>Declarative Sage.js Cell</h1>
+    <p>This calculation runs locally in an independent browser worker.</p>
+    <sagejs-cell run-button-text="Evaluate">
+      <script type="text/x-sage">
+show(factor(2026))
+      </script>
+    </sagejs-cell>
+    <p><a href="./factory.html">ES module factory example</a></p>
+  </body>
+</html>
