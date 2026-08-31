@@ -37,15 +37,107 @@
     "pnpm test:numerics",
     "pnpm architecture:check",
     "pnpm exec pyright src/lib/sagejs/numerics/optimization",
-    "pnpm exec ruff check src/lib/sagejs/numerics/optimization bench/numerics/optimization/*.py",
+    "pnpm exec ruff check src/lib/sagejs/numerics/optimization bench/numerics/optimization/run_portable.py bench/numerics/optimization/scipy_oracle.py",
     "node --test test/numerics/optimization/optimization-laboratory.cjs",
     "python3 bench/numerics/optimization/run_portable.py --samples 1 --output /tmp/sagejs-optimization-portable.json",
     "python3 bench/numerics/optimization/scipy_oracle.py --output /tmp/sagejs-optimization-scipy.json"
   ],
-  "runs": [],
+  "runs": [
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.861,
+      "started_at": "2026-08-31T14:43:45.376Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 419.169,
+      "started_at": "2026-08-31T14:44:35.920Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/optimization",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.694,
+      "started_at": "2026-08-31T14:51:48.454Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec ruff check src/lib/sagejs/numerics/optimization bench/numerics/optimization/run_portable.py bench/numerics/optimization/scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.52,
+      "started_at": "2026-08-31T14:51:51.816Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/optimization/optimization-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.562,
+      "started_at": "2026-08-31T14:51:53.060Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/numerics/optimization/run_portable.py --samples 1 --output /tmp/sagejs-optimization-portable.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.151,
+      "started_at": "2026-08-31T14:52:01.310Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 bench/numerics/optimization/scipy_oracle.py --output /tmp/sagejs-optimization-scipy.json",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.588,
+      "started_at": "2026-08-31T14:52:02.173Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.957,
+      "started_at": "2026-08-31T14:52:13.168Z",
+      "commit": "a7c7f797bb739058b8db92db9050c4da73ddaa6b",
+      "workspace_fingerprint": "bb6ca2294105215fd7fa391d647b4da1083ff3be8b27bdb338a28a292e2649ef",
+      "platform": "linux-x64"
+    }
+  ],
   "handoff": {
-    "summary": "",
-    "risks": [],
-    "next_steps": []
+    "summary": "Hardened the Linux x64 ordinary-Python fallback with exact method envelopes, independent KKT and least-squares validation, stationary-maximum rejection, callback/budget propagation, residual/data/Jacobian ceilings, scale-aware conditioning diagnostics, truthful summary traces and animations, a 31-case fail-closed portable corpus, 7 SciPy differentials, and matched CPython/Sage.js performance receipts at a7c7f797bb739058b8db92db9050c4da73ddaa6b.",
+    "risks": [
+      "architecture:check stops at the integration-owned package graph because src/lib/sagejs/numerics/optimization/__init__.py has no package owner; no later architecture gate was reached in this lane.",
+      "The optimization code emits maximum_elapsed_time, but this branch intentionally depends on the integration lane's shared diagnostic-registry addition before a public timeout path can be exercised end to end.",
+      "Only Linux x64 CPython and Sage.js Node are qualified; Linux ARM64, Windows x64, macOS ARM64, browser, SEA, and four-platform release claims remain unproven.",
+      "The checked-in performance receipt confirms the translated dynamic fallback is substantially slower than CPython, especially for full iteration traces; it is correctness fallback evidence, not the planned compiled P3 performance tier.",
+      "cminpack lmdif/lmder, NLopt/PRIMA Nelder-Mead and COBYLA, nonlinear constraints, Powell, CG, Newton-CG, TNC, L-BFGS-B, and Sage find_fit compatibility remain absent and explicitly unsupported."
+    ],
+    "next_steps": [
+      "Central integration: register the package owner and public numerical surface, add the package to strict Pyright configuration, merge the shared maximum_elapsed_time diagnostic, add its end-to-end timeout regression, rerun architecture:check, and then advance this task to review.",
+      "Build and qualify the universal callback-capable Wasm portfolio method by method: cminpack lmdif/lmder for Sage find_fit semantics and the permissive NLopt/PRIMA subset for Nelder-Mead/COBYLA with independent feasibility gates.",
+      "Collect browser, SEA, Linux ARM64, macOS ARM64, and Windows x64 correctness, upstream-suite, payload, memory, and performance receipts before changing any platform qualification claim.",
+      "Expand the oracle corpus with More-Garbow-Hillstrom, CUTEst subsets, badly scaled and inconsistent constraints, and dimensions crossing dense and limited-memory regimes."
+    ]
   }
 }
