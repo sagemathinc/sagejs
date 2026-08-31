@@ -47,6 +47,40 @@ implementation. P1 is not classified as release-qualified until its browser,
 SEA, four-platform, performance, startup, memory, and payload receipts are
 bound to the final candidate.
 
+The second integrated milestone established the same-source numerical
+foundation on 2026-08-31:
+
+- dense real binary64 LU, pivoted and unpivoted Householder QR, Cholesky,
+  solves, full-rank least squares, rank, condition estimates, determinant,
+  inverse, and iterative refinement now have independent backward-error and
+  structural validation;
+- barycentric and piecewise interpolation, cubic splines, Chebyshev
+  approximation, scale-aware finite differences, and one-dimensional adaptive
+  Gauss-Kronrod quadrature now have backend-neutral corpora and independent
+  validation;
+- symmetric and general eigensystems, reduced SVD, FFT, convolution, explicit
+  CSR iterative solves, and one narrowly certified sparse dominant-eigenpair
+  path are implemented with explicit unsupported envelopes;
+- transparent scalar/multivariate optimization, nonlinear systems,
+  least-squares, curve fitting, and affine fitting fail closed when binary64
+  scale prevents independent stationarity or local-minimum checks;
+- descriptive statistics, common probability distributions, reproducible
+  random sampling, Student/chi-square inference, OLS, Theil-Sen, and fixed-loss
+  Huber regression share the canonical problem/plan/result/validation records;
+  and
+- explicit RK4 and adaptive Dormand-Prince 5(4) IVP paths provide bounded
+  traces, dense output, event location, invariant/error evidence, and
+  trajectory/phase/error visualizations.
+
+These domains are separate lazy source packages and all integrated modules are
+in the strict CPython/Ruff/Pyright inventory. Development-host CPython,
+Sage.js, SciPy/NumPy/mpmath, failure, metamorphic, and scale-adversarial tests
+pass. This is deliberately not yet a release claim: numerical polynomial
+roots, a stiff IVP path, bounded parameter sweeps, a production-qualified
+callback-capable optimization Wasm backend, remaining multilingual adapters,
+domain teaching narratives, and P8 browser/SEA/four-platform receipts are
+still open.
+
 ## Product vision
 
 Build the numerical tool I would want to use as both a mathematical programmer
