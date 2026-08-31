@@ -32,7 +32,8 @@ const fixture = JSON.parse(
   ),
 );
 const WITNESS_TIMEOUT_MS =
-  process.platform === "linux" && process.arch === "arm64"
+  process.platform === "darwin" ||
+  (process.platform === "linux" && process.arch === "arm64")
     ? 300_000
     : 120_000;
 
