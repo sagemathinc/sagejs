@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from ._json import JSONValue
+from typing import Any
+
+from ._json import JSONValue, materialize_json
 from .diagnostics import NumericalDiagnostic
 from .model import NumericalPlan, NumericalProblem
 
@@ -81,8 +83,8 @@ _ROOT_METHODS: dict[str, dict[str, JSONValue]] = {
 }
 
 
-def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
-    """Return the detached, versioned numerical capability registry."""
+def _root_capabilities() -> dict[str, JSONValue]:
+    """Return the detached scalar-root capability document."""
     operations: dict[str, JSONValue] = {
         "scalar_root": {
             "classification": "translated",
@@ -97,25 +99,14 @@ def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
             },
         }
     }
-    if domain is not None and domain not in ("roots", "scalar_root"):
-        operations = {}
     return {
         "schema_version": CAPABILITY_SCHEMA_VERSION,
+        "domain": "roots",
         "operations": operations,
     }
 
 
-def describe(operation: str) -> dict[str, JSONValue]:
-    records = capabilities()["operations"]
-    if not isinstance(records, dict) or operation not in records:
-        raise ValueError("unknown numerical operation: " + operation)
-    value = records[operation]
-    if not isinstance(value, dict):
-        raise TypeError("invalid capability record")
-    return dict(value)
-
-
-def supports(problem: NumericalProblem, method: str | None = None) -> bool:
+def _root_supports(problem: NumericalProblem, method: str | None = None) -> bool:
     if problem.operation != "scalar_root":
         return False
     selected = problem.method if method is None else method
@@ -124,7 +115,7 @@ def supports(problem: NumericalProblem, method: str | None = None) -> bool:
     return selected in _ROOT_METHODS
 
 
-def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
+def _root_plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
     """Resolve a scalar-root problem without evaluating its callback."""
     if problem.operation != "scalar_root":
         raise NotImplementedError(
@@ -191,4 +182,254 @@ def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
         },
         rejected_alternatives=rejected,
         diagnostics=diagnostics,
+    )
+
+
+_DOMAIN_NAMES = (
+    "roots",
+    "approximation",
+    "integration",
+    "linear_algebra",
+    "optimization",
+    "ode",
+    "spectral",
+    "statistics",
+)
+
+_DOMAIN_ALIASES = {
+    "scalar_root": "roots",
+    "least_squares": "optimization",
+    "fitting": "optimization",
+    "nonlinear_systems": "optimization",
+}
+
+
+def _detached_object(value: Any, description: str) -> dict[str, JSONValue]:
+    detached = materialize_json(value)
+    if not isinstance(detached, dict):
+        raise TypeError(description + " must be an object")
+    return detached
+
+
+def _canonical_domain(domain: str) -> str:
+    selected = _DOMAIN_ALIASES.get(domain, domain)
+    if selected not in _DOMAIN_NAMES:
+        raise ValueError("unknown numerical domain: " + domain)
+    return selected
+
+
+def _domain_document(domain: str) -> dict[str, JSONValue]:
+    if domain == "roots":
+        return _root_capabilities()
+    if domain == "approximation":
+        from .approximation import capabilities as approximation_capabilities
+
+        return _detached_object(
+            approximation_capabilities(), "approximation capability document"
+        )
+    if domain == "integration":
+        from .integration import integration_capabilities
+
+        detail = integration_capabilities()
+        return _detached_object(
+            {
+                "schema_version": detail["schema_version"],
+                "domain": "integration",
+                "operations": {
+                    "definite_integral": detail["capability"],
+                },
+                "detail": detail,
+            },
+            "integration capability document",
+        )
+    if domain == "linear_algebra":
+        from .linear_algebra import capabilities as linear_capabilities
+
+        return _detached_object(
+            linear_capabilities(), "linear-algebra capability document"
+        )
+    if domain == "optimization":
+        from .optimization import capabilities as optimization_capabilities
+
+        return _detached_object(
+            optimization_capabilities(), "optimization capability document"
+        )
+    if domain == "ode":
+        from .ode import ode_capabilities
+
+        detail = ode_capabilities()
+        return _detached_object(
+            {
+                "schema_version": detail["schema_version"],
+                "domain": "ode",
+                "operations": {
+                    "initial_value_problem": {
+                        "methods": detail["implemented_methods"],
+                        "unsupported_methods": detail["unsupported_methods"],
+                        "supported_state": detail["supported_state"],
+                        "portability_evidence": detail["portability_evidence"],
+                        "limitations": detail["limitations"],
+                    },
+                    "parameter_sweep": detail["parameter_sweeps"],
+                },
+                "detail": detail,
+            },
+            "ODE capability document",
+        )
+    if domain == "spectral":
+        from .spectral import capabilities as spectral_capabilities
+
+        return _detached_object(spectral_capabilities(), "spectral capability document")
+    from .statistics import capabilities as statistics_capabilities
+
+    return _detached_object(statistics_capabilities(), "statistics capability document")
+
+
+def capabilities(domain: str | None = None) -> dict[str, JSONValue]:
+    """Return one domain document or the complete lazy capability index.
+
+    The unfiltered registry uses fully qualified `domain.operation` keys so
+    similarly named operations never collide or depend on import order.
+    """
+    if domain is not None:
+        if not isinstance(domain, str):
+            raise TypeError("numerical capability domain must be a string or None")
+        return _domain_document(_canonical_domain(domain))
+    domains: dict[str, JSONValue] = {}
+    operation_index: dict[str, JSONValue] = {}
+    for domain_name in _DOMAIN_NAMES:
+        document = _domain_document(domain_name)
+        domains[domain_name] = document
+        operations = document.get("operations")
+        if not isinstance(operations, dict):
+            raise TypeError(domain_name + " capability document has no operations")
+        for operation_name in sorted(operations):
+            operation_index[domain_name + "." + operation_name] = {
+                "domain": domain_name,
+                "operation": operation_name,
+                "capability": operations[operation_name],
+            }
+    return {
+        "schema_version": 2,
+        "domains": domains,
+        "operation_index": operation_index,
+    }
+
+
+def describe(operation: str, domain: str | None = None) -> dict[str, JSONValue]:
+    """Describe one operation by qualified name or unambiguous short name."""
+    if not isinstance(operation, str) or operation == "":
+        raise ValueError("numerical operation must be a nonempty string")
+    if domain is not None:
+        canonical = _canonical_domain(domain)
+        qualified = canonical + "." + operation
+    elif "." in operation:
+        prefix, short_name = operation.split(".", 1)
+        qualified = _canonical_domain(prefix) + "." + short_name
+    else:
+        registry = capabilities()
+        index = registry.get("operation_index")
+        if not isinstance(index, dict):
+            raise TypeError("numerical capability registry has no operation index")
+        matches = [name for name in index if name.endswith("." + operation)]
+        if len(matches) == 0:
+            raise ValueError("unknown numerical operation: " + operation)
+        if len(matches) > 1:
+            raise ValueError(
+                "ambiguous numerical operation "
+                + operation
+                + "; use one of "
+                + ", ".join(sorted(matches))
+            )
+        qualified = matches[0]
+    registry = capabilities()
+    index = registry.get("operation_index")
+    if not isinstance(index, dict) or qualified not in index:
+        raise ValueError("unknown numerical operation: " + qualified)
+    record = index[qualified]
+    if not isinstance(record, dict):
+        raise TypeError("invalid numerical capability record")
+    capability = record.get("capability")
+    if not isinstance(capability, dict):
+        raise TypeError("numerical operation capability must be an object")
+    return dict(capability)
+
+
+def supports(problem: NumericalProblem, method: str | None = None) -> bool:
+    """Return whether the owning numerical domain accepts a problem and method."""
+    if not isinstance(problem, NumericalProblem):
+        return False
+    domain = _DOMAIN_ALIASES.get(problem.domain, problem.domain)
+    if domain == "roots":
+        return _root_supports(problem, method)
+    if domain == "approximation":
+        from .approximation import supports as approximation_supports
+
+        return approximation_supports(problem, method)
+    if domain == "integration":
+        from .integration import supports as integration_supports
+
+        return integration_supports(problem, method)
+    if domain == "linear_algebra":
+        from .linear_algebra import supports as linear_supports
+
+        return linear_supports(problem, method)
+    if domain == "optimization":
+        from .optimization import supports as optimization_supports
+
+        return optimization_supports(problem, method)
+    if domain == "ode":
+        from .ode import OdeProblem, supports_ode
+
+        return isinstance(problem, OdeProblem) and supports_ode(problem, method)
+    if domain == "spectral":
+        from .spectral import supports as spectral_supports
+
+        return spectral_supports(problem, method)
+    if domain == "statistics":
+        from .statistics import supports as statistics_supports
+
+        return statistics_supports(problem, method)
+    return False
+
+
+def plan(problem: NumericalProblem, method: str | None = None) -> NumericalPlan:
+    """Dispatch side-effect-free planning to the problem's owning domain."""
+    if not isinstance(problem, NumericalProblem):
+        raise TypeError("numerical planning requires a NumericalProblem")
+    domain = _DOMAIN_ALIASES.get(problem.domain, problem.domain)
+    if domain == "roots":
+        return _root_plan(problem, method)
+    if domain == "approximation":
+        from .approximation import plan as approximation_plan
+
+        return approximation_plan(problem, method)
+    if domain == "integration":
+        from .integration import plan_integration
+
+        return plan_integration(problem, method)
+    if domain == "linear_algebra":
+        from .linear_algebra import plan as linear_plan
+
+        return linear_plan(problem, method)
+    if domain == "optimization":
+        from .optimization import plan as optimization_plan
+
+        return optimization_plan(problem, method)
+    if domain == "ode":
+        from .ode import OdeProblem, plan_ode
+
+        if not isinstance(problem, OdeProblem):
+            raise TypeError("ODE planning requires an OdeProblem")
+        return plan_ode(problem, method)
+    if domain == "spectral":
+        from .spectral import plan as spectral_plan
+
+        return spectral_plan(problem, method)
+    if domain == "statistics":
+        from .statistics import plan as statistics_plan
+
+        return statistics_plan(problem, method)
+    raise NotImplementedError(
+        "planning is not implemented for domain " + problem.domain
     )
