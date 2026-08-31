@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <node_api.h>
+#include <gmp.h>
 
 #include <flint/flint.h>
 #include <flint/fq_nmod_mpoly.h>
@@ -23,6 +24,7 @@
 
 #include "multivariate.h"
 #include "extension_field.h"
+#include "msolve_core.h"
 
 typedef enum
 {
@@ -1456,6 +1458,37 @@ napi_value sagejs_mpoly_degree(napi_env e, napi_callback_info i)
 napi_value sagejs_mpoly_total_degree(napi_env e, napi_callback_info i)
 { return integer_property(e, i, 2); }
 
+napi_value sagejs_mpoly_leading_monomial(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1], object;
+    sagejs_mpoly_value *source, *result;
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_value(env, args[0])) == NULL)
+        return NULL;
+    object = create_value(env, source->context);
+    if (object == NULL || (result = unwrap_value(env, object)) == NULL)
+        return NULL;
+    if (source->context->kind == SAGEJS_MPOLY_ZZ &&
+        !fmpz_mpoly_is_zero(source->value.zz, source->context->value.zz))
+        fmpz_mpoly_get_term_monomial(result->value.zz, source->value.zz, 0,
+            source->context->value.zz);
+    else if (source->context->kind == SAGEJS_MPOLY_QQ &&
+        !fmpq_mpoly_is_zero(source->value.qq, source->context->value.qq))
+        fmpq_mpoly_get_term_monomial(result->value.qq, source->value.qq, 0,
+            source->context->value.qq);
+    else if (source->context->kind == SAGEJS_MPOLY_NMOD &&
+        !nmod_mpoly_is_zero(source->value.nmod, source->context->value.nmod))
+        nmod_mpoly_get_term_monomial(result->value.nmod,
+            source->value.nmod, 0, source->context->value.nmod);
+    else if (source->context->kind == SAGEJS_MPOLY_FQ_NMOD &&
+        !fq_nmod_mpoly_is_zero(
+            source->value.fq_nmod, source->context->value.fq_nmod))
+        fq_nmod_mpoly_get_term_monomial(result->value.fq_nmod,
+            source->value.fq_nmod, 0, source->context->value.fq_nmod);
+    return object;
+}
+
 static int array_to_fmpz_mpoly_vec(napi_env env, napi_value array,
     sagejs_mpoly_context_value *context, fmpz_mpoly_vec_t vector)
 {
@@ -1530,6 +1563,491 @@ static napi_value create_value_from_fmpz(napi_env env,
     return object;
 }
 
+static napi_value msolve_nmod_groebner(napi_env env, napi_value array,
+    sagejs_mpoly_context_value *context, uint32_t input_length)
+{
+    napi_value answer, item, object;
+    sagejs_mpoly_value *poly, *result_poly;
+    sagejs_msolve_f4_result output;
+    int32_t *lengths = NULL, *exponents = NULL, *coefficients = NULL;
+    ulong *term_exponents = NULL;
+    uint64_t terms = 0, exponent_count;
+    uint32_t index;
+    int32_t generator = 0;
+    int64_t term = 0;
+    sagejs_msolve_status status;
+    ulong characteristic = context->value.nmod->mod.n;
+
+    if (characteristic >= (UINT64_C(1) << 31) ||
+        !n_is_prime(characteristic))
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve F4 requires a prime characteristic below 2^31");
+        return NULL;
+    }
+    if (context->nvars > SAGEJS_MSOLVE_MAX_VARIABLES)
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve F4 variable count exceeds the reviewed resource envelope");
+        return NULL;
+    }
+    lengths = calloc(input_length, sizeof(*lengths));
+    if (lengths == NULL && input_length != 0)
+        goto allocation_failure;
+    for (index = 0; index < input_length; index++)
+    {
+        slong length;
+        if (!check_napi(env, napi_get_element(env, array, index, &item)) ||
+            (poly = unwrap_value(env, item)) == NULL)
+            goto failure;
+        if (poly->context != context)
+        {
+            napi_throw_type_error(env, NULL,
+                "multivariate polynomials have different parents");
+            goto failure;
+        }
+        length = nmod_mpoly_length(poly->value.nmod, context->value.nmod);
+        if (length == 0)
+            continue;
+        if (length > SAGEJS_MSOLVE_MAX_INPUT_TERMS ||
+            terms > (uint64_t) SAGEJS_MSOLVE_MAX_INPUT_TERMS -
+                (uint64_t) length)
+        {
+            napi_throw_range_error(env, NULL,
+                "msolve F4 term count exceeds the packed ABI");
+            goto failure;
+        }
+        lengths[generator++] = (int32_t) length;
+        terms += (uint64_t) length;
+    }
+    if (generator == 0)
+    {
+        free(lengths);
+        if (!check_napi(env, napi_create_array(env, &answer)))
+            return NULL;
+        return answer;
+    }
+    if ((uint64_t) context->nvars != 0 &&
+        (terms > SIZE_MAX / sizeof(*exponents) /
+                (uint64_t) context->nvars ||
+         terms > SAGEJS_MSOLVE_MAX_EXPONENT_ENTRIES /
+                (uint64_t) context->nvars))
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve F4 exponent packet is too large");
+        goto failure;
+    }
+    exponent_count = terms * (uint64_t) context->nvars;
+    exponents = malloc((size_t) exponent_count * sizeof(*exponents));
+    coefficients = malloc((size_t) terms * sizeof(*coefficients));
+    term_exponents = malloc((size_t) context->nvars * sizeof(*term_exponents));
+    if (exponents == NULL || coefficients == NULL || term_exponents == NULL)
+        goto allocation_failure;
+
+    generator = 0;
+    term = 0;
+    for (index = 0; index < input_length; index++)
+    {
+        slong position, length;
+        if (!check_napi(env, napi_get_element(env, array, index, &item)) ||
+            (poly = unwrap_value(env, item)) == NULL)
+            goto failure;
+        length = nmod_mpoly_length(poly->value.nmod, context->value.nmod);
+        if (length == 0)
+            continue;
+        for (position = 0; position < length; position++, term++)
+        {
+            slong variable;
+            nmod_mpoly_get_term_exp_ui(term_exponents, poly->value.nmod,
+                position, context->value.nmod);
+            coefficients[term] = (int32_t) nmod_mpoly_get_term_coeff_ui(
+                poly->value.nmod, position, context->value.nmod);
+            for (variable = 0; variable < context->nvars; variable++)
+            {
+                if (term_exponents[variable] > INT32_MAX)
+                {
+                    napi_throw_range_error(env, NULL,
+                        "msolve F4 exponent exceeds the packed ABI");
+                    goto failure;
+                }
+                exponents[(size_t) term * context->nvars + variable] =
+                    (int32_t) term_exponents[variable];
+            }
+        }
+        generator++;
+    }
+
+    status = sagejs_msolve_f4(&output, lengths, exponents, coefficients,
+        (uint32_t) characteristic, (int32_t) context->nvars, generator);
+    free(lengths); lengths = NULL;
+    free(exponents); exponents = NULL;
+    free(coefficients); coefficients = NULL;
+    free(term_exponents); term_exponents = NULL;
+    if (status != SAGEJS_MSOLVE_OK)
+    {
+        if (status == SAGEJS_MSOLVE_INVALID || status == SAGEJS_MSOLVE_OVERFLOW)
+            napi_throw_range_error(env, NULL,
+                "msolve F4 rejected the bounded polynomial packet");
+        else
+            napi_throw_error(env, NULL,
+                "msolve F4 failed without publishing a partial result");
+        return NULL;
+    }
+    if (!check_napi(env,
+            napi_create_array_with_length(env, output.length, &answer)))
+        goto output_failure;
+    term = 0;
+    for (generator = 0; generator < output.length; generator++)
+    {
+        int32_t position;
+        if (output.lengths[generator] <= 0 ||
+            term > output.terms - output.lengths[generator])
+        {
+            napi_throw_error(env, NULL, "msolve F4 returned invalid lengths");
+            goto output_failure;
+        }
+        object = create_value(env, context);
+        if (object == NULL || (result_poly = unwrap_value(env, object)) == NULL)
+            goto output_failure;
+        for (position = 0; position < output.lengths[generator]; position++, term++)
+        {
+            slong variable;
+            int64_t coefficient = output.coefficients[term];
+            coefficient %= (int64_t) characteristic;
+            if (coefficient < 0)
+                coefficient += (int64_t) characteristic;
+            for (variable = 0; variable < context->nvars; variable++)
+            {
+                int32_t exponent = output.exponents[
+                    (size_t) term * context->nvars + variable];
+                if (exponent < 0)
+                {
+                    napi_throw_error(env, NULL,
+                        "msolve F4 returned a negative exponent");
+                    goto output_failure;
+                }
+                term_exponents = term_exponents == NULL
+                    ? malloc((size_t) context->nvars * sizeof(*term_exponents))
+                    : term_exponents;
+                if (term_exponents == NULL)
+                    goto allocation_failure_with_output;
+                term_exponents[variable] = (ulong) exponent;
+            }
+            nmod_mpoly_push_term_ui_ui(result_poly->value.nmod,
+                (ulong) coefficient, term_exponents, context->value.nmod);
+        }
+        nmod_mpoly_sort_terms(result_poly->value.nmod, context->value.nmod);
+        nmod_mpoly_combine_like_terms(
+            result_poly->value.nmod, context->value.nmod);
+        if (!check_napi(env,
+                napi_set_element(env, answer, (uint32_t) generator, object)))
+            goto output_failure;
+    }
+    if (term != output.terms)
+    {
+        napi_throw_error(env, NULL, "msolve F4 returned trailing terms");
+        goto output_failure;
+    }
+    free(term_exponents);
+    sagejs_msolve_f4_result_clear(&output, (uint32_t) characteristic);
+    return answer;
+
+allocation_failure_with_output:
+    napi_throw_error(env, NULL, "unable to allocate msolve result storage");
+output_failure:
+    free(term_exponents);
+    sagejs_msolve_f4_result_clear(&output, (uint32_t) characteristic);
+    return NULL;
+allocation_failure:
+    napi_throw_error(env, NULL, "unable to allocate msolve F4 packet");
+failure:
+    free(lengths);
+    free(exponents);
+    free(coefficients);
+    free(term_exponents);
+    return NULL;
+}
+
+static napi_value msolve_qq_groebner(napi_env env, napi_value array,
+    sagejs_mpoly_context_value *context, uint32_t input_length)
+{
+    napi_value answer, item, object;
+    sagejs_mpoly_value *poly, *result_poly;
+    sagejs_msolve_qq_result output;
+    int32_t *lengths = NULL, *exponents = NULL;
+    ulong *term_exponents = NULL;
+    mpz_t *input_coefficients = NULL;
+    mpz_t **coefficient_pointers = NULL;
+    fmpq_t coefficient;
+    fmpz_t integer;
+    uint64_t terms = 0, exponent_count, initialized = 0;
+    uint32_t index;
+    int32_t generator = 0;
+    int64_t term = 0;
+    sagejs_msolve_status status;
+
+    if (context->nvars > SAGEJS_MSOLVE_MAX_VARIABLES)
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve modular QQ variable count exceeds the reviewed resource envelope");
+        return NULL;
+    }
+    lengths = calloc(input_length, sizeof(*lengths));
+    if (lengths == NULL && input_length != 0)
+        goto allocation_failure;
+    for (index = 0; index < input_length; index++)
+    {
+        slong length;
+        if (!check_napi(env, napi_get_element(env, array, index, &item)) ||
+            (poly = unwrap_value(env, item)) == NULL)
+            goto failure;
+        if (poly->context != context)
+        {
+            napi_throw_type_error(env, NULL,
+                "multivariate polynomials have different parents");
+            goto failure;
+        }
+        length = fmpq_mpoly_length(poly->value.qq, context->value.qq);
+        if (length == 0)
+            continue;
+        if (length > SAGEJS_MSOLVE_MAX_INPUT_TERMS ||
+            terms > (uint64_t) SAGEJS_MSOLVE_MAX_INPUT_TERMS -
+                (uint64_t) length)
+        {
+            napi_throw_range_error(env, NULL,
+                "msolve modular QQ term count exceeds the packed ABI");
+            goto failure;
+        }
+        lengths[generator++] = (int32_t) length;
+        terms += (uint64_t) length;
+    }
+    if (generator == 0)
+    {
+        free(lengths);
+        if (!check_napi(env, napi_create_array(env, &answer)))
+            return NULL;
+        return answer;
+    }
+    if ((uint64_t) context->nvars != 0 &&
+        (terms > SIZE_MAX / sizeof(*exponents) /
+                (uint64_t) context->nvars ||
+         terms > SAGEJS_MSOLVE_MAX_EXPONENT_ENTRIES /
+                (uint64_t) context->nvars))
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve modular QQ exponent packet is too large");
+        goto failure;
+    }
+    exponent_count = terms * (uint64_t) context->nvars;
+    exponents = malloc((size_t) exponent_count * sizeof(*exponents));
+    term_exponents = malloc((size_t) context->nvars * sizeof(*term_exponents));
+    if (terms > SIZE_MAX / 2 / sizeof(*input_coefficients) ||
+        terms > SIZE_MAX / 2 / sizeof(*coefficient_pointers))
+    {
+        napi_throw_range_error(env, NULL,
+            "msolve modular QQ coefficient packet is too large");
+        goto failure;
+    }
+    input_coefficients = malloc(
+        (size_t) terms * 2 * sizeof(*input_coefficients));
+    coefficient_pointers = malloc(
+        (size_t) terms * 2 * sizeof(*coefficient_pointers));
+    if (exponents == NULL || term_exponents == NULL ||
+        input_coefficients == NULL || coefficient_pointers == NULL)
+        goto allocation_failure;
+
+    fmpq_init(coefficient);
+    generator = 0;
+    term = 0;
+    for (index = 0; index < input_length; index++)
+    {
+        slong position, length;
+        if (!check_napi(env, napi_get_element(env, array, index, &item)) ||
+            (poly = unwrap_value(env, item)) == NULL)
+            goto failure_with_coefficient;
+        length = fmpq_mpoly_length(poly->value.qq, context->value.qq);
+        if (length == 0)
+            continue;
+        for (position = 0; position < length; position++, term++)
+        {
+            slong variable;
+            fmpq_mpoly_get_term_exp_ui(term_exponents, poly->value.qq,
+                position, context->value.qq);
+            fmpq_mpoly_get_term_coeff_fmpq(coefficient, poly->value.qq,
+                position, context->value.qq);
+            mpz_init(input_coefficients[2 * term]);
+            mpz_init(input_coefficients[2 * term + 1]);
+            initialized += 2;
+            fmpz_get_mpz(input_coefficients[2 * term], fmpq_numref(coefficient));
+            fmpz_get_mpz(
+                input_coefficients[2 * term + 1], fmpq_denref(coefficient));
+            coefficient_pointers[2 * term] = &input_coefficients[2 * term];
+            coefficient_pointers[2 * term + 1] =
+                &input_coefficients[2 * term + 1];
+            for (variable = 0; variable < context->nvars; variable++)
+            {
+                if (term_exponents[variable] > INT32_MAX)
+                {
+                    napi_throw_range_error(env, NULL,
+                        "msolve modular QQ exponent exceeds the packed ABI");
+                    goto failure_with_coefficient;
+                }
+                exponents[(size_t) term * context->nvars + variable] =
+                    (int32_t) term_exponents[variable];
+            }
+        }
+        generator++;
+    }
+    fmpq_clear(coefficient);
+
+    status = sagejs_msolve_qq(&output, lengths, exponents,
+        coefficient_pointers, (int32_t) context->nvars, generator);
+    for (initialized = 0; initialized < terms * 2; initialized++)
+        mpz_clear(input_coefficients[initialized]);
+    free(lengths); lengths = NULL;
+    free(exponents); exponents = NULL;
+    free(term_exponents); term_exponents = NULL;
+    free(input_coefficients); input_coefficients = NULL;
+    free(coefficient_pointers); coefficient_pointers = NULL;
+    if (status != SAGEJS_MSOLVE_OK)
+    {
+        if (status == SAGEJS_MSOLVE_INVALID || status == SAGEJS_MSOLVE_OVERFLOW)
+            napi_throw_range_error(env, NULL,
+                "msolve modular QQ rejected the bounded polynomial packet");
+        else
+            napi_throw_error(env, NULL,
+                "msolve modular QQ failed without publishing a partial result");
+        return NULL;
+    }
+    if (!check_napi(env,
+            napi_create_array_with_length(env, output.length, &answer)))
+        goto output_failure;
+    term = 0;
+    fmpz_init(integer);
+    for (generator = 0; generator < output.length; generator++)
+    {
+        int32_t position;
+        if (output.lengths[generator] <= 0 ||
+            term > output.terms - output.lengths[generator])
+        {
+            napi_throw_error(env, NULL,
+                "msolve modular QQ returned invalid lengths");
+            goto output_failure_with_integer;
+        }
+        object = create_value(env, context);
+        if (object == NULL || (result_poly = unwrap_value(env, object)) == NULL)
+            goto output_failure_with_integer;
+        for (position = 0; position < output.lengths[generator];
+             position++, term++)
+        {
+            slong variable;
+            fmpz_set_mpz(integer, ((mpz_t *) output.coefficients)[term]);
+            for (variable = 0; variable < context->nvars; variable++)
+            {
+                int32_t exponent = output.exponents[
+                    (size_t) term * context->nvars + variable];
+                if (exponent < 0)
+                {
+                    napi_throw_error(env, NULL,
+                        "msolve modular QQ returned a negative exponent");
+                    goto output_failure_with_integer;
+                }
+                term_exponents = term_exponents == NULL
+                    ? malloc((size_t) context->nvars * sizeof(*term_exponents))
+                    : term_exponents;
+                if (term_exponents == NULL)
+                {
+                    napi_throw_error(env, NULL,
+                        "unable to allocate msolve result storage");
+                    goto output_failure_with_integer;
+                }
+                term_exponents[variable] = (ulong) exponent;
+            }
+            fmpz_mpoly_push_term_fmpz_ui(
+                fmpq_mpoly_zpoly_ref(result_poly->value.qq, context->value.qq),
+                integer, term_exponents, context->value.qq->zctx);
+        }
+        fmpz_mpoly_sort_terms(
+            fmpq_mpoly_zpoly_ref(result_poly->value.qq, context->value.qq),
+            context->value.qq->zctx);
+        fmpz_mpoly_combine_like_terms(
+            fmpq_mpoly_zpoly_ref(result_poly->value.qq, context->value.qq),
+            context->value.qq->zctx);
+        fmpq_one(fmpq_mpoly_content_ref(result_poly->value.qq,
+            context->value.qq));
+        fmpq_mpoly_reduce(result_poly->value.qq, context->value.qq);
+        if (!fmpq_mpoly_is_zero(result_poly->value.qq, context->value.qq))
+            fmpq_mpoly_make_monic(result_poly->value.qq,
+                result_poly->value.qq, context->value.qq);
+        if (!check_napi(env,
+                napi_set_element(env, answer, (uint32_t) generator, object)))
+            goto output_failure_with_integer;
+    }
+    fmpz_clear(integer);
+    if (term != output.terms)
+    {
+        napi_throw_error(env, NULL,
+            "msolve modular QQ returned trailing terms");
+        goto output_failure;
+    }
+    free(term_exponents);
+    sagejs_msolve_qq_result_clear(&output);
+    return answer;
+
+output_failure_with_integer:
+    fmpz_clear(integer);
+output_failure:
+    free(term_exponents);
+    sagejs_msolve_qq_result_clear(&output);
+    return NULL;
+failure_with_coefficient:
+    fmpq_clear(coefficient);
+failure:
+    while (initialized > 0)
+        mpz_clear(input_coefficients[--initialized]);
+    free(lengths);
+    free(exponents);
+    free(term_exponents);
+    free(input_coefficients);
+    free(coefficient_pointers);
+    return NULL;
+allocation_failure:
+    napi_throw_error(env, NULL,
+        "unable to allocate msolve modular QQ packet");
+    goto failure;
+}
+
+napi_value sagejs_mpoly_groebner_msolve(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1], first, answer;
+    sagejs_mpoly_value *poly;
+    uint32_t input_length;
+    bool is_array;
+    if (!require_arguments(env, info, 1, args) ||
+        !check_napi(env, napi_is_array(env, args[0], &is_array)) ||
+        !is_array ||
+        !check_napi(env, napi_get_array_length(env, args[0], &input_length)))
+        return NULL;
+    if (input_length == 0)
+    {
+        if (!check_napi(env, napi_create_array(env, &answer)))
+            return NULL;
+        return answer;
+    }
+    if (!check_napi(env, napi_get_element(env, args[0], 0, &first)) ||
+        (poly = unwrap_value(env, first)) == NULL)
+        return NULL;
+    if (poly->context->kind == SAGEJS_MPOLY_NMOD)
+        return msolve_nmod_groebner(
+            env, args[0], poly->context, input_length);
+    if (poly->context->kind == SAGEJS_MPOLY_QQ)
+        return msolve_qq_groebner(env, args[0], poly->context, input_length);
+    napi_throw_type_error(env, NULL,
+        "msolve Groebner bases require QQ or a prime field");
+    return NULL;
+}
+
 napi_value sagejs_mpoly_groebner(napi_env env, napi_callback_info info)
 {
     napi_value args[1], first, answer, item;
@@ -1560,6 +2078,8 @@ napi_value sagejs_mpoly_groebner(napi_env env, napi_callback_info info)
         (poly = unwrap_value(env, first)) == NULL)
         return NULL;
     context = poly->context;
+    if (context->kind == SAGEJS_MPOLY_NMOD)
+        return msolve_nmod_groebner(env, args[0], context, input_length);
     if (context->kind != SAGEJS_MPOLY_ZZ &&
         context->kind != SAGEJS_MPOLY_QQ)
     {
@@ -1619,6 +2139,73 @@ napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info)
         (poly = unwrap_value(env, args[0])) == NULL)
         return NULL;
     context = poly->context;
+    if (context->kind == SAGEJS_MPOLY_NMOD)
+    {
+        bool is_array;
+        uint32_t length, index;
+        nmod_mpoly_struct **divisors = NULL, **quotients = NULL;
+        nmod_mpoly_struct *quotient_values = NULL;
+        nmod_mpoly_t remainder;
+        napi_value item;
+        sagejs_mpoly_value *divisor = NULL, *result;
+        if (!check_napi(env, napi_is_array(env, args[1], &is_array)) ||
+            !is_array ||
+            !check_napi(env, napi_get_array_length(env, args[1], &length)))
+            return NULL;
+        object = create_value(env, context);
+        if (object == NULL || (result = unwrap_value(env, object)) == NULL)
+            return NULL;
+        if (length == 0)
+        {
+            nmod_mpoly_set(result->value.nmod, poly->value.nmod,
+                context->value.nmod);
+            return object;
+        }
+        divisors = malloc((size_t) length * sizeof(*divisors));
+        quotients = malloc((size_t) length * sizeof(*quotients));
+        quotient_values = malloc((size_t) length * sizeof(*quotient_values));
+        if (divisors == NULL || quotients == NULL || quotient_values == NULL)
+        {
+            free(divisors); free(quotients); free(quotient_values);
+            napi_throw_error(env, NULL,
+                "unable to allocate multivariate reduction storage");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            divisor = NULL;
+            if (!check_napi(env, napi_get_element(env, args[1], index, &item)) ||
+                (divisor = unwrap_value(env, item)) == NULL ||
+                divisor->context != context ||
+                nmod_mpoly_is_zero(divisor->value.nmod, context->value.nmod))
+            {
+                while (index > 0)
+                    nmod_mpoly_clear(quotients[--index], context->value.nmod);
+                free(divisors); free(quotients); free(quotient_values);
+                if (divisor != NULL && divisor->context == context &&
+                    nmod_mpoly_is_zero(divisor->value.nmod,
+                        context->value.nmod))
+                    napi_throw_range_error(env, NULL,
+                        "multivariate reduction basis contains zero");
+                else if (divisor != NULL && divisor->context != context)
+                    napi_throw_type_error(env, NULL,
+                        "multivariate polynomials have different parents");
+                return NULL;
+            }
+            divisors[index] = divisor->value.nmod;
+            quotients[index] = quotient_values + index;
+            nmod_mpoly_init(quotients[index], context->value.nmod);
+        }
+        nmod_mpoly_init(remainder, context->value.nmod);
+        nmod_mpoly_divrem_ideal(quotients, remainder, poly->value.nmod,
+            divisors, length, context->value.nmod);
+        nmod_mpoly_set(result->value.nmod, remainder, context->value.nmod);
+        nmod_mpoly_clear(remainder, context->value.nmod);
+        for (index = 0; index < length; index++)
+            nmod_mpoly_clear(quotients[index], context->value.nmod);
+        free(divisors); free(quotients); free(quotient_values);
+        return object;
+    }
     if (context->kind != SAGEJS_MPOLY_ZZ &&
         context->kind != SAGEJS_MPOLY_QQ)
     {

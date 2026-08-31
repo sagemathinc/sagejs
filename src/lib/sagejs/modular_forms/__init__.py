@@ -6,7 +6,9 @@ from typing import Any
 
 ExactModularForm: Any
 CertifiedFormulaSubspace: Any
+CertifiedEtaProduct: Any
 CertifiedModularForm: Any
+EtaProductCertificate: Any
 ExactNebentypus: Any
 LevelOneBasisCertificate: Any
 ModularSymbolsQExpansionCertificate: Any
@@ -40,6 +42,9 @@ delta_qexp: Any
 certified_modular_form: Any
 character_eisenstein_series: Any
 formula_generated_subspace: Any
+eta_product: Any
+eta_product_candidates: Any
+eta_product_certificate: Any
 level_one_basis_certificate: Any
 q_expansion_algorithm_receipt: Any
 victor_miller_basis: Any
@@ -134,6 +139,14 @@ _QEXP_ALGEBRA_EXPORTS = [
     "q_expansion_algorithm_receipt",
 ]
 
+_ETA_PRODUCT_EXPORTS = [
+    "CertifiedEtaProduct",
+    "EtaProductCertificate",
+    "eta_product",
+    "eta_product_candidates",
+    "eta_product_certificate",
+]
+
 _HALF_INTEGRAL_EXPORTS = [
     "UnaryThetaSeriesCertificate",
     "CohenEisensteinSeriesCertificate",
@@ -157,7 +170,9 @@ _HALF_INTEGRAL_EXPORTS = [
 
 __all__ = [
     "CertifiedFormulaSubspace",
+    "CertifiedEtaProduct",
     "CertifiedModularForm",
+    "EtaProductCertificate",
     "ExactNebentypus",
     "ExactModularForm",
     "LevelOneBasisCertificate",
@@ -175,6 +190,9 @@ __all__ = [
     "delta_qexp",
     "level_one_basis_certificate",
     "formula_generated_subspace",
+    "eta_product",
+    "eta_product_candidates",
+    "eta_product_certificate",
     "q_expansion_algorithm_receipt",
     "victor_miller_basis",
     "UnaryThetaSeriesCertificate",
@@ -283,6 +301,10 @@ def __getattr__(name: Any, runtime_name: Any = None) -> Any:
         from . import qexp_algebra
 
         return getattr(qexp_algebra, name)
+    if name in _ETA_PRODUCT_EXPORTS:
+        from . import eta_products
+
+        return getattr(eta_products, name)
     if name in _HALF_INTEGRAL_EXPORTS:
         from . import half_integral
 

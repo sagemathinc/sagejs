@@ -1086,12 +1086,22 @@
       "decision": "migrate-to-declared-ffi"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "family": "multivariate",
       "decision": "migrate-to-declared-ffi"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyLength",
+      "family": "multivariate",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
       "family": "multivariate",
       "decision": "migrate-to-declared-ffi"
     },

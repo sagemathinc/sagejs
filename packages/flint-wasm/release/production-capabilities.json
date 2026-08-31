@@ -30,6 +30,7 @@
         "napi:@sagemath/sagejs-flint:complexRound",
         "napi:@sagemath/sagejs-flint:complexSub",
         "napi:@sagemath/sagejs-flint:complexToString",
+        "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
         "napi:@sagemath/sagejs-flint:nfFactorDegreesBatch",
         "napi:@sagemath/sagejs-flint:p1List",
         "napi:@sagemath/sagejs-flint:p1ListBoundaryData",

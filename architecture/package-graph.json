@@ -82,7 +82,7 @@
       "id": "arithmetic",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 765000,
+      "max_source_bytes": 775000,
       "depends_on": ["core-runtime", "native-integration"],
       "files": [
         "src/baselib/algebra.py",
@@ -620,7 +620,7 @@
       "id": "modular-forms",
       "layer": 4,
       "startup": "bootstrap",
-      "max_source_bytes": 305000,
+      "max_source_bytes": 310000,
       "depends_on": ["core-runtime", "native-integration", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",
@@ -655,7 +655,7 @@
       "id": "modular-form-qexp-algebra",
       "layer": 6,
       "startup": "lazy",
-      "max_source_bytes": 55000,
+      "max_source_bytes": 85000,
       "depends_on": [
         "core-runtime",
         "arithmetic",
@@ -663,8 +663,14 @@
         "modular-forms",
         "modular-form-expansions"
       ],
-      "modules": ["sagejs.modular_forms.qexp_algebra"],
-      "files": ["src/lib/sagejs/modular_forms/qexp_algebra.py"],
+      "modules": [
+        "sagejs.modular_forms.eta_products",
+        "sagejs.modular_forms.qexp_algebra"
+      ],
+      "files": [
+        "src/lib/sagejs/modular_forms/eta_products.py",
+        "src/lib/sagejs/modular_forms/qexp_algebra.py"
+      ],
       "prefixes": []
     },
     {
@@ -689,7 +695,7 @@
       "id": "sparse-modular-forms",
       "layer": 5,
       "startup": "lazy",
-      "max_source_bytes": 325000,
+      "max_source_bytes": 330000,
       "depends_on": [
         "core-runtime", "native-integration", "python-stdlib", "arithmetic", "linear-algebra",
         "graph-theory", "modular-forms", "matrix-native-kernels",
