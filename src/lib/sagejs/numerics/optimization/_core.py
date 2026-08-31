@@ -761,36 +761,15 @@ class OptimizationResult(NumericalResult):
         return float(value) if isinstance(value, (int, float)) else None
 
     def explain(self) -> str:
-        validation = self.validation.to_dict()
-        lines = [
-            self.method + " " + self.problem.operation.replace("_", " "),
-            "status: " + self.status,
-            "backend: " + self.backend,
-            "validation: "
-            + self.validation.truth_level
-            + ("; passed" if self.validation.passed else "; not passed"),
-            "iterations/evaluations: "
-            + str(self.iterations)
-            + "/"
-            + str(self.evaluations),
-        ]
-        if self.objective is not None:
-            lines.append("objective: " + str(self.objective))
-        if self.residual is not None:
-            lines.append("validation residual: " + str(self.residual))
-        checks = validation.get("checks", [])
-        if isinstance(checks, list):
-            for check in checks:
-                if isinstance(check, dict) and "kind" in check:
-                    lines.append(
-                        "check "
-                        + str(check["kind"])
-                        + ": "
-                        + ("passed" if check.get("passed") is True else "failed")
-                    )
-        if self.trace.truncated:
-            lines.append("trace: truncated to its configured budget")
-        return "\n".join(lines)
+        from .explanations import render_optimization_explanation
+
+        return render_optimization_explanation(self)
+
+    def explanation(self) -> dict[str, Any]:
+        """Return a detached structured explanation of the computation."""
+        from .explanations import optimization_explanation
+
+        return optimization_explanation(self)
 
     def verify(self, method: str = "independent") -> Any:
         if method != "independent":

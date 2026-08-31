@@ -1,0 +1,455 @@
+{
+  "cases": {
+    "bounded_minimum": {
+      "active_constraint_count": 2,
+      "alt_text": "minimize parameter path with 3 retained states. Outcome: validated result. Finite box bounds and any active retained iterate are shown.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 3,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-4",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-5",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "box_bounds",
+      "failed_checks": [],
+      "identifiability": "not_applicable",
+      "layer_kinds": [
+        "line",
+        "point",
+        "point",
+        "line",
+        "point"
+      ],
+      "layer_roles": [
+        "parameter_path",
+        "retained_iterates",
+        "returned_point",
+        "finite_box_bounds",
+        "active_bound_iterate"
+      ],
+      "lowered_trace_count": 5,
+      "method": "projected-bfgs",
+      "operation": "minimize",
+      "plot_diagnostics": [
+        "PLOT_DATA_PARTIAL_NONFINITE"
+      ],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "parameter 0",
+      "y_axis": "parameter 1"
+    },
+    "curve_fit": {
+      "active_constraint_count": 0,
+      "alt_text": "curve fit with 4 observations; 4 are displayed. The fitted model and residual sticks are shown. Outcome: validated result.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 6,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "line"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "none",
+      "failed_checks": [],
+      "identifiability": "locally_identifiable",
+      "layer_kinds": [
+        "point",
+        "line",
+        "line"
+      ],
+      "layer_roles": [
+        "observations",
+        "fitted_model",
+        "residual_sticks"
+      ],
+      "lowered_trace_count": 3,
+      "method": "damped-gauss-newton",
+      "operation": "curve_fit",
+      "plot_diagnostics": [
+        "PLOT_DATA_PARTIAL_NONFINITE"
+      ],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "x",
+      "y_axis": "observed / fitted value"
+    },
+    "large_scale_least_squares": {
+      "active_constraint_count": 0,
+      "alt_text": "nonlinear least squares convergence history with 5 retained states. Outcome: validated result.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 5,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "none",
+      "failed_checks": [],
+      "identifiability": "locally_identifiable",
+      "layer_kinds": [
+        "line",
+        "point",
+        "point"
+      ],
+      "layer_roles": [
+        "convergence_history",
+        "retained_progress",
+        "returned_measure"
+      ],
+      "lowered_trace_count": 3,
+      "method": "damped-gauss-newton",
+      "operation": "nonlinear_least_squares",
+      "plot_diagnostics": [],
+      "squared_cost_outside_binary64": true,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "iteration",
+      "y_axis": "residual norm"
+    },
+    "nonlinear_system": {
+      "active_constraint_count": 0,
+      "alt_text": "nonlinear system parameter path with 6 retained states. Outcome: validated result.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 6,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "none",
+      "failed_checks": [],
+      "identifiability": "not_applicable",
+      "layer_kinds": [
+        "line",
+        "point",
+        "point"
+      ],
+      "layer_roles": [
+        "parameter_path",
+        "retained_iterates",
+        "returned_point"
+      ],
+      "lowered_trace_count": 3,
+      "method": "damped-newton",
+      "operation": "nonlinear_system",
+      "plot_diagnostics": [],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "parameter 0",
+      "y_axis": "parameter 1"
+    },
+    "rank_deficient_least_squares": {
+      "active_constraint_count": 0,
+      "alt_text": "nonlinear least squares parameter path with 5 retained states. Outcome: validated result. Parameter estimates are rank-deficient or ill-conditioned.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 5,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "none",
+      "failed_checks": [],
+      "identifiability": "rank_deficient_or_ill_conditioned",
+      "layer_kinds": [
+        "line",
+        "point",
+        "point"
+      ],
+      "layer_roles": [
+        "parameter_path",
+        "retained_iterates",
+        "returned_point"
+      ],
+      "lowered_trace_count": 3,
+      "method": "damped-gauss-newton",
+      "operation": "nonlinear_least_squares",
+      "plot_diagnostics": [],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "parameter 0",
+      "y_axis": "parameter 1"
+    },
+    "scalar_minimum": {
+      "active_constraint_count": 0,
+      "alt_text": "Bounded scalar objective on [-1.0, 5.0] with 129 finite samples and 6 retained incumbent states. Returned x=2.0. Outcome: validated result.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 6,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-3",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-4",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "finite_interval",
+      "failed_checks": [],
+      "identifiability": "not_applicable",
+      "layer_kinds": [
+        "line",
+        "point",
+        "line",
+        "point",
+        "point"
+      ],
+      "layer_roles": [
+        "objective",
+        "finite_interval_bounds",
+        "incumbent_path",
+        "retained_incumbents",
+        "returned_candidate"
+      ],
+      "lowered_trace_count": 5,
+      "method": "bounded-brent",
+      "operation": "scalar_minimum",
+      "plot_diagnostics": [],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": true,
+      "truth_level": "validated_approximate",
+      "x_axis": "x",
+      "y_axis": "objective"
+    },
+    "stationary_maximum_failure": {
+      "active_constraint_count": 0,
+      "alt_text": "nonlinear least squares convergence history with 2 retained states. Outcome: solver convergence not supported by independent validation. Parameter estimates are rank-deficient or ill-conditioned.",
+      "animation_axes_stable": true,
+      "animation_controls": {
+        "autoplay": false,
+        "from_current": true,
+        "loop": false,
+        "pause": true,
+        "play": true,
+        "slider": true,
+        "slider_prefix": "Iteration: "
+      },
+      "animation_fixed_axes": true,
+      "animation_frames": 2,
+      "animation_limit": 128,
+      "animation_topology": {
+        "dimension": 2,
+        "layers": [
+          {
+            "id": "optimization-0",
+            "kind": "line"
+          },
+          {
+            "id": "optimization-1",
+            "kind": "point"
+          },
+          {
+            "id": "optimization-2",
+            "kind": "point"
+          }
+        ],
+        "panels": [],
+        "state_kind": "plot-spec"
+      },
+      "constraint_kind": "none",
+      "failed_checks": [
+        "coordinate_second_order_minimum"
+      ],
+      "identifiability": "rank_deficient_or_ill_conditioned",
+      "layer_kinds": [
+        "line",
+        "point",
+        "point"
+      ],
+      "layer_roles": [
+        "convergence_history",
+        "retained_progress",
+        "returned_measure"
+      ],
+      "lowered_trace_count": 3,
+      "method": "damped-gauss-newton",
+      "operation": "nonlinear_least_squares",
+      "plot_diagnostics": [],
+      "squared_cost_outside_binary64": false,
+      "static_fallback_kind": "plot-spec",
+      "status": "converged",
+      "success": false,
+      "truth_level": "indeterminate",
+      "x_axis": "iteration",
+      "y_axis": "residual norm"
+    }
+  },
+  "schema_version": 1
+}

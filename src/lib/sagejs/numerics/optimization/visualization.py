@@ -1,4 +1,4 @@
-"""PlotSpec-ready objective, path, residual, and fitted-model views."""
+"""Canonical PlotSpec and PlotAnimation views of optimization evidence."""
 
 from __future__ import annotations
 
@@ -6,9 +6,12 @@ import math
 from typing import Any
 
 from sagejs.plotting import (
+    AnimationControls,
     AnimationFrame,
     AnimationResourceLimits,
     AnimationTiming,
+    Axes2DSettings,
+    AxisSettings,
     PlotAnimation,
     PlotSpec,
     Provenance,
@@ -18,27 +21,166 @@ from sagejs.plotting import (
 
 from ._core import OptimizationResult
 
+MAX_OBJECTIVE_PLOT_SAMPLES = 129
+MAX_FIT_PLOT_OBSERVATIONS = 2_048
+MAX_FIT_ANIMATION_OBSERVATIONS = 256
+MAX_OPTIMIZATION_ANIMATION_FRAMES = 128
+MAX_OPTIMIZATION_ANIMATION_SAMPLES = 1_000_000
+MAX_OPTIMIZATION_ANIMATION_BYTES = 16_000_000
 
-def _provenance(result: OptimizationResult, constructor: str) -> Provenance:
-    return Provenance(
-        "sagejs.numerics.optimization",
-        source_language=str(result.problem.source_intent.get("language", "python")),
-        constructor=constructor,
-        metadata={
-            "problem_digest": result.problem.digest,
-            "operation": result.problem.operation,
-            "method": result.method,
-            "truth_level": result.validation.truth_level,
-        },
-    )
+
+AxisRange = list[float] | None
+AxisRanges = tuple[AxisRange, AxisRange]
+
+
+def _finite_axis_range(values: list[float]) -> AxisRange:
+    finite = [float(value) for value in values if math.isfinite(float(value))]
+    if len(finite) == 0:
+        return None
+    lower = min(finite)
+    upper = max(finite)
+    scale = max(abs(lower), abs(upper))
+    padding = scale * 0.05 if scale > 0.0 else 1.0
+    padded_lower = lower - padding
+    padded_upper = upper + padding
+    if math.isfinite(padded_lower) and math.isfinite(padded_upper):
+        if padded_lower != padded_upper:
+            return [padded_lower, padded_upper]
+    if lower != upper:
+        return [lower, upper]
+    return None
+
+
+def _axes(
+    x_label: str,
+    y_label: str,
+    *,
+    equal_aspect: bool = False,
+    ranges: AxisRanges | None = None,
+) -> dict[str, Any]:
+    x_range, y_range = (None, None) if ranges is None else ranges
+    return Axes2DSettings(
+        AxisSettings(label=x_label, range=x_range, autorange=x_range is None),
+        AxisSettings(label=y_label, range=y_range, autorange=y_range is None),
+        equal_aspect=equal_aspect,
+    ).to_dict()
 
 
 def _progress_records(result: OptimizationResult) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for event in result.trace.events:
-        if event.kind in ("iteration", "phase"):
-            records.append(event.data)
+        if event.kind not in ("iteration", "phase"):
+            continue
+        event_record = event.to_dict()
+        data = dict(event.data)
+        data["trace_sequence"] = event_record["sequence"]
+        data["trace_iteration"] = event_record["iteration"]
+        data["trace_kind"] = event.kind
+        data["trace_accepted"] = event_record["accepted"]
+        records.append(data)
     return records
+
+
+def _final_record(result: OptimizationResult) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "source": "final_result",
+        "trace_iteration": result.iterations,
+    }
+    if isinstance(result.value, list):
+        record["point"] = [float(value) for value in result.value]
+    elif isinstance(result.value, (int, float)):
+        record["candidate"] = float(result.value)
+    if result.objective is not None:
+        record["objective"] = result.objective
+        record["cost"] = result.objective
+    payload = result.domain_payload
+    if isinstance(payload.get("residual_norm"), (int, float)):
+        record["residual_norm"] = float(payload["residual_norm"])
+    if isinstance(payload.get("fitted_values"), list):
+        record["fitted_values"] = [float(value) for value in payload["fitted_values"]]
+    return record
+
+
+def _story_records(result: OptimizationResult) -> list[dict[str, Any]]:
+    records = _progress_records(result)
+    final = _final_record(result)
+    if len(final) > 2 or len(records) == 0:
+        records.append(final)
+    return records
+
+
+def _decimate_records(
+    records: list[dict[str, Any]], maximum: int
+) -> list[dict[str, Any]]:
+    if len(records) <= maximum:
+        return list(records)
+    if maximum < 2:
+        raise ValueError("record budget must retain first and last states")
+    selected = [records[0]]
+    interior = maximum - 2
+    for ordinal in range(1, interior + 1):
+        index = (ordinal * (len(records) - 1)) // (interior + 1)
+        selected.append(records[index])
+    selected.append(records[-1])
+    return selected
+
+
+def _outcome_text(result: OptimizationResult) -> str:
+    if result.success:
+        return "validated result"
+    if result.status == "converged":
+        return "solver convergence not supported by independent validation"
+    return "stopped: " + result.status.replace("_", " ")
+
+
+def _diagnostic_codes(result: OptimizationResult) -> list[str]:
+    return [item.code for item in result.diagnostics]
+
+
+def _annotations(result: OptimizationResult, alt_text: str) -> list[dict[str, Any]]:
+    color = "#1b5e20" if result.success else "#8b1a1a"
+    return [
+        {"kind": "alt_text", "text": alt_text},
+        {
+            "id": "optimization-outcome",
+            "text": result.method + ": " + _outcome_text(result),
+            "x": 0.01,
+            "y": 0.99,
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "xanchor": "left",
+            "yanchor": "top",
+            "font": {"color": color, "size": 12},
+        },
+    ]
+
+
+def _provenance(
+    result: OptimizationResult,
+    constructor: str,
+    alt_text: str,
+    **metadata: Any,
+) -> Provenance:
+    details: dict[str, Any] = {
+        "problem_digest": result.problem.digest,
+        "operation": result.problem.operation,
+        "method": result.method,
+        "truth_level": result.validation.truth_level,
+        "success": result.success,
+        "status": result.status,
+        "trace_level": result.problem.trace_policy.level,
+        "trace_truncated": result.trace.truncated,
+        "diagnostic_codes": _diagnostic_codes(result),
+        "alt_text": alt_text,
+    }
+    details.update(metadata)
+    return Provenance(
+        "sagejs.numerics.optimization",
+        source_language=str(result.problem.source_intent.get("language", "python")),
+        constructor=constructor,
+        metadata=details,
+    )
 
 
 def _sample_scalar_objective(
@@ -52,8 +194,19 @@ def _sample_scalar_objective(
     upper = float(interval[1])
     x_values: list[float] = []
     y_values: list[float | None] = []
-    for index in range(129):
-        x_value = lower + (upper - lower) * index / 128.0
+    for index in range(MAX_OBJECTIVE_PLOT_SAMPLES):
+        fraction = index / (MAX_OBJECTIVE_PLOT_SAMPLES - 1)
+        if index == 0:
+            x_value = lower
+        elif index == MAX_OBJECTIVE_PLOT_SAMPLES - 1:
+            x_value = upper
+        else:
+            span = upper - lower
+            x_value = (
+                lower + span * fraction
+                if math.isfinite(span)
+                else lower * (1.0 - fraction) + upper * fraction
+            )
         x_values.append(x_value)
         try:
             y_value = float(function(x_value))
@@ -63,188 +216,693 @@ def _sample_scalar_objective(
     return x_values, y_values
 
 
+def _scalar_alt_text(
+    result: OptimizationResult,
+    finite_samples: int,
+    path_count: int,
+    *,
+    show_result: bool,
+) -> str:
+    interval = result.problem.bounds.get("interval")
+    answer = (
+        "Bounded scalar objective on "
+        + str(interval)
+        + " with "
+        + str(finite_samples)
+        + " finite samples and "
+        + str(path_count)
+        + " retained incumbent states. "
+    )
+    if show_result and isinstance(result.value, (int, float)):
+        answer += "Returned x=" + str(result.value) + ". "
+    answer += "Outcome: " + _outcome_text(result) + "."
+    if result.trace.truncated:
+        answer += " The trace was deterministically truncated."
+    return answer
+
+
 def _scalar_plot(
     result: OptimizationResult,
     records: list[dict[str, Any]] | None = None,
     sampled: tuple[list[float], list[float | None]] | None = None,
+    *,
+    show_result: bool = True,
+    axis_ranges: AxisRanges | None = None,
 ) -> PlotSpec:
     x_values, y_values = (
         _sample_scalar_objective(result) if sampled is None else sampled
     )
-    selected = _progress_records(result) if records is None else records
+    selected = _story_records(result) if records is None else records
     path_x: list[float] = []
     path_y: list[float] = []
     for record in selected:
-        if isinstance(record.get("candidate"), (int, float)) and isinstance(
-            record.get("objective"), (int, float)
-        ):
-            path_x.append(float(record["candidate"]))
-            path_y.append(float(record["objective"]))
-    if (
-        records is None
-        and isinstance(result.value, (int, float))
-        and result.objective is not None
-    ):
-        path_x.append(float(result.value))
-        path_y.append(float(result.objective))
-    return PlotSpec(
-        2,
-        [
-            make_layer(
-                "line",
-                {"x": x_values, "y": y_values},
-                ordinal=0,
-                source_intent={"operation": "scalar_minimum", "role": "objective"},
-                style={"color": "#3366cc", "width": 2},
-                legend={"label": "objective", "show": True},
-            ),
-            make_layer(
-                "point",
-                {"x": path_x, "y": path_y},
-                ordinal=1,
-                source_intent={"operation": "scalar_minimum", "role": "path"},
-                style={"color": "#dd8452", "size": 8},
-                legend={"label": "accepted candidates", "show": True},
-            ),
-        ],
-        axes_or_scene={"x": {"label": "x"}, "y": {"label": "objective"}},
-        viewport={"responsive": True},
-        provenance=_provenance(result, "scalar_minimum_plot"),
+        candidate = record.get("candidate")
+        objective = record.get("objective")
+        if isinstance(candidate, (int, float)) and isinstance(objective, (int, float)):
+            path_x.append(float(candidate))
+            path_y.append(float(objective))
+    interval_x = [x_values[0], x_values[-1]]
+    interval_y = [y_values[0], y_values[-1]]
+    returned_x: list[float] = []
+    returned_y: list[float | None] = []
+    if show_result and isinstance(result.value, (int, float)):
+        returned_x.append(float(result.value))
+        returned_y.append(result.objective)
+    alt_text = _scalar_alt_text(
+        result,
+        sum(value is not None for value in y_values),
+        len(path_x),
+        show_result=show_result,
     )
-
-
-def _fit_plot(
-    result: OptimizationResult, fitted_override: list[float] | None = None
-) -> PlotSpec:
-    payload = result.domain_payload
-    x_values = payload.get("fit_x")
-    y_values = payload.get("fit_y")
-    fitted_values = (
-        payload.get("fitted_values") if fitted_override is None else fitted_override
-    )
-    if not (
-        isinstance(x_values, list)
-        and isinstance(y_values, list)
-        and isinstance(fitted_values, list)
-    ):
-        raise ValueError("fit visualization requires retained fit data")
-    order = sorted(range(len(x_values)), key=lambda index: float(x_values[index]))
-    sorted_x = [float(x_values[index]) for index in order]
-    sorted_fitted = [float(fitted_values[index]) for index in order]
-    residual_x: list[float | None] = []
-    residual_y: list[float | None] = []
-    for index in range(len(x_values)):
-        residual_x.extend([float(x_values[index]), float(x_values[index]), None])
-        residual_y.extend([float(y_values[index]), float(fitted_values[index]), None])
-    return PlotSpec(
-        2,
-        [
-            make_layer(
-                "point",
-                {
-                    "x": [float(value) for value in x_values],
-                    "y": [float(value) for value in y_values],
-                },
-                ordinal=0,
-                source_intent={
-                    "operation": result.problem.operation,
-                    "role": "observations",
-                },
-                style={"color": "#3366cc", "size": 8},
-                legend={"label": "observations", "show": True},
-            ),
-            make_layer(
-                "line",
-                {"x": sorted_x, "y": sorted_fitted},
-                ordinal=1,
-                source_intent={
-                    "operation": result.problem.operation,
-                    "role": "fitted_model",
-                },
-                style={"color": "#55a868", "width": 2},
-                legend={"label": "fitted model", "show": True},
-            ),
-            make_layer(
-                "line",
-                {"x": residual_x, "y": residual_y},
-                ordinal=2,
-                source_intent={
-                    "operation": result.problem.operation,
-                    "role": "residual_sticks",
-                },
-                style={"color": "#c44e52", "width": 1},
-                legend={"label": "residuals", "show": True},
-            ),
-        ],
-        axes_or_scene={"x": {"label": "x"}, "y": {"label": "y"}},
-        viewport={"responsive": True},
-        provenance=_provenance(result, "fit_plot"),
-    )
-
-
-def _path_plot(
-    result: OptimizationResult, records: list[dict[str, Any]] | None = None
-) -> PlotSpec:
-    selected = _progress_records(result) if records is None else records
-    points: list[list[float]] = []
-    values: list[float] = []
-    for record in selected:
-        point = record.get("point")
-        if isinstance(point, list) and len(point) > 0:
-            points.append([float(value) for value in point])
-            measure = record.get(
-                "objective", record.get("cost", record.get("residual_norm"))
-            )
-            values.append(float(measure) if isinstance(measure, (int, float)) else 0.0)
-        elif isinstance(record.get("candidate"), (int, float)) and isinstance(
-            record.get("objective"), (int, float)
-        ):
-            values.append(float(record["objective"]))
-    if len(points) == 0 and isinstance(result.value, list):
-        points.append([float(value) for value in result.value])
-        values.append(float(result.objective or 0.0))
-    if len(points) > 0 and len(points[0]) >= 2:
-        x_values = [point[0] for point in points]
-        y_values = [point[1] for point in points]
-        axes = {"x": {"label": "parameter 0"}, "y": {"label": "parameter 1"}}
-        data = {"x": x_values, "y": y_values}
-        role = "parameter_path"
-    else:
-        data = {"x": list(range(len(values))), "y": values}
-        axes = {"x": {"label": "iteration"}, "y": {"label": "objective / residual"}}
-        role = "convergence_history"
     layers = [
         make_layer(
             "line",
-            data,
+            {"x": x_values, "y": y_values},
             ordinal=0,
-            source_intent={"operation": result.problem.operation, "role": role},
+            namespace="optimization",
+            source_intent={"operation": "scalar_minimum", "role": "objective"},
             style={"color": "#3366cc", "width": 2},
-            legend={"label": role.replace("_", " "), "show": True},
+            legend={"label": "objective", "show": True},
         ),
         make_layer(
             "point",
-            data,
+            {"x": interval_x, "y": interval_y},
             ordinal=1,
+            namespace="optimization",
             source_intent={
-                "operation": result.problem.operation,
-                "role": "accepted_iterates",
+                "operation": "scalar_minimum",
+                "role": "finite_interval_bounds",
+            },
+            style={"color": "#7a7a7a", "size": 8, "symbol": "diamond"},
+            legend={"label": "interval bounds", "show": True},
+        ),
+        make_layer(
+            "line",
+            {"x": path_x, "y": path_y},
+            ordinal=2,
+            namespace="optimization",
+            source_intent={
+                "operation": "scalar_minimum",
+                "role": "incumbent_path",
+            },
+            style={"color": "#dd8452", "width": 1},
+            legend={"label": "incumbent path", "show": True},
+        ),
+        make_layer(
+            "point",
+            {"x": path_x, "y": path_y},
+            ordinal=3,
+            namespace="optimization",
+            source_intent={
+                "operation": "scalar_minimum",
+                "role": "retained_incumbents",
             },
             style={"color": "#dd8452", "size": 7},
-            legend={"label": "accepted iterates", "show": True},
+            legend={"label": "retained incumbents", "show": True},
+        ),
+        make_layer(
+            "point",
+            {"x": returned_x, "y": returned_y},
+            ordinal=4,
+            namespace="optimization",
+            source_intent={
+                "operation": "scalar_minimum",
+                "role": "returned_candidate",
+                "validation_passed": result.validation.passed,
+            },
+            style={
+                "color": "#55a868" if result.success else "#c44e52",
+                "size": 12,
+                "symbol": "star",
+            },
+            legend={"label": "returned candidate", "show": True},
         ),
     ]
     return PlotSpec(
         2,
         layers,
+        axes_or_scene=_axes("x", "objective", ranges=axis_ranges),
+        viewport={"responsive": True},
+        annotations=_annotations(result, alt_text),
+        provenance=_provenance(
+            result,
+            "scalar_minimum_plot",
+            alt_text,
+            objective_sample_count=MAX_OBJECTIVE_PLOT_SAMPLES,
+            retained_path_count=len(path_x),
+        ),
+    )
+
+
+def _sample_indices(count: int, maximum: int) -> list[int]:
+    if count <= maximum:
+        return list(range(count))
+    if maximum < 2:
+        return [0]
+    indices: list[int] = []
+    for ordinal in range(maximum):
+        index = (ordinal * (count - 1)) // (maximum - 1)
+        if len(indices) == 0 or indices[-1] != index:
+            indices.append(index)
+    return indices
+
+
+def _fit_data(result: OptimizationResult) -> tuple[list[Any], list[Any], Any]:
+    payload = result.domain_payload
+    x_values = payload.get("fit_x", result.problem.initial_data.get("fit_x"))
+    y_values = payload.get("fit_y", result.problem.initial_data.get("fit_y"))
+    fitted_values = payload.get("fitted_values")
+    if not isinstance(x_values, list) or not isinstance(y_values, list):
+        raise ValueError("fit visualization requires retained fit data")
+    return x_values, y_values, fitted_values
+
+
+def _fit_plot(
+    result: OptimizationResult,
+    fitted_override: list[float] | None = None,
+    axis_ranges: AxisRanges | None = None,
+) -> PlotSpec:
+    x_values, y_values, retained_fitted = _fit_data(result)
+    fitted_source: Any = retained_fitted if fitted_override is None else fitted_override
+    fitted_available = isinstance(fitted_source, list) and len(fitted_source) == len(
+        x_values
+    )
+    indices = _sample_indices(len(x_values), MAX_FIT_PLOT_OBSERVATIONS)
+    sampled_x = [float(x_values[index]) for index in indices]
+    sampled_y = [float(y_values[index]) for index in indices]
+    sampled_fitted: list[float | None] = []
+    for index in indices:
+        if fitted_available:
+            value = float(fitted_source[index])
+            sampled_fitted.append(value if math.isfinite(value) else None)
+        else:
+            sampled_fitted.append(None)
+    order = sorted(range(len(sampled_x)), key=lambda index: sampled_x[index])
+    sorted_x = [sampled_x[index] for index in order]
+    sorted_fitted = [sampled_fitted[index] for index in order]
+    residual_x: list[float | None] = []
+    residual_y: list[float | None] = []
+    for index in range(len(sampled_x)):
+        residual_x.extend([sampled_x[index], sampled_x[index], None])
+        residual_y.extend([sampled_y[index], sampled_fitted[index], None])
+    fit_sentence = (
+        "The fitted model and residual sticks are shown. "
+        if fitted_available
+        else "No fitted model is available. "
+    )
+    alt_text = (
+        str(result.problem.operation).replace("_", " ")
+        + " with "
+        + str(len(x_values))
+        + " observations; "
+        + str(len(indices))
+        + " are displayed. "
+        + fit_sentence
+        + "Outcome: "
+        + _outcome_text(result)
+        + "."
+    )
+    parameter_diagnostics = result.domain_payload.get("parameter_diagnostics")
+    if (
+        isinstance(parameter_diagnostics, dict)
+        and parameter_diagnostics.get("rank_deficient_or_ill_conditioned") is True
+    ):
+        alt_text += " Parameter estimates are rank-deficient or ill-conditioned."
+    layers = [
+        make_layer(
+            "point",
+            {"x": sampled_x, "y": sampled_y},
+            ordinal=0,
+            namespace="optimization",
+            source_intent={
+                "operation": result.problem.operation,
+                "role": "observations",
+            },
+            style={"color": "#3366cc", "size": 8},
+            legend={"label": "observations", "show": True},
+            metadata={"original_count": len(x_values), "displayed_count": len(indices)},
+        ),
+        make_layer(
+            "line",
+            {"x": sorted_x, "y": sorted_fitted},
+            ordinal=1,
+            namespace="optimization",
+            source_intent={
+                "operation": result.problem.operation,
+                "role": "fitted_model",
+                "available": fitted_available,
+            },
+            style={"color": "#55a868", "width": 2},
+            legend={"label": "fitted model", "show": True},
+        ),
+        make_layer(
+            "line",
+            {"x": residual_x, "y": residual_y},
+            ordinal=2,
+            namespace="optimization",
+            source_intent={
+                "operation": result.problem.operation,
+                "role": "residual_sticks",
+                "available": fitted_available,
+            },
+            style={"color": "#c44e52", "width": 1},
+            legend={"label": "residuals", "show": True},
+        ),
+    ]
+    return PlotSpec(
+        2,
+        layers,
+        axes_or_scene=_axes("x", "observed / fitted value", ranges=axis_ranges),
+        viewport={"responsive": True},
+        annotations=_annotations(result, alt_text),
+        provenance=_provenance(
+            result,
+            "fit_plot",
+            alt_text,
+            original_observation_count=len(x_values),
+            displayed_observation_count=len(indices),
+            fitted_values_available=fitted_available,
+        ),
+    )
+
+
+def _problem_dimension(result: OptimizationResult) -> int:
+    point = result.problem.initial_data.get("point")
+    return len(point) if isinstance(point, list) else 0
+
+
+def _record_point(record: dict[str, Any]) -> list[float] | None:
+    point = record.get("point")
+    if not isinstance(point, list) or len(point) == 0:
+        return None
+    return [float(value) for value in point]
+
+
+def _record_measure(record: dict[str, Any], operation: str) -> tuple[float | None, str]:
+    if operation in ("nonlinear_system", "nonlinear_least_squares"):
+        names = ("residual_norm", "cost", "objective", "projected_gradient_norm")
+    else:
+        names = ("objective", "cost", "projected_gradient_norm", "residual_norm")
+    for name in names:
+        value = record.get(name)
+        if isinstance(value, (int, float)):
+            return float(value), name
+    return None, "progress_measure"
+
+
+def _animation_axis_ranges(
+    result: OptimizationResult,
+    records: list[dict[str, Any]],
+    scalar_samples: tuple[list[float], list[float | None]] | None,
+) -> AxisRanges:
+    if result.problem.operation == "scalar_minimum":
+        if scalar_samples is None:
+            return None, None
+        x_values, sampled_y = scalar_samples
+        y_values = [float(value) for value in sampled_y if value is not None]
+        for record in records:
+            objective = record.get("objective")
+            if isinstance(objective, (int, float)):
+                y_values.append(float(objective))
+        return _finite_axis_range(x_values), _finite_axis_range(y_values)
+    if result.problem.operation in ("linear_fit", "curve_fit"):
+        fit_x, fit_y, _ = _fit_data(result)
+        x_values = [float(value) for value in fit_x]
+        y_values = [float(value) for value in fit_y]
+        for record in records:
+            fitted = record.get("fitted_values")
+            if isinstance(fitted, list):
+                y_values.extend(float(value) for value in fitted)
+        return _finite_axis_range(x_values), _finite_axis_range(y_values)
+    points: list[list[float]] = []
+    measures: list[float] = []
+    iterations: list[float] = []
+    for ordinal, record in enumerate(records):
+        point = _record_point(record)
+        if point is not None:
+            points.append(point)
+        measure, _ = _record_measure(record, result.problem.operation)
+        if measure is not None:
+            measures.append(measure)
+        iteration = record.get("trace_iteration")
+        iterations.append(
+            float(iteration) if isinstance(iteration, (int, float)) else float(ordinal)
+        )
+    if _problem_dimension(result) == 2 and len(points) > 0:
+        x_values = [point[0] for point in points if len(point) >= 2]
+        y_values = [point[1] for point in points if len(point) >= 2]
+        variables = result.problem.bounds.get("variables")
+        if isinstance(variables, list) and len(variables) >= 2:
+            for axis, values in ((0, x_values), (1, y_values)):
+                bound = variables[axis]
+                if isinstance(bound, list):
+                    values.extend(
+                        float(value)
+                        for value in bound
+                        if isinstance(value, (int, float))
+                    )
+        return _finite_axis_range(x_values), _finite_axis_range(y_values)
+    return _finite_axis_range(iterations), _finite_axis_range(measures)
+
+
+def _latest_simplex(records: list[dict[str, Any]]) -> list[list[float]]:
+    for record in reversed(records):
+        simplex = record.get("simplex")
+        if not isinstance(simplex, list):
+            continue
+        converted = [[float(value) for value in vertex] for vertex in simplex]
+        if len(converted) >= 2 and all(len(vertex) >= 2 for vertex in converted):
+            return converted
+    return []
+
+
+def _simplex_data(records: list[dict[str, Any]]) -> dict[str, Any]:
+    simplex = _latest_simplex(records)
+    if len(simplex) == 0:
+        return {"x": [], "y": []}
+    closed = simplex + [simplex[0]]
+    return {
+        "x": [vertex[0] for vertex in closed],
+        "y": [vertex[1] for vertex in closed],
+    }
+
+
+def _box_bound_data(
+    result: OptimizationResult, points: list[list[float]]
+) -> dict[str, Any]:
+    bounds = result.problem.bounds.get("variables")
+    if not isinstance(bounds, list) or len(bounds) < 2:
+        return {"x": [], "y": []}
+    x_values = [point[0] for point in points if len(point) >= 2]
+    y_values = [point[1] for point in points if len(point) >= 2]
+    for index, values in ((0, x_values), (1, y_values)):
+        item = bounds[index]
+        if isinstance(item, list) and len(item) == 2:
+            for bound in item:
+                if isinstance(bound, (int, float)):
+                    values.append(float(bound))
+    if len(x_values) == 0:
+        x_values = [-1.0, 1.0]
+    if len(y_values) == 0:
+        y_values = [-1.0, 1.0]
+    x_min, x_max = min(x_values), max(x_values)
+    y_min, y_max = min(y_values), max(y_values)
+    if x_min == x_max:
+        x_min -= 1.0
+        x_max += 1.0
+    if y_min == y_max:
+        y_min -= 1.0
+        y_max += 1.0
+    segment_x: list[float | None] = []
+    segment_y: list[float | None] = []
+    for bound in bounds[0] if isinstance(bounds[0], list) else []:
+        if isinstance(bound, (int, float)):
+            segment_x.extend([float(bound), float(bound), None])
+            segment_y.extend([y_min, y_max, None])
+    for bound in bounds[1] if isinstance(bounds[1], list) else []:
+        if isinstance(bound, (int, float)):
+            segment_x.extend([x_min, x_max, None])
+            segment_y.extend([float(bound), float(bound), None])
+    return {"x": segment_x, "y": segment_y}
+
+
+def _active_bound_point(
+    result: OptimizationResult, point: list[float] | None
+) -> dict[str, Any]:
+    bounds = result.problem.bounds.get("variables")
+    if point is None or not isinstance(bounds, list):
+        return {"x": [], "y": []}
+    active = False
+    for index in range(min(len(point), len(bounds))):
+        item = bounds[index]
+        if not isinstance(item, list) or len(item) != 2:
+            continue
+        tolerance = 1.0e-10 * max(1.0, abs(point[index]))
+        for bound in item:
+            if (
+                isinstance(bound, (int, float))
+                and abs(point[index] - float(bound)) <= tolerance
+            ):
+                active = True
+    return {"x": [point[0]] if active else [], "y": [point[1]] if active else []}
+
+
+def _path_alt_text(
+    result: OptimizationResult,
+    mode: str,
+    state_count: int,
+    *,
+    simplex_shown: bool,
+    bounds_shown: bool,
+) -> str:
+    answer = (
+        str(result.problem.operation).replace("_", " ")
+        + " "
+        + mode.replace("_", " ")
+        + " with "
+        + str(state_count)
+        + " retained states. Outcome: "
+        + _outcome_text(result)
+        + "."
+    )
+    if simplex_shown:
+        answer += " The latest retained Nelder-Mead simplex is shown."
+    if bounds_shown:
+        answer += " Finite box bounds and any active retained iterate are shown."
+    diagnostics = result.domain_payload.get("parameter_diagnostics")
+    if (
+        isinstance(diagnostics, dict)
+        and diagnostics.get("rank_deficient_or_ill_conditioned") is True
+    ):
+        answer += " Parameter estimates are rank-deficient or ill-conditioned."
+    if result.trace.truncated:
+        answer += " The trace was deterministically truncated."
+    return answer
+
+
+def _path_plot(
+    result: OptimizationResult,
+    records: list[dict[str, Any]] | None = None,
+    *,
+    show_result: bool = True,
+    axis_ranges: AxisRanges | None = None,
+) -> PlotSpec:
+    selected = _story_records(result) if records is None else records
+    points: list[list[float]] = []
+    measures: list[float | None] = []
+    measure_name = "progress_measure"
+    iterations: list[float] = []
+    for ordinal, record in enumerate(selected):
+        point = _record_point(record)
+        if point is not None:
+            points.append(point)
+        measure, name = _record_measure(record, result.problem.operation)
+        measures.append(measure)
+        if measure is not None:
+            measure_name = name
+        iteration = record.get("trace_iteration")
+        iterations.append(
+            float(iteration) if isinstance(iteration, (int, float)) else float(ordinal)
+        )
+    dimension = _problem_dimension(result)
+    parameter_plane = (
+        dimension == 2 and len(points) > 0 and all(len(point) >= 2 for point in points)
+    )
+    layers: list[Any] = []
+    simplex_shown = result.method == "nelder-mead" and parameter_plane
+    bounds_shown = result.method == "projected-bfgs" and parameter_plane
+    if parameter_plane:
+        path_data = {
+            "x": [point[0] for point in points],
+            "y": [point[1] for point in points],
+        }
+        latest_point = points[-1] if len(points) > 0 else None
+        returned_data = (
+            {"x": [float(result.value[0])], "y": [float(result.value[1])]}
+            if show_result and isinstance(result.value, list) and len(result.value) >= 2
+            else {"x": [], "y": []}
+        )
+        layers.extend(
+            [
+                make_layer(
+                    "line",
+                    path_data,
+                    ordinal=0,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "parameter_path",
+                    },
+                    style={"color": "#3366cc", "width": 2},
+                    legend={"label": "parameter path", "show": True},
+                ),
+                make_layer(
+                    "point",
+                    path_data,
+                    ordinal=1,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "retained_iterates",
+                    },
+                    style={"color": "#dd8452", "size": 7},
+                    legend={"label": "retained iterates", "show": True},
+                ),
+                make_layer(
+                    "point",
+                    returned_data,
+                    ordinal=2,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "returned_point",
+                        "validation_passed": result.validation.passed,
+                    },
+                    style={
+                        "color": "#55a868" if result.success else "#c44e52",
+                        "size": 12,
+                        "symbol": "star",
+                    },
+                    legend={"label": "returned point", "show": True},
+                ),
+            ]
+        )
+        if simplex_shown:
+            layers.append(
+                make_layer(
+                    "line",
+                    _simplex_data(selected),
+                    ordinal=3,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "simplex",
+                    },
+                    style={"color": "#8172b2", "width": 1},
+                    legend={"label": "current simplex", "show": True},
+                )
+            )
+        if bounds_shown:
+            layers.extend(
+                [
+                    make_layer(
+                        "line",
+                        _box_bound_data(result, points),
+                        ordinal=4,
+                        namespace="optimization",
+                        source_intent={
+                            "operation": result.problem.operation,
+                            "role": "finite_box_bounds",
+                        },
+                        style={"color": "#7a7a7a", "width": 2, "dash": "dash"},
+                        legend={"label": "finite box bounds", "show": True},
+                    ),
+                    make_layer(
+                        "point",
+                        _active_bound_point(result, latest_point),
+                        ordinal=5,
+                        namespace="optimization",
+                        source_intent={
+                            "operation": result.problem.operation,
+                            "role": "active_bound_iterate",
+                        },
+                        style={"color": "#cc0000", "size": 10, "symbol": "x"},
+                        legend={"label": "active bound", "show": True},
+                    ),
+                ]
+            )
+        axes = _axes(
+            "parameter 0",
+            "parameter 1",
+            equal_aspect=True,
+            ranges=axis_ranges,
+        )
+        mode = "parameter_path"
+        state_count = len(points)
+    else:
+        history_data = {"x": iterations, "y": measures}
+        returned_data = (
+            {"x": [iterations[-1]], "y": [measures[-1]]}
+            if show_result and result.value is not None and len(iterations) > 0
+            else {"x": [], "y": []}
+        )
+        layers.extend(
+            [
+                make_layer(
+                    "line",
+                    history_data,
+                    ordinal=0,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "convergence_history",
+                        "measure": measure_name,
+                    },
+                    style={"color": "#3366cc", "width": 2},
+                    legend={"label": measure_name.replace("_", " "), "show": True},
+                ),
+                make_layer(
+                    "point",
+                    history_data,
+                    ordinal=1,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "retained_progress",
+                        "measure": measure_name,
+                    },
+                    style={"color": "#dd8452", "size": 7},
+                    legend={"label": "retained progress", "show": True},
+                ),
+                make_layer(
+                    "point",
+                    returned_data,
+                    ordinal=2,
+                    namespace="optimization",
+                    source_intent={
+                        "operation": result.problem.operation,
+                        "role": "returned_measure",
+                        "validation_passed": result.validation.passed,
+                    },
+                    style={
+                        "color": "#55a868" if result.success else "#c44e52",
+                        "size": 12,
+                        "symbol": "star",
+                    },
+                    legend={"label": "returned result", "show": True},
+                ),
+            ]
+        )
+        axes = _axes("iteration", measure_name.replace("_", " "), ranges=axis_ranges)
+        mode = "convergence_history"
+        state_count = len(selected)
+    alt_text = _path_alt_text(
+        result,
+        mode,
+        state_count,
+        simplex_shown=simplex_shown,
+        bounds_shown=bounds_shown,
+    )
+    return PlotSpec(
+        2,
+        layers,
         axes_or_scene=axes,
         viewport={"responsive": True},
-        provenance=_provenance(result, "optimization_path_plot"),
+        annotations=_annotations(result, alt_text),
+        provenance=_provenance(
+            result,
+            "optimization_path_plot",
+            alt_text,
+            view=mode,
+            retained_state_count=state_count,
+            simplex_shown=simplex_shown,
+            box_bounds_shown=bounds_shown,
+        ),
     )
 
 
 def optimization_plot(result: OptimizationResult) -> PlotSpec:
-    """Return the operation-appropriate static semantic PlotSpec."""
+    """Return an operation-specific accessible canonical PlotSpec."""
     if result.problem.operation == "scalar_minimum":
         return _scalar_plot(result)
     if result.problem.operation in ("linear_fit", "curve_fit"):
@@ -253,78 +911,115 @@ def optimization_plot(result: OptimizationResult) -> PlotSpec:
 
 
 def optimization_animation(result: OptimizationResult) -> PlotAnimation:
-    """Replay retained accepted iterates with topology-stable path frames."""
-    records = _progress_records(result)
-    if len(records) == 0:
+    """Replay bounded retained evidence as a topology-stable PlotAnimation."""
+    if result.problem.trace_policy.level == "none":
         raise ValueError(
             "optimization animation requires a retained summary or iteration trace"
         )
-    final_record: dict[str, Any] = {"source": "final_result"}
-    if isinstance(result.value, list):
-        final_record["point"] = [float(value) for value in result.value]
-    elif isinstance(result.value, (int, float)):
-        final_record["candidate"] = float(result.value)
-    if result.objective is not None:
-        final_record["objective"] = result.objective
-        final_record["cost"] = result.objective
-    payload = result.domain_payload
-    if isinstance(payload.get("residual_norm"), (int, float)):
-        final_record["residual_norm"] = float(payload["residual_norm"])
-    if isinstance(payload.get("fitted_values"), list):
-        final_record["fitted_values"] = [
-            float(value) for value in payload["fitted_values"]
-        ]
-    records.append(final_record)
-    if len(records) == 1:
-        records.insert(0, dict(records[0], source="initial_equals_final"))
+    progress = _progress_records(result)
+    if len(progress) == 0:
+        raise ValueError("optimization animation requires retained progress states")
+    original_progress_count = len(progress)
+    progress = _decimate_records(progress, MAX_OPTIMIZATION_ANIMATION_FRAMES - 1)
+    records = progress + [_final_record(result)]
     if result.problem.operation in ("linear_fit", "curve_fit"):
-        fit_x = payload.get("fit_x")
-        if isinstance(fit_x, list) and len(fit_x) > 256:
-            raise ValueError("fit animation is limited to 256 retained observations")
-        observation_count = len(fit_x) if isinstance(fit_x, list) else 0
-    else:
-        observation_count = 0
+        fit_x, _, _ = _fit_data(result)
+        if len(fit_x) > MAX_FIT_ANIMATION_OBSERVATIONS:
+            raise ValueError(
+                "fit animation is limited to "
+                + str(MAX_FIT_ANIMATION_OBSERVATIONS)
+                + " retained observations"
+            )
     scalar_samples = (
         _sample_scalar_objective(result)
         if result.problem.operation == "scalar_minimum"
         else None
     )
+    axis_ranges = _animation_axis_ranges(result, records, scalar_samples)
     frames: list[AnimationFrame] = []
     for index in range(len(records)):
         prefix = records[: index + 1]
+        final_frame = index == len(records) - 1
         if result.problem.operation == "scalar_minimum":
-            state = _scalar_plot(result, prefix, scalar_samples)
+            state = _scalar_plot(
+                result,
+                prefix,
+                scalar_samples,
+                show_result=final_frame,
+                axis_ranges=axis_ranges,
+            )
         elif result.problem.operation in ("linear_fit", "curve_fit"):
             fitted = records[index].get("fitted_values")
             if not isinstance(fitted, list):
                 raise ValueError(
                     "fit animation requires fitted values retained in the numerical trace"
                 )
-            state = _fit_plot(result, [float(value) for value in fitted])
+            state = _fit_plot(
+                result,
+                [float(value) for value in fitted],
+                axis_ranges=axis_ranges,
+            )
         else:
-            state = _path_plot(result, prefix)
+            state = _path_plot(
+                result,
+                prefix,
+                show_result=final_frame,
+                axis_ranges=axis_ranges,
+            )
+        trace_iteration = records[index].get("trace_iteration")
+        label = (
+            "returned result"
+            if final_frame
+            else "iteration "
+            + str(trace_iteration if trace_iteration is not None else index)
+        )
         frames.append(
             AnimationFrame(
                 stable_frame_id(index),
                 state,
-                label="iteration " + str(index),
-                metadata={"trace_data": records[index]},
+                label=label,
+                metadata={
+                    "trace_data": records[index],
+                    "returned_result": final_frame,
+                },
             )
         )
+    final_frame = frames[-1]
+    final_state = final_frame.state
+    static_alt_text = (
+        final_state.alt_text()
+        if isinstance(final_state, PlotSpec)
+        else "Optimization animation final frame."
+    )
     return PlotAnimation(
         frames,
         timing=AnimationTiming(frame_duration_ms=350, transition_duration_ms=0),
+        controls=AnimationControls(
+            play=True,
+            pause=True,
+            slider=True,
+            from_current=True,
+            slider_prefix="Iteration: ",
+        ),
         limits=AnimationResourceLimits(
-            max_frames=max(2, result.problem.trace_policy.max_events + 1),
-            max_total_samples=max(
-                4096,
-                len(frames) * (12 * observation_count + 640 + 8 * len(frames)),
-            ),
-            max_payload_bytes=max(1_000_000, result.problem.trace_policy.max_bytes * 4),
+            max_frames=MAX_OPTIMIZATION_ANIMATION_FRAMES,
+            max_layers_per_frame=8,
+            max_total_samples=MAX_OPTIMIZATION_ANIMATION_SAMPLES,
+            max_payload_bytes=MAX_OPTIMIZATION_ANIMATION_BYTES,
+            max_duration_ms=60_000,
         ),
         metadata={
             "operation": result.problem.operation,
             "problem_digest": result.problem.digest,
             "trace_truncated": result.trace.truncated,
+            "source_progress_states": original_progress_count,
+            "retained_progress_states": len(progress),
+            "animation_decimated": len(progress) < original_progress_count,
+            "fixed_axes": axis_ranges[0] is not None and axis_ranges[1] is not None,
+            "static_fallback": {
+                "kind": "plot-spec",
+                "frame_id": final_frame.id,
+                "alt_text": static_alt_text,
+            },
         },
     )
