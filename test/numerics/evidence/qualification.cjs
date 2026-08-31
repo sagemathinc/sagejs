@@ -20,6 +20,8 @@ const {
   CORPUS_SCHEMA,
   POLICY_SCHEMA,
   PROGRAM_PHASES,
+  RECEIPT_SCHEMA,
+  REPORT_SCHEMA,
   validateCorpus,
 } = require("../../../scripts/numerical-computing/contracts.cjs");
 const {
@@ -260,6 +262,24 @@ test("backend-neutral corpora validate and discovery is content bound", () => {
   assert.deepEqual(first, second);
   assert.deepEqual(first.entries.map((item) => item.id), ["qualification-harness-self-test"]);
   assert.match(usage(), /there is intentionally no platform override/i);
+});
+
+test("published wire schemas are strict duplicate-free JSON with matching identities", () => {
+  const repositoryRoot = path.resolve(__dirname, "..", "..", "..");
+  const directory = path.join(repositoryRoot, "docs/numerical-computing/qualification");
+  const schemas = new Map([
+    ["capability-manifest.schema.json", CAPABILITY_SCHEMA],
+    ["corpus.schema.json", CORPUS_SCHEMA],
+    ["matrix-policy.schema.json", POLICY_SCHEMA],
+    ["matrix-report.schema.json", REPORT_SCHEMA],
+    ["run-receipt.schema.json", RECEIPT_SCHEMA],
+  ]);
+  for (const [name, identity] of schemas) {
+    const schema = parseJsonText(fs.readFileSync(path.join(directory, name), "utf8"), name);
+    assert.equal(schema.$schema, "https://json-schema.org/draft/2020-12/schema");
+    assert.equal(schema.properties.schema.const, identity);
+    assert.equal(schema.additionalProperties, false);
+  }
 });
 
 test("portable harness self-test executes failure, deterministic fuzz, and metamorphic cases", async (t) => {
