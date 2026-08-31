@@ -428,6 +428,17 @@ def solve_finite_difference_problem(
         moment_residual, moment_tolerance = _moment_validation(
             offsets, unit_weights, derivative_order, execution.check
         )
+        trace.append(
+            "phase",
+            data={
+                "phase": "Fornberg_weight_construction",
+                "state": "completed",
+                "stencil_size": len(offsets),
+                "moment_residual": moment_residual,
+                "moment_tolerance": moment_tolerance,
+            },
+            important=True,
+        )
         coarse = _estimate_at_step(
             execution,
             x,
@@ -437,6 +448,16 @@ def solve_finite_difference_problem(
             step,
             1,
         )
+        trace.append(
+            "phase",
+            data={
+                "phase": "coarse_stencil",
+                "state": "completed",
+                "step": step,
+                "estimate": coarse[0],
+            },
+            important=True,
+        )
         fine = _estimate_at_step(
             execution,
             x,
@@ -445,6 +466,16 @@ def solve_finite_difference_problem(
             derivative_order,
             step / 2.0,
             2,
+        )
+        trace.append(
+            "phase",
+            data={
+                "phase": "halved_stencil",
+                "state": "completed",
+                "step": step / 2.0,
+                "estimate": fine[0],
+            },
+            important=True,
         )
         richardson_denominator = 2.0**truncation_order - 1.0
         correction = (fine[0] - coarse[0]) / richardson_denominator
@@ -456,6 +487,15 @@ def solve_finite_difference_problem(
         analytic = None
         if problem.derivative is not None:
             analytic = execution.evaluate_derivative_reference(x)
+            trace.append(
+                "phase",
+                data={
+                    "phase": "analytic_reference",
+                    "state": "completed",
+                    "reference": analytic,
+                },
+                important=True,
+            )
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
     except ValueError:
@@ -514,6 +554,10 @@ def solve_finite_difference_problem(
         "weights": fine[5],
         "sample_points": fine[3],
         "sample_values": fine[4],
+        "coarse_step": step,
+        "coarse_weights": coarse[5],
+        "coarse_sample_points": coarse[3],
+        "coarse_sample_values": coarse[4],
         "coarse_estimate": coarse[0],
         "fine_estimate": fine[0],
         "richardson_correction": correction,

@@ -157,3 +157,22 @@ recorded separately as a convergence indicator; it is not folded into the
 error estimate or labeled a rigorous sup-norm bound. DCT normalization is
 applied to each term before summation so a representable coefficient does not
 fail because an unscaled intermediate sum overflowed.
+
+## Explanation and visualization boundary
+
+Presentation is derived only from the detached result model and retained
+semantic trace. Static views use canonical `line`, `point`, or `text`
+`PlotLayer` values in a `PlotSpec`. Interpolation reveals construction samples,
+spline frames reveal completed segments, Chebyshev frames evaluate successive
+coefficient prefixes, and finite-difference frames compare the exact stored
+coarse and halved stencils. Failed results use a semantic text layer and expose
+the same status and stop reason as the explanation envelope; they never invent
+a curve for a model that did not validate.
+
+Plot sampling and animation budgets are independent of numerical execution
+budgets. Static plots permit at most 4097 samples. Animations permit at most 64
+frames and 257 curve samples per frame, with hard 200,000-scalar and 8 MiB JSON
+materialization limits. The underlying `NumericalTrace` separately enforces
+its event and byte limits with deterministic truncation. Thus requesting a
+richer view cannot retroactively spend callback evaluations or create an
+unbounded replay payload.

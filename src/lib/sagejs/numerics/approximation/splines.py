@@ -655,6 +655,16 @@ def solve_spline_problem(
             if abs(values[0] - values[-1]) > 32.0 * MACHINE_EPSILON * scale:
                 raise ValueError("periodic spline endpoint values must agree")
             values[-1] = values[0]
+        trace.append(
+            "phase",
+            data={
+                "phase": "second_derivative_system",
+                "state": "started",
+                "boundary_kind": boundary.get("kind"),
+                "system_size": len(nodes),
+            },
+            important=True,
+        )
         if boundary.get("kind") == "not-a-knot":
             second, condition = _solve_not_a_knot(nodes, values, execution)
         elif boundary.get("kind") == "periodic":
@@ -663,6 +673,15 @@ def solve_spline_problem(
             second, condition = _solve_explicit_second_derivatives(
                 nodes, values, boundary, execution
             )
+        trace.append(
+            "phase",
+            data={
+                "phase": "second_derivative_system",
+                "state": "completed",
+                "condition_estimate": min(condition, 1.0e308),
+            },
+            important=True,
+        )
         model = _spline_model(
             nodes,
             values,
@@ -671,6 +690,15 @@ def solve_spline_problem(
             bool(problem.initial_data.get("extrapolate", True)),
             min(condition, 1.0e308),
             execution,
+        )
+        trace.append(
+            "phase",
+            data={
+                "phase": "segment_construction",
+                "state": "completed",
+                "segment_count": len(nodes) - 1,
+            },
+            important=True,
         )
         condition = min(condition, 1.0e308)
         node_residual, c1_jump, c2_jump, boundary_residual = _validation_metrics(

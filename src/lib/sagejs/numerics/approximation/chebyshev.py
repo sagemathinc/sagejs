@@ -240,6 +240,15 @@ def solve_polynomial_approximation_problem(
                     trace_data={"phase": "Chebyshev_sampling", "sample_index": index},
                 )
             )
+        trace.append(
+            "phase",
+            data={
+                "phase": "Chebyshev_sampling",
+                "state": "completed",
+                "sample_count": count,
+            },
+            important=True,
+        )
         coefficients: list[float] = []
         for order in range(count):
             execution.step()
@@ -267,6 +276,15 @@ def solve_polynomial_approximation_problem(
                     "magnitude": abs(coefficient),
                 },
             )
+        trace.append(
+            "phase",
+            data={
+                "phase": "coefficient_transform",
+                "state": "completed",
+                "coefficient_count": len(coefficients),
+            },
+            important=True,
+        )
         model: dict[str, Any] = {
             "kind": "chebyshev_series",
             "interval": [lower, upper],
@@ -293,6 +311,16 @@ def solve_polynomial_approximation_problem(
                 maximum_error, abs(evaluate_chebyshev(model, point) - observed)
             )
             execution.check()
+        trace.append(
+            "phase",
+            data={
+                "phase": "holdout_validation",
+                "state": "completed",
+                "sample_count": validation_count,
+                "maximum_observed_error": maximum_error,
+            },
+            important=True,
+        )
     except ApproximationStopped as stopped:
         return failed_result(problem, plan, execution, stopped.status)
     except (ArithmeticError, OverflowError):

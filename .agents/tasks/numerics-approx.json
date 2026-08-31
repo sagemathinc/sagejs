@@ -41,6 +41,7 @@
     "python3 -I test/numerics/approximation/differential_oracles.py",
     "python3 -I bench/numerics/approximation/benchmark.py --check",
     "pnpm exec pyright src/lib/sagejs/numerics/approximation",
+    "pnpm architecture:numerics",
     "pnpm test:baselib:strict",
     "pnpm test:numerics",
     "pnpm architecture:check"
@@ -225,18 +226,100 @@
       "commit": "04fd4bb34d984753915c7ba693c41da348d18019",
       "workspace_fingerprint": "6883de9063ecc8fda5c31323f292a3fdf7ef271ffbe4a883055b31053729641d",
       "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/approximation/approximation-laboratory.test.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 7.243,
+      "started_at": "2026-08-31T15:53:02.655Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/approximation/differential_oracles.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.786,
+      "started_at": "2026-08-31T15:53:10.595Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/approximation/benchmark.py --check",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.26,
+      "started_at": "2026-08-31T15:53:12.119Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/approximation",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.087,
+      "started_at": "2026-08-31T15:53:13.140Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.539,
+      "started_at": "2026-08-31T15:53:15.946Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 47.506,
+      "started_at": "2026-08-31T15:53:32.913Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 402.133,
+      "started_at": "2026-08-31T15:54:27.982Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 4.075,
+      "started_at": "2026-08-31T16:02:37.300Z",
+      "commit": "e3eff31259488348012b40e688dc04f46b33ac48",
+      "workspace_fingerprint": "7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c",
+      "platform": "linux-x64"
     }
   ],
   "handoff": {
-    "summary": "Implemented and audited the numerical approximation family end to end: scaled barycentric and piecewise-linear interpolation, cubic splines with explicit boundary systems, Fornberg finite differences, and fixed-degree Chebyshev approximation. The fix wave now fails closed outside qualified degree/stencil/node and binary64 envelopes; independently validates every accepted global interpolant off-node, every finite-difference stencil through all defining moments, spline continuity and unwrapped periodic endpoints, and callback models through holdout/reference evidence. Exact analytic derivative tolerances cannot be widened by heuristic error. Results are detached on every public value/serialization access, nonsmooth knot derivatives raise explicitly, elapsed/cancellation checkpoints cover callbacks and bulk inner loops, and overflow-safe affine/DCT scaling avoids representable computations failing through transient overflow. The adversarial CPython/Sage.js corpus, SciPy/NumPy/mpmath differential oracles, benchmark check, direct Pyright, strict baselib, and full numerical suite pass on the final workspace fingerprint.",
+    "summary": "Implemented and audited the numerical approximation family end to end: scaled barycentric and piecewise-linear interpolation, cubic splines with explicit boundary systems, Fornberg finite differences, and fixed-degree Chebyshev approximation. The numerical fix wave fails closed outside qualified degree/stencil/node and binary64 envelopes and independently validates off-node interpolation, finite-difference moments and exact references, spline continuity/unwrapped periodic endpoints, and Chebyshev holdouts. The follow-up adds a detached explanation schema with the complete bounded semantic trace, informative summary phase events, canonical renderer-neutral PlotSpec success/failure views, and topology-stable PlotAnimation construction replays for all four algorithm families. Presentation reads only detached models, never re-evaluates callbacks, and enforces independent sample/frame/scalar/byte/duration limits. Package-local capabilities(operation=None), supports(problem, method=None), and plan(problem, method=None) cover all five operation IDs through existing callback-free planners and return detached capability/plan records for a future central lazy facade. The adversarial CPython/Sage.js corpus, SciPy/NumPy/mpmath differential oracles, benchmark check, direct Pyright, numerical-surface architecture check, strict baselib, and full numerical suite pass on final fingerprint 7faa45d3ce246119e8511fdc112a006412707ef9bd22269392fe4fec11be545c.",
     "risks": [
       "The shared package manifest does not yet own src/lib/sagejs/numerics/approximation/__init__.py in this lane. Consequently the recorded architecture check stops at that single integration-owned package-graph error; no later architecture stage ran on this isolated worktree.",
       "The exact maximum_elapsed_time status and diagnostic are supplied by central integration commit 52d91d862. Before that commit is combined, this lane deliberately returns backend_failure while preserving domain_payload.stop_reason=maximum_elapsed_time; after combination the same dynamic path emits the exact shared status and diagnostic.",
       "Only local Linux x64 CPython and Sage.js Node receipts are claimed. Linux arm64, macOS arm64, Windows x64, browser, and SEA remain explicitly pending rather than inferred from portable source.",
-      "The documented binary64 qualification boundaries are intentional: at most 32 global barycentric nodes, 65 finite-difference stencil points, direct Chebyshev degree 512, and finite representable spline spacing/inverse spacing. Requests beyond them fail closed instead of receiving unsupported validation claims."
+      "The documented binary64 qualification boundaries are intentional: at most 32 global barycentric nodes, 65 finite-difference stencil points, direct Chebyshev degree 512, and finite representable spline spacing/inverse spacing. Requests beyond them fail closed instead of receiving unsupported validation claims.",
+      "Presentation intentionally materializes sampled coordinates per animation frame to preserve immutable canonical PlotSpec states. The hard envelope is 64 frames, 257 curve samples per frame, 200000 semantic scalars, 8 MiB JSON, and 22.4 seconds declared duration; callers needing larger views must stream or render externally rather than bypass these limits."
     ],
     "next_steps": [
       "In the integration lane, merge shared status/diagnostic commit 52d91d862 and the package/export, package-manifest owner, Pyright registry, and shared test-script changes listed in docs/numerical-computing/approximation/integration-requests.md.",
+      "Connect the package-local capabilities/supports/plan functions to the central lazy numerical facade without duplicating their operation records or evaluating live callbacks, and resolve the shared plan/capabilities name dispatch at that facade boundary.",
       "After integration, strengthen the elapsed corpus assertion from the compatibility stop_reason check to status=maximum_elapsed_time and rerun the focused corpus, direct Pyright, strict baselib, full numerical suite, merge check, and architecture check.",
       "Run the same portable corpus on the persistent Linux arm64, macOS arm64, and Windows x64 hosts, then exercise the integrated browser and SEA surfaces before changing any pending platform capability receipt to passed."
     ]

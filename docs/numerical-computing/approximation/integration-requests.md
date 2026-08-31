@@ -7,6 +7,7 @@ The integration lane should make these exact changes after reviewing the
 domain surface:
 
 1. Re-export the approved names from `sagejs.numerics`: `ApproximationResult`,
+   the package-local `capabilities`, `supports`, and `plan` facade,
    `interpolate`, `interpolation_problem`, `plan_interpolation`,
    `solve_interpolation_problem`, `cubic_spline`, `spline_problem`,
    `plan_spline`, `solve_spline_problem`, `finite_difference`,
@@ -26,11 +27,14 @@ domain surface:
 4. Add the portable test to the shared `test:numerics` command or migrate that
    command to directory discovery:
    `test/numerics/approximation/approximation-laboratory.test.cjs`.
-5. Decide whether approximation-specific result dispatch belongs in the
-   shared `NumericalResult.evaluate/plot` surface. The current subclass keeps
-   this lane serializable without changing the shared object.
-6. Lower `ApproximationResult.plot_data()` through the shared PlotSpec
-   visualizer. The solver/model code must remain renderer-neutral.
+5. Decide whether approximation-specific `evaluate`, `explanation`,
+   `to_plot_spec`, and `to_animation` dispatch should also appear on the shared
+   `NumericalResult` type. The current subclass returns canonical `PlotSpec`
+   and `PlotAnimation` values without changing shared objects or importing a
+   renderer.
+6. Add `src/lib/sagejs/numerics/approximation/capabilities.py` and
+   `src/lib/sagejs/numerics/approximation/presentation.py` to the shared
+   strict-Pyright module list together with the other approximation modules.
 7. Add `maximum_elapsed_time` to the shared result status vocabulary and
    diagnostic registry. Approximation execution already emits that exact stop
    reason; until integration, the local result uses the schema-valid
