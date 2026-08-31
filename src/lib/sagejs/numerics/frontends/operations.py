@@ -96,7 +96,6 @@ _DEFINITIONS = (
             "max_elapsed_ms",
             "trace",
         ),
-        targets=("sage", "python-scipy", "matlab"),
     ),
     _Definition(
         "linear_algebra",
@@ -124,7 +123,7 @@ _DEFINITIONS = (
         ),
         module="sagejs.numerics.spectral",
         function="eigh",
-        options=("tolerance", "max_sweeps", "max_elapsed_ms", "trace"),
+        options=("tolerance", "max_iterations", "max_elapsed_ms", "trace"),
         outputs=("eigenvalues", "eigenvectors", "evidence"),
         targets=("sage", "python-scipy", "matlab"),
     ),
@@ -157,7 +156,7 @@ _DEFINITIONS = (
         ),
         module="sagejs.numerics.spectral",
         function="svd",
-        options=("tolerance", "max_sweeps", "max_elapsed_ms", "trace"),
+        options=("tolerance", "max_iterations", "max_elapsed_ms", "trace"),
         outputs=("u", "singular_values", "vh", "evidence"),
         targets=("sage", "python-scipy", "matlab"),
     ),
@@ -202,7 +201,7 @@ _DEFINITIONS = (
         ),
         module="sagejs.numerics.approximation",
         function="interpolate",
-        options=("method", "extrapolate", "trace"),
+        options=("method", "trace"),
         outputs=("interpolant", "evidence"),
         targets=("sage", "python-scipy"),
     ),
@@ -257,7 +256,16 @@ _DEFINITIONS = (
         module="sagejs.numerics.optimization",
         function="minimize_scalar",
         callback="function",
-        options=("method", "xtol", "ftol", "maxiter", "max_evaluations", "trace"),
+        options=(
+            "method",
+            "xtol",
+            "rtol",
+            "gtol",
+            "maxiter",
+            "max_evaluations",
+            "max_elapsed_ms",
+            "trace",
+        ),
     ),
     _Definition(
         "optimization",
@@ -598,7 +606,11 @@ def _lower(
                 "atol": "absolute_tolerance",
                 "rtol": "relative_tolerance",
             }.get(canonical, canonical)
-        if definition.operation.name == "general_eigen" and canonical == "maxiter":
+        if definition.operation.name in (
+            "symmetric_eigen",
+            "general_eigen",
+            "singular_value_decomposition",
+        ) and canonical == "maxiter":
             canonical = "max_iterations"
         if canonical not in definition.options:
             _unsupported(

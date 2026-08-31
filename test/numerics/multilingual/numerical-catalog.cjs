@@ -97,17 +97,55 @@ for language, name, arguments, options in cases:
     assert result.to_dict()["frontend_digest"] == intent.digest
     assert result.value is not None
 
+# Source option names normalize to real package keyword names rather than
+# becoming inert metadata. These execute through the same public functions.
+option_cases = [
+    ("lsqminnorm", ([[1, 0], [0, 1], [1, 1]], [1, 2, 3]), {"max_sweeps": 32}, "max_sweeps"),
+    ("eig_symmetric", ([[2, 1], [1, 2]],), {"MaxIterations": 40}, "max_iterations"),
+    ("svd", ([[1, 2], [3, 4]],), {"MaxIterations": 40}, "max_iterations"),
+    ("integral", (lambda x: x*x, 0, 1), {"AbsTol": 1e-9, "RelTol": 1e-9}, "absolute_tolerance"),
+    ("fminbnd", (lambda x: (x-2)**2, 0, 4), {"TolX": 1e-8}, "xtol"),
+    ("griddedInterpolant", ([0, 1], [0, 1]), {"method": "linear"}, "method"),
+]
+for name, arguments, options, normalized_name in option_cases:
+    intent = registry.lower("matlab", name, *arguments, **options)
+    assert normalized_name in intent.options
+    assert registry.execute(intent).success
+
 # Every claimed target has a checked, edit-detecting emitted-source round trip.
 # Targets whose result/normalization conventions are not yet qualified fail
 # with one structured unsupported_target diagnostic.
+unsupported_targets = {
+    "symmetric_eigen": {"wolfram"},
+    "general_eigen": {"wolfram"},
+    "singular_value_decomposition": {"wolfram"},
+    "convolution": {"wolfram"},
+    "interpolation": {"matlab", "wolfram"},
+    "cubic_spline": {"wolfram"},
+    "minimize": {"wolfram"},
+    "nonlinear_system": {"wolfram"},
+    "nonlinear_least_squares": {"wolfram"},
+    "linear_fit": {"wolfram"},
+    "initial_value_problem": {"wolfram"},
+    "descriptive_statistics": {"wolfram"},
+    "one_sample_t_test": {"wolfram"},
+    "two_sample_t_test": {"wolfram"},
+    "linear_regression": {"wolfram"},
+    "parameter_sweep": {"matlab", "wolfram"},
+}
 for language, name, arguments, options in cases:
     intent = registry.lower(language, name, *arguments, **options)
     for target in FRONTEND_LANGUAGES:
+        should_be_unsupported = target in unsupported_targets.get(
+            intent.operation, set()
+        )
         try:
             source = registry.emit(intent, target)
         except UnsupportedFrontendError as error:
+            assert should_be_unsupported, (intent.operation, target)
             assert error.diagnostic.code == "unsupported_target"
             continue
+        assert not should_be_unsupported, (intent.operation, target)
         reconstructed = registry.parse(source, target, intent.operation_ref)
         assert reconstructed.digest == intent.digest
         changed = source.replace("result =", "result  =", 1)
