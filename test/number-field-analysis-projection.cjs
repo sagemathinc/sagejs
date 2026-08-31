@@ -23,7 +23,7 @@ function run(args, options = {}) {
   const result = spawnSync(args[0], args.slice(1), {
     cwd: root,
     encoding: "utf8",
-    timeout: process.platform === "win32" ? 300_000 : 180_000,
+    timeout: ["darwin", "win32"].includes(process.platform) ? 300_000 : 180_000,
     ...options,
     env: { ...process.env, ...(options.env || {}) },
   });
