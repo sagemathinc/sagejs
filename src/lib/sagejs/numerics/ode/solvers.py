@@ -28,8 +28,15 @@ from .model import (
     OdeResult,
     OdeTrajectory,
     ReferenceFunction,
+    StateJacobian,
     StateFunction,
     coerce_state,
+)
+from .rosenbrock import (
+    RosenbrockLinearSolveError,
+    linearized_defect_correction,
+    rosenbrock4_step,
+    rosenbrock4_workspace_bytes,
 )
 
 _EPSILON = 2.220446049250313e-16
@@ -37,6 +44,7 @@ _SAFETY = 0.9
 _MIN_FACTOR = 0.2
 _MAX_FACTOR = 10.0
 _DENSE_DEFECT_ACCEPTANCE_FACTOR = 64.0
+_ROSENBROCK_DEFECT_ACCEPTANCE_FACTOR = 128.0
 _TRACE_VECTOR_PREVIEW = 4
 _COMPACT_TRACE_BYTES = 4096
 _TRACE_FINISH_RESERVE = 1024
@@ -137,6 +145,8 @@ class _OdeExecution:
         self.callback_evaluations = 0
         self.rhs_evaluations = 0
         self.event_evaluations = 0
+        self.jacobian_evaluations = 0
+        self.finite_difference_jacobian_evaluations = 0
 
     def elapsed_ms(self) -> float:
         return 1000.0 * (time.perf_counter() - self.started)
@@ -244,6 +254,55 @@ class _OdeExecution:
         if not math.isfinite(value):
             raise _StopOde("nonfinite_evaluation", "nonfinite_event")
         return value
+
+    def jacobian(
+        self, t: float, y: Sequence[float], derivative: Sequence[float]
+    ) -> list[list[float]]:
+        callback = self.problem.jacobian
+        size = len(y)
+        if callback is not None:
+            self._consume_callback()
+            self.jacobian_evaluations += 1
+            raw = callback(float(t), list(y))
+            self.check()
+            rows = [[float(value) for value in row] for row in raw]
+        else:
+            self.finite_difference_jacobian_evaluations += 1
+            rows = [[0.0 for _ in range(size)] for _ in range(size)]
+            increment_scale = math.sqrt(_EPSILON)
+            for column in range(size):
+                perturbed = list(y)
+                requested = increment_scale * max(1.0, abs(y[column]))
+                perturbed[column] += requested
+                increment = perturbed[column] - y[column]
+                if increment == 0.0:
+                    raise _StopOde("stagnation", "finite_difference_jacobian_step")
+                value = self.rhs(t, perturbed)
+                for row in range(size):
+                    rows[row][column] = (value[row] - derivative[row]) / increment
+        if len(rows) != size or any(len(row) != size for row in rows):
+            raise ValueError("ODE Jacobian must be a square state-dimension matrix")
+        if any(not math.isfinite(value) for row in rows for value in row):
+            raise _StopOde("nonfinite_evaluation", "nonfinite_jacobian")
+        return rows
+
+    def time_derivative(
+        self,
+        t: float,
+        y: Sequence[float],
+        derivative: Sequence[float],
+        h: float,
+    ) -> list[float]:
+        requested = math.copysign(math.sqrt(_EPSILON) * max(1.0, abs(t)), h)
+        shifted = t + requested
+        increment = shifted - t
+        if increment == 0.0:
+            raise _StopOde("stagnation", "finite_difference_time_step")
+        value = self.rhs(shifted, y)
+        return [
+            (value[index] - derivative[index]) / increment
+            for index in range(len(derivative))
+        ]
 
 
 def _trace_vector_fields(
@@ -454,12 +513,15 @@ def ode_problem(
     reference: ReferenceFunction | None = None,
     reference_atol: float | None = None,
     reference_rtol: float | None = None,
+    jacobian: StateJacobian | None = None,
     max_steps: int = 10_000,
     max_evaluations: int = 100_000,
     max_elapsed_ms: int = 30_000,
     max_output_points: int = 10_000,
     max_event_iterations: int = 64,
     max_validation_evaluations: int = 32,
+    max_linear_solve_failures: int = 8,
+    max_workspace_bytes: int = 64_000_000,
     trace: str = "iterations",
     max_trace_events: int = 256,
     max_trace_bytes: int = 1_000_000,
@@ -504,6 +566,8 @@ def ode_problem(
         )
     if reference is not None and not callable(reference):
         raise TypeError("reference solution must be callable")
+    if jacobian is not None and not callable(jacobian):
+        raise TypeError("ODE Jacobian must be callable")
     budget = OdeResourceBudget(
         max_steps=max_steps,
         max_evaluations=max_evaluations,
@@ -511,6 +575,8 @@ def ode_problem(
         max_output_points=max_output_points,
         max_event_iterations=max_event_iterations,
         max_validation_evaluations=max_validation_evaluations,
+        max_linear_solve_failures=max_linear_solve_failures,
+        max_workspace_bytes=max_workspace_bytes,
         max_trace_events=max_trace_events,
         max_trace_bytes=max_trace_bytes,
     )
@@ -554,6 +620,7 @@ def ode_problem(
         reference=reference,
         reference_atol=reference_absolute,
         reference_rtol=reference_relative,
+        jacobian=jacobian,
         resource_budget=budget,
         trace_policy=TracePolicy(
             trace, max_events=max_trace_events, max_bytes=max_trace_bytes
@@ -649,6 +716,59 @@ def _rk45_attempt(
     ]
     segment = DenseOutputSegment(t, t + h, h, y, dense_coefficients)
     return y_new, derivative_new, error, error_norm, segment
+
+
+def _rosenbrock4_attempt(
+    execution: _OdeExecution,
+    t: float,
+    y: Sequence[float],
+    derivative: Sequence[float],
+    h: float,
+    iteration: int,
+) -> tuple[
+    list[float],
+    list[float],
+    list[float],
+    float,
+    DenseOutputSegment,
+    float,
+]:
+    y_new, derivative_new, error, dense_rows, linear_residual = rosenbrock4_step(
+        lambda time_value, state: execution.rhs(time_value, state, iteration=iteration),
+        execution.jacobian,
+        execution.time_derivative,
+        t,
+        y,
+        derivative,
+        h,
+    )
+    scale = [
+        execution.problem.atol[index]
+        + execution.problem.rtol * max(abs(y[index]), abs(y_new[index]))
+        for index in range(len(y))
+    ]
+    error_norm = _weighted_norm(error, scale)
+    segment = DenseOutputSegment(t, t + h, h, y, dense_rows)
+    return y_new, derivative_new, error, error_norm, segment, linear_residual
+
+
+def _rosenbrock_dense_control(
+    execution: _OdeExecution, segment: DenseOutputSegment
+) -> tuple[float, float]:
+    middle = segment.t0 + 0.5 * (segment.t1 - segment.t0)
+    state = segment.evaluate(middle)
+    derivative = segment.derivative(middle)
+    rhs = execution.rhs(middle, state)
+    difference = [derivative[index] - rhs[index] for index in range(len(derivative))]
+    jacobian = execution.jacobian(middle, state, rhs)
+    correction, linear_residual = linearized_defect_correction(
+        jacobian, segment.t1 - segment.t0, difference
+    )
+    scale = [
+        execution.problem.atol[index] + execution.problem.rtol * abs(state[index])
+        for index in range(len(state))
+    ]
+    return _weighted_norm(correction, scale), linear_residual
 
 
 def _rk4_attempt(
@@ -767,12 +887,51 @@ class _ValidationBudget:
         self.execution = execution
         self.used = 0
 
-    def consume(self) -> bool:
+    def consume(self, count: int = 1) -> bool:
         self.execution.check()
-        if self.used >= self.maximum:
+        if self.used + count > self.maximum:
             return False
-        self.used += 1
+        self.used += count
         return True
+
+
+def _validation_jacobian(
+    problem: OdeProblem,
+    execution: _OdeExecution,
+    t: float,
+    state: Sequence[float],
+    derivative: Sequence[float],
+) -> list[list[float]]:
+    size = len(state)
+    if problem.jacobian is not None:
+        raw = problem.jacobian(t, list(state))
+        execution.check()
+        rows = [[float(value) for value in row] for row in raw]
+    else:
+        function = problem.function
+        if function is None:
+            raise ValueError("validation requires a live right-hand side")
+        rows = [[0.0 for _ in range(size)] for _ in range(size)]
+        increment_scale = math.sqrt(_EPSILON)
+        for column in range(size):
+            perturbed = list(state)
+            perturbed[column] += increment_scale * max(1.0, abs(state[column]))
+            increment = perturbed[column] - state[column]
+            if increment == 0.0:
+                raise ValueError("finite-difference Jacobian step stagnated")
+            value = coerce_state(
+                function(t, perturbed), "validation Jacobian right-hand side"
+            )
+            execution.check()
+            if len(value) != size:
+                raise ValueError("validation Jacobian dimension mismatch")
+            for row in range(size):
+                rows[row][column] = (value[row] - derivative[row]) / increment
+    if len(rows) != size or any(len(row) != size for row in rows):
+        raise ValueError("validation Jacobian must be square")
+    if any(not math.isfinite(value) for row in rows for value in row):
+        raise ValueError("validation Jacobian must be finite")
+    return rows
 
 
 def _independent_validation(
@@ -792,6 +951,7 @@ def _independent_validation(
     )
     checks.append({"kind": "finite_trajectory", "passed": finite})
     endpoint_error = 0.0
+    endpoint_scaled_error = 0.0
     for index, segment in enumerate(trajectory.segments):
         expected = trajectory.internal_states[index + 1]
         actual = segment.evaluate(segment.t1)
@@ -799,15 +959,24 @@ def _independent_validation(
             endpoint_error,
             max(abs(actual[i] - expected[i]) for i in range(len(actual))),
         )
-    endpoint_passed = endpoint_error <= 64.0 * _EPSILON * max(
-        1.0,
-        max(abs(value) for state in trajectory.internal_states for value in state),
-    )
+        endpoint_scaled_error = max(
+            endpoint_scaled_error,
+            _weighted_norm(
+                [actual[i] - expected[i] for i in range(len(actual))],
+                [
+                    problem.atol[i] + problem.rtol * abs(expected[i])
+                    for i in range(len(expected))
+                ],
+            ),
+        )
+    endpoint_passed = endpoint_scaled_error <= 1.0
     checks.append(
         {
             "kind": "dense_endpoint_consistency",
             "passed": endpoint_passed,
             "max_abs_difference": endpoint_error,
+            "max_scaled_difference": endpoint_scaled_error,
+            "acceptance_threshold": 1.0,
         }
     )
     event_passed = all(item.residual_passed for item in occurrences)
@@ -831,13 +1000,27 @@ def _independent_validation(
     budget = _ValidationBudget(problem.ode_budget.max_validation_evaluations, execution)
     defect_samples: list[dict[str, Any]] = []
     function = problem.function
+    stiff_validation = local_evidence.get("method") == "rosenbrock4"
     expected_defect_samples = 0
     if completed and function is not None and trajectory.segments:
-        maximum = min(len(trajectory.segments), max(1, budget.maximum // 2))
+        if stiff_validation:
+            callbacks_per_sample = (
+                2 if problem.jacobian is not None else len(problem.y0) + 1
+            )
+        else:
+            callbacks_per_sample = 1
+        # Keep half of the validation callback envelope available for caller
+        # invariants and reference solutions, as those checks run after the
+        # dense residual samples.
+        defect_callback_budget = max(1, budget.maximum // 2)
+        maximum = min(
+            len(trajectory.segments),
+            max(1, defect_callback_budget // callbacks_per_sample),
+        )
         indices = _sample_indices(len(trajectory.segments), maximum)
         expected_defect_samples = len(indices)
         for index in indices:
-            if not budget.consume():
+            if not budget.consume(callbacks_per_sample):
                 break
             segment = trajectory.segments[index]
             middle = segment.t0 + 0.5 * (segment.t1 - segment.t0)
@@ -857,22 +1040,42 @@ def _independent_validation(
                 ]
                 step_width = abs(segment.t1 - segment.t0)
                 state_equivalent = [step_width * value for value in difference]
-                defect_samples.append(
-                    {
-                        "time": middle,
-                        "step_width": step_width,
-                        "max_abs_derivative_defect": max(
-                            abs(value) for value in difference
-                        ),
-                        "max_abs_state_equivalent_defect": max(
-                            abs(value) for value in state_equivalent
-                        ),
-                        "derivative_weighted_rms": _weighted_norm(difference, scale),
-                        "scaled_state_equivalent_defect": _weighted_norm(
-                            state_equivalent, scale
-                        ),
-                    }
-                )
+                sample = {
+                    "time": middle,
+                    "step_width": step_width,
+                    "max_abs_derivative_defect": max(
+                        abs(value) for value in difference
+                    ),
+                    "max_abs_state_equivalent_defect": max(
+                        abs(value) for value in state_equivalent
+                    ),
+                    "derivative_weighted_rms": _weighted_norm(difference, scale),
+                    "scaled_state_equivalent_defect": _weighted_norm(
+                        state_equivalent, scale
+                    ),
+                }
+                if stiff_validation:
+                    matrix = _validation_jacobian(
+                        problem, execution, middle, state, rhs
+                    )
+                    correction, correction_residual = linearized_defect_correction(
+                        matrix, segment.t1 - segment.t0, difference
+                    )
+                    sample["max_abs_linearized_defect_correction"] = max(
+                        abs(value) for value in correction
+                    )
+                    sample["scaled_linearized_defect_correction"] = _weighted_norm(
+                        correction, scale
+                    )
+                    sample["linearized_correction_solve_residual"] = correction_residual
+                    sample["acceptance_metric"] = sample[
+                        "scaled_linearized_defect_correction"
+                    ]
+                else:
+                    sample["acceptance_metric"] = sample[
+                        "scaled_state_equivalent_defect"
+                    ]
+                defect_samples.append(sample)
             except _StopOde:
                 raise
             except Exception as error:
@@ -881,8 +1084,8 @@ def _independent_validation(
                 )
     defect_available = expected_defect_samples > 0
     defect_complete = len(defect_samples) == expected_defect_samples and all(
-        "scaled_state_equivalent_defect" in sample
-        and math.isfinite(float(sample["scaled_state_equivalent_defect"]))
+        "acceptance_metric" in sample
+        and math.isfinite(float(sample["acceptance_metric"]))
         and math.isfinite(float(sample["max_abs_derivative_defect"]))
         for sample in defect_samples
     )
@@ -893,9 +1096,20 @@ def _independent_validation(
         ]
         + [0.0]
     )
+    maximum_acceptance_metric = max(
+        [
+            float(sample.get("acceptance_metric", float("inf")))
+            for sample in defect_samples
+        ]
+        + [0.0]
+    )
+    defect_threshold = (
+        _ROSENBROCK_DEFECT_ACCEPTANCE_FACTOR
+        if stiff_validation
+        else _DENSE_DEFECT_ACCEPTANCE_FACTOR
+    )
     defect_passed = (not defect_available) or (
-        defect_complete
-        and maximum_scaled_state_defect <= _DENSE_DEFECT_ACCEPTANCE_FACTOR
+        defect_complete and maximum_acceptance_metric <= defect_threshold
     )
     dense_defect: dict[str, Any] = {
         "available": defect_available,
@@ -924,10 +1138,23 @@ def _independent_validation(
             + [0.0]
         ),
         "max_scaled_state_equivalent_defect": maximum_scaled_state_defect,
-        "acceptance_threshold": _DENSE_DEFECT_ACCEPTANCE_FACTOR,
+        "max_scaled_linearized_defect_correction": max(
+            [
+                float(sample.get("scaled_linearized_defect_correction", 0.0))
+                for sample in defect_samples
+            ]
+            + [0.0]
+        )
+        if stiff_validation
+        else None,
+        "acceptance_metric": maximum_acceptance_metric,
+        "acceptance_model": "implicit_euler_linearized_resolvent"
+        if stiff_validation
+        else "step_width_scaled_derivative_defect",
+        "acceptance_threshold": defect_threshold,
         "finite": defect_complete,
         "passed": defect_passed,
-        "interpretation": "the sampled derivative defect is multiplied by its accepted-step width and compared with the requested state tolerance; this is not a global error bound",
+        "interpretation": "the sampled derivative defect is converted to a state-scale metric and compared with the requested tolerance; the stiff path uses a checked (I-hJ) linearized correction, and neither metric is a global error bound",
     }
     checks.append(
         {
@@ -1140,16 +1367,24 @@ def solve_ode_problem(
     accepted_error_norms: list[float] = []
     accepted_abs_errors: list[float] = []
     rejected_error_norms: list[float] = []
+    linear_solve_failures = 0
+    max_linear_solve_residual = 0.0
+    max_dense_control_metric = 0.0
+    workspace_bytes = 0
     completed = False
     derivative: list[float] | None = None
     event_values: list[float] = []
     last_event_times: list[float | None] = [None for _ in problem.events]
     try:
+        if selected_plan.method == "rosenbrock4":
+            workspace_bytes = rosenbrock4_workspace_bytes(len(y))
+            if workspace_bytes > problem.ode_budget.max_workspace_bytes:
+                raise _StopOde("backend_failure", "maximum_workspace_bytes")
         derivative = execution.rhs(t, y, iteration=0)
         for event in problem.events:
             value = execution.event(event, t, y)
             event_values.append(value)
-        if selected_plan.method == "rk45":
+        if selected_plan.method in ("rk45", "rosenbrock4"):
             h_abs = _select_initial_step(execution, t, y, derivative, direction)
         else:
             h_abs = problem.first_step or min(problem.max_step, abs(bound - t) / 100.0)
@@ -1169,25 +1404,75 @@ def solve_ode_problem(
                 raise _StopOde("stagnation", "minimum_step")
             h = direction * h_abs
             attempts += 1
+            error: list[float] = []
+            error_norm: float | None = None
+            accepted = False
+            proposed_step = h_abs
             if selected_plan.method == "rk45":
                 y_new, derivative_new, error, error_norm, segment = _rk45_attempt(
                     execution, t, y, derivative, h, attempts
                 )
-                if not math.isfinite(error_norm):
-                    raise _StopOde("nonfinite_evaluation", "nonfinite_error_estimate")
-                accepted = error_norm <= 1.0
-                if accepted:
-                    factor = (
-                        _MAX_FACTOR
-                        if error_norm == 0.0
-                        else min(_MAX_FACTOR, _SAFETY * error_norm**-0.2)
+                controller_exponent = -0.2
+                controller_minimum = _MIN_FACTOR
+                controller_maximum = _MAX_FACTOR
+            elif selected_plan.method == "rosenbrock4":
+                try:
+                    (
+                        y_new,
+                        derivative_new,
+                        error,
+                        error_norm,
+                        segment,
+                        linear_residual,
+                    ) = _rosenbrock4_attempt(execution, t, y, derivative, h, attempts)
+                    max_linear_solve_residual = max(
+                        max_linear_solve_residual, linear_residual
                     )
-                    if consecutive_rejections:
-                        factor = min(1.0, factor)
-                    proposed_step = h_abs * factor
-                else:
-                    factor = max(_MIN_FACTOR, _SAFETY * error_norm**-0.2)
-                    proposed_step = h_abs * factor
+                    dense_control_metric, dense_control_residual = (
+                        _rosenbrock_dense_control(execution, segment)
+                    )
+                    max_dense_control_metric = max(
+                        max_dense_control_metric, dense_control_metric
+                    )
+                    max_linear_solve_residual = max(
+                        max_linear_solve_residual, dense_control_residual
+                    )
+                    error_norm = max(
+                        error_norm,
+                        dense_control_metric / _ROSENBROCK_DEFECT_ACCEPTANCE_FACTOR,
+                    )
+                except RosenbrockLinearSolveError as linear_error:
+                    linear_solve_failures += 1
+                    rejected_steps += 1
+                    consecutive_rejections += 1
+                    max_consecutive_rejections = max(
+                        max_consecutive_rejections, consecutive_rejections
+                    )
+                    if (
+                        linear_solve_failures
+                        >= problem.ode_budget.max_linear_solve_failures
+                    ):
+                        raise _StopOde("backend_failure", linear_error.reason) from None
+                    proposed_step = h_abs * _MIN_FACTOR
+                    _append_detailed_trace(
+                        trace,
+                        "step",
+                        iteration=attempts,
+                        evaluation=execution.callback_evaluations,
+                        accepted=False,
+                        data={
+                            "t_start": t,
+                            "attempted_step": h,
+                            "linear_solve_failure": linear_error.reason,
+                            "linear_residual": linear_error.residual,
+                            "proposed_step": direction * proposed_step,
+                        },
+                    )
+                    h_abs = proposed_step
+                    continue
+                controller_exponent = -0.25
+                controller_minimum = 1.0 / 6.0
+                controller_maximum = 5.0
             else:
                 y_new, derivative_new, segment = _rk4_attempt(
                     execution, t, y, derivative, h, attempts
@@ -1196,6 +1481,33 @@ def solve_ode_problem(
                 error_norm = None
                 accepted = True
                 proposed_step = h_abs
+                controller_exponent = 0.0
+                controller_minimum = 1.0
+                controller_maximum = 1.0
+            if selected_plan.method != "rk4":
+                if error_norm is None:
+                    raise RuntimeError("an adaptive step requires an error norm")
+                if not math.isfinite(error_norm):
+                    raise _StopOde("nonfinite_evaluation", "nonfinite_error_estimate")
+                accepted = error_norm <= 1.0
+                if accepted:
+                    factor = (
+                        controller_maximum
+                        if error_norm == 0.0
+                        else min(
+                            controller_maximum,
+                            _SAFETY * error_norm**controller_exponent,
+                        )
+                    )
+                    if consecutive_rejections:
+                        factor = min(1.0, factor)
+                    proposed_step = h_abs * factor
+                else:
+                    factor = max(
+                        controller_minimum,
+                        _SAFETY * error_norm**controller_exponent,
+                    )
+                    proposed_step = h_abs * factor
             if not accepted:
                 if error_norm is None:
                     raise RuntimeError("an adaptive rejection requires an error norm")
@@ -1334,12 +1646,13 @@ def solve_ode_problem(
     except _StopOde as stop:
         status = stop.status
         termination_reason = stop.reason
-    except Exception as error:
+    except Exception as callback_error:
         status = "callback_error"
         termination_reason = "callback_error"
         diagnostics.append(
             NumericalDiagnostic(
-                "callback_error", details={"error_type": type(error).__name__}
+                "callback_error",
+                details={"error_type": type(callback_error).__name__},
             )
         )
     diagnostic = _status_diagnostic(status)
@@ -1371,21 +1684,30 @@ def solve_ode_problem(
     )
     local_evidence = {
         "method": selected_plan.method,
-        "controlled": selected_plan.method == "rk45",
+        "controlled": selected_plan.method in ("rk45", "rosenbrock4"),
         "norm": "weighted_rms",
-        "acceptance_threshold": 1.0 if selected_plan.method == "rk45" else None,
+        "acceptance_threshold": 1.0
+        if selected_plan.method in ("rk45", "rosenbrock4")
+        else None,
         "accepted_steps": accepted_steps,
         "rejected_steps": rejected_steps,
         "attempted_steps": attempts,
         "max_consecutive_rejections": max_consecutive_rejections,
+        "linear_solve_failures": linear_solve_failures,
+        "max_normalized_linear_solve_residual": max_linear_solve_residual
+        if selected_plan.method == "rosenbrock4"
+        else None,
+        "max_dense_control_metric": max_dense_control_metric
+        if selected_plan.method == "rosenbrock4"
+        else None,
         "max_accepted_error_norm": max(accepted_error_norms + [0.0])
-        if selected_plan.method == "rk45"
+        if selected_plan.method in ("rk45", "rosenbrock4")
         else None,
         "max_rejected_error_norm": max(rejected_error_norms + [0.0])
         if rejected_error_norms
         else None,
         "max_accepted_abs_error": max(accepted_abs_errors + [0.0])
-        if selected_plan.method == "rk45"
+        if selected_plan.method in ("rk45", "rosenbrock4")
         else None,
         "passed": completed
         and (
@@ -1477,12 +1799,17 @@ def solve_ode_problem(
         "callback_evaluations": execution.callback_evaluations,
         "rhs_evaluations": execution.rhs_evaluations,
         "event_evaluations": execution.event_evaluations,
+        "jacobian_evaluations": execution.jacobian_evaluations,
+        "finite_difference_jacobian_evaluations": execution.finite_difference_jacobian_evaluations,
         "validation_callback_evaluations": evidence["validation_callback_evaluations"],
         "accepted_steps": accepted_steps,
         "rejected_steps": rejected_steps,
         "stored_internal_points": len(internal_times),
         "computed_dense_segments": len(segments),
         "stored_dense_segments": len(published_segments),
+        "linear_solve_failures": linear_solve_failures,
+        "max_normalized_linear_solve_residual": max_linear_solve_residual,
+        "estimated_workspace_bytes": workspace_bytes,
         "retained_trace_bytes": len(trace.to_json().encode("utf-8")),
     }
     return OdeResult(
