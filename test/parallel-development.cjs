@@ -2018,7 +2018,10 @@ test("native cache heartbeat advances during a synchronous build", {
       heartbeatMilliseconds: 20,
       build(current) {
         const before = readFileSync(join(lock, "heartbeat"), "utf8");
-        Atomics.wait(pause, 0, 0, 250);
+        // Native Windows obtains a process-birth identity through PowerShell;
+        // allow that helper to initialize before requiring its first beat.
+        const heartbeatWait = process.platform === "win32" ? 2000 : 250;
+        Atomics.wait(pause, 0, 0, heartbeatWait);
         const after = readFileSync(join(lock, "heartbeat"), "utf8");
         assert.notEqual(after, before);
         buildNativeCacheFixture({ count: 0 })(current);
