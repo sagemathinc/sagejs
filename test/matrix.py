@@ -40,6 +40,17 @@ assert MatrixSpace(ZZ, 2).one() == identity_matrix(ZZ, 2)
 assert MatrixSpace(ZZ, 2, 3).zero() == zero_matrix(ZZ, 2, 3)
 assert MatrixSpace(ZZ, 2).matrix_space(3, 4) is MatrixSpace(ZZ, 3, 4)
 assert "sparse matrices" in str(MatrixSpace(QQ, 2, sparse=True))
+sparse_matrix = matrix(ZZ, 2, 2, [1, 0, 0, 1], sparse=True)
+assert sparse_matrix.is_sparse()
+assert sparse_matrix.parent() is MatrixSpace(ZZ, 2, sparse=True)
+assert matrix(sparse_matrix, sparse=False) == identity_matrix(ZZ, 2)
+assert not matrix(sparse_matrix, sparse=False).is_sparse()
+try:
+    matrix(ZZ, 1, 1, [1], unsupported=True)
+except TypeError as error:
+    assert "unsupported matrix() option" in str(error)
+else:
+    raise AssertionError("matrix() accepted an unsupported option")
 matrix_basis = MatrixSpace(QQ, 2, 3).basis()
 assert len(matrix_basis) == 6
 assert matrix_basis[1, 2] == matrix(QQ, [[0, 0, 0], [0, 0, 1]])
