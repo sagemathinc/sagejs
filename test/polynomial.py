@@ -61,8 +61,8 @@ assert M.groebner_basis_metadata() == {
     "domain": "GF(p)",
     "characteristic": 65537,
     "order": "degrevlex",
-    "proof": False,
-    "proof_requested": False,
+    "proof": True,
+    "proof_requested": True,
     "deterministic": True,
     "probabilistic": False,
 }
@@ -70,7 +70,7 @@ assert M.groebner_basis_metadata() == {
 MQ = Q.ideal(u * v - 1, u**3 + 7 * v**2)
 MQB = MQ.groebner_basis(algorithm="msolve", proof=False)
 assert repr(MQB) == "[u*v - 1, v^3 + 1/7*u^2, u^3 + 7*v^2]"
-assert MQ.normal_form(u * v - 1, algorithm="msolve") == 0
+assert MQ.normal_form(u * v - 1, algorithm="msolve", proof=False) == 0
 assert MQ.groebner_basis_metadata() == {
     "backend": "msolve:modular-qq-v1",
     "domain": "QQ",
@@ -87,6 +87,31 @@ try:
     assert False
 except NotImplementedError as error:
     assert "transformation provenance" in str(error)
+
+# Proof-required rational `auto` stays on exact FLINT. Disabling the global
+# polynomial preference selects modular msolve for compatible orders, and an
+# explicit per-call flag takes precedence in both directions.
+assert proof.polynomial() is True
+MQ_exact = Q.ideal(u * v - 1, u**3 + 7 * v**2)
+MQ_exact.groebner_basis()
+assert MQ_exact.groebner_basis_metadata()["backend"] == ("flint:bounded-buchberger-v1")
+
+proof.polynomial(False)
+MQ_fast = Q.ideal(u * v - 1, u**3 + 7 * v**2)
+MQ_fast.groebner_basis()
+assert MQ_fast.groebner_basis_metadata()["backend"] == "msolve:modular-qq-v1"
+
+proof.polynomial(True)
+MQ_override = Q.ideal(u * v - 1, u**3 + 7 * v**2)
+MQ_override.groebner_basis(proof=False)
+assert MQ_override.groebner_basis_metadata()["backend"] == ("msolve:modular-qq-v1")
+
+proof.polynomial(False)
+MQ_override.groebner_basis(proof=True)
+assert MQ_override.groebner_basis_metadata()["backend"] == (
+    "flint:bounded-buchberger-v1"
+)
+proof.polynomial(True)
 
 assert repr(I.groebner_fan()) == (
     "Groebner fan of the ideal:\n"

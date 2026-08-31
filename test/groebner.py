@@ -14,8 +14,8 @@ assert finite_ideal.groebner_basis_metadata() == {
     "domain": "GF(p)",
     "characteristic": 65537,
     "order": "degrevlex",
-    "proof": False,
-    "proof_requested": False,
+    "proof": True,
+    "proof_requested": True,
     "deterministic": True,
     "probabilistic": False,
 }
@@ -25,7 +25,7 @@ u, v = rational_ring.gens()
 rational_ideal = rational_ring.ideal(u * v - 1, u**3 + 7 * v**2)
 rational_basis = rational_ideal.groebner_basis(algorithm="msolve", proof=False)
 assert repr(rational_basis) == "[u*v - 1, v^3 + 1/7*u^2, u^3 + 7*v^2]"
-assert rational_ideal.normal_form(u * v - 1, algorithm="msolve") == 0
+assert rational_ideal.normal_form(u * v - 1, algorithm="msolve", proof=False) == 0
 assert rational_ideal.groebner_basis_metadata() == {
     "backend": "msolve:modular-qq-v1",
     "domain": "QQ",
@@ -42,3 +42,22 @@ try:
     raise AssertionError("uncertified msolve QQ mode accepted proof=True")
 except NotImplementedError as error:
     assert "transformation provenance" in str(error)
+
+# The Sage-compatible global polynomial proof preference controls `auto` over
+# QQ, while an explicit per-call flag always takes precedence. The portable
+# contract exercises the modular route; the native polynomial suite also
+# checks proof-required FLINT dispatch.
+assert proof.polynomial() is True
+proof.polynomial(False)
+rational_fast = rational_ring.ideal(u * v - 1, u**3 + 7 * v**2)
+rational_fast.groebner_basis()
+assert rational_fast.groebner_basis_metadata()["backend"] == ("msolve:modular-qq-v1")
+assert rational_fast.groebner_basis_metadata()["proof_requested"] is False
+
+proof.polynomial(True)
+rational_override = rational_ring.ideal(u * v - 1, u**3 + 7 * v**2)
+rational_override.groebner_basis(proof=False)
+assert rational_override.groebner_basis_metadata()["backend"] == (
+    "msolve:modular-qq-v1"
+)
+proof.polynomial(True)

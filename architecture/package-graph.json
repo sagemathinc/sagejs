@@ -92,6 +92,7 @@
         "src/baselib/number_fields.py",
         "src/baselib/padics.py",
         "src/baselib/polynomial.py",
+        "src/baselib/proof.py",
         "src/baselib/real_complex.py",
         "src/baselib/series.py",
         "src/baselib/zeta_data.py",
