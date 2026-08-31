@@ -1,0 +1,128 @@
+{
+  "schema": "sagejs.numerical-p3-backend-evidence/v1",
+  "subject": {
+    "branch_base": "94d2e86ad",
+    "date": "2026-08-31",
+    "classification": "feasibility prototype; not a production capability"
+  },
+  "source": {
+    "name": "cminpack",
+    "revision": "32d343ac33ac297594b5ffac57741e5615b4bb07",
+    "archive_sha256": "9900b69d8ff8822c9d67cecaebb8b83c9c9e2a81a92705b8ac5f2104c459b8ae",
+    "license": "MINPACK permissive notice"
+  },
+  "artifact": {
+    "sha256": "c29b04e2a0ca8940f643b144525a8b882a53aff670880d79ea406f180718065c",
+    "bytes": 69419,
+    "gzip_bytes": 28095,
+    "brotli_bytes": 23355,
+    "initial_memory_bytes": 2097152,
+    "maximum_memory_bytes": 134217728,
+    "toolchain_identity": "241aebde980ebece5038c787b7efd947d3beed73ea5459b3976848121be5d973",
+    "target": "wasm32-wasip1",
+    "floating_point_contract": "off",
+    "imports": [
+      {
+        "module": "sagejs_p3",
+        "name": "evaluate",
+        "kind": "function"
+      }
+    ],
+    "methods": ["cminpack-lmdif", "cminpack-lmder"]
+  },
+  "focused_validation": {
+    "node_tests": {
+      "passed": 7,
+      "failed": 0,
+      "covers": [
+        "finite-difference linear fit",
+        "analytic-Jacobian Rosenbrock residual",
+        "independent residual checks",
+        "callback exception identity and cleanup",
+        "cooperative, shared-memory, evaluation, and elapsed cancellation",
+        "non-finite and malformed callback output",
+        "module-wide non-reentrancy",
+        "250-run allocation and memory stability"
+      ]
+    },
+    "browser": {
+      "engine": "Chromium",
+      "method": "cminpack-lmder",
+      "value": [1, 1],
+      "residual_norm": 0,
+      "residual_evaluations": 21,
+      "jacobian_evaluations": 16,
+      "live_allocations_after": 0
+    }
+  },
+  "portable_smoke": [
+    {
+      "host": "local integration host (not persistent bench-1)",
+      "platform": "linux",
+      "architecture": "x64",
+      "node": "v26.7.0",
+      "method": "cminpack-lmder",
+      "backend_status": 4,
+      "value": [1, 1],
+      "residual_norm": 0,
+      "residual_evaluations": 21,
+      "jacobian_evaluations": 16,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "bench-arm",
+      "platform": "linux",
+      "architecture": "arm64",
+      "node": "v26.5.1",
+      "method": "cminpack-lmder",
+      "backend_status": 4,
+      "value": [1, 1],
+      "residual_norm": 0,
+      "residual_evaluations": 21,
+      "jacobian_evaluations": 16,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "m1",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "node": "v26.5.0",
+      "method": "cminpack-lmder",
+      "backend_status": 4,
+      "value": [1, 1],
+      "residual_norm": 0,
+      "residual_evaluations": 21,
+      "jacobian_evaluations": 16,
+      "live_allocations_after": 0
+    },
+    {
+      "host": "windows",
+      "platform": "win32",
+      "architecture": "x64",
+      "node": "v26.5.1",
+      "method": "cminpack-lmder",
+      "backend_status": 4,
+      "value": [1, 1],
+      "residual_norm": 0,
+      "residual_evaluations": 21,
+      "jacobian_evaluations": 16,
+      "live_allocations_after": 0
+    }
+  ],
+  "exploratory_linux_x64_timing": {
+    "samples": 50,
+    "linear_30_lmdif_median_ms": 0.05143,
+    "rosenbrock_2_lmder_median_ms": 0.10542,
+    "callback_probe_median_ns_per_call": 12.027309,
+    "warning": "Development-host evidence only; not a release performance receipt"
+  },
+  "known_missing_gates": [
+    "full cminpack/MINPACK cross-check executed from the production Wasm artifact",
+    "expanded More-Garbow-Hillstrom least-squares corpus",
+    "allocation-failure injection, fuzzing, corruption campaigns, and sanitizers",
+    "worker-owned browser execution with externally interruptible cancellation",
+    "SEA and relocated npm artifact tests",
+    "persistent Linux x64 host receipt",
+    "authenticated source/artifact/capability receipt chain"
+  ]
+}
