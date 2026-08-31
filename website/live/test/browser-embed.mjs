@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,6 +20,38 @@ assert.ok(chromium, "Chromium not found; set SAGEJS_CHROMIUM");
 const staged = await stageRelease({ appRoot: root });
 const server = await startStaticServer({ directory: staged.target });
 const { port } = server.address();
+const remoteCellModule = `http://127.0.0.1:${port}/embed/v1/sagejs-cell.mjs`;
+const runtimeOrigin = `http://127.0.0.1:${port}`;
+const hostServer = http.createServer((_request, response) => {
+  response.writeHead(200, {
+    "Content-Security-Policy": [
+      "default-src 'none'",
+      `script-src 'nonce-sagejs-test' 'unsafe-eval' 'wasm-unsafe-eval' ${runtimeOrigin}`,
+      `worker-src blob: ${runtimeOrigin}`,
+      `connect-src ${runtimeOrigin}`,
+      `style-src 'unsafe-inline' ${runtimeOrigin}`,
+      `font-src ${runtimeOrigin}`,
+      `img-src data: blob: ${runtimeOrigin}`,
+      "object-src 'none'",
+      "base-uri 'none'",
+    ].join("; "),
+    "Content-Type": "text/html; charset=utf-8",
+  });
+  response.end(`<!doctype html>
+    <html><head><meta charset="utf-8"><title>Unrelated Sage.js host</title></head>
+    <body><main id="cell"></main><script type="module" nonce="sagejs-test">
+      import { createSageCell } from ${JSON.stringify(remoteCellModule)};
+      window.crossOriginCell = await createSageCell(document.querySelector('#cell'), {
+        autoEvaluate: true,
+        source: '2 + 2',
+      });
+    </script></body></html>`);
+});
+await new Promise((resolve, reject) => {
+  hostServer.once("error", reject);
+  hostServer.listen(0, "127.0.0.1", resolve);
+});
+const hostPort = hostServer.address().port;
 const chrome = spawn(chromium, [
   "--headless=new",
   "--no-sandbox",
@@ -58,6 +91,8 @@ try {
   let id = 0;
   const pending = new Map();
   const exceptions = [];
+  const browserConsole = [];
+  const networkFailures = [];
   socket.addEventListener("message", ({ data }) => {
     const message = JSON.parse(data);
     if (message.id !== undefined) {
@@ -72,6 +107,14 @@ try {
           message.params.exceptionDetails.text,
       );
     }
+    if (message.method === "Runtime.consoleAPICalled") {
+      browserConsole.push(
+        message.params.args.map((argument) => argument.value ?? argument.description).join(" "),
+      );
+    }
+    if (message.method === "Network.loadingFailed") {
+      networkFailures.push(`${message.params.errorText}: ${message.params.blockedReason ?? ""}`);
+    }
   });
   const command = (method, params = {}) => new Promise((resolve, reject) => {
     id += 1;
@@ -79,6 +122,7 @@ try {
     socket.send(JSON.stringify({ id, method, params }));
   });
   await command("Runtime.enable");
+  await command("Network.enable");
   await command("Page.enable");
 
   async function evaluate(expression) {
@@ -106,7 +150,7 @@ try {
       status: document.querySelector('sagejs-cell')?.shadowRoot?.querySelector('.status')?.textContent
     })`);
     throw new Error(
-      `timed out waiting for ${expression}\n${snapshot}\n${exceptions.join("\n")}\n${chromeErrors}`,
+      `timed out waiting for ${expression}\n${snapshot}\n${exceptions.join("\n")}\n${browserConsole.join("\n")}\n${networkFailures.join("\n")}\n${chromeErrors}`,
     );
   }
 
@@ -182,9 +226,40 @@ try {
   await waitFor(
     `document.querySelector('sagejs-cell')?.shadowRoot?.querySelector('.status')?.dataset.state === 'disposed'`,
   );
+
+  await command("Page.navigate", {
+    url: `http://127.0.0.1:${hostPort}/course-page`,
+  });
+  await waitFor(
+    `window.crossOriginCell?.shadowRoot?.querySelector('.result-output')?.textContent === '4'`,
+  );
+  assert.equal(await evaluate("crossOriginIsolated"), false);
+  assert.ok(
+    await evaluate(
+      `performance.getEntriesByType('resource').some((entry) => entry.name.startsWith(${JSON.stringify(`http://127.0.0.1:${port}/`)}))`,
+    ),
+    "the unrelated host should load the Sage.js runtime from the execution origin",
+  );
+  await evaluate(`(() => {
+    window.crossOriginCell.source = ${JSON.stringify(`from IPython.display import display
+
+@interact
+def powers(n=slider(1, 5, 1, default=2, label='power')):
+    display((x^n).derivative(x))`)};
+    return window.crossOriginCell.run();
+  })()`);
+  await waitFor(
+    `Boolean(window.crossOriginCell?.shadowRoot?.querySelector('[role=slider]')) && ` +
+      `Boolean(window.crossOriginCell?.shadowRoot?.querySelector('.katex'))`,
+  );
+  await evaluate("window.crossOriginCell.dispose()");
+  await waitFor(
+    `window.crossOriginCell?.shadowRoot?.querySelector('.status')?.dataset.state === 'disposed'`,
+  );
   assert.deepEqual(exceptions, []);
   socket.close();
 } finally {
   chrome.kill("SIGTERM");
+  await new Promise((resolve) => hostServer.close(resolve));
   await new Promise((resolve) => server.close(resolve));
 }

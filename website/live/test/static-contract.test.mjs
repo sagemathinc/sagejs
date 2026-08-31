@@ -54,6 +54,8 @@ test("Cloudflare policy isolates a deliberately dynamic, credential-free origin"
   assert.match(headers, /connect-src 'self'/);
   assert.match(headers, /frame-ancestors 'none'/);
   assert.match(headers, /\/assets\//);
+  assert.match(headers, /Access-Control-Allow-Origin: \*/);
+  assert.match(headers, /Cross-Origin-Resource-Policy: cross-origin/);
   const privacy = await read("privacy.html");
   assert.match(privacy, /dedicated origin with no authentication cookies/);
   assert.match(privacy, /deliberately permits dynamic evaluation and WebAssembly/);
@@ -85,6 +87,10 @@ test("embeddable cell has a transport-neutral, instance-scoped contract", async 
     assert.match(component, new RegExp(`async ${operation}\\(|${operation}\\(\\) \\{`));
   }
   assert.doesNotMatch(component, /https?:\/\//);
+  const runtime = await read("runtime-api.mjs");
+  assert.match(runtime, /workerBootstrap/);
+  assert.match(runtime, /pendingMessages/);
+  assert.match(runtime, /assetBase\.origin !== globalThis\.location\.origin/);
   const declarative = await read("embed/v1/index.html");
   assert.match(declarative, /<sagejs-cell/);
   assert.match(declarative, /type="text\/x-sage"/);

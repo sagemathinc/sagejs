@@ -27,9 +27,12 @@ Implementation is active. As of 2026-08-31:
   used by the full app and a provisional Shadow DOM `<sagejs-cell>`/ESM
   factory. Declarative and factory-created host prototypes qualify independent
   lifecycle, Sage/Python mode construction, rich output, KaTeX, and a live Sage
-  `@interact` slider in Chromium. Cross-origin loading, the sandboxed iframe,
-  shared-session pooling, and the broader non-isolated/browser matrix remain
-  open before the `/embed/v1/` interface is declared stable.
+  `@interact` slider in Chromium. An unrelated strict-CSP host also loads the
+  public component/runtime without COOP or COEP; a local Blob module bootstrap
+  explicitly handles both remote worker levels, and the edge serves only the
+  required credential-free assets with CORS/CORP. The sandboxed iframe,
+  shared-session pooling, complete capability comparison, and broader browser
+  matrix remain open before the `/embed/v1/` interface is declared stable.
 - P7's kernel-side Sage compatibility layer is implemented and covered by
   executable PREP and Sage differential corpora. Sage-global `@interact`,
   `input_box`, `slider`, `range_slider`, `checkbox`, `selector`,

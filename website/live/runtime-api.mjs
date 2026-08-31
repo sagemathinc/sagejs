@@ -2,6 +2,73 @@ let runtimePromise;
 let widgetRuntimePromise;
 const resourceRoot = new URL("./", import.meta.url);
 
+function workerBootstrap(target) {
+  const source = `
+const pendingMessages = [];
+globalThis.onmessage = (event) => pendingMessages.push(event);
+const NativeWorker = globalThis.Worker;
+globalThis.Worker = class SageJsCrossOriginWorker extends NativeWorker {
+  constructor(url, options) {
+    const target = new URL(String(url));
+    if (target.origin === globalThis.location.origin) {
+      super(target, options);
+      return;
+    }
+    const module = new Blob([
+      "import " + JSON.stringify(target.href) + ";\\n",
+    ], { type: "text/javascript" });
+    const objectUrl = URL.createObjectURL(module);
+    super(objectUrl, options);
+    const terminate = this.terminate.bind(this);
+    this.terminate = () => {
+      terminate();
+      URL.revokeObjectURL(objectUrl);
+    };
+  }
+};
+await import(${JSON.stringify(target.href)});
+const receiveMessage = globalThis.onmessage;
+if (typeof receiveMessage !== "function") {
+  throw new Error("Sage.js kernel worker did not install a message handler");
+}
+for (const event of pendingMessages) receiveMessage.call(globalThis, event);
+`;
+  const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+  return Object.freeze({ url, revoke: () => URL.revokeObjectURL(url) });
+}
+
+function createSageFactory(kernel, assetBase) {
+  return async (options = {}) => {
+    let bootstrap;
+    if (
+      options.worker === undefined &&
+      assetBase.origin !== globalThis.location.origin
+    ) {
+      bootstrap = workerBootstrap(new URL("kernel-worker.mjs", assetBase));
+      options = { ...options, worker: bootstrap.url };
+    }
+    try {
+      const session = await kernel.createSage(options);
+      if (!bootstrap) return session;
+      const close = session.close.bind(session);
+      let closed = false;
+      session.close = async () => {
+        if (closed) return;
+        closed = true;
+        try {
+          await close();
+        } finally {
+          bootstrap.revoke();
+        }
+      };
+      return session;
+    } catch (error) {
+      bootstrap?.revoke();
+      throw error;
+    }
+  };
+}
+
 export function requestCredentials() {
   // Managed CoCalc apps authenticate same-origin asset requests with their
   // session cookie. This is harmless on the public, cookie-free deployment
@@ -57,7 +124,12 @@ export function loadSageRuntime() {
       import(new URL("kernel.mjs", assetBase)),
       import(new URL("plotly-renderer.mjs", assetBase)),
     ]);
-    return Object.freeze({ ...kernel, ...renderer, version });
+    return Object.freeze({
+      ...kernel,
+      ...renderer,
+      createSage: createSageFactory(kernel, assetBase),
+      version,
+    });
   })();
   return runtimePromise;
 }

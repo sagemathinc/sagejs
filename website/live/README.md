@@ -108,10 +108,29 @@ events from the element. Removing a cell disposes its worker and widget views.
 
 `browser-embed.mjs` qualifies both declarative and factory-created cells,
 including Shadow DOM CodeMirror/output, independent lifecycle, KaTeX, and a
-live Sage `@interact` slider. The public cross-origin loader, iframe transport,
-shared-session/pooling policy, and non-isolated browser matrix are still under
-implementation; do not yet treat the candidate URL as a frozen compatibility
-contract or copy it to unrelated origins.
+live Sage `@interact` slider. It also loads the module and immutable runtime
+from a second origin into a deliberately non-isolated course page. A Blob
+module bootstrap handles both the kernel worker and its nested compiler worker;
+the public runtime responses permit credential-free CORS and cross-origin
+resource use.
+
+A strict host CSP must explicitly allow the pinned Sage.js asset origin. The
+smallest currently qualified shape is equivalent to:
+
+```text
+script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://app.sagejs.org
+worker-src blob: https://app.sagejs.org
+connect-src https://app.sagejs.org
+style-src 'self' 'unsafe-inline' https://app.sagejs.org
+font-src https://app.sagejs.org
+img-src data: blob: https://app.sagejs.org
+```
+
+The host does not need COOP or COEP for basic execution and standard widgets;
+the component reports `crossOriginIsolated: false` in that mode. The iframe
+transport, shared-session/pooling policy, complete isolated-versus-fallback
+capability table, and Firefox/WebKit matrix remain under implementation. Do
+not yet treat the candidate URL as a frozen compatibility contract.
 
 ## Product behavior
 
