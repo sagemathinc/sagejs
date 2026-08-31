@@ -112,6 +112,15 @@
       "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
     },
     {
+      "id": "bfgs-unresolved-variable-scale",
+      "operation": "minimize",
+      "formula": "unresolved-variable-scale",
+      "method": "bfgs",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
+    },
+    {
       "id": "bounded-bfgs-envelope",
       "operation": "minimize",
       "formula": "bounded-method-envelope",
@@ -169,6 +178,30 @@
       "dimension": 2,
       "initial": [0.0, 0.0],
       "expect": { "success": true, "diagnostics": ["ill_conditioned"], "validation_residual_max": 1e-6 }
+    },
+    {
+      "id": "least-squares-residual-scale-large",
+      "operation": "least-squares",
+      "formula": "scaled-residual-large",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": true, "value": [1.0], "distance_max": 1e-8, "objective_available": false, "validation_residual_max": 1e-6 }
+    },
+    {
+      "id": "least-squares-residual-scale-small",
+      "operation": "least-squares",
+      "formula": "scaled-residual-small",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": true, "value": [1.0], "distance_max": 1e-8, "objective_available": false, "validation_residual_max": 1e-6 }
+    },
+    {
+      "id": "least-squares-unresolved-variable-scale",
+      "operation": "least-squares",
+      "formula": "least-squares-unresolved-variable-scale",
+      "dimension": 1,
+      "initial": [0.0],
+      "expect": { "success": false, "status": "converged", "diagnostics": ["validation_failed"] }
     },
     {
       "id": "least-squares-exponential-decay",

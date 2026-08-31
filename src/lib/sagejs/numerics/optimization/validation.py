@@ -14,11 +14,12 @@ from ._core import (
     StopExecution,
     infinity_norm,
     maximum_residual_dimension,
-    normal_equations,
     normalized_bounds,
     projected_gradient,
+    scaled_normal_equations,
+    scaled_sum_of_squares,
     scalar,
-    squared_norm,
+    stable_norm,
     status_diagnostic,
     vector,
 )
@@ -26,6 +27,14 @@ from ._core import (
 _MACHINE_EPSILON = 2.220446049250313e-16
 _FINITE_DIFFERENCE_STEP = 6.055454452393343e-06
 _SECOND_ORDER_STEP = _MACHINE_EPSILON**0.25
+
+
+def _checked_validation_derivative(value: float) -> float:
+    if not math.isfinite(value):
+        raise StopExecution(
+            "invalid_problem", "validation_derivative_outside_binary64_range"
+        )
+    return value
 
 
 def _independent_bound_gradient(
@@ -62,13 +71,15 @@ def _independent_bound_gradient(
             right_one_value = scalar(execution.call("validation", function, right_one))
             right_two_value = scalar(execution.call("validation", function, right_two))
             answer.append(
-                (
-                    left_two_value
-                    - 8.0 * left_one_value
-                    + 8.0 * right_one_value
-                    - right_two_value
+                _checked_validation_derivative(
+                    (
+                        left_two_value
+                        - 8.0 * left_one_value
+                        + 8.0 * right_one_value
+                        - right_two_value
+                    )
+                    / (12.0 * step)
                 )
-                / (12.0 * step)
             )
         elif right_room > 0.0:
             actual = min(step, 0.5 * right_room)
@@ -79,8 +90,10 @@ def _independent_bound_gradient(
             right_one_value = scalar(execution.call("validation", function, right_one))
             right_two_value = scalar(execution.call("validation", function, right_two))
             answer.append(
-                (-3.0 * objective + 4.0 * right_one_value - right_two_value)
-                / (2.0 * actual)
+                _checked_validation_derivative(
+                    (-3.0 * objective + 4.0 * right_one_value - right_two_value)
+                    / (2.0 * actual)
+                )
             )
         elif left_room > 0.0:
             actual = min(step, 0.5 * left_room)
@@ -91,8 +104,10 @@ def _independent_bound_gradient(
             left_one_value = scalar(execution.call("validation", function, left_one))
             left_two_value = scalar(execution.call("validation", function, left_two))
             answer.append(
-                (3.0 * objective - 4.0 * left_one_value + left_two_value)
-                / (2.0 * actual)
+                _checked_validation_derivative(
+                    (3.0 * objective - 4.0 * left_one_value + left_two_value)
+                    / (2.0 * actual)
+                )
             )
         else:
             answer.append(0.0)
@@ -140,13 +155,15 @@ def _independent_jacobian(
         )
         columns.append(
             [
-                (
-                    left_two_value[row]
-                    - 8.0 * left_one_value[row]
-                    + 8.0 * right_one_value[row]
-                    - right_two_value[row]
+                _checked_validation_derivative(
+                    (
+                        left_two_value[row]
+                        - 8.0 * left_one_value[row]
+                        + 8.0 * right_one_value[row]
+                        - right_two_value[row]
+                    )
+                    / (12.0 * step)
                 )
-                / (12.0 * step)
                 for row in range(residual_count)
             ]
         )
@@ -195,6 +212,7 @@ def _scalar_minimum_validation(
     left_room = max(0.0, point - lower)
     right_room = max(0.0, upper - point)
     nominal_step = _FINITE_DIFFERENCE_STEP * max(1.0, abs(point))
+    probe_resolved = False
     if at_lower:
         step = min(nominal_step, right_room)
         right = point + step
@@ -202,12 +220,14 @@ def _scalar_minimum_validation(
         derivative = (
             (right_value - objective) / (right - point) if right > point else 0.0
         )
+        probe_resolved = right > point and right_value != objective
         kkt_residual = max(0.0, -derivative)
     elif at_upper:
         step = min(nominal_step, left_room)
         left = point - step
         left_value = scalar(execution.call("validation", function, left))
         derivative = (objective - left_value) / (point - left) if left < point else 0.0
+        probe_resolved = left < point and left_value != objective
         kkt_residual = max(0.0, derivative)
     else:
         step = min(nominal_step, 0.5 * left_room, 0.5 * right_room)
@@ -222,10 +242,12 @@ def _scalar_minimum_validation(
         left_value = scalar(execution.call("validation", function, left))
         right_value = scalar(execution.call("validation", function, right))
         derivative = (right_value - left_value) / (2.0 * step)
+        probe_resolved = left_value != objective or right_value != objective
         kkt_residual = abs(derivative)
+    derivative = _checked_validation_derivative(derivative)
     threshold = max(1.0e-6, float(problem.tolerances["gtol"]) * 10.0)
     feasible = lower <= point <= upper
-    stationary = kkt_residual <= threshold
+    stationary = kkt_residual <= threshold and probe_resolved
     return NumericalValidation(
         "validated_approximate" if feasible and stationary else "indeterminate",
         feasible and stationary,
@@ -238,11 +260,12 @@ def _scalar_minimum_validation(
             },
             {
                 "kind": "projected_stationarity",
-                "passed": stationary,
+                "passed": kkt_residual <= threshold,
                 "value": kkt_residual,
                 "threshold": threshold,
                 "finite_difference_derivative": derivative,
             },
+            {"kind": "objective_probe_resolution", "passed": probe_resolved},
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
         residual=kkt_residual,
@@ -270,7 +293,9 @@ def _minimize_validation(
     projected = projected_gradient(point, gradient, lower, upper)
     residual = infinity_norm(projected)
     threshold = max(2.0e-6, float(problem.tolerances["gtol"]) * 20.0)
-    local_decrease = 0.0
+    maximum_relative_local_decrease = 0.0
+    movable_probe_count = 0
+    resolved_probe = False
     for index in range(len(point)):
         step = 6.055454452393343e-06 * max(1.0, abs(point[index]))
         for direction in (-1.0, 1.0):
@@ -285,15 +310,24 @@ def _minimize_validation(
                     candidate[item] = min(float(upper_value), candidate[item])
             if candidate == point:
                 continue
+            movable_probe_count += 1
             candidate_objective = scalar(
                 execution.call("validation", function, candidate)
             )
-            local_decrease = max(local_decrease, objective - candidate_objective)
-    local_threshold = max(
-        1.0e-12 * max(1.0, abs(objective)),
-        float(problem.tolerances["ftol"]) * 10.0,
-    )
-    locally_minimal = local_decrease <= local_threshold
+            resolved_probe = resolved_probe or candidate_objective != objective
+            comparison_scale = max(abs(objective), abs(candidate_objective))
+            if comparison_scale > 0.0:
+                relative_decrease = max(
+                    0.0,
+                    objective / comparison_scale
+                    - candidate_objective / comparison_scale,
+                )
+                maximum_relative_local_decrease = max(
+                    maximum_relative_local_decrease, relative_decrease
+                )
+    local_threshold = max(1.0e-12, float(problem.tolerances["ftol"]) * 10.0)
+    locally_minimal = maximum_relative_local_decrease <= local_threshold
+    numerically_resolved = movable_probe_count == 0 or resolved_probe
     feasible = True
     for index in range(len(point)):
         lower_value = lower[index]
@@ -303,7 +337,7 @@ def _minimize_validation(
         if upper_value is not None and point[index] > float(upper_value) + 1.0e-12:
             feasible = False
     gradient_stationary = residual <= threshold
-    stationary = gradient_stationary and locally_minimal
+    stationary = gradient_stationary and locally_minimal and numerically_resolved
     return NumericalValidation(
         "validated_approximate" if feasible and stationary else "indeterminate",
         feasible and stationary,
@@ -319,8 +353,13 @@ def _minimize_validation(
             {
                 "kind": "coordinate_local_minimum",
                 "passed": locally_minimal,
-                "maximum_sampled_decrease": local_decrease,
+                "maximum_relative_sampled_decrease": maximum_relative_local_decrease,
                 "threshold": local_threshold,
+            },
+            {
+                "kind": "objective_probe_resolution",
+                "passed": numerically_resolved,
+                "movable_probe_count": movable_probe_count,
             },
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
@@ -376,13 +415,15 @@ def _least_squares_validation(
     jacobian = _independent_jacobian(
         execution, function, point, len(residual_vector), maximum
     )
-    _, gradient = normal_equations(jacobian, residual_vector)
+    _, gradient, normalization_scale, scale_resolved = scaled_normal_equations(
+        jacobian, residual_vector
+    )
     stationarity = infinity_norm(gradient)
-    cost = 0.5 * squared_norm(residual_vector)
-    residual_norm = math.sqrt(2.0 * cost)
+    residual_norm = stable_norm(residual_vector)
     threshold = max(2.0e-6, float(problem.tolerances["gtol"]) * 20.0)
-    maximum_local_decrease = 0.0
+    maximum_relative_local_decrease = 0.0
     minimum_coordinate_curvature = float("inf")
+    objective_probe_resolved = False
     for index in range(len(point)):
         step = _SECOND_ORDER_STEP * max(1.0, abs(point[index]))
         left = list(point)
@@ -399,17 +440,42 @@ def _least_squares_validation(
             len(residual_vector),
             maximum=maximum,
         )
-        left_cost = 0.5 * squared_norm(left_residual)
-        right_cost = 0.5 * squared_norm(right_residual)
-        maximum_local_decrease = max(
-            maximum_local_decrease, cost - left_cost, cost - right_cost
+        base_scale, base_sum = scaled_sum_of_squares(residual_vector)
+        left_scale, left_sum = scaled_sum_of_squares(left_residual)
+        right_scale, right_sum = scaled_sum_of_squares(right_residual)
+        comparison_scale = max(base_scale, left_scale, right_scale)
+        if comparison_scale == 0.0:
+            base_cost = 0.0
+            left_cost = 0.0
+            right_cost = 0.0
+        else:
+            base_ratio = base_scale / comparison_scale
+            left_ratio = left_scale / comparison_scale
+            right_ratio = right_scale / comparison_scale
+            base_cost = 0.5 * base_ratio * base_ratio * base_sum
+            left_cost = 0.5 * left_ratio * left_ratio * left_sum
+            right_cost = 0.5 * right_ratio * right_ratio * right_sum
+        objective_probe_resolved = objective_probe_resolved or (
+            left_cost != base_cost or right_cost != base_cost
         )
-        curvature = (left_cost - 2.0 * cost + right_cost) / (step * step)
+        if base_cost > 0.0:
+            maximum_relative_local_decrease = max(
+                maximum_relative_local_decrease,
+                max(0.0, (base_cost - left_cost) / base_cost),
+                max(0.0, (base_cost - right_cost) / base_cost),
+            )
+        curvature = (left_cost - 2.0 * base_cost + right_cost) / (step * step)
         minimum_coordinate_curvature = min(minimum_coordinate_curvature, curvature)
-    value_tolerance = 128.0 * _MACHINE_EPSILON * max(1.0, abs(cost))
-    stationary = stationarity <= threshold
-    locally_minimal = maximum_local_decrease <= value_tolerance
-    passed = stationary and locally_minimal
+    relative_value_tolerance = 128.0 * _MACHINE_EPSILON
+    stationary = scale_resolved and stationarity <= threshold
+    locally_minimal = maximum_relative_local_decrease <= relative_value_tolerance
+    norm_representable = residual_norm is not None
+    passed = (
+        stationary
+        and locally_minimal
+        and objective_probe_resolved
+        and norm_representable
+    )
     return NumericalValidation(
         "validated_approximate" if passed else "indeterminate",
         passed,
@@ -419,17 +485,23 @@ def _least_squares_validation(
                 "passed": stationary,
                 "value": stationarity,
                 "threshold": threshold,
+                "normalization_scale": normalization_scale,
+                "scale_resolved": scale_resolved,
             },
             {
                 "kind": "coordinate_second_order_minimum",
                 "passed": locally_minimal,
-                "maximum_sampled_decrease": maximum_local_decrease,
-                "value_tolerance": value_tolerance,
+                "maximum_relative_sampled_decrease": maximum_relative_local_decrease,
+                "relative_value_tolerance": relative_value_tolerance,
                 "minimum_sampled_curvature": minimum_coordinate_curvature,
             },
             {
+                "kind": "objective_probe_resolution",
+                "passed": objective_probe_resolved,
+            },
+            {
                 "kind": "residual_norm",
-                "passed": math.isfinite(residual_norm),
+                "passed": norm_representable,
                 "value": residual_norm,
             },
         ],

@@ -39,11 +39,33 @@ systems use an independent residual; and least squares uses an independent
 five-point Jacobian plus local second-order probes. The latter prevents a zero
 Gauss-Newton gradient at a stationary maximum from becoming a successful fit.
 
+Least-squares norms, comparisons, normal equations, stationarity, and local
+second-order probes use a LAPACK-style scaled sum of squares and a common
+residual/Jacobian normalization. Multiplying every residual by `1e200` or
+`1e-200` therefore does not change the computed parameter or silently overflow
+or underflow the solver's convergence evidence. If a nonzero squared residual
+is outside binary64's representable range, `objective` and `cost` are `None`;
+the receipt retains finite `residual_scale`, `scaled_sum_of_squares`, and a
+finite residual norm when that norm itself is representable.
+
+An unconstrained, box, or least-squares minimum also requires its independent
+coordinate probes to resolve some objective variation unless every coordinate
+is fixed.
+If variable scaling makes all configured local probes numerically identical,
+validation returns `indeterminate` instead of interpreting rounded-zero finite
+differences as proof of a local minimum. Rescaling variables is required before
+such a problem can receive a success result.
+
 Callback exceptions, non-finite results, nonnumeric scalar/vector/matrix
 results, cancellation, elapsed time, evaluation exhaustion, and trace limits
 become structured statuses and diagnostics. A callback or budget failure that
 occurs during validation replaces a nominal `converged` status. The exception
 object and message are not serialized into the result.
+
+Derivative or normal-equation scale ratios that lose nonzero binary64 values,
+and norms that cannot be represented even in scaled form, fail closed with an
+`invalid_problem` stop reason rather than entering trace or result JSON as
+infinities.
 
 Hard allocation ceilings are part of the public envelope:
 
