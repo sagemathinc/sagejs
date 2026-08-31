@@ -387,7 +387,10 @@ def lu(
     plan = _plan(problem, "partial_pivot_lu", "stable general dense factorization")
     record = _start_trace(problem, plan.method)
     started = time.monotonic()
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         factorization = lu_factorize(
             dense, pivot_threshold=pivot_threshold, check=check
@@ -443,7 +446,10 @@ def qr(
     plan = _plan(problem, method, "stable orthogonal dense factorization")
     record = _start_trace(problem, plan.method)
     started = time.monotonic()
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         factorization = qr_factorize(
             dense,
@@ -499,7 +505,10 @@ def cholesky(
     plan = _plan(problem, "cholesky", "requested symmetric positive-definite path")
     record = _start_trace(problem, plan.method)
     started = time.monotonic()
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         factorization = cholesky_factorize(
             dense, symmetry_tolerance=symmetry_tolerance, check=check
@@ -730,7 +739,10 @@ def solve(
                 "right_side_rows": dense_right.nrows,
             },
         )
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         check()
         factorization, solve_correction = _select_solver(dense, selected, check)
@@ -1004,7 +1016,10 @@ def least_squares(
                 "right_side_rows": dense_right.nrows,
             },
         )
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         spectral = _spectral_diagnostics(
             dense, record, max_sweeps=max_sweeps, check=check
@@ -1138,7 +1153,10 @@ def _rank_or_condition(
     )
     record = _start_trace(problem, plan.method)
     started = time.monotonic()
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         spectral = _spectral_diagnostics(
             dense, record, max_sweeps=max_sweeps, check=check
@@ -1284,7 +1302,10 @@ def determinant(
     started = time.monotonic()
     if dense.nrows != dense.ncols:
         return _failure_result(problem, plan, record, started, "matrix_not_square")
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         factorization = lu_factorize(dense, check=check)
         validation = validate_lu(dense, factorization, check=check)
@@ -1403,7 +1424,10 @@ def inverse(
     started = time.monotonic()
     if dense.nrows != dense.ncols:
         return _failure_result(problem, plan, record, started, "matrix_not_square")
-    check = lambda: _check_execution(problem, started, cancel)
+
+    def check() -> None:
+        _check_execution(problem, started, cancel)
+
     try:
         factorization = lu_factorize(dense, check=check)
         spectral = _spectral_diagnostics(

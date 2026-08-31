@@ -3,8 +3,8 @@
 from .diagnostics import SingularValueDiagnostics, singular_value_diagnostics
 from .factorizations import (
     CholeskyFactorization,
-    LUFactorization,
     LinearAlgebraError,
+    LUFactorization,
     QRFactorization,
 )
 from .operations import (

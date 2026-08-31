@@ -204,7 +204,7 @@ def validate_nodes_values(
         raise ValueError("nodes and values must have the same length")
     if len(x) < minimum:
         raise ValueError("at least " + str(minimum) + " nodes are required")
-    pairs = sorted(zip(x, y), key=lambda pair: pair[0])
+    pairs = sorted(zip(x, y, strict=True), key=lambda pair: pair[0])
     sorted_x = [pair[0] for pair in pairs]
     sorted_y = [pair[1] for pair in pairs]
     for index in range(1, len(sorted_x)):
@@ -366,7 +366,7 @@ class ApproximationResult(NumericalResult):
 
     def __init__(
         self, *args: Any, model: Mapping[str, Any] | None = None, **kwargs: Any
-    ):
+    ) -> None:
         detached = materialize_json({} if model is None else model)
         if not isinstance(detached, dict):
             raise TypeError("approximation model must be a mapping")

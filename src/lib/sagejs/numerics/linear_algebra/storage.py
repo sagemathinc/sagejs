@@ -9,7 +9,7 @@ Sage.js.  A future packed backend can marshal the single flat entry sequence to
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from typing import Any
 
 
@@ -94,7 +94,7 @@ class DenseVector:
     def __len__(self) -> int:
         return self.size
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[float]:
         return iter(self._entries)
 
     def __repr__(self) -> str:

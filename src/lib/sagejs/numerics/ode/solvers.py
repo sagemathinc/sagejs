@@ -566,7 +566,7 @@ def ode_problem(
 
 def _weighted_norm(values: Sequence[float], scale: Sequence[float]) -> float:
     total = 0.0
-    for value, weight in zip(values, scale):
+    for value, weight in zip(values, scale, strict=True):
         ratio = value / weight
         total += ratio * ratio
     return math.sqrt(total / len(values))
@@ -714,9 +714,10 @@ def _locate_event(
         root = left
         state = segment.evaluate(left)
         value = fleft
-        for iterations in range(
+        for iteration in range(
             1, execution.problem.ode_budget.max_event_iterations + 1
         ):
+            iterations = iteration
             execution.check()
             middle = left + 0.5 * (right - left)
             state = segment.evaluate(middle)

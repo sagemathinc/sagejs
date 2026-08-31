@@ -10,9 +10,9 @@ from ..diagnostics import NumericalDiagnostic
 from ..model import NumericalProblem, NumericalValidation
 from ..trace import NumericalTrace
 from ._core import (
+    MAX_DENSE_DIMENSION,
     CallbackFailure,
     Execution,
-    MAX_DENSE_DIMENSION,
     OptimizationResult,
     StopExecution,
     dot,

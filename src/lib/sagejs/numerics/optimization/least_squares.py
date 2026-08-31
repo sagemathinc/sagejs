@@ -10,10 +10,10 @@ from ..diagnostics import NumericalDiagnostic
 from ..model import NumericalProblem, NumericalValidation
 from ..trace import NumericalTrace
 from ._core import (
-    CallbackFailure,
-    Execution,
     MAX_DENSE_DIMENSION,
     MAX_FIT_OBSERVATIONS,
+    CallbackFailure,
+    Execution,
     OptimizationResult,
     StopExecution,
     finite_difference_jacobian,
