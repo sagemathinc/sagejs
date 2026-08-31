@@ -24,6 +24,17 @@
       }
     },
     {
+      "id": "cminpack",
+      "ownershipDomain": "cminpack-levenberg-marquardt",
+      "artifact": "cminpack.wasm",
+      "eager": false,
+      "memory": {
+        "pageBytes": 65536,
+        "initialPages": 32,
+        "maximumPages": 2048
+      }
+    },
+    {
       "id": "algebraic",
       "ownershipDomain": "flint-gmp-mpfr-arb-algebraic",
       "artifact": "flint-algebraic.wasm",
@@ -151,6 +162,16 @@
         "maximumCompressedDelta": {
           "gzipBytes": 75000,
           "brotliBytes": 60000
+        }
+      },
+      {
+        "id": "cminpack",
+        "kind": "specialist",
+        "dependencies": ["eager-core"],
+        "assets": ["cminpack.wasm", "numerical-backend.mjs"],
+        "maximumCompressedDelta": {
+          "gzipBytes": 35000,
+          "brotliBytes": 30000
         }
       },
       {
@@ -313,6 +334,7 @@
     "katex/katex.min.css",
     "katex/katex.min.js",
     "native-kernels/index.json",
+    "numerical-backend.mjs",
     "numpy-ts.mjs",
     "kernel-flint-resource-backend.mjs",
     "wasm-pack-loader.mjs",

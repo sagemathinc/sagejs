@@ -159,6 +159,8 @@ function outputWitnesses(root = repositoryRoot) {
     "dist/tools/kernel.js",
     "dist/module-cache",
     "dist/runtime-cache/manifest.json",
+    "dist/numerical/backend.cjs",
+    "dist/numerical/cminpack.wasm",
   ];
   if (existsSync(join(root, "packages/flint/build/generated-ffi/sagejs_flint_ffi.node"))) {
     witnesses.push("dist/native-kernels/index.json");

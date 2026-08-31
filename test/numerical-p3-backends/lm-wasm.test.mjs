@@ -7,6 +7,7 @@ import { test } from "node:test";
 import {
   NumericalBackendCapabilityError,
   createCminpackBackend,
+  createCminpackBackendSync,
   solveLeastSquaresWithFallback,
 } from
   "../../packages/flint-wasm/numerical/index.mjs";
@@ -19,6 +20,19 @@ const artifact = new URL(
 async function backend() {
   return createCminpackBackend(await readFile(artifact));
 }
+
+test("the synchronous runtime factory preserves the qualified ABI", async () => {
+  const solver = createCminpackBackendSync(await readFile(artifact));
+  const result = solver.leastSquares({
+    method: "cminpack-lmdif",
+    initial: [5],
+    residualCount: 1,
+    residual: ([x]) => [x - 3],
+  });
+  assert.equal(result.backendConverged, true);
+  assertClose(result.value, [3]);
+  assert.equal(solver.inspect().liveAllocations, 0);
+});
 
 function assertClose(actual, expected, tolerance = 1e-9) {
   assert.equal(actual.length, expected.length);
@@ -70,6 +84,7 @@ test("lmder uses the supplied complete Jacobian and preserves method identity", 
   assert.equal(result.backendConverged, true);
   assert.equal(result.method, "cminpack-lmder");
   assert.ok(result.jacobianEvaluations > 0);
+  assert.ok(result.iterations > 0);
   assertClose(result.value, [1, 1], 1e-10);
   assert.ok(Math.hypot(10 * (result.value[1] - result.value[0] ** 2), 1 - result.value[0]) < 1e-10);
 });
@@ -118,6 +133,45 @@ test("cancellation, evaluation, and elapsed budgets stop at callback boundaries"
     solver.leastSquares({ ...common, cancellationBuffer }).status,
     "cancelled",
   );
+  assert.equal(solver.inspect().liveAllocations, 0);
+});
+
+test("iteration and total callback budgets are exact for both LM methods", async () => {
+  const solver = await backend();
+  const rosenbrock = {
+    initial: [-1.2, 1],
+    residualCount: 2,
+    residual: ([x, y]) => [10 * (y - x * x), 1 - x],
+  };
+  const iterations = solver.leastSquares({
+    ...rosenbrock,
+    method: "cminpack-lmdif",
+    maximumIterations: 1,
+    maximumEvaluations: 300,
+    maximumCallbackEvaluations: 300,
+  });
+  assert.equal(iterations.status, "maximum_iterations");
+  assert.equal(iterations.iterations, 1);
+  assert.equal(iterations.backendConverged, false);
+
+  let callbacks = 0;
+  const callbackBudget = solver.leastSquares({
+    ...rosenbrock,
+    method: "cminpack-lmder",
+    residual(point) {
+      callbacks += 1;
+      return rosenbrock.residual(point);
+    },
+    jacobian([x]) {
+      callbacks += 1;
+      return [[-20 * x, 10], [-1, 0]];
+    },
+    maximumEvaluations: 300,
+    maximumCallbackEvaluations: 2,
+  });
+  assert.equal(callbackBudget.status, "maximum_evaluations");
+  assert.equal(callbackBudget.callbackEvaluations, 2);
+  assert.equal(callbacks, 2);
   assert.equal(solver.inspect().liveAllocations, 0);
 });
 

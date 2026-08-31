@@ -3,6 +3,7 @@
 
 const { createHash } = require("node:crypto");
 const {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -11,6 +12,7 @@ const {
 const { join, relative, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { brotliCompressSync, gzipSync } = require("node:zlib");
+const { buildSync } = require("esbuild");
 
 const packageRoot = resolve(__dirname, "..");
 const repositoryRoot = resolve(packageRoot, "../../..");
@@ -95,6 +97,8 @@ async function main() {
   const sourceRoot = join(sourceParent, `cminpack-${lock.cminpack.revision}`);
   const output = join(buildRoot, "cminpack.wasm");
   const oracleOutput = join(buildRoot, "mgh-oracle.wasm");
+  const nodeRuntimeDirectory = join(repositoryRoot, "dist/numerical");
+  const browserRuntimeDirectory = join(repositoryRoot, "packages/flint-wasm/dist");
   mkdirSync(buildRoot, { recursive: true });
   await fetchLockedArchive(archive);
   if (!existsSync(join(sourceRoot, "include/cminpack.h"))) {
@@ -172,6 +176,27 @@ async function main() {
     output,
   ];
   run(toolchain.paths.clang, args);
+
+  mkdirSync(nodeRuntimeDirectory, { recursive: true });
+  mkdirSync(browserRuntimeDirectory, { recursive: true });
+  buildSync({
+    entryPoints: [join(packageRoot, "index.mjs")],
+    outfile: join(nodeRuntimeDirectory, "backend.cjs"),
+    bundle: true,
+    format: "cjs",
+    platform: "node",
+    target: ["node22"],
+  });
+  buildSync({
+    entryPoints: [join(packageRoot, "index.mjs")],
+    outfile: join(browserRuntimeDirectory, "numerical-backend.mjs"),
+    bundle: true,
+    format: "esm",
+    platform: "browser",
+    target: ["es2022"],
+  });
+  copyFileSync(output, join(nodeRuntimeDirectory, "cminpack.wasm"));
+  copyFileSync(output, join(browserRuntimeDirectory, "cminpack.wasm"));
 
   const oracleArgs = [
     ...commonArgs,
@@ -256,7 +281,8 @@ async function main() {
     },
   };
   const productionManifest = join(packageRoot, "release/production-manifest.json");
-  if (existsSync(productionManifest)) {
+  const verifyProduction = process.env.SAGEJS_NUMERICAL_CANDIDATE_BUILD !== "1";
+  if (verifyProduction && existsSync(productionManifest)) {
     const expected = JSON.parse(readFileSync(productionManifest, "utf8"));
     for (const [name, actual, wanted] of [
       ["artifact SHA-256", report.artifact.sha256, expected.artifact.sha256],

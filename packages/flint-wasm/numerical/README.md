@@ -3,9 +3,9 @@
 This directory contains the first qualified external numerical core for
 Sage.js: cminpack's exact `lmdif` and `lmder` nonlinear least-squares methods.
 It is a separately lazy universal Wasm artifact, not part of the FLINT binary.
-The location under `flint-wasm` is temporary integration ownership; the files
-must move together to the integration-owned numerical resource package before
-public registration.
+The `sagejs-flint-wasm` workspace package owns this resource because it already
+owns the browser evaluator and universal Wasm distribution. The reactor is
+also copied as a separately lazy Node/SEA asset; it is never linked into FLINT.
 
 The reactor imports one synchronous packed callback. Residual vectors and
 complete column-major Jacobians cross in WebAssembly memory, so it does not
@@ -70,8 +70,9 @@ passes Node smokes on Linux x64, Linux ARM64, macOS ARM64, and Windows x64.
 
 The committed qualification summary states the exact limitation: `bench-1`
 was inaccessible, so the Linux x64 run is local rather than a persistent-host
-receipt. npm relocation and SEA receipts require integration-owned resource
-wiring and are not claimed here. Automatic method selection remains disabled.
+receipt. Integration tests additionally exercise the public Node, browser,
+relocated-package, and SEA resource paths. Automatic method selection remains
+disabled.
 
 ## Reproduction
 
@@ -91,3 +92,9 @@ node bench/numerical-p3-backends/benchmark.mjs
 Generated build artifacts and the full per-case receipt are ignored. The
 source/license/artifact manifest and compact qualification summary are
 reviewable committed inputs.
+
+The root, browser-package, and SEA builders each rerun this content-locked
+reactor build. That intentional verification costs about two seconds per
+pipeline and makes every independently invoked packaging path reject a stale
+or tampered resource. Sharing a cache would save only those seconds while
+adding cache-identity and invalidation behavior that is not yet justified.
