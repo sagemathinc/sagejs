@@ -76,6 +76,54 @@ class ResourceBudget:
         return dict(self._values)
 
 
+class NumericalConstraint:
+    """Live scalar nonlinear constraint with serialized intent."""
+
+    def __init__(
+        self,
+        kind: str,
+        function: Callable[[list[float]], Any],
+        *,
+        tolerance: float,
+        function_record: Mapping[str, Any] | None = None,
+    ) -> None:
+        if kind not in ("inequality", "equality"):
+            raise ValueError("invalid constraint kind")
+        if not callable(function):
+            raise TypeError("constraint function must be callable")
+        self._kind = kind
+        self._function = function
+        self._tolerance = float(tolerance)
+        if function_record is None:
+            function_record = {"kind": "opaque_callback", "replayable": False}
+        self._function_record = materialize_object(function_record, "$.constraint")
+
+    @property
+    def kind(self) -> str:
+        return self._kind
+
+    @property
+    def function(self) -> Callable[[list[float]], Any]:
+        return self._function
+
+    @property
+    def tolerance(self) -> float:
+        return self._tolerance
+
+    @property
+    def replayable(self) -> bool:
+        return self._function_record.get("replayable") is True
+
+    def to_dict(self) -> dict[str, JSONValue]:
+        return {
+            "kind": self._kind,
+            "sense": "greater_equal" if self._kind == "inequality" else "equal",
+            "count": 1,
+            "tolerances": [self._tolerance],
+            "function": materialize_object(self._function_record, "$.constraint"),
+        }
+
+
 class NumericalProblem:
     """Immutable semantic problem intent with an optional live callback."""
 
@@ -94,6 +142,7 @@ class NumericalProblem:
         tolerances: Mapping[str, Any] | None = None,
         method: str = "auto",
         derivative_record: Mapping[str, Any] | None = None,
+        constraints: Sequence[NumericalConstraint] = (),
         resource_budget: ResourceBudget | None = None,
         trace_policy: TracePolicy | None = None,
         source_intent: Mapping[str, Any] | None = None,
@@ -128,6 +177,10 @@ class NumericalProblem:
         self._derivative_record = materialize_object(
             derivative_record, "$.problem.derivative"
         )
+        self._constraints = tuple(constraints)
+        for constraint in self._constraints:
+            if not isinstance(constraint, NumericalConstraint):
+                raise TypeError("invalid numerical constraint")
         self._resource_budget = (
             ResourceBudget() if resource_budget is None else resource_budget
         )
@@ -193,11 +246,17 @@ class NumericalProblem:
         return dict(self._source_intent)
 
     @property
+    def constraints(self) -> list[NumericalConstraint]:
+        return list(self._constraints)
+
+    @property
     def replayable(self) -> bool:
-        return self._function_record.get("replayable") is True
+        return self._function_record.get("replayable") is True and all(
+            constraint.replayable for constraint in self._constraints
+        )
 
     def to_dict(self) -> dict[str, JSONValue]:
-        return {
+        record: dict[str, JSONValue] = {
             "schema_version": NUMERICAL_SCHEMA_VERSION,
             "domain": self._domain,
             "operation": self._operation,
@@ -216,6 +275,14 @@ class NumericalProblem:
             "source_intent": self.source_intent,
             "metadata": materialize_object(self._metadata, "$.problem.metadata"),
         }
+        # Preserve the established wire identity of every unconstrained
+        # numerical problem. Constraints are an optional semantic extension,
+        # not an empty field that invalidates unrelated evidence receipts.
+        if len(self._constraints) != 0:
+            record["constraints"] = [
+                constraint.to_dict() for constraint in self._constraints
+            ]
+        return record
 
     @property
     def digest(self) -> str:

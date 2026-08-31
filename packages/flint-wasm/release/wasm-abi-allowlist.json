@@ -5375,6 +5375,53 @@
         }
       ]
     },
+    "nlopt-methods.wasm": {
+      "imports": [
+        {
+          "module": "sagejs_numerical_nlopt",
+          "name": "evaluate",
+          "kind": "function"
+        }
+      ],
+      "exports": [
+        {
+          "name": "_initialize",
+          "kind": "function"
+        },
+        {
+          "name": "memory",
+          "kind": "memory"
+        },
+        {
+          "name": "sagejs_nlopt_alloc",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_free",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_live_allocations",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_live_bytes",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_probe_callback",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_set_allocation_failure_after",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_nlopt_solve",
+          "kind": "function"
+        }
+      ]
+    },
     "tree-sitter-macaulay2.wasm": {
       "imports": [
         {

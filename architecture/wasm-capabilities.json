@@ -44,6 +44,17 @@
           "test/numerical-p3-backends/public-sea.cjs"
         ]
       },
+      "nlopt-public-differential": {
+        "differential": true,
+        "paths": [
+          "bench/numerical-p3-nlopt/scipy_oracle.py",
+          "test/numerical-p3-nlopt/backend.test.mjs",
+          "test/numerical-p3-nlopt/browser.mjs",
+          "test/numerical-p3-nlopt/public-browser.mjs",
+          "test/numerical-p3-nlopt/public-integration.cjs",
+          "test/numerical-p3-nlopt/public-relocation.cjs"
+        ]
+      },
       "finite-field-boundary-benchmark": {
         "differential": true,
         "paths": [
@@ -497,6 +508,11 @@
         "id": "wasm-library:cminpack:least-squares-explicit",
         "family": "numerical",
         "source": "packages/flint-wasm/numerical/src/cminpack-adapter.c"
+      },
+      {
+        "id": "wasm-library:nlopt:derivative-free-explicit",
+        "family": "numerical",
+        "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c"
       }
     ],
     "production_manifests": [
@@ -21621,6 +21637,35 @@
       "resource_limits": {
         "maximum_parameters": 256,
         "maximum_residuals": 16384,
+        "maximum_workspace_bytes": 67108864,
+        "maximum_memory_bytes": 134217728
+      }
+    },
+    {
+      "id": "wasm-library:nlopt:derivative-free-explicit",
+      "family": "numerical",
+      "source": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "disposition": "shared-core",
+      "status": "available",
+      "fallback": "ordinary-python-methods-for-automatic-selection; explicit-requests-fail-closed",
+      "wasm_module": "nlopt",
+      "public_consumers": [
+        "sagejs.numerics.optimization.minimize"
+      ],
+      "tests": [
+        "nlopt-public-differential"
+      ],
+      "review_note": "The separately lazy 101,376-byte reactor executes exact NLopt Nelder-Mead and COBYLA identities through one packed synchronous callback; source/license closure excludes Luksan and public success requires independent objective, feasibility, and local-minimum validation.",
+      "kind": "specialist-capability",
+      "reviewed": true,
+      "availability_evidence": {
+        "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/release/qualification-v1.json"
+      },
+      "public_explanation": "Explicit derivative-free minimization can use authenticated NLopt Nelder-Mead or COBYLA in Node, browsers, and SEA. Automatic planning remains on ordinary Python and an unavailable or invalid NLopt result fails closed.",
+      "shared_core": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "resource_limits": {
+        "maximum_parameters": 128,
+        "maximum_constraints": 512,
         "maximum_workspace_bytes": 67108864,
         "maximum_memory_bytes": 134217728
       }

@@ -13,7 +13,7 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 239,
+    "classified-native-file": 240,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
     "napi-export": 330,
@@ -10601,6 +10601,14 @@
       "disposition": "benchmark-reference",
       "review_status": "accepted",
       "lane": "distribution"
+    },
+    {
+      "id": "native-file:src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "kind": "classified-native-file",
+      "path": "src/lib/sagejs/numerics/optimization/backends/nlopt/src/adapter.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "numerical-optimization"
     },
     {
       "id": "native-file:test/fixtures/native-exact-workspace-direct-reference.c",
