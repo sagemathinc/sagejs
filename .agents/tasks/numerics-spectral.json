@@ -1,0 +1,138 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-spectral",
+  "title": "Validated spectral numerical methods",
+  "lane": "numerical-spectral",
+  "status": "review",
+  "owner": "user",
+  "objective": "Implement P5 eigenvalue, SVD, FFT, convolution and sparse iterative functionality with residual and reconstruction validation",
+  "base_commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+  "claims": [
+    "src/lib/sagejs/numerics/spectral/",
+    "test/numerics/spectral/",
+    "bench/numerics/spectral/",
+    "docs/numerical-computing/spectral/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "NumPy/SciPy differential corpus and spectral/reconstruction residuals"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "node test/numerics/spectral/strict-python.cjs",
+    "node --test test/numerics/spectral/spectral-laboratory.cjs",
+    "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+    "python3 -I bench/numerics/spectral/benchmark.py",
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node test/numerics/spectral/strict-python.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.887,
+      "started_at": "2026-08-31T13:55:25.710Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "node --test test/numerics/spectral/spectral-laboratory.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 10.136,
+      "started_at": "2026-08-31T13:55:28.305Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/spectral/numpy_scipy_oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.504,
+      "started_at": "2026-08-31T13:55:39.110Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I bench/numerics/spectral/benchmark.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 2.461,
+      "started_at": "2026-08-31T13:55:40.282Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 46.474,
+      "started_at": "2026-08-31T13:55:50.858Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 397.702,
+      "started_at": "2026-08-31T13:56:38.020Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.601,
+      "started_at": "2026-08-31T14:03:27.877Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.56,
+      "started_at": "2026-08-31T14:04:11.859Z",
+      "commit": "b46d6a674de523cf32c34037af9b1ef1cfb05678",
+      "workspace_fingerprint": "7ae5f2d923bf2258de0e08265e584e62e95ee8cb04e007068f5f7881e0bdde45",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented the claimed ordinary-Python spectral package: validated Hermitian and general eigensystems, reduced SVD, radix-2/Bluestein FFT, direct/FFT convolution, canonical CSR storage, CG/BiCGSTAB solves, and one dominant Hermitian sparse eigenpair. General nonsymmetric eigensystems now require independently pivoted eigenbasis inversion, reciprocal-condition, inverse-residual, reconstruction, eigenpair-residual, and Schur witnesses; defective and near-defective bases fail closed with validation_failed and no value. Added CPython/Sage.js correctness, failure, metamorphic, cancellation and budget tests; 312 NumPy/SciPy differential comparisons; strict Python checks; benchmark/payload evidence; capability classifications; and documentation.",
+    "risks": [
+      "Four-platform qualification remains an integration/release responsibility; focused receipts in this task are Linux x64.",
+      "The full architecture aggregate is recorded failing before spectral checks because the synchronized numerical foundation adds bench/numerical-optimization/callback-probe.c without a regenerated shared native-boundary snapshot. That shared inventory is outside this lane's claims.",
+      "Current-main merge checking also rejects src/lib/sagejs/numerics/spectral/__init__.py until the shared package graph assigns it exactly one owner. The five new modules are strict-clean but are not yet listed in the shared pyrightconfig because both registries are outside this lane's claims."
+    ],
+    "next_steps": [
+      "In the integration lane, add a lazy numerical-spectral package-graph component (layer 5, at least a 150000-byte source budget) for prefix src/lib/sagejs/numerics/spectral/, module sagejs.numerics.spectral, depending on core-runtime, python-stdlib, and numerical-computing.",
+      "In the integration lane, add all five src/lib/sagejs/numerics/spectral/*.py modules to pyrightconfig.json and connect the package tests/public numerical capability registry as appropriate.",
+      "Regenerate and review the shared native-boundary inventory for the inherited numerical-optimization callback probe, then rerun pnpm architecture:check, pnpm test:changed, and the required four-platform qualification."
+    ]
+  }
+}
