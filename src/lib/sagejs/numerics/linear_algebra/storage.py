@@ -9,7 +9,7 @@ Sage.js.  A future packed backend can marshal the single flat entry sequence to
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
 
@@ -22,6 +22,31 @@ def _binary64(value: Any, path: str) -> float:
     if not math.isfinite(converted):
         raise ValueError(path + " must be finite")
     return converted
+
+
+def stable_norm_two(values: Iterable[float]) -> float:
+    """Return a scale-safe Euclidean norm with portable binary64 semantics.
+
+    Sage.js' current dynamic `math.hypot` does not yet preserve CPython's
+    scaling behavior near the ends of the binary64 exponent range.  Normalize
+    before squaring so this mathematical package does not depend on that
+    runtime difference.
+    """
+    snapshot = tuple(abs(value) for value in values)
+    scale = max(snapshot, default=0.0)
+    if scale == 0.0:
+        return 0.0
+    normalized = math.fsum((value / scale) ** 2 for value in snapshot)
+    return scale * math.sqrt(normalized)
+
+
+def stable_sum_nonnegative(values: Iterable[float]) -> float:
+    """Return a nonnegative sum without intermediate overflow or cancellation."""
+    snapshot = tuple(values)
+    scale = max(snapshot, default=0.0)
+    if scale == 0.0:
+        return 0.0
+    return scale * math.fsum(value / scale for value in snapshot)
 
 
 class DenseVector:
@@ -56,10 +81,7 @@ class DenseVector:
         return answer
 
     def norm_two(self) -> float:
-        answer = 0.0
-        for value in self._entries:
-            answer = math.hypot(answer, value)
-        return answer
+        return stable_norm_two(self._entries)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -180,12 +202,21 @@ class DenseMatrix:
     def T(self) -> DenseMatrix:
         return self.transpose()
 
-    def multiply(self, other: DenseMatrix) -> DenseMatrix:
+    def multiply(
+        self,
+        other: DenseMatrix,
+        *,
+        check: Callable[[], None] | None = None,
+    ) -> DenseMatrix:
         if self._ncols != other._nrows:
             raise ValueError("matrix dimensions do not conform for multiplication")
         output: list[float] = []
         for row in range(self._nrows):
+            if check is not None:
+                check()
             for column in range(other._ncols):
+                if check is not None:
+                    check()
                 output.append(
                     math.fsum(
                         self.entry(row, index) * other.entry(index, column)
@@ -194,37 +225,51 @@ class DenseMatrix:
                 )
         return DenseMatrix(self._nrows, other._ncols, output)
 
-    def multiply_vector(self, vector: DenseVector) -> DenseVector:
+    def multiply_vector(
+        self,
+        vector: DenseVector,
+        *,
+        check: Callable[[], None] | None = None,
+    ) -> DenseVector:
         if self._ncols != vector.size:
             raise ValueError("matrix and vector dimensions do not conform")
-        return DenseVector(
-            math.fsum(
-                self.entry(row, column) * vector.entry(column)
-                for column in range(self._ncols)
+        output: list[float] = []
+        for row in range(self._nrows):
+            if check is not None:
+                check()
+            output.append(
+                math.fsum(
+                    self.entry(row, column) * vector.entry(column)
+                    for column in range(self._ncols)
+                )
             )
-            for row in range(self._nrows)
-        )
+        return DenseVector(output)
 
     def norm_one(self) -> float:
         answer = 0.0
         for column in range(self._ncols):
             answer = max(
                 answer,
-                math.fsum(abs(self.entry(row, column)) for row in range(self._nrows)),
+                stable_sum_nonnegative(
+                    abs(self.entry(row, column)) for row in range(self._nrows)
+                ),
             )
         return answer
 
     def norm_infinity(self) -> float:
         answer = 0.0
         for row in range(self._nrows):
-            answer = max(answer, math.fsum(abs(value) for value in self.row(row)))
+            answer = max(
+                answer, stable_sum_nonnegative(abs(value) for value in self.row(row))
+            )
         return answer
 
     def norm_frobenius(self) -> float:
-        answer = 0.0
-        for value in self._entries:
-            answer = math.hypot(answer, value)
-        return answer
+        return stable_norm_two(self._entries)
+
+    def max_abs_entry(self) -> float:
+        """Return the largest entry magnitude, or zero for an empty matrix."""
+        return max((abs(value) for value in self._entries), default=0.0)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -257,32 +302,32 @@ def as_vector(value: DenseVector | Sequence[Any]) -> DenseVector:
 
 def as_right_hand_side(
     value: DenseVector | DenseMatrix | Sequence[Any] | Sequence[Sequence[Any]],
-    expected_rows: int,
+    expected_rows: int | None = None,
 ) -> tuple[DenseMatrix, bool]:
     """Return a column-matrix right side and whether the input was a vector."""
     if isinstance(value, DenseVector):
         vector = value
-        if vector.size != expected_rows:
+        if expected_rows is not None and vector.size != expected_rows:
             raise ValueError("matrix and right side dimensions disagree")
-        return DenseMatrix(expected_rows, 1, vector.entries), True
+        return DenseMatrix(vector.size, 1, vector.entries), True
     if isinstance(value, DenseMatrix):
-        if value.nrows != expected_rows:
+        if expected_rows is not None and value.nrows != expected_rows:
             raise ValueError("matrix and right side dimensions disagree")
         return value, False
     snapshot = list(value)
     if len(snapshot) == 0:
-        if expected_rows != 0:
+        if expected_rows is not None and expected_rows != 0:
             raise ValueError("matrix and right side dimensions disagree")
         return DenseMatrix(0, 1, ()), True
     if isinstance(snapshot[0], (list, tuple)):
         matrix = DenseMatrix.from_rows(snapshot)  # type: ignore[arg-type]
-        if matrix.nrows != expected_rows:
+        if expected_rows is not None and matrix.nrows != expected_rows:
             raise ValueError("matrix and right side dimensions disagree")
         return matrix, False
     vector = DenseVector(snapshot)
-    if vector.size != expected_rows:
+    if expected_rows is not None and vector.size != expected_rows:
         raise ValueError("matrix and right side dimensions disagree")
-    return DenseMatrix(expected_rows, 1, vector.entries), True
+    return DenseMatrix(vector.size, 1, vector.entries), True
 
 
 def restore_right_hand_side(matrix: DenseMatrix, was_vector: bool) -> Any:

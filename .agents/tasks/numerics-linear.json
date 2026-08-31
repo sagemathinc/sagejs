@@ -1,0 +1,127 @@
+{
+  "$schema": "../task.schema.json",
+  "schema_version": 2,
+  "id": "numerics-linear",
+  "title": "Validated numerical linear algebra",
+  "lane": "numerical-linear-algebra",
+  "status": "active",
+  "owner": "user",
+  "objective": "Implement the validated dense binary64 numerical linear algebra reference slice with independent residual and minimum-norm validation, bounded execution, and representative correctness and performance evidence",
+  "base_commit": "61f7eef664f2d43615a50340a7d509357499d4a5",
+  "claims": [
+    "src/lib/sagejs/numerics/linear_algebra/",
+    "test/numerics/linear_algebra/",
+    "bench/numerics/linear_algebra/",
+    "docs/numerical-computing/linear-algebra/"
+  ],
+  "dependencies": [],
+  "references": [],
+  "architecture": {
+    "strategy": "dynamic-python",
+    "fallback": "same-source",
+    "oracles": [
+      "Deterministic NumPy/SciPy differential campaign, fixed fixtures, closed-form metamorphic identities, and independent compensated residual and row-space checks"
+    ],
+    "exceptions": []
+  },
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "not-applicable",
+    "windows-x64": "not-applicable",
+    "macos-arm64": "not-applicable"
+  },
+  "validation": [
+    "node --test test/numerics/linear_algebra/linear-algebra.cjs",
+    "pnpm exec pyright src/lib/sagejs/numerics/linear_algebra",
+    "python3 -I test/numerics/linear_algebra/numpy-oracle.py",
+    "pnpm architecture:numerics",
+    "pnpm test:baselib:strict",
+    "pnpm test:numerics",
+    "pnpm architecture:check"
+  ],
+  "runs": [
+    {
+      "command": "node --test test/numerics/linear_algebra/linear-algebra.cjs",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 6.781,
+      "started_at": "2026-08-31T14:52:55.522Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm exec pyright src/lib/sagejs/numerics/linear_algebra",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 1.897,
+      "started_at": "2026-08-31T14:53:03.033Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "python3 -I test/numerics/linear_algebra/numpy-oracle.py",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.841,
+      "started_at": "2026-08-31T14:53:05.622Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 0.559,
+      "started_at": "2026-08-31T14:53:07.155Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:numerics",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 402.695,
+      "started_at": "2026-08-31T14:53:08.456Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm test:baselib:strict",
+      "result": "pass",
+      "exit_code": 0,
+      "seconds": 49.543,
+      "started_at": "2026-08-31T15:00:01.762Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    },
+    {
+      "command": "pnpm architecture:check",
+      "result": "fail",
+      "exit_code": 1,
+      "seconds": 3.936,
+      "started_at": "2026-08-31T15:00:57.321Z",
+      "commit": "e7057f66aa654dbe146b6350145259115af159c4",
+      "workspace_fingerprint": "c3ce0123ce325bb4efc89723650fbd8a92f680a4e3296750d38a6c1ae7ca9e92",
+      "platform": "linux-x64"
+    }
+  ],
+  "handoff": {
+    "summary": "Implemented and audited the source-portable dense binary64 linear algebra slice: scale-safe norms, Jacobi diagnostics, and Householder QR; structured LU/QR/Cholesky and dimension failures; exact elapsed/cancellation guard plumbing; JSON-safe determinant overflow; correct strictly-positive Cholesky pivots; transpose-provenance minimum-norm solves with an independent row-space validator; and executable CPython/Sage.js, NumPy/SciPy, metamorphic, and benchmark evidence.",
+    "risks": [
+      "Only Linux x64 CPython and Sage.js have a recorded runtime receipt; browser, Linux arm64, macOS arm64, and Windows x64 remain explicit target work.",
+      "The lane intentionally leaves shared exports, diagnostic/status registries other than its consumption of maximum_elapsed_time, package graphs, Pyright registration, and test-script discovery to integration.",
+      "This is an O(m*n*min(m,n)) ordinary-Python reference implementation, not an accelerated large-problem backend."
+    ],
+    "next_steps": [
+      "Integration should apply docs/numerical-computing/linear-algebra/integration-requests.md, including shared exports and the remaining domain diagnostic/status identities.",
+      "Qualify the identical corpus on browser and the three pending native host classes before adding those platforms to validated_platforms.",
+      "Use the reference slice as the differential fallback for later accelerated, sparse, and spectral work."
+    ]
+  }
+}

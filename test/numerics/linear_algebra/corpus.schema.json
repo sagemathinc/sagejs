@@ -3,29 +3,41 @@
   "$id": "https://sagejs.org/schemas/numerics/linear-algebra-corpus-v1.json",
   "title": "Sage.js backend-neutral dense linear algebra corpus",
   "type": "object",
-  "required": ["schema_version", "numeric_type", "cases"],
+  "required": ["schema_version", "numeric_type", "oracle_provenance", "cases"],
   "properties": {
     "schema_version": {"const": 1},
     "numeric_type": {"const": "binary64"},
     "description": {"type": "string"},
+    "oracle_provenance": {
+      "type": "object",
+      "required": ["numpy", "scipy", "generated_at", "policy"],
+      "properties": {
+        "numpy": {"type": "string"},
+        "scipy": {"type": "string"},
+        "generated_at": {"type": "string"},
+        "policy": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
     "cases": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "category", "operation", "matrix"],
+        "required": ["id", "category", "operation", "matrix", "oracle"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
           "category": {
             "enum": ["definition", "conditioned_stress", "metamorphic", "failure"]
           },
           "operation": {
-            "enum": ["solve", "least_squares", "rank", "determinant", "inverse", "cholesky"]
+            "enum": ["solve", "least_squares", "rank", "condition", "qr", "determinant", "inverse", "cholesky"]
           },
           "matrix": {"type": "array"},
           "right": {"type": "array"},
           "expected": {},
           "failure_code": {"type": "string"},
+          "metamorphic_group": {"type": "string"},
           "absolute_tolerance": {"type": "number", "exclusiveMinimum": 0},
           "oracle": {"type": "string"}
         },

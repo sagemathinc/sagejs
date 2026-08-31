@@ -1,13 +1,15 @@
 # Validated dense numerical linear algebra
 
-This package is the portable binary64 reference slice for dense numerical
+This package is the source-portable binary64 reference slice for dense numerical
 linear algebra. It solves real finite systems, exposes the factorization it
 actually used, reports scale-aware rank and conditioning evidence, optionally
 refines a solution, and independently checks the mathematical result before
 claiming success.
 
 The implementation is ordinary CPython-parseable source under
-`sagejs.numerics.linear_algebra`; the same files run in CPython and Sage.js.
+`sagejs.numerics.linear_algebra`; one executable corpus runs the same files in
+CPython and Sage.js on validated Linux x64. Browser and additional native-host
+receipts remain release work rather than implied platform claims.
 There is no native dependency or hidden replacement kernel. The immutable
 flat row-major representation is an interchange contract that can later be
 marshalled to a packed `Float64Array` backend without changing semantics.
@@ -48,11 +50,11 @@ slice.
 | Operation | Method and contract | Independent check |
 |---|---|---|
 | `solve` | partial-pivot LU by default; checked Cholesky only from an explicit positive-definite contract; pivoted QR on request | compensated `B - A X`, normwise infinity backward error, condition-times-backward-error indicator |
-| `least_squares` | column-pivoted Householder QR; no normal equations | `A.T (B - A X)` stationarity, or direct backward error for a consistent system |
+| `least_squares` | column-pivoted Householder QR for tall inputs; column-pivoted QR of `A.T` for a wide minimum-norm solve; no normal equations | `A.T (B - A X)` stationarity or direct backward error, plus an independently reorthogonalized row-space check for wide minimum norm |
 | `lu` | `A = P L U`, matching Sage's public orientation | full reconstruction |
 | `qr` | reduced Householder QR; optional `A P = Q R` column pivoting; complete factors available from the retained object | reconstruction and `Q.T Q = I` |
-| `cholesky` | full symmetry check, then lower `A = L L.T`; real SPD only | reconstruction and positive diagonal |
-| `matrix_rank` | one-sided Jacobi singular-value estimates with the NumPy/MATLAB-style `sigma_max * max(m,n) * eps` default threshold | convergence and threshold record; truth level remains `heuristic` |
+| `cholesky` | pair-scale-aware symmetry check, then lower `A = L L.T`; real SPD means every computed Schur pivot is strictly positive, regardless of its magnitude | reconstruction and positive diagonal |
+| `matrix_rank` | scale-normalized one-sided Jacobi singular-value estimates with the NumPy/MATLAB-style `sigma_max * max(m,n) * eps` default threshold | convergence and threshold record; truth level remains `heuristic` |
 | `condition_number` | estimated 2-norm condition from largest/smallest Jacobi singular values | convergence record; `None` plus `condition_kind = "infinite"` is the JSON-safe singular result |
 | `determinant` | partial-pivot LU, only when explicitly requested | LU reconstruction; sign and finite `log(abs(det))` survive ordinary underflow/overflow |
 | `inverse` | repeated retained-LU solves, only when explicitly requested | both `A A^-1 = I` and `A^-1 A = I` |
@@ -63,6 +65,11 @@ backend, truth level, validation checks, diagnostics, provenance, resource
 measurements, and a bounded semantic trace. Factorization results additionally
 retain their typed factor object at `result.factorization` while serializing a
 backend-neutral value record.
+
+Every public operation accepts `max_elapsed_ms` and `cancel`. The cooperative
+guard is evaluated within factorization, Jacobi, factor application,
+refinement, and independent-validation loops, rather than only between whole
+cubic phases. Cancellation callback exceptions are classified results.
 
 ## Numerical truth and refinement
 
@@ -89,7 +96,8 @@ and refinement regression in `linear-algebra.cjs` cover normal and improving
 paths.
 
 Rank and condition are deliberately labeled heuristic rather than proofs. The
-Jacobi iteration records convergence, every retained singular-value estimate,
+Jacobi iteration first normalizes by the largest input magnitude, then records
+convergence, every retained singular-value estimate,
 and the exact rank threshold. A singular condition is represented as `None`
 with an explicit `infinite` kind so deterministic JSON never contains `NaN` or
 `Infinity`.
@@ -111,21 +119,36 @@ does not contain all linear-algebra codes:
 | `dimension_mismatch` | `invalid_problem` | Make the right side's row count equal `A.nrows`. |
 | `not_symmetric` | `invalid_problem` | Repair the structural claim or use LU/QR. |
 | `not_positive_definite` | `invalid_problem` | Use an indefinite/general method or repair the model. |
-| `elapsed_time_limit` | `validation_failed` | Increase the explicit budget or reduce the dense problem. |
+| `maximum_elapsed_time` | `maximum_elapsed_time` | Increase the explicit budget or reduce the dense problem. |
 | `rank_diagnostic_indeterminate` | `validation_failed` | Jacobi diagnostics exhausted their sweep budget before a rank decision; increase the budget. |
-| `cancelled` | `cancelled` | The requested cancellation was observed at a phase/refinement boundary. |
+| `cancelled` | `cancelled` | The requested cancellation was observed by a cooperative inner-loop guard. |
+| `cancellation_callback_error` | `validation_failed` | The cancellation callback raised; repair the callback before retrying. |
+| `nonfinite_intermediate` | `validation_failed` | A mathematically required intermediate is outside representable binary64 range; rescale or use a wider numeric type. |
 
-Until shared normalization lands, failures use existing `ill_conditioned`,
-`validation_failed`, and `cancelled` diagnostics as applicable, while the
-domain code and structured details preserve the precise identity. See
+Until the remaining shared normalization lands, domain-specific failures use
+existing `ill_conditioned`, `validation_failed`, and `cancelled` diagnostics
+as applicable, while the domain code and structured details preserve the
+precise identity. Elapsed-time exhaustion already uses the shared
+`maximum_elapsed_time` status and diagnostic. See
 [`integration-requests.md`](integration-requests.md) for the exact shared
 changes requested from the integration lane.
 
 Invalid storage is rejected before computation: ragged rows, wrong entry
 counts, and non-finite or non-convertible entries never enter an algorithm.
-The correctness corpus includes singular solve, nonsquare solve,
-rank-deficient least squares, nonsymmetric Cholesky, indefinite Cholesky,
-non-finite storage, cancellation, and trace truncation.
+The schema-checked correctness corpus includes singular and nonsquare solves,
+dimension mismatch, rank-deficient least squares, coupled wide minimum norm,
+nonsymmetric and indefinite Cholesky, uniform-scale metamorphic cases through
+`1e-200` and `1e200`, a one-dimensional QR case at `1e308`, determinant
+overflow, non-finite storage, cancellation
+inside every public computation family, callback failure, and trace
+truncation. Fixed NumPy references are executed as data; NumPy is not a runtime
+dependency.
+
+When NumPy and SciPy are available for development or release qualification,
+run `python3 test/numerics/linear_algebra/numpy-oracle.py`. Its deterministic
+seeded campaign checks 400 solves, 250 tall/wide least-squares problems, 100
+condition estimates, and five uniform exponent scalings; the portable fixed
+corpus remains the routine test.
 
 ## Complexity and practical envelope
 
@@ -136,7 +159,9 @@ factorization checks add matrix-product-scale work; they are part of the
 truth contract, not optional logging.
 
 This source-readable implementation is intended for teaching, portable
-fallbacks, small/medium browser work, and differential truth. It does not claim
+fallbacks, and differential truth. Linux x64 CPython/Sage.js is the currently
+validated host pair; browser suitability remains a target pending its receipt.
+It does not claim
 BLAS/LAPACK throughput. The representative benchmark separates conversion,
 factorization, retained solves, validation, diagnostics, complete structured
 results, and trace overhead; see

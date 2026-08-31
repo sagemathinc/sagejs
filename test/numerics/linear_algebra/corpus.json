@@ -2,6 +2,12 @@
   "schema_version": 1,
   "numeric_type": "binary64",
   "description": "Backend-neutral dense linear algebra definitions, residual oracles, conditioned cases, and classified failures.",
+  "oracle_provenance": {
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "generated_at": "2026-08-31",
+    "policy": "fixed expected values are executed in both runtimes; closed-form identities remain primary where stated"
+  },
   "cases": [
     {
       "id": "solve-well-conditioned",
@@ -42,6 +48,51 @@
       "oracle": "NumPy SVD fixture plus independent backward residual"
     },
     {
+      "id": "solve-scale-small",
+      "category": "metamorphic",
+      "operation": "solve",
+      "matrix": [[1e-200, 1e-200], [0.0, 1e-200]],
+      "right": [2e-200, 1e-200],
+      "expected": [1.0, 1.0],
+      "absolute_tolerance": 1e-14,
+      "metamorphic_group": "triangular-uniform-scale",
+      "oracle": "uniform scaling preserves the exact solution"
+    },
+    {
+      "id": "solve-scale-large",
+      "category": "metamorphic",
+      "operation": "solve",
+      "matrix": [[1e200, 1e200], [1e200, -1e200]],
+      "right": [2e200, 0.0],
+      "expected": [1.0, 1.0],
+      "absolute_tolerance": 1e-14,
+      "metamorphic_group": "orthogonal-uniform-scale",
+      "oracle": "closed-form orthogonal solve and NumPy fixture"
+    },
+    {
+      "id": "condition-scale-small",
+      "category": "metamorphic",
+      "operation": "condition",
+      "matrix": [[1e-200, 1e-200], [0.0, 1e-200]],
+      "expected": 2.618033988749895,
+      "absolute_tolerance": 1e-13,
+      "oracle": "closed-form singular values and NumPy cond fixture"
+    },
+    {
+      "id": "qr-scale-large",
+      "category": "conditioned_stress",
+      "operation": "qr",
+      "matrix": [[1e200, 1e200], [1e200, -1e200]],
+      "oracle": "independent reconstruction and orthogonality"
+    },
+    {
+      "id": "qr-scale-binary64-limit",
+      "category": "conditioned_stress",
+      "operation": "qr",
+      "matrix": [[1e308]],
+      "oracle": "exact one-dimensional Householder identity at the finite binary64 scale limit"
+    },
+    {
       "id": "least-squares-tall",
       "category": "definition",
       "operation": "least_squares",
@@ -60,6 +111,16 @@
       "expected": [2.0, 3.0, 0.0],
       "absolute_tolerance": 1e-14,
       "oracle": "exact constraint and minimum Euclidean norm"
+    },
+    {
+      "id": "least-squares-wide-coupled-minimum-norm",
+      "category": "definition",
+      "operation": "least_squares",
+      "matrix": [[1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+      "right": [1.0, 1.0],
+      "expected": [0.3333333333333333, 0.3333333333333333, 0.6666666666666666],
+      "absolute_tolerance": 1e-14,
+      "oracle": "KKT row-space identity and NumPy lstsq fixture"
     },
     {
       "id": "rank-deficient",
@@ -88,12 +149,27 @@
       "oracle": "both left and right identity residuals"
     },
     {
+      "id": "determinant-overflow-json-safe",
+      "category": "conditioned_stress",
+      "operation": "determinant",
+      "matrix": [[1e200, 0.0], [0.0, 1e200]],
+      "oracle": "exact sign and log magnitude; ordinary binary64 value overflows"
+    },
+    {
+      "id": "scaled-spd-cholesky",
+      "category": "conditioned_stress",
+      "operation": "cholesky",
+      "matrix": [[1.0, 0.0], [0.0, 1e-20]],
+      "oracle": "exact positive diagonal and NumPy cholesky fixture"
+    },
+    {
       "id": "singular-direct-solve",
       "category": "failure",
       "operation": "solve",
       "matrix": [[1.0, 2.0], [2.0, 4.0]],
       "right": [1.0, 2.0],
-      "failure_code": "rank_deficient"
+      "failure_code": "rank_deficient",
+      "oracle": "exact row dependence"
     },
     {
       "id": "nonsquare-direct-solve",
@@ -101,7 +177,17 @@
       "operation": "solve",
       "matrix": [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
       "right": [1.0, 2.0, 3.0],
-      "failure_code": "matrix_not_square"
+      "failure_code": "matrix_not_square",
+      "oracle": "shape contract"
+    },
+    {
+      "id": "dimension-mismatch-direct-solve",
+      "category": "failure",
+      "operation": "solve",
+      "matrix": [[1.0]],
+      "right": [1.0, 2.0],
+      "failure_code": "dimension_mismatch",
+      "oracle": "shape contract"
     },
     {
       "id": "rank-deficient-least-squares",
@@ -109,21 +195,32 @@
       "operation": "least_squares",
       "matrix": [[1.0, 2.0], [2.0, 4.0], [3.0, 6.0]],
       "right": [1.0, 2.0, 3.0],
-      "failure_code": "rank_deficient"
+      "failure_code": "rank_deficient",
+      "oracle": "exact column dependence"
     },
     {
       "id": "nonsymmetric-cholesky",
       "category": "failure",
       "operation": "cholesky",
       "matrix": [[2.0, 1.0], [0.0, 2.0]],
-      "failure_code": "not_symmetric"
+      "failure_code": "not_symmetric",
+      "oracle": "exact transpose comparison"
+    },
+    {
+      "id": "diagonal-scale-masked-nonsymmetry",
+      "category": "failure",
+      "operation": "cholesky",
+      "matrix": [[1e20, 1.0], [0.0, 1.0]],
+      "failure_code": "not_symmetric",
+      "oracle": "pairwise transpose comparison must not be masked by an unrelated diagonal scale"
     },
     {
       "id": "indefinite-cholesky",
       "category": "failure",
       "operation": "cholesky",
       "matrix": [[1.0, 2.0], [2.0, 1.0]],
-      "failure_code": "not_positive_definite"
+      "failure_code": "not_positive_definite",
+      "oracle": "negative eigenvalue and negative second Schur pivot"
     }
   ]
 }

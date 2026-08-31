@@ -26,11 +26,13 @@
     {"id": "rigorous_enclosures", "status": "unsupported", "reason": "residual validation is not interval certification"},
     {"id": "accelerated_backend", "status": "unsupported", "reason": "no mature portable backend selected by this reference lane"}
   ],
-  "platform_contract": ["browser", "linux-x64", "linux-arm64", "macos-arm64", "windows-x64"],
+  "validated_platforms": ["linux-x64"],
+  "target_platforms_pending_receipts": ["browser", "linux-arm64", "macos-arm64", "windows-x64"],
   "evidence": {
     "corpus": "test/numerics/linear_algebra/corpus.json",
-    "differential_oracle": "NumPy/SciPy fixtures and randomized development campaign",
-    "runtime_differential": ["cpython", "sagejs"],
+    "development_oracle": "test/numerics/linear_algebra/numpy-oracle.py",
+    "differential_oracle": "executable fixed NumPy references, closed-form identities, and independent residual/row-space checks",
+    "runtime_differential": ["cpython-linux-x64", "sagejs-linux-x64"],
     "benchmark": "bench/numerics/linear_algebra/benchmark.py"
   }
 }

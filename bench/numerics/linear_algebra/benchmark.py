@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 import time
 from collections.abc import Callable
@@ -11,7 +12,7 @@ from typing import Any
 
 from sagejs.numerics.linear_algebra import DenseMatrix, matrix_rank, solve
 from sagejs.numerics.linear_algebra.factorizations import lu_factorize, qr_factorize
-from sagejs.numerics.linear_algebra.validation import validate_solve
+from sagejs.numerics.linear_algebra.validation import validate_qr, validate_solve
 
 
 def _matrix(size: int) -> tuple[list[list[float]], list[float]]:
@@ -108,6 +109,12 @@ def benchmark(size: int = 16, samples: int = 3) -> dict[str, Any]:
         samples=samples,
     )
     records.append(qr_record)
+    qr_validation_record, qr_validation = _measure(
+        "independent_qr_validation",
+        lambda: validate_qr(dense, qr_factorization),
+        samples=samples,
+    )
+    records.append(qr_validation_record)
 
     rank_record, rank_result = _measure(
         "jacobi_rank_diagnostics",
@@ -136,7 +143,12 @@ def benchmark(size: int = 16, samples: int = 3) -> dict[str, Any]:
     )
     records.append(trace_record)
 
-    if not validation.passed or not structured.success or not traced.success:
+    if (
+        not validation.passed
+        or not qr_validation.passed
+        or not structured.success
+        or not traced.success
+    ):
         raise RuntimeError("benchmark result failed independent validation")
     if rank_result.value != size or qr_factorization.rank_estimate != size:
         raise RuntimeError("benchmark matrix unexpectedly lost numerical rank")
@@ -164,6 +176,13 @@ def benchmark(size: int = 16, samples: int = 3) -> dict[str, Any]:
             "runtime": runtime_name,
             "samples": samples,
             "warmup": 1,
+            "host": {
+                "platform": str(sys.platform),
+                "machine": os.environ.get("SAGEJS_BENCHMARK_MACHINE", "unrecorded"),
+            },
+            "source_revision": os.environ.get(
+                "SAGEJS_BENCHMARK_REVISION", "unrecorded-working-tree"
+            ),
         },
         "measurements": records,
         "trace_overhead_ratio": trace_overhead,

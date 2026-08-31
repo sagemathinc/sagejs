@@ -6,8 +6,8 @@ import math
 from collections.abc import Callable
 from typing import Any
 
-from .factorizations import MACHINE_EPSILON
-from .storage import DenseMatrix
+from .factorizations import MACHINE_EPSILON, LinearAlgebraError
+from .storage import DenseMatrix, stable_norm_two
 
 
 class SingularValueDiagnostics:
@@ -64,6 +64,7 @@ def singular_value_diagnostics(
     tolerance: float | None = None,
     max_sweeps: int = 64,
     on_sweep: Callable[[int, float, bool], None] | None = None,
+    check: Callable[[], None] | None = None,
 ) -> SingularValueDiagnostics:
     """Estimate all singular values using cyclic one-sided Jacobi rotations.
 
@@ -80,7 +81,12 @@ def singular_value_diagnostics(
     columns = working_matrix.ncols
     if columns == 0:
         return SingularValueDiagnostics([], threshold=0.0, sweeps=0, converged=True)
-    working = list(working_matrix.entries)
+    input_scale = working_matrix.max_abs_entry()
+    if input_scale == 0.0:
+        return SingularValueDiagnostics(
+            [0.0] * columns, threshold=0.0, sweeps=0, converged=True
+        )
+    working = [value / input_scale for value in working_matrix.entries]
     rotation_tolerance = (
         16.0 * MACHINE_EPSILON if tolerance is None else float(tolerance)
     )
@@ -94,6 +100,8 @@ def singular_value_diagnostics(
         largest_correlation = 0.0
         for left in range(columns - 1):
             for right in range(left + 1, columns):
+                if check is not None:
+                    check()
                 left_norm_squared = math.fsum(
                     working[row * columns + left] * working[row * columns + left]
                     for row in range(rows)
@@ -134,10 +142,19 @@ def singular_value_diagnostics(
             break
     values: list[float] = []
     for column in range(columns):
-        norm = 0.0
-        for row in range(rows):
-            norm = math.hypot(norm, working[row * columns + column])
-        values.append(norm)
+        if check is not None:
+            check()
+        normalized_norm = stable_norm_two(
+            working[row * columns + column] for row in range(rows)
+        )
+        value = normalized_norm * input_scale
+        if not math.isfinite(value):
+            raise LinearAlgebraError(
+                "nonfinite_intermediate",
+                "a singular-value estimate is not representable in binary64",
+                details={"column": column},
+            )
+        values.append(value)
     values.sort(reverse=True)
     largest = values[0] if len(values) != 0 else 0.0
     threshold = MACHINE_EPSILON * max(1, matrix.nrows, matrix.ncols) * largest

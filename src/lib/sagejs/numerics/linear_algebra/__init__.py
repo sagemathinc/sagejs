@@ -23,6 +23,7 @@ from .storage import DenseMatrix, DenseVector, as_matrix, as_vector
 from .validation import (
     independent_residual,
     least_squares_stationarity,
+    minimum_norm_row_space_error,
     normwise_backward_error,
     validate_cholesky,
     validate_inverse,
@@ -52,6 +53,7 @@ __all__ = [
     "least_squares_stationarity",
     "lu",
     "matrix_rank",
+    "minimum_norm_row_space_error",
     "normwise_backward_error",
     "qr",
     "singular_value_diagnostics",

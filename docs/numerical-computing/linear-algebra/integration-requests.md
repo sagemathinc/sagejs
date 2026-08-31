@@ -30,8 +30,9 @@ map them to `invalid_problem` or `validation_failed`:
 - `dimension_mismatch`
 - `not_symmetric`
 - `not_positive_definite`
-- `elapsed_time_limit`
 - `rank_diagnostic_indeterminate`
+- `cancellation_callback_error`
+- `nonfinite_intermediate`
 
 `cancelled`, `maximum_iterations`, `converged`, `invalid_problem`, and
 `validation_failed` already exist. After normalization, retain
@@ -43,6 +44,10 @@ one canonical code over aliases.
 
 Add stable definitions for:
 
+`maximum_elapsed_time` already exists in the shared registry and is used
+directly by this lane for elapsed-time exhaustion. Add the remaining stable
+definitions:
+
 - `rank_deficient` — warning/validation; suggest rank inspection, rescaling,
   reformulation, or an SVD/pseudoinverse method when available.
 - `matrix_not_square` — error/planning; suggest `least_squares` for rectangular
@@ -53,10 +58,12 @@ Add stable definitions for:
   threshold.
 - `not_positive_definite` — error/validation; include the failed leading minor
   and pivot.
-- `elapsed_time_limit` — warning/execution; distinguish time from iteration
-  exhaustion.
 - `rank_diagnostic_indeterminate` — warning/validation; distinguish an
   exhausted rank diagnostic from a demonstrated deficient rank.
+- `cancellation_callback_error` — error/execution; include the exception type
+  without serializing exception text or a traceback.
+- `nonfinite_intermediate` — warning/execution; recommend rescaling or a wider
+  numeric type while preserving the finite-input distinction.
 - `determinant_not_representable` — warning/validation; direct callers to the
   retained sign/log magnitude instead of using generic loss-of-significance
   prose.

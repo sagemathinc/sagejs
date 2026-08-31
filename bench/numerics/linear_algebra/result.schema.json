@@ -12,11 +12,11 @@
     },
     "execution": {
       "type": "object",
-      "required": ["implementation", "runtime", "samples", "warmup"]
+      "required": ["implementation", "runtime", "samples", "warmup", "host", "source_revision"]
     },
     "measurements": {
       "type": "array",
-      "minItems": 7,
+      "minItems": 8,
       "items": {
         "type": "object",
         "required": ["name", "samples", "warmup", "milliseconds", "median_milliseconds", "minimum_milliseconds"]
