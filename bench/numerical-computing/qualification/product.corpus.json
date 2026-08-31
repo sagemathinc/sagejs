@@ -577,7 +577,7 @@
     },
     {
       "id": "p3-nlopt-cobyla-nonminimum-rejected",
-      "description": "A feasible NLopt COBYLA candidate that admits a feasible descent direction is independently classified as indeterminate rather than certified as a constrained minimum.",
+      "description": "The public result verifier independently classifies an exact feasible COBYLA candidate with a feasible descent direction as indeterminate rather than certifying it from coordinate probes.",
       "program_phase": "P3",
       "layer": "failure-semantics",
       "workload_tier": "instant-classroom",

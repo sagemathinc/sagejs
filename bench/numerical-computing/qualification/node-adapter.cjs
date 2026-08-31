@@ -410,7 +410,7 @@ answer = minimize(
     maxiter=2000,
     max_evaluations=2000,
 )
-first_backend = runtime._nlopt_backend_state["backend"]
+first_backend = runtime._numerical_backend_state["nlopt"]
 repeat = minimize(
     lambda point: (point[0]-2.0)**2 + (point[1]+1.0)**2,
     [5.0, 5.0],
@@ -418,7 +418,7 @@ repeat = minimize(
     maxiter=2000,
     max_evaluations=2000,
 )
-second_backend = runtime._nlopt_backend_state["backend"]
+second_backend = runtime._numerical_backend_state["nlopt"]
 automatic = minimize(lambda point: (point[0]-2.0)**2, [0.0])
 provenance = answer.to_dict()["provenance"]
 automatic_provenance = automatic.to_dict()["provenance"]
@@ -435,7 +435,7 @@ output_record = {
     "implementation_kind": provenance["implementation_kind"],
     "source_transparent": provenance["source_transparent"],
     "cache_reused": first_backend is second_backend,
-    "cache_state_isolated": runtime._nlopt_backend_state is not runtime._numerical_backend_state,
+    "cache_state_isolated": first_backend is not runtime._numerical_backend_state["backend"],
     "repeat_success": repeat.success,
     "automatic_method": automatic.method,
     "automatic_backend": automatic.backend,
@@ -538,10 +538,10 @@ class EntryWitness:
         self.entered = True
         raise RuntimeError("out-of-envelope call entered NLopt backend")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backend_state
+original_backend = backend_state["nlopt"]
 witness = EntryWitness()
-backend_state["backend"] = witness
+backend_state["nlopt"] = witness
 try:
     answer = minimize(
         lambda point: sum(value*value for value in point),
@@ -570,7 +570,7 @@ except Exception as error:
     }
 finally:
     output_record["backend_entered"] = witness.entered
-    backend_state["backend"] = original_backend`,
+    backend_state["nlopt"] = original_backend`,
     "p3-nlopt-cobyla-circle": String.raw`
 from sagejs.numerics.optimization import minimize
 answer = minimize(
@@ -656,14 +656,21 @@ answer = minimize(
         {"type": "ineq", "fun": lambda point: point[0]-0.9*point[1]},
     ],
     method="nlopt-cobyla",
+    maxiter=2,
 )
+# The feasible wedge is unbounded, so the backend is not required to return
+# the origin.  Revalidate that exact adversarial candidate through the public
+# result verifier: an earlier validator incorrectly certified it from only
+# coordinate probes.
+answer._value = [0.0, 0.0, 0.0]
+verification = answer.verify()
 record = answer.to_dict()
 output_record = {
     "value": answer.value,
     "success": answer.success,
     "status": answer.status,
-    "validation_passed": answer.validation.passed,
-    "validation_kind": answer.validation.truth_level,
+    "validation_passed": verification.passed,
+    "validation_kind": verification.truth_level,
     "method": answer.method,
     "backend": answer.backend,
     "implementation_kind": record["provenance"]["implementation_kind"],
@@ -724,12 +731,12 @@ class UnavailableNloptBackend:
     def solve(self, options):
         raise RuntimeError(self.kind + " private nlopt-resource detail")
 
-backend_state = runtime._nlopt_backend_state
-original_backend = backend_state["backend"]
+backend_state = runtime._numerical_backend_state
+original_backend = backend_state["nlopt"]
 records = []
 try:
     for kind in input_record["resource_failures"]:
-        backend_state["backend"] = UnavailableNloptBackend(kind)
+        backend_state["nlopt"] = UnavailableNloptBackend(kind)
         automatic = minimize(lambda point: (point[0]-2.0)**2, [20.0])
         explicit = []
         for method in ("nlopt-nelder-mead", "nlopt-cobyla"):
@@ -752,7 +759,7 @@ try:
             "explicit": explicit,
         })
 finally:
-    backend_state["backend"] = original_backend
+    backend_state["nlopt"] = original_backend
 output_record = {"records": records}`,
     "p4-ode-exponential": String.raw`
 from sagejs.numerics.ode import solve_ivp
@@ -2112,16 +2119,18 @@ async function normalizeEvaluated(sample, evaluated) {
       break;
     }
     case "p3-nlopt-cobyla-nonminimum-rejected": {
-      const [x, y, z] = raw.value;
+      const point = Array.isArray(raw.value) ? raw.value : [];
+      const pointAvailable = point.length === 3 && point.every(Number.isFinite);
+      const [x, y, z] = pointAvailable ? point : [0, 0, 0];
       const candidateObjective = -x - y + z * z;
       const epsilon = 1e-4;
       const witness = [x + epsilon, y + epsilon, z];
       const witnessObjective = -witness[0] - witness[1] + witness[2] ** 2;
-      const witnessViolation = Math.max(
+      const witnessViolation = pointAvailable ? Math.max(
         0,
         0.9 * witness[0] - witness[1],
         0.9 * witness[1] - witness[0],
-      );
+      ) : Number.MAX_VALUE;
       observation = success({
         public_success: raw.success,
         public_status: raw.status,
@@ -2131,9 +2140,11 @@ async function normalizeEvaluated(sample, evaluated) {
         backend: raw.backend,
         implementation_kind: raw.implementation_kind,
         source_transparent: raw.source_transparent,
-        independent_candidate_objective: candidateObjective,
-        independent_feasible_descent: candidateObjective - witnessObjective,
+        independent_candidate_objective: pointAvailable ? candidateObjective : null,
+        independent_feasible_descent: pointAvailable ?
+          candidateObjective - witnessObjective : -Number.MAX_VALUE,
         independent_witness_violation: witnessViolation,
+        point_available: pointAvailable,
       }, kernelMs);
       break;
     }
