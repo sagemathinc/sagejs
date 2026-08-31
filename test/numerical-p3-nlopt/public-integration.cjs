@@ -57,6 +57,16 @@ assert one_dimensional.success and one_dimensional.validation.passed
 assert abs(one_dimensional.value[0] - 3.0) < 1.0e-6
 assert one_dimensional.domain_payload["backend_status"] == "parameter_tolerance_reached"
 
+zero_scale = minimize(
+    lambda point: point[0]**2,
+    [1.0],
+    method="nlopt-nelder-mead",
+)
+assert zero_scale.success and zero_scale.validation.passed
+assert zero_scale.status == "converged"
+assert zero_scale.evaluations < 1000
+assert abs(zero_scale.value[0]) < 1.0e-7
+
 cobyla = minimize(
     lambda point: (point[0] - 2.0)**2,
     [0.0],
@@ -75,6 +85,57 @@ assert automatic.backend == "ordinary-python"
 assert automatic.to_dict()["provenance"]["source_transparent"]
 print("public NLopt identities passed")
 `), "public NLopt identities passed");
+});
+
+test("independent validation rejects rotated saddles and false constrained optima", () => {
+  assert.equal(evaluate(String.raw`
+from sagejs.numerics.optimization import minimize
+
+def rotated_saddle(point):
+    x = point[0] - 1.0
+    y = point[1] - 1.0
+    radius_squared = x*x + y*y
+    return x*x + y*y - 3.0*x*y + radius_squared*radius_squared
+
+saddle = minimize(
+    rotated_saddle,
+    [1.0, 1.0],
+    method="nlopt-nelder-mead",
+    initial_step=1.0e-4,
+    xtol=1.0e-3,
+)
+assert saddle.status == "converged"
+assert not saddle.success and not saddle.validation.passed
+curvature = next(
+    check for check in saddle.validation.to_dict()["checks"]
+    if check["kind"] == "independent_minimum_curvature"
+)
+assert curvature["minimum_curvature"] < -curvature["threshold"]
+
+false_kkt = minimize(
+    lambda point: -point[0] - point[1] + point[2]**2,
+    [0.0, 0.0, 0.0],
+    constraints=[
+        {"type": "ineq", "fun": lambda point: point[1] - 0.9*point[0]},
+        {"type": "ineq", "fun": lambda point: point[0] - 0.9*point[1]},
+    ],
+    method="nlopt-cobyla",
+    maxiter=2,
+)
+# This objective is unbounded on the feasible wedge, so the backend is not
+# required to return the origin.  Validate that exact candidate directly: the
+# earlier independent validator falsely certified it from coordinate probes.
+false_kkt._value = [0.0, 0.0, 0.0]
+false_kkt_validation = false_kkt.verify()
+assert not false_kkt_validation.passed
+kkt = next(
+    check for check in false_kkt_validation.to_dict()["checks"]
+    if check["kind"] == "independent_active_constraint_kkt"
+)
+assert not kkt["passed"] and kkt["residual"] > kkt["threshold"]
+assert kkt["descent_direction_feasible"]
+print("public adversarial validation passed")
+`), "public adversarial validation passed");
 });
 
 test("COBYLA validates equality constraints and rejects infeasible success", () => {
@@ -139,6 +200,9 @@ def broken(_point):
 
 callback = minimize(broken, [1.0], method="nlopt-nelder-mead")
 assert not callback.success and callback.status == "callback_error"
+callback_provenance = callback.to_dict()["provenance"]
+assert callback_provenance["implementation_kind"] == "external_library_wasm"
+assert not callback_provenance["source_transparent"]
 
 limited = minimize(
     lambda point: (point[0] - 2.0)**2,
@@ -162,6 +226,9 @@ cancelled = minimize(
     cancel=cancel,
 )
 assert not cancelled.success and cancelled.status == "cancelled"
+cancelled_provenance = cancelled.to_dict()["provenance"]
+assert cancelled_provenance["implementation_kind"] == "external_library_wasm"
+assert not cancelled_provenance["source_transparent"]
 
 recovered = minimize(
     lambda point: (point[0] - 2.0)**2,

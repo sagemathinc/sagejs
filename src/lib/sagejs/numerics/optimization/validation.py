@@ -28,6 +28,9 @@ from ._core import (
 _MACHINE_EPSILON = 2.220446049250313e-16
 _FINITE_DIFFERENCE_STEP = 6.055454452393343e-06
 _SECOND_ORDER_STEP = _MACHINE_EPSILON**0.25
+_MAX_LOCAL_DIRECTIONS = 192
+_MAX_KKT_NORMALS = 64
+_MAX_HESSIAN_DIMENSION = 32
 
 
 def _checked_validation_derivative(value: float) -> float:
@@ -113,6 +116,323 @@ def _independent_bound_gradient(
         else:
             answer.append(0.0)
     return answer
+
+
+def _project_away_normals(
+    vector_value: list[float], normals: list[list[float]]
+) -> list[float]:
+    """Project a vector onto the complement of an orthonormal normal basis."""
+    answer = list(vector_value)
+    for normal in normals:
+        coefficient = sum(answer[index] * normal[index] for index in range(len(answer)))
+        answer = [
+            answer[index] - coefficient * normal[index] for index in range(len(answer))
+        ]
+    return answer
+
+
+def _orthonormal_normals(gradients: list[list[float]]) -> list[list[float]]:
+    answer: list[list[float]] = []
+    for gradient in gradients:
+        residual = _project_away_normals(gradient, answer)
+        norm = math.sqrt(sum(item * item for item in residual))
+        if norm > 1.0e-10:
+            answer.append([item / norm for item in residual])
+    return answer
+
+
+def _validation_directions(
+    dimension: int, equality_normals: list[list[float]]
+) -> list[list[float]]:
+    """Build a bounded deterministic coordinate, dense, and mixed poll set."""
+    raw_directions: list[list[float]] = []
+    if dimension > 1:
+        raw_directions.append([1.0 for _ in range(dimension)])
+        for phase in range(min(7, dimension)):
+            raw_directions.append(
+                [
+                    1.0 if (index + phase) % 3 != 0 else -1.0
+                    for index in range(dimension)
+                ]
+            )
+    for coordinate in range(dimension):
+        basis = [0.0 for _ in range(dimension)]
+        basis[coordinate] = 1.0
+        raw_directions.append(basis)
+    for left in range(dimension):
+        for right in range(left + 1, dimension):
+            plus = [0.0 for _ in range(dimension)]
+            minus = [0.0 for _ in range(dimension)]
+            plus[left] = plus[right] = 1.0
+            minus[left] = 1.0
+            minus[right] = -1.0
+            raw_directions.extend((plus, minus))
+
+    answer: list[list[float]] = []
+    seen: set[tuple[float, ...]] = set()
+    for raw in raw_directions:
+        tangent = _project_away_normals(raw, equality_normals)
+        norm = math.sqrt(sum(item * item for item in tangent))
+        if norm <= 1.0e-10:
+            continue
+        direction = [item / norm for item in tangent]
+        first = next((item for item in direction if abs(item) > 1.0e-12), 1.0)
+        if first < 0.0:
+            direction = [-item for item in direction]
+        key = tuple(round(item, 12) for item in direction)
+        if key in seen:
+            continue
+        seen.add(key)
+        answer.append(direction)
+        if len(answer) >= _MAX_LOCAL_DIRECTIONS:
+            break
+    return answer
+
+
+def _nonnegative_kkt_residual(
+    target: list[float], normals: list[list[float]]
+) -> tuple[list[float], list[float], bool, int]:
+    """Solve the small active-normal nonnegative least-squares problem."""
+    multipliers = [0.0 for _ in normals]
+    residual = list(target)
+    converged = len(normals) == 0
+    iterations = 0
+    for iteration in range(256):
+        maximum_change = 0.0
+        for index, normal in enumerate(normals):
+            squared_norm = sum(item * item for item in normal)
+            if squared_norm <= 1.0e-24:
+                continue
+            correlation = sum(
+                normal[item] * residual[item] for item in range(len(target))
+            )
+            updated = max(0.0, multipliers[index] + correlation / squared_norm)
+            change = updated - multipliers[index]
+            if change != 0.0:
+                residual = [
+                    residual[item] - change * normal[item]
+                    for item in range(len(target))
+                ]
+                multipliers[index] = updated
+                maximum_change = max(maximum_change, abs(change))
+        iterations = iteration + 1
+        multiplier_scale = max([1.0] + multipliers)
+        if maximum_change <= 1.0e-12 * multiplier_scale:
+            converged = True
+            break
+    target_scale = max(1.0, math.sqrt(sum(item * item for item in target)))
+    dual_tolerance = (
+        max(
+            256.0 * _MACHINE_EPSILON * (len(target) + len(normals)),
+            1.0e-12,
+        )
+        * target_scale
+    )
+    dual_certified = True
+    for multiplier, normal in zip(multipliers, normals, strict=True):
+        correlation = sum(
+            normal[index] * residual[index] for index in range(len(target))
+        )
+        if multiplier > dual_tolerance:
+            dual_certified = dual_certified and abs(correlation) <= dual_tolerance
+        else:
+            dual_certified = dual_certified and correlation <= dual_tolerance
+    return residual, multipliers, converged and dual_certified, iterations
+
+
+def _minimum_symmetric_eigenvalue(
+    matrix_value: list[list[float]],
+) -> tuple[float, bool, int]:
+    """Return the minimum eigenvalue using deterministic cyclic Jacobi sweeps."""
+    dimension = len(matrix_value)
+    matrix = [list(row) for row in matrix_value]
+    if dimension == 0:
+        return 0.0, False, 0
+    scale = max(
+        1.0,
+        max(sum(abs(item) for item in row) for row in matrix),
+    )
+    tolerance = 256.0 * _MACHINE_EPSILON * dimension * scale
+    for sweep in range(32):
+        maximum_off_diagonal = 0.0
+        for left in range(dimension):
+            for right in range(left + 1, dimension):
+                off_diagonal = matrix[left][right]
+                maximum_off_diagonal = max(maximum_off_diagonal, abs(off_diagonal))
+                if abs(off_diagonal) <= tolerance:
+                    continue
+                diagonal_difference = matrix[right][right] - matrix[left][left]
+                tau = diagonal_difference / (2.0 * off_diagonal)
+                sign = 1.0 if tau >= 0.0 else -1.0
+                tangent = sign / (abs(tau) + math.sqrt(1.0 + tau * tau))
+                cosine = 1.0 / math.sqrt(1.0 + tangent * tangent)
+                sine = tangent * cosine
+                left_diagonal = matrix[left][left]
+                right_diagonal = matrix[right][right]
+                matrix[left][left] = left_diagonal - tangent * off_diagonal
+                matrix[right][right] = right_diagonal + tangent * off_diagonal
+                matrix[left][right] = 0.0
+                matrix[right][left] = 0.0
+                for index in range(dimension):
+                    if index in (left, right):
+                        continue
+                    left_value = matrix[index][left]
+                    right_value = matrix[index][right]
+                    rotated_left = cosine * left_value - sine * right_value
+                    rotated_right = sine * left_value + cosine * right_value
+                    matrix[index][left] = matrix[left][index] = rotated_left
+                    matrix[index][right] = matrix[right][index] = rotated_right
+        if maximum_off_diagonal <= tolerance:
+            return (
+                min(matrix[index][index] for index in range(dimension)),
+                True,
+                sweep + 1,
+            )
+    return min(matrix[index][index] for index in range(dimension)), False, 32
+
+
+def _independent_minimum_curvature(
+    problem: NumericalProblem,
+    point: list[float],
+    objective: float,
+    execution: Execution,
+    lower: list[float | None],
+    upper: list[float | None],
+) -> dict[str, Any]:
+    """Build a two-scale dense Hessian model independently of the solver."""
+    function = problem.function
+    dimension = len(point)
+    required_evaluations = 4 * dimension * dimension
+    remaining_evaluations = (
+        problem.resource_budget.max_evaluations - execution.evaluations
+    )
+    if function is None or dimension > _MAX_HESSIAN_DIMENSION:
+        return {
+            "resolved": False,
+            "reason": "dimension_envelope",
+            "required_evaluations": required_evaluations,
+        }
+    if remaining_evaluations < required_evaluations:
+        return {
+            "resolved": False,
+            "reason": "evaluation_budget",
+            "required_evaluations": required_evaluations,
+            "remaining_evaluations": remaining_evaluations,
+        }
+    scales = [max(1.0, abs(item)) for item in point]
+    radius = _SECOND_ORDER_STEP
+    for index in range(dimension):
+        displacement = radius * scales[index]
+        lower_value = lower[index]
+        upper_value = upper[index]
+        if lower_value is not None and point[index] - displacement < float(lower_value):
+            return {"resolved": False, "reason": "active_bound"}
+        if upper_value is not None and point[index] + displacement > float(upper_value):
+            return {"resolved": False, "reason": "active_bound"}
+
+    sample_scale = max(1.0, abs(objective))
+    maximum_relative_decrease = 0.0
+
+    def sampled(candidate: list[float]) -> float:
+        nonlocal sample_scale, maximum_relative_decrease
+        value = scalar(execution.call("validation", function, candidate))
+        sample_scale = max(sample_scale, abs(value))
+        comparison_scale = max(1.0, abs(objective), abs(value))
+        maximum_relative_decrease = max(
+            maximum_relative_decrease,
+            max(0.0, (objective - value) / comparison_scale),
+        )
+        return value
+
+    def hessian_at(current_radius: float) -> list[list[float]]:
+        matrix = [[0.0 for _ in point] for _ in point]
+        denominator = current_radius * current_radius
+        for index in range(dimension):
+            left = list(point)
+            right = list(point)
+            displacement = current_radius * scales[index]
+            left[index] -= displacement
+            right[index] += displacement
+            matrix[index][index] = (
+                sampled(left) - 2.0 * objective + sampled(right)
+            ) / denominator
+        for left_index in range(dimension):
+            for right_index in range(left_index + 1, dimension):
+                values: list[float] = []
+                for left_sign, right_sign in (
+                    (1.0, 1.0),
+                    (1.0, -1.0),
+                    (-1.0, 1.0),
+                    (-1.0, -1.0),
+                ):
+                    candidate = list(point)
+                    candidate[left_index] += (
+                        left_sign * current_radius * scales[left_index]
+                    )
+                    candidate[right_index] += (
+                        right_sign * current_radius * scales[right_index]
+                    )
+                    values.append(sampled(candidate))
+                mixed = (values[0] - values[1] - values[2] + values[3]) / (
+                    4.0 * denominator
+                )
+                matrix[left_index][right_index] = mixed
+                matrix[right_index][left_index] = mixed
+        return matrix
+
+    coarse = hessian_at(radius)
+    fine = hessian_at(0.5 * radius)
+    richardson = [
+        [
+            (4.0 * fine[row][column] - coarse[row][column]) / 3.0
+            for column in range(dimension)
+        ]
+        for row in range(dimension)
+    ]
+    discretization = max(
+        sum(
+            abs(fine[row][column] - coarse[row][column]) / 3.0
+            for column in range(dimension)
+        )
+        for row in range(dimension)
+    )
+    matrix_scale = max(
+        1.0,
+        max(sum(abs(item) for item in row) for row in richardson),
+    )
+    roundoff = 256.0 * _MACHINE_EPSILON * sample_scale / ((0.5 * radius) ** 2)
+    curvature_threshold = (
+        roundoff
+        + discretization
+        + max(
+            float(problem.tolerances["gtol"]) * 20.0,
+            128.0 * math.sqrt(_MACHINE_EPSILON) * matrix_scale,
+        )
+    )
+    minimum_curvature, eigensolver_converged, eigensolver_sweeps = (
+        _minimum_symmetric_eigenvalue(richardson)
+    )
+    descent_threshold = max(
+        float(problem.tolerances["ftol"]) * 20.0,
+        256.0 * _MACHINE_EPSILON,
+    )
+    resolved = eigensolver_converged and abs(minimum_curvature) > curvature_threshold
+    return {
+        "resolved": resolved,
+        "reason": "resolved" if resolved else "curvature_indeterminate",
+        "minimum_curvature": minimum_curvature,
+        "threshold": curvature_threshold,
+        "positive": minimum_curvature > curvature_threshold,
+        "negative": minimum_curvature < -curvature_threshold,
+        "maximum_relative_sampled_decrease": maximum_relative_decrease,
+        "descent_threshold": descent_threshold,
+        "sampled_descent": maximum_relative_decrease > descent_threshold,
+        "required_evaluations": required_evaluations,
+        "eigensolver_converged": eigensolver_converged,
+        "eigensolver_sweeps": eigensolver_sweeps,
+        "discretization_bound": discretization,
+        "roundoff_bound": roundoff,
+    }
 
 
 def _independent_jacobian(
@@ -300,11 +620,14 @@ def _minimize_validation(
     maximum_relative_local_decrease = 0.0
     movable_probe_count = 0
     resolved_probe = False
-    for index in range(len(point)):
-        step = 6.055454452393343e-06 * max(1.0, abs(point[index]))
-        for direction in (-1.0, 1.0):
-            candidate = list(point)
-            candidate[index] += direction * step
+    directions = _validation_directions(len(point), [])
+    step = _FINITE_DIFFERENCE_STEP * max(1.0, infinity_norm(point))
+    for direction_vector in directions:
+        for sign in (-1.0, 1.0):
+            candidate = [
+                point[index] + sign * step * direction_vector[index]
+                for index in range(len(point))
+            ]
             for item in range(len(candidate)):
                 lower_value = lower[item]
                 upper_value = upper[item]
@@ -341,7 +664,26 @@ def _minimize_validation(
         if upper_value is not None and point[index] > float(upper_value) + 1.0e-12:
             feasible = False
     gradient_stationary = residual <= threshold
-    stationary = gradient_stationary and locally_minimal and numerically_resolved
+    second_order_required = problem.method.lower() == "nlopt-nelder-mead"
+    curvature = (
+        _independent_minimum_curvature(
+            problem, point, objective, execution, lower, upper
+        )
+        if second_order_required
+        else {"resolved": True, "positive": True, "sampled_descent": False}
+    )
+    curvature_passed = (
+        bool(curvature.get("resolved"))
+        and bool(curvature.get("positive"))
+        and not bool(curvature.get("sampled_descent"))
+    )
+    stationary = (
+        gradient_stationary
+        and locally_minimal
+        and numerically_resolved
+        and curvature_passed
+    )
+    curvature_residual = max(0.0, -float(curvature.get("minimum_curvature", 0.0)))
     return NumericalValidation(
         "validated_approximate" if feasible and stationary else "indeterminate",
         feasible and stationary,
@@ -355,8 +697,9 @@ def _minimize_validation(
                 "gradient": gradient,
             },
             {
-                "kind": "coordinate_local_minimum",
+                "kind": "deterministic_directional_local_minimum",
                 "passed": locally_minimal,
+                "direction_count": len(directions),
                 "maximum_relative_sampled_decrease": maximum_relative_local_decrease,
                 "threshold": local_threshold,
             },
@@ -365,9 +708,15 @@ def _minimize_validation(
                 "passed": numerically_resolved,
                 "movable_probe_count": movable_probe_count,
             },
+            {
+                "kind": "independent_minimum_curvature",
+                "passed": curvature_passed,
+                "required": second_order_required,
+                **curvature,
+            },
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
-        residual=residual,
+        residual=max(residual, curvature_residual),
     )
 
 
@@ -390,7 +739,6 @@ def _constrained_minimize_validation(
     objective = scalar(execution.call("validation", function, point))
     values: list[float] = []
     adjusted_violations: list[float] = []
-    equality_gradients: list[list[float]] = []
     for item in constraints:
         constraint_value = scalar(execution.call("validation", item.function, point))
         values.append(constraint_value)
@@ -400,19 +748,12 @@ def _constrained_minimize_validation(
             else max(0.0, abs(constraint_value) - item.tolerance)
         )
         adjusted_violations.append(violation)
-        if item.kind == "equality":
-            equality_gradients.append(
-                _independent_bound_gradient(
-                    execution,
-                    item.function,
-                    point,
-                    constraint_value,
-                    lower,
-                    upper,
-                )
-            )
 
-    bound_tolerance = max(1.0e-10, float(problem.tolerances["xtol"]) * 10.0)
+    coordinate_scales = [max(1.0, abs(item)) for item in point]
+    bound_tolerances = [
+        max(64.0 * _MACHINE_EPSILON * scale, 1.0e-12 * scale)
+        for scale in coordinate_scales
+    ]
     bound_violation = 0.0
     for index in range(len(point)):
         lower_value = lower[index]
@@ -420,52 +761,166 @@ def _constrained_minimize_validation(
         if lower_value is not None:
             bound_violation = max(
                 bound_violation,
-                float(lower_value) - point[index] - bound_tolerance,
+                float(lower_value) - point[index] - bound_tolerances[index],
             )
         if upper_value is not None:
             bound_violation = max(
                 bound_violation,
-                point[index] - float(upper_value) - bound_tolerance,
+                point[index] - float(upper_value) - bound_tolerances[index],
             )
     bound_violation = max(0.0, bound_violation)
     maximum_violation = max([bound_violation] + adjusted_violations)
     feasible = maximum_violation == 0.0
 
-    # Build an independent orthonormal equality-normal basis, then poll both
-    # coordinate and equality-tangent directions. Only independently feasible
-    # candidates are allowed to support the local-minimum conclusion.
-    equality_normals: list[list[float]] = []
-    for gradient in equality_gradients:
-        residual_gradient = list(gradient)
-        for normal in equality_normals:
-            coefficient = sum(
-                residual_gradient[index] * normal[index] for index in range(len(point))
-            )
-            residual_gradient = [
-                residual_gradient[index] - coefficient * normal[index]
-                for index in range(len(point))
-            ]
-        norm = math.sqrt(sum(item * item for item in residual_gradient))
-        if norm > 1.0e-10:
-            equality_normals.append([item / norm for item in residual_gradient])
+    equality_records = [
+        (item, constraint_value)
+        for item, constraint_value in zip(constraints, values, strict=True)
+        if item.kind == "equality"
+    ]
+    active_inequality_records = [
+        (item, constraint_value)
+        for item, constraint_value in zip(constraints, values, strict=True)
+        if item.kind == "inequality"
+        and constraint_value
+        <= item.tolerance
+        + 32.0 * math.sqrt(_MACHINE_EPSILON) * max(1.0, abs(constraint_value))
+    ]
+    active_lower = [
+        index
+        for index, lower_value in enumerate(lower)
+        if lower_value is not None
+        and point[index] - float(lower_value)
+        <= max(
+            bound_tolerances[index],
+            32.0 * math.sqrt(_MACHINE_EPSILON) * coordinate_scales[index],
+        )
+    ]
+    active_upper = [
+        index
+        for index, upper_value in enumerate(upper)
+        if upper_value is not None
+        and float(upper_value) - point[index]
+        <= max(
+            bound_tolerances[index],
+            32.0 * math.sqrt(_MACHINE_EPSILON) * coordinate_scales[index],
+        )
+    ]
+    normal_count = (
+        len(equality_records)
+        + len(active_inequality_records)
+        + len(active_lower)
+        + len(active_upper)
+    )
+    required_kkt_evaluations = (
+        4 * len(point) * (1 + len(equality_records) + len(active_inequality_records))
+    )
+    remaining_kkt_evaluations = (
+        problem.resource_budget.max_evaluations - execution.evaluations
+    )
+    within_kkt_budget = (
+        normal_count <= _MAX_KKT_NORMALS
+        and required_kkt_evaluations <= remaining_kkt_evaluations
+    )
 
-    directions: list[list[float]] = []
-    for coordinate in range(len(point)):
-        basis = [0.0 for _ in point]
-        basis[coordinate] = 1.0
-        directions.append(basis)
-        tangent = list(basis)
-        for normal in equality_normals:
-            coefficient = sum(
-                tangent[index] * normal[index] for index in range(len(point))
+    objective_gradient: list[float] = []
+    equality_normals: list[list[float]] = []
+    active_normals: list[list[float]] = []
+    kkt_residual = 0.0
+    kkt_threshold = max(2.0e-6, float(problem.tolerances["gtol"]) * 20.0)
+    kkt_converged = False
+    kkt_iterations = 0
+    multipliers: list[float] = []
+    constraint_qualification = within_kkt_budget
+    descent_direction: list[float] = []
+    descent_direction_feasible = False
+    descent_derivative = 0.0
+    if within_kkt_budget:
+        objective_gradient = _independent_bound_gradient(
+            execution, function, point, objective, lower, upper
+        )
+        equality_gradients = [
+            _independent_bound_gradient(
+                execution,
+                item.function,
+                point,
+                constraint_value,
+                lower,
+                upper,
             )
-            tangent = [
-                tangent[index] - coefficient * normal[index]
-                for index in range(len(point))
-            ]
-        norm = math.sqrt(sum(item * item for item in tangent))
-        if norm > 1.0e-10:
-            directions.append([item / norm for item in tangent])
+            for item, constraint_value in equality_records
+        ]
+        constraint_qualification = constraint_qualification and all(
+            math.sqrt(sum(item * item for item in gradient)) > 1.0e-12
+            for gradient in equality_gradients
+        )
+        equality_normals = _orthonormal_normals(equality_gradients)
+        for item, constraint_value in active_inequality_records:
+            gradient = _independent_bound_gradient(
+                execution,
+                item.function,
+                point,
+                constraint_value,
+                lower,
+                upper,
+            )
+            gradient_norm = math.sqrt(sum(item * item for item in gradient))
+            if gradient_norm <= 1.0e-12:
+                constraint_qualification = False
+                continue
+            gradient = [item / gradient_norm for item in gradient]
+            active_normals.append(_project_away_normals(gradient, equality_normals))
+        for index in active_lower:
+            normal = [0.0 for _ in point]
+            normal[index] = 1.0
+            active_normals.append(_project_away_normals(normal, equality_normals))
+        for index in active_upper:
+            normal = [0.0 for _ in point]
+            normal[index] = -1.0
+            active_normals.append(_project_away_normals(normal, equality_normals))
+        normalized_active_normals: list[list[float]] = []
+        for normal in active_normals:
+            normal_norm = math.sqrt(sum(item * item for item in normal))
+            if normal_norm > 1.0e-12:
+                normalized_active_normals.append(
+                    [item / normal_norm for item in normal]
+                )
+        active_normals = normalized_active_normals
+        tangent_gradient = _project_away_normals(objective_gradient, equality_normals)
+        residual_vector, multipliers, kkt_converged, kkt_iterations = (
+            _nonnegative_kkt_residual(tangent_gradient, active_normals)
+        )
+        gradient_scale = max(1.0, infinity_norm(objective_gradient))
+        raw_kkt_residual = infinity_norm(residual_vector)
+        kkt_residual = raw_kkt_residual / gradient_scale
+        descent_direction = [-item for item in residual_vector]
+        descent_derivative = sum(
+            objective_gradient[index] * descent_direction[index]
+            for index in range(len(point))
+        )
+        directional_tolerance = (
+            10.0 * _MACHINE_EPSILON * max(1.0, infinity_norm(descent_direction))
+        )
+        descent_direction_feasible = all(
+            sum(normal[index] * descent_direction[index] for index in range(len(point)))
+            >= -directional_tolerance
+            for normal in active_normals
+        )
+
+    kkt_stationary = (
+        within_kkt_budget
+        and constraint_qualification
+        and kkt_converged
+        and kkt_residual <= kkt_threshold
+    )
+    directions = _validation_directions(len(point), equality_normals)
+    if (
+        within_kkt_budget
+        and kkt_residual > kkt_threshold
+        and descent_direction_feasible
+    ):
+        norm = math.sqrt(sum(item * item for item in descent_direction))
+        if norm > 1.0e-12:
+            directions.insert(0, [item / norm for item in descent_direction])
 
     step = _SECOND_ORDER_STEP * max(1.0, infinity_norm(point))
     feasible_probe_count = 0
@@ -525,7 +980,9 @@ def _constrained_minimize_validation(
     locally_minimal = (
         maximum_relative_local_decrease <= local_threshold and probe_resolved
     )
-    passed = feasible and locally_minimal and math.isfinite(objective)
+    passed = (
+        feasible and kkt_stationary and locally_minimal and math.isfinite(objective)
+    )
     return NumericalValidation(
         "validated_approximate" if passed else "indeterminate",
         passed,
@@ -539,16 +996,35 @@ def _constrained_minimize_validation(
                 "maximum_violation": maximum_violation,
             },
             {
+                "kind": "independent_active_constraint_kkt",
+                "passed": kkt_stationary,
+                "within_budget": within_kkt_budget,
+                "required_evaluations": required_kkt_evaluations,
+                "remaining_evaluations": remaining_kkt_evaluations,
+                "active_normal_count": normal_count,
+                "equality_rank": len(equality_normals),
+                "residual": kkt_residual,
+                "threshold": kkt_threshold,
+                "solver_converged": kkt_converged,
+                "solver_iterations": kkt_iterations,
+                "constraint_qualification": constraint_qualification,
+                "multipliers": multipliers,
+                "objective_gradient": objective_gradient,
+                "descent_direction_feasible": descent_direction_feasible,
+                "descent_directional_derivative": descent_derivative,
+            },
+            {
                 "kind": "independent_feasible_direction_local_minimum",
                 "passed": locally_minimal,
                 "feasible_probe_count": feasible_probe_count,
+                "direction_count": len(directions),
                 "equality_rank": len(equality_normals),
                 "maximum_relative_sampled_decrease": maximum_relative_local_decrease,
                 "threshold": local_threshold,
             },
             {"kind": "finite_objective", "passed": math.isfinite(objective)},
         ],
-        residual=maximum_violation,
+        residual=max(maximum_violation, kkt_residual),
     )
 
 

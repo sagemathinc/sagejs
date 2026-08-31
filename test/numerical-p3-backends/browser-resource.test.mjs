@@ -8,7 +8,7 @@ import { createBrowserRuntimeModules } from
   "../../packages/flint-wasm/evaluator.mjs";
 import { createCminpackBackend } from
   "../../packages/flint-wasm/numerical/index.mjs";
-import { createNloptBackend } from
+import { createNloptBackend, nloptArtifactReceipt } from
   "../../packages/flint-wasm/numerical/nlopt-index.mjs";
 
 const artifact = new URL(
@@ -49,7 +49,7 @@ test("browser runtime prepares numerical backends without claiming execution", a
         return { createCminpackBackend };
       }
       assert.equal(url, "receipt-bound:nlopt-adapter");
-      return { createNloptBackend };
+      return { createNloptBackend, nloptArtifactReceipt };
     },
     recordCapability(...record) {
       capabilities.push(record);
@@ -83,6 +83,49 @@ test("browser runtime prepares numerical backends without claiming execution", a
   await modules.prepare(["sagejs.numerics.optimization"]);
   assert.equal(fetches, 2);
   assert.equal(adapterImports, 2);
+});
+
+test("browser NLopt authentication rejects same-shape substituted bytes", async () => {
+  const cminpackBytes = await readFile(artifact);
+  const nloptBytes = Uint8Array.from(await readFile(nloptArtifact));
+  nloptBytes[Math.floor(nloptBytes.byteLength / 2)] ^= 1;
+  const capabilities = [];
+  const modules = createBrowserRuntimeModules({
+    numerical: "receipt-bound:cminpack",
+    numericalNlopt: "tampered:nlopt",
+    numericalAdapter: "receipt-bound:cminpack-adapter",
+    nloptAdapter: "receipt-bound:nlopt-adapter",
+    async fetchNumerical(url) {
+      return {
+        ok: true,
+        async arrayBuffer() {
+          return url === "tampered:nlopt" ? nloptBytes : cminpackBytes;
+        },
+      };
+    },
+    async importNumerical(url) {
+      return url === "receipt-bound:cminpack-adapter"
+        ? { createCminpackBackend }
+        : { createNloptBackend, nloptArtifactReceipt };
+    },
+    recordCapability(...record) {
+      capabilities.push(record);
+    },
+  });
+
+  await modules.prepare(["sagejs.numerics.optimization"]);
+  const cminpack = modules.get("@sagemath/sagejs-numerical");
+  assert.equal(cminpack.capability.backend, "cminpack-wasm");
+  const unavailable = modules.get("@sagemath/sagejs-numerical-nlopt");
+  assert.equal(unavailable.capability.backend, "nlopt-unavailable");
+  assert.throws(
+    () => unavailable.solve({}),
+    /SHA-256 differs from its packaged artifact receipt/,
+  );
+  assert.equal(
+    capabilities.some(([id]) => id.includes("nlopt")),
+    false,
+  );
 });
 
 test("browser optimization imports survive unavailable explicit resources", async () => {

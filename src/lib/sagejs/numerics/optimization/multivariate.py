@@ -483,6 +483,7 @@ def _bfgs(
 def _nlopt_minimize(
     execution: Execution,
     method: str,
+    execution_payload: dict[str, Any],
 ) -> tuple[list[float] | None, float | None, int, str, dict[str, Any]]:
     """Execute one exact NLopt identity through the lazy runtime boundary."""
     try:
@@ -579,6 +580,14 @@ def _nlopt_minimize(
     # disabled value. Do not pass a Python float wrapper across this low-level
     # JavaScript option boundary merely to spell that default explicitly.
     set_option("relativeParameterTolerance", float(problem.tolerances["xtol"]))
+    set_option(
+        "absoluteParameterTolerance",
+        [
+            float(problem.tolerances["xtol"])
+            * max(1.0, abs(point[index]), abs(step[index]))
+            for index in range(len(point))
+        ],
+    )
     # NLopt's derivative-free algorithms expose an evaluation stop, not a
     # portable iteration counter. Use the stricter of the caller's iteration
     # and evaluation budgets rather than silently ignoring either contract.
@@ -589,6 +598,11 @@ def _nlopt_minimize(
     set_option("maximumCallbacks", backend_evaluation_budget)
     set_option("maximumElapsedMs", remaining_elapsed)
 
+    # Any exceptional exit from this point occurred while the authenticated
+    # external backend was executing, so stamp provenance before entering it.
+    execution_payload.update(
+        {"method_identity": method, "backend_identity": "nlopt-mit-wasm"}
+    )
     try:
         result = runtime.reflect.apply(solve, backend, [options])
     except (StopExecution, CallbackFailure):
@@ -714,9 +728,10 @@ def solve_minimize_problem(
     payload: dict[str, Any] = {}
     try:
         if selected_plan.method in ("nlopt-nelder-mead", "nlopt-cobyla"):
-            value, objective, iterations, status, payload = _nlopt_minimize(
-                execution, selected_plan.method
+            value, objective, iterations, status, result_payload = _nlopt_minimize(
+                execution, selected_plan.method, payload
             )
+            payload.update(result_payload)
         elif selected_plan.method == "nelder-mead":
             value, objective, iterations, status, payload = _nelder_mead(execution)
         else:

@@ -363,6 +363,37 @@ function createGlobalInstaller(target) {
   };
 }
 
+function hexadecimal(bytes) {
+  return [...new Uint8Array(bytes)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function verifyBrowserWasmArtifact(bytes, receipt, filename, label) {
+  if (
+    receipt?.schema !== "sagejs.wasm-artifact-integrity/v1" ||
+    receipt?.algorithm !== "sha256" ||
+    receipt?.filename !== filename ||
+    !Number.isSafeInteger(receipt?.bytes) ||
+    receipt.bytes <= 0 ||
+    typeof receipt?.sha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(receipt.sha256)
+  ) {
+    throw new TypeError(`${label} has an invalid packaged artifact receipt`);
+  }
+  if (bytes.byteLength !== receipt.bytes) {
+    throw new TypeError(`${label} size differs from its packaged artifact receipt`);
+  }
+  const subtle = globalThis.crypto?.subtle;
+  if (typeof subtle?.digest !== "function") {
+    throw new TypeError(`${label} SHA-256 verification is unavailable`);
+  }
+  const actual = hexadecimal(await subtle.digest("SHA-256", bytes));
+  if (actual !== receipt.sha256) {
+    throw new TypeError(`${label} SHA-256 differs from its packaged artifact receipt`);
+  }
+}
+
 export function createBrowserRuntimeModules({
   numpy = new URL("./dist/numpy-ts.mjs", import.meta.url),
   importNumpy = (url) => import(String(url)),
@@ -464,16 +495,19 @@ export function createBrowserRuntimeModules({
             return response.arrayBuffer();
           })
           .then(async (bytes) => {
-            let instantiate = instantiateNlopt;
-            if (instantiate === undefined) {
-              const adapter = await (nloptAdapterPromise ??= Promise.resolve(
-                importNumerical(nloptAdapter),
-              ));
-              instantiate = adapter?.createNloptBackend;
-            }
+            const adapter = await (nloptAdapterPromise ??= Promise.resolve(
+              importNumerical(nloptAdapter),
+            ));
+            const instantiate = instantiateNlopt ?? adapter?.createNloptBackend;
             if (typeof instantiate !== "function") {
               throw new TypeError("browser NLopt numerical adapter is invalid");
             }
+            await verifyBrowserWasmArtifact(
+              bytes,
+              adapter?.nloptArtifactReceipt,
+              "nlopt-methods.wasm",
+              "browser NLopt numerical backend",
+            );
             return instantiate(bytes);
           })
           .then((backend) => {
