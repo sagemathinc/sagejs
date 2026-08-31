@@ -2,7 +2,6 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
 const { join, resolve } = require("node:path");
 
 const {
@@ -12,6 +11,7 @@ const {
   prepareRelocatedSeaFromInstall,
   runInstalledKernelPython,
   runInstalledSourcePython,
+  runProcess,
   runRelocatedSeaPython,
   targetForHost,
 } = require("./package-qualification/runtime.cjs");
@@ -76,7 +76,7 @@ function verifyPublicJavaScriptApi(context) {
   const expectedVersion = require(join(root, "package.json")).version;
   assert.equal(context.version, expectedVersion);
   const target = SUPPORTED_TARGETS[context.target];
-  const output = execFileSync(
+  const commonJs = assertSuccessful(runProcess(
     process.execPath,
     [
       "-e",
@@ -89,17 +89,20 @@ function verifyPublicJavaScriptApi(context) {
         'catch (error) { if (error.code !== "MODULE_NOT_FOUND") throw error; }',
         "(async () => {",
         "  const sage = await api.createSage();",
-        '  console.log((await sage.evaluate("factor(370309)")).repr);',
-        '  console.log((await sage.evaluate("version()")).repr);',
-        '  console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
-        "  await sage.close();",
+        "  try {",
+        '    console.log((await sage.evaluate("factor(370309)")).repr);',
+        '    console.log((await sage.evaluate("version()")).repr);',
+        '    console.log((await sage.evaluate("version(True)[\\"schema\\"]")).repr);',
+        "  } finally {",
+        "    await sage.close();",
+        "  }",
         "})().catch((error) => { console.error(error); process.exitCode = 1; });",
       ].join("\n"),
     ],
-    { cwd: context.directory, encoding: "utf8", timeout: 180_000 },
-  );
+    { cwd: context.directory, timeout: 180_000 },
+  ), "installed CommonJS public API smoke");
   assert.equal(
-    output.trim(),
+    commonJs.stdout.trim(),
     [
       "67 * 5527",
       `'Sage.js v${expectedVersion} [${target.runtimeId}], Release Date: ` +
@@ -108,7 +111,7 @@ function verifyPublicJavaScriptApi(context) {
     ].join("\n"),
   );
 
-  const esmOutput = execFileSync(
+  const esm = assertSuccessful(runProcess(
     process.execPath,
     [
       "--input-type=module",
@@ -116,13 +119,16 @@ function verifyPublicJavaScriptApi(context) {
       [
         'import { createSage } from "@sagemath/sagejs";',
         "const sage = await createSage();",
-        'console.log((await sage.evaluate("number_of_partitions(10)")).repr);',
-        "await sage.close();",
+        "try {",
+        '  console.log((await sage.evaluate("number_of_partitions(10)")).repr);',
+        "} finally {",
+        "  await sage.close();",
+        "}",
       ].join("\n"),
     ],
-    { cwd: context.directory, encoding: "utf8", timeout: 180_000 },
-  );
-  assert.equal(esmOutput.trim(), "42");
+    { cwd: context.directory, timeout: 180_000 },
+  ), "installed ESM public API smoke");
+  assert.equal(esm.stdout.trim(), "42");
 }
 
 function main() {
@@ -151,10 +157,24 @@ function main() {
         "resources, and relocated SEA passed",
     );
   } finally {
-    if (options.keep && install) {
-      console.log(`Kept package qualification directory: ${install.directory}`);
+    cleanupQualification({
+      install,
+      relocated,
+      keep: options.keep,
+      log: console.log,
+    });
+  }
+}
+
+function cleanupQualification({ install, relocated, keep, log = console.log }) {
+  try {
+    // A relocated executable is a disposable copy. Keeping the consumer for
+    // diagnosis must never leave this second, otherwise invisible directory.
+    relocated?.cleanup();
+  } finally {
+    if (keep && install) {
+      log(`Kept package qualification directory: ${install.directory}`);
     } else {
-      relocated?.cleanup();
       install?.cleanup();
     }
   }
@@ -162,4 +182,8 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { parseArguments, verifyPublicJavaScriptApi };
+module.exports = {
+  cleanupQualification,
+  parseArguments,
+  verifyPublicJavaScriptApi,
+};

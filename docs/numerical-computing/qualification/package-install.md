@@ -1,10 +1,12 @@
 # Fresh npm and relocated SEA qualification
 
 The package qualification command tests the production archives, not the
-workspace packages. It creates a new temporary project, installs the public
-`@sagemath/sagejs` archive and exactly one matching platform archive through
-absolute `file:` URLs, and checks that private native workspaces did not leak
-into the consumer. It then exercises:
+workspace packages. It creates a new temporary project whose only direct
+dependency is the public `@sagemath/sagejs` archive. The matching platform
+archive is pinned through an absolute `file:` override but must be selected
+through the root package's exact optional-dependency edge. The command verifies
+that edge and the platform manifest before installation and checks that private
+native workspaces did not leak into the consumer. It then exercises:
 
 - CommonJS and ESM public APIs through the installed native kernel;
 - ordinary Python Brent root finding from the installed public package;

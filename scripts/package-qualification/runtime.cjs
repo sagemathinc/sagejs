@@ -14,10 +14,13 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { tmpdir } = require("node:os");
-const { isAbsolute, join, relative, resolve } = require("node:path");
+const { createRequire } = require("node:module");
+const { dirname, isAbsolute, join, relative, resolve } = require("node:path");
 const { pathToFileURL } = require("node:url");
 
 const { runPnpm } = require("../pnpm-invocation.cjs");
+
+const processSupervisor = join(__dirname, "process-supervisor.cjs");
 
 const SUPPORTED_TARGETS = Object.freeze({
   "linux-x64": Object.freeze({
@@ -26,6 +29,7 @@ const SUPPORTED_TARGETS = Object.freeze({
     runtimeId: "linux-x64",
     packageName: "@sagemath/sagejs-linux-x64",
     executableSuffix: "",
+    libc: "glibc",
   }),
   "linux-arm64": Object.freeze({
     os: "linux",
@@ -33,6 +37,7 @@ const SUPPORTED_TARGETS = Object.freeze({
     runtimeId: "linux-arm64",
     packageName: "@sagemath/sagejs-linux-arm64",
     executableSuffix: "",
+    libc: "glibc",
   }),
   "macos-arm64": Object.freeze({
     os: "darwin",
@@ -83,6 +88,14 @@ function archiveListing(archive) {
   return execFileSync("tar", ["-tzf", archive], { encoding: "utf8" });
 }
 
+function archiveJson(archive, filename) {
+  return JSON.parse(
+    execFileSync("tar", ["-xOzf", archive, `package/${filename}`], {
+      encoding: "utf8",
+    }),
+  );
+}
+
 function assertArchiveLayout(rootArchive, platformArchive, targetName) {
   const target = SUPPORTED_TARGETS[targetName];
   assert.ok(target, `unknown target ${targetName}`);
@@ -98,32 +111,94 @@ function assertArchiveLayout(rootArchive, platformArchive, targetName) {
   assert.match(rootContents, /package\/dist\/numerical\/nlopt-backend\.cjs/);
   assert.match(rootContents, /package\/dist\/numerical\/nlopt-methods\.wasm/);
 
+  const rootManifest = archiveJson(rootArchive, "package.json");
+  assert.equal(rootManifest.name, "@sagemath/sagejs");
+  assert.equal(
+    rootManifest.optionalDependencies?.[target.packageName],
+    rootManifest.version,
+    `root package must declare exact optional dependency ` +
+      `${target.packageName}@${rootManifest.version}`,
+  );
+
   const platformContents = archiveListing(platformArchive);
   const suffix = target.executableSuffix.replace(".", "\\.");
   assert.match(platformContents, new RegExp(`package/bin/sagejs${suffix}$`, "m"));
   assert.match(platformContents, new RegExp(`package/bin/sagepython${suffix}$`, "m"));
-  return { rootContents, platformContents };
+  const platformManifest = archiveJson(platformArchive, "package.json");
+  assert.equal(platformManifest.name, target.packageName);
+  assert.equal(platformManifest.version, rootManifest.version);
+  assert.deepEqual(platformManifest.os, [target.os]);
+  assert.deepEqual(platformManifest.cpu, [target.arch]);
+  if (target.libc) assert.deepEqual(platformManifest.libc, [target.libc]);
+  assert.deepEqual(platformManifest.bin, {
+    [`sagejs-${targetName}`]: `bin/sagejs${target.executableSuffix}`,
+    [`sagepython-${targetName}`]: `bin/sagepython${target.executableSuffix}`,
+  });
+  return { rootContents, rootManifest, platformContents, platformManifest };
 }
 
 function runProcess(executable, args, options = {}) {
+  const timeoutMs = options.timeout || 180_000;
+  assert.equal(
+    Number.isSafeInteger(timeoutMs) && timeoutMs > 0,
+    true,
+    `invalid process timeout ${JSON.stringify(timeoutMs)}`,
+  );
+  const metadataDirectory = mkdtempSync(join(tmpdir(), "sagejs-process-"));
+  const metadataPath = join(metadataDirectory, "result.json");
   const started = process.hrtime.bigint();
-  const result = spawnSync(executable, args, {
-    cwd: options.cwd,
-    input: options.input,
-    encoding: "utf8",
-    env: options.env || process.env,
-    timeout: options.timeout || 180_000,
-    windowsHide: true,
-  });
-  const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
-  if (result.error) throw result.error;
-  return {
-    status: result.status,
-    signal: result.signal,
-    stdout: result.stdout || "",
-    stderr: result.stderr || "",
-    elapsedMs,
-  };
+  try {
+    const supervisor = spawnSync(
+      process.execPath,
+      [
+        processSupervisor,
+        metadataPath,
+        String(timeoutMs),
+        executable,
+        ...args,
+      ],
+      {
+        cwd: options.cwd,
+        input: options.input,
+        encoding: "utf8",
+        env: options.env || process.env,
+        maxBuffer: options.maxBuffer || 16 * 1024 * 1024,
+        windowsHide: true,
+      },
+    );
+    const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+    if (supervisor.error) throw supervisor.error;
+    assert.equal(
+      existsSync(metadataPath),
+      true,
+      `process supervisor failed with status ${supervisor.status}: ` +
+        `${supervisor.stderr || supervisor.stdout || "no output"}`,
+    );
+    const metadata = JSON.parse(readFileSync(metadataPath, "utf8"));
+    if (metadata.spawnError) {
+      const error = new Error(metadata.spawnError.message);
+      error.code = metadata.spawnError.code;
+      throw error;
+    }
+    if (metadata.treeKillError) {
+      const error = new Error(
+        `failed to terminate timed-out process tree: ` +
+          metadata.treeKillError.message,
+      );
+      error.code = metadata.treeKillError.code;
+      throw error;
+    }
+    return {
+      status: metadata.status,
+      signal: metadata.signal,
+      stdout: supervisor.stdout || "",
+      stderr: supervisor.stderr || "",
+      elapsedMs,
+      timedOut: Boolean(metadata.timedOut),
+    };
+  } finally {
+    rmSync(metadataDirectory, { recursive: true, force: true });
+  }
 }
 
 function assertSuccessful(result, description) {
@@ -163,58 +238,77 @@ function prepareFreshInstall(options) {
   assertArchiveLayout(rootArchive, platformArchive, targetName);
 
   const ownedDirectory = !options.directory;
-  const directory = options.directory
-    ? resolve(options.directory)
-    : mkdtempSync(join(tmpdir(), `sagejs-npm-${targetName}-`));
-  mkdirSync(directory, { recursive: true });
-  const rootSpec = fileDependency(rootArchive);
-  const platformSpec = fileDependency(platformArchive);
-  const manifest = {
-    private: true,
-    dependencies: {
-      "@sagemath/sagejs": rootSpec,
-      [target.packageName]: platformSpec,
-    },
-  };
-  writeFileSync(join(directory, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  writeFileSync(
-    join(directory, "pnpm-workspace.yaml"),
-    `overrides:\n  ${JSON.stringify(target.packageName)}: ${JSON.stringify(platformSpec)}\n`,
-  );
-  runPnpm(["install", "--ignore-scripts"], {
-    cwd: directory,
-    stdio: options.installStdio || "inherit",
-  });
+  let directory;
+  try {
+    directory = options.directory
+      ? resolve(options.directory)
+      : mkdtempSync(join(tmpdir(), `sagejs-npm-${targetName}-`));
+    mkdirSync(directory, { recursive: true });
+    const rootSpec = fileDependency(rootArchive);
+    const platformSpec = fileDependency(platformArchive);
+    const manifest = {
+      private: true,
+      dependencies: {
+        "@sagemath/sagejs": rootSpec,
+      },
+    };
+    writeFileSync(
+      join(directory, "package.json"),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
+    writeFileSync(
+      join(directory, "pnpm-workspace.yaml"),
+      `overrides:\n  ${JSON.stringify(target.packageName)}: ${JSON.stringify(platformSpec)}\n`,
+    );
+    const installRunner = options.installRunner || runPnpm;
+    installRunner(["install", "--ignore-scripts"], {
+      cwd: directory,
+      stdio: options.installStdio || "inherit",
+    });
 
-  const installedRoot = join(directory, "node_modules", "@sagemath", "sagejs");
-  const platformRoot = join(
-    directory,
-    "node_modules",
-    ...target.packageName.split("/"),
-  );
-  const rootManifest = JSON.parse(readFileSync(join(installedRoot, "package.json"), "utf8"));
-  const platformManifest = JSON.parse(
-    readFileSync(join(platformRoot, "package.json"), "utf8"),
-  );
-  assert.equal(rootManifest.name, "@sagemath/sagejs");
-  assert.equal(platformManifest.name, target.packageName);
-  assert.equal(platformManifest.version, rootManifest.version);
-  assertContained(directory, installedRoot);
-  assertContained(directory, platformRoot);
+    const installedRoot = join(directory, "node_modules", "@sagemath", "sagejs");
+    const rootManifest = JSON.parse(
+      readFileSync(join(installedRoot, "package.json"), "utf8"),
+    );
+    // Resolve from pnpm's real package location so transitive optional
+    // dependencies are found beside the root package in its virtual-store
+    // snapshot. Resolving from the consumer symlink would only search the
+    // consumer's top-level scope.
+    const installedRequire = createRequire(
+      join(realpathSync(installedRoot), "package.json"),
+    );
+    const platformManifestPath = installedRequire.resolve(
+      `${target.packageName}/package.json`,
+    );
+    const platformRoot = dirname(platformManifestPath);
+    const platformManifest = JSON.parse(
+      readFileSync(platformManifestPath, "utf8"),
+    );
+    assert.equal(rootManifest.name, "@sagemath/sagejs");
+    assert.equal(platformManifest.name, target.packageName);
+    assert.equal(platformManifest.version, rootManifest.version);
+    assertContained(directory, installedRoot);
+    assertContained(directory, platformRoot);
 
-  return {
-    kind: "fresh-npm-install",
-    target: targetName,
-    targetConfig: target,
-    directory,
-    installedRoot,
-    platformRoot,
-    version: rootManifest.version,
-    ownedDirectory,
-    cleanup() {
-      if (ownedDirectory) rmSync(directory, { recursive: true, force: true });
-    },
-  };
+    return {
+      kind: "fresh-npm-install",
+      target: targetName,
+      targetConfig: target,
+      directory,
+      installedRoot,
+      platformRoot,
+      version: rootManifest.version,
+      ownedDirectory,
+      cleanup() {
+        if (ownedDirectory) rmSync(directory, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    if (ownedDirectory && directory) {
+      rmSync(directory, { recursive: true, force: true });
+    }
+    throw error;
+  }
 }
 
 function runInstalledSourcePython(context, source, options = {}) {
@@ -332,24 +426,32 @@ function prepareRelocatedSea(options) {
   const input = resolve(options.executable);
   assert.ok(existsSync(input), `missing SEA executable ${input}`);
   const ownedDirectory = !options.directory;
-  const directory = options.directory
-    ? resolve(options.directory)
-    : mkdtempSync(join(tmpdir(), `sagejs-sea-${targetName}-`));
-  mkdirSync(directory, { recursive: true });
-  const executable = join(directory, `sagepython${target.executableSuffix}`);
-  copyFileSync(input, executable);
-  if (target.os !== "win32") chmodSync(executable, 0o755);
-  return {
-    kind: "relocated-sea",
-    target: targetName,
-    targetConfig: target,
-    directory,
-    executable,
-    ownedDirectory,
-    cleanup() {
-      if (ownedDirectory) rmSync(directory, { recursive: true, force: true });
-    },
-  };
+  let directory;
+  try {
+    directory = options.directory
+      ? resolve(options.directory)
+      : mkdtempSync(join(tmpdir(), `sagejs-sea-${targetName}-`));
+    mkdirSync(directory, { recursive: true });
+    const executable = join(directory, `sagepython${target.executableSuffix}`);
+    copyFileSync(input, executable);
+    if (target.os !== "win32") chmodSync(executable, 0o755);
+    return {
+      kind: "relocated-sea",
+      target: targetName,
+      targetConfig: target,
+      directory,
+      executable,
+      ownedDirectory,
+      cleanup() {
+        if (ownedDirectory) rmSync(directory, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    if (ownedDirectory && directory) {
+      rmSync(directory, { recursive: true, force: true });
+    }
+    throw error;
+  }
 }
 
 function prepareRelocatedSeaFromInstall(context, options = {}) {
@@ -394,6 +496,7 @@ function runRelocatedSeaLanguage(context, source, language, options = {}) {
 module.exports = {
   SUPPORTED_TARGETS,
   archiveListing,
+  archiveJson,
   assertArchiveLayout,
   assertSuccessful,
   fileDependency,
@@ -401,6 +504,7 @@ module.exports = {
   prepareRelocatedSea,
   prepareRelocatedSeaFromInstall,
   resolveTarget,
+  runProcess,
   runInstalledNode,
   runInstalledKernelPython,
   runInstalledSourceLanguage,
