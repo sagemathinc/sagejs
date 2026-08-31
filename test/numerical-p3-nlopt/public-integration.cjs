@@ -27,7 +27,7 @@ function evaluate(source) {
 
 test("public minimize preserves exact explicit NLopt identities", () => {
   assert.equal(evaluate(String.raw`
-from sagejs.numerics.optimization import minimize
+from sagejs.numerics.optimization import minimize, minimize_problem, solve_minimize_problem
 
 nelder_mead = minimize(
     lambda point: (point[0] - 2.0)**2 + (point[1] + 1.0)**2,
@@ -89,7 +89,7 @@ print("public NLopt identities passed")
 
 test("independent validation rejects rotated saddles and false constrained optima", () => {
   assert.equal(evaluate(String.raw`
-from sagejs.numerics.optimization import minimize
+from sagejs.numerics.optimization import minimize, minimize_problem, solve_minimize_problem
 
 def rotated_saddle(point):
     x = point[0] - 1.0
@@ -111,6 +111,33 @@ curvature = next(
     if check["kind"] == "independent_minimum_curvature"
 )
 assert curvature["minimum_curvature"] < -curvature["threshold"]
+
+auto_problem = minimize_problem(
+    rotated_saddle,
+    [1.0, 1.0],
+    method="auto",
+    initial_step=1.0e-4,
+    xtol=1.0e-3,
+)
+override = solve_minimize_problem(auto_problem, method="nlopt-nelder-mead")
+assert override.status == "converged"
+assert not override.success and not override.validation.passed
+override_curvature = next(
+    check for check in override.validation.to_dict()["checks"]
+    if check["kind"] == "independent_minimum_curvature"
+)
+assert override_curvature["required"] and override_curvature["negative"]
+
+try:
+    minimize(
+        lambda point: sum(value*value for value in point),
+        [1.0 for _ in range(33)],
+        method="nlopt-nelder-mead",
+    )
+except ValueError as error:
+    assert "validated dimension envelope" in str(error)
+else:
+    raise AssertionError("NLopt Nelder-Mead exceeded its curvature envelope")
 
 false_kkt = minimize(
     lambda point: -point[0] - point[1] + point[2]**2,
@@ -134,6 +161,40 @@ kkt = next(
 )
 assert not kkt["passed"] and kkt["residual"] > kkt["threshold"]
 assert kkt["descent_direction_feasible"]
+
+shifted = minimize(
+    lambda point: 1.0 + 1.0e-4*rotated_saddle(point),
+    [1.0, 1.0],
+    constraints=[{"type": "ineq", "fun": lambda _point: 1.0}],
+    method="nlopt-cobyla",
+    maxiter=2,
+)
+shifted._value = [1.0, 1.0]
+shifted_validation = shifted.verify()
+assert not shifted_validation.passed
+shifted_local = next(
+    check for check in shifted_validation.to_dict()["checks"]
+    if check["kind"] == "independent_feasible_direction_local_minimum"
+)
+assert shifted_local["maximum_sampled_decrease"] > shifted_local["threshold"]
+
+near_active = minimize(
+    lambda point: 1.0 + point[0],
+    [0.0],
+    constraints=[
+        {"type": "ineq", "fun": lambda point: 1.0e-7 + point[0]}
+    ],
+    method="nlopt-cobyla",
+    maxiter=2,
+)
+near_active._value = [0.0]
+near_active_validation = near_active.verify()
+assert not near_active_validation.passed
+near_active_kkt = next(
+    check for check in near_active_validation.to_dict()["checks"]
+    if check["kind"] == "independent_active_constraint_kkt"
+)
+assert near_active_kkt["residual"] > near_active_kkt["threshold"]
 print("public adversarial validation passed")
 `), "public adversarial validation passed");
 });
@@ -151,6 +212,35 @@ equality = minimize(
 assert equality.success and equality.validation.passed
 assert abs(equality.value[0] - 0.25) < 1.0e-6
 assert abs(equality.value[1] - 0.75) < 1.0e-6
+
+circle = minimize(
+    lambda point: (point[0] - 1.0)**2 + point[1]**2,
+    [0.0, 1.0],
+    constraints=[
+        {
+            "type": "eq",
+            "fun": lambda point: point[0]**2 + point[1]**2 - 1.0,
+        }
+    ],
+    method="nlopt-cobyla",
+)
+assert circle.success and circle.validation.passed
+assert abs(circle.value[0] - 1.0) < 1.0e-5
+assert abs(circle.value[1]) < 1.0e-5
+
+active_bound = minimize(
+    lambda point: (point[0] - 3.0)**2,
+    [0.0],
+    bounds=[[0.0, 2.0]],
+    method="nlopt-nelder-mead",
+)
+assert active_bound.success and active_bound.validation.passed
+assert abs(active_bound.value[0] - 2.0) < 1.0e-8
+active_curvature = next(
+    check for check in active_bound.validation.to_dict()["checks"]
+    if check["kind"] == "independent_minimum_curvature"
+)
+assert active_curvature["reason"] == "strict_first_order_active_bounds"
 
 infeasible = minimize(
     lambda point: point[0]**2,

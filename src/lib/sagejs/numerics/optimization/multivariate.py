@@ -749,7 +749,7 @@ def solve_minimize_problem(
         diagnostics.append(status_item)
     validation: NumericalValidation
     validation, validation_diagnostics, validation_failure = validate_with_execution(
-        problem, value, execution, status
+        problem, value, execution, status, executed_method=selected_plan.method
     )
     if status == "converged" and validation_failure is not None:
         status, reason = validation_failure

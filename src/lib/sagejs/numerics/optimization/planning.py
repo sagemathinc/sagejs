@@ -56,8 +56,8 @@ def _nlopt_record(method: str) -> dict[str, Any]:
             "independent_feasibility",
             "independent_feasible_direction_local_minimum",
         ],
-        "max_dimension": MAX_DENSE_DIMENSION,
-        "max_constraints": 512,
+        "max_dimension": 32 if method == "nlopt-nelder-mead" else MAX_DENSE_DIMENSION,
+        "max_constraints": 64,
         "views": _view_contract(
             "minimize",
             "box_bounds"

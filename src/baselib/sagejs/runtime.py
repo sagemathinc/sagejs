@@ -134,7 +134,6 @@ def native_ge(left, right):
 
 
 def native_get(value, property_name):
-    """Read a JavaScript property, allowing ordinary primitive boxing."""
     return r"%js value[property_name]"
 
 
