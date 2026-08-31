@@ -5687,7 +5687,7 @@ relations `x + R*x + R^2*x`, stored in native compressed-row form.
 matrix(*args: Any, **options: Any) -> Matrix
 ```
 
-Construct a matrix, optionally over an explicit base ring.
+Construct a dense or sparse matrix, optionally over an explicit base ring.
 
 Sage's common row-list, flat-list, dimension, and entry-function forms are
 supported. Pass `sparse=True` to construct a sparse matrix parent. Exact

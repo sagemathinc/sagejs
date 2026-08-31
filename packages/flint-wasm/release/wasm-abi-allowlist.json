@@ -2022,6 +2022,14 @@
           "kind": "function"
         },
         {
+          "name": "sagejs_wasm_mpoly_groebner_qq",
+          "kind": "function"
+        },
+        {
+          "name": "sagejs_wasm_mpoly_groebner",
+          "kind": "function"
+        },
+        {
           "name": "sagejs_wasm_mpoly_input_capacity",
           "kind": "function"
         },

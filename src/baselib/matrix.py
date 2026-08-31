@@ -9352,7 +9352,7 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
 
 def matrix(*args: Any, **options: Any) -> Matrix:
     r"""
-    Construct a matrix, optionally over an explicit base ring.
+    Construct a dense or sparse matrix, optionally over an explicit base ring.
 
     Sage's common row-list, flat-list, dimension, and entry-function forms are
     supported. Pass `sparse=True` to construct a sparse matrix parent. Exact

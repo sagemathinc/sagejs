@@ -3305,8 +3305,15 @@ def _builtins_has_own(value: Any, name: _Str) -> _Bool:
 def _builtins_signature(value: Any, name: _Str) -> _Str:
     argument_names = _builtins_get_member(value, "__argnames__")
     defaults = _builtins_get_member(value, "__defaults__")
-    annotation_text = _builtins_get_member(value, "__annotations_text__")
-    annotations = _builtins_get_member(value, "__annotations__")
+    annotation_text = _builtins_get_member(
+        value,
+        "__signature_annotations_text__",
+    )
+    if annotation_text is runtime.undefined:
+        annotation_text = _builtins_get_member(value, "__annotations_text__")
+    annotations = _builtins_get_member(value, "__signature_annotations__")
+    if annotations is runtime.undefined:
+        annotations = _builtins_get_member(value, "__annotations__")
 
     def annotation(argument: _Str) -> _Str:
         if _builtins_has_own(annotation_text, argument):
@@ -3433,21 +3440,14 @@ def _builtins_doc_search_match(
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), "function"):
         return False
-    # Class statements and ``type(name, bases, namespace)`` both install the
-    # marker on the constructor itself.  Looking on ``prototype`` is weaker:
-    # a dynamic subclass may inherit a non-writable ``__bases__`` descriptor,
-    # preventing Reflect.set from creating an own prototype property.
+    # Class statements and dynamic type calls mark the constructor itself.
     if runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         value,
         ["__bases__"],
     ):
         return True
-    # Native builtin constructors such as `list`, `set`, and `dict` do not
-    # all expose an own `__bases__` slot.  They do carry the authoritative
-    # Python metaclass marker, which distinguishes them from ordinary Python
-    # functions and prevents descriptor lookup from binding a class stored as
-    # another class's attribute.
+    # Native builtin constructors instead carry the Python metaclass marker.
     return _builtins_get_member(value, "__python_type__") is ρσ_type
 
 
@@ -3537,28 +3537,26 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
 
     if _builtins_is_python_class(item):
         text = _builtins_class_help(item, False)
+    elif runtime.strict_equal(runtime.jstype(item), "function"):
+        name = _builtins_callable_name(item)
+        bound = _builtins_has_member(item, "__self__")
+        kind = "method" if bound else "function"
+        module = _builtins_get_member(item, "__module__")
+        heading = "Help on " + kind + " " + name
+        if runtime.strict_equal(runtime.jstype(module), "string") and module:
+            heading += " in module " + module
+        lines = [
+            heading + ":",
+            "",
+            _builtins_signature(item, name),
+        ]
+        doc = _builtins_doc(item)
+        if doc:
+            lines.extend(["", _builtins_indent_doc(doc, "    ")])
+        text = str.join("\n", lines)
     else:
         constructor = _builtins_get_member(item, "constructor")
-        # Bound methods are host functions whose Function constructor also
-        # carries Python class metadata, so classify the callable first.
-        if runtime.strict_equal(runtime.jstype(item), "function"):
-            name = _builtins_callable_name(item)
-            bound = _builtins_has_member(item, "__self__")
-            kind = "method" if bound else "function"
-            module = _builtins_get_member(item, "__module__")
-            heading = "Help on " + kind + " " + name
-            if runtime.strict_equal(runtime.jstype(module), "string") and module:
-                heading += " in module " + module
-            lines = [
-                heading + ":",
-                "",
-                _builtins_signature(item, name),
-            ]
-            doc = _builtins_doc(item)
-            if doc:
-                lines.extend(["", _builtins_indent_doc(doc, "    ")])
-            text = str.join("\n", lines)
-        elif _builtins_is_python_class(constructor):
+        if _builtins_is_python_class(constructor):
             text = _builtins_class_help(item, True)
         else:
             type_name = _builtins_callable_name(constructor)
@@ -8972,6 +8970,7 @@ def _builtins_tuple_new(
 
 runtime.reflect.set(_builtins_tuple_new, "__staticmethod__", True)
 runtime.reflect.set(tuple, "__new__", _builtins_tuple_new)
+runtime.reflect.set(_tuple_prototype, "__new__", _builtins_tuple_new)
 runtime.reflect.set(
     _tuple_prototype, "__init__", runtime.native_method(_builtins_tuple_subclass_init)
 )

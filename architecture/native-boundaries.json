@@ -13,10 +13,10 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 134,
+    "classified-native-file": 236,
     "declared-ffi": 456,
     "declared-ffi-resource": 34,
-    "napi-export": 328,
+    "napi-export": 330,
     "runtime-intrinsic": 147,
     "wasm-export": 74
   },
@@ -7125,12 +7125,32 @@
       "family": "multivariate"
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebnerMsolve",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyGroebnerMsolve",
+      "symbol": "sagejs_mpoly_groebner_msolve",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
       "kind": "napi-export",
       "path": "packages/flint/src/addon.c",
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyIrreducibleFactors",
       "symbol": "sagejs_mpoly_irreducible_factors",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLeadingMonomial",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyLeadingMonomial",
+      "symbol": "sagejs_mpoly_leading_monomial",
       "disposition": "migrate-to-declared-ffi",
       "family": "multivariate"
     },
@@ -9415,6 +9435,22 @@
       "lane": "arithmetic-algebra"
     },
     {
+      "id": "native-file:packages/flint/src/groebner_wasm_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/groebner_wasm_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/groebner_wasm_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/groebner_wasm_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
       "id": "native-file:packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
       "kind": "classified-native-file",
       "path": "packages/flint/src/hyperelliptic/genus3_jacobian_addon.c",
@@ -9501,6 +9537,22 @@
       "disposition": "public-abi",
       "review_status": "accepted",
       "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/msolve_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/msolve_core.c",
+      "disposition": "external-library-bridge",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/msolve_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/msolve_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
     },
     {
       "id": "native-file:packages/flint/src/multivariate_wasm_core.c",
@@ -9684,6 +9736,790 @@
       "path": "packages/flint/test/number_field_order_resource_ffi.c",
       "disposition": "benchmark-reference",
       "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/crt/longlong.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/crt/longlong.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/crt/mpq_reconstruct.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/crt/mpq_reconstruct.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/crt/mpz_CRT_ui.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/crt/mpz_CRT_ui.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/crt/ulong_extras.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/crt/ulong_extras.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/aligned_alloc.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/aligned_alloc.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/berlekamp_massey.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/berlekamp_massey.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/data_fglm.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/data_fglm.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/fglm_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/fglm_core.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/fglm.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/fglm.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/libfglm.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/libfglm.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/linalg-fglm.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/linalg-fglm.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/fglm/matrix-mult.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/fglm/matrix-mult.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/duplicate.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/duplicate.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/getdelim.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/getdelim.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/hilbert.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/hilbert.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/iofiles.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/iofiles.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/libmsolve.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/libmsolve.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/lifting-gb.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/lifting-gb.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/lifting.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/lifting.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/linear.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/linear.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/main.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/main.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/msolve-data.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve-data.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/msolve-data.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve-data.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/msolve.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/msolve.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/msolve.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/primes.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/primes.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/msolve/streams.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/msolve/streams.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/basis.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/basis.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/basis.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/basis.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/convert.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/convert.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/data.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/data.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/data.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/data.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/engine.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/engine.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/engine.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/engine.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/f4.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/f4.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/f4.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/f4.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/f4sat.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/f4sat.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/f4sat.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/f4sat.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/gb.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/gb.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/hash.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/hash.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/hash.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/hash.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/io.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/io.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/io.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/io.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/la_ff_16.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_16.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/la_ff_32.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_32.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/la_ff_8.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/la_ff_8.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/la_qq.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/la_qq.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/la.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/la.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/libneogb.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/libneogb.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/meta_data.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/meta_data.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/meta_data.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/meta_data.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/modular.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/modular.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/modular.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/modular.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/nf.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/nf.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/nf.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/nf.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/order.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/order.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/sba.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/sba.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/sba.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/sba.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/sort_r.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/sort_r.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/symbol.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/symbol.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/tools.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/tools.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/tools.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/tools.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/update.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/update.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/neogb/update.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/neogb/update.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_extra.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_extra.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_left_nullspace.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_left_nullspace.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_permute_rows.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_permute_rows.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_arith.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_arith.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_io.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_io.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mbasis.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mbasis.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mem.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_mem.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_set_from.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_set_from.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_shift.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly_shift.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_mat_poly.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_pmbasis.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/upolmat/nmod_poly_mat_utils.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/bisection.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/bisection.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/data_usolve.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/data_usolve.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/debug.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/debug.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/debug.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/debug.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/descartes.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/descartes.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/descartes.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/descartes.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/evaluate.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/evaluate.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/evaluate.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/evaluate.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/libusolve.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/libusolve.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/print_usolve.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/print_usolve.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/print_usolve.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/print_usolve.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/refine.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/refine.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/refine.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/refine.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/taylor_shift.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/taylor_shift.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/taylor_shift.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/taylor_shift.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/tests.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/tests.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/univmultiply.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/univmultiply.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/univmultiply.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/univmultiply.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/usolve.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/usolve.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/vendor/msolve/src/usolve/utils.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/vendor/msolve/src/usolve/utils.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
       "lane": "arithmetic-algebra"
     },
     {

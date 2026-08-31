@@ -56,6 +56,12 @@ expected_coefficients = [
     GF(p)(p - 1),
 ]
 assert f.coefficients(sparse=False) == expected_coefficients
+assert f.coefficients(sparse=True) == [
+    GF(p)(3),
+    GF(p)(7),
+    GF(p)(p - 2),
+    GF(p)(p - 1),
+]
 assert list(f) == expected_coefficients
 assert not hasattr(f, "_native")
 assert not hasattr(g, "_native")
